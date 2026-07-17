@@ -414,7 +414,7 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 			return codex.NewSearchOutboundTransformer(codex.SearchParams{
 				TokenProvider: primary.TokenProvider(),
 				BaseURL:       baseURL,
-				EndpointPath:   ep.Path,
+				EndpointPath:  ep.Path,
 			})
 		}
 
