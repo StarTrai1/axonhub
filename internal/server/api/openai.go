@@ -53,6 +53,7 @@ type OpenAIHandlers struct {
 	ChatCompletionHandlers     *ChatCompletionHandlers
 	CompletionHandlers         *ChatCompletionHandlers
 	ResponseCompletionHandlers *ChatCompletionHandlers
+	SearchHandlers             *ChatCompletionHandlers
 	CompactHandlers            *ChatCompletionHandlers
 	EmbeddingHandlers          *ChatCompletionHandlers
 	ImageGenerationHandlers    *ChatCompletionHandlers
@@ -117,6 +118,23 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.RequestService,
 				params.HttpClient,
 				responses.NewInboundTransformer(),
+				params.SystemService,
+				params.UsageLogService,
+				params.PromptService,
+				params.QuotaService,
+				params.PromptProtectionRuleService,
+				params.LiveStreamRegistry,
+				params.ChannelLimiterManager,
+				params.ProviderQuotaStatusProvider,
+			),
+		},
+		SearchHandlers: &ChatCompletionHandlers{
+			ChatCompletionOrchestrator: orchestrator.NewChatCompletionOrchestrator(
+				params.ChannelService,
+				params.DefaultSelector,
+				params.RequestService,
+				params.HttpClient,
+				responses.NewSearchInboundTransformer(),
 				params.SystemService,
 				params.UsageLogService,
 				params.PromptService,
@@ -300,6 +318,10 @@ func (handlers *OpenAIHandlers) Completion(c *gin.Context) {
 
 func (handlers *OpenAIHandlers) CreateResponse(c *gin.Context) {
 	handlers.ResponseCompletionHandlers.ChatCompletion(c)
+}
+
+func (handlers *OpenAIHandlers) Search(c *gin.Context) {
+	handlers.SearchHandlers.ChatCompletion(c)
 }
 
 func (handlers *OpenAIHandlers) CompactResponse(c *gin.Context) {

@@ -89,6 +89,14 @@ func TestDefaultEndpointsForChannelType_UseLLMAPIFormatValues(t *testing.T) {
 			expected: []string{llm.APIFormatOpenAIResponse.String()},
 		},
 		{
+			name: "openai responses exposes standalone search",
+			typ:  channel.TypeOpenaiResponses,
+			expected: []string{
+				llm.APIFormatOpenAIResponse.String(),
+				llm.APIFormatOpenAISearch.String(),
+			},
+		},
+		{
 			name: "codex exposes responses plus image generation and edit",
 			typ:  channel.TypeCodex,
 			expected: []string{
@@ -277,6 +285,7 @@ func TestSupportedAPIFormats_UsesLLMAPIFormatValues(t *testing.T) {
 		llm.APIFormatOpenAICompletion.String(),
 		llm.APIFormatOpenAIResponse.String(),
 		llm.APIFormatOpenAIResponseCompact.String(),
+		llm.APIFormatOpenAISearch.String(),
 		llm.APIFormatOpenAIEmbedding.String(),
 		llm.APIFormatOpenAIImageGeneration.String(),
 		llm.APIFormatOpenAIImageEdit.String(),

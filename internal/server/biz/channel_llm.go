@@ -212,6 +212,16 @@ func (svc *ChannelService) buildChannelWithOutbounds(c *ent.Channel, apiKeyOverr
 			continue
 		}
 
+		if ep.APIFormat == llm.APIFormatOpenAISearch.String() {
+			out, err := svc.buildNonDefaultEndpointOutbound(c, ch, ep)
+			if err != nil {
+				return nil, fmt.Errorf("failed to build default outbound for api_format %q on channel %s: %w", ep.APIFormat, c.Name, err)
+			}
+
+			outbounds[ep.APIFormat] = out
+			continue
+		}
+
 		outbounds[ep.APIFormat] = ch.Outbound
 	}
 
@@ -393,6 +403,12 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 			APIKeyProvider: apiKeyProvider(),
 			EndpointPath:   ep.Path,
 			Transport:      transport,
+		})
+	case llm.APIFormatOpenAISearch.String():
+		return responses.NewSearchOutboundTransformerWithConfig(&responses.SearchConfig{
+			BaseURL:        baseURL,
+			APIKeyProvider: apiKeyProvider(),
+			EndpointPath:   ep.Path,
 		})
 	case llm.APIFormatOpenAIEmbedding.String(),
 		llm.APIFormatOpenAIImageGeneration.String(),

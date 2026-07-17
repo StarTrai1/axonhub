@@ -129,6 +129,24 @@ func TestOpenAIResponsesEndpoint_InheritsWebSocketTransportFromBaseURL(t *testin
 	executor := custom.CustomizeExecutor(nil)
 	_, ok = executor.(*responses.WebSocketExecutor)
 	require.True(t, ok)
+
+	searchOutbound, err := BuildOutboundByAPIFormat(built, llm.APIFormatOpenAISearch.String())
+	require.NoError(t, err)
+	_, ok = searchOutbound.(*responses.SearchOutboundTransformer)
+	require.True(t, ok)
+	_, customized := searchOutbound.(pipeline.ChannelCustomizedExecutor)
+	require.False(t, customized)
+
+	searchReq, err := searchOutbound.TransformRequest(t.Context(), &llm.Request{
+		Model:       "gpt-5.6-sol",
+		RequestType: llm.RequestTypeSearch,
+		APIFormat:   llm.APIFormatOpenAISearch,
+		Search: &llm.SearchRequest{
+			Raw: []byte(`{"id":"search-1","model":"gpt-5.6-sol"}`),
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, "https://api.openai.com/v1/alpha/search", searchReq.URL)
 }
 
 func TestCodexOAuthWebSocketEndpointBuildsWithoutAPIKey(t *testing.T) {

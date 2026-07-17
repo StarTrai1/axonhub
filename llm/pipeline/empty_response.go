@@ -89,6 +89,10 @@ func hasResponseContent(resp *llm.Response) bool {
 		return true
 	}
 
+	if resp.Search != nil && len(resp.Search.Raw) > 0 {
+		return true
+	}
+
 	if resp.Speech != nil && len(resp.Speech.Audio) > 0 {
 		return true
 	}

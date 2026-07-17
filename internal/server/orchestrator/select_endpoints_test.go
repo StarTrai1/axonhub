@@ -20,6 +20,12 @@ func TestSelectAPIFormat(t *testing.T) {
 	require.Equal(t, "openai/embeddings", SelectAPIFormat(endpoints, &llm.Request{RequestType: llm.RequestTypeEmbedding}))
 	require.Equal(t, "openai/image_generation", SelectAPIFormat(endpoints, &llm.Request{RequestType: llm.RequestTypeImage}))
 
+	searchEndpoints := append(endpoints, objects.ChannelEndpoint{APIFormat: llm.APIFormatOpenAISearch.String()})
+	require.Equal(t, llm.APIFormatOpenAISearch.String(), SelectAPIFormat(searchEndpoints, &llm.Request{
+		RequestType: llm.RequestTypeSearch,
+		APIFormat:   llm.APIFormatOpenAISearch,
+	}))
+
 	geminiEndpoints := []objects.ChannelEndpoint{
 		{APIFormat: llm.APIFormatGeminiContents.String()},
 		{APIFormat: llm.APIFormatGeminiEmbedding.String()},

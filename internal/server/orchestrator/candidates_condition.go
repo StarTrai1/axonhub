@@ -95,6 +95,11 @@ func reqAPIFormat(req *llm.Request) string {
 	if req == nil {
 		return ""
 	}
+	// Standalone search is a second-stage Responses request. Reuse Responses
+	// association conditions so existing Codex model routes continue to match.
+	if req.RequestType == llm.RequestTypeSearch && req.APIFormat == llm.APIFormatOpenAISearch {
+		return llm.APIFormatOpenAIResponse.String()
+	}
 
 	return string(req.APIFormat)
 }
