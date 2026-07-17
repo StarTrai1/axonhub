@@ -405,6 +405,7 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 			Transport:      transport,
 		})
 	case llm.APIFormatOpenAISearch.String():
+		responsesBaseURL, responsesEndpointPath := searchFallbackResponsesEndpoint(c, ch)
 		if c.Type == channel.TypeCodex {
 			primary, ok := ch.Outbound.(*codex.OutboundTransformer)
 			if !ok || primary.TokenProvider() == nil {
@@ -412,16 +413,20 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 			}
 
 			return codex.NewSearchOutboundTransformer(codex.SearchParams{
-				TokenProvider: primary.TokenProvider(),
-				BaseURL:       baseURL,
-				EndpointPath:  ep.Path,
+				TokenProvider:         primary.TokenProvider(),
+				BaseURL:               baseURL,
+				EndpointPath:          ep.Path,
+				ResponsesBaseURL:      responsesBaseURL,
+				ResponsesEndpointPath: responsesEndpointPath,
 			})
 		}
 
 		return responses.NewSearchOutboundTransformerWithConfig(&responses.SearchConfig{
-			BaseURL:        baseURL,
-			APIKeyProvider: apiKeyProvider(),
-			EndpointPath:   ep.Path,
+			BaseURL:               baseURL,
+			APIKeyProvider:        apiKeyProvider(),
+			EndpointPath:          ep.Path,
+			ResponsesBaseURL:      responsesBaseURL,
+			ResponsesEndpointPath: responsesEndpointPath,
 		})
 	case llm.APIFormatOpenAIEmbedding.String(),
 		llm.APIFormatOpenAIImageGeneration.String(),
@@ -475,6 +480,22 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 	default:
 		return nil, fmt.Errorf("unsupported api_format %q", ep.APIFormat)
 	}
+}
+
+func searchFallbackResponsesEndpoint(c *ent.Channel, ch *Channel) (string, string) {
+	baseURL := c.BaseURL
+	for _, endpoint := range ch.ResolveEndpoints() {
+		if endpoint.APIFormat != llm.APIFormatOpenAIResponse.String() {
+			continue
+		}
+		if endpoint.BaseURL != "" {
+			baseURL = endpoint.BaseURL
+		}
+
+		return baseURL, endpoint.Path
+	}
+
+	return baseURL, ""
 }
 
 //nolint:maintidx // Checked.
