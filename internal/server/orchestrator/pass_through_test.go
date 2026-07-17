@@ -1358,6 +1358,16 @@ func TestMergePassThroughBodySkipsFormatsWithoutTopLevelModel(t *testing.T) {
 	require.Equal(t, string(rawBody), string(merged))
 }
 
+func TestMergePassThroughBodyPatchesSearchModel(t *testing.T) {
+	rawBody := []byte(`{"id":"search-1","model":"client-model","input":"query"}`)
+
+	merged, err := mergePassThroughRequestBody(rawBody, llm.APIFormatOpenAISearch, "mapped-model")
+	require.NoError(t, err)
+	require.Equal(t, "mapped-model", gjson.GetBytes(merged, "model").String())
+	require.Equal(t, "search-1", gjson.GetBytes(merged, "id").String())
+	require.Equal(t, "query", gjson.GetBytes(merged, "input").String())
+}
+
 // TestApplyUserAgentPassThrough tests the User-Agent pass-through middleware.
 func TestApplyUserAgentPassThrough(t *testing.T) {
 	tests := []struct {

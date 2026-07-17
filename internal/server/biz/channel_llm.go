@@ -40,6 +40,7 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/openai/codex"
 	"github.com/looplj/axonhub/llm/transformer/openai/copilot"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
+	"github.com/looplj/axonhub/llm/transformer/openai/search"
 	"github.com/looplj/axonhub/llm/transformer/openrouter"
 	"github.com/looplj/axonhub/llm/transformer/xai"
 	"github.com/looplj/axonhub/llm/transformer/zai"
@@ -212,6 +213,15 @@ func (svc *ChannelService) buildChannelWithOutbounds(c *ent.Channel, apiKeyOverr
 			continue
 		}
 
+		if ep.APIFormat == llm.APIFormatOpenAISearch.String() {
+			out, err := svc.buildEndpointOutbound(c, ch, ep)
+			if err != nil {
+				return nil, fmt.Errorf("failed to build outbound for api_format %q on channel %s: %w", ep.APIFormat, c.Name, err)
+			}
+			outbounds[ep.APIFormat] = out
+			continue
+		}
+
 		outbounds[ep.APIFormat] = ch.Outbound
 	}
 
@@ -219,7 +229,7 @@ func (svc *ChannelService) buildChannelWithOutbounds(c *ent.Channel, apiKeyOverr
 		if ep.APIFormat == "" {
 			continue
 		}
-		out, err := svc.buildNonDefaultEndpointOutbound(c, ch, ep)
+		out, err := svc.buildEndpointOutbound(c, ch, ep)
 		if err != nil {
 			return nil, fmt.Errorf("failed to build outbound for api_format %q on channel %s: %w", ep.APIFormat, c.Name, err)
 		}
@@ -339,11 +349,10 @@ func (svc *ChannelService) buildCodexOutbound(
 	})
 }
 
-// buildNonDefaultEndpointOutbound creates a transformer for a user-configured
-// endpoint override. Default endpoints are handled by buildChannelWithOutbounds
-// and always use the primary outbound.
+// buildEndpointOutbound creates a transformer for a configurable endpoint or a
+// built-in endpoint that cannot share the channel's primary outbound.
 // Multiple api_format values may share the same provider outbound implementation.
-func (svc *ChannelService) buildNonDefaultEndpointOutbound(
+func (svc *ChannelService) buildEndpointOutbound(
 	c *ent.Channel,
 	ch *Channel,
 	ep objects.ChannelEndpoint,
@@ -393,6 +402,12 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 			APIKeyProvider: apiKeyProvider(),
 			EndpointPath:   ep.Path,
 			Transport:      transport,
+		})
+	case llm.APIFormatOpenAISearch.String():
+		return search.NewOutboundTransformerWithConfig(&search.Config{
+			BaseURL:        baseURL,
+			APIKeyProvider: apiKeyProvider(),
+			EndpointPath:   ep.Path,
 		})
 	case llm.APIFormatOpenAIEmbedding.String(),
 		llm.APIFormatOpenAIImageGeneration.String(),

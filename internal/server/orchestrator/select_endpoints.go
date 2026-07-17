@@ -9,6 +9,7 @@ import (
 var chatCapableAPIFormats = map[string]struct{}{
 	"openai/chat_completions": {},
 	"openai/responses":        {},
+	"openai/search":           {},
 	"anthropic/messages":      {},
 	"gemini/contents":         {},
 	"ollama/chat":             {},

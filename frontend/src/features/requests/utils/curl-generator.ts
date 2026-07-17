@@ -15,6 +15,7 @@ export interface CurlGeneratorOptions {
 const API_FORMAT_PATHS: Record<ApiFormat, string> = {
   'openai/chat_completions': '/v1/chat/completions',
   'openai/responses': '/v1/responses',
+  'openai/search': '/v1/alpha/search',
   'openai/image_generation': '/v1/images/generations',
   'openai/image_edit': '/v1/images/edits',
   'openai/image_variation': '/v1/images/variations',

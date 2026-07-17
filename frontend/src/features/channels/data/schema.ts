@@ -4,6 +4,7 @@ import { pageInfoSchema } from '@/gql/pagination';
 export const apiFormatSchema = z.enum([
   'openai/chat_completions',
   'openai/responses',
+  'openai/search',
   'openai/image_generation',
   'openai/image_edit',
   'openai/image_variation',
@@ -27,6 +28,7 @@ export type ApiFormat = z.infer<typeof apiFormatSchema>;
 export const configurableChannelEndpointApiFormats = [
   'openai/chat_completions',
   'openai/responses',
+  'openai/search',
   'openai/image_generation',
   'openai/image_edit',
   'openai/image_variation',

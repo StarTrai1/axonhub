@@ -19,6 +19,7 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/openai"
 	"github.com/looplj/axonhub/llm/transformer/openai/codex"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
+	"github.com/looplj/axonhub/llm/transformer/openai/search"
 )
 
 func TestOpenAICompatibleChannel_BuildChannelWithOutbounds(t *testing.T) {
@@ -128,6 +129,33 @@ func TestOpenAIResponsesEndpoint_InheritsWebSocketTransportFromBaseURL(t *testin
 
 	executor := custom.CustomizeExecutor(nil)
 	_, ok = executor.(*responses.WebSocketExecutor)
+	require.True(t, ok)
+}
+
+func TestOpenAIResponsesChannel_BuildsDedicatedSearchOutbound(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(context.Background())
+
+	entChannel := client.Channel.Create().
+		SetName("Responses Search Channel").
+		SetType(channel.TypeOpenaiResponses).
+		SetBaseURL("https://example.com/v1").
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
+		SetSupportedModels([]string{"gpt-5.6-sol"}).
+		SetDefaultTestModel("gpt-5.6-sol").
+		SaveX(ctx)
+
+	channelSvc := NewChannelServiceForTest(client)
+
+	built, err := channelSvc.buildChannelWithOutbounds(entChannel)
+	require.NoError(t, err)
+	require.Len(t, built.Outbounds, 2)
+
+	outbound, err := BuildOutboundByAPIFormat(built, llm.APIFormatOpenAISearch.String())
+	require.NoError(t, err)
+	_, ok := outbound.(*search.OutboundTransformer)
 	require.True(t, ok)
 }
 

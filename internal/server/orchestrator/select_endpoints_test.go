@@ -42,6 +42,18 @@ func TestSelectAPIFormat_PrefersMatchingFormat(t *testing.T) {
 	}))
 }
 
+func TestSelectAPIFormat_PrefersSearchForSearchRequest(t *testing.T) {
+	endpoints := []objects.ChannelEndpoint{
+		{APIFormat: llm.APIFormatOpenAIResponse.String()},
+		{APIFormat: llm.APIFormatOpenAISearch.String()},
+	}
+
+	require.Equal(t, llm.APIFormatOpenAISearch.String(), SelectAPIFormat(endpoints, &llm.Request{
+		RequestType: llm.RequestTypeChat,
+		APIFormat:   llm.APIFormatOpenAISearch,
+	}))
+}
+
 func TestSelectAPIFormat_FallsBackWhenNoMatch(t *testing.T) {
 	endpoints := []objects.ChannelEndpoint{
 		{APIFormat: "openai/responses"},

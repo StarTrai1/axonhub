@@ -30,6 +30,7 @@ const (
 	APIFormatOpenAICompletion      APIFormat = "openai/completions"
 	APIFormatOpenAIResponse        APIFormat = "openai/responses"
 	APIFormatOpenAIResponseCompact APIFormat = "openai/responses_compact"
+	APIFormatOpenAISearch          APIFormat = "openai/search"
 	APIFormatOpenAIImageGeneration APIFormat = "openai/image_generation"
 	APIFormatOpenAIImageEdit       APIFormat = "openai/image_edit"
 	APIFormatOpenAIImageVariation  APIFormat = "openai/image_variation"
