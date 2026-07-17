@@ -193,6 +193,58 @@ func TestCodexOAuthWebSocketEndpointBuildsWithoutAPIKey(t *testing.T) {
 	custom, ok := outbound.(pipeline.ChannelCustomizedExecutor)
 	require.True(t, ok)
 	require.NotNil(t, custom.CustomizeExecutor(nil))
+
+	searchOutbound, err := BuildOutboundByAPIFormat(built, llm.APIFormatOpenAISearch.String())
+	require.NoError(t, err)
+	_, ok = searchOutbound.(*codex.SearchOutboundTransformer)
+	require.True(t, ok)
+
+	searchReq, err := searchOutbound.TransformRequest(t.Context(), &llm.Request{
+		Model:       "gpt-5.6-sol",
+		RequestType: llm.RequestTypeSearch,
+		APIFormat:   llm.APIFormatOpenAISearch,
+		Search: &llm.SearchRequest{
+			Raw: []byte(`{"id":"search-1","model":"gpt-5.6-sol"}`),
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, "https://chatgpt.com/backend-api/codex/alpha/search", searchReq.URL)
+	require.Equal(t, "access-token", searchReq.Auth.APIKey)
+}
+
+func TestCodexAPIKeyChannelBuildsStandaloneSearchOutbound(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(context.Background())
+	entChannel := client.Channel.Create().
+		SetName("Third-Party Codex Channel").
+		SetType(channel.TypeCodex).
+		SetBaseURL("https://sub.example.test/v1").
+		SetCredentials(objects.ChannelCredentials{APIKey: "third-party-key"}).
+		SetSupportedModels([]string{"gpt-5.6-sol"}).
+		SetDefaultTestModel("gpt-5.6-sol").
+		SaveX(ctx)
+
+	built, err := NewChannelServiceForTest(client).buildChannelWithOutbounds(entChannel)
+	require.NoError(t, err)
+
+	searchOutbound, err := BuildOutboundByAPIFormat(built, llm.APIFormatOpenAISearch.String())
+	require.NoError(t, err)
+	_, ok := searchOutbound.(*codex.SearchOutboundTransformer)
+	require.True(t, ok)
+
+	searchReq, err := searchOutbound.TransformRequest(t.Context(), &llm.Request{
+		Model:       "gpt-5.6-sol",
+		RequestType: llm.RequestTypeSearch,
+		APIFormat:   llm.APIFormatOpenAISearch,
+		Search: &llm.SearchRequest{
+			Raw: []byte(`{"id":"search-1","model":"gpt-5.6-sol"}`),
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, "https://sub.example.test/v1/alpha/search", searchReq.URL)
+	require.Equal(t, "third-party-key", searchReq.Auth.APIKey)
 }
 
 type testStoppableOutbound struct {

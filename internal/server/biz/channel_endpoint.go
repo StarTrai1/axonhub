@@ -123,6 +123,7 @@ var defaultEndpointsForChannelType = map[channel.Type][]objects.ChannelEndpoint{
 	channel.TypeCline:           openAIChatOnlyDefaultEndpoints,
 	channel.TypeCodex: {
 		{APIFormat: llm.APIFormatOpenAIResponse.String()},
+		{APIFormat: llm.APIFormatOpenAISearch.String()},
 		{APIFormat: llm.APIFormatOpenAIImageGeneration.String()},
 		{APIFormat: llm.APIFormatOpenAIImageEdit.String()},
 	},

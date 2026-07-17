@@ -97,10 +97,11 @@ func TestDefaultEndpointsForChannelType_UseLLMAPIFormatValues(t *testing.T) {
 			},
 		},
 		{
-			name: "codex exposes responses plus image generation and edit",
+			name: "codex exposes responses, standalone search, image generation, and edit",
 			typ:  channel.TypeCodex,
 			expected: []string{
 				llm.APIFormatOpenAIResponse.String(),
+				llm.APIFormatOpenAISearch.String(),
 				llm.APIFormatOpenAIImageGeneration.String(),
 				llm.APIFormatOpenAIImageEdit.String(),
 			},
