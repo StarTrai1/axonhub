@@ -7,20 +7,26 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/tidwall/sjson"
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/openai"
 )
 
-var (
-	_ transformer.Inbound  = (*SearchInboundTransformer)(nil)
-	_ transformer.Outbound = (*SearchOutboundTransformer)(nil)
+var _ transformer.Inbound = (*SearchInboundTransformer)(nil)
+var _ transformer.Outbound = (*SearchOutboundTransformer)(nil)
+var _ pipeline.ChannelCustomizedExecutor = (*SearchOutboundTransformer)(nil)
+
+const (
+	defaultSearchFallbackModel         = "gpt-5.5"
+	defaultSearchCapabilityNegativeTTL = 10 * time.Minute
 )
 
 type searchRequestEnvelope struct {
@@ -107,15 +113,20 @@ func (t *SearchInboundTransformer) AggregateStreamChunks(
 
 // SearchConfig configures the standalone search outbound endpoint.
 type SearchConfig struct {
-	BaseURL        string
-	EndpointPath   string
-	APIKeyProvider auth.APIKeyProvider
+	BaseURL               string
+	EndpointPath          string
+	APIKeyProvider        auth.APIKeyProvider
+	ResponsesBaseURL      string
+	ResponsesEndpointPath string
+	FallbackModel         string
+	CapabilityNegativeTTL time.Duration
 }
 
 // SearchOutboundTransformer forwards standalone search JSON without coupling it
 // to the Responses WebSocket transport.
 type SearchOutboundTransformer struct {
-	config *SearchConfig
+	config     *SearchConfig
+	capability searchCapabilityCache
 }
 
 func NewSearchOutboundTransformer(baseURL, apiKey string) (*SearchOutboundTransformer, error) {
@@ -138,6 +149,19 @@ func NewSearchOutboundTransformerWithConfig(config *SearchConfig) (*SearchOutbou
 
 	normalized := *config
 	normalized.BaseURL = normalizeSearchBaseURL(normalized.BaseURL, normalized.EndpointPath != "")
+	if strings.TrimSpace(normalized.ResponsesBaseURL) == "" {
+		normalized.ResponsesBaseURL = config.BaseURL
+	}
+	normalized.ResponsesBaseURL = normalizeSearchBaseURL(
+		normalized.ResponsesBaseURL,
+		normalized.ResponsesEndpointPath != "",
+	)
+	if strings.TrimSpace(normalized.FallbackModel) == "" {
+		normalized.FallbackModel = defaultSearchFallbackModel
+	}
+	if normalized.CapabilityNegativeTTL <= 0 {
+		normalized.CapabilityNegativeTTL = defaultSearchCapabilityNegativeTTL
+	}
 
 	return &SearchOutboundTransformer{config: &normalized}, nil
 }
@@ -159,6 +183,14 @@ func normalizeSearchBaseURL(baseURL string, customEndpoint bool) string {
 
 func (t *SearchOutboundTransformer) APIFormat() llm.APIFormat {
 	return llm.APIFormatOpenAISearch
+}
+
+func (t *SearchOutboundTransformer) CustomizeExecutor(executor pipeline.Executor) pipeline.Executor {
+	return &searchFallbackExecutor{
+		inner:      executor,
+		config:     t.config,
+		capability: &t.capability,
+	}
 }
 
 func (t *SearchOutboundTransformer) TransformRequest(

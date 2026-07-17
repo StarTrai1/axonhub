@@ -2,10 +2,12 @@ package biz
 
 import (
 	"context"
+	"net/http"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent/channel"
@@ -135,7 +137,7 @@ func TestOpenAIResponsesEndpoint_InheritsWebSocketTransportFromBaseURL(t *testin
 	_, ok = searchOutbound.(*responses.SearchOutboundTransformer)
 	require.True(t, ok)
 	_, customized := searchOutbound.(pipeline.ChannelCustomizedExecutor)
-	require.False(t, customized)
+	require.True(t, customized)
 
 	searchReq, err := searchOutbound.TransformRequest(t.Context(), &llm.Request{
 		Model:       "gpt-5.6-sol",
@@ -147,6 +149,14 @@ func TestOpenAIResponsesEndpoint_InheritsWebSocketTransportFromBaseURL(t *testin
 	})
 	require.NoError(t, err)
 	require.Equal(t, "https://api.openai.com/v1/alpha/search", searchReq.URL)
+
+	probe := &searchFallbackProbeExecutor{}
+	fallbackResponse, err := searchOutbound.(pipeline.ChannelCustomizedExecutor).CustomizeExecutor(probe).Do(t.Context(), searchReq)
+	require.NoError(t, err)
+	require.Equal(t, "search fallback", gjson.GetBytes(fallbackResponse.Body, "output").String())
+	require.Len(t, probe.requests, 2)
+	require.Equal(t, "https://api.openai.com/v1/alpha/search", probe.requests[0].URL)
+	require.Equal(t, "https://api.openai.com/v1/custom/responses", probe.requests[1].URL)
 }
 
 func TestCodexOAuthWebSocketEndpointBuildsWithoutAPIKey(t *testing.T) {
@@ -197,6 +207,8 @@ func TestCodexOAuthWebSocketEndpointBuildsWithoutAPIKey(t *testing.T) {
 	require.NoError(t, err)
 	_, ok = searchOutbound.(*codex.SearchOutboundTransformer)
 	require.True(t, ok)
+	_, customized := searchOutbound.(pipeline.ChannelCustomizedExecutor)
+	require.True(t, customized)
 
 	searchReq, err := searchOutbound.TransformRequest(t.Context(), &llm.Request{
 		Model:       "gpt-5.6-sol",
@@ -232,6 +244,8 @@ func TestCodexAPIKeyChannelBuildsStandaloneSearchOutbound(t *testing.T) {
 	require.NoError(t, err)
 	_, ok := searchOutbound.(*codex.SearchOutboundTransformer)
 	require.True(t, ok)
+	_, customized := searchOutbound.(pipeline.ChannelCustomizedExecutor)
+	require.True(t, customized)
 
 	searchReq, err := searchOutbound.TransformRequest(t.Context(), &llm.Request{
 		Model:       "gpt-5.6-sol",
@@ -244,6 +258,43 @@ func TestCodexAPIKeyChannelBuildsStandaloneSearchOutbound(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "https://sub.example.test/v1/alpha/search", searchReq.URL)
 	require.Equal(t, "third-party-key", searchReq.Auth.APIKey)
+}
+
+type searchFallbackProbeExecutor struct {
+	requests []*httpclient.Request
+}
+
+func (e *searchFallbackProbeExecutor) Do(
+	_ context.Context,
+	request *httpclient.Request,
+) (*httpclient.Response, error) {
+	e.requests = append(e.requests, request)
+	if len(e.requests) == 1 {
+		return nil, &httpclient.Error{
+			Method:     http.MethodPost,
+			URL:        request.URL,
+			StatusCode: http.StatusNotFound,
+			Body:       []byte(`{"error":{"message":"Invalid URL (POST /v1/alpha/search)"}}`),
+		}
+	}
+
+	return &httpclient.Response{
+		StatusCode: http.StatusOK,
+		Body: []byte(`{
+			"id":"resp-1",
+			"model":"gpt-5.5",
+			"status":"completed",
+			"output":[{"type":"message","content":[{"type":"output_text","text":"search fallback"}]}]
+		}`),
+		Request: request,
+	}, nil
+}
+
+func (e *searchFallbackProbeExecutor) DoStream(
+	context.Context,
+	*httpclient.Request,
+) (streams.Stream[*httpclient.StreamEvent], error) {
+	return nil, nil
 }
 
 type testStoppableOutbound struct {

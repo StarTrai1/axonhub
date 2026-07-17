@@ -10,6 +10,7 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/oauth"
+	"github.com/looplj/axonhub/llm/pipeline"
 )
 
 func TestCodexSearchOutboundUsesTokenAndIdentityHeaders(t *testing.T) {
@@ -42,6 +43,8 @@ func TestCodexSearchOutboundUsesTokenAndIdentityHeaders(t *testing.T) {
 	require.Equal(t, `{"session_id":"session-1"}`, req.Headers.Get(TurnMetadataHeader))
 	require.Equal(t, "request-1", req.Headers.Get(ClientRequestIDHeader))
 	require.Equal(t, testChatAccountID, req.Headers.Get("Chatgpt-Account-Id"))
+	_, customized := any(outbound).(pipeline.ChannelCustomizedExecutor)
+	require.True(t, customized)
 }
 
 func TestCodexSearchOutboundSupportsPlainAPIKeyProvider(t *testing.T) {
@@ -64,4 +67,6 @@ func TestCodexSearchOutboundSupportsPlainAPIKeyProvider(t *testing.T) {
 	require.Equal(t, "https://sub.example.test/v1/alpha/search", req.URL)
 	require.Equal(t, "third-party-key", req.Auth.APIKey)
 	require.Equal(t, AxonHubOriginator, req.Headers.Get("Originator"))
+	_, customized := any(outbound).(pipeline.ChannelCustomizedExecutor)
+	require.True(t, customized)
 }
