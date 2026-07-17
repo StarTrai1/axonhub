@@ -33,6 +33,13 @@ func TestMatchesAssociationWhen_RequestFormat(t *testing.T) {
 	require.False(t, matchesAssociationWhen(0, false, llm.APIFormatOpenAIChatCompletion.String(), requestContentFeatures{}, nil, now, when))
 }
 
+func TestReqAPIFormat_StandaloneSearchUsesResponsesAssociation(t *testing.T) {
+	require.Equal(t, llm.APIFormatOpenAIResponse.String(), reqAPIFormat(&llm.Request{
+		RequestType: llm.RequestTypeSearch,
+		APIFormat:   llm.APIFormatOpenAISearch,
+	}))
+}
+
 func TestMatchesAssociationWhen_DailyTime(t *testing.T) {
 	when := &objects.ModelAssociationWhen{
 		Enabled: true,

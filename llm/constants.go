@@ -10,6 +10,7 @@ const (
 	RequestTypeVideo      RequestType = "video"
 	RequestTypeCompact    RequestType = "compact"
 	RequestTypeCompletion RequestType = "completion"
+	RequestTypeSearch     RequestType = "search"
 
 	// RequestTypeSpeech is the text-to-speech (TTS) request type, maps to /v1/audio/speech.
 	RequestTypeSpeech RequestType = "speech"
@@ -30,6 +31,7 @@ const (
 	APIFormatOpenAICompletion      APIFormat = "openai/completions"
 	APIFormatOpenAIResponse        APIFormat = "openai/responses"
 	APIFormatOpenAIResponseCompact APIFormat = "openai/responses_compact"
+	APIFormatOpenAISearch          APIFormat = "openai/search"
 	APIFormatOpenAIImageGeneration APIFormat = "openai/image_generation"
 	APIFormatOpenAIImageEdit       APIFormat = "openai/image_edit"
 	APIFormatOpenAIImageVariation  APIFormat = "openai/image_variation"

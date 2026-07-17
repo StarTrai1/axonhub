@@ -16,6 +16,7 @@ var SupportedAPIFormats = map[string]struct{}{
 	llm.APIFormatOpenAICompletion.String():      {},
 	llm.APIFormatOpenAIResponse.String():        {},
 	llm.APIFormatOpenAIResponseCompact.String(): {},
+	llm.APIFormatOpenAISearch.String():          {},
 	llm.APIFormatOpenAIEmbedding.String():       {},
 	llm.APIFormatOpenAIImageGeneration.String(): {},
 	llm.APIFormatOpenAIImageEdit.String():       {},
@@ -114,7 +115,10 @@ var openAIChatOnlyDefaultEndpoints = []objects.ChannelEndpoint{
 // and are not modeled here.
 var defaultEndpointsForChannelType = map[channel.Type][]objects.ChannelEndpoint{
 	channel.TypeOpenai:          openAIFullDefaultEndpoints,
-	channel.TypeOpenaiResponses: {{APIFormat: llm.APIFormatOpenAIResponse.String()}},
+	channel.TypeOpenaiResponses: {
+		{APIFormat: llm.APIFormatOpenAIResponse.String()},
+		{APIFormat: llm.APIFormatOpenAISearch.String()},
+	},
 	channel.TypeAtlascloud:      openAICompatibleDefaultEndpoints,
 	channel.TypeCline:           openAIChatOnlyDefaultEndpoints,
 	channel.TypeCodex: {

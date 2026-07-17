@@ -25,6 +25,9 @@ func TestHasResponseContent_ReasoningSignature(t *testing.T) {
 }
 
 func TestHasResponseContent(t *testing.T) {
+	require.True(t, hasResponseContent(&llm.Response{
+		Search: &llm.SearchResponse{Raw: []byte(`{"output":"result"}`)},
+	}))
 	t.Run("empty response", func(t *testing.T) {
 		require.False(t, hasResponseContent(&llm.Response{}))
 	})

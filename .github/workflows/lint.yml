@@ -2,6 +2,7 @@
 # https://github.com/spf13/cobra/blob/master/LICENSE.txt
 name: Lint
 on:
+  workflow_dispatch:
   push:
     branches:
       - 'unstable'

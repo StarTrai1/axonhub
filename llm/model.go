@@ -123,6 +123,9 @@ type Request struct {
 	// The unique ID of the previous response for multi-turn Responses API requests.
 	PreviousResponseID *string `json:"previous_response_id,omitempty"`
 
+	// Search is the standalone OpenAI search request, present for /v1/alpha/search.
+	Search *SearchRequest `json:"search,omitempty"`
+
 	// A stable identifier used to help detect users of your application that may be
 	// violating OpenAI's usage policies. The IDs should be a string that uniquely
 	// identifies each user. We recommend hashing their username or email address, in
@@ -679,6 +682,9 @@ type Response struct {
 
 	// Completion is the completion response, will present if the request is completion request.
 	Completion *CompletionResponse `json:"completion,omitempty"`
+
+	// Search is the standalone OpenAI search response, present for /v1/alpha/search.
+	Search *SearchResponse `json:"search,omitempty"`
 
 	// Speech is the text-to-speech (TTS) response, will present if the request is a speech request.
 	Speech *SpeechResponse `json:"speech,omitempty"`
