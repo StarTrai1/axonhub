@@ -143,7 +143,7 @@ func NewSearchOutboundTransformerWithConfig(config *SearchConfig) (*SearchOutbou
 }
 
 func normalizeSearchBaseURL(baseURL string, customEndpoint bool) string {
-	baseURL = strings.TrimSuffix(strings.TrimSpace(baseURL), "#")
+	baseURL = strings.TrimSpace(baseURL)
 	if strings.HasPrefix(baseURL, "wss://") {
 		baseURL = "https://" + strings.TrimPrefix(baseURL, "wss://")
 	} else if strings.HasPrefix(baseURL, "ws://") {

@@ -405,6 +405,19 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 			Transport:      transport,
 		})
 	case llm.APIFormatOpenAISearch.String():
+		if c.Type == channel.TypeCodex {
+			primary, ok := ch.Outbound.(*codex.OutboundTransformer)
+			if !ok || primary.TokenProvider() == nil {
+				return nil, fmt.Errorf("codex channel %s has no token provider", c.Name)
+			}
+
+			return codex.NewSearchOutboundTransformer(codex.SearchParams{
+				TokenProvider: primary.TokenProvider(),
+				BaseURL:       baseURL,
+				EndpointPath:   ep.Path,
+			})
+		}
+
 		return responses.NewSearchOutboundTransformerWithConfig(&responses.SearchConfig{
 			BaseURL:        baseURL,
 			APIKeyProvider: apiKeyProvider(),
