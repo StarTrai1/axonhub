@@ -30,10 +30,10 @@ import (
 
 const (
 	testChannelAPIKeysMaxConcurrency = 8
-	channelTestMaxCompletionTokens    = int64(64)
-	channelTestRequestMetadataKey     = "axonhub.channel_test"
-	channelTestOriginator             = "codex_vscode"
-	channelTestUserAgent              = "codex_vscode/0.144.5 (Ubuntu 24.4.0; x86_64) xterm-256color (VS Code; 26.707.91948)"
+	channelTestMaxCompletionTokens   = int64(64)
+	channelTestRequestMetadataKey    = "axonhub.channel_test"
+	channelTestOriginator            = "codex_vscode"
+	channelTestUserAgent             = "codex_vscode/0.144.5 (Ubuntu 24.4.0; x86_64) xterm-256color (VS Code; 26.707.91948)"
 )
 
 type channelTestTurnMetadata struct {
