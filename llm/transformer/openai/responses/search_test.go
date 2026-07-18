@@ -62,7 +62,7 @@ func TestSearchOutboundTransformer_UsesHTTPAndPreservesRequestFields(t *testing.
 	require.True(t, gjson.GetBytes(req.Body, "future_field.keep").Bool())
 }
 
-func TestSearchOutboundTransformer_FallsBackToNonStreamingResponsesAndCachesCapability(t *testing.T) {
+func TestSearchOutboundTransformer_FallsBackToStreamingGPT56ResponsesAndCachesCapability(t *testing.T) {
 	outbound, err := NewSearchOutboundTransformerWithConfig(&SearchConfig{
 		BaseURL:                  "https://search.example.test/v1",
 		APIKeyProvider:           auth.NewStaticKeyProvider("test-key"),
@@ -87,25 +87,20 @@ func TestSearchOutboundTransformer_FallsBackToNonStreamingResponsesAndCachesCapa
 	})
 	require.NoError(t, err)
 
-	responsesBody := []byte(`{
-		"id":"resp-1",
-		"model":"gpt-5.5",
-		"status":"completed",
-		"output":[
-			{"type":"web_search_call","action":{"type":"search","sources":[{"type":"url","title":"Codex releases","url":"https://github.com/openai/codex/releases"}]}},
-			{"type":"message","content":[{"type":"output_text","text":"Latest stable Codex release is 0.144.5.","annotations":[{"type":"url_citation","title":"Codex releases","url":"https://github.com/openai/codex/releases"}]}]}
-		]
-	}`)
-	executor := &queuedSearchExecutor{results: []queuedSearchResult{
-		{err: &httpclient.Error{
-			Method:     http.MethodPost,
-			URL:        "https://search.example.test/v1/alpha/search",
-			StatusCode: http.StatusNotFound,
-			Body:       []byte(`{"error":{"message":"Invalid URL (POST /v1/alpha/search)"}}`),
-		}},
-		{response: &httpclient.Response{StatusCode: http.StatusOK, Body: responsesBody}},
-		{response: &httpclient.Response{StatusCode: http.StatusOK, Body: responsesBody}},
-	}}
+	executor := &queuedSearchExecutor{
+		results: []queuedSearchResult{
+			{err: &httpclient.Error{
+				Method:     http.MethodPost,
+				URL:        "https://search.example.test/v1/alpha/search",
+				StatusCode: http.StatusNotFound,
+				Body:       []byte(`{"error":{"message":"Invalid URL (POST /v1/alpha/search)"}}`),
+			}},
+		},
+		streamResults: []queuedSearchStreamResult{
+			{stream: streams.SliceStream(responsesSearchFallbackStream("gpt-5.6-sol"))},
+			{stream: streams.SliceStream(responsesSearchFallbackStream("gpt-5.6-sol"))},
+		},
+	}
 
 	custom := outbound.CustomizeExecutor(executor)
 	first, err := custom.Do(t.Context(), searchRequest)
@@ -117,8 +112,9 @@ func TestSearchOutboundTransformer_FallsBackToNonStreamingResponsesAndCachesCapa
 	require.Equal(t, "https://search.example.test/v1/alpha/search", executor.requests[0].URL)
 	require.Equal(t, "https://responses.example.test/v1/custom/responses", executor.requests[1].URL)
 	require.Equal(t, "https://responses.example.test/v1/custom/responses", executor.requests[2].URL)
-	require.Equal(t, "gpt-5.5", gjson.GetBytes(executor.requests[1].Body, "model").String())
-	require.False(t, gjson.GetBytes(executor.requests[1].Body, "stream").Bool())
+	require.Equal(t, "gpt-5.6-sol", gjson.GetBytes(executor.requests[1].Body, "model").String())
+	require.True(t, gjson.GetBytes(executor.requests[1].Body, "stream").Bool())
+	require.Equal(t, "text/event-stream", executor.requests[1].Headers.Get("Accept"))
 	require.Equal(t, "web_search", gjson.GetBytes(executor.requests[1].Body, "tools.0.type").String())
 	require.Equal(t, "medium", gjson.GetBytes(executor.requests[1].Body, "tools.0.search_context_size").String())
 	require.Equal(t, "github.com", gjson.GetBytes(executor.requests[1].Body, "tools.0.filters.allowed_domains.0").String())
@@ -130,6 +126,39 @@ func TestSearchOutboundTransformer_FallsBackToNonStreamingResponsesAndCachesCapa
 		require.Equal(t, "text_result", gjson.GetBytes(response.Body, "results.0.type").String())
 		require.Equal(t, "turn0search0", gjson.GetBytes(response.Body, "results.0.ref_id").String())
 		require.Equal(t, "https://github.com/openai/codex/releases", gjson.GetBytes(response.Body, "results.0.url").String())
+	}
+}
+
+func TestBuildResponsesSearchFallbackRequestSelectsModelAndTransport(t *testing.T) {
+	tests := []struct {
+		model           string
+		expectedModel   string
+		expectedStream  bool
+		expectedAccept  string
+	}{
+		{model: "gpt-5.6", expectedModel: "gpt-5.6", expectedStream: true, expectedAccept: "text/event-stream"},
+		{model: "gpt-5.6-sol", expectedModel: "gpt-5.6-sol", expectedStream: true, expectedAccept: "text/event-stream"},
+		{model: "gpt-5.6-luna", expectedModel: "gpt-5.6-luna", expectedStream: true, expectedAccept: "text/event-stream"},
+		{model: "gpt-5.6-terra", expectedModel: "gpt-5.6-terra", expectedStream: true, expectedAccept: "text/event-stream"},
+		{model: "gpt-5.5", expectedModel: "gpt-5.5", expectedStream: false, expectedAccept: "application/json"},
+		{model: "mapped-model", expectedModel: "gpt-5.5", expectedStream: false, expectedAccept: "application/json"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.model, func(t *testing.T) {
+			request, streaming, err := buildResponsesSearchFallbackRequest(&httpclient.Request{
+				Headers: make(http.Header),
+				Body:    []byte(`{"model":"` + test.model + `","commands":{"search_query":[{"q":"latest codex"}]}}`),
+			}, &SearchConfig{
+				ResponsesBaseURL: "https://responses.example.test/v1",
+				FallbackModel:    "gpt-5.5",
+			})
+			require.NoError(t, err)
+			require.Equal(t, test.expectedStream, streaming)
+			require.Equal(t, test.expectedModel, gjson.GetBytes(request.Body, "model").String())
+			require.Equal(t, test.expectedStream, gjson.GetBytes(request.Body, "stream").Bool())
+			require.Equal(t, test.expectedAccept, request.Headers.Get("Accept"))
+		})
 	}
 }
 
@@ -195,9 +224,15 @@ type queuedSearchResult struct {
 	err      error
 }
 
+type queuedSearchStreamResult struct {
+	stream streams.Stream[*httpclient.StreamEvent]
+	err    error
+}
+
 type queuedSearchExecutor struct {
-	requests []*httpclient.Request
-	results  []queuedSearchResult
+	requests      []*httpclient.Request
+	results       []queuedSearchResult
+	streamResults []queuedSearchStreamResult
 }
 
 func (e *queuedSearchExecutor) Do(
@@ -219,10 +254,31 @@ func (e *queuedSearchExecutor) Do(
 }
 
 func (e *queuedSearchExecutor) DoStream(
-	context.Context,
-	*httpclient.Request,
+	_ context.Context,
+	request *httpclient.Request,
 ) (streams.Stream[*httpclient.StreamEvent], error) {
-	return nil, errors.New("streaming should not be used")
+	e.requests = append(e.requests, request)
+	if len(e.streamResults) == 0 {
+		return nil, errors.New("no queued search stream result")
+	}
+
+	result := e.streamResults[0]
+	e.streamResults = e.streamResults[1:]
+
+	return result.stream, result.err
+}
+
+func responsesSearchFallbackStream(model string) []*httpclient.StreamEvent {
+	return []*httpclient.StreamEvent{
+		{Data: []byte(`{"type":"response.created","response":{"id":"resp-1","object":"response","created_at":1700000000,"model":"` + model + `","status":"in_progress","output":[]}}`)},
+		{Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"ws-1","type":"web_search_call","status":"in_progress"}}`)},
+		{Data: []byte(`{"type":"response.output_item.done","output_index":0,"item":{"id":"ws-1","type":"web_search_call","status":"completed"}}`)},
+		{Data: []byte(`{"type":"response.output_item.added","output_index":1,"item":{"id":"msg-1","type":"message","status":"in_progress","role":"assistant","content":[]}}`)},
+		{Data: []byte(`{"type":"response.content_part.added","item_id":"msg-1","output_index":1,"content_index":0,"part":{"type":"output_text","text":"","annotations":[]}}`)},
+		{Data: []byte(`{"type":"response.output_text.done","item_id":"msg-1","output_index":1,"content_index":0,"text":"Latest stable Codex release is 0.144.5."}`)},
+		{Data: []byte(`{"type":"response.output_item.done","output_index":1,"item":{"id":"msg-1","type":"message","status":"completed","role":"assistant","content":[{"type":"output_text","text":"Latest stable Codex release is 0.144.5.","annotations":[{"type":"url_citation","title":"Codex releases","url":"https://github.com/openai/codex/releases"}]}]}}`)},
+		{Data: []byte(`{"type":"response.completed","response":{"id":"resp-1","object":"response","created_at":1700000001,"model":"` + model + `","status":"completed","output":[]}}`)},
+	}
 }
 
 func TestSearchTransformers_RoundTripResponseUnchanged(t *testing.T) {
