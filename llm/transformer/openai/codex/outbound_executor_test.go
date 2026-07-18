@@ -552,6 +552,17 @@ func TestCodexOutbound_PreservesResponsesLiteRequirements(t *testing.T) {
 	reasoning, ok := body["reasoning"].(map[string]any)
 	require.True(t, ok)
 	assert.Equal(t, "all_turns", reasoning["context"])
+	assert.NotContains(t, reasoning, "summary")
+	assert.Equal(t, "auto", body["tool_choice"])
+
+	input, ok := body["input"].([]any)
+	require.True(t, ok)
+	require.Len(t, input, 2)
+	additionalTools, ok := input[0].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "additional_tools", additionalTools["type"])
+	assert.Equal(t, "developer", additionalTools["role"])
+	assert.Empty(t, additionalTools["tools"])
 }
 
 func newTestCodexOutbound(t *testing.T) *OutboundTransformer {

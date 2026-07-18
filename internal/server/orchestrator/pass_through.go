@@ -196,9 +196,13 @@ func applyUserAgentPassThrough(outbound *PersistentOutboundTransformer, systemSe
 		if request.Headers == nil {
 			request.Headers = make(http.Header)
 		}
+		channelTestRequest := false
+		if outbound.state.LlmRequest != nil && outbound.state.LlmRequest.RawRequest != nil {
+			channelTestRequest = outbound.state.LlmRequest.RawRequest.Metadata[channelTestRequestMetadataKey] == "true"
+		}
 
-		if passThroughEnabled {
-			// Pass-through enabled: use the original client's User-Agent
+		if passThroughEnabled || channelTestRequest {
+			// Use the original client identity for pass-through and trusted internal channel tests.
 			if outbound.state.LlmRequest != nil && outbound.state.LlmRequest.RawRequest != nil {
 				if clientUA := outbound.state.LlmRequest.RawRequest.Headers.Get("User-Agent"); clientUA != "" {
 					request.Headers.Set("User-Agent", clientUA)

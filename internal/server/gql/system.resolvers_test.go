@@ -131,7 +131,7 @@ func TestMutationResolver_UpdateSystemChannelSettings_MergesPrompts(t *testing.T
 
 	setting, err = resolver.systemService.ChannelSetting(ctx)
 	require.NoError(t, err)
-	require.Equal(t, "You are a helpful assistant.", setting.TestSystemPrompt)
+	require.Empty(t, setting.TestSystemPrompt)
 	require.Equal(t, "updated user", setting.TestUserPrompt)
 }
 

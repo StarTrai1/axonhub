@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync/atomic"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/samber/lo"
 	"github.com/tidwall/gjson"
 	"golang.org/x/sync/errgroup"
@@ -22,9 +24,29 @@ import (
 	"github.com/looplj/axonhub/llm/pipeline/stream"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer/openai"
+	"github.com/looplj/axonhub/llm/transformer/openai/codex"
+	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
 
-const testChannelAPIKeysMaxConcurrency = 8
+const (
+	testChannelAPIKeysMaxConcurrency = 8
+	channelTestMaxCompletionTokens    = int64(64)
+	channelTestRequestMetadataKey     = "axonhub.channel_test"
+	channelTestOriginator             = "codex_vscode"
+	channelTestUserAgent              = "codex_vscode/0.144.5 (Ubuntu 24.4.0; x86_64) xterm-256color (VS Code; 26.707.91948)"
+)
+
+type channelTestTurnMetadata struct {
+	InstallationID      string `json:"installation_id"`
+	SessionID           string `json:"session_id"`
+	ThreadID            string `json:"thread_id"`
+	TurnID              string `json:"turn_id"`
+	WindowID            string `json:"window_id"`
+	RequestKind         string `json:"request_kind"`
+	ThreadSource        string `json:"thread_source"`
+	Sandbox             string `json:"sandbox"`
+	TurnStartedAtUnixMS int64  `json:"turn_started_at_unix_ms"`
+}
 
 // TestChannelOrchestrator handles channel testing functionality.
 // It is stateless and can be reused across multiple test requests.
@@ -68,24 +90,6 @@ func NewTestChannelOrchestrator(
 type TestChannelRequest struct {
 	ChannelID objects.GUID
 	ModelID   *string
-}
-
-func buildChannelTestRequest(model string, useStream bool, systemPrompt string, userPrompt string) *llm.Request {
-	return &llm.Request{
-		Model: model,
-		Messages: []llm.Message{
-			{
-				Role:    "system",
-				Content: llm.MessageContent{Content: lo.ToPtr(systemPrompt)},
-			},
-			{
-				Role:    "user",
-				Content: llm.MessageContent{Content: lo.ToPtr(userPrompt)},
-			},
-		},
-		MaxCompletionTokens: lo.ToPtr(int64(256)),
-		Stream:              lo.ToPtr(useStream),
-	}
 }
 
 // TestChannelResult represents the result of a channel test.
@@ -144,21 +148,14 @@ func (processor *TestChannelOrchestrator) TestChannel(
 	// Check if the channel requires streaming
 	useStream := channel != nil && channel.Policies.Stream == objects.CapabilityPolicyRequire
 
-	llmRequest := buildChannelTestRequest(testModel, useStream, systemPrompt, userPrompt)
-
-	body, err := json.Marshal(llmRequest)
+	testRequest, err := buildChannelTestRequest(testModel, useStream, systemPrompt, userPrompt)
 	if err != nil {
 		return nil, err
 	}
 
 	// Measure latency
 	startTime := time.Now()
-	rawResponse, err := chatProcessor.Process(ctx, &httpclient.Request{
-		Headers: http.Header{
-			"Content-Type": []string{"application/json"},
-		},
-		Body: body,
-	})
+	rawResponse, err := chatProcessor.Process(ctx, testRequest)
 
 	rawErr := inbound.TransformError(ctx, err)
 	message := gjson.GetBytes(rawErr.Body, "error.message").String()
@@ -493,9 +490,7 @@ func (processor *TestChannelOrchestrator) testSingleKey(
 		modelCircuitBreaker:        processor.modelCircuitBreaker,
 	}
 
-	llmRequest := buildChannelTestRequest(testModel, useStream, systemPrompt, userPrompt)
-
-	body, err := json.Marshal(llmRequest)
+	testRequest, err := buildChannelTestRequest(testModel, useStream, systemPrompt, userPrompt)
 	if err != nil {
 		errMsg := err.Error()
 
@@ -508,12 +503,7 @@ func (processor *TestChannelOrchestrator) testSingleKey(
 
 	startTime := time.Now()
 
-	rawResponse, err := chatProcessor.Process(ctx, &httpclient.Request{
-		Headers: http.Header{
-			"Content-Type": []string{"application/json"},
-		},
-		Body: body,
-	})
+	rawResponse, err := chatProcessor.Process(ctx, testRequest)
 	if err != nil {
 		rawErr := inbound.TransformError(ctx, err)
 		message := gjson.GetBytes(rawErr.Body, "error.message").String()
@@ -569,6 +559,122 @@ func (processor *TestChannelOrchestrator) testSingleKey(
 		Success:   true,
 		Latency:   latency,
 	}
+}
+
+func buildChannelTestRequest(model string, useStream bool, systemPrompt string, userPrompt string) (*httpclient.Request, error) {
+	codexStyle := isCodexStyleTestModel(model)
+	responsesLite := isResponsesLiteTestModel(model)
+	if codexStyle {
+		// Codex always uses streamed Responses requests for normal turns.
+		useStream = true
+	}
+
+	messages := make([]llm.Message, 0, 2)
+	if strings.TrimSpace(systemPrompt) != "" {
+		messages = append(messages, llm.Message{
+			Role:    "system",
+			Content: llm.MessageContent{Content: lo.ToPtr(systemPrompt)},
+		})
+	}
+	if strings.TrimSpace(userPrompt) != "" {
+		messages = append(messages, llm.Message{
+			Role:    "user",
+			Content: llm.MessageContent{Content: lo.ToPtr(userPrompt)},
+		})
+	}
+
+	llmRequest := &llm.Request{
+		Model:               model,
+		Messages:            messages,
+		MaxCompletionTokens: lo.ToPtr(channelTestMaxCompletionTokens),
+		Stream:              lo.ToPtr(useStream),
+		Store:               lo.ToPtr(false),
+	}
+
+	headers := http.Header{
+		"Content-Type": []string{"application/json"},
+	}
+	var requestMetadata map[string]string
+	if codexStyle {
+		sessionID := uuid.NewString()
+		turnID := uuid.NewString()
+		windowID := sessionID + ":0"
+		turnMetadata, err := json.Marshal(channelTestTurnMetadata{
+			InstallationID:      uuid.NewString(),
+			SessionID:           sessionID,
+			ThreadID:            sessionID,
+			TurnID:              turnID,
+			WindowID:            windowID,
+			RequestKind:         "turn",
+			ThreadSource:        "user",
+			Sandbox:             "none",
+			TurnStartedAtUnixMS: time.Now().UnixMilli(),
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to encode channel test turn metadata: %w", err)
+		}
+
+		llmRequest.ReasoningEffort = "low"
+		llmRequest.Verbosity = lo.ToPtr("low")
+		llmRequest.ParallelToolCalls = lo.ToPtr(false)
+		llmRequest.PromptCacheKey = lo.ToPtr(sessionID)
+		if responsesLite {
+			llmRequest.ToolChoice = &llm.ToolChoice{ToolChoice: lo.ToPtr("auto")}
+		}
+
+		headers.Set("Accept", "text/event-stream")
+		headers.Set("Originator", channelTestOriginator)
+		headers.Set("User-Agent", channelTestUserAgent)
+		headers.Set(codex.SessionHeaderHyphen, sessionID)
+		headers.Set("Thread-Id", sessionID)
+		headers.Set(codex.ClientRequestIDHeader, sessionID)
+		headers.Set(codex.TurnMetadataHeader, string(turnMetadata))
+		headers.Set(codex.WindowIDHeader, windowID)
+		if responsesLite {
+			headers.Set(responses.ResponsesLiteHeader, "true")
+		}
+		requestMetadata = map[string]string{
+			channelTestRequestMetadataKey: "true",
+		}
+	}
+
+	body, err := json.Marshal(llmRequest)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode channel test request: %w", err)
+	}
+
+	return &httpclient.Request{
+		Headers:  headers,
+		Body:     body,
+		Metadata: requestMetadata,
+	}, nil
+}
+
+func isCodexStyleTestModel(model string) bool {
+	switch normalizeChannelTestModel(model) {
+	case "gpt-5.5", "gpt-5.6", "gpt-5.6-sol", "gpt-5.6-luna", "gpt-5.6-terra":
+		return true
+	default:
+		return false
+	}
+}
+
+func isResponsesLiteTestModel(model string) bool {
+	switch normalizeChannelTestModel(model) {
+	case "gpt-5.6", "gpt-5.6-sol", "gpt-5.6-luna", "gpt-5.6-terra":
+		return true
+	default:
+		return false
+	}
+}
+
+func normalizeChannelTestModel(model string) string {
+	normalized := strings.ToLower(strings.TrimSpace(model))
+	if index := strings.LastIndex(normalized, "/"); index >= 0 {
+		normalized = normalized[index+1:]
+	}
+
+	return normalized
 }
 
 // maskAPIKey returns a masked version of the API key for display.
