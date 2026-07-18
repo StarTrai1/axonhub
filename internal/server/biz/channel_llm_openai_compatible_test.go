@@ -157,6 +157,8 @@ func TestOpenAIResponsesEndpoint_InheritsWebSocketTransportFromBaseURL(t *testin
 	require.Len(t, probe.requests, 2)
 	require.Equal(t, "https://api.openai.com/v1/alpha/search", probe.requests[0].URL)
 	require.Equal(t, "https://api.openai.com/v1/custom/responses", probe.requests[1].URL)
+	require.Equal(t, "gpt-5.6-sol", gjson.GetBytes(probe.requests[1].Body, "model").String())
+	require.True(t, gjson.GetBytes(probe.requests[1].Body, "stream").Bool())
 }
 
 func TestCodexOAuthWebSocketEndpointBuildsWithoutAPIKey(t *testing.T) {
@@ -291,10 +293,19 @@ func (e *searchFallbackProbeExecutor) Do(
 }
 
 func (e *searchFallbackProbeExecutor) DoStream(
-	context.Context,
-	*httpclient.Request,
+	_ context.Context,
+	request *httpclient.Request,
 ) (streams.Stream[*httpclient.StreamEvent], error) {
-	return nil, nil
+	e.requests = append(e.requests, request)
+
+	return streams.SliceStream([]*httpclient.StreamEvent{
+		{Data: []byte(`{"type":"response.created","response":{"id":"resp-1","object":"response","created_at":1700000000,"model":"gpt-5.6-sol","status":"in_progress","output":[]}}`)},
+		{Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"msg-1","type":"message","status":"in_progress","role":"assistant","content":[]}}`)},
+		{Data: []byte(`{"type":"response.content_part.added","item_id":"msg-1","output_index":0,"content_index":0,"part":{"type":"output_text","text":"","annotations":[]}}`)},
+		{Data: []byte(`{"type":"response.output_text.done","item_id":"msg-1","output_index":0,"content_index":0,"text":"search fallback"}`)},
+		{Data: []byte(`{"type":"response.output_item.done","output_index":0,"item":{"id":"msg-1","type":"message","status":"completed","role":"assistant","content":[{"type":"output_text","text":"search fallback","annotations":[]}]}}`)},
+		{Data: []byte(`{"type":"response.completed","response":{"id":"resp-1","object":"response","created_at":1700000001,"model":"gpt-5.6-sol","status":"completed","output":[]}}`)},
+	}), nil
 }
 
 type testStoppableOutbound struct {
