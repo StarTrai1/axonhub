@@ -91,12 +91,12 @@ func (e *searchFallbackExecutor) doResponsesFallback(
 	ctx context.Context,
 	searchRequest *httpclient.Request,
 ) (*httpclient.Response, error) {
-	fallbackRequest, err := buildResponsesSearchFallbackRequest(searchRequest, e.config)
+	fallbackRequest, streaming, err := buildResponsesSearchFallbackRequest(searchRequest, e.config)
 	if err != nil {
 		return nil, err
 	}
 
-	response, err := e.inner.Do(ctx, fallbackRequest)
+	response, err := e.executeResponsesFallback(ctx, fallbackRequest, streaming)
 	if err != nil {
 		return nil, err
 	}
@@ -122,6 +122,44 @@ func (e *searchFallbackExecutor) doResponsesFallback(
 		Request:     searchRequest,
 		RawResponse: response.RawResponse,
 		RawRequest:  response.RawRequest,
+	}, nil
+}
+
+func (e *searchFallbackExecutor) executeResponsesFallback(
+	ctx context.Context,
+	request *httpclient.Request,
+	streaming bool,
+) (*httpclient.Response, error) {
+	if !streaming {
+		return e.inner.Do(ctx, request)
+	}
+
+	eventStream, err := e.inner.DoStream(ctx, request)
+	if err != nil {
+		return nil, err
+	}
+	if eventStream == nil {
+		return nil, errors.New("responses search fallback returned no stream")
+	}
+	defer eventStream.Close()
+
+	chunks, err := streams.All(eventStream)
+	if err != nil {
+		return nil, fmt.Errorf("failed to consume responses search fallback stream: %w", err)
+	}
+
+	body, _, err := AggregateStreamChunks(ctx, chunks)
+	if err != nil {
+		return nil, fmt.Errorf("failed to aggregate responses search fallback stream: %w", err)
+	}
+
+	return &httpclient.Response{
+		StatusCode: http.StatusOK,
+		Headers: http.Header{
+			"Content-Type": []string{"application/json"},
+		},
+		Body:    body,
+		Request: request,
 	}, nil
 }
 
@@ -216,22 +254,24 @@ type responsesSearchFallbackTool struct {
 func buildResponsesSearchFallbackRequest(
 	searchRequest *httpclient.Request,
 	config *SearchConfig,
-) (*httpclient.Request, error) {
+) (*httpclient.Request, bool, error) {
 	if config == nil {
-		return nil, errors.New("search fallback config is nil")
+		return nil, false, errors.New("search fallback config is nil")
 	}
 
 	var request standaloneSearchFallbackRequest
 	if err := json.Unmarshal(searchRequest.Body, &request); err != nil {
-		return nil, fmt.Errorf("failed to decode standalone search request: %w", err)
+		return nil, false, fmt.Errorf("failed to decode standalone search request: %w", err)
 	}
 
 	var settings standaloneSearchFallbackSettings
 	if len(request.Settings) > 0 && string(request.Settings) != "null" {
 		if err := json.Unmarshal(request.Settings, &settings); err != nil {
-			return nil, fmt.Errorf("failed to decode standalone search settings: %w", err)
+			return nil, false, fmt.Errorf("failed to decode standalone search settings: %w", err)
 		}
 	}
+
+	fallbackModel, streaming := resolveSearchFallbackModel(request.Model, config.FallbackModel)
 
 	tool := responsesSearchFallbackTool{
 		Type:              "web_search",
@@ -258,21 +298,21 @@ func buildResponsesSearchFallbackRequest(
 	}
 	promptJSON, err := json.Marshal(promptPayload)
 	if err != nil {
-		return nil, fmt.Errorf("failed to encode standalone search fallback prompt: %w", err)
+		return nil, false, fmt.Errorf("failed to encode standalone search fallback prompt: %w", err)
 	}
 
 	body, err := json.Marshal(responsesSearchFallbackRequest{
-		Model:           config.FallbackModel,
+		Model:           fallbackModel,
 		Input:           "Execute the following standalone web search request. Use web search, follow the command and settings exactly, and return a concise result with source citations. Request JSON: " + string(promptJSON),
 		Tools:           []responsesSearchFallbackTool{tool},
 		ToolChoice:      "auto",
-		Stream:          false,
+		Stream:          streaming,
 		Store:           false,
 		Include:         []string{"web_search_call.action.sources"},
 		MaxOutputTokens: request.MaxOutputTokens,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to encode responses search fallback request: %w", err)
+		return nil, false, fmt.Errorf("failed to encode responses search fallback request: %w", err)
 	}
 
 	path := config.ResponsesEndpointPath
@@ -284,10 +324,16 @@ func buildResponsesSearchFallbackRequest(
 	if headers == nil {
 		headers = make(http.Header)
 	}
-	headers.Set("Accept", "application/json")
 	headers.Set("Content-Type", "application/json")
-	headers.Del("Cache-Control")
-	headers.Del("Connection")
+	if streaming {
+		headers.Set("Accept", "text/event-stream")
+		headers.Set("Cache-Control", "no-cache")
+		headers.Set("Connection", "keep-alive")
+	} else {
+		headers.Set("Accept", "application/json")
+		headers.Del("Cache-Control")
+		headers.Del("Connection")
+	}
 
 	return &httpclient.Request{
 		Method:                http.MethodPost,
@@ -298,7 +344,17 @@ func buildResponsesSearchFallbackRequest(
 		RequestType:           string(llm.RequestTypeChat),
 		APIFormat:             string(llm.APIFormatOpenAIResponse),
 		SkipInboundQueryMerge: true,
-	}, nil
+	}, streaming, nil
+}
+
+func resolveSearchFallbackModel(requestModel, configuredFallback string) (string, bool) {
+	model := strings.TrimSpace(requestModel)
+	switch strings.ToLower(model) {
+	case "gpt-5.6", "gpt-5.6-sol", "gpt-5.6-luna", "gpt-5.6-terra":
+		return model, true
+	default:
+		return configuredFallback, false
+	}
 }
 
 func normalizeSearchFallbackExternalWebAccess(value json.RawMessage) json.RawMessage {
