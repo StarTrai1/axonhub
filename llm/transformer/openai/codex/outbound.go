@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/google/uuid"
@@ -107,6 +108,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	rawOriginator := ""
 	rawUserAgent := ""
 	rawTurnMetadata := ""
+	responsesLite := false
 
 	var rawHeaders http.Header
 
@@ -121,6 +123,10 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		rawOriginator = llmReq.RawRequest.Headers.Get("Originator")
 		rawUserAgent = llmReq.RawRequest.Headers.Get("User-Agent")
 		rawTurnMetadata = llmReq.RawRequest.Headers.Get(TurnMetadataHeader)
+		responsesLite = strings.EqualFold(
+			strings.TrimSpace(llmReq.RawRequest.Headers.Get(responses.ResponsesLiteHeader)),
+			"true",
+		)
 	}
 
 	creds, err := t.tokens.Get(ctx)
@@ -133,6 +139,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 
 	// Clone request so we do not mutate upstream pipeline state.
 	reqCopy := *llmReq
+	reqCopy.ProviderExtensions = llm.CloneProviderExtensions(llmReq.ProviderExtensions)
 	originalRequestType := reqCopy.RequestType
 	originalAPIFormat := reqCopy.APIFormat
 	isImageRequest := originalRequestType == llm.RequestTypeImage
@@ -149,8 +156,31 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 
 	reqCopy.Store = lo.ToPtr(false)
 
-	// Codex recommends parallel tool calls.
-	reqCopy.ParallelToolCalls = lo.ToPtr(true)
+	// Responses Lite uses client-managed tools and requires an explicit false value.
+	if responsesLite {
+		reqCopy.ParallelToolCalls = lo.ToPtr(false)
+		if reqCopy.ToolChoice == nil {
+			reqCopy.ToolChoice = &llm.ToolChoice{ToolChoice: lo.ToPtr("auto")}
+		}
+
+		ext := llm.EnsureOpenAIResponsesProviderExtensions(&reqCopy)
+		if ext.Request == nil {
+			ext.Request = &llm.OpenAIResponsesRequestExtensions{}
+		}
+		if ext.Request.ReasoningContext == "" {
+			ext.Request.ReasoningContext = "all_turns"
+		}
+		if len(reqCopy.Tools) == 0 && len(ext.Request.RawInputItems) == 0 {
+			ext.Request.RawInputItems = append(ext.Request.RawInputItems, llm.OpenAIResponsesRawFragment{
+				Type:          "additional_tools",
+				OriginalIndex: 0,
+				Raw:           json.RawMessage(`{"type":"additional_tools","role":"developer","tools":[]}`),
+			})
+		}
+	} else {
+		// Standard Codex Responses requests recommend parallel tool calls.
+		reqCopy.ParallelToolCalls = lo.ToPtr(true)
+	}
 
 	if reqCopy.TransformerMetadata == nil {
 		reqCopy.TransformerMetadata = map[string]any{}
@@ -167,7 +197,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 			reqCopy.TransformerMetadata["include"] = []string{"reasoning.encrypted_content"}
 		}
 
-		if reqCopy.ReasoningSummary == nil || *reqCopy.ReasoningSummary == "" {
+		if !responsesLite && (reqCopy.ReasoningSummary == nil || *reqCopy.ReasoningSummary == "") {
 			// Enable reasoning summary for Codex CLI requests.
 			reqCopy.ReasoningSummary = lo.ToPtr("auto")
 		}

@@ -1365,6 +1365,7 @@ func TestApplyUserAgentPassThrough(t *testing.T) {
 		channelUASetting *bool // Channel-level override
 		globalUAEnabled  bool  // System-level setting
 		clientUA         string
+		channelTest      bool
 		wantUAHeader     string
 	}{
 		{
@@ -1402,6 +1403,14 @@ func TestApplyUserAgentPassThrough(t *testing.T) {
 			clientUA:         "",
 			wantUAHeader:     "",
 		},
+		{
+			name:             "channel_test_preserves_realistic_ua_when_pass_through_disabled",
+			channelUASetting: new(false),
+			globalUAEnabled:  false,
+			clientUA:         channelTestUserAgent,
+			channelTest:      true,
+			wantUAHeader:     channelTestUserAgent,
+		},
 	}
 
 	for _, tt := range tests {
@@ -1435,11 +1444,17 @@ func TestApplyUserAgentPassThrough(t *testing.T) {
 			if tt.clientUA != "" {
 				rawHeaders.Set("User-Agent", tt.clientUA)
 			}
+			if tt.channelTest {
+				// The channel-test marker is in-memory only and never becomes an HTTP header.
+			}
 
 			llmRequest := &llm.Request{
 				Model: "gpt-4",
 				RawRequest: &httpclient.Request{
 					Headers: rawHeaders,
+					Metadata: map[string]string{
+						channelTestRequestMetadataKey: lo.Ternary(tt.channelTest, "true", ""),
+					},
 				},
 			}
 
