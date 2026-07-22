@@ -108,4 +108,3 @@ func TestCompactionResponseAndSummaryExtraction(t *testing.T) {
 	require.False(t, responseContainsCompactionID(response, "cmp_other"))
 	require.Equal(t, "part one\npart two", extractAssistantOutputText(response))
 }
-

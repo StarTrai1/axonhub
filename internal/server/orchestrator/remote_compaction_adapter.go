@@ -11,8 +11,9 @@ import (
 	"strings"
 	"time"
 
-	gocache "github.com/patrickmn/go-cache"
 	"golang.org/x/sync/singleflight"
+
+	gocache "github.com/patrickmn/go-cache"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
@@ -26,7 +27,7 @@ import (
 
 const (
 	remoteCompactionHistoryLookupLimit = 1024
-	remoteCompactionCacheHeader        = "X-AxonHub-Remote-Compaction-Cache"
+	remoteCompactionCacheHeader        = "X-Axonhub-Remote-Compaction-Cache"
 	remoteCompactionCacheExpiration    = 24 * time.Hour
 	remoteCompactionCacheCleanup       = time.Hour
 
