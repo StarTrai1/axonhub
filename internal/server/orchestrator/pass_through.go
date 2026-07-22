@@ -341,6 +341,10 @@ func captureRawProviderStream(outbound *PersistentOutboundTransformer, systemSer
 
 					return
 				}
+
+				if isTerminalStreamEvent(event) {
+					return
+				}
 			}
 		}()
 

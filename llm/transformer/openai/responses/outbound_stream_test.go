@@ -258,6 +258,61 @@ func TestOutboundTransformer_TransformStream_ResponseCancelledCompletes(t *testi
 	require.Equal(t, "cancelled", *responses[1].Choices[0].FinishReason)
 }
 
+func TestOutboundTransformer_TransformStream_StopsAtTerminalEvent(t *testing.T) {
+	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	source := &terminalGuardStream{
+		events: []*httpclient.StreamEvent{
+			{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_terminal","object":"response","created_at":1700000000,"model":"gpt-5","status":"in_progress","output":[]}}`)},
+			{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":{"id":"resp_terminal","object":"response","created_at":1700000000,"model":"gpt-5","status":"completed","output":[]}}`)},
+		},
+	}
+
+	stream, err := trans.TransformStream(t.Context(), nil, source)
+	require.NoError(t, err)
+
+	responses, err := streams.All(stream)
+	require.NoError(t, err)
+	require.NotEmpty(t, responses)
+	require.Equal(t, llm.DoneResponse, responses[len(responses)-1])
+	require.False(t, source.readPastTerminal)
+	require.True(t, source.closed)
+}
+
+type terminalGuardStream struct {
+	events           []*httpclient.StreamEvent
+	index            int
+	readPastTerminal bool
+	closed           bool
+}
+
+func (s *terminalGuardStream) Next() bool {
+	if s.index >= len(s.events) {
+		s.readPastTerminal = true
+
+		return false
+	}
+
+	s.index++
+
+	return true
+}
+
+func (s *terminalGuardStream) Current() *httpclient.StreamEvent {
+	return s.events[s.index-1]
+}
+
+func (s *terminalGuardStream) Err() error {
+	return nil
+}
+
+func (s *terminalGuardStream) Close() error {
+	s.closed = true
+
+	return nil
+}
+
 func TestOutboundTransformer_TransformStream_PreservesFinalItemAnnotations(t *testing.T) {
 	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
 	require.NoError(t, err)
