@@ -72,11 +72,24 @@ func isRemoteCompactionRequest(req *llm.Request) bool {
 
 	// Remote compaction v2 uses an ordinary Responses request with a raw
 	// compaction_trigger item, then installs the returned opaque compaction item
-	// into subsequent turns. Both operations require a compatible provider.
+	// into subsequent turns. The inbound transformer normalizes the latter into
+	// message content, so both representations must be checked.
+	if req.APIFormat != llm.APIFormatOpenAIResponse {
+		return false
+	}
+
+	for _, message := range req.Messages {
+		for _, part := range message.Content.MultipleContent {
+			switch part.Type {
+			case remoteCompactionItemType, legacyRemoteCompactionSummaryType:
+				return true
+			}
+		}
+	}
+
 	// Feature-advertisement headers alone do not mean that a specific request
 	// needs remote compaction support.
-	if req.APIFormat != llm.APIFormatOpenAIResponse ||
-		req.ProviderExtensions == nil ||
+	if req.ProviderExtensions == nil ||
 		req.ProviderExtensions.OpenAIResponses == nil ||
 		req.ProviderExtensions.OpenAIResponses.Request == nil {
 		return false
