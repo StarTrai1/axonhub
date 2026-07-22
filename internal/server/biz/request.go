@@ -1472,3 +1472,45 @@ func (s *RequestService) setLastSuccessfulChannelID(ctx context.Context, traceID
 func buildLastChannelCacheKey(traceID int) string {
 	return fmt.Sprintf("last_channel:%d", traceID)
 }
+
+// FindRecentCompletedRequests returns recent successful requests for one API key.
+// Callers that need protocol-specific recovery can inspect the stored bodies while
+// preserving the same project and API-key isolation as the original request.
+func (s *RequestService) FindRecentCompletedRequests(
+	ctx context.Context,
+	apiKeyID int,
+	projectID int,
+	modelID string,
+	format llm.APIFormat,
+	limit int,
+) ([]*ent.Request, error) {
+	if apiKeyID <= 0 || projectID <= 0 {
+		return nil, nil
+	}
+	if limit <= 0 {
+		limit = 256
+	}
+
+	query := s.entFromContext(ctx).Request.Query().
+		Where(
+			request.APIKeyIDEQ(apiKeyID),
+			request.ProjectIDEQ(projectID),
+			request.StatusEQ(request.StatusCompleted),
+		)
+	if modelID != "" {
+		query = query.Where(request.ModelIDEQ(modelID))
+	}
+	if format != "" {
+		query = query.Where(request.FormatEQ(format.String()))
+	}
+
+	requests, err := query.
+		Order(ent.Desc(request.FieldCreatedAt), ent.Desc(request.FieldID)).
+		Limit(limit).
+		All(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query recent completed requests: %w", err)
+	}
+
+	return requests, nil
+}
