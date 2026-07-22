@@ -10,7 +10,11 @@ import (
 	"github.com/looplj/axonhub/llm"
 )
 
-const remoteCompactionTriggerType = "compaction_trigger"
+const (
+	remoteCompactionTriggerType       = "compaction_trigger"
+	remoteCompactionItemType          = "compaction"
+	legacyRemoteCompactionSummaryType = "compaction_summary"
+)
 
 // RemoteCompactionSelector prefers explicitly capable Codex channels while
 // preserving the existing candidate set when none are marked as capable.
@@ -66,9 +70,11 @@ func isRemoteCompactionRequest(req *llm.Request) bool {
 		return true
 	}
 
-	// Remote compaction v2 is an ordinary Responses request whose input ends
-	// with a raw compaction_trigger item. Feature-advertisement headers alone
-	// do not mean that a specific request is a compaction operation.
+	// Remote compaction v2 uses an ordinary Responses request with a raw
+	// compaction_trigger item, then installs the returned opaque compaction item
+	// into subsequent turns. Both operations require a compatible provider.
+	// Feature-advertisement headers alone do not mean that a specific request
+	// needs remote compaction support.
 	if req.APIFormat != llm.APIFormatOpenAIResponse ||
 		req.ProviderExtensions == nil ||
 		req.ProviderExtensions.OpenAIResponses == nil ||
@@ -77,7 +83,10 @@ func isRemoteCompactionRequest(req *llm.Request) bool {
 	}
 
 	for _, item := range req.ProviderExtensions.OpenAIResponses.Request.RawInputItems {
-		if item.Type == remoteCompactionTriggerType {
+		switch item.Type {
+		case remoteCompactionTriggerType,
+			remoteCompactionItemType,
+			legacyRemoteCompactionSummaryType:
 			return true
 		}
 	}
