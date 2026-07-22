@@ -2,19 +2,27 @@ package orchestrator
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"sort"
+	"strings"
 	"sync"
+	"time"
 
 	"github.com/tidwall/sjson"
 
+	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/looplj/axonhub/llm/streams"
+	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
+
+const delayedCodexResponsesTerminalGracePeriod = 2 * time.Second
 
 // isPassThroughEnabled returns true when the effective pass-through flag for the current
 // channel is enabled and both the inbound and outbound API formats are identical.
@@ -255,6 +263,14 @@ func applyPassThroughResponse(outbound *PersistentOutboundTransformer, systemSer
 // and a pass-through channel. The pipeline receives events via pipelineCh, while
 // raw events are stored on state.RawStreamCh for pass-through delivery.
 func captureRawProviderStream(outbound *PersistentOutboundTransformer, systemService *biz.SystemService) pipeline.Middleware {
+	return captureRawProviderStreamWithTerminalGrace(outbound, systemService, delayedCodexResponsesTerminalGracePeriod)
+}
+
+func captureRawProviderStreamWithTerminalGrace(
+	outbound *PersistentOutboundTransformer,
+	systemService *biz.SystemService,
+	terminalGracePeriod time.Duration,
+) pipeline.Middleware {
 	return pipeline.OnRawStream("capture-raw-provider-stream", func(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*httpclient.StreamEvent], error) {
 		if !outbound.isPassThroughEnabled(ctx, systemService) {
 			return stream, nil
@@ -277,6 +293,15 @@ func captureRawProviderStream(outbound *PersistentOutboundTransformer, systemSer
 		// to unblock the goroutine's channel sends and release the upstream HTTP connection
 		// before the next attempt starts, preventing goroutine leaks.
 		attemptCtx, cancel := context.WithCancel(ctx)
+		if shouldRepairDelayedCodexResponsesTerminal(outbound) {
+			stream = newDelayedCodexResponsesTerminalStream(
+				attemptCtx,
+				stream,
+				channel.Name,
+				terminalGracePeriod,
+			)
+		}
+
 		var closeStreamOnce sync.Once
 		closeStream := func() {
 			closeStreamOnce.Do(func() {
@@ -350,6 +375,242 @@ func captureRawProviderStream(outbound *PersistentOutboundTransformer, systemSer
 
 		return &passThroughChannelStream{ctx: ctx, ch: pipelineCh, errRef: &rawStreamErr, cancel: closeStream}, nil
 	})
+}
+
+func shouldRepairDelayedCodexResponsesTerminal(outbound *PersistentOutboundTransformer) bool {
+	if outbound == nil || outbound.state == nil {
+		return false
+	}
+
+	currentChannel := outbound.GetCurrentChannel()
+	request := outbound.state.RawProviderRequest
+	if currentChannel == nil || currentChannel.Type != channel.TypeCodex || request == nil {
+		return false
+	}
+	if request.APIFormat != string(llm.APIFormatOpenAIResponse) {
+		return false
+	}
+
+	return strings.EqualFold(strings.TrimSpace(request.Headers.Get(responses.ResponsesLiteHeader)), "true")
+}
+
+// delayedCodexResponsesTerminalStream repairs Codex-compatible providers that finish all
+// output items but hold response.completed for several minutes. It waits for a short idle
+// grace after every completed item, so immediately following reasoning, message, and tool
+// items still pass through before a terminal event is synthesized.
+//
+//nolint:containedctx // The stream must observe request and retry cancellation while Next blocks.
+type delayedCodexResponsesTerminalStream struct {
+	ctx         context.Context
+	stream      streams.Stream[*httpclient.StreamEvent]
+	channelName string
+	gracePeriod time.Duration
+
+	current          *httpclient.StreamEvent
+	err              error
+	done             bool
+	synthesized      bool
+	terminalObserved bool
+	response         *responses.Response
+	lastSequence     int
+	activeOutputs    map[int]struct{}
+	completedOutputs map[int]responses.Item
+	closeOnce        sync.Once
+}
+
+func newDelayedCodexResponsesTerminalStream(
+	ctx context.Context,
+	stream streams.Stream[*httpclient.StreamEvent],
+	channelName string,
+	gracePeriod time.Duration,
+) streams.Stream[*httpclient.StreamEvent] {
+	return &delayedCodexResponsesTerminalStream{
+		ctx:              ctx,
+		stream:           stream,
+		channelName:      channelName,
+		gracePeriod:      gracePeriod,
+		activeOutputs:    make(map[int]struct{}),
+		completedOutputs: make(map[int]responses.Item),
+	}
+}
+
+func (s *delayedCodexResponsesTerminalStream) Next() bool {
+	if s.done {
+		return false
+	}
+
+	next := make(chan bool, 1)
+	go func() {
+		next <- s.stream.Next()
+	}()
+
+	var timer *time.Timer
+	var timerCh <-chan time.Time
+	if s.canSynthesizeCompleted() {
+		timer = time.NewTimer(s.gracePeriod)
+		timerCh = timer.C
+	}
+	if timer != nil {
+		defer timer.Stop()
+	}
+
+	select {
+	case ok := <-next:
+		if !ok {
+			s.done = true
+
+			return false
+		}
+
+		s.current = s.stream.Current()
+		s.observe(s.current)
+
+		return true
+
+	case <-timerCh:
+		event, err := s.synthesizeCompleted()
+		if err != nil {
+			s.err = fmt.Errorf("synthesize delayed Codex response.completed: %w", err)
+			s.done = true
+			_ = s.Close()
+
+			return false
+		}
+
+		s.current = event
+		s.synthesized = true
+		s.done = true
+		_ = s.Close()
+
+		log.Warn(s.ctx, "synthesized delayed Codex response.completed",
+			log.String("channel", s.channelName),
+			log.String("response_id", s.response.ID),
+			log.Duration("idle_grace", s.gracePeriod),
+		)
+
+		return true
+
+	case <-s.ctx.Done():
+		s.err = s.ctx.Err()
+		s.done = true
+		_ = s.Close()
+
+		return false
+	}
+}
+
+func (s *delayedCodexResponsesTerminalStream) observe(event *httpclient.StreamEvent) {
+	if event == nil || len(event.Data) == 0 {
+		return
+	}
+
+	var responseEvent responses.StreamEvent
+	if err := json.Unmarshal(event.Data, &responseEvent); err != nil {
+		return
+	}
+
+	if responseEvent.SequenceNumber > s.lastSequence {
+		s.lastSequence = responseEvent.SequenceNumber
+	}
+
+	switch responseEvent.Type {
+	case responses.StreamEventTypeResponseCreated, responses.StreamEventTypeResponseInProgress:
+		if responseEvent.Response != nil {
+			responseSnapshot := *responseEvent.Response
+			s.response = &responseSnapshot
+		}
+
+	case responses.StreamEventTypeOutputItemAdded:
+		s.activeOutputs[responseEvent.OutputIndex] = struct{}{}
+
+	case responses.StreamEventTypeOutputItemDone:
+		delete(s.activeOutputs, responseEvent.OutputIndex)
+		if responseEvent.Item != nil {
+			s.completedOutputs[responseEvent.OutputIndex] = *responseEvent.Item
+		}
+
+	case responses.StreamEventTypeResponseCompleted,
+		responses.StreamEventTypeResponseFailed,
+		responses.StreamEventTypeResponseCancelled,
+		responses.StreamEventTypeResponseIncomplete,
+		responses.StreamEventTypeError:
+		s.terminalObserved = true
+	}
+}
+
+func (s *delayedCodexResponsesTerminalStream) canSynthesizeCompleted() bool {
+	return !s.terminalObserved &&
+		s.response != nil &&
+		s.response.ID != "" &&
+		len(s.completedOutputs) > 0 &&
+		len(s.activeOutputs) == 0
+}
+
+func (s *delayedCodexResponsesTerminalStream) synthesizeCompleted() (*httpclient.StreamEvent, error) {
+	responseSnapshot := *s.response
+	responseSnapshot.Object = "response"
+	responseSnapshot.Status = stringPtr("completed")
+	responseSnapshot.Error = nil
+	responseSnapshot.IncompleteDetails = nil
+
+	indexes := make([]int, 0, len(s.completedOutputs))
+	for outputIndex := range s.completedOutputs {
+		indexes = append(indexes, outputIndex)
+	}
+	sort.Ints(indexes)
+
+	responseSnapshot.Output = make([]responses.Item, 0, len(indexes))
+	for _, outputIndex := range indexes {
+		responseSnapshot.Output = append(responseSnapshot.Output, s.completedOutputs[outputIndex])
+	}
+
+	envelope := struct {
+		Type           string              `json:"type"`
+		SequenceNumber int                 `json:"sequence_number"`
+		Response       *responses.Response `json:"response"`
+	}{
+		Type:           string(responses.StreamEventTypeResponseCompleted),
+		SequenceNumber: s.lastSequence + 1,
+		Response:       &responseSnapshot,
+	}
+
+	data, err := json.Marshal(envelope)
+	if err != nil {
+		return nil, err
+	}
+
+	return &httpclient.StreamEvent{
+		Type: string(responses.StreamEventTypeResponseCompleted),
+		Data: data,
+	}, nil
+}
+
+func (s *delayedCodexResponsesTerminalStream) Current() *httpclient.StreamEvent {
+	return s.current
+}
+
+func (s *delayedCodexResponsesTerminalStream) Err() error {
+	if s.synthesized {
+		return nil
+	}
+	if s.err != nil {
+		return s.err
+	}
+
+	return s.stream.Err()
+}
+
+func (s *delayedCodexResponsesTerminalStream) Close() error {
+	var closeErr error
+	s.closeOnce.Do(func() {
+		closeErr = s.stream.Close()
+	})
+
+	return closeErr
+}
+
+func stringPtr(value string) *string {
+	return &value
 }
 
 // applyPassThroughStream returns a stream of raw provider events when PassThroughBody is enabled.
