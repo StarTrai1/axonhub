@@ -707,9 +707,9 @@ func newCodexResponsesPassThroughOutbound() *PersistentOutboundTransformer {
 			CurrentCandidate: &ChannelModelsCandidate{
 				Channel: &biz.Channel{
 					Channel: &ent.Channel{
-						ID:       1,
-						Name:     "codex-third-party",
-						Type:     channel.TypeCodex,
+						ID:   1,
+						Name: "codex-third-party",
+						Type: channel.TypeCodex,
 						Settings: &objects.ChannelSettings{
 							PassThroughBody: lo.ToPtr(true),
 						},
