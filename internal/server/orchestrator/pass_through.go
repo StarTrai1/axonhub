@@ -26,9 +26,9 @@ import (
 
 const (
 	delayedCodexResponsesTerminalGracePeriod = 2 * time.Second
-	delayedCodexResponsesUsageTailTimeout      = 6 * time.Minute
-	delayedCodexResponsesUpstreamTimeout       = 15 * time.Minute
-	delayedCodexResponsesUsagePersistTimeout   = 10 * time.Second
+	delayedCodexResponsesUsageTailTimeout    = 6 * time.Minute
+	delayedCodexResponsesUpstreamTimeout     = 15 * time.Minute
+	delayedCodexResponsesUsagePersistTimeout = 10 * time.Second
 )
 
 // isPassThroughEnabled returns true when the effective pass-through flag for the current

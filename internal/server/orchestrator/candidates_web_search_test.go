@@ -108,10 +108,10 @@ func TestWebSearchSelector_Select(t *testing.T) {
 			want:       []string{},
 		},
 		{
-			name:       "wrapped selector error is preserved",
-			request:    searchRequest,
-			err:        errors.New("wrapped error"),
-			wantErr:    true,
+			name:    "wrapped selector error is preserved",
+			request: searchRequest,
+			err:     errors.New("wrapped error"),
+			wantErr: true,
 		},
 	}
 
