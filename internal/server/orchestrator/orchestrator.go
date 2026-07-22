@@ -71,7 +71,7 @@ func NewChatCompletionOrchestrator(
 		quotaStrategy,
 	).WithoutWeightTieBreaker().WithRoundRobinHealthFilter(roundRobinHealthFilter)
 
-	return &ChatCompletionOrchestrator{
+	orchestrator := &ChatCompletionOrchestrator{
 		Inbound:            inbound,
 		RequestService:     requestService,
 		ChannelService:     channelService,
@@ -99,6 +99,9 @@ func NewChatCompletionOrchestrator(
 		quotaProvider:              quotaProvider,
 		proxy:                      nil,
 	}
+	orchestrator.remoteCompactionAdapter = newRemoteCompactionAdapter(requestService, usageLogService, systemService)
+
+	return orchestrator
 }
 
 type ChatCompletionOrchestrator struct {
@@ -136,6 +139,9 @@ type ChatCompletionOrchestrator struct {
 	modelCircuitBreaker *biz.ModelCircuitBreaker
 	// The provider quota status provider for quota-aware load balancing and selection.
 	quotaProvider ProviderQuotaStatusProvider
+	// Converts remote compaction history only when every eligible Codex channel
+	// lacks native remote-compaction support.
+	remoteCompactionAdapter *remoteCompactionAdapter
 
 	// proxy is the proxy configuration for testing
 	// If set, it will override the channel's default proxy configuration
@@ -252,6 +258,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		checkApiKeyModelAccess(inbound),
 		applyModelMapping(inbound),
 		selectCandidates(inbound, processor.quotaProvider, processor.SystemService),
+		adaptRemoteCompactionForUnsupportedChannels(inbound, processor.remoteCompactionAdapter, processor.PipelineFactory.Executor),
 		injectPrompts(inbound),
 		protectPrompts(inbound),
 		// Response pass-through middlewares run before persistRequest so the raw provider
