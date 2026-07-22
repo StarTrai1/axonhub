@@ -362,6 +362,8 @@
   "channels.dialogs.fields.autoSyncSupportedModels.description": "Automatically sync supported models list at the system-configured frequency",
   "channels.dialogs.fields.supportsRemoteCompaction.label": "Supports remote compaction",
   "channels.dialogs.fields.supportsRemoteCompaction.description": "Prefer this Codex channel for remote compaction requests. If none are selected, all eligible channels remain available.",
+  "channels.dialogs.fields.supportsWebSearch.label": "Supports web search",
+  "channels.dialogs.fields.supportsWebSearch.description": "Prefer this Codex channel for standalone openai/search requests. If none are selected, all eligible channels remain available.",
   "channels.dialogs.fields.autoSyncModelPattern.label": "Model Filter Pattern",
   "channels.dialogs.fields.autoSyncModelPattern.placeholder": "e.g. (?i)^gpt-4|claude-3",
   "channels.dialogs.fields.autoSyncModelPattern.description": "Only sync models matching this regex pattern. Prefix with (?i) to ignore case. Leave empty to sync all models.",

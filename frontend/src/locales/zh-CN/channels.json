@@ -359,6 +359,8 @@
   "channels.dialogs.fields.autoSyncSupportedModels.description": "按系统配置的频率自动从提供商 API 同步支持的模型列表",
   "channels.dialogs.fields.supportsRemoteCompaction.label": "支持远程压缩",
   "channels.dialogs.fields.supportsRemoteCompaction.description": "远程压缩请求优先使用此 Codex 渠道；未选择任何渠道时仍在全部合格渠道中路由。",
+  "channels.dialogs.fields.supportsWebSearch.label": "支持联网搜索",
+  "channels.dialogs.fields.supportsWebSearch.description": "openai/search 联网搜索请求优先使用此 Codex 渠道；未选择任何渠道时仍在全部合格渠道中路由。",
   "channels.dialogs.fields.autoSyncModelPattern.label": "模型过滤规则",
   "channels.dialogs.fields.autoSyncModelPattern.placeholder": "例如 (?i)^gpt-4|claude-3",
   "channels.dialogs.fields.autoSyncModelPattern.description": "仅同步匹配此正则表达式的模型。使用 (?i) 前缀可忽略大小写。留空则同步所有模型。",

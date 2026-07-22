@@ -19,6 +19,60 @@ import (
 	"github.com/tmaxmax/go-sse"
 )
 
+func TestHttpClientImpl_DoStream_DetachedContextContinuesAfterClientCancel(t *testing.T) {
+	releaseTerminal := make(chan struct{})
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		flusher := w.(http.Flusher)
+		_, _ = fmt.Fprint(w, "event: response.output_item.done\ndata: {\"type\":\"response.output_item.done\"}\n\n")
+		flusher.Flush()
+
+		select {
+		case <-releaseTerminal:
+			_, _ = fmt.Fprint(w, "event: response.completed\ndata: {\"type\":\"response.completed\"}\n\n")
+			flusher.Flush()
+		case <-r.Context().Done():
+		}
+	}))
+	defer server.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	client := NewHttpClient()
+	stream, err := client.DoStream(ctx, &Request{
+		Method:                http.MethodPost,
+		URL:                   server.URL,
+		DetachedStreamTimeout: 3 * time.Second,
+	})
+	require.NoError(t, err)
+	require.True(t, stream.Next())
+	require.Equal(t, "response.output_item.done", stream.Current().Type)
+
+	cancel()
+	close(releaseTerminal)
+	require.True(t, stream.Next())
+	require.Equal(t, "response.completed", stream.Current().Type)
+	require.NoError(t, stream.Close())
+}
+
+func TestHttpClientImpl_DoStream_DetachedContextHonorsTimeout(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.(http.Flusher).Flush()
+		<-r.Context().Done()
+	}))
+	defer server.Close()
+
+	client := NewHttpClient()
+	stream, err := client.DoStream(context.Background(), &Request{
+		Method:                http.MethodPost,
+		URL:                   server.URL,
+		DetachedStreamTimeout: 200 * time.Millisecond,
+	})
+	require.NoError(t, err)
+	require.False(t, stream.Next())
+	require.ErrorIs(t, stream.Err(), context.DeadlineExceeded)
+}
+
 func TestHttpClientImpl_Do(t *testing.T) {
 	tests := []struct {
 		name           string

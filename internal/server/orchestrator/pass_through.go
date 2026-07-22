@@ -8,12 +8,14 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/tidwall/sjson"
 
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/pkg/xcontext"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -22,7 +24,12 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
 
-const delayedCodexResponsesTerminalGracePeriod = 2 * time.Second
+const (
+	delayedCodexResponsesTerminalGracePeriod = 2 * time.Second
+	delayedCodexResponsesUsageTailTimeout      = 6 * time.Minute
+	delayedCodexResponsesUpstreamTimeout       = 15 * time.Minute
+	delayedCodexResponsesUsagePersistTimeout   = 10 * time.Second
+)
 
 // isPassThroughEnabled returns true when the effective pass-through flag for the current
 // channel is enabled and both the inbound and outbound API formats are identical.
@@ -85,7 +92,12 @@ func applyPassThroughRequestBody(outbound *PersistentOutboundTransformer, system
 	return pipeline.OnRawRequest("pass-through-request-body", func(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error) {
 		outbound.state.RawProviderRequest = request
 
-		if !outbound.isPassThroughEnabled(ctx, systemService) {
+		passThroughEnabled := outbound.isPassThroughEnabled(ctx, systemService)
+		if passThroughEnabled && shouldRepairDelayedCodexResponsesTerminal(outbound) {
+			request.DetachedStreamTimeout = delayedCodexResponsesUpstreamTimeout
+		}
+
+		if !passThroughEnabled {
 			return request, nil
 		}
 
@@ -299,6 +311,8 @@ func captureRawProviderStreamWithTerminalGrace(
 				stream,
 				channel.Name,
 				terminalGracePeriod,
+				delayedCodexResponsesUsageTailTimeout,
+				newDelayedCodexResponsesUsageRecorder(ctx, outbound.state, channel.Name),
 			)
 		}
 
@@ -377,6 +391,38 @@ func captureRawProviderStreamWithTerminalGrace(
 	})
 }
 
+func newDelayedCodexResponsesUsageRecorder(
+	ctx context.Context,
+	state *PersistenceState,
+	channelName string,
+) func(*llm.Usage) {
+	if state == nil || state.UsageLogService == nil || state.Request == nil || state.RequestExec == nil {
+		return nil
+	}
+
+	usageLogService := state.UsageLogService
+	request := state.Request
+	requestExec := state.RequestExec
+
+	return func(usage *llm.Usage) {
+		if usage == nil {
+			return
+		}
+
+		persistCtx, cancel := xcontext.DetachWithTimeout(ctx, delayedCodexResponsesUsagePersistTimeout)
+		defer cancel()
+
+		if _, err := usageLogService.CreateUsageLogFromRequest(persistCtx, request, requestExec, usage); err != nil {
+			log.Warn(persistCtx, "failed to persist delayed Codex response usage",
+				log.String("channel", channelName),
+				log.Int("request_id", request.ID),
+				log.Int("request_execution_id", requestExec.ID),
+				log.Cause(err),
+			)
+		}
+	}
+}
+
 func shouldRepairDelayedCodexResponsesTerminal(outbound *PersistentOutboundTransformer) bool {
 	if outbound == nil || outbound.state == nil {
 		return false
@@ -405,6 +451,8 @@ type delayedCodexResponsesTerminalStream struct {
 	stream      streams.Stream[*httpclient.StreamEvent]
 	channelName string
 	gracePeriod time.Duration
+	tailTimeout time.Duration
+	onUsage     func(*llm.Usage)
 
 	current          *httpclient.StreamEvent
 	err              error
@@ -416,6 +464,8 @@ type delayedCodexResponsesTerminalStream struct {
 	activeOutputs    map[int]struct{}
 	completedOutputs map[int]responses.Item
 	closeOnce        sync.Once
+	closeErr         error
+	tailOwned        atomic.Bool
 }
 
 func newDelayedCodexResponsesTerminalStream(
@@ -423,12 +473,16 @@ func newDelayedCodexResponsesTerminalStream(
 	stream streams.Stream[*httpclient.StreamEvent],
 	channelName string,
 	gracePeriod time.Duration,
+	tailTimeout time.Duration,
+	onUsage func(*llm.Usage),
 ) streams.Stream[*httpclient.StreamEvent] {
 	return &delayedCodexResponsesTerminalStream{
 		ctx:              ctx,
 		stream:           stream,
 		channelName:      channelName,
 		gracePeriod:      gracePeriod,
+		tailTimeout:      tailTimeout,
+		onUsage:          onUsage,
 		activeOutputs:    make(map[int]struct{}),
 		completedOutputs: make(map[int]responses.Item),
 	}
@@ -439,10 +493,7 @@ func (s *delayedCodexResponsesTerminalStream) Next() bool {
 		return false
 	}
 
-	next := make(chan bool, 1)
-	go func() {
-		next <- s.stream.Next()
-	}()
+	next := s.nextResult()
 
 	var timer *time.Timer
 	var timerCh <-chan time.Time
@@ -455,8 +506,15 @@ func (s *delayedCodexResponsesTerminalStream) Next() bool {
 	}
 
 	select {
-	case ok := <-next:
-		if !ok {
+	case result := <-next:
+		if result.panicValue != nil {
+			s.err = fmt.Errorf("read delayed Codex response stream: %v", result.panicValue)
+			s.done = true
+			_ = s.Close()
+
+			return false
+		}
+		if !result.ok {
 			s.done = true
 
 			return false
@@ -480,7 +538,12 @@ func (s *delayedCodexResponsesTerminalStream) Next() bool {
 		s.current = event
 		s.synthesized = true
 		s.done = true
-		_ = s.Close()
+		if s.onUsage == nil {
+			_ = s.Close()
+		} else {
+			s.tailOwned.Store(true)
+			s.captureDelayedUsage(next)
+		}
 
 		log.Warn(s.ctx, "synthesized delayed Codex response.completed",
 			log.String("channel", s.channelName),
@@ -497,6 +560,108 @@ func (s *delayedCodexResponsesTerminalStream) Next() bool {
 
 		return false
 	}
+}
+
+type delayedCodexStreamNextResult struct {
+	ok         bool
+	panicValue any
+}
+
+func (s *delayedCodexResponsesTerminalStream) nextResult() <-chan delayedCodexStreamNextResult {
+	resultCh := make(chan delayedCodexStreamNextResult, 1)
+	go func() {
+		defer func() {
+			if cause := recover(); cause != nil {
+				resultCh <- delayedCodexStreamNextResult{panicValue: cause}
+			}
+		}()
+
+		resultCh <- delayedCodexStreamNextResult{ok: s.stream.Next()}
+	}()
+
+	return resultCh
+}
+
+func (s *delayedCodexResponsesTerminalStream) captureDelayedUsage(
+	next <-chan delayedCodexStreamNextResult,
+) {
+	go func() {
+		defer func() {
+			if cause := recover(); cause != nil {
+				log.Warn(s.ctx, "delayed Codex usage capture panicked, recovering",
+					log.String("channel", s.channelName),
+					log.Any("panic", cause),
+				)
+			}
+
+			_ = s.closeUnderlying()
+			s.tailOwned.Store(false)
+		}()
+
+		timer := time.NewTimer(s.tailTimeout)
+		defer timer.Stop()
+
+		for {
+			select {
+			case result := <-next:
+				if result.panicValue != nil {
+					log.Warn(s.ctx, "failed to read delayed Codex usage terminal",
+						log.String("channel", s.channelName),
+						log.Any("panic", result.panicValue),
+					)
+
+					return
+				}
+				if !result.ok {
+					return
+				}
+
+				event := s.stream.Current()
+				usage, completed := completedResponsesUsage(event)
+				if completed {
+					if usage != nil {
+						s.onUsage(usage)
+						log.Debug(s.ctx, "captured delayed Codex response usage",
+							log.String("channel", s.channelName),
+							log.Int64("total_tokens", usage.TotalTokens),
+						)
+					}
+
+					return
+				}
+				if isTerminalStreamEvent(event) {
+					return
+				}
+
+				next = s.nextResult()
+
+			case <-timer.C:
+				log.Warn(s.ctx, "timed out waiting for delayed Codex response usage",
+					log.String("channel", s.channelName),
+					log.Duration("tail_timeout", s.tailTimeout),
+				)
+
+				return
+			}
+		}
+	}()
+}
+
+func completedResponsesUsage(event *httpclient.StreamEvent) (*llm.Usage, bool) {
+	if event == nil || len(event.Data) == 0 {
+		return nil, false
+	}
+
+	var responseEvent responses.StreamEvent
+	if err := json.Unmarshal(event.Data, &responseEvent); err != nil ||
+		responseEvent.Type != responses.StreamEventTypeResponseCompleted {
+		return nil, false
+	}
+	if responseEvent.Response == nil || responseEvent.Response.Usage == nil {
+		return nil, true
+	}
+
+	return responseEvent.Response.Usage.ToUsage(), true
 }
 
 func (s *delayedCodexResponsesTerminalStream) observe(event *httpclient.StreamEvent) {
@@ -601,12 +766,19 @@ func (s *delayedCodexResponsesTerminalStream) Err() error {
 }
 
 func (s *delayedCodexResponsesTerminalStream) Close() error {
-	var closeErr error
+	if s.tailOwned.Load() {
+		return nil
+	}
+
+	return s.closeUnderlying()
+}
+
+func (s *delayedCodexResponsesTerminalStream) closeUnderlying() error {
 	s.closeOnce.Do(func() {
-		closeErr = s.stream.Close()
+		s.closeErr = s.stream.Close()
 	})
 
-	return closeErr
+	return s.closeErr
 }
 
 func stringPtr(value string) *string {
