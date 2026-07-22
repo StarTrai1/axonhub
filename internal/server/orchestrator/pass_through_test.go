@@ -537,6 +537,56 @@ func TestCaptureRawProviderStream_FansOut(t *testing.T) {
 	assert.Equal(t, events, passthroughEvents)
 }
 
+func TestCaptureRawProviderStream_StopsAtTerminalEvent(t *testing.T) {
+	ctx := context.Background()
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "test",
+			Settings: &objects.ChannelSettings{
+				PassThroughBody: lo.ToPtr(true),
+			},
+		},
+	}
+	state := &PersistenceState{
+		CurrentCandidate:      &ChannelModelsCandidate{Channel: channel},
+		OriginalRequestStream: lo.ToPtr(true),
+		LlmRequest: &llm.Request{
+			APIFormat: llm.APIFormatOpenAIResponse,
+			Stream:    lo.ToPtr(true),
+			RawRequest: &httpclient.Request{
+				APIFormat: string(llm.APIFormatOpenAIResponse),
+			},
+		},
+		RawProviderRequest: &httpclient.Request{
+			APIFormat: string(llm.APIFormatOpenAIResponse),
+		},
+	}
+	outbound := &PersistentOutboundTransformer{
+		wrapped: &mockTransformer{apiFormat: llm.APIFormatOpenAIResponse},
+		state:   state,
+	}
+
+	terminal := &httpclient.StreamEvent{
+		Data: json.RawMessage(`{"type":"response.completed","response":{"id":"resp_terminal","status":"completed"}}`),
+	}
+	src := &terminalGuardProviderStream{event: terminal}
+
+	result, err := captureRawProviderStream(outbound, nil).OnOutboundRawStream(ctx, src)
+	require.NoError(t, err)
+	require.True(t, result.Next())
+	require.Equal(t, terminal, result.Current())
+
+	rawEvent, ok := <-state.RawStreamCh
+	require.True(t, ok)
+	require.Equal(t, terminal, rawEvent)
+	require.False(t, result.Next())
+	_, ok = <-state.RawStreamCh
+	require.False(t, ok)
+	require.False(t, src.readPastTerminal)
+	require.True(t, src.closed)
+}
+
 func TestCaptureRawProviderStream_PropagatesError(t *testing.T) {
 	ctx := context.Background()
 	channel := &biz.Channel{
@@ -690,6 +740,33 @@ type blockingStream struct {
 	closed    chan struct{}
 	startOnce sync.Once
 	closeOnce sync.Once
+}
+
+type terminalGuardProviderStream struct {
+	event            *httpclient.StreamEvent
+	served           bool
+	readPastTerminal bool
+	closed           bool
+}
+
+func (s *terminalGuardProviderStream) Next() bool {
+	if s.served {
+		s.readPastTerminal = true
+
+		return false
+	}
+
+	s.served = true
+
+	return true
+}
+
+func (s *terminalGuardProviderStream) Current() *httpclient.StreamEvent { return s.event }
+func (s *terminalGuardProviderStream) Err() error                       { return nil }
+func (s *terminalGuardProviderStream) Close() error {
+	s.closed = true
+
+	return nil
 }
 
 func newBlockingStream() *blockingStream {
