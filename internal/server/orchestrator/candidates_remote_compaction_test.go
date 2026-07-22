@@ -53,6 +53,18 @@ func TestRemoteCompactionSelectorSelect(t *testing.T) {
 		}`),
 	})
 	require.NoError(t, err)
+	continuationRequest, err := responses.NewInboundTransformer().TransformRequest(context.Background(), &httpclient.Request{
+		Body: []byte(`{
+			"model":"gpt-5.6-sol",
+			"input":[
+				{"type":"message","role":"user","content":[{"type":"input_text","text":"before compact"}]},
+				{"id":"cmp_001","type":"compaction","encrypted_content":"opaque"},
+				{"type":"message","role":"user","content":[{"type":"input_text","text":"continue"}]}
+			],
+			"stream":true
+		}`),
+	})
+	require.NoError(t, err)
 	normalRequest := &llm.Request{
 		RequestType: llm.RequestTypeChat,
 		APIFormat:   llm.APIFormatOpenAIResponse,
@@ -82,6 +94,15 @@ func TestRemoteCompactionSelectorSelect(t *testing.T) {
 		{
 			name:    "v2 trigger prefers capable Codex channels",
 			request: v2Request,
+			candidates: []*ChannelModelsCandidate{
+				newCandidate("unsupported", channel.TypeCodex, false),
+				newCandidate("capable", channel.TypeCodex, true),
+			},
+			want: []string{"capable"},
+		},
+		{
+			name:    "post-compaction turn prefers capable Codex channels",
+			request: continuationRequest,
 			candidates: []*ChannelModelsCandidate{
 				newCandidate("unsupported", channel.TypeCodex, false),
 				newCandidate("capable", channel.TypeCodex, true),
