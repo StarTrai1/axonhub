@@ -382,6 +382,13 @@ const (
 type ChannelPolicies struct {
 	Stream                   CapabilityPolicy `json:"stream,omitempty"`
 	SupportsRemoteCompaction bool             `json:"supportsRemoteCompaction,omitempty"`
+	SupportsWebSearch        *bool            `json:"supportsWebSearch,omitempty"`
+}
+
+// SupportsWebSearchRequests defaults legacy channels to capable. This keeps
+// routing unchanged until an operator explicitly disables the capability.
+func (p ChannelPolicies) SupportsWebSearchRequests() bool {
+	return p.SupportsWebSearch == nil || *p.SupportsWebSearch
 }
 
 // ParseOverrideOperations parses the override parameters string.

@@ -126,6 +126,10 @@ export type CapabilityPolicy = z.infer<typeof capabilityPolicySchema>;
 export const channelPoliciesSchema = z.object({
   stream: capabilityPolicySchema.optional(),
   supportsRemoteCompaction: z.boolean().optional().default(false),
+  supportsWebSearch: z
+    .boolean()
+    .nullish()
+    .transform((value) => value ?? true),
 });
 export type ChannelPolicies = z.infer<typeof channelPoliciesSchema>;
 

@@ -176,11 +176,13 @@ enum CapabilityPolicy {
 type ChannelPolicies {
   stream: CapabilityPolicy
   supportsRemoteCompaction: Boolean
+  supportsWebSearch: Boolean
 }
 
 input ChannelPoliciesInput {
   stream: CapabilityPolicy
   supportsRemoteCompaction: Boolean
+  supportsWebSearch: Boolean
 }
 
 input ModelMappingInput {

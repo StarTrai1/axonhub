@@ -491,6 +491,7 @@ type ComplexityRoot struct {
 	ChannelPolicies struct {
 		Stream                   func(childComplexity int) int
 		SupportsRemoteCompaction func(childComplexity int) int
+		SupportsWebSearch        func(childComplexity int) int
 	}
 
 	ChannelProbe struct {
@@ -3947,6 +3948,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelPolicies.SupportsRemoteCompaction(childComplexity), true
+	case "ChannelPolicies.supportsWebSearch":
+		if e.complexity.ChannelPolicies.SupportsWebSearch == nil {
+			break
+		}
+
+		return e.complexity.ChannelPolicies.SupportsWebSearch(childComplexity), true
 
 	case "ChannelProbe.avgTimeToFirstTokenMs":
 		if e.complexity.ChannelProbe.AvgTimeToFirstTokenMs == nil {
@@ -19512,6 +19519,8 @@ func (ec *executionContext) fieldContext_Channel_policies(_ context.Context, fie
 				return ec.fieldContext_ChannelPolicies_stream(ctx, field)
 			case "supportsRemoteCompaction":
 				return ec.fieldContext_ChannelPolicies_supportsRemoteCompaction(ctx, field)
+			case "supportsWebSearch":
+				return ec.fieldContext_ChannelPolicies_supportsWebSearch(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ChannelPolicies", field.Name)
 		},
@@ -22865,6 +22874,35 @@ func (ec *executionContext) _ChannelPolicies_supportsRemoteCompaction(ctx contex
 }
 
 func (ec *executionContext) fieldContext_ChannelPolicies_supportsRemoteCompaction(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelPolicies",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelPolicies_supportsWebSearch(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelPolicies) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelPolicies_supportsWebSearch,
+		func(ctx context.Context) (any, error) {
+			return obj.SupportsWebSearch, nil
+		},
+		nil,
+		ec.marshalOBoolean2ᚖbool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelPolicies_supportsWebSearch(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ChannelPolicies",
 		Field:      field,
@@ -65113,7 +65151,7 @@ func (ec *executionContext) unmarshalInputChannelPoliciesInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"stream", "supportsRemoteCompaction"}
+	fieldsInOrder := [...]string{"stream", "supportsRemoteCompaction", "supportsWebSearch"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -65134,6 +65172,13 @@ func (ec *executionContext) unmarshalInputChannelPoliciesInput(ctx context.Conte
 				return it, err
 			}
 			it.SupportsRemoteCompaction = data
+		case "supportsWebSearch":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("supportsWebSearch"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SupportsWebSearch = data
 		}
 	}
 
@@ -90660,6 +90705,8 @@ func (ec *executionContext) _ChannelPolicies(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._ChannelPolicies_stream(ctx, field, obj)
 		case "supportsRemoteCompaction":
 			out.Values[i] = ec._ChannelPolicies_supportsRemoteCompaction(ctx, field, obj)
+		case "supportsWebSearch":
+			out.Values[i] = ec._ChannelPolicies_supportsWebSearch(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

@@ -678,6 +678,65 @@ func TestCaptureRawProviderStream_PrefersRealCodexResponsesTerminal(t *testing.T
 	assert.True(t, src.isClosed())
 }
 
+func TestDelayedCodexResponsesTerminalStream_CapturesLateUsage(t *testing.T) {
+	events := []*httpclient.StreamEvent{
+		{
+			Type: "response.created",
+			Data: json.RawMessage(`{"type":"response.created","sequence_number":0,"response":{"id":"resp_late_usage","object":"response","created_at":1700000000,"model":"gpt-5.6-sol","status":"in_progress","output":[]}}`),
+		},
+		{
+			Type: "response.output_item.added",
+			Data: json.RawMessage(`{"type":"response.output_item.added","sequence_number":1,"output_index":0,"item":{"id":"msg_1","type":"message","status":"in_progress","role":"assistant","content":[]}}`),
+		},
+		{
+			Type: "response.output_item.done",
+			Data: json.RawMessage(`{"type":"response.output_item.done","sequence_number":2,"output_index":0,"item":{"id":"msg_1","type":"message","status":"completed","role":"assistant","content":[{"type":"output_text","text":"OK","annotations":[]}]}}`),
+		},
+	}
+	src := newTailEventStream(len(events) + 1)
+	for _, event := range events {
+		src.events <- event
+	}
+
+	usageCh := make(chan *llm.Usage, 1)
+	stream := newDelayedCodexResponsesTerminalStream(
+		context.Background(),
+		src,
+		"codex-third-party",
+		20*time.Millisecond,
+		time.Second,
+		func(usage *llm.Usage) {
+			usageCh <- usage
+		},
+	)
+
+	for range events {
+		require.True(t, stream.Next())
+	}
+	require.True(t, stream.Next())
+	assert.Equal(t, "response.completed", stream.Current().Type)
+	assert.False(t, gjson.GetBytes(stream.Current().Data, "response.usage").Exists())
+	require.False(t, stream.Next())
+
+	src.events <- &httpclient.StreamEvent{
+		Type: "response.completed",
+		Data: json.RawMessage(`{"type":"response.completed","sequence_number":3,"response":{"id":"resp_late_usage","object":"response","created_at":1700000000,"model":"gpt-5.6-sol","status":"completed","output":[],"usage":{"input_tokens":123002,"input_tokens_details":{"cached_tokens":119296},"output_tokens":461,"output_tokens_details":{"reasoning_tokens":267},"total_tokens":123463}}}`),
+	}
+
+	select {
+	case usage := <-usageCh:
+		require.Equal(t, int64(123002), usage.PromptTokens)
+		require.Equal(t, int64(119296), usage.PromptTokensDetails.CachedTokens)
+		require.Equal(t, int64(461), usage.CompletionTokens)
+		require.Equal(t, int64(267), usage.CompletionTokensDetails.ReasoningTokens)
+		require.Equal(t, int64(123463), usage.TotalTokens)
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for delayed usage")
+	}
+
+	require.Eventually(t, src.isClosed, 2*time.Second, 10*time.Millisecond)
+}
+
 func TestShouldRepairDelayedCodexResponsesTerminal_ScopedToCodexLitePassThrough(t *testing.T) {
 	outbound := newCodexResponsesPassThroughOutbound()
 	require.True(t, shouldRepairDelayedCodexResponsesTerminal(outbound))
@@ -898,6 +957,13 @@ type terminalGuardProviderStream struct {
 	closed           bool
 }
 
+type tailEventStream struct {
+	events    chan *httpclient.StreamEvent
+	closed    chan struct{}
+	current   *httpclient.StreamEvent
+	closeOnce sync.Once
+}
+
 func (s *terminalGuardProviderStream) Next() bool {
 	if s.served {
 		s.readPastTerminal = true
@@ -929,6 +995,43 @@ func newEventsThenBlockingStream(events []*httpclient.StreamEvent) *eventsThenBl
 	return &eventsThenBlockingStream{
 		events: events,
 		closed: make(chan struct{}),
+	}
+}
+
+func newTailEventStream(capacity int) *tailEventStream {
+	return &tailEventStream{
+		events: make(chan *httpclient.StreamEvent, capacity),
+		closed: make(chan struct{}),
+	}
+}
+
+func (s *tailEventStream) Next() bool {
+	select {
+	case event := <-s.events:
+		s.current = event
+
+		return true
+	case <-s.closed:
+		return false
+	}
+}
+
+func (s *tailEventStream) Current() *httpclient.StreamEvent { return s.current }
+func (s *tailEventStream) Err() error                       { return nil }
+func (s *tailEventStream) Close() error {
+	s.closeOnce.Do(func() {
+		close(s.closed)
+	})
+
+	return nil
+}
+
+func (s *tailEventStream) isClosed() bool {
+	select {
+	case <-s.closed:
+		return true
+	default:
+		return false
 	}
 }
 

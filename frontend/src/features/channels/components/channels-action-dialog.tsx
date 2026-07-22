@@ -654,7 +654,11 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             type: currentRow.type,
             baseURL: currentRow.baseURL,
             name: currentRow.name,
-            policies: currentRow.policies ?? { stream: 'unlimited', supportsRemoteCompaction: false },
+            policies: {
+              stream: currentRow.policies?.stream ?? 'unlimited',
+              supportsRemoteCompaction: currentRow.policies?.supportsRemoteCompaction ?? false,
+              supportsWebSearch: currentRow.policies?.supportsWebSearch ?? true,
+            },
             supportedModels: currentRow.supportedModels,
             autoSyncSupportedModels: currentRow.autoSyncSupportedModels,
             autoSyncModelPattern: currentRow.autoSyncModelPattern || '',
@@ -678,7 +682,11 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               type: duplicateFromRow.type,
               baseURL: duplicateFromRow.baseURL,
               name: duplicateFromRow.name,
-              policies: duplicateFromRow.policies ?? { stream: 'unlimited', supportsRemoteCompaction: false },
+              policies: {
+                stream: duplicateFromRow.policies?.stream ?? 'unlimited',
+                supportsRemoteCompaction: duplicateFromRow.policies?.supportsRemoteCompaction ?? false,
+                supportsWebSearch: duplicateFromRow.policies?.supportsWebSearch ?? true,
+              },
               supportedModels: duplicateFromRow.supportedModels,
               autoSyncSupportedModels: duplicateFromRow.autoSyncSupportedModels,
               autoSyncModelPattern: duplicateFromRow.autoSyncModelPattern || '',
@@ -701,7 +709,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               type: derivedChannelType,
               baseURL: getDefaultBaseURL(derivedChannelType),
               name: '',
-              policies: { stream: 'unlimited', supportsRemoteCompaction: false },
+              policies: { stream: 'unlimited', supportsRemoteCompaction: false, supportsWebSearch: true },
               credentials: {
                 apiKeys: [],
                 gcp: {
@@ -1192,6 +1200,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         ...dataWithModels.policies,
         supportsRemoteCompaction:
           effectiveChannelType === 'codex' && (dataWithModels.policies?.supportsRemoteCompaction ?? false),
+        supportsWebSearch: effectiveChannelType !== 'codex' || (dataWithModels.policies?.supportsWebSearch ?? true),
       };
       const settingsForSubmit = isOpenCodeGoChannelType(dataWithModels.type as ChannelType | undefined)
         ? values.settings
@@ -2496,7 +2505,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                               name='autoSyncSupportedModels'
                               render={({ field }) => (
                                 <FormItem
-                                  className={`flex items-center gap-2 ${isCodexType || isClaudeCodeType || isCopilotType ? 'opacity-60' : ''}`}
+                                  className={`flex items-center gap-2 ${isCodexType || isClaudeCodeType || isCopilotType ? 'opacity-60' : ''} ${isCodexType ? 'border-border/60 border-b pb-3 sm:col-span-2' : ''}`}
                                 >
                                   {wrapUnsupported(
                                     isCodexType || isClaudeCodeType || isCopilotType,
@@ -2579,6 +2588,42 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                         </TooltipTrigger>
                                         <TooltipContent>
                                           <p>{t('channels.dialogs.fields.supportsRemoteCompaction.description')}</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </div>
+                                  </FormItem>
+                                )}
+                              />
+                            )}
+
+                            {isCodexType && (
+                              <FormField
+                                control={form.control}
+                                name='policies.supportsWebSearch'
+                                render={({ field }) => (
+                                  <FormItem className='flex items-center gap-2'>
+                                    <Checkbox
+                                      checked={field.value ?? true}
+                                      onCheckedChange={field.onChange}
+                                      data-testid='supports-web-search-checkbox'
+                                    />
+                                    <div className='flex items-center gap-1.5'>
+                                      <FormLabel className='cursor-pointer text-sm font-normal'>
+                                        {t('channels.dialogs.fields.supportsWebSearch.label')}
+                                      </FormLabel>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <button
+                                            type='button'
+                                            className='text-muted-foreground hover:text-foreground inline-flex items-center'
+                                            aria-label={t('channels.dialogs.fields.supportsWebSearch.description')}
+                                            data-testid='supports-web-search-tip'
+                                          >
+                                            <Info className='h-3.5 w-3.5' />
+                                          </button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>{t('channels.dialogs.fields.supportsWebSearch.description')}</p>
                                         </TooltipContent>
                                       </Tooltip>
                                     </div>

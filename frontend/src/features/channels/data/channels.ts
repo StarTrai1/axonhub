@@ -77,6 +77,7 @@ const CREATE_CHANNEL_MUTATION = `
       policies {
         stream
         supportsRemoteCompaction
+        supportsWebSearch
       }
       supportedModels
       autoSyncSupportedModels
@@ -151,6 +152,7 @@ const DUPLICATE_CHANNEL_MUTATION = `
       policies {
         stream
         supportsRemoteCompaction
+        supportsWebSearch
       }
       supportedModels
       autoSyncSupportedModels
@@ -225,6 +227,7 @@ const BULK_CREATE_CHANNELS_MUTATION = `
       policies {
         stream
         supportsRemoteCompaction
+        supportsWebSearch
       }
       supportedModels
       autoSyncSupportedModels
@@ -299,6 +302,7 @@ const UPDATE_CHANNEL_MUTATION = `
       policies {
         stream
         supportsRemoteCompaction
+        supportsWebSearch
       }
       supportedModels
       autoSyncSupportedModels
@@ -487,6 +491,7 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
         policies {
           stream
           supportsRemoteCompaction
+          supportsWebSearch
         }
         supportedModels
         autoSyncSupportedModels
@@ -805,6 +810,7 @@ const QUERY_CHANNELS_QUERY = `
           policies {
             stream
             supportsRemoteCompaction
+            supportsWebSearch
           }
           credentials {
             apiKey

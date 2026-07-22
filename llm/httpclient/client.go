@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/looplj/axonhub/llm/streams"
@@ -285,8 +286,18 @@ func (hc *HttpClient) Do(ctx context.Context, request *Request) (*Response, erro
 func (hc *HttpClient) DoStream(ctx context.Context, request *Request) (streams.Stream[*StreamEvent], error) {
 	slog.DebugContext(ctx, "execute stream request", slog.Any("request", request))
 
-	rawReq, err := hc.BuildHttpRequest(ctx, request)
+	streamCtx := ctx
+	var streamCancel context.CancelFunc
+	if request.DetachedStreamTimeout > 0 {
+		streamCtx, streamCancel = context.WithTimeout(context.WithoutCancel(ctx), request.DetachedStreamTimeout)
+	}
+
+	rawReq, err := hc.BuildHttpRequest(streamCtx, request)
 	if err != nil {
+		if streamCancel != nil {
+			streamCancel()
+		}
+
 		return nil, fmt.Errorf("failed to build HTTP request: %w", err)
 	}
 
@@ -304,12 +315,20 @@ func (hc *HttpClient) DoStream(ctx context.Context, request *Request) (streams.S
 	// Execute request
 	rawResp, err := hc.client.Do(rawReq)
 	if err != nil {
+		if streamCancel != nil {
+			streamCancel()
+		}
+
 		return nil, fmt.Errorf("HTTP stream request failed: %w", err)
 	}
 
 	// Check for HTTP errors before creating stream
 	if rawResp.StatusCode >= 400 {
 		defer func() {
+			if streamCancel != nil {
+				streamCancel()
+			}
+
 			err := rawResp.Body.Close()
 			if err != nil {
 				slog.WarnContext(ctx, "failed to close HTTP response body", slog.Any("error", err))
@@ -360,9 +379,41 @@ func (hc *HttpClient) DoStream(ctx context.Context, request *Request) (streams.S
 		decoderFactory = NewDefaultSSEDecoder
 	}
 
-	stream := decoderFactory(ctx, rawResp.Body)
+	stream := decoderFactory(streamCtx, rawResp.Body)
+	if streamCancel != nil {
+		stream = &detachedContextStream{
+			Stream: stream,
+			cancel: streamCancel,
+		}
+	}
 
 	return stream, nil
+}
+
+type detachedContextStream struct {
+	streams.Stream[*StreamEvent]
+	cancel    context.CancelFunc
+	closeErr  error
+	closeOnce sync.Once
+}
+
+func (s *detachedContextStream) Next() bool {
+	if s.Stream.Next() {
+		return true
+	}
+
+	_ = s.Close()
+
+	return false
+}
+
+func (s *detachedContextStream) Close() error {
+	s.closeOnce.Do(func() {
+		s.closeErr = s.Stream.Close()
+		s.cancel()
+	})
+
+	return s.closeErr
 }
 
 // BuildHttpRequest builds an HTTP request from Request.
