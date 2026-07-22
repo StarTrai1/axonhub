@@ -15,12 +15,14 @@ import (
 	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/looplj/axonhub/llm/streams"
+	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
 
 func testHTTPStream(events []*httpclient.StreamEvent) streams.Stream[*httpclient.StreamEvent] {
@@ -587,6 +589,146 @@ func TestCaptureRawProviderStream_StopsAtTerminalEvent(t *testing.T) {
 	require.True(t, src.closed)
 }
 
+func TestCaptureRawProviderStream_RepairsDelayedCodexResponsesTerminal(t *testing.T) {
+	ctx := context.Background()
+	outbound := newCodexResponsesPassThroughOutbound()
+	events := []*httpclient.StreamEvent{
+		{
+			Type: "response.created",
+			Data: json.RawMessage(`{"type":"response.created","sequence_number":0,"response":{"id":"resp_delayed","object":"response","created_at":1700000000,"model":"gpt-5.6-sol","status":"in_progress","output":[]}}`),
+		},
+		{
+			Type: "response.output_item.added",
+			Data: json.RawMessage(`{"type":"response.output_item.added","sequence_number":1,"output_index":0,"item":{"id":"rs_1","type":"reasoning","status":"in_progress","summary":[]}}`),
+		},
+		{
+			Type: "response.output_item.done",
+			Data: json.RawMessage(`{"type":"response.output_item.done","sequence_number":2,"output_index":0,"item":{"id":"rs_1","type":"reasoning","summary":[]}}`),
+		},
+		{
+			Type: "response.output_item.added",
+			Data: json.RawMessage(`{"type":"response.output_item.added","sequence_number":3,"output_index":1,"item":{"id":"msg_1","type":"message","status":"in_progress","role":"assistant","content":[]}}`),
+		},
+		{
+			Type: "response.output_item.done",
+			Data: json.RawMessage(`{"type":"response.output_item.done","sequence_number":4,"output_index":1,"item":{"id":"msg_1","type":"message","status":"completed","role":"assistant","content":[{"type":"output_text","text":"OK","annotations":[]}]}}`),
+		},
+	}
+	src := newEventsThenBlockingStream(events)
+
+	result, err := captureRawProviderStreamWithTerminalGrace(outbound, nil, 20*time.Millisecond).
+		OnOutboundRawStream(ctx, src)
+	require.NoError(t, err)
+
+	pipelineEvents, err := streams.All(result)
+	require.NoError(t, err)
+	require.Len(t, pipelineEvents, len(events)+1)
+
+	var rawEvents []*httpclient.StreamEvent
+	for event := range outbound.state.RawStreamCh {
+		rawEvents = append(rawEvents, event)
+	}
+	require.Equal(t, pipelineEvents, rawEvents)
+
+	completed := pipelineEvents[len(pipelineEvents)-1]
+	require.Equal(t, "response.completed", completed.Type)
+	assert.Equal(t, "response.completed", gjson.GetBytes(completed.Data, "type").String())
+	assert.Equal(t, "resp_delayed", gjson.GetBytes(completed.Data, "response.id").String())
+	assert.Equal(t, "completed", gjson.GetBytes(completed.Data, "response.status").String())
+	assert.Equal(t, int64(2), gjson.GetBytes(completed.Data, "response.output.#").Int())
+	assert.Equal(t, "reasoning", gjson.GetBytes(completed.Data, "response.output.0.type").String())
+	assert.Equal(t, "message", gjson.GetBytes(completed.Data, "response.output.1.type").String())
+	assert.False(t, gjson.GetBytes(completed.Data, "response.usage").Exists())
+	assert.True(t, src.isClosed())
+}
+
+func TestCaptureRawProviderStream_PrefersRealCodexResponsesTerminal(t *testing.T) {
+	ctx := context.Background()
+	outbound := newCodexResponsesPassThroughOutbound()
+	realCompleted := &httpclient.StreamEvent{
+		Type: "response.completed",
+		Data: json.RawMessage(`{"type":"response.completed","sequence_number":3,"response":{"id":"resp_real","object":"response","created_at":1700000000,"model":"gpt-5.6-sol","status":"completed","output":[{"id":"msg_1","type":"message","status":"completed","role":"assistant","content":[{"type":"output_text","text":"OK","annotations":[]}]}],"usage":{"input_tokens":10,"output_tokens":2,"total_tokens":12}}}`),
+	}
+	events := []*httpclient.StreamEvent{
+		{
+			Type: "response.created",
+			Data: json.RawMessage(`{"type":"response.created","sequence_number":0,"response":{"id":"resp_real","object":"response","created_at":1700000000,"model":"gpt-5.6-sol","status":"in_progress","output":[]}}`),
+		},
+		{
+			Type: "response.output_item.added",
+			Data: json.RawMessage(`{"type":"response.output_item.added","sequence_number":1,"output_index":0,"item":{"id":"msg_1","type":"message","status":"in_progress","role":"assistant","content":[]}}`),
+		},
+		{
+			Type: "response.output_item.done",
+			Data: json.RawMessage(`{"type":"response.output_item.done","sequence_number":2,"output_index":0,"item":{"id":"msg_1","type":"message","status":"completed","role":"assistant","content":[{"type":"output_text","text":"OK","annotations":[]}]}}`),
+		},
+		realCompleted,
+	}
+	src := newEventsThenBlockingStream(events)
+
+	result, err := captureRawProviderStreamWithTerminalGrace(outbound, nil, time.Second).
+		OnOutboundRawStream(ctx, src)
+	require.NoError(t, err)
+
+	pipelineEvents, err := streams.All(result)
+	require.NoError(t, err)
+	require.Len(t, pipelineEvents, len(events))
+	assert.Equal(t, realCompleted, pipelineEvents[len(pipelineEvents)-1])
+	assert.Equal(t, int64(12), gjson.GetBytes(pipelineEvents[len(pipelineEvents)-1].Data, "response.usage.total_tokens").Int())
+	assert.True(t, src.isClosed())
+}
+
+func TestShouldRepairDelayedCodexResponsesTerminal_ScopedToCodexLitePassThrough(t *testing.T) {
+	outbound := newCodexResponsesPassThroughOutbound()
+	require.True(t, shouldRepairDelayedCodexResponsesTerminal(outbound))
+
+	outbound.state.CurrentCandidate.Channel.Type = channel.TypeOpenaiResponses
+	require.False(t, shouldRepairDelayedCodexResponsesTerminal(outbound))
+
+	outbound.state.CurrentCandidate.Channel.Type = channel.TypeCodex
+	outbound.state.RawProviderRequest.APIFormat = string(llm.APIFormatOpenAIChatCompletion)
+	require.False(t, shouldRepairDelayedCodexResponsesTerminal(outbound))
+
+	outbound.state.RawProviderRequest.APIFormat = string(llm.APIFormatOpenAIResponse)
+	outbound.state.RawProviderRequest.Headers.Del(responses.ResponsesLiteHeader)
+	require.False(t, shouldRepairDelayedCodexResponsesTerminal(outbound))
+}
+
+func newCodexResponsesPassThroughOutbound() *PersistentOutboundTransformer {
+	providerRequest := &httpclient.Request{
+		APIFormat: string(llm.APIFormatOpenAIResponse),
+		Headers:   make(http.Header),
+	}
+	providerRequest.Headers.Set(responses.ResponsesLiteHeader, "true")
+
+	return &PersistentOutboundTransformer{
+		wrapped: &mockTransformer{apiFormat: llm.APIFormatOpenAIResponse},
+		state: &PersistenceState{
+			CurrentCandidate: &ChannelModelsCandidate{
+				Channel: &biz.Channel{
+					Channel: &ent.Channel{
+						ID:       1,
+						Name:     "codex-third-party",
+						Type:     channel.TypeCodex,
+						Settings: &objects.ChannelSettings{
+							PassThroughBody: lo.ToPtr(true),
+						},
+					},
+				},
+			},
+			OriginalRequestStream: lo.ToPtr(true),
+			LlmRequest: &llm.Request{
+				APIFormat: llm.APIFormatOpenAIResponse,
+				Stream:    lo.ToPtr(true),
+				RawRequest: &httpclient.Request{
+					APIFormat: string(llm.APIFormatOpenAIResponse),
+				},
+			},
+			RawProviderRequest: providerRequest,
+		},
+	}
+}
+
 func TestCaptureRawProviderStream_PropagatesError(t *testing.T) {
 	ctx := context.Background()
 	channel := &biz.Channel{
@@ -742,6 +884,13 @@ type blockingStream struct {
 	closeOnce sync.Once
 }
 
+type eventsThenBlockingStream struct {
+	events    []*httpclient.StreamEvent
+	index     int
+	closed    chan struct{}
+	closeOnce sync.Once
+}
+
 type terminalGuardProviderStream struct {
 	event            *httpclient.StreamEvent
 	served           bool
@@ -773,6 +922,53 @@ func newBlockingStream() *blockingStream {
 	return &blockingStream{
 		started: make(chan struct{}),
 		closed:  make(chan struct{}),
+	}
+}
+
+func newEventsThenBlockingStream(events []*httpclient.StreamEvent) *eventsThenBlockingStream {
+	return &eventsThenBlockingStream{
+		events: events,
+		closed: make(chan struct{}),
+	}
+}
+
+func (s *eventsThenBlockingStream) Next() bool {
+	if s.index < len(s.events) {
+		return true
+	}
+
+	<-s.closed
+
+	return false
+}
+
+func (s *eventsThenBlockingStream) Current() *httpclient.StreamEvent {
+	if s.index >= len(s.events) {
+		return nil
+	}
+
+	event := s.events[s.index]
+	s.index++
+
+	return event
+}
+
+func (s *eventsThenBlockingStream) Err() error { return nil }
+
+func (s *eventsThenBlockingStream) Close() error {
+	s.closeOnce.Do(func() {
+		close(s.closed)
+	})
+
+	return nil
+}
+
+func (s *eventsThenBlockingStream) isClosed() bool {
+	select {
+	case <-s.closed:
+		return true
+	default:
+		return false
 	}
 }
 
