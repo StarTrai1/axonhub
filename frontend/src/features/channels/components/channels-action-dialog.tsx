@@ -656,7 +656,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             type: currentRow.type,
             baseURL: currentRow.baseURL,
             name: currentRow.name,
-            policies: currentRow.policies ?? { stream: 'unlimited' },
+            policies: currentRow.policies ?? { stream: 'unlimited', supportsRemoteCompaction: false },
             supportedModels: currentRow.supportedModels,
             autoSyncSupportedModels: currentRow.autoSyncSupportedModels,
             autoSyncModelPattern: currentRow.autoSyncModelPattern || '',
@@ -680,7 +680,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               type: duplicateFromRow.type,
               baseURL: duplicateFromRow.baseURL,
               name: duplicateFromRow.name,
-              policies: duplicateFromRow.policies ?? { stream: 'unlimited' },
+              policies: duplicateFromRow.policies ?? { stream: 'unlimited', supportsRemoteCompaction: false },
               supportedModels: duplicateFromRow.supportedModels,
               autoSyncSupportedModels: duplicateFromRow.autoSyncSupportedModels,
               autoSyncModelPattern: duplicateFromRow.autoSyncModelPattern || '',
@@ -703,7 +703,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               type: derivedChannelType,
               baseURL: getDefaultBaseURL(derivedChannelType),
               name: '',
-              policies: { stream: 'unlimited' },
+              policies: { stream: 'unlimited', supportsRemoteCompaction: false },
               credentials: {
                 apiKeys: [],
                 gcp: {
@@ -1188,6 +1188,12 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         supportedModels,
         manualModels,
         credentials: valuesForSubmit.credentials,
+      };
+      const effectiveChannelType = dataWithModels.type ?? currentRow?.type ?? derivedChannelType;
+      dataWithModels.policies = {
+        ...dataWithModels.policies,
+        supportsRemoteCompaction:
+          effectiveChannelType === 'codex' && (dataWithModels.policies?.supportsRemoteCompaction ?? false),
       };
       const settingsForSubmit = isOpenCodeGoChannelType(dataWithModels.type as ChannelType | undefined)
         ? values.settings
@@ -2486,7 +2492,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                           </div>
 
                           {/* Auto sync checkbox */}
-                          <div className='pt-3'>
+                          <div className='grid grid-cols-1 gap-3 pt-3 sm:grid-cols-2'>
                             <FormField
                               control={form.control}
                               name='autoSyncSupportedModels'
@@ -2547,13 +2553,49 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                               )}
                             />
 
+                            {isCodexType && (
+                              <FormField
+                                control={form.control}
+                                name='policies.supportsRemoteCompaction'
+                                render={({ field }) => (
+                                  <FormItem className='flex items-center gap-2'>
+                                    <Checkbox
+                                      checked={field.value ?? false}
+                                      onCheckedChange={field.onChange}
+                                      data-testid='supports-remote-compaction-checkbox'
+                                    />
+                                    <div className='flex items-center gap-1.5'>
+                                      <FormLabel className='cursor-pointer text-sm font-normal'>
+                                        {t('channels.dialogs.fields.supportsRemoteCompaction.label')}
+                                      </FormLabel>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <button
+                                            type='button'
+                                            className='text-muted-foreground hover:text-foreground inline-flex items-center'
+                                            aria-label={t('channels.dialogs.fields.supportsRemoteCompaction.description')}
+                                            data-testid='supports-remote-compaction-tip'
+                                          >
+                                            <Info className='h-3.5 w-3.5' />
+                                          </button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>{t('channels.dialogs.fields.supportsRemoteCompaction.description')}</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </div>
+                                  </FormItem>
+                                )}
+                              />
+                            )}
+
                             {/* Auto sync model pattern */}
                             {form.watch('autoSyncSupportedModels') && (
                               <FormField
                                 control={form.control}
                                 name='autoSyncModelPattern'
                                 render={({ field }) => (
-                                  <FormItem className='mt-2 pl-6'>
+                                  <FormItem className='pl-6 sm:col-span-2'>
                                     <FormLabel className='text-sm font-normal'>
                                       {t('channels.dialogs.fields.autoSyncModelPattern.label')}
                                     </FormLabel>

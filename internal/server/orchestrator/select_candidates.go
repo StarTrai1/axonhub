@@ -66,6 +66,9 @@ func selectCandidates(inbound *PersistentInboundTransformer, quotaProvider Provi
 
 		quotaSelector := WithProviderQuotaSelector(selector, quotaProvider, systemService)
 		selector = quotaSelector
+		// Keep capability routing after eligibility filters and before load balancing,
+		// which may truncate the candidate set according to the retry policy.
+		selector = WithRemoteCompactionSelector(selector)
 
 		if inbound.state.LoadBalancer != nil {
 			selector = WithLoadBalancedSelector(selector, inbound.state.LoadBalancer, inbound.state.RetryPolicyProvider)
