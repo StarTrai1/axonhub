@@ -76,6 +76,7 @@ const CREATE_CHANNEL_MUTATION = `
       status
       policies {
         stream
+        supportsRemoteCompaction
       }
       supportedModels
       autoSyncSupportedModels
@@ -149,6 +150,7 @@ const DUPLICATE_CHANNEL_MUTATION = `
       status
       policies {
         stream
+        supportsRemoteCompaction
       }
       supportedModels
       autoSyncSupportedModels
@@ -222,6 +224,7 @@ const BULK_CREATE_CHANNELS_MUTATION = `
       status
       policies {
         stream
+        supportsRemoteCompaction
       }
       supportedModels
       autoSyncSupportedModels
@@ -295,6 +298,7 @@ const UPDATE_CHANNEL_MUTATION = `
       status
       policies {
         stream
+        supportsRemoteCompaction
       }
       supportedModels
       autoSyncSupportedModels
@@ -480,7 +484,11 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
         baseURL
         name
         status
-          supportedModels
+        policies {
+          stream
+          supportsRemoteCompaction
+        }
+        supportedModels
         autoSyncSupportedModels
         autoSyncModelPattern
         manualModels
@@ -796,6 +804,7 @@ const QUERY_CHANNELS_QUERY = `
           status
           policies {
             stream
+            supportsRemoteCompaction
           }
           credentials {
             apiKey

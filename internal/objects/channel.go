@@ -380,7 +380,8 @@ const (
 )
 
 type ChannelPolicies struct {
-	Stream CapabilityPolicy `json:"stream,omitempty"`
+	Stream                   CapabilityPolicy `json:"stream,omitempty"`
+	SupportsRemoteCompaction bool             `json:"supportsRemoteCompaction,omitempty"`
 }
 
 // ParseOverrideOperations parses the override parameters string.
