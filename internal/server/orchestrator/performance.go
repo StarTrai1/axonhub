@@ -176,11 +176,28 @@ func (s *recordPerformanceStream) Current() *llm.Response {
 
 	if tokenCount := event.Usage.GetCompletionTokens(); tokenCount != nil && *tokenCount > 0 {
 		s.state.Perf.CompletionTokens = *tokenCount
-		s.state.Perf.MarkSuccess()
-		s.state.ChannelService.AsyncRecordPerformance(s.ctx, s.state.Perf)
+		s.markSuccess()
+	}
+
+	// A Responses-compatible provider may omit usage from response.completed.
+	// Its transformer still emits the unified [DONE] event, which is the protocol
+	// completion boundary and must finalize latency before persistence runs.
+	if event == llm.DoneResponse || event.Object == "[DONE]" {
+		s.markSuccess()
 	}
 
 	return event
+}
+
+func (s *recordPerformanceStream) markSuccess() {
+	if s.state == nil || s.state.Perf == nil || s.state.Perf.RequestCompleted {
+		return
+	}
+
+	s.state.Perf.MarkSuccess()
+	if s.state.ChannelService != nil {
+		s.state.ChannelService.AsyncRecordPerformance(s.ctx, s.state.Perf)
+	}
 }
 
 func (s *recordPerformanceStream) Next() bool {

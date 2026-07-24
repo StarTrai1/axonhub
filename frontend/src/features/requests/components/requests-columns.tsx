@@ -18,7 +18,7 @@ import { useGeneralSettings, useSecuritySettings, useUpdateSecuritySettings } fr
 import { usePermissions } from '@/hooks/usePermissions';
 import { useRequestPermissions } from '../../../hooks/useRequestPermissions';
 import { Request } from '../data/schema';
-import { calculateTokensPerSecond, useDisplayMode } from '../utils/tokens-per-second';
+import { calculateTokensPerSecond, getEffectiveRequestLatencyMs, useDisplayMode } from '../utils/tokens-per-second';
 import { getStatusColor } from './help';
 
 interface UseRequestsColumnsOptions {
@@ -579,7 +579,7 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
     },
     {
       id: 'latency',
-      accessorFn: (row) => row.metricsLatencyMs ?? null,
+      accessorFn: (row) => getEffectiveRequestLatencyMs(row),
       header: ({ column }) => (
         <div className='flex items-center gap-1'>
           {displayMode === 'latency' ? (
@@ -606,8 +606,9 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
 
         if (request.status === 'completed') {
           if (displayMode === 'latency') {
-            if (request.metricsLatencyMs != null) {
-              latencyParts.push(formatDuration(request.metricsLatencyMs));
+            const requestLatencyMs = getEffectiveRequestLatencyMs(request);
+            if (requestLatencyMs != null) {
+              latencyParts.push(formatDuration(requestLatencyMs));
             }
           } else {
             const tokensPerSecond = calculateTokensPerSecond(request);
@@ -630,8 +631,8 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
       enableSorting: true,
       enableHiding: true,
       sortingFn: (rowA, rowB) => {
-        const a = rowA.original.metricsLatencyMs ?? 0;
-        const b = rowB.original.metricsLatencyMs ?? 0;
+        const a = getEffectiveRequestLatencyMs(rowA.original) ?? 0;
+        const b = getEffectiveRequestLatencyMs(rowB.original) ?? 0;
         return a - b;
       },
     },

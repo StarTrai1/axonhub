@@ -12,6 +12,25 @@ const MINIMUM_LATENCY_MS_FOR_CACHE_HITS = 10;
 
 const VALID_DISPLAY_MODES: DisplayMode[] = ['latency', 'tokensPerSecond'];
 
+export function getEffectiveRequestLatencyMs(request: Request): number | null {
+  const recordedLatency = request.metricsLatencyMs;
+  const firstTokenLatency = request.metricsFirstTokenLatencyMs;
+  if (
+    recordedLatency != null &&
+    recordedLatency > 0 &&
+    (firstTokenLatency == null || recordedLatency >= firstTokenLatency)
+  ) {
+    return recordedLatency;
+  }
+
+  const wallLatency = request.updatedAt.getTime() - request.createdAt.getTime();
+  if (Number.isFinite(wallLatency) && wallLatency >= 0) {
+    return Math.round(wallLatency);
+  }
+
+  return recordedLatency ?? null;
+}
+
 /**
  * Calculate tokens per second for a given request.
  * Handles all edge cases including no usage log, zero latency, zero completion tokens,
@@ -22,7 +41,8 @@ const VALID_DISPLAY_MODES: DisplayMode[] = ['latency', 'tokensPerSecond'];
  */
 export function calculateTokensPerSecond(request: Request): string {
   const usageLog = request.usageLogs?.edges?.[0]?.node;
-  if (!usageLog || request.metricsLatencyMs == null || request.metricsLatencyMs <= 0) {
+  const requestLatencyMs = getEffectiveRequestLatencyMs(request);
+  if (!usageLog || requestLatencyMs == null || requestLatencyMs <= 0) {
     return '-';
   }
 
@@ -39,10 +59,10 @@ export function calculateTokensPerSecond(request: Request): string {
   // Calculate effective latency:
   // For streaming: subtract TTFT (time to first token) to get actual generation time
   // For non-streaming: use full latency
-  let effectiveLatencyMs = request.metricsLatencyMs;
+  let effectiveLatencyMs = requestLatencyMs;
   if (request.stream && request.metricsFirstTokenLatencyMs != null) {
-    if (request.metricsFirstTokenLatencyMs <= request.metricsLatencyMs) {
-      effectiveLatencyMs = request.metricsLatencyMs - request.metricsFirstTokenLatencyMs;
+    if (request.metricsFirstTokenLatencyMs <= requestLatencyMs) {
+      effectiveLatencyMs = requestLatencyMs - request.metricsFirstTokenLatencyMs;
     }
   }
 

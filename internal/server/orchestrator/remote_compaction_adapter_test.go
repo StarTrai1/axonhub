@@ -3,8 +3,13 @@ package orchestrator
 import (
 	"encoding/json"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/streams"
 )
 
 func TestBuildLocalCompactionRequest(t *testing.T) {
@@ -107,4 +112,25 @@ func TestCompactionResponseAndSummaryExtraction(t *testing.T) {
 	require.True(t, responseContainsCompactionID(response, "cmp_123"))
 	require.False(t, responseContainsCompactionID(response, "cmp_other"))
 	require.Equal(t, "part one\npart two", extractAssistantOutputText(response))
+}
+
+func TestCollectLocalCompactionBridgeStreamStopsAtCompleted(t *testing.T) {
+	completed := &httpclient.StreamEvent{
+		Type: "response.completed",
+		Data: []byte(`{"type":"response.completed","response":{"id":"resp_bridge","status":"completed"}}`),
+	}
+	trailing := &httpclient.StreamEvent{Type: "response.in_progress", Data: []byte(`{"type":"response.in_progress"}`)}
+	perf := &biz.PerformanceRecord{StartTime: time.Now().Add(-time.Second), Stream: true}
+
+	chunks, err := collectLocalCompactionBridgeStream(
+		streams.SliceStream([]*httpclient.StreamEvent{completed, trailing}),
+		perf,
+	)
+
+	require.NoError(t, err)
+	require.Equal(t, []*httpclient.StreamEvent{completed}, chunks)
+	require.True(t, perf.RequestCompleted)
+	require.NotNil(t, perf.FirstTokenTime)
+	_, latencyMs, _ := perf.Calculate()
+	require.GreaterOrEqual(t, latencyMs, int64(1000))
 }

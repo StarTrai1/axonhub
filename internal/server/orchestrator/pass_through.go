@@ -305,16 +305,13 @@ func captureRawProviderStreamWithTerminalGrace(
 		// to unblock the goroutine's channel sends and release the upstream HTTP connection
 		// before the next attempt starts, preventing goroutine leaks.
 		attemptCtx, cancel := context.WithCancel(ctx)
-		if shouldRepairDelayedCodexResponsesTerminal(outbound) {
-			stream = newDelayedCodexResponsesTerminalStream(
-				attemptCtx,
-				stream,
-				channel.Name,
-				terminalGracePeriod,
-				delayedCodexResponsesUsageTailTimeout,
-				newDelayedCodexResponsesUsageRecorder(ctx, outbound.state, channel.Name),
-			)
-		}
+		stream = maybeRepairDelayedCodexResponsesTerminal(
+			attemptCtx,
+			outbound,
+			stream,
+			terminalGracePeriod,
+			newDelayedCodexResponsesUsageRecorder(ctx, outbound.state, channel.Name),
+		)
 
 		var closeStreamOnce sync.Once
 		closeStream := func() {
@@ -389,6 +386,28 @@ func captureRawProviderStreamWithTerminalGrace(
 
 		return &passThroughChannelStream{ctx: ctx, ch: pipelineCh, errRef: &rawStreamErr, cancel: closeStream}, nil
 	})
+}
+
+func maybeRepairDelayedCodexResponsesTerminal(
+	ctx context.Context,
+	outbound *PersistentOutboundTransformer,
+	stream streams.Stream[*httpclient.StreamEvent],
+	gracePeriod time.Duration,
+	onUsage func(*llm.Usage),
+) streams.Stream[*httpclient.StreamEvent] {
+	if !shouldRepairDelayedCodexResponsesTerminal(outbound) {
+		return stream
+	}
+
+	channel := outbound.GetCurrentChannel()
+	return newDelayedCodexResponsesTerminalStream(
+		ctx,
+		stream,
+		channel.Name,
+		gracePeriod,
+		delayedCodexResponsesUsageTailTimeout,
+		onUsage,
+	)
 }
 
 func newDelayedCodexResponsesUsageRecorder(

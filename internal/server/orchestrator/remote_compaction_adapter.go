@@ -22,6 +22,7 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
+	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
 
@@ -448,25 +449,34 @@ func (a *remoteCompactionAdapter) generateLocalSummaryWithCandidate(
 		if err != nil {
 			return "", err
 		}
+		attemptState.RequestExec = executionRecord
 	}
 
 	customizedExecutor := outbound.CustomizeExecutor(executor)
+	perf := &biz.PerformanceRecord{
+		ChannelID: candidate.Channel.ID,
+		StartTime: time.Now(),
+		Stream:    true,
+	}
+	attemptState.Perf = perf
 	stream, err := customizedExecutor.DoStream(ctx, providerRequest)
 	if err != nil {
 		a.markBridgeExecutionFailed(ctx, executionRecord, err)
 		return "", err
 	}
+	stream = maybeRepairDelayedCodexResponsesTerminal(
+		ctx,
+		outbound,
+		stream,
+		delayedCodexResponsesTerminalGracePeriod,
+		newDelayedCodexResponsesUsageRecorder(ctx, attemptState, candidate.Channel.Name),
+	)
 	defer func() {
 		_ = stream.Close()
 	}()
 
-	chunks := make([]*httpclient.StreamEvent, 0, 32)
-	for stream.Next() {
-		if event := stream.Current(); event != nil {
-			chunks = append(chunks, event)
-		}
-	}
-	if err = stream.Err(); err != nil {
+	chunks, err := collectLocalCompactionBridgeStream(stream, perf)
+	if err != nil {
 		a.markBridgeExecutionFailed(ctx, executionRecord, err)
 		return "", err
 	}
@@ -482,11 +492,27 @@ func (a *remoteCompactionAdapter) generateLocalSummaryWithCandidate(
 		a.markBridgeExecutionFailed(ctx, executionRecord, err)
 		return "", err
 	}
+	if meta.Usage != nil {
+		if tokenCount := meta.Usage.GetCompletionTokens(); tokenCount != nil {
+			perf.CompletionTokens = *tokenCount
+		}
+	}
+	if !perf.RequestCompleted {
+		perf.MarkSuccess()
+	}
+	if attemptState.ChannelService != nil {
+		attemptState.ChannelService.AsyncRecordPerformance(ctx, perf)
+	}
+	firstTokenLatencyMs, requestLatencyMs, _ := perf.Calculate()
+	metrics := &biz.LatencyMetrics{LatencyMs: &requestLatencyMs}
+	if perf.FirstTokenTime != nil {
+		metrics.FirstTokenLatencyMs = &firstTokenLatencyMs
+	}
 
 	if bridgeRecord != nil && a.requestService != nil {
 		persistCtx := context.WithoutCancel(ctx)
 		if executionRecord != nil {
-			if persistErr := a.requestService.UpdateRequestExecutionCompleted(persistCtx, executionRecord.ID, meta.ID, responseBody, nil); persistErr != nil {
+			if persistErr := a.requestService.UpdateRequestExecutionCompleted(persistCtx, executionRecord.ID, meta.ID, responseBody, metrics); persistErr != nil {
 				log.Warn(persistCtx, "failed to persist local compaction bridge execution", log.Cause(persistErr))
 			}
 			if meta.Usage != nil && a.usageLogService != nil {
@@ -498,12 +524,40 @@ func (a *remoteCompactionAdapter) generateLocalSummaryWithCandidate(
 		if persistErr := a.requestService.UpdateRequestChannelID(persistCtx, bridgeRecord.ID, candidate.Channel.ID); persistErr != nil {
 			log.Warn(persistCtx, "failed to persist local compaction bridge channel", log.Cause(persistErr))
 		}
-		if persistErr := a.requestService.UpdateRequestCompleted(persistCtx, bridgeRecord.ID, meta.ID, responseBody, nil); persistErr != nil {
+		if persistErr := a.requestService.UpdateRequestCompleted(persistCtx, bridgeRecord.ID, meta.ID, responseBody, metrics); persistErr != nil {
 			log.Warn(persistCtx, "failed to persist local compaction bridge response", log.Cause(persistErr))
 		}
 	}
 
 	return summary, nil
+}
+
+func collectLocalCompactionBridgeStream(
+	stream streams.Stream[*httpclient.StreamEvent],
+	perf *biz.PerformanceRecord,
+) ([]*httpclient.StreamEvent, error) {
+	chunks := make([]*httpclient.StreamEvent, 0, 32)
+	for stream.Next() {
+		event := stream.Current()
+		if event == nil {
+			continue
+		}
+		if perf != nil && perf.FirstTokenTime == nil {
+			perf.MarkFirstToken()
+		}
+		chunks = append(chunks, event)
+		if isTerminalStreamEvent(event) {
+			if perf != nil && !perf.RequestCompleted {
+				perf.MarkSuccess()
+			}
+			break
+		}
+	}
+	if err := stream.Err(); err != nil {
+		return nil, err
+	}
+
+	return chunks, nil
 }
 
 func (a *remoteCompactionAdapter) markBridgeExecutionFailed(ctx context.Context, execution *ent.RequestExecution, err error) {

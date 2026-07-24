@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -11,6 +12,7 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/streams"
 )
 
 // mockChannelService is a mock implementation of ChannelService for testing
@@ -330,5 +332,24 @@ func TestPerformanceRecording_StreamFlagBugRegression(t *testing.T) {
 			"This indicates the fix from commit 8afd95c3 has been reverted.")
 }
 
-// TestRecordPerformanceStream_MarksFirstToken verifies that recordPerformanceStream
-// correctly marks the first token time.
+// TestRecordPerformanceStream_MarksDoneWithoutUsage verifies that a protocol
+// completion records latency even when a compatible provider omits usage.
+func TestRecordPerformanceStream_MarksDoneWithoutUsage(t *testing.T) {
+	perf := &biz.PerformanceRecord{
+		StartTime: time.Now().Add(-time.Second),
+		Stream:    true,
+	}
+	stream := &recordPerformanceStream{
+		ctx:    context.Background(),
+		stream: streams.SliceStream([]*llm.Response{llm.DoneResponse}),
+		state:  &PersistenceState{Perf: perf},
+	}
+
+	require.True(t, stream.Next())
+	require.Same(t, llm.DoneResponse, stream.Current())
+	require.True(t, perf.Success)
+	require.True(t, perf.RequestCompleted)
+	require.False(t, perf.EndTime.IsZero())
+	_, latencyMs, _ := perf.Calculate()
+	require.GreaterOrEqual(t, latencyMs, int64(1000))
+}
