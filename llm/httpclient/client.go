@@ -23,7 +23,10 @@ import (
 // response body. Error bodies beyond this size are truncated to prevent OOM
 // from pathological upstream responses that echo large request payloads in
 // validation error messages, producing response bodies of 1+ GB.
-const MaxErrorBodySize = 1 << 20 // 1 MB
+const (
+	MaxErrorBodySize          = 1 << 20 // 1 MB
+	maxIdleConnsPerHost       = 100
+)
 
 // HttpClient implements the HttpClient interface.
 type HttpClient struct {
@@ -65,6 +68,7 @@ func NewHttpClientWithProxy(proxyConfig *ProxyConfig, opts ...ClientOption) *Htt
 		}).DialContext,
 		ForceAttemptHTTP2:     !disableConnectionReuse,
 		MaxIdleConns:          100,
+		MaxIdleConnsPerHost:   maxIdleConnsPerHost,
 		IdleConnTimeout:       90 * time.Second,
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
@@ -163,28 +167,27 @@ func NewHttpClient(opts ...ClientOption) *HttpClient {
 		opt(&options)
 	}
 
-	client := &http.Client{}
+	var transport *http.Transport
+	if defaultTransport, ok := http.DefaultTransport.(*http.Transport); ok {
+		transport = defaultTransport.Clone()
+	} else {
+		// Fall back to a transport close to http.DefaultTransport when it has been replaced.
+		transport = &http.Transport{
+			Proxy: getProxyFunc(nil),
+			DialContext: (&net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}).DialContext,
+			ForceAttemptHTTP2:     true,
+			MaxIdleConns:          100,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+		}
+	}
+	transport.MaxIdleConnsPerHost = maxIdleConnsPerHost
 
 	if options.insecureSkipVerify {
-		var transport *http.Transport
-		if defaultTransport, ok := http.DefaultTransport.(*http.Transport); ok {
-			transport = defaultTransport.Clone()
-		} else {
-			// Fall back to a transport close to http.DefaultTransport when it has been replaced.
-			transport = (&http.Transport{
-				Proxy: getProxyFunc(nil),
-				DialContext: (&net.Dialer{
-					Timeout:   30 * time.Second,
-					KeepAlive: 30 * time.Second,
-				}).DialContext,
-				ForceAttemptHTTP2:     true,
-				MaxIdleConns:          100,
-				IdleConnTimeout:       90 * time.Second,
-				TLSHandshakeTimeout:   10 * time.Second,
-				ExpectContinueTimeout: 1 * time.Second,
-			})
-		}
-
 		if transport.TLSClientConfig == nil {
 			transport.TLSClientConfig = &tls.Config{}
 		} else {
@@ -192,11 +195,10 @@ func NewHttpClient(opts ...ClientOption) *HttpClient {
 		}
 
 		transport.TLSClientConfig.InsecureSkipVerify = true //nolint:gosec // User-configured option for self-signed certificates
-		client.Transport = transport
 	}
 
 	return &HttpClient{
-		client: client,
+		client: &http.Client{Transport: transport},
 		opts:   opts,
 	}
 }

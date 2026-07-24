@@ -114,6 +114,16 @@ func TestCompactionResponseAndSummaryExtraction(t *testing.T) {
 	require.Equal(t, "part one\npart two", extractAssistantOutputText(response))
 }
 
+func TestStoredRemoteCompactionHeaderLookupIsCaseInsensitive(t *testing.T) {
+	headers := []byte(`{
+		"x-axonhub-remote-compaction-cache":["cache-key"],
+		"thread-id":["thread-1"]
+	}`)
+
+	require.Equal(t, "cache-key", storedRemoteCompactionCacheKey(headers))
+	require.Equal(t, "thread-1", storedRemoteCompactionThreadID(headers))
+}
+
 func TestCollectLocalCompactionBridgeStreamStopsAtCompleted(t *testing.T) {
 	completed := &httpclient.StreamEvent{
 		Type: "response.completed",

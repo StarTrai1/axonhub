@@ -337,6 +337,15 @@ func TestNewHttpClient_WithInsecureSkipVerify_PreservesDefaultTransportSettings(
 	require.NotNil(t, tr.Proxy)
 	require.NotNil(t, tr.TLSClientConfig)
 	require.True(t, tr.TLSClientConfig.InsecureSkipVerify)
+	require.Equal(t, maxIdleConnsPerHost, tr.MaxIdleConnsPerHost)
+}
+
+func TestNewHttpClient_ConfiguresPerHostIdlePool(t *testing.T) {
+	hc := NewHttpClient()
+
+	tr, ok := hc.GetNativeClient().Transport.(*http.Transport)
+	require.True(t, ok)
+	require.Equal(t, maxIdleConnsPerHost, tr.MaxIdleConnsPerHost)
 }
 
 type proxyConnectionIDContextKey struct{}
@@ -392,6 +401,7 @@ func TestNewHttpClientWithProxy_ConnectionReuse(t *testing.T) {
 			require.True(t, ok)
 			require.Equal(t, tt.disableConnectionReuse, transport.DisableKeepAlives)
 			require.Equal(t, !tt.disableConnectionReuse, transport.ForceAttemptHTTP2)
+			require.Equal(t, maxIdleConnsPerHost, transport.MaxIdleConnsPerHost)
 
 			for range 2 {
 				_, err := client.Do(t.Context(), &Request{

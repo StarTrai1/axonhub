@@ -1473,17 +1473,23 @@ func buildLastChannelCacheKey(traceID int) string {
 	return fmt.Sprintf("last_channel:%d", traceID)
 }
 
-// FindRecentCompletedRequests returns recent successful requests for one API key.
-// Callers that need protocol-specific recovery can inspect the stored bodies while
-// preserving the same project and API-key isolation as the original request.
-func (s *RequestService) FindRecentCompletedRequests(
+// RecentCompletedRequestMetadata contains only the fields needed to identify a
+// historical request without loading its potentially large request and response bodies.
+type RecentCompletedRequestMetadata struct {
+	ID             int                    `json:"id"`
+	RequestHeaders objects.JSONRawMessage `json:"request_headers"`
+}
+
+// FindRecentCompletedRequestMetadata returns lightweight metadata for recent
+// successful requests while preserving project and API-key isolation.
+func (s *RequestService) FindRecentCompletedRequestMetadata(
 	ctx context.Context,
 	apiKeyID int,
 	projectID int,
 	modelID string,
 	format llm.APIFormat,
 	limit int,
-) ([]*ent.Request, error) {
+) ([]RecentCompletedRequestMetadata, error) {
 	if apiKeyID <= 0 || projectID <= 0 {
 		return nil, nil
 	}
@@ -1504,13 +1510,26 @@ func (s *RequestService) FindRecentCompletedRequests(
 		query = query.Where(request.FormatEQ(format.String()))
 	}
 
-	requests, err := query.
+	var requests []RecentCompletedRequestMetadata
+	err := query.
 		Order(ent.Desc(request.FieldCreatedAt), ent.Desc(request.FieldID)).
 		Limit(limit).
-		All(ctx)
+		Select(request.FieldID, request.FieldRequestHeaders).
+		Scan(ctx, &requests)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query recent completed requests: %w", err)
+		return nil, fmt.Errorf("failed to query recent completed request metadata: %w", err)
 	}
 
 	return requests, nil
+}
+
+// GetRequestByID loads a complete request after a lightweight metadata lookup
+// identifies it as relevant.
+func (s *RequestService) GetRequestByID(ctx context.Context, requestID int) (*ent.Request, error) {
+	req, err := s.entFromContext(ctx).Request.Get(ctx, requestID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query request %d: %w", requestID, err)
+	}
+
+	return req, nil
 }

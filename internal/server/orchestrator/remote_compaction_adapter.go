@@ -242,7 +242,7 @@ func (a *remoteCompactionAdapter) findStoredSummaryOrSource(
 		return "", nil, errors.New("request history is unavailable")
 	}
 
-	recent, err := a.requestService.FindRecentCompletedRequests(
+	recent, err := a.requestService.FindRecentCompletedRequestMetadata(
 		ctx,
 		state.APIKey.ID,
 		state.APIKey.ProjectID,
@@ -255,8 +255,26 @@ func (a *remoteCompactionAdapter) findStoredSummaryOrSource(
 	}
 
 	var source *remoteCompactionSource
-	for _, prior := range recent {
-		if storedRemoteCompactionCacheKey(prior.RequestHeaders) == cacheKey {
+	for _, metadata := range recent {
+		storedCacheKey := storedRemoteCompactionCacheKey(metadata.RequestHeaders)
+		if source != nil && storedCacheKey != cacheKey {
+			continue
+		}
+
+		storedThreadID := storedRemoteCompactionThreadID(metadata.RequestHeaders)
+		// Skip unrelated Codex threads before loading request bodies, which may each
+		// contain an entire long-running conversation. Missing legacy headers still
+		// fall through to the body-level compatibility check below.
+		if storedCacheKey != cacheKey && storedThreadID != "" && storedThreadID != threadID {
+			continue
+		}
+
+		prior, loadErr := a.requestService.GetRequestByID(ctx, metadata.ID)
+		if loadErr != nil {
+			return "", nil, loadErr
+		}
+
+		if storedCacheKey == cacheKey {
 			responseBody, loadErr := a.requestService.LoadResponseBody(ctx, prior)
 			if loadErr != nil {
 				return "", nil, loadErr
@@ -851,9 +869,25 @@ func remoteCompactionCacheKey(ref *remoteCompactionReference) string {
 }
 
 func storedRemoteCompactionCacheKey(rawHeaders []byte) string {
-	headers := decodeStoredHeaders(rawHeaders)
+	return storedHeaderValue(rawHeaders, remoteCompactionCacheHeader)
+}
 
-	return headers.Get(remoteCompactionCacheHeader)
+func storedRemoteCompactionThreadID(rawHeaders []byte) string {
+	return storedHeaderValue(rawHeaders, "Thread-Id")
+}
+
+func storedHeaderValue(rawHeaders []byte, name string) string {
+	headers := decodeStoredHeaders(rawHeaders)
+	if value := headers.Get(name); value != "" {
+		return value
+	}
+	for key, values := range headers {
+		if strings.EqualFold(key, name) && len(values) > 0 {
+			return values[0]
+		}
+	}
+
+	return ""
 }
 
 func decodeStoredHeaders(raw []byte) http.Header {

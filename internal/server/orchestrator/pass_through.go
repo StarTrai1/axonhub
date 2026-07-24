@@ -93,7 +93,7 @@ func applyPassThroughRequestBody(outbound *PersistentOutboundTransformer, system
 		outbound.state.RawProviderRequest = request
 
 		passThroughEnabled := outbound.isPassThroughEnabled(ctx, systemService)
-		if passThroughEnabled && shouldRepairDelayedCodexResponsesTerminal(outbound) {
+		if shouldRepairDelayedCodexResponsesTerminal(outbound) {
 			request.DetachedStreamTimeout = delayedCodexResponsesUpstreamTimeout
 		}
 
@@ -285,7 +285,18 @@ func captureRawProviderStreamWithTerminalGrace(
 ) pipeline.Middleware {
 	return pipeline.OnRawStream("capture-raw-provider-stream", func(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*httpclient.StreamEvent], error) {
 		if !outbound.isPassThroughEnabled(ctx, systemService) {
-			return stream, nil
+			if !shouldRepairDelayedCodexResponsesTerminal(outbound) {
+				return stream, nil
+			}
+
+			channel := outbound.GetCurrentChannel()
+			return maybeRepairDelayedCodexResponsesTerminal(
+				ctx,
+				outbound,
+				stream,
+				terminalGracePeriod,
+				newDelayedCodexResponsesUsageRecorder(ctx, outbound.state, channel.Name),
+			), nil
 		}
 
 		channel := outbound.GetCurrentChannel()

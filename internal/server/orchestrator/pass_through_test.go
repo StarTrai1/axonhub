@@ -642,6 +642,50 @@ func TestCaptureRawProviderStream_RepairsDelayedCodexResponsesTerminal(t *testin
 	assert.True(t, src.isClosed())
 }
 
+func TestCaptureRawProviderStream_RepairsDelayedCodexResponsesTerminalWithoutPassThrough(t *testing.T) {
+	ctx := context.Background()
+	outbound := newCodexResponsesPassThroughOutbound()
+	outbound.state.LlmRequest.APIFormat = llm.APIFormatOpenAIChatCompletion
+	events := []*httpclient.StreamEvent{
+		{
+			Type: "response.created",
+			Data: json.RawMessage(`{"type":"response.created","sequence_number":0,"response":{"id":"resp_transformed","object":"response","created_at":1700000000,"model":"gpt-5.6-sol","status":"in_progress","output":[]}}`),
+		},
+		{
+			Type: "response.output_item.added",
+			Data: json.RawMessage(`{"type":"response.output_item.added","sequence_number":1,"output_index":0,"item":{"id":"msg_1","type":"message","status":"in_progress","role":"assistant","content":[]}}`),
+		},
+		{
+			Type: "response.output_item.done",
+			Data: json.RawMessage(`{"type":"response.output_item.done","sequence_number":2,"output_index":0,"item":{"id":"msg_1","type":"message","status":"completed","role":"assistant","content":[{"type":"output_text","text":"OK","annotations":[]}]}}`),
+		},
+	}
+	src := newEventsThenBlockingStream(events)
+
+	result, err := captureRawProviderStreamWithTerminalGrace(outbound, nil, 20*time.Millisecond).
+		OnOutboundRawStream(ctx, src)
+	require.NoError(t, err)
+
+	pipelineEvents, err := streams.All(result)
+	require.NoError(t, err)
+	require.Len(t, pipelineEvents, len(events)+1)
+	assert.Equal(t, "response.completed", pipelineEvents[len(pipelineEvents)-1].Type)
+	assert.Nil(t, outbound.state.RawStreamCh)
+	assert.True(t, src.isClosed())
+}
+
+func TestApplyPassThroughRequestBody_DetachesCodexResponsesRepairWithoutPassThrough(t *testing.T) {
+	outbound := newCodexResponsesPassThroughOutbound()
+	outbound.state.LlmRequest.APIFormat = llm.APIFormatOpenAIChatCompletion
+	request := outbound.state.RawProviderRequest
+
+	processed, err := applyPassThroughRequestBody(outbound, nil).
+		OnOutboundRawRequest(context.Background(), request)
+
+	require.NoError(t, err)
+	require.Equal(t, delayedCodexResponsesUpstreamTimeout, processed.DetachedStreamTimeout)
+}
+
 func TestCaptureRawProviderStream_PrefersRealCodexResponsesTerminal(t *testing.T) {
 	ctx := context.Background()
 	outbound := newCodexResponsesPassThroughOutbound()
