@@ -121,6 +121,9 @@ models:
   CapabilityPolicy:
     model:
       - github.com/looplj/axonhub/internal/objects.CapabilityPolicy
+  WebSearchPolicy:
+    model:
+      - github.com/looplj/axonhub/internal/objects.WebSearchPolicy
   ChannelEndpoint:
     model:
       - github.com/looplj/axonhub/internal/objects.ChannelEndpoint

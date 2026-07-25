@@ -124,14 +124,23 @@ export type ChannelStatus = z.infer<typeof channelStatusSchema>;
 export const capabilityPolicySchema = z.enum(['unlimited', 'require', 'forbid']);
 export type CapabilityPolicy = z.infer<typeof capabilityPolicySchema>;
 
-export const channelPoliciesSchema = z.object({
-  stream: capabilityPolicySchema.optional(),
-  supportsRemoteCompaction: z.boolean().optional().default(false),
-  supportsWebSearch: z
-    .boolean()
-    .nullish()
-    .transform((value) => value ?? true),
-});
+export const webSearchPolicySchema = z.enum(['auto', 'native', 'mcp_only']);
+export type WebSearchPolicy = z.infer<typeof webSearchPolicySchema>;
+
+export const channelPoliciesSchema = z
+  .object({
+    stream: capabilityPolicySchema.optional(),
+    supportsRemoteCompaction: z.boolean().optional().default(false),
+    webSearch: webSearchPolicySchema.nullish(),
+    supportsWebSearch: z
+      .boolean()
+      .nullish()
+      .transform((value) => value ?? true),
+  })
+  .transform((value) => ({
+    ...value,
+    webSearch: value.webSearch ?? (value.supportsWebSearch ? 'native' : 'auto'),
+  }));
 export type ChannelPolicies = z.infer<typeof channelPoliciesSchema>;
 
 // Model Mapping

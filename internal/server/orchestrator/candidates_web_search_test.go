@@ -30,6 +30,10 @@ func TestWebSearchSelector_Select(t *testing.T) {
 			},
 		}
 	}
+	withPolicy := func(candidate *ChannelModelsCandidate, policy objects.WebSearchPolicy) *ChannelModelsCandidate {
+		candidate.Channel.Policies.WebSearch = policy
+		return candidate
+	}
 	modelNames := func(candidates []*ChannelModelsCandidate) []string {
 		return lo.Map(candidates, func(candidate *ChannelModelsCandidate, _ int) string {
 			return candidate.Models[0].RequestModel
@@ -82,6 +86,33 @@ func TestWebSearchSelector_Select(t *testing.T) {
 				newCandidate("second", channel.TypeCodex, lo.ToPtr(false)),
 			},
 			want: []string{"first", "second"},
+		},
+		{
+			name:    "explicit native policy is preferred over auto",
+			request: searchRequest,
+			candidates: []*ChannelModelsCandidate{
+				withPolicy(newCandidate("auto", channel.TypeCodex, lo.ToPtr(true)), objects.WebSearchPolicyAuto),
+				withPolicy(newCandidate("native", channel.TypeCodex, lo.ToPtr(false)), objects.WebSearchPolicyNative),
+			},
+			want: []string{"native"},
+		},
+		{
+			name:    "MCP-only channels are excluded from auto fallback",
+			request: searchRequest,
+			candidates: []*ChannelModelsCandidate{
+				withPolicy(newCandidate("mcp-only", channel.TypeCodex, nil), objects.WebSearchPolicyMCPOnly),
+				withPolicy(newCandidate("auto", channel.TypeCodex, nil), objects.WebSearchPolicyAuto),
+			},
+			want: []string{"auto"},
+		},
+		{
+			name:    "all MCP-only channels fail closed",
+			request: searchRequest,
+			candidates: []*ChannelModelsCandidate{
+				withPolicy(newCandidate("first", channel.TypeCodex, nil), objects.WebSearchPolicyMCPOnly),
+				withPolicy(newCandidate("second", channel.TypeCodex, nil), objects.WebSearchPolicyMCPOnly),
+			},
+			want: []string{},
 		},
 		{
 			name:    "capability is scoped to Codex channels",

@@ -386,6 +386,7 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 
 	// Apply channel transform options to create a new request
 	llmRequest = applyTransformOptions(llmRequest, candidate.Channel.Settings)
+	llmRequest = applyWebSearchPolicy(llmRequest, candidate.Channel)
 	llmRequest = filterResponseCustomToolMessagesForNonResponsesOutbound(llmRequest, p.wrapped.APIFormat())
 
 	if shouldForceStreamingForCandidate(candidate, llmRequest) {

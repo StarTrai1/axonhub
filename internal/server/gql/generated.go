@@ -493,6 +493,7 @@ type ComplexityRoot struct {
 		Stream                   func(childComplexity int) int
 		SupportsRemoteCompaction func(childComplexity int) int
 		SupportsWebSearch        func(childComplexity int) int
+		WebSearch                func(childComplexity int) int
 	}
 
 	ChannelProbe struct {
@@ -3993,6 +3994,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelPolicies.SupportsWebSearch(childComplexity), true
+	case "ChannelPolicies.webSearch":
+		if e.complexity.ChannelPolicies.WebSearch == nil {
+			break
+		}
+
+		return e.complexity.ChannelPolicies.WebSearch(childComplexity), true
 
 	case "ChannelProbe.avgTimeToFirstTokenMs":
 		if e.complexity.ChannelProbe.AvgTimeToFirstTokenMs == nil {
@@ -19701,6 +19708,8 @@ func (ec *executionContext) fieldContext_Channel_policies(_ context.Context, fie
 				return ec.fieldContext_ChannelPolicies_stream(ctx, field)
 			case "supportsRemoteCompaction":
 				return ec.fieldContext_ChannelPolicies_supportsRemoteCompaction(ctx, field)
+			case "webSearch":
+				return ec.fieldContext_ChannelPolicies_webSearch(ctx, field)
 			case "supportsWebSearch":
 				return ec.fieldContext_ChannelPolicies_supportsWebSearch(ctx, field)
 			}
@@ -23067,6 +23076,35 @@ func (ec *executionContext) fieldContext_ChannelPolicies_supportsRemoteCompactio
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelPolicies_webSearch(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelPolicies) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelPolicies_webSearch,
+		func(ctx context.Context) (any, error) {
+			return obj.WebSearch, nil
+		},
+		nil,
+		ec.marshalOWebSearchPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐWebSearchPolicy,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelPolicies_webSearch(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelPolicies",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type WebSearchPolicy does not have child fields")
 		},
 	}
 	return fc, nil
@@ -65896,7 +65934,7 @@ func (ec *executionContext) unmarshalInputChannelPoliciesInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"stream", "supportsRemoteCompaction", "supportsWebSearch"}
+	fieldsInOrder := [...]string{"stream", "supportsRemoteCompaction", "webSearch", "supportsWebSearch"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -65917,6 +65955,13 @@ func (ec *executionContext) unmarshalInputChannelPoliciesInput(ctx context.Conte
 				return it, err
 			}
 			it.SupportsRemoteCompaction = data
+		case "webSearch":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("webSearch"))
+			data, err := ec.unmarshalOWebSearchPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐWebSearchPolicy(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.WebSearch = data
 		case "supportsWebSearch":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("supportsWebSearch"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -91699,6 +91744,8 @@ func (ec *executionContext) _ChannelPolicies(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._ChannelPolicies_stream(ctx, field, obj)
 		case "supportsRemoteCompaction":
 			out.Values[i] = ec._ChannelPolicies_supportsRemoteCompaction(ctx, field, obj)
+		case "webSearch":
+			out.Values[i] = ec._ChannelPolicies_webSearch(ctx, field, obj)
 		case "supportsWebSearch":
 			out.Values[i] = ec._ChannelPolicies_supportsWebSearch(ctx, field, obj)
 		default:
@@ -120669,6 +120716,19 @@ func (ec *executionContext) unmarshalOWebDAVInput2ᚖgithubᚗcomᚋloopljᚋaxo
 	}
 	res, err := ec.unmarshalInputWebDAVInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalOWebSearchPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐWebSearchPolicy(ctx context.Context, v any) (objects.WebSearchPolicy, error) {
+	tmp, err := graphql.UnmarshalString(v)
+	res := objects.WebSearchPolicy(tmp)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOWebSearchPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐWebSearchPolicy(ctx context.Context, sel ast.SelectionSet, v objects.WebSearchPolicy) graphql.Marshaler {
+	_ = sel
+	_ = ctx
+	res := graphql.MarshalString(string(v))
+	return res
 }
 
 func (ec *executionContext) unmarshalOWebhookSubscriptionInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐWebhookSubscriptionᚄ(ctx context.Context, v any) ([]biz.WebhookSubscription, error) {

@@ -11,8 +11,8 @@ import (
 )
 
 // WebSearchSelector prefers Codex channels that support the standalone
-// openai/search protocol. If none are capable, it preserves all eligible
-// candidates so existing load-balancing and fallback behavior remains intact.
+// openai/search protocol. Auto channels preserve the historical fallback,
+// while MCP-only Codex channels are never sent a native search request.
 type WebSearchSelector struct {
 	wrapped CandidateSelector
 }
@@ -31,19 +31,27 @@ func (s *WebSearchSelector) Select(ctx context.Context, req *llm.Request) ([]*Ch
 		return candidates, nil
 	}
 
-	capable := lo.Filter(candidates, func(candidate *ChannelModelsCandidate, _ int) bool {
+	eligible := lo.Filter(candidates, func(candidate *ChannelModelsCandidate, _ int) bool {
+		return candidate == nil ||
+			candidate.Channel == nil ||
+			candidate.Channel.Type != channel.TypeCodex ||
+			candidate.Channel.Policies.AllowsNativeWebSearchFallback()
+	})
+
+	capable := lo.Filter(eligible, func(candidate *ChannelModelsCandidate, _ int) bool {
 		return candidate != nil &&
 			candidate.Channel != nil &&
 			candidate.Channel.Type == channel.TypeCodex &&
-			candidate.Channel.Policies.SupportsWebSearchRequests()
+			candidate.Channel.Policies.PrefersNativeWebSearch()
 	})
 	if len(capable) == 0 {
 		if log.DebugEnabled(ctx) {
-			log.Debug(ctx, "no web search capable channels, using all candidates",
-				log.Int("candidate_count", len(candidates)))
+			log.Debug(ctx, "no native web search channels, using auto fallback candidates",
+				log.Int("candidate_count", len(candidates)),
+				log.Int("eligible_candidate_count", len(eligible)))
 		}
 
-		return candidates, nil
+		return eligible, nil
 	}
 
 	if log.DebugEnabled(ctx) {

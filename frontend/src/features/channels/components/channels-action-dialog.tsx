@@ -5,7 +5,25 @@ import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { X, RefreshCw, Search, ChevronLeft, ChevronRight, PanelLeft, Plus, Trash2, Eye, EyeOff, Copy, Play, Info, Ban } from 'lucide-react';
+import {
+  X,
+  RefreshCw,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  PanelLeft,
+  Plus,
+  Trash2,
+  Eye,
+  EyeOff,
+  Copy,
+  Play,
+  Info,
+  Ban,
+  Globe2,
+  Route,
+  Plug,
+} from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useHorizontalScroll } from '@/hooks/use-horizontal-scroll';
@@ -57,7 +75,15 @@ import {
   getApiFormatsForProvider,
   getChannelTypeForApiFormat,
 } from '../data/config_providers';
-import { Channel, ChannelType, ApiFormat, RetryableErrorPattern, createChannelInputSchema, updateChannelInputSchema } from '../data/schema';
+import {
+  Channel,
+  ChannelType,
+  ApiFormat,
+  RetryableErrorPattern,
+  WebSearchPolicy,
+  createChannelInputSchema,
+  updateChannelInputSchema,
+} from '../data/schema';
 import { ProxyConfig, useOAuthFlow } from '../hooks/use-oauth-flow';
 import { mergeChannelSettingsForUpdate } from '../utils/merge';
 import { isValidModelPattern, matchesModelPattern } from '../utils/pattern';
@@ -86,6 +112,15 @@ const OPENAI_RESPONSES_WEBSOCKET: ApiFormatOption = 'openai/responses:websocket'
 // defaults with ## unless the upstream URL should be used fully raw.
 const OPENAI_RESPONSES_WEBSOCKET_BASE_URL = 'wss://api.openai.com/v1#';
 const CODEX_RESPONSES_WEBSOCKET_BASE_URL = 'wss://chatgpt.com/backend-api/codex#';
+
+const WEB_SEARCH_POLICY_OPTIONS: ReadonlyArray<{
+  value: WebSearchPolicy;
+  icon: typeof Globe2;
+}> = [
+  { value: 'native', icon: Globe2 },
+  { value: 'auto', icon: Route },
+  { value: 'mcp_only', icon: Plug },
+];
 
 function getResponsesTransportFromBaseURL(baseURL?: string): ResponsesTransport {
   return baseURL?.trim().toLowerCase().startsWith('ws') ? 'websocket' : 'http';
@@ -672,6 +707,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             policies: {
               stream: currentRow.policies?.stream ?? 'unlimited',
               supportsRemoteCompaction: currentRow.policies?.supportsRemoteCompaction ?? false,
+              webSearch:
+                currentRow.policies?.webSearch ?? (currentRow.policies?.supportsWebSearch === false ? 'auto' : 'native'),
               supportsWebSearch: currentRow.policies?.supportsWebSearch ?? true,
             },
             supportedModels: currentRow.supportedModels,
@@ -700,6 +737,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               policies: {
                 stream: duplicateFromRow.policies?.stream ?? 'unlimited',
                 supportsRemoteCompaction: duplicateFromRow.policies?.supportsRemoteCompaction ?? false,
+                webSearch:
+                  duplicateFromRow.policies?.webSearch ??
+                  (duplicateFromRow.policies?.supportsWebSearch === false ? 'auto' : 'native'),
                 supportsWebSearch: duplicateFromRow.policies?.supportsWebSearch ?? true,
               },
               supportedModels: duplicateFromRow.supportedModels,
@@ -724,7 +764,12 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               type: derivedChannelType,
               baseURL: getDefaultBaseURL(derivedChannelType),
               name: '',
-              policies: { stream: 'unlimited', supportsRemoteCompaction: false, supportsWebSearch: true },
+              policies: {
+                stream: 'unlimited',
+                supportsRemoteCompaction: false,
+                webSearch: 'native',
+                supportsWebSearch: true,
+              },
               credentials: {
                 apiKeys: [],
                 gcp: {
@@ -1211,11 +1256,14 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         credentials: valuesForSubmit.credentials,
       };
       const effectiveChannelType = dataWithModels.type ?? currentRow?.type ?? derivedChannelType;
+      const webSearchPolicy =
+        effectiveChannelType === 'codex' ? (dataWithModels.policies?.webSearch ?? 'native') : 'native';
       dataWithModels.policies = {
         ...dataWithModels.policies,
         supportsRemoteCompaction:
           effectiveChannelType === 'codex' && (dataWithModels.policies?.supportsRemoteCompaction ?? false),
-        supportsWebSearch: effectiveChannelType !== 'codex' || (dataWithModels.policies?.supportsWebSearch ?? true),
+        webSearch: webSearchPolicy,
+        supportsWebSearch: webSearchPolicy === 'native',
       };
       const settingsForSubmit = isOpenCodeGoChannelType(dataWithModels.type as ChannelType | undefined)
         ? values.settings
@@ -2614,34 +2662,72 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                             {isCodexType && (
                               <FormField
                                 control={form.control}
-                                name='policies.supportsWebSearch'
+                                name='policies.webSearch'
                                 render={({ field }) => (
-                                  <FormItem className='flex items-center gap-2'>
-                                    <Checkbox
-                                      checked={field.value ?? true}
-                                      onCheckedChange={field.onChange}
-                                      data-testid='supports-web-search-checkbox'
-                                    />
+                                  <FormItem className='space-y-2 sm:col-span-2'>
                                     <div className='flex items-center gap-1.5'>
-                                      <FormLabel className='cursor-pointer text-sm font-normal'>
-                                        {t('channels.dialogs.fields.supportsWebSearch.label')}
+                                      <FormLabel className='text-sm font-medium'>
+                                        {t('channels.dialogs.fields.webSearchPolicy.label')}
                                       </FormLabel>
                                       <Tooltip>
                                         <TooltipTrigger asChild>
                                           <button
                                             type='button'
                                             className='text-muted-foreground hover:text-foreground inline-flex items-center'
-                                            aria-label={t('channels.dialogs.fields.supportsWebSearch.description')}
-                                            data-testid='supports-web-search-tip'
+                                            aria-label={t('channels.dialogs.fields.webSearchPolicy.description')}
+                                            data-testid='web-search-policy-tip'
                                           >
                                             <Info className='h-3.5 w-3.5' />
                                           </button>
                                         </TooltipTrigger>
                                         <TooltipContent>
-                                          <p>{t('channels.dialogs.fields.supportsWebSearch.description')}</p>
+                                          <p>{t('channels.dialogs.fields.webSearchPolicy.description')}</p>
                                         </TooltipContent>
                                       </Tooltip>
                                     </div>
+                                    <FormControl>
+                                      <RadioGroup
+                                        value={field.value ?? 'native'}
+                                        onValueChange={field.onChange}
+                                        className='grid grid-cols-1 gap-2 md:grid-cols-3'
+                                        data-testid='web-search-policy'
+                                      >
+                                        {WEB_SEARCH_POLICY_OPTIONS.map((option) => {
+                                          const Icon = option.icon;
+                                          const selected = (field.value ?? 'native') === option.value;
+                                          const id = `web-search-policy-${option.value}`;
+
+                                          return (
+                                            <label
+                                              key={option.value}
+                                              htmlFor={id}
+                                              className={`flex min-h-20 cursor-pointer items-start gap-2.5 rounded-md border p-3 transition-colors ${
+                                                selected
+                                                  ? 'border-primary bg-accent/50'
+                                                  : 'border-border hover:border-foreground/30 hover:bg-accent/30'
+                                              }`}
+                                            >
+                                              <RadioGroupItem
+                                                id={id}
+                                                value={option.value}
+                                                className='mt-0.5 shrink-0'
+                                                data-testid={id}
+                                              />
+                                              <span className='min-w-0 space-y-1'>
+                                                <span className='flex items-center gap-1.5 text-sm font-medium'>
+                                                  <Icon className='text-muted-foreground h-4 w-4 shrink-0' />
+                                                  {t(`channels.dialogs.fields.webSearchPolicy.options.${option.value}.label`)}
+                                                </span>
+                                                <span className='text-muted-foreground block text-xs leading-4'>
+                                                  {t(`channels.dialogs.fields.webSearchPolicy.options.${option.value}.description`)}
+                                                </span>
+                                              </span>
+                                            </label>
+                                          );
+                                        })}
+                                      </RadioGroup>
+                                    </FormControl>
+                                    <FormMessage />
                                   </FormItem>
                                 )}
                               />

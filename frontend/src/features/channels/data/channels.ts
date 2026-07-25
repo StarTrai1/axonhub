@@ -78,6 +78,7 @@ const CREATE_CHANNEL_MUTATION = `
       policies {
         stream
         supportsRemoteCompaction
+        webSearch
         supportsWebSearch
       }
       supportedModels
@@ -154,6 +155,7 @@ const DUPLICATE_CHANNEL_MUTATION = `
       policies {
         stream
         supportsRemoteCompaction
+        webSearch
         supportsWebSearch
       }
       supportedModels
@@ -230,6 +232,7 @@ const BULK_CREATE_CHANNELS_MUTATION = `
       policies {
         stream
         supportsRemoteCompaction
+        webSearch
         supportsWebSearch
       }
       supportedModels
@@ -306,6 +309,7 @@ const UPDATE_CHANNEL_MUTATION = `
       policies {
         stream
         supportsRemoteCompaction
+        webSearch
         supportsWebSearch
       }
       supportedModels
@@ -496,6 +500,7 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
         policies {
           stream
           supportsRemoteCompaction
+          webSearch
           supportsWebSearch
         }
         supportedModels
@@ -847,6 +852,7 @@ const QUERY_CHANNELS_QUERY = `
           policies {
             stream
             supportsRemoteCompaction
+            webSearch
             supportsWebSearch
           }
           credentials {

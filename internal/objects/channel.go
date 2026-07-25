@@ -379,16 +379,52 @@ const (
 	CapabilityPolicyForbid    CapabilityPolicy = "forbid"
 )
 
+type WebSearchPolicy string
+
+const (
+	// WebSearchPolicyAuto preserves the historical fallback behavior: prefer
+	// native-capable channels, but keep this channel eligible if none exist.
+	WebSearchPolicyAuto WebSearchPolicy = "auto"
+	// WebSearchPolicyNative marks the channel as capable of native web search.
+	WebSearchPolicyNative WebSearchPolicy = "native"
+	// WebSearchPolicyMCPOnly prevents native web search from reaching the channel.
+	WebSearchPolicyMCPOnly WebSearchPolicy = "mcp_only"
+)
+
 type ChannelPolicies struct {
 	Stream                   CapabilityPolicy `json:"stream,omitempty"`
 	SupportsRemoteCompaction bool             `json:"supportsRemoteCompaction,omitempty"`
+	WebSearch                WebSearchPolicy  `json:"webSearch,omitempty"`
+	// SupportsWebSearch is the legacy two-state field. Keep it for stored-data
+	// compatibility; WebSearch takes precedence when explicitly configured.
 	SupportsWebSearch        *bool            `json:"supportsWebSearch,omitempty"`
 }
 
-// SupportsWebSearchRequests defaults legacy channels to capable. This keeps
-// routing unchanged until an operator explicitly disables the capability.
-func (p ChannelPolicies) SupportsWebSearchRequests() bool {
-	return p.SupportsWebSearch == nil || *p.SupportsWebSearch
+// EffectiveWebSearchPolicy translates legacy data without changing its routing:
+// nil/true were preferred, while false participated only as a fallback.
+func (p ChannelPolicies) EffectiveWebSearchPolicy() WebSearchPolicy {
+	switch p.WebSearch {
+	case WebSearchPolicyAuto, WebSearchPolicyNative, WebSearchPolicyMCPOnly:
+		return p.WebSearch
+	}
+
+	if p.SupportsWebSearch != nil && !*p.SupportsWebSearch {
+		return WebSearchPolicyAuto
+	}
+
+	return WebSearchPolicyNative
+}
+
+func (p ChannelPolicies) PrefersNativeWebSearch() bool {
+	return p.EffectiveWebSearchPolicy() == WebSearchPolicyNative
+}
+
+func (p ChannelPolicies) AllowsNativeWebSearchFallback() bool {
+	return p.EffectiveWebSearchPolicy() != WebSearchPolicyMCPOnly
+}
+
+func (p ChannelPolicies) UsesMCPOnlyWebSearch() bool {
+	return p.EffectiveWebSearchPolicy() == WebSearchPolicyMCPOnly
 }
 
 // ParseOverrideOperations parses the override parameters string.
