@@ -222,7 +222,8 @@ func isNativeWebSearchToolChoice(raw json.RawMessage) bool {
 	return lo.SomeBy(choice.Tools, func(tool struct {
 		Type string `json:"type"`
 		Name string `json:"name"`
-	}) bool {
+	},
+	) bool {
 		return isNativeWebSearchType(tool.Type) ||
 			(strings.EqualFold(tool.Type, "namespace") && strings.EqualFold(tool.Name, "web"))
 	})

@@ -32,10 +32,10 @@ func TestApplyWebSearchPolicy_MCPOnly(t *testing.T) {
 				Request: &llm.OpenAIResponsesRequestExtensions{
 					ToolSignatures: []string{"web_search", "function:mcp__grok-search-rs__web_search"},
 					RawToolChoice:  json.RawMessage(`{"type":"web_search"}`),
-					RawInputItems:  []llm.OpenAIResponsesRawFragment{{
+					RawInputItems: []llm.OpenAIResponsesRawFragment{{
 						Type:          "additional_tools",
 						OriginalIndex: 0,
-						Raw:           json.RawMessage(`{
+						Raw: json.RawMessage(`{
 							"type":"additional_tools",
 							"role":"developer",
 							"tools":[
