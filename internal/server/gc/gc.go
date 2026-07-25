@@ -2,7 +2,9 @@ package gc
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"entgo.io/ent/dialect"
@@ -49,6 +51,9 @@ type Worker struct {
 	DataStorageService *biz.DataStorageService
 	Ent                *ent.Client
 	Config             Config
+	cleanupMu          sync.Mutex
+	jobMu              sync.RWMutex
+	currentJob         *CleanupJobStatus
 }
 
 type Params struct {
@@ -106,9 +111,25 @@ func (w *Worker) getBatchSize() int {
 	return defaultBatchSize
 }
 
-// runCleanup executes the cleanup process based on storage policy.
-// When manual is true and manualDays is provided, those days override the policy values.
-func (w *Worker) runCleanup(ctx context.Context, manual bool, manualDays map[string]int) {
+// runCleanup executes one cleanup at a time. Manual and scheduled cleanup must
+// not run concurrently because both may finish with a database VACUUM.
+func (w *Worker) runCleanup(ctx context.Context, manual bool, manualDays map[string]int) error {
+	if !w.cleanupMu.TryLock() {
+		return ErrCleanupAlreadyRunning
+	}
+	defer w.cleanupMu.Unlock()
+
+	return w.runCleanupLocked(ctx, manual, manualDays, nil)
+}
+
+// runCleanupLocked executes the cleanup process while cleanupMu is held.
+// When manual is true, only resources explicitly present in manualDays run.
+func (w *Worker) runCleanupLocked(
+	ctx context.Context,
+	manual bool,
+	manualDays map[string]int,
+	progress func(string),
+) error {
 	log.Info(ctx, "Starting cleanup process", log.Bool("manual", manual))
 
 	ctx = ent.NewContext(ctx, w.Ent)
@@ -116,104 +137,131 @@ func (w *Worker) runCleanup(ctx context.Context, manual bool, manualDays map[str
 
 	policy, err := w.SystemService.StoragePolicy(ctx)
 	if err != nil {
-		log.Error(ctx, "Failed to get storage policy for cleanup", log.Cause(err))
-		return
+		return fmt.Errorf("failed to get storage policy for cleanup: %w", err)
 	}
 
 	log.Debug(ctx, "Storage policy for cleanup", log.Any("policy", policy))
 
-	for _, option := range policy.CleanupOptions {
-		if option.Enabled || manual {
-			if manual && manualDays != nil {
-				if _, ok := manualDays[option.ResourceType]; !ok {
-					continue
-				}
-			}
-			days := option.CleanupDays
-			if manual && manualDays != nil {
-				if d, ok := manualDays[option.ResourceType]; ok {
-					days = d
-				}
-			}
-			switch option.ResourceType {
-			case "requests":
-				err := w.cleanupRequests(ctx, days, manual)
-				if err != nil {
-					log.Error(ctx, "Failed to cleanup requests",
-						log.String("resource", option.ResourceType),
-						log.Cause(err))
-				} else {
-					log.Info(ctx, "Successfully cleaned up requests",
-						log.String("resource", option.ResourceType),
-						log.Int("cleanup_days", days))
-				}
-
-				err = w.cleanupThreads(ctx, days, manual)
-				if err != nil {
-					log.Error(ctx, "Failed to cleanup threads",
-						log.String("resource", "threads"),
-						log.Cause(err))
-				} else {
-					log.Info(ctx, "Successfully cleaned up threads",
-						log.String("resource", "threads"),
-						log.Int("cleanup_days", days))
-				}
-
-				err = w.cleanupTraces(ctx, days, manual)
-				if err != nil {
-					log.Error(ctx, "Failed to cleanup traces",
-						log.String("resource", "traces"),
-						log.Cause(err))
-				} else {
-					log.Info(ctx, "Successfully cleaned up traces",
-						log.String("resource", "traces"),
-						log.Int("cleanup_days", days))
-				}
-			case "usage_logs":
-				err := w.cleanupUsageLogs(ctx, days, manual)
-				if err != nil {
-					log.Error(ctx, "Failed to cleanup usage logs",
-						log.String("resource", option.ResourceType),
-						log.Cause(err))
-				} else {
-					log.Info(ctx, "Successfully cleaned up usage logs",
-						log.String("resource", option.ResourceType),
-						log.Int("cleanup_days", days))
-				}
-			default:
-				log.Warn(ctx, "Unknown resource type for cleanup",
-					log.String("resource", option.ResourceType))
+	options := policy.CleanupOptions
+	if manual {
+		options = make([]biz.CleanupOption, 0, len(manualDays))
+		for _, resourceType := range []string{
+			ResourceRequests,
+			ResourceRequestPayloads,
+			ResourceResponsePayloads,
+			ResourceUsageLogs,
+			ResourceChannelProbes,
+		} {
+			if days, ok := manualDays[resourceType]; ok {
+				options = append(options, biz.CleanupOption{
+					ResourceType: resourceType,
+					Enabled:      true,
+					CleanupDays:  days,
+				})
 			}
 		}
+	} else {
+		byResource := make(map[string]biz.CleanupOption, len(options))
+		for _, option := range options {
+			byResource[option.ResourceType] = option
+		}
+		ordered := make([]biz.CleanupOption, 0, len(options))
+		for _, resourceType := range []string{
+			ResourceRequests,
+			ResourceRequestPayloads,
+			ResourceResponsePayloads,
+			ResourceUsageLogs,
+			ResourceChannelProbes,
+		} {
+			if option, ok := byResource[resourceType]; ok {
+				ordered = append(ordered, option)
+				delete(byResource, resourceType)
+			}
+		}
+		for _, option := range options {
+			if _, ok := byResource[option.ResourceType]; ok {
+				ordered = append(ordered, option)
+				delete(byResource, option.ResourceType)
+			}
+		}
+		options = ordered
 	}
 
-	err = w.cleanupChannelProbes(ctx, 3, manual)
-	if err != nil {
-		log.Error(ctx, "Failed to cleanup channel probes",
-			log.Cause(err))
-	} else {
-		log.Info(ctx, "Successfully cleaned up channel probes",
-			log.Int("cleanup_days", 3))
+	var cleanupErrors []error
+	for _, option := range options {
+		if !option.Enabled {
+			continue
+		}
+		if _, supported := supportedResourceTypes[option.ResourceType]; !supported {
+			log.Warn(ctx, "Unknown resource type for cleanup",
+				log.String("resource", option.ResourceType))
+			continue
+		}
+		if progress != nil {
+			progress(option.ResourceType)
+		}
+
+		err := w.cleanupResource(ctx, option.ResourceType, option.CleanupDays, manual)
+		if err != nil {
+			wrapped := fmt.Errorf("cleanup %s: %w", option.ResourceType, err)
+			cleanupErrors = append(cleanupErrors, wrapped)
+			log.Error(ctx, "Failed to cleanup resource",
+				log.String("resource", option.ResourceType),
+				log.Cause(err))
+			continue
+		}
+
+		log.Info(ctx, "Successfully cleaned up resource",
+			log.String("resource", option.ResourceType),
+			log.Int("cleanup_days", option.CleanupDays))
 	}
 
 	if w.Config.VacuumEnabled {
+		if progress != nil {
+			progress("vacuum")
+		}
 		if err := w.runVacuum(ctx); err != nil {
+			cleanupErrors = append(cleanupErrors, fmt.Errorf("vacuum: %w", err))
 			log.Error(ctx, "Failed to run VACUUM after cleanup",
 				log.Cause(err))
 		}
 	}
 
 	log.Info(ctx, "Cleanup process completed")
+	return errors.Join(cleanupErrors...)
+}
+
+func (w *Worker) cleanupResource(ctx context.Context, resourceType string, cleanupDays int, manual bool) error {
+	switch resourceType {
+	case ResourceRequestPayloads:
+		return w.cleanupRequestPayloads(ctx, cleanupDays)
+	case ResourceResponsePayloads:
+		return w.cleanupResponsePayloads(ctx, cleanupDays)
+	case ResourceRequests:
+		if err := w.cleanupRequests(ctx, cleanupDays, manual); err != nil {
+			return err
+		}
+		if err := w.cleanupThreads(ctx, cleanupDays, manual); err != nil {
+			return err
+		}
+		return w.cleanupTraces(ctx, cleanupDays, manual)
+	case ResourceUsageLogs:
+		return w.cleanupUsageLogs(ctx, cleanupDays, manual)
+	case ResourceChannelProbes:
+		return w.cleanupChannelProbes(ctx, cleanupDays, manual)
+	default:
+		return fmt.Errorf("unknown resource type")
+	}
 }
 
 // cleanupRequests deletes requests older than the specified number of days.
 func (w *Worker) cleanupRequests(ctx context.Context, cleanupDays int, manual bool) error {
-	if cleanupDays <= 0 {
+	if cleanupDays < 0 {
 		log.Debug(ctx, "No cleanup needed for requests")
 		return nil
 	}
 
-	cutoffTime := time.Now().AddDate(0, 0, -cleanupDays)
+	cutoffTime := cleanupCutoff(cleanupDays)
 
 	execResult, err := w.cleanupOldRequestExecutions(ctx, cutoffTime)
 	if err != nil {
@@ -251,10 +299,21 @@ func (w *Worker) cleanupOldRequestExecutions(ctx context.Context, cutoffTime tim
 				requestexecution.FieldRequestID,
 			).
 			Where(
-				requestexecution.CreatedAtLT(cutoffTime),
-				requestexecution.Not(requestexecution.HasRequestWith(
-					request.HasTraceWith(trace.StatusEQ(trace.StatusRetained)),
-				)),
+				requestexecution.StatusNotIn(requestexecution.StatusPending, requestexecution.StatusProcessing),
+				requestexecution.Or(
+					requestexecution.HasRequestWith(
+						request.CreatedAtLT(cutoffTime),
+						request.StatusNotIn(request.StatusPending, request.StatusProcessing),
+						request.Not(request.HasTraceWith(trace.StatusEQ(trace.StatusRetained))),
+						request.Not(request.HasExecutionsWith(
+							requestexecution.StatusIn(requestexecution.StatusPending, requestexecution.StatusProcessing),
+						)),
+					),
+					requestexecution.And(
+						requestexecution.CreatedAtLT(cutoffTime),
+						requestexecution.Not(requestexecution.HasRequest()),
+					),
+				),
 			).
 			Order(ent.Asc(requestexecution.FieldID)).
 			Limit(batchSize).
@@ -305,7 +364,11 @@ func (w *Worker) cleanupOldRequestsRecords(ctx context.Context, cutoffTime time.
 			).
 			Where(
 				request.CreatedAtLT(cutoffTime),
+				request.StatusNotIn(request.StatusPending, request.StatusProcessing),
 				request.Not(request.HasTraceWith(trace.StatusEQ(trace.StatusRetained))),
+				request.Not(request.HasExecutionsWith(
+					requestexecution.StatusIn(requestexecution.StatusPending, requestexecution.StatusProcessing),
+				)),
 			).
 			Order(ent.Asc(request.FieldID)).
 			Limit(batchSize).
@@ -451,11 +514,11 @@ func (w *Worker) getDataStorageCached(ctx context.Context, id int, cache map[int
 
 // cleanupUsageLogs deletes usage logs older than the specified number of days.
 func (w *Worker) cleanupUsageLogs(ctx context.Context, cleanupDays int, manual bool) error {
-	if cleanupDays <= 0 {
+	if cleanupDays < 0 {
 		return nil
 	}
 
-	cutoffTime := time.Now().AddDate(0, 0, -cleanupDays)
+	cutoffTime := cleanupCutoff(cleanupDays)
 	batchSize := w.getBatchSize()
 
 	result, err := w.deleteInBatches(ctx, func() (int, error) {
@@ -491,12 +554,12 @@ func (w *Worker) cleanupUsageLogs(ctx context.Context, cleanupDays int, manual b
 
 // cleanupThreads deletes threads older than the specified number of days.
 func (w *Worker) cleanupThreads(ctx context.Context, cleanupDays int, manual bool) error {
-	if cleanupDays <= 0 {
+	if cleanupDays < 0 {
 		log.Debug(ctx, "No cleanup needed for threads")
 		return nil
 	}
 
-	cutoffTime := time.Now().AddDate(0, 0, -cleanupDays)
+	cutoffTime := cleanupCutoff(cleanupDays)
 	batchSize := w.getBatchSize()
 
 	result, err := w.deleteInBatches(ctx, func() (int, error) {
@@ -530,12 +593,12 @@ func (w *Worker) cleanupThreads(ctx context.Context, cleanupDays int, manual boo
 
 // cleanupTraces deletes traces older than the specified number of days.
 func (w *Worker) cleanupTraces(ctx context.Context, cleanupDays int, manual bool) error {
-	if cleanupDays <= 0 {
+	if cleanupDays < 0 {
 		log.Debug(ctx, "No cleanup needed for traces")
 		return nil
 	}
 
-	cutoffTime := time.Now().AddDate(0, 0, -cleanupDays)
+	cutoffTime := cleanupCutoff(cleanupDays)
 	batchSize := w.getBatchSize()
 
 	result, err := w.deleteInBatches(ctx, func() (int, error) {
@@ -569,12 +632,12 @@ func (w *Worker) cleanupTraces(ctx context.Context, cleanupDays int, manual bool
 
 // cleanupChannelProbes deletes channel probes older than the specified number of days.
 func (w *Worker) cleanupChannelProbes(ctx context.Context, cleanupDays int, manual bool) error {
-	if cleanupDays <= 0 {
+	if cleanupDays < 0 {
 		log.Debug(ctx, "No cleanup needed for channel probes")
 		return nil
 	}
 
-	cutoffTime := time.Now().AddDate(0, 0, -cleanupDays)
+	cutoffTime := cleanupCutoff(cleanupDays)
 	batchSize := w.getBatchSize()
 
 	result, err := w.deleteInBatches(ctx, func() (int, error) {
@@ -667,8 +730,7 @@ func (w *Worker) RunCleanupNow(ctx context.Context, input TriggerGcCleanupInput)
 	if input.UsageLogsCleanupDays > 0 {
 		manualDays["usage_logs"] = input.UsageLogsCleanupDays
 	}
-	w.runCleanup(ctx, true, manualDays)
-	return nil
+	return w.runCleanup(ctx, true, manualDays)
 }
 
 // PreviewCleanup estimates how many records would be deleted without actually deleting them.

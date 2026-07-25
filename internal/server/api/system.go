@@ -17,22 +17,26 @@ import (
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server/assets"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/internal/server/gc"
 )
 
 type SystemHandlersParams struct {
 	fx.In
 
 	SystemService *biz.SystemService
+	GCWorker      *gc.Worker
 }
 
 func NewSystemHandlers(params SystemHandlersParams) *SystemHandlers {
 	return &SystemHandlers{
 		SystemService: params.SystemService,
+		GCWorker:      params.GCWorker,
 	}
 }
 
 type SystemHandlers struct {
 	SystemService *biz.SystemService
+	GCWorker      *gc.Worker
 }
 
 // SystemStatusResponse 系统状态响应.

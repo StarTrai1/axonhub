@@ -3,6 +3,7 @@ import { graphqlRequest, GraphQLRequestError } from '@/gql/graphql';
 import { toast } from 'sonner';
 import { getTokenFromStorage } from '@/stores/authStore';
 import i18n from '@/lib/i18n';
+import { apiRequest } from '@/lib/api-client';
 import { useErrorHandler } from '@/hooks/use-error-handler';
 import { usePermissions } from '@/hooks/usePermissions';
 import type { ProxyConfig } from '@/features/channels/data/schema';
@@ -308,6 +309,41 @@ export interface GcCleanupPreviewItem {
   retentionDays: number;
 }
 
+export type StorageCleanupResourceType =
+  | 'request_payloads'
+  | 'response_payloads'
+  | 'requests'
+  | 'usage_logs'
+  | 'channel_probes';
+
+export interface StorageCleanupSelection {
+  resourceType: StorageCleanupResourceType;
+  retentionDays: number;
+}
+
+export interface StorageCleanupInput {
+  resources: StorageCleanupSelection[];
+  confirmation?: string;
+}
+
+export interface StorageCleanupPreviewItem {
+  resourceType: StorageCleanupResourceType;
+  estimatedCount: number;
+  estimatedBytes: number;
+  cutoffTime: string;
+  retentionDays: number;
+  sensitive: boolean;
+}
+
+export interface StorageCleanupJob {
+  id: string;
+  status: 'running' | 'completed' | 'failed';
+  phase: string;
+  startedAt: string;
+  finishedAt?: string;
+  error?: string;
+}
+
 export interface AutoDisableChannelStatus {
   status: number;
   times: number;
@@ -543,6 +579,57 @@ export function usePreviewGcCleanup() {
       const data = await graphqlRequest<{ previewGcCleanup: GcCleanupPreviewItem[] }>(PREVIEW_GC_CLEANUP_QUERY, { input });
       return data.previewGcCleanup;
     },
+  });
+}
+
+export function usePreviewStorageCleanup() {
+  return useMutation({
+    mutationFn: async (input: StorageCleanupInput) => {
+      const data = await apiRequest<{ items: StorageCleanupPreviewItem[] }>('/admin/system/storage/cleanup/preview', {
+        method: 'POST',
+        body: input,
+        requireAuth: true,
+      });
+      return data.items;
+    },
+  });
+}
+
+export function useStartStorageCleanup() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: StorageCleanupInput) => {
+      const data = await apiRequest<{ job: StorageCleanupJob }>('/admin/system/storage/cleanup/jobs', {
+        method: 'POST',
+        body: input,
+        requireAuth: true,
+      });
+      return data.job;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['storageCleanupJob'] });
+      toast.success(i18n.t('system.storage.policy.runCleanupSuccess'));
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || i18n.t('system.storage.policy.runCleanupError'));
+    },
+  });
+}
+
+export function useStorageCleanupJob() {
+  const { hasSystemScope } = usePermissions();
+
+  return useQuery({
+    queryKey: ['storageCleanupJob'],
+    enabled: hasSystemScope('read_settings'),
+    queryFn: async () => {
+      const data = await apiRequest<{ job: StorageCleanupJob | null }>('/admin/system/storage/cleanup/jobs/current', {
+        requireAuth: true,
+      });
+      return data.job;
+    },
+    refetchInterval: (query) => (query.state.data?.status === 'running' ? 1500 : false),
   });
 }
 

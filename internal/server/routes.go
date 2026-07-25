@@ -105,6 +105,9 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 		adminGroup.POST("/graphql", middleware.WithTimeout(server.Config.RequestTimeout), func(c *gin.Context) {
 			handlers.Graphql.Graphql.ServeHTTP(c.Writer, c.Request)
 		})
+		adminGroup.POST("/system/storage/cleanup/preview", handlers.System.PreviewStorageCleanup)
+		adminGroup.POST("/system/storage/cleanup/jobs", handlers.System.StartStorageCleanup)
+		adminGroup.GET("/system/storage/cleanup/jobs/current", handlers.System.GetStorageCleanupJob)
 
 		adminGroup.POST("/codex/oauth/start", handlers.Codex.StartOAuth)
 		adminGroup.POST("/codex/oauth/exchange", handlers.Codex.Exchange)

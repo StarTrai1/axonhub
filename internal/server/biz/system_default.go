@@ -17,6 +17,16 @@ var defaultStoragePolicy = StoragePolicy{
 	StoreResponseBody: true,
 	CleanupOptions: []CleanupOption{
 		{
+			ResourceType: "request_payloads",
+			Enabled:      false,
+			CleanupDays:  1,
+		},
+		{
+			ResourceType: "response_payloads",
+			Enabled:      false,
+			CleanupDays:  7,
+		},
+		{
 			ResourceType: "requests",
 			Enabled:      false,
 			CleanupDays:  3,
@@ -25,6 +35,11 @@ var defaultStoragePolicy = StoragePolicy{
 			ResourceType: "usage_logs",
 			Enabled:      false,
 			CleanupDays:  30,
+		},
+		{
+			ResourceType: "channel_probes",
+			Enabled:      true,
+			CleanupDays:  3,
 		},
 	},
 }

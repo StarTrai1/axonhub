@@ -17,6 +17,8 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channelprobe"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/enttest"
+	"github.com/looplj/axonhub/internal/ent/request"
+	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/server/biz"
@@ -44,6 +46,117 @@ func TestWorker_getBatchSize(t *testing.T) {
 	if batchSize != 20 {
 		t.Errorf("Expected batch size 20, got %d", batchSize)
 	}
+}
+
+func TestValidateManualCleanupInputRequiresSensitiveConfirmation(t *testing.T) {
+	input := ManualCleanupInput{
+		Resources: []CleanupSelection{{
+			ResourceType:  ResourceRequestPayloads,
+			RetentionDays: 0,
+		}},
+	}
+
+	_, sensitive, err := validateManualCleanupInput(input, true)
+	require.Error(t, err)
+	require.True(t, sensitive)
+
+	input.Confirmation = CleanupConfirmation
+	days, sensitive, err := validateManualCleanupInput(input, true)
+	require.NoError(t, err)
+	require.True(t, sensitive)
+	require.Equal(t, 0, days[ResourceRequestPayloads])
+}
+
+func TestValidateManualCleanupInputAllowsProbeCleanupWithoutTypedConfirmation(t *testing.T) {
+	input := ManualCleanupInput{
+		Resources: []CleanupSelection{{
+			ResourceType:  ResourceChannelProbes,
+			RetentionDays: 3,
+		}},
+	}
+
+	days, sensitive, err := validateManualCleanupInput(input, true)
+	require.NoError(t, err)
+	require.False(t, sensitive)
+	require.Equal(t, 3, days[ResourceChannelProbes])
+}
+
+func TestValidateManualCleanupInputRejectsInvalidSelection(t *testing.T) {
+	_, _, err := validateManualCleanupInput(ManualCleanupInput{}, false)
+	require.Error(t, err)
+
+	_, _, err = validateManualCleanupInput(ManualCleanupInput{
+		Resources: []CleanupSelection{{ResourceType: "unknown", RetentionDays: 1}},
+	}, false)
+	require.Error(t, err)
+
+	_, _, err = validateManualCleanupInput(ManualCleanupInput{
+		Resources: []CleanupSelection{
+			{ResourceType: ResourceUsageLogs, RetentionDays: 1},
+			{ResourceType: ResourceUsageLogs, RetentionDays: 2},
+		},
+	}, false)
+	require.Error(t, err)
+}
+
+func TestWorker_cleanupPayloadsKeepsMetricsAndClearsBodies(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:payload-cleanup?mode=memory&_fk=1")
+	t.Cleanup(func() { client.Close() })
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	project, err := client.Project.Create().SetName("payload-cleanup").Save(ctx)
+	require.NoError(t, err)
+
+	createdAt := time.Now().Add(-48 * time.Hour)
+	record, err := client.Request.Create().
+		SetCreatedAt(createdAt).
+		SetProjectID(project.ID).
+		SetModelID("test-model").
+		SetStatus(request.StatusCompleted).
+		SetRequestHeaders(objects.JSONRawMessage(`{"authorization":"secret"}`)).
+		SetRequestBody(objects.JSONRawMessage(`{"input":"secret"}`)).
+		SetResponseBody(objects.JSONRawMessage(`{"output":"kept-until-response-cleanup"}`)).
+		SetMetricsLatencyMs(123).
+		Save(ctx)
+	require.NoError(t, err)
+
+	execution, err := client.RequestExecution.Create().
+		SetCreatedAt(createdAt).
+		SetProjectID(project.ID).
+		SetRequestID(record.ID).
+		SetModelID("test-model").
+		SetStatus(requestexecution.StatusCompleted).
+		SetRequestHeaders(objects.JSONRawMessage(`{"authorization":"upstream-secret"}`)).
+		SetRequestBody(objects.JSONRawMessage(`{"input":"upstream-secret"}`)).
+		SetResponseBody(objects.JSONRawMessage(`{"output":"upstream-response"}`)).
+		SetMetricsLatencyMs(100).
+		Save(ctx)
+	require.NoError(t, err)
+
+	worker := &Worker{Ent: client}
+	require.NoError(t, worker.cleanupRequestPayloads(ctx, 1))
+
+	record, err = client.Request.Get(ctx, record.ID)
+	require.NoError(t, err)
+	require.JSONEq(t, `{}`, string(record.RequestBody))
+	require.Empty(t, record.RequestHeaders)
+	require.JSONEq(t, `{"output":"kept-until-response-cleanup"}`, string(record.ResponseBody))
+	require.Equal(t, int64(123), *record.MetricsLatencyMs)
+
+	execution, err = client.RequestExecution.Get(ctx, execution.ID)
+	require.NoError(t, err)
+	require.JSONEq(t, `{}`, string(execution.RequestBody))
+	require.Empty(t, execution.RequestHeaders)
+	require.JSONEq(t, `{"output":"upstream-response"}`, string(execution.ResponseBody))
+	require.Equal(t, int64(100), *execution.MetricsLatencyMs)
+
+	require.NoError(t, worker.cleanupResponsePayloads(ctx, 1))
+	record, err = client.Request.Get(ctx, record.ID)
+	require.NoError(t, err)
+	require.Empty(t, record.ResponseBody)
+	execution, err = client.RequestExecution.Get(ctx, execution.ID)
+	require.NoError(t, err)
+	require.Empty(t, execution.ResponseBody)
 }
 
 func TestWorker_cleanupRequestExternalStorageDeletesFsArtifacts(t *testing.T) {

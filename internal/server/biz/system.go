@@ -952,7 +952,35 @@ func (s *SystemService) StoragePolicy(ctx context.Context) (*StoragePolicy, erro
 		policy.StoreResponseBody = true
 	}
 
+	policy.CleanupOptions = normalizeStorageCleanupOptions(policy.CleanupOptions)
+
 	return &policy, nil
+}
+
+func normalizeStorageCleanupOptions(options []CleanupOption) []CleanupOption {
+	byResource := make(map[string]CleanupOption, len(options))
+	for _, option := range options {
+		byResource[option.ResourceType] = option
+	}
+
+	normalized := make([]CleanupOption, 0, len(defaultStoragePolicy.CleanupOptions)+len(options))
+	known := make(map[string]struct{}, len(defaultStoragePolicy.CleanupOptions))
+	for _, fallback := range defaultStoragePolicy.CleanupOptions {
+		known[fallback.ResourceType] = struct{}{}
+		if option, ok := byResource[fallback.ResourceType]; ok {
+			normalized = append(normalized, option)
+		} else {
+			normalized = append(normalized, fallback)
+		}
+	}
+
+	for _, option := range options {
+		if _, ok := known[option.ResourceType]; !ok {
+			normalized = append(normalized, option)
+		}
+	}
+
+	return normalized
 }
 
 // StoragePolicyOrDefault retrieves the storage policy configuration or returns the default policy.
@@ -972,6 +1000,8 @@ func (s *SystemService) StoragePolicyOrDefault(ctx context.Context) *StoragePoli
 
 // SetStoragePolicy sets the storage policy configuration.
 func (s *SystemService) SetStoragePolicy(ctx context.Context, policy *StoragePolicy) error {
+	policy.CleanupOptions = normalizeStorageCleanupOptions(policy.CleanupOptions)
+
 	for _, opt := range policy.CleanupOptions {
 		if opt.CleanupDays <= 0 {
 			return fmt.Errorf("cleanup_days for %q must be positive; set enabled=false to keep data forever", opt.ResourceType)
