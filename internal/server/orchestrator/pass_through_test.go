@@ -674,6 +674,70 @@ func TestCaptureRawProviderStream_RepairsDelayedCodexResponsesTerminalWithoutPas
 	assert.True(t, src.isClosed())
 }
 
+func TestDelayedCodexResponsesTerminalStream_DoesNotCompleteAfterReasoningOnly(t *testing.T) {
+	const gracePeriod = 20 * time.Millisecond
+
+	events := []*httpclient.StreamEvent{
+		{
+			Type: "response.created",
+			Data: json.RawMessage(`{"type":"response.created","sequence_number":0,"response":{"id":"resp_reasoning","object":"response","created_at":1700000000,"model":"gpt-5.6-sol","status":"in_progress","output":[]}}`),
+		},
+		{
+			Type: "response.output_item.added",
+			Data: json.RawMessage(`{"type":"response.output_item.added","sequence_number":1,"output_index":0,"item":{"id":"rs_1","type":"reasoning","status":"in_progress","summary":[]}}`),
+		},
+		{
+			Type: "response.output_item.done",
+			Data: json.RawMessage(`{"type":"response.output_item.done","sequence_number":2,"output_index":0,"item":{"id":"rs_1","type":"reasoning","summary":[]}}`),
+		},
+	}
+	src := newTailEventStream(len(events))
+	for _, event := range events {
+		src.events <- event
+	}
+
+	stream := newDelayedCodexResponsesTerminalStream(
+		context.Background(),
+		src,
+		"codex-third-party",
+		gracePeriod,
+		time.Second,
+		nil,
+	)
+	for range events {
+		require.True(t, stream.Next())
+	}
+
+	next := make(chan bool, 1)
+	go func() {
+		next <- stream.Next()
+	}()
+
+	select {
+	case <-next:
+		t.Fatal("reasoning-only output was treated as a completed turn")
+	case <-time.After(3 * gracePeriod):
+	}
+
+	messageAdded := &httpclient.StreamEvent{
+		Type: "response.output_item.added",
+		Data: json.RawMessage(`{"type":"response.output_item.added","sequence_number":3,"output_index":1,"item":{"id":"msg_1","type":"message","status":"in_progress","role":"assistant","content":[]}}`),
+	}
+	src.events <- messageAdded
+	require.True(t, <-next)
+	require.Equal(t, messageAdded, stream.Current())
+
+	messageDone := &httpclient.StreamEvent{
+		Type: "response.output_item.done",
+		Data: json.RawMessage(`{"type":"response.output_item.done","sequence_number":4,"output_index":1,"item":{"id":"msg_1","type":"message","status":"completed","role":"assistant","content":[{"type":"output_text","text":"OK","annotations":[]}]}}`),
+	}
+	src.events <- messageDone
+	require.True(t, stream.Next())
+	require.Equal(t, messageDone, stream.Current())
+	require.True(t, stream.Next())
+	require.Equal(t, "response.completed", stream.Current().Type)
+}
+
 func TestApplyPassThroughRequestBody_DetachesCodexResponsesRepairWithoutPassThrough(t *testing.T) {
 	outbound := newCodexResponsesPassThroughOutbound()
 	outbound.state.LlmRequest.APIFormat = llm.APIFormatOpenAIChatCompletion

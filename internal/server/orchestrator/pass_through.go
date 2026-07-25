@@ -470,10 +470,10 @@ func shouldRepairDelayedCodexResponsesTerminal(outbound *PersistentOutboundTrans
 	return strings.EqualFold(strings.TrimSpace(request.Headers.Get(responses.ResponsesLiteHeader)), "true")
 }
 
-// delayedCodexResponsesTerminalStream repairs Codex-compatible providers that finish all
-// output items but hold response.completed for several minutes. It waits for a short idle
-// grace after every completed item, so immediately following reasoning, message, and tool
-// items still pass through before a terminal event is synthesized.
+// delayedCodexResponsesTerminalStream repairs Codex-compatible providers that finish a
+// deliverable output but hold response.completed for several minutes. It waits for a short
+// idle grace after assistant messages and client-executable tool calls. Reasoning-only output
+// cannot finish a turn, so it never starts the terminal grace timer.
 //
 //nolint:containedctx // The stream must observe request and retry cancellation while Next blocks.
 type delayedCodexResponsesTerminalStream struct {
@@ -737,8 +737,22 @@ func (s *delayedCodexResponsesTerminalStream) canSynthesizeCompleted() bool {
 	return !s.terminalObserved &&
 		s.response != nil &&
 		s.response.ID != "" &&
-		len(s.completedOutputs) > 0 &&
+		s.hasTurnOutput() &&
 		len(s.activeOutputs) == 0
+}
+
+// A reasoning item is internal progress, not a completed Codex turn. The client
+// needs either assistant output or a client-executable tool call before a relay's
+// missing response.completed event can be repaired safely.
+func (s *delayedCodexResponsesTerminalStream) hasTurnOutput() bool {
+	for _, item := range s.completedOutputs {
+		switch item.Type {
+		case "message", "function_call", "custom_tool_call":
+			return true
+		}
+	}
+
+	return false
 }
 
 func (s *delayedCodexResponsesTerminalStream) synthesizeCompleted() (*httpclient.StreamEvent, error) {
