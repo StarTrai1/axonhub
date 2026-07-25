@@ -100,7 +100,7 @@ func filterRawNativeWebSearchTools(
 	removed := false
 	total := len(structuredTools) + len(rawTools)
 
-	for originalIndex := 0; originalIndex < total; originalIndex++ {
+	for originalIndex := range total {
 		if fragment, ok := rawByIndex[originalIndex]; ok {
 			if isNativeWebSearchRawTool(fragment.Raw) || isNativeWebSearchType(fragment.Type) {
 				removed = true
@@ -213,10 +213,12 @@ func isNativeWebSearchToolChoice(raw json.RawMessage) bool {
 	if json.Unmarshal(raw, &choice) != nil {
 		return false
 	}
+
 	if isNativeWebSearchType(choice.Type) ||
 		(strings.EqualFold(choice.Type, "namespace") && strings.EqualFold(choice.Name, "web")) {
 		return true
 	}
+
 	return lo.SomeBy(choice.Tools, func(tool struct {
 		Type string `json:"type"`
 		Name string `json:"name"`
