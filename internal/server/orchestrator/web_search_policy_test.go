@@ -35,7 +35,7 @@ func TestApplyWebSearchPolicy_MCPOnly(t *testing.T) {
 					RawInputItems:  []llm.OpenAIResponsesRawFragment{{
 						Type:          "additional_tools",
 						OriginalIndex: 0,
-						Raw: json.RawMessage(`{
+						Raw:           json.RawMessage(`{
 							"type":"additional_tools",
 							"role":"developer",
 							"tools":[
