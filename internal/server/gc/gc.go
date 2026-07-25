@@ -256,7 +256,7 @@ func (w *Worker) cleanupResource(ctx context.Context, resourceType string, clean
 
 // cleanupRequests deletes requests older than the specified number of days.
 func (w *Worker) cleanupRequests(ctx context.Context, cleanupDays int, manual bool) error {
-	if cleanupDays < 0 {
+	if cleanupDays < 0 || (cleanupDays == 0 && !manual) {
 		log.Debug(ctx, "No cleanup needed for requests")
 		return nil
 	}
@@ -514,7 +514,7 @@ func (w *Worker) getDataStorageCached(ctx context.Context, id int, cache map[int
 
 // cleanupUsageLogs deletes usage logs older than the specified number of days.
 func (w *Worker) cleanupUsageLogs(ctx context.Context, cleanupDays int, manual bool) error {
-	if cleanupDays < 0 {
+	if cleanupDays < 0 || (cleanupDays == 0 && !manual) {
 		return nil
 	}
 
@@ -554,7 +554,7 @@ func (w *Worker) cleanupUsageLogs(ctx context.Context, cleanupDays int, manual b
 
 // cleanupThreads deletes threads older than the specified number of days.
 func (w *Worker) cleanupThreads(ctx context.Context, cleanupDays int, manual bool) error {
-	if cleanupDays < 0 {
+	if cleanupDays < 0 || (cleanupDays == 0 && !manual) {
 		log.Debug(ctx, "No cleanup needed for threads")
 		return nil
 	}
@@ -593,7 +593,7 @@ func (w *Worker) cleanupThreads(ctx context.Context, cleanupDays int, manual boo
 
 // cleanupTraces deletes traces older than the specified number of days.
 func (w *Worker) cleanupTraces(ctx context.Context, cleanupDays int, manual bool) error {
-	if cleanupDays < 0 {
+	if cleanupDays < 0 || (cleanupDays == 0 && !manual) {
 		log.Debug(ctx, "No cleanup needed for traces")
 		return nil
 	}
@@ -632,7 +632,7 @@ func (w *Worker) cleanupTraces(ctx context.Context, cleanupDays int, manual bool
 
 // cleanupChannelProbes deletes channel probes older than the specified number of days.
 func (w *Worker) cleanupChannelProbes(ctx context.Context, cleanupDays int, manual bool) error {
-	if cleanupDays < 0 {
+	if cleanupDays < 0 || (cleanupDays == 0 && !manual) {
 		log.Debug(ctx, "No cleanup needed for channel probes")
 		return nil
 	}

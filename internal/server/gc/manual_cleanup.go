@@ -4,12 +4,13 @@ import (
 	"context"
 	"fmt"
 	"runtime/debug"
+	"strings"
 	"time"
 
 	"entgo.io/ent/dialect"
-	entsql "entgo.io/ent/dialect/sql"
-
 	"github.com/google/uuid"
+
+	entsql "entgo.io/ent/dialect/sql"
 
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
@@ -302,20 +303,23 @@ func (w *Worker) previewResourceBytes(ctx context.Context, resourceType string, 
 
 	requestColumns := []string{"r.request_body", "r.request_headers"}
 	executionColumns := []string{"e.request_body", "e.request_headers"}
-	if resourceType == ResourceResponsePayloads {
+	switch resourceType {
+	case ResourceResponsePayloads:
 		requestColumns = []string{"r.response_body", "r.response_chunks"}
 		executionColumns = []string{"e.response_body", "e.response_chunks"}
-	} else if resourceType == ResourceRequests {
+	case ResourceRequests:
 		requestColumns = append(requestColumns, "r.response_body", "r.response_chunks")
 		executionColumns = append(executionColumns, "e.response_body", "e.response_chunks")
 	}
 
 	sumExpression := func(columns []string) string {
-		result := "0"
+		var result strings.Builder
+		result.WriteString("0")
 		for _, column := range columns {
-			result += " + " + length(column)
+			result.WriteString(" + ")
+			result.WriteString(length(column))
 		}
-		return result
+		return result.String()
 	}
 
 	requestQuery := fmt.Sprintf(`

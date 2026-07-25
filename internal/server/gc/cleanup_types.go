@@ -6,15 +6,12 @@ import (
 	"time"
 )
 
-const (
-	ResourceRequestPayloads  = "request_payloads"
-	ResourceResponsePayloads = "response_payloads"
-	ResourceRequests         = "requests"
-	ResourceUsageLogs        = "usage_logs"
-	ResourceChannelProbes     = "channel_probes"
-
-	CleanupConfirmation = "DELETE"
-)
+const ResourceRequestPayloads = "request_payloads"
+const ResourceResponsePayloads = "response_payloads"
+const ResourceRequests = "requests"
+const ResourceUsageLogs = "usage_logs"
+const ResourceChannelProbes = "channel_probes"
+const CleanupConfirmation = "DELETE"
 
 var ErrCleanupAlreadyRunning = errors.New("a storage cleanup job is already running")
 
