@@ -125,14 +125,14 @@ func TestRemoteCompactionSelectorSelect(t *testing.T) {
 			want: []string{"local", "capable"},
 		},
 		{
-			name:    "generation fallback excludes explicit local bridge",
+			name:    "generation prefers explicit local bridge before automatic fallback",
 			request: v2Request,
 			candidates: []*ChannelModelsCandidate{
 				newCandidate("automatic-a", channel.TypeCodex, objects.RemoteCompactionPolicyAuto),
 				newCandidate("local", channel.TypeCodex, objects.RemoteCompactionPolicyLocalBridge),
 				newCandidate("automatic-b", channel.TypeCodex, objects.RemoteCompactionPolicyAuto),
 			},
-			want: []string{"automatic-a", "automatic-b"},
+			want: []string{"local"},
 		},
 		{
 			name:    "continuation fallback keeps automatic and local bridge candidates",
@@ -144,12 +144,21 @@ func TestRemoteCompactionSelectorSelect(t *testing.T) {
 			want: []string{"automatic", "local"},
 		},
 		{
-			name:    "generation with only local bridge has no eligible channel",
+			name:    "generation with only local bridge remains eligible",
 			request: legacyRequest,
 			candidates: []*ChannelModelsCandidate{
 				newCandidate("local", channel.TypeCodex, objects.RemoteCompactionPolicyLocalBridge),
 			},
-			want: []string{},
+			want: []string{"local"},
+		},
+		{
+			name:    "generation without native or local bridge keeps automatic fallback",
+			request: v2Request,
+			candidates: []*ChannelModelsCandidate{
+				newCandidate("automatic-a", channel.TypeCodex, objects.RemoteCompactionPolicyAuto),
+				newCandidate("automatic-b", channel.TypeCodex, objects.RemoteCompactionPolicyAuto),
+			},
+			want: []string{"automatic-a", "automatic-b"},
 		},
 		{
 			name:    "legacy false remains an automatic fallback",

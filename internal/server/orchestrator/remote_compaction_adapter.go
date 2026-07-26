@@ -2,7 +2,9 @@ package orchestrator
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -64,6 +66,23 @@ type remoteCompactionSource struct {
 	headers http.Header
 }
 
+type localCompactionGeneration struct {
+	ref          *remoteCompactionReference
+	cacheKey     string
+	model        string
+	instructions string
+	standalone   bool
+}
+
+type remoteCompactionMiddleware struct {
+	pipeline.DummyMiddleware
+
+	inbound    *PersistentInboundTransformer
+	adapter    *remoteCompactionAdapter
+	executor   pipeline.Executor
+	generation *localCompactionGeneration
+}
+
 func newRemoteCompactionAdapter(
 	requestService *biz.RequestService,
 	usageLogService *biz.UsageLogService,
@@ -82,77 +101,460 @@ func adaptRemoteCompactionForUnsupportedChannels(
 	adapter *remoteCompactionAdapter,
 	executor pipeline.Executor,
 ) pipeline.Middleware {
-	return pipeline.OnLlmRequest("adapt-remote-compaction", func(ctx context.Context, req *llm.Request) (*llm.Request, error) {
-		if adapter == nil || inbound == nil || req == nil || executor == nil {
-			return req, nil
-		}
-		if req.APIFormat != llm.APIFormatOpenAIResponse || req.RequestType == llm.RequestTypeCompact {
-			return req, nil
-		}
-		if hasRemoteCompactionCapableCandidate(inbound.state.ChannelModelsCandidates) {
-			return req, nil
-		}
-		if !hasUnsupportedCodexCandidate(inbound.state.ChannelModelsCandidates) {
-			return req, nil
-		}
-		if req.RawRequest == nil || len(rawRequestPayload(req.RawRequest)) == 0 {
-			return req, nil
+	return &remoteCompactionMiddleware{
+		inbound:  inbound,
+		adapter:  adapter,
+		executor: executor,
+	}
+}
+
+func (m *remoteCompactionMiddleware) Name() string {
+	return "adapt-remote-compaction"
+}
+
+func (m *remoteCompactionMiddleware) OnInboundLlmRequest(ctx context.Context, req *llm.Request) (*llm.Request, error) {
+	if m.adapter == nil || m.inbound == nil || req == nil || m.executor == nil {
+		return req, nil
+	}
+
+	if isRemoteCompactionGenerationRequest(req) && hasLocalBridgeCodexCandidate(m.inbound.state.ChannelModelsCandidates) {
+		return m.adaptLocalCompactionGeneration(ctx, req)
+	}
+
+	if req.APIFormat != llm.APIFormatOpenAIResponse || req.RequestType == llm.RequestTypeCompact {
+		return req, nil
+	}
+	if hasRemoteCompactionCapableCandidate(m.inbound.state.ChannelModelsCandidates) {
+		return req, nil
+	}
+	if !hasUnsupportedCodexCandidate(m.inbound.state.ChannelModelsCandidates) {
+		return req, nil
+	}
+	if req.RawRequest == nil || len(rawRequestPayload(req.RawRequest)) == 0 {
+		return req, nil
+	}
+
+	ref, threadID, rawModel, err := parseRemoteCompactionRequest(rawRequestPayload(req.RawRequest))
+	if err != nil {
+		return nil, err
+	}
+	if ref == nil {
+		return req, nil
+	}
+	if ref.ID == "" || threadID == "" {
+		return nil, errors.New("remote compaction local fallback requires a compaction id and Codex thread id")
+	}
+
+	cacheKey := remoteCompactionCacheKey(ref)
+	summary, err := m.adapter.summaryForCompaction(
+		ctx,
+		cacheKey,
+		ref,
+		threadID,
+		rawModel,
+		m.inbound.state,
+		m.executor,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("adapt remote compaction for unsupported Codex channel: %w", err)
+	}
+
+	adaptedBody, err := replaceRemoteCompactionWithLocalSummary(rawRequestPayload(req.RawRequest), summary)
+	if err != nil {
+		return nil, err
+	}
+	adaptedRawRequest := cloneRawRequest(req.RawRequest)
+	adaptedRawRequest.Body = adaptedBody
+	if len(adaptedRawRequest.JSONBody) > 0 {
+		adaptedRawRequest.JSONBody = adaptedBody
+	}
+
+	adapted, err := responses.NewInboundTransformer().TransformRequest(ctx, adaptedRawRequest)
+	if err != nil {
+		return nil, fmt.Errorf("parse locally compacted Responses request: %w", err)
+	}
+	adapted.Model = req.Model
+	adapted.ReasoningEffort = req.ReasoningEffort
+	adapted.RawRequest = adaptedRawRequest
+
+	m.inbound.state.RawRequest = adaptedRawRequest
+	m.inbound.state.LlmRequest = adapted
+
+	log.Info(ctx, "adapted remote compaction history for unsupported Codex channel",
+		log.String("compaction_id", ref.ID),
+		log.String("thread_id", threadID),
+		log.Int("candidate_count", len(m.inbound.state.ChannelModelsCandidates)),
+	)
+
+	return adapted, nil
+}
+
+func (m *remoteCompactionMiddleware) adaptLocalCompactionGeneration(ctx context.Context, req *llm.Request) (*llm.Request, error) {
+	if req.RawRequest == nil || len(rawRequestPayload(req.RawRequest)) == 0 {
+		return nil, errors.New("local compaction bridge requires the original Responses request")
+	}
+
+	ref, err := newLocalCompactionReference()
+	if err != nil {
+		return nil, fmt.Errorf("create local compaction reference: %w", err)
+	}
+	body, err := buildLocalCompactionGenerationRequest(rawRequestPayload(req.RawRequest), req.RequestType)
+	if err != nil {
+		return nil, err
+	}
+
+	adaptedRawRequest := cloneRawRequest(req.RawRequest)
+	adaptedRawRequest.Body = body
+	if len(adaptedRawRequest.JSONBody) > 0 {
+		adaptedRawRequest.JSONBody = body
+	}
+	if adaptedRawRequest.Headers == nil {
+		adaptedRawRequest.Headers = make(http.Header)
+	}
+	cacheKey := remoteCompactionCacheKey(ref)
+	adaptedRawRequest.Headers.Set(remoteCompactionCacheHeader, cacheKey)
+	updateCompactionImplementationHeader(adaptedRawRequest.Headers)
+	adaptedRawRequest.RequestType = string(llm.RequestTypeChat)
+	adaptedRawRequest.APIFormat = string(llm.APIFormatOpenAIResponse)
+
+	adapted, err := responses.NewInboundTransformer().TransformRequest(ctx, adaptedRawRequest)
+	if err != nil {
+		return nil, fmt.Errorf("parse local compaction generation request: %w", err)
+	}
+	adapted.Model = req.Model
+	adapted.ReasoningEffort = req.ReasoningEffort
+	adapted.RawRequest = adaptedRawRequest
+
+	instructions := ""
+	standalone := req.RequestType == llm.RequestTypeCompact
+	if standalone && req.Compact != nil {
+		instructions = req.Compact.Instructions
+	}
+	if standalone {
+		useResponsesEndpointForLocalCompaction(m.inbound.state.ChannelModelsCandidates)
+	}
+	m.generation = &localCompactionGeneration{
+		ref:          ref,
+		cacheKey:     cacheKey,
+		model:        req.Model,
+		instructions: instructions,
+		standalone:   standalone,
+	}
+
+	m.inbound.state.RawRequest = adaptedRawRequest
+	m.inbound.state.LlmRequest = adapted
+	m.inbound.state.DisableResponsePassThrough = true
+	m.inbound.state.DisableStreamForcing = standalone
+
+	threadID := adaptedRawRequest.Headers.Get("Thread-Id")
+	log.Info(ctx, "bridging remote compaction generation through regular Responses",
+		log.String("compaction_id", ref.ID),
+		log.String("thread_id", threadID),
+		log.Bool("standalone", standalone),
+		log.Int("candidate_count", len(m.inbound.state.ChannelModelsCandidates)),
+	)
+
+	return adapted, nil
+}
+
+func useResponsesEndpointForLocalCompaction(candidates []*ChannelModelsCandidate) {
+	for _, candidate := range candidates {
+		if candidate == nil || candidate.Channel == nil ||
+			candidate.Channel.Type != channel.TypeCodex ||
+			!candidate.Channel.Policies.UsesLocalRemoteCompactionBridge() {
+			continue
 		}
 
-		ref, threadID, rawModel, err := parseRemoteCompactionRequest(rawRequestPayload(req.RawRequest))
-		if err != nil {
-			return nil, err
+		candidate.APIFormat = llm.APIFormatOpenAIResponse.String()
+	}
+}
+
+func (m *remoteCompactionMiddleware) OnOutboundRawRequest(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error) {
+	if m.generation != nil && request != nil {
+		if request.Headers != nil {
+			request.Headers.Del(remoteCompactionCacheHeader)
 		}
-		if ref == nil {
-			return req, nil
+	}
+
+	return request, nil
+}
+
+func (m *remoteCompactionMiddleware) OnOutboundLlmResponse(ctx context.Context, response *llm.Response) (*llm.Response, error) {
+	if m.generation == nil || !m.generation.standalone {
+		return response, nil
+	}
+
+	summary := strings.TrimSpace(extractAssistantResponseText(response))
+	if summary == "" {
+		return nil, errors.New("local compaction provider returned no assistant summary")
+	}
+	m.adapter.summaries.SetDefault(m.generation.cacheKey, summary)
+
+	return localStandaloneCompactionResponse(response, m.generation), nil
+}
+
+func (m *remoteCompactionMiddleware) OnOutboundLlmStream(
+	ctx context.Context,
+	stream streams.Stream[*llm.Response],
+) (streams.Stream[*llm.Response], error) {
+	if m.generation == nil || m.generation.standalone {
+		return stream, nil
+	}
+
+	return newLocalCompactionBridgeStream(stream, m.adapter, m.generation), nil
+}
+
+func hasLocalBridgeCodexCandidate(candidates []*ChannelModelsCandidate) bool {
+	for _, candidate := range candidates {
+		if candidate != nil && candidate.Channel != nil &&
+			candidate.Channel.Type == channel.TypeCodex &&
+			candidate.Channel.Policies.UsesLocalRemoteCompactionBridge() {
+			return true
 		}
-		if ref.ID == "" || threadID == "" {
-			return nil, errors.New("remote compaction local fallback requires a compaction id and Codex thread id")
+	}
+
+	return false
+}
+
+func newLocalCompactionReference() (*remoteCompactionReference, error) {
+	random := make([]byte, 32)
+	if _, err := rand.Read(random); err != nil {
+		return nil, err
+	}
+
+	return &remoteCompactionReference{
+		ID:               "cmp_axonhub_" + hex.EncodeToString(random[:12]),
+		EncryptedContent: "axonhub-local-v1." + base64.RawURLEncoding.EncodeToString(random),
+	}, nil
+}
+
+func localCompactionMessagePart(ref *remoteCompactionReference) llm.MessageContentPart {
+	createdBy := "model"
+
+	return llm.MessageContentPart{
+		ID:   ref.ID,
+		Type: remoteCompactionItemType,
+		Compact: &llm.CompactContent{
+			ID:               ref.ID,
+			EncryptedContent: ref.EncryptedContent,
+			CreatedBy:        &createdBy,
+		},
+	}
+}
+
+func localStandaloneCompactionResponse(source *llm.Response, generation *localCompactionGeneration) *llm.Response {
+	createdAt := time.Now().Unix()
+	responseID := "resp_" + strings.TrimPrefix(generation.ref.ID, "cmp_")
+	model := generation.model
+	var usage *llm.Usage
+	if source != nil {
+		if source.Created > 0 {
+			createdAt = source.Created
+		}
+		if source.ID != "" {
+			responseID = source.ID
+		}
+		if source.Model != "" {
+			model = source.Model
+		}
+		usage = source.Usage
+	}
+
+	output := []llm.Message{{
+		Role: "assistant",
+		Content: llm.MessageContent{MultipleContent: []llm.MessageContentPart{
+			localCompactionMessagePart(generation.ref),
+		}},
+	}}
+
+	return &llm.Response{
+		ID:          responseID,
+		Object:      "response.compaction",
+		Created:     createdAt,
+		Model:       model,
+		Usage:       usage,
+		RequestType: llm.RequestTypeCompact,
+		APIFormat:   llm.APIFormatOpenAIResponseCompact,
+		Compact: &llm.CompactResponse{
+			ID:           responseID,
+			CreatedAt:    createdAt,
+			Object:       "response.compaction",
+			Instructions: generation.instructions,
+			Output:       output,
+		},
+	}
+}
+
+type localCompactionBridgeStream struct {
+	stream     streams.Stream[*llm.Response]
+	adapter    *remoteCompactionAdapter
+	generation *localCompactionGeneration
+
+	current   *llm.Response
+	err       error
+	stage     int
+	response  llm.Response
+	summary   strings.Builder
+	sawSource bool
+}
+
+func newLocalCompactionBridgeStream(
+	stream streams.Stream[*llm.Response],
+	adapter *remoteCompactionAdapter,
+	generation *localCompactionGeneration,
+) streams.Stream[*llm.Response] {
+	return &localCompactionBridgeStream{
+		stream:     stream,
+		adapter:    adapter,
+		generation: generation,
+	}
+}
+
+func (s *localCompactionBridgeStream) Next() bool {
+	switch s.stage {
+	case 0:
+		if !s.stream.Next() {
+			return s.finishSource()
+		}
+		s.consume(s.stream.Current())
+		s.current = &llm.Response{
+			ID:      s.response.ID,
+			Object:  s.response.Object,
+			Created: s.response.Created,
+			Model:   s.response.Model,
+		}
+		s.stage = 1
+
+		return true
+	case 1:
+		for s.stream.Next() {
+			s.consume(s.stream.Current())
 		}
 
-		cacheKey := remoteCompactionCacheKey(ref)
-		summary, err := adapter.summaryForCompaction(
-			ctx,
-			cacheKey,
-			ref,
-			threadID,
-			rawModel,
-			inbound.state,
-			executor,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("adapt remote compaction for unsupported Codex channel: %w", err)
+		return s.finishSource()
+	case 2:
+		s.current = llm.DoneResponse
+		s.stage = 3
+
+		return true
+	default:
+		return false
+	}
+}
+
+func (s *localCompactionBridgeStream) consume(response *llm.Response) {
+	if response == nil || response == llm.DoneResponse || response.Object == "[DONE]" {
+		return
+	}
+	s.sawSource = true
+	if response.ID != "" {
+		s.response.ID = response.ID
+	}
+	if response.Object != "" {
+		s.response.Object = response.Object
+	}
+	if response.Created > 0 {
+		s.response.Created = response.Created
+	}
+	if response.Model != "" {
+		s.response.Model = response.Model
+	}
+	if response.Usage != nil {
+		s.response.Usage = response.Usage
+	}
+	s.summary.WriteString(extractAssistantResponseText(response))
+}
+
+func (s *localCompactionBridgeStream) finishSource() bool {
+	if err := s.stream.Err(); err != nil {
+		s.err = err
+
+		return false
+	}
+	summary := strings.TrimSpace(s.summary.String())
+	if !s.sawSource || summary == "" {
+		s.err = errors.New("local compaction provider returned no assistant summary")
+
+		return false
+	}
+	s.adapter.summaries.SetDefault(s.generation.cacheKey, summary)
+
+	createdAt := s.response.Created
+	if createdAt == 0 {
+		createdAt = time.Now().Unix()
+	}
+	responseID := s.response.ID
+	if responseID == "" {
+		responseID = "resp_" + strings.TrimPrefix(s.generation.ref.ID, "cmp_")
+	}
+	model := s.response.Model
+	if model == "" {
+		model = s.generation.model
+	}
+	finishReason := "stop"
+	s.current = &llm.Response{
+		ID:      responseID,
+		Object:  "response.compaction",
+		Created: createdAt,
+		Model:   model,
+		Usage:   s.response.Usage,
+		Choices: []llm.Choice{{
+			Index:        0,
+			FinishReason: &finishReason,
+			Delta: &llm.Message{
+				Role: "assistant",
+				Content: llm.MessageContent{MultipleContent: []llm.MessageContentPart{
+					localCompactionMessagePart(s.generation.ref),
+				}},
+			},
+		}},
+		RequestType: llm.RequestTypeChat,
+		APIFormat:   llm.APIFormatOpenAIResponse,
+	}
+	s.stage = 2
+
+	return true
+}
+
+func (s *localCompactionBridgeStream) Current() *llm.Response {
+	return s.current
+}
+
+func (s *localCompactionBridgeStream) Err() error {
+	if s.err != nil {
+		return s.err
+	}
+
+	return s.stream.Err()
+}
+
+func (s *localCompactionBridgeStream) Close() error {
+	return s.stream.Close()
+}
+
+func extractAssistantResponseText(response *llm.Response) string {
+	if response == nil {
+		return ""
+	}
+
+	var text strings.Builder
+	for _, choice := range response.Choices {
+		for _, message := range []*llm.Message{choice.Message, choice.Delta} {
+			if message == nil || (message.Role != "" && message.Role != "assistant") {
+				continue
+			}
+			if message.Content.Content != nil {
+				text.WriteString(*message.Content.Content)
+			}
+			for _, part := range message.Content.MultipleContent {
+				if part.Type == "text" && part.Text != nil {
+					text.WriteString(*part.Text)
+				}
+			}
 		}
+	}
 
-		adaptedBody, err := replaceRemoteCompactionWithLocalSummary(rawRequestPayload(req.RawRequest), summary)
-		if err != nil {
-			return nil, err
-		}
-		adaptedRawRequest := cloneRawRequest(req.RawRequest)
-		adaptedRawRequest.Body = adaptedBody
-		if len(adaptedRawRequest.JSONBody) > 0 {
-			adaptedRawRequest.JSONBody = adaptedBody
-		}
-
-		adapted, err := responses.NewInboundTransformer().TransformRequest(ctx, adaptedRawRequest)
-		if err != nil {
-			return nil, fmt.Errorf("parse locally compacted Responses request: %w", err)
-		}
-		adapted.Model = req.Model
-		adapted.ReasoningEffort = req.ReasoningEffort
-		adapted.RawRequest = adaptedRawRequest
-
-		inbound.state.RawRequest = adaptedRawRequest
-		inbound.state.LlmRequest = adapted
-
-		log.Info(ctx, "adapted remote compaction history for unsupported Codex channel",
-			log.String("compaction_id", ref.ID),
-			log.String("thread_id", threadID),
-			log.Int("candidate_count", len(inbound.state.ChannelModelsCandidates)),
-		)
-
-		return adapted, nil
-	})
+	return text.String()
 }
 
 func hasRemoteCompactionCapableCandidate(candidates []*ChannelModelsCandidate) bool {
@@ -274,6 +676,7 @@ func (a *remoteCompactionAdapter) findStoredSummaryOrSource(
 			return "", nil, loadErr
 		}
 
+		var executions []*ent.RequestExecution
 		if storedCacheKey == cacheKey {
 			responseBody, loadErr := a.requestService.LoadResponseBody(ctx, prior)
 			if loadErr != nil {
@@ -281,6 +684,20 @@ func (a *remoteCompactionAdapter) findStoredSummaryOrSource(
 			}
 			if summary := extractAssistantOutputText(responseBody); summary != "" {
 				return summary, nil, nil
+			}
+
+			executions, loadErr = prior.QueryExecutions().All(ctx)
+			if loadErr != nil {
+				return "", nil, fmt.Errorf("query local compaction bridge executions: %w", loadErr)
+			}
+			for _, execution := range executions {
+				executionBody, responseErr := a.requestService.LoadRequestExecutionResponseBody(ctx, execution)
+				if responseErr != nil {
+					return "", nil, responseErr
+				}
+				if summary := extractAssistantOutputText(executionBody); summary != "" {
+					return summary, nil, nil
+				}
 			}
 		}
 
@@ -296,9 +713,11 @@ func (a *remoteCompactionAdapter) findStoredSummaryOrSource(
 			continue
 		}
 
-		executions, queryErr := prior.QueryExecutions().All(ctx)
-		if queryErr != nil {
-			return "", nil, fmt.Errorf("query compaction source executions: %w", queryErr)
+		if executions == nil {
+			executions, loadErr = prior.QueryExecutions().All(ctx)
+			if loadErr != nil {
+				return "", nil, fmt.Errorf("query compaction source executions: %w", loadErr)
+			}
 		}
 		for _, execution := range executions {
 			responseBody, loadErr := a.requestService.LoadRequestExecutionResponseBody(ctx, execution)
@@ -613,6 +1032,26 @@ func parseRemoteCompactionRequest(body []byte) (*remoteCompactionReference, stri
 	}
 
 	return ref, responseEnvelopeThreadID(envelope), responseEnvelopeModel(envelope), nil
+}
+
+func buildLocalCompactionGenerationRequest(body []byte, requestType llm.RequestType) ([]byte, error) {
+	if requestType != llm.RequestTypeCompact {
+		return buildLocalCompactionRequest(body)
+	}
+
+	envelope, input, err := decodeResponsesInput(body)
+	if err != nil {
+		return nil, err
+	}
+	input = append(input, localCompactionMessage(localCompactionPrompt))
+	if err := setResponseEnvelopeInput(envelope, input); err != nil {
+		return nil, err
+	}
+	setResponseEnvelopeBool(envelope, "stream", false)
+	setResponseEnvelopeBool(envelope, "store", false)
+	updateCompactionImplementationMetadata(envelope)
+
+	return json.Marshal(envelope)
 }
 
 func buildLocalCompactionRequest(body []byte) ([]byte, error) {

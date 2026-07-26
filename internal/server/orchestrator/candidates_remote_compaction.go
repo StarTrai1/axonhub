@@ -16,9 +16,10 @@ const (
 	legacyRemoteCompactionSummaryType = "compaction_summary"
 )
 
-// RemoteCompactionSelector prefers native-capable Codex channels. When none
-// exist, automatic channels preserve the historical permissive fallback while
-// explicit local bridges are excluded from compaction-generation requests.
+// RemoteCompactionSelector prefers native-capable Codex channels. For
+// compaction generation, an explicit local bridge is the next safest option;
+// automatic channels preserve the historical permissive fallback only when no
+// native or local-bridge channel exists.
 type RemoteCompactionSelector struct {
 	wrapped CandidateSelector
 }
@@ -53,19 +54,28 @@ func (s *RemoteCompactionSelector) Select(ctx context.Context, req *llm.Request)
 			return candidates, nil
 		}
 
-		fallback := lo.Filter(candidates, func(candidate *ChannelModelsCandidate, _ int) bool {
-			return candidate == nil ||
-				candidate.Channel == nil ||
-				candidate.Channel.Type != channel.TypeCodex ||
-				candidate.Channel.Policies.AllowsRemoteCompactionGeneration()
+		localBridge := lo.Filter(candidates, func(candidate *ChannelModelsCandidate, _ int) bool {
+			return candidate != nil &&
+				candidate.Channel != nil &&
+				candidate.Channel.Type == channel.TypeCodex &&
+				candidate.Channel.Policies.UsesLocalRemoteCompactionBridge()
 		})
-		if log.DebugEnabled(ctx) && len(fallback) != len(candidates) {
-			log.Debug(ctx, "excluded local-bridge channels from remote compaction generation",
-				log.Int("candidate_count", len(candidates)),
-				log.Int("fallback_candidate_count", len(fallback)))
+		if len(localBridge) > 0 {
+			if log.DebugEnabled(ctx) {
+				log.Debug(ctx, "preferred local-bridge channels for remote compaction generation",
+					log.Int("candidate_count", len(candidates)),
+					log.Int("local_bridge_candidate_count", len(localBridge)))
+			}
+
+			return localBridge, nil
 		}
 
-		return fallback, nil
+		if log.DebugEnabled(ctx) {
+			log.Debug(ctx, "using automatic remote compaction fallback candidates",
+				log.Int("candidate_count", len(candidates)))
+		}
+
+		return candidates, nil
 	}
 
 	if log.DebugEnabled(ctx) {

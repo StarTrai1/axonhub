@@ -138,8 +138,8 @@ type ChatCompletionOrchestrator struct {
 	modelCircuitBreaker *biz.ModelCircuitBreaker
 	// The provider quota status provider for quota-aware load balancing and selection.
 	quotaProvider ProviderQuotaStatusProvider
-	// Converts remote compaction history only when every eligible Codex channel
-	// lacks native remote-compaction support.
+	// Bridges remote compaction generation and continuation when an eligible
+	// Codex channel is configured for local compaction.
 	remoteCompactionAdapter *remoteCompactionAdapter
 
 	// proxy is the proxy configuration for testing

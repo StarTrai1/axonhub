@@ -7,9 +7,14 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
+	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
 
 func TestBuildLocalCompactionRequest(t *testing.T) {
@@ -43,6 +48,54 @@ func TestBuildLocalCompactionRequest(t *testing.T) {
 	var turnMetadata string
 	require.NoError(t, json.Unmarshal(metadata["x-codex-turn-metadata"], &turnMetadata))
 	require.JSONEq(t, `{"compaction":{"implementation":"responses"}}`, turnMetadata)
+}
+
+func TestBuildStandaloneLocalCompactionGenerationRequest(t *testing.T) {
+	body := []byte(`{
+		"model":"gpt-5.6-sol",
+		"input":[
+			{"type":"message","role":"user","content":[{"type":"input_text","text":"before"}]}
+		],
+		"instructions":"keep this instruction"
+	}`)
+
+	got, err := buildLocalCompactionGenerationRequest(body, llm.RequestTypeCompact)
+	require.NoError(t, err)
+
+	envelope, input, err := decodeResponsesInput(got)
+	require.NoError(t, err)
+	require.Len(t, input, 2)
+	require.Equal(t, "message", rawInputItemType(input[1]))
+	require.Contains(t, string(input[1]), "CONTEXT CHECKPOINT COMPACTION")
+	require.JSONEq(t, "false", string(envelope["stream"]))
+	require.JSONEq(t, "false", string(envelope["store"]))
+	require.JSONEq(t, `"keep this instruction"`, string(envelope["instructions"]))
+}
+
+func TestUseResponsesEndpointForLocalCompaction(t *testing.T) {
+	local := &ChannelModelsCandidate{
+		APIFormat: llm.APIFormatOpenAIResponseCompact.String(),
+		Channel: &biz.Channel{Channel: &ent.Channel{
+			Type: channel.TypeCodex,
+			Policies: objects.ChannelPolicies{
+				RemoteCompaction: objects.RemoteCompactionPolicyLocalBridge,
+			},
+		}},
+	}
+	native := &ChannelModelsCandidate{
+		APIFormat: llm.APIFormatOpenAIResponseCompact.String(),
+		Channel: &biz.Channel{Channel: &ent.Channel{
+			Type: channel.TypeCodex,
+			Policies: objects.ChannelPolicies{
+				RemoteCompaction: objects.RemoteCompactionPolicyNative,
+			},
+		}},
+	}
+
+	useResponsesEndpointForLocalCompaction([]*ChannelModelsCandidate{local, native})
+
+	require.Equal(t, llm.APIFormatOpenAIResponse.String(), local.APIFormat)
+	require.Equal(t, llm.APIFormatOpenAIResponseCompact.String(), native.APIFormat)
 }
 
 func TestReplaceRemoteCompactionWithLocalSummary(t *testing.T) {
@@ -143,4 +196,133 @@ func TestCollectLocalCompactionBridgeStreamStopsAtCompleted(t *testing.T) {
 	require.NotNil(t, perf.FirstTokenTime)
 	_, latencyMs, _ := perf.Calculate()
 	require.GreaterOrEqual(t, latencyMs, int64(1000))
+}
+
+func TestLocalCompactionBridgeStreamReturnsOneCompactionItem(t *testing.T) {
+	text := "handoff summary"
+	adapter := newRemoteCompactionAdapter(nil, nil, nil)
+	ref := &remoteCompactionReference{ID: "cmp_local", EncryptedContent: "opaque-local"}
+	generation := &localCompactionGeneration{
+		ref:      ref,
+		cacheKey: remoteCompactionCacheKey(ref),
+		model:    "gpt-5.6-sol",
+	}
+	source := streams.SliceStream([]*llm.Response{
+		{
+			ID:    "resp_summary",
+			Model: "gpt-5.6-sol",
+			Choices: []llm.Choice{{
+				Delta: &llm.Message{
+					Role:    "assistant",
+					Content: llm.MessageContent{Content: &text},
+				},
+			}},
+		},
+		llm.DoneResponse,
+	})
+	stream := newLocalCompactionBridgeStream(source, adapter, generation)
+
+	var events []*llm.Response
+	for stream.Next() {
+		events = append(events, stream.Current())
+	}
+
+	require.NoError(t, stream.Err())
+	require.Len(t, events, 3)
+	require.Empty(t, events[0].Choices)
+	require.Len(t, events[1].Choices, 1)
+	require.Equal(t, "stop", *events[1].Choices[0].FinishReason)
+	parts := events[1].Choices[0].Delta.Content.MultipleContent
+	require.Len(t, parts, 1)
+	require.Equal(t, remoteCompactionItemType, parts[0].Type)
+	require.Equal(t, ref.ID, parts[0].Compact.ID)
+	require.Same(t, llm.DoneResponse, events[2])
+	cached, ok := adapter.summaries.Get(generation.cacheKey)
+	require.True(t, ok)
+	require.Equal(t, text, cached)
+}
+
+func TestLocalCompactionBridgeStreamProducesCodexCompletionContract(t *testing.T) {
+	text := "handoff summary"
+	adapter := newRemoteCompactionAdapter(nil, nil, nil)
+	ref := &remoteCompactionReference{ID: "cmp_local", EncryptedContent: "opaque-local"}
+	generation := &localCompactionGeneration{
+		ref:      ref,
+		cacheKey: remoteCompactionCacheKey(ref),
+		model:    "gpt-5.6-sol",
+	}
+	source := streams.SliceStream([]*llm.Response{
+		{
+			ID:    "resp_summary",
+			Model: "gpt-5.6-sol",
+			Choices: []llm.Choice{{Delta: &llm.Message{
+				Role:    "assistant",
+				Content: llm.MessageContent{Content: &text},
+			}}},
+		},
+		llm.DoneResponse,
+	})
+	bridge := newLocalCompactionBridgeStream(source, adapter, generation)
+	stream, err := responses.NewInboundTransformer().TransformStream(t.Context(), bridge)
+	require.NoError(t, err)
+
+	var eventTypes []string
+	compactionDone := 0
+	completedOutput := 0
+	for stream.Next() {
+		var event struct {
+			Type string `json:"type"`
+			Item *struct {
+				Type string `json:"type"`
+			} `json:"item"`
+			Response *struct {
+				Output []struct {
+					Type string `json:"type"`
+				} `json:"output"`
+			} `json:"response"`
+		}
+		require.NoError(t, json.Unmarshal(stream.Current().Data, &event))
+		eventTypes = append(eventTypes, event.Type)
+		if event.Type == "response.output_item.done" && event.Item != nil && event.Item.Type == remoteCompactionItemType {
+			compactionDone++
+		}
+		if event.Type == "response.completed" && event.Response != nil {
+			for _, item := range event.Response.Output {
+				if item.Type == remoteCompactionItemType {
+					completedOutput++
+				}
+			}
+		}
+	}
+
+	require.NoError(t, stream.Err())
+	require.NotEmpty(t, eventTypes)
+	require.Equal(t, "response.completed", eventTypes[len(eventTypes)-1])
+	require.Equal(t, 1, compactionDone)
+	require.Equal(t, 1, completedOutput)
+}
+
+func TestLocalStandaloneCompactionResponseContainsOnlyOpaqueReference(t *testing.T) {
+	ref := &remoteCompactionReference{ID: "cmp_local", EncryptedContent: "opaque-local"}
+	generation := &localCompactionGeneration{
+		ref:          ref,
+		model:        "gpt-5.6-sol",
+		instructions: "keep this instruction",
+		standalone:   true,
+	}
+	source := &llm.Response{ID: "resp_summary", Created: 123, Model: "gpt-5.6-sol"}
+
+	got := localStandaloneCompactionResponse(source, generation)
+
+	require.Equal(t, llm.RequestTypeCompact, got.RequestType)
+	require.Equal(t, "response.compaction", got.Compact.Object)
+	require.Equal(t, "keep this instruction", got.Compact.Instructions)
+	require.Len(t, got.Compact.Output, 1)
+	parts := got.Compact.Output[0].Content.MultipleContent
+	require.Len(t, parts, 1)
+	require.Equal(t, remoteCompactionItemType, parts[0].Type)
+	require.Equal(t, ref, &remoteCompactionReference{
+		ID:               parts[0].Compact.ID,
+		EncryptedContent: parts[0].Compact.EncryptedContent,
+	})
 }

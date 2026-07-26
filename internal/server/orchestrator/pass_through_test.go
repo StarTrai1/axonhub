@@ -29,6 +29,25 @@ func testHTTPStream(events []*httpclient.StreamEvent) streams.Stream[*httpclient
 	return streams.SliceStream(events)
 }
 
+func TestResponsePassThroughCanBeDisabledWithoutDisablingRequestPassThrough(t *testing.T) {
+	stream := false
+	outbound := &PersistentOutboundTransformer{state: &PersistenceState{
+		CurrentCandidate: &ChannelModelsCandidate{Channel: &biz.Channel{Channel: &ent.Channel{
+			Settings: &objects.ChannelSettings{PassThroughBody: lo.ToPtr(true)},
+		}}},
+		LlmRequest: &llm.Request{
+			APIFormat: llm.APIFormatOpenAIResponse,
+			Stream:    &stream,
+		},
+		OriginalRequestStream:      &stream,
+		RawProviderRequest:         &httpclient.Request{APIFormat: string(llm.APIFormatOpenAIResponse)},
+		DisableResponsePassThrough: true,
+	}}
+
+	require.True(t, outbound.isPassThroughEnabled(context.Background(), nil))
+	require.False(t, outbound.isResponsePassThroughEnabled(context.Background(), nil))
+}
+
 // === captureRawProviderResponse tests ===
 
 func TestCaptureRawProviderResponse_StoresResponse(t *testing.T) {

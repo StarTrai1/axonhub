@@ -81,4 +81,13 @@ type PersistenceState struct {
 
 	// PassThroughApplied records whether the inbound request body was substituted during pass-through.
 	PassThroughApplied bool
+
+	// DisableResponsePassThrough keeps a request on the normal transform path even
+	// when request-body pass-through remains enabled. Protocol adapters use this
+	// when the upstream response must be rewritten before it reaches the client.
+	DisableResponsePassThrough bool
+
+	// DisableStreamForcing preserves a non-streaming protocol adapter request even
+	// when the selected channel normally requires streaming responses.
+	DisableStreamForcing bool
 }

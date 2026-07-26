@@ -76,6 +76,10 @@ func (p *PersistentOutboundTransformer) isPassThroughEnabled(ctx context.Context
 	return enabled
 }
 
+func (p *PersistentOutboundTransformer) isResponsePassThroughEnabled(ctx context.Context, systemService *biz.SystemService) bool {
+	return p.state != nil && !p.state.DisableResponsePassThrough && p.isPassThroughEnabled(ctx, systemService)
+}
+
 func passThroughStreamAligned(originalStream, effectiveStream *bool) bool {
 	originalEnabled := originalStream != nil && *originalStream
 	effectiveEnabled := effectiveStream != nil && *effectiveStream
@@ -240,7 +244,7 @@ func applyUserAgentPassThrough(outbound *PersistentOutboundTransformer, systemSe
 // captureRawProviderResponse stores the raw provider response on state for response pass-through.
 func captureRawProviderResponse(outbound *PersistentOutboundTransformer, systemService *biz.SystemService) pipeline.Middleware {
 	return pipeline.OnRawResponse("capture-raw-provider-response", func(ctx context.Context, response *httpclient.Response) (*httpclient.Response, error) {
-		if outbound.isPassThroughEnabled(ctx, systemService) {
+		if outbound.isResponsePassThroughEnabled(ctx, systemService) {
 			outbound.state.RawProviderResponse = response
 		}
 
@@ -252,7 +256,7 @@ func captureRawProviderResponse(outbound *PersistentOutboundTransformer, systemS
 // when PassThroughBody is enabled and the inbound/outbound API formats match.
 func applyPassThroughResponse(outbound *PersistentOutboundTransformer, systemService *biz.SystemService) pipeline.Middleware {
 	return pipeline.OnInboundRawResponse("pass-through-response", func(ctx context.Context, response *httpclient.Response) (*httpclient.Response, error) {
-		if !outbound.isPassThroughEnabled(ctx, systemService) {
+		if !outbound.isResponsePassThroughEnabled(ctx, systemService) {
 			return response, nil
 		}
 
@@ -284,7 +288,7 @@ func captureRawProviderStreamWithTerminalGrace(
 	terminalGracePeriod time.Duration,
 ) pipeline.Middleware {
 	return pipeline.OnRawStream("capture-raw-provider-stream", func(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*httpclient.StreamEvent], error) {
-		if !outbound.isPassThroughEnabled(ctx, systemService) {
+		if !outbound.isResponsePassThroughEnabled(ctx, systemService) {
 			if !shouldRepairDelayedCodexResponsesTerminal(outbound) {
 				return stream, nil
 			}
@@ -834,7 +838,7 @@ func stringPtr(value string) *string {
 // performance recording, rate limit tracking) still process events.
 func applyPassThroughStream(outbound *PersistentOutboundTransformer, systemService *biz.SystemService) pipeline.Middleware {
 	return pipeline.OnInboundRawStream("pass-through-response-stream", func(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*httpclient.StreamEvent], error) {
-		if !outbound.isPassThroughEnabled(ctx, systemService) {
+		if !outbound.isResponsePassThroughEnabled(ctx, systemService) {
 			return stream, nil
 		}
 

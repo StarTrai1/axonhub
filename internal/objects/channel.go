@@ -401,9 +401,9 @@ const (
 	// RemoteCompactionPolicyNative marks the channel as capable of handling the
 	// Codex remote compaction protocol without adaptation.
 	RemoteCompactionPolicyNative RemoteCompactionPolicy = "native"
-	// RemoteCompactionPolicyLocalBridge prevents remote compaction generation
-	// requests from reaching the channel. Compacted continuation history can
-	// still be converted into a local textual summary by AxonHub.
+	// RemoteCompactionPolicyLocalBridge converts remote compaction generation
+	// into a regular Responses summary request. AxonHub returns an opaque local
+	// compaction reference and expands it back to the summary on continuation.
 	RemoteCompactionPolicyLocalBridge RemoteCompactionPolicy = "local_bridge"
 )
 
@@ -438,8 +438,8 @@ func (p ChannelPolicies) PrefersNativeRemoteCompaction() bool {
 	return p.EffectiveRemoteCompactionPolicy() == RemoteCompactionPolicyNative
 }
 
-func (p ChannelPolicies) AllowsRemoteCompactionGeneration() bool {
-	return p.EffectiveRemoteCompactionPolicy() != RemoteCompactionPolicyLocalBridge
+func (p ChannelPolicies) UsesLocalRemoteCompactionBridge() bool {
+	return p.EffectiveRemoteCompactionPolicy() == RemoteCompactionPolicyLocalBridge
 }
 
 // EffectiveWebSearchPolicy translates legacy data without changing its routing:

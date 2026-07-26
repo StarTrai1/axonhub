@@ -579,6 +579,35 @@ func TestShouldForceStreamingForCandidate(t *testing.T) {
 	})
 }
 
+func TestPersistentOutboundTransformer_DisableStreamForcing(t *testing.T) {
+	stream := false
+	wrapped := &mockTransformer{apiFormat: llm.APIFormatOpenAIResponse}
+	state := &PersistenceState{
+		ChannelModelsCandidates: []*ChannelModelsCandidate{{
+			Channel: &biz.Channel{
+				Channel: &ent.Channel{Policies: objects.ChannelPolicies{Stream: objects.CapabilityPolicyRequire}},
+				Outbound: wrapped,
+			},
+			Models: []biz.ChannelModelEntry{{ActualModel: "gpt-5.6-sol"}},
+		}},
+		LlmRequest:           &llm.Request{Stream: &stream},
+		DisableStreamForcing: true,
+	}
+	outbound := &PersistentOutboundTransformer{wrapped: wrapped, state: state}
+	req := &llm.Request{
+		Model:       "gpt-5.6-sol",
+		Stream:      &stream,
+		RequestType: llm.RequestTypeChat,
+		APIFormat:   llm.APIFormatOpenAIResponse,
+	}
+
+	_, err := outbound.TransformRequest(context.Background(), req)
+
+	require.NoError(t, err)
+	require.False(t, *req.Stream)
+	require.False(t, *state.LlmRequest.Stream)
+}
+
 func TestIsCompletedAggregatedOutboundResponse(t *testing.T) {
 	t.Run("usage with completion tokens means completed", func(t *testing.T) {
 		require.True(t, isCompletedAggregated(llm.ResponseMeta{Usage: &llm.Usage{PromptTokens: 10, CompletionTokens: 5, TotalTokens: 15}}))

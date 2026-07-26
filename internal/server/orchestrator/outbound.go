@@ -389,7 +389,7 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 	llmRequest = applyWebSearchPolicy(llmRequest, candidate.Channel)
 	llmRequest = filterResponseCustomToolMessagesForNonResponsesOutbound(llmRequest, p.wrapped.APIFormat())
 
-	if shouldForceStreamingForCandidate(candidate, llmRequest) {
+	if !p.state.DisableStreamForcing && shouldForceStreamingForCandidate(candidate, llmRequest) {
 		streamPtr := lo.ToPtr(true)
 		llmRequest.Stream = streamPtr
 		if llmRequest.StreamOptions == nil {
