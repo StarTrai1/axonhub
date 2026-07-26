@@ -20,11 +20,6 @@ import {
   Play,
   Info,
   Ban,
-  Globe2,
-  Route,
-  Plug,
-  Cloud,
-  FileText,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -118,20 +113,18 @@ const CODEX_RESPONSES_WEBSOCKET_BASE_URL = 'wss://chatgpt.com/backend-api/codex#
 
 const WEB_SEARCH_POLICY_OPTIONS: ReadonlyArray<{
   value: WebSearchPolicy;
-  icon: typeof Globe2;
 }> = [
-  { value: 'native', icon: Globe2 },
-  { value: 'auto', icon: Route },
-  { value: 'mcp_only', icon: Plug },
+  { value: 'native' },
+  { value: 'auto' },
+  { value: 'mcp_only' },
 ];
 
 const REMOTE_COMPACTION_POLICY_OPTIONS: ReadonlyArray<{
   value: RemoteCompactionPolicy;
-  icon: typeof Globe2;
 }> = [
-  { value: 'native', icon: Cloud },
-  { value: 'auto', icon: Route },
-  { value: 'local_bridge', icon: FileText },
+  { value: 'native' },
+  { value: 'auto' },
+  { value: 'local_bridge' },
 ];
 
 function CompactPolicyRadioGroup<T extends string>({
@@ -143,7 +136,7 @@ function CompactPolicyRadioGroup<T extends string>({
 }: {
   value: T;
   onValueChange: (value: T) => void;
-  options: ReadonlyArray<{ value: T; icon: typeof Globe2 }>;
+  options: ReadonlyArray<{ value: T }>;
   translationPrefix: string;
   testId: string;
 }) {
@@ -153,11 +146,10 @@ function CompactPolicyRadioGroup<T extends string>({
     <RadioGroup
       value={value}
       onValueChange={(nextValue) => onValueChange(nextValue as T)}
-      className='grid grid-cols-1 gap-2 sm:grid-cols-3'
+      className='grid grid-cols-3 gap-1 rounded-md border bg-muted/40 p-1'
       data-testid={testId}
     >
       {options.map((option) => {
-        const Icon = option.icon;
         const selected = value === option.value;
         const id = `${testId}-${option.value}`;
         const label = t(`${translationPrefix}.${option.value}.label`);
@@ -168,15 +160,20 @@ function CompactPolicyRadioGroup<T extends string>({
             <TooltipTrigger asChild>
               <label
                 htmlFor={id}
-                className={`flex min-h-11 cursor-pointer items-center gap-2.5 rounded-md border px-3 py-2 transition-colors ${
+                className={`flex min-h-10 min-w-0 cursor-pointer items-center justify-center rounded-sm px-2 py-1.5 text-center text-xs font-medium leading-tight transition-colors focus-within:ring-[3px] focus-within:ring-ring/50 ${
                   selected
-                    ? 'border-primary bg-accent/50 text-foreground'
-                    : 'border-border text-muted-foreground hover:border-foreground/30 hover:bg-accent/30 hover:text-foreground'
+                    ? 'bg-background text-foreground shadow-xs ring-1 ring-primary'
+                    : 'text-muted-foreground hover:bg-background/60 hover:text-foreground'
                 }`}
               >
-                <RadioGroupItem id={id} value={option.value} className='shrink-0' data-testid={id} aria-label={label} />
-                <Icon className='h-4 w-4 shrink-0' />
-                <span className='truncate text-sm font-medium'>{label}</span>
+                <RadioGroupItem
+                  id={id}
+                  value={option.value}
+                  className='sr-only'
+                  data-testid={id}
+                  aria-label={`${label}. ${description}`}
+                />
+                <span className='min-w-0'>{label}</span>
               </label>
             </TooltipTrigger>
             <TooltipContent side='top' className='max-w-64 leading-relaxed'>
