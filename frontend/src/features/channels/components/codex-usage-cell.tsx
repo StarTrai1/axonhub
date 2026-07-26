@@ -87,7 +87,7 @@ function QuotaDetail({ label, window }: { label: string; window: CodexQuotaWindo
         </span>
       </div>
       {remaining !== undefined && (
-        <div className='text-muted-foreground flex items-center justify-between gap-4 text-[11px]'>
+        <div className='text-background/80 flex items-center justify-between gap-4 text-[11px]'>
           <span>{t('channels.codexUsage.usedValue', { percent: Math.round(100 - remaining) })}</span>
           <span>{resetAt ? t('channels.codexUsage.resetsAt', { time: resetAt }) : t('channels.codexUsage.resetUnknown')}</span>
         </div>
@@ -131,22 +131,29 @@ export function CodexUsageCell({ channel }: { channel: Channel }) {
           <QuotaMeter label={t('channels.codexUsage.weekShort')} window={weeklyWindow} />
         </div>
       </TooltipTrigger>
-      <TooltipContent side='left' className='w-72 space-y-3 p-3'>
+      <TooltipContent side='left' className='text-background w-72 space-y-3 p-3'>
         <div className='flex items-center justify-between gap-3'>
           <span className='font-semibold'>{t('channels.codexUsage.title')}</span>
-          {quotaData.plan_type && <Badge variant='secondary' className='h-5 uppercase'>{quotaData.plan_type}</Badge>}
+          {quotaData.plan_type && (
+            <Badge
+              variant='outline'
+              className='h-5 border-background/20 bg-background/10 text-background uppercase hover:bg-background/15'
+            >
+              {quotaData.plan_type}
+            </Badge>
+          )}
         </div>
         {hasQuotaData ? (
           <div className='space-y-3'>
             <QuotaDetail label={t('channels.codexUsage.fiveHour')} window={fiveHourWindow} />
-            <div className='border-border/60 border-t border-dashed pt-3'>
+            <div className='border-background/20 border-t border-dashed pt-3'>
               <QuotaDetail label={t('channels.codexUsage.weekly')} window={weeklyWindow} />
             </div>
           </div>
         ) : (
-          <p className='text-muted-foreground text-xs'>{t('channels.codexUsage.noWindowData')}</p>
+          <p className='text-background/80 text-xs'>{t('channels.codexUsage.noWindowData')}</p>
         )}
-        <div className='text-muted-foreground border-border/60 space-y-1 border-t border-dashed pt-2 text-[11px]'>
+        <div className='text-background/75 border-background/20 space-y-1 border-t border-dashed pt-2 text-[11px]'>
           {lastUpdated && <div>{t('channels.codexUsage.lastUpdated', { time: lastUpdated })}</div>}
           {nextCheck && <div>{t('channels.codexUsage.nextCheck', { time: nextCheck })}</div>}
         </div>

@@ -124,6 +124,9 @@ models:
   WebSearchPolicy:
     model:
       - github.com/looplj/axonhub/internal/objects.WebSearchPolicy
+  RemoteCompactionPolicy:
+    model:
+      - github.com/looplj/axonhub/internal/objects.RemoteCompactionPolicy
   ChannelEndpoint:
     model:
       - github.com/looplj/axonhub/internal/objects.ChannelEndpoint

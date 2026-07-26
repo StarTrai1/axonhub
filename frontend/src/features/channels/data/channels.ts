@@ -77,6 +77,7 @@ const CREATE_CHANNEL_MUTATION = `
       status
       policies {
         stream
+        remoteCompaction
         supportsRemoteCompaction
         webSearch
         supportsWebSearch
@@ -154,6 +155,7 @@ const DUPLICATE_CHANNEL_MUTATION = `
       status
       policies {
         stream
+        remoteCompaction
         supportsRemoteCompaction
         webSearch
         supportsWebSearch
@@ -231,6 +233,7 @@ const BULK_CREATE_CHANNELS_MUTATION = `
       status
       policies {
         stream
+        remoteCompaction
         supportsRemoteCompaction
         webSearch
         supportsWebSearch
@@ -308,6 +311,7 @@ const UPDATE_CHANNEL_MUTATION = `
       status
       policies {
         stream
+        remoteCompaction
         supportsRemoteCompaction
         webSearch
         supportsWebSearch
@@ -499,6 +503,7 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
         status
         policies {
           stream
+          remoteCompaction
           supportsRemoteCompaction
           webSearch
           supportsWebSearch
@@ -851,6 +856,7 @@ const QUERY_CHANNELS_QUERY = `
           status
           policies {
             stream
+            remoteCompaction
             supportsRemoteCompaction
             webSearch
             supportsWebSearch

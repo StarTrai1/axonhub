@@ -76,6 +76,9 @@ func (r *channelResolver) Policies(ctx context.Context, obj *ent.Channel) (*obje
 	if obj.Policies.Stream == "" {
 		obj.Policies.Stream = objects.CapabilityPolicyUnlimited
 	}
+	if obj.Policies.RemoteCompaction == "" {
+		obj.Policies.RemoteCompaction = obj.Policies.EffectiveRemoteCompactionPolicy()
+	}
 	if obj.Policies.WebSearch == "" {
 		obj.Policies.WebSearch = obj.Policies.EffectiveWebSearchPolicy()
 	}

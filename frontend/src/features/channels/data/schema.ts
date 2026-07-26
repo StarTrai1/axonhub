@@ -127,9 +127,13 @@ export type CapabilityPolicy = z.infer<typeof capabilityPolicySchema>;
 export const webSearchPolicySchema = z.enum(['auto', 'native', 'mcp_only']);
 export type WebSearchPolicy = z.infer<typeof webSearchPolicySchema>;
 
+export const remoteCompactionPolicySchema = z.enum(['auto', 'native', 'local_bridge']);
+export type RemoteCompactionPolicy = z.infer<typeof remoteCompactionPolicySchema>;
+
 export const channelPoliciesSchema = z
   .object({
     stream: capabilityPolicySchema.optional(),
+    remoteCompaction: remoteCompactionPolicySchema.nullish(),
     supportsRemoteCompaction: z.boolean().optional().default(false),
     webSearch: webSearchPolicySchema.nullish(),
     supportsWebSearch: z
@@ -139,6 +143,7 @@ export const channelPoliciesSchema = z
   })
   .transform((value) => ({
     ...value,
+    remoteCompaction: value.remoteCompaction ?? (value.supportsRemoteCompaction ? 'native' : 'auto'),
     webSearch: value.webSearch ?? (value.supportsWebSearch ? 'native' : 'auto'),
   }));
 export type ChannelPolicies = z.infer<typeof channelPoliciesSchema>;

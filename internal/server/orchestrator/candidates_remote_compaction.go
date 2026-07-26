@@ -16,8 +16,9 @@ const (
 	legacyRemoteCompactionSummaryType = "compaction_summary"
 )
 
-// RemoteCompactionSelector prefers explicitly capable Codex channels while
-// preserving the existing candidate set when none are marked as capable.
+// RemoteCompactionSelector prefers native-capable Codex channels. When none
+// exist, automatic channels preserve the historical permissive fallback while
+// explicit local bridges are excluded from compaction-generation requests.
 type RemoteCompactionSelector struct {
 	wrapped CandidateSelector
 }
@@ -40,15 +41,31 @@ func (s *RemoteCompactionSelector) Select(ctx context.Context, req *llm.Request)
 		return candidate != nil &&
 			candidate.Channel != nil &&
 			candidate.Channel.Type == channel.TypeCodex &&
-			candidate.Channel.Policies.SupportsRemoteCompaction
+			candidate.Channel.Policies.PrefersNativeRemoteCompaction()
 	})
 	if len(capable) == 0 {
 		if log.DebugEnabled(ctx) {
-			log.Debug(ctx, "no remote compaction capable channels, using all candidates",
+			log.Debug(ctx, "no native remote compaction channel, evaluating fallback candidates",
 				log.Int("candidate_count", len(candidates)))
 		}
 
-		return candidates, nil
+		if !isRemoteCompactionGenerationRequest(req) {
+			return candidates, nil
+		}
+
+		fallback := lo.Filter(candidates, func(candidate *ChannelModelsCandidate, _ int) bool {
+			return candidate == nil ||
+				candidate.Channel == nil ||
+				candidate.Channel.Type != channel.TypeCodex ||
+				candidate.Channel.Policies.AllowsRemoteCompactionGeneration()
+		})
+		if log.DebugEnabled(ctx) && len(fallback) != len(candidates) {
+			log.Debug(ctx, "excluded local-bridge channels from remote compaction generation",
+				log.Int("candidate_count", len(candidates)),
+				log.Int("fallback_candidate_count", len(fallback)))
+		}
+
+		return fallback, nil
 	}
 
 	if log.DebugEnabled(ctx) {
@@ -58,6 +75,29 @@ func (s *RemoteCompactionSelector) Select(ctx context.Context, req *llm.Request)
 	}
 
 	return capable, nil
+}
+
+func isRemoteCompactionGenerationRequest(req *llm.Request) bool {
+	if req == nil {
+		return false
+	}
+	if req.RequestType == llm.RequestTypeCompact {
+		return true
+	}
+	if req.APIFormat != llm.APIFormatOpenAIResponse ||
+		req.ProviderExtensions == nil ||
+		req.ProviderExtensions.OpenAIResponses == nil ||
+		req.ProviderExtensions.OpenAIResponses.Request == nil {
+		return false
+	}
+
+	for _, item := range req.ProviderExtensions.OpenAIResponses.Request.RawInputItems {
+		if item.Type == remoteCompactionTriggerType {
+			return true
+		}
+	}
+
+	return false
 }
 
 func isRemoteCompactionRequest(req *llm.Request) bool {

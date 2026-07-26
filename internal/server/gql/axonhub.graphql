@@ -181,8 +181,15 @@ enum WebSearchPolicy {
   mcp_only
 }
 
+enum RemoteCompactionPolicy {
+  auto
+  native
+  local_bridge
+}
+
 type ChannelPolicies {
   stream: CapabilityPolicy
+  remoteCompaction: RemoteCompactionPolicy
   supportsRemoteCompaction: Boolean
   webSearch: WebSearchPolicy
   supportsWebSearch: Boolean
@@ -190,6 +197,7 @@ type ChannelPolicies {
 
 input ChannelPoliciesInput {
   stream: CapabilityPolicy
+  remoteCompaction: RemoteCompactionPolicy
   supportsRemoteCompaction: Boolean
   webSearch: WebSearchPolicy
   supportsWebSearch: Boolean

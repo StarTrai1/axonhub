@@ -490,6 +490,7 @@ type ComplexityRoot struct {
 	}
 
 	ChannelPolicies struct {
+		RemoteCompaction         func(childComplexity int) int
 		Stream                   func(childComplexity int) int
 		SupportsRemoteCompaction func(childComplexity int) int
 		SupportsWebSearch        func(childComplexity int) int
@@ -3977,6 +3978,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ChannelPerformanceStat.TtftMs(childComplexity), true
 
+	case "ChannelPolicies.remoteCompaction":
+		if e.complexity.ChannelPolicies.RemoteCompaction == nil {
+			break
+		}
+
+		return e.complexity.ChannelPolicies.RemoteCompaction(childComplexity), true
 	case "ChannelPolicies.stream":
 		if e.complexity.ChannelPolicies.Stream == nil {
 			break
@@ -19713,6 +19720,8 @@ func (ec *executionContext) fieldContext_Channel_policies(_ context.Context, fie
 			switch field.Name {
 			case "stream":
 				return ec.fieldContext_ChannelPolicies_stream(ctx, field)
+			case "remoteCompaction":
+				return ec.fieldContext_ChannelPolicies_remoteCompaction(ctx, field)
 			case "supportsRemoteCompaction":
 				return ec.fieldContext_ChannelPolicies_supportsRemoteCompaction(ctx, field)
 			case "webSearch":
@@ -23054,6 +23063,35 @@ func (ec *executionContext) fieldContext_ChannelPolicies_stream(_ context.Contex
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type CapabilityPolicy does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelPolicies_remoteCompaction(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelPolicies) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelPolicies_remoteCompaction,
+		func(ctx context.Context) (any, error) {
+			return obj.RemoteCompaction, nil
+		},
+		nil,
+		ec.marshalORemoteCompactionPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐRemoteCompactionPolicy,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelPolicies_remoteCompaction(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelPolicies",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type RemoteCompactionPolicy does not have child fields")
 		},
 	}
 	return fc, nil
@@ -65972,7 +66010,7 @@ func (ec *executionContext) unmarshalInputChannelPoliciesInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"stream", "supportsRemoteCompaction", "webSearch", "supportsWebSearch"}
+	fieldsInOrder := [...]string{"stream", "remoteCompaction", "supportsRemoteCompaction", "webSearch", "supportsWebSearch"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -65986,6 +66024,13 @@ func (ec *executionContext) unmarshalInputChannelPoliciesInput(ctx context.Conte
 				return it, err
 			}
 			it.Stream = data
+		case "remoteCompaction":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("remoteCompaction"))
+			data, err := ec.unmarshalORemoteCompactionPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐRemoteCompactionPolicy(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RemoteCompaction = data
 		case "supportsRemoteCompaction":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("supportsRemoteCompaction"))
 			data, err := ec.unmarshalOBoolean2bool(ctx, v)
@@ -91787,6 +91832,8 @@ func (ec *executionContext) _ChannelPolicies(ctx context.Context, sel ast.Select
 			out.Values[i] = graphql.MarshalString("ChannelPolicies")
 		case "stream":
 			out.Values[i] = ec._ChannelPolicies_stream(ctx, field, obj)
+		case "remoteCompaction":
+			out.Values[i] = ec._ChannelPolicies_remoteCompaction(ctx, field, obj)
 		case "supportsRemoteCompaction":
 			out.Values[i] = ec._ChannelPolicies_supportsRemoteCompaction(ctx, field, obj)
 		case "webSearch":
@@ -120792,6 +120839,19 @@ func (ec *executionContext) unmarshalOWebSearchPolicy2githubᚗcomᚋloopljᚋax
 	tmp, err := graphql.UnmarshalString(v)
 	res := objects.WebSearchPolicy(tmp)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalORemoteCompactionPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐRemoteCompactionPolicy(ctx context.Context, v any) (objects.RemoteCompactionPolicy, error) {
+	tmp, err := graphql.UnmarshalString(v)
+	res := objects.RemoteCompactionPolicy(tmp)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalORemoteCompactionPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐRemoteCompactionPolicy(ctx context.Context, sel ast.SelectionSet, v objects.RemoteCompactionPolicy) graphql.Marshaler {
+	_ = sel
+	_ = ctx
+	res := graphql.MarshalString(string(v))
+	return res
 }
 
 func (ec *executionContext) marshalOWebSearchPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐWebSearchPolicy(ctx context.Context, sel ast.SelectionSet, v objects.WebSearchPolicy) graphql.Marshaler {

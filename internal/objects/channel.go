@@ -391,13 +391,55 @@ const (
 	WebSearchPolicyMCPOnly WebSearchPolicy = "mcp_only"
 )
 
+type RemoteCompactionPolicy string
+
+const (
+	// RemoteCompactionPolicyAuto preserves the historical permissive fallback:
+	// prefer native-capable channels, but keep this channel eligible when none
+	// exist.
+	RemoteCompactionPolicyAuto RemoteCompactionPolicy = "auto"
+	// RemoteCompactionPolicyNative marks the channel as capable of handling the
+	// Codex remote compaction protocol without adaptation.
+	RemoteCompactionPolicyNative RemoteCompactionPolicy = "native"
+	// RemoteCompactionPolicyLocalBridge prevents remote compaction generation
+	// requests from reaching the channel. Compacted continuation history can
+	// still be converted into a local textual summary by AxonHub.
+	RemoteCompactionPolicyLocalBridge RemoteCompactionPolicy = "local_bridge"
+)
+
 type ChannelPolicies struct {
-	Stream                   CapabilityPolicy `json:"stream,omitempty"`
-	SupportsRemoteCompaction bool             `json:"supportsRemoteCompaction,omitempty"`
-	WebSearch                WebSearchPolicy  `json:"webSearch,omitempty"`
+	Stream                   CapabilityPolicy       `json:"stream,omitempty"`
+	RemoteCompaction         RemoteCompactionPolicy `json:"remoteCompaction,omitempty"`
+	// SupportsRemoteCompaction is the legacy two-state field. Keep it for
+	// stored-data compatibility; RemoteCompaction takes precedence when set.
+	SupportsRemoteCompaction bool                   `json:"supportsRemoteCompaction,omitempty"`
+	WebSearch                WebSearchPolicy        `json:"webSearch,omitempty"`
 	// SupportsWebSearch is the legacy two-state field. Keep it for stored-data
 	// compatibility; WebSearch takes precedence when explicitly configured.
-	SupportsWebSearch        *bool            `json:"supportsWebSearch,omitempty"`
+	SupportsWebSearch        *bool                  `json:"supportsWebSearch,omitempty"`
+}
+
+// EffectiveRemoteCompactionPolicy translates legacy data without changing its
+// routing: true was preferred, while false participated as a fallback.
+func (p ChannelPolicies) EffectiveRemoteCompactionPolicy() RemoteCompactionPolicy {
+	switch p.RemoteCompaction {
+	case RemoteCompactionPolicyAuto, RemoteCompactionPolicyNative, RemoteCompactionPolicyLocalBridge:
+		return p.RemoteCompaction
+	}
+
+	if p.SupportsRemoteCompaction {
+		return RemoteCompactionPolicyNative
+	}
+
+	return RemoteCompactionPolicyAuto
+}
+
+func (p ChannelPolicies) PrefersNativeRemoteCompaction() bool {
+	return p.EffectiveRemoteCompactionPolicy() == RemoteCompactionPolicyNative
+}
+
+func (p ChannelPolicies) AllowsRemoteCompactionGeneration() bool {
+	return p.EffectiveRemoteCompactionPolicy() != RemoteCompactionPolicyLocalBridge
 }
 
 // EffectiveWebSearchPolicy translates legacy data without changing its routing:

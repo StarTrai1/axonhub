@@ -23,6 +23,8 @@ import {
   Globe2,
   Route,
   Plug,
+  Cloud,
+  FileText,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -80,6 +82,7 @@ import {
   ChannelType,
   ApiFormat,
   RetryableErrorPattern,
+  RemoteCompactionPolicy,
   WebSearchPolicy,
   createChannelInputSchema,
   updateChannelInputSchema,
@@ -121,6 +124,70 @@ const WEB_SEARCH_POLICY_OPTIONS: ReadonlyArray<{
   { value: 'auto', icon: Route },
   { value: 'mcp_only', icon: Plug },
 ];
+
+const REMOTE_COMPACTION_POLICY_OPTIONS: ReadonlyArray<{
+  value: RemoteCompactionPolicy;
+  icon: typeof Globe2;
+}> = [
+  { value: 'native', icon: Cloud },
+  { value: 'auto', icon: Route },
+  { value: 'local_bridge', icon: FileText },
+];
+
+function CompactPolicyRadioGroup<T extends string>({
+  value,
+  onValueChange,
+  options,
+  translationPrefix,
+  testId,
+}: {
+  value: T;
+  onValueChange: (value: T) => void;
+  options: ReadonlyArray<{ value: T; icon: typeof Globe2 }>;
+  translationPrefix: string;
+  testId: string;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <RadioGroup
+      value={value}
+      onValueChange={(nextValue) => onValueChange(nextValue as T)}
+      className='grid grid-cols-1 gap-2 sm:grid-cols-3'
+      data-testid={testId}
+    >
+      {options.map((option) => {
+        const Icon = option.icon;
+        const selected = value === option.value;
+        const id = `${testId}-${option.value}`;
+        const label = t(`${translationPrefix}.${option.value}.label`);
+        const description = t(`${translationPrefix}.${option.value}.description`);
+
+        return (
+          <Tooltip key={option.value}>
+            <TooltipTrigger asChild>
+              <label
+                htmlFor={id}
+                className={`flex min-h-11 cursor-pointer items-center gap-2.5 rounded-md border px-3 py-2 transition-colors ${
+                  selected
+                    ? 'border-primary bg-accent/50 text-foreground'
+                    : 'border-border text-muted-foreground hover:border-foreground/30 hover:bg-accent/30 hover:text-foreground'
+                }`}
+              >
+                <RadioGroupItem id={id} value={option.value} className='shrink-0' data-testid={id} aria-label={label} />
+                <Icon className='h-4 w-4 shrink-0' />
+                <span className='truncate text-sm font-medium'>{label}</span>
+              </label>
+            </TooltipTrigger>
+            <TooltipContent side='top' className='max-w-64 leading-relaxed'>
+              <p>{description}</p>
+            </TooltipContent>
+          </Tooltip>
+        );
+      })}
+    </RadioGroup>
+  );
+}
 
 function getResponsesTransportFromBaseURL(baseURL?: string): ResponsesTransport {
   return baseURL?.trim().toLowerCase().startsWith('ws') ? 'websocket' : 'http';
@@ -706,6 +773,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             name: currentRow.name,
             policies: {
               stream: currentRow.policies?.stream ?? 'unlimited',
+              remoteCompaction:
+                currentRow.policies?.remoteCompaction ??
+                (currentRow.policies?.supportsRemoteCompaction ? 'native' : 'auto'),
               supportsRemoteCompaction: currentRow.policies?.supportsRemoteCompaction ?? false,
               webSearch:
                 currentRow.policies?.webSearch ?? (currentRow.policies?.supportsWebSearch === false ? 'auto' : 'native'),
@@ -736,6 +806,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               name: duplicateFromRow.name,
               policies: {
                 stream: duplicateFromRow.policies?.stream ?? 'unlimited',
+                remoteCompaction:
+                  duplicateFromRow.policies?.remoteCompaction ??
+                  (duplicateFromRow.policies?.supportsRemoteCompaction ? 'native' : 'auto'),
                 supportsRemoteCompaction: duplicateFromRow.policies?.supportsRemoteCompaction ?? false,
                 webSearch:
                   duplicateFromRow.policies?.webSearch ??
@@ -766,6 +839,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               name: '',
               policies: {
                 stream: 'unlimited',
+                remoteCompaction: 'auto',
                 supportsRemoteCompaction: false,
                 webSearch: 'native',
                 supportsWebSearch: true,
@@ -1256,12 +1330,14 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         credentials: valuesForSubmit.credentials,
       };
       const effectiveChannelType = dataWithModels.type ?? currentRow?.type ?? derivedChannelType;
+      const remoteCompactionPolicy =
+        effectiveChannelType === 'codex' ? (dataWithModels.policies?.remoteCompaction ?? 'auto') : 'auto';
       const webSearchPolicy =
         effectiveChannelType === 'codex' ? (dataWithModels.policies?.webSearch ?? 'native') : 'native';
       dataWithModels.policies = {
         ...dataWithModels.policies,
-        supportsRemoteCompaction:
-          effectiveChannelType === 'codex' && (dataWithModels.policies?.supportsRemoteCompaction ?? false),
+        remoteCompaction: remoteCompactionPolicy,
+        supportsRemoteCompaction: remoteCompactionPolicy === 'native',
         webSearch: webSearchPolicy,
         supportsWebSearch: webSearchPolicy === 'native',
       };
@@ -2626,34 +2702,39 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                             {isCodexType && (
                               <FormField
                                 control={form.control}
-                                name='policies.supportsRemoteCompaction'
+                                name='policies.remoteCompaction'
                                 render={({ field }) => (
-                                  <FormItem className='flex items-center gap-2'>
-                                    <Checkbox
-                                      checked={field.value ?? false}
-                                      onCheckedChange={field.onChange}
-                                      data-testid='supports-remote-compaction-checkbox'
-                                    />
+                                  <FormItem className='space-y-2 sm:col-span-2'>
                                     <div className='flex items-center gap-1.5'>
-                                      <FormLabel className='cursor-pointer text-sm font-normal'>
-                                        {t('channels.dialogs.fields.supportsRemoteCompaction.label')}
+                                      <FormLabel className='text-sm font-medium'>
+                                        {t('channels.dialogs.fields.remoteCompactionPolicy.label')}
                                       </FormLabel>
                                       <Tooltip>
                                         <TooltipTrigger asChild>
                                           <button
                                             type='button'
                                             className='text-muted-foreground hover:text-foreground inline-flex items-center'
-                                            aria-label={t('channels.dialogs.fields.supportsRemoteCompaction.description')}
-                                            data-testid='supports-remote-compaction-tip'
+                                            aria-label={t('channels.dialogs.fields.remoteCompactionPolicy.description')}
+                                            data-testid='remote-compaction-policy-tip'
                                           >
                                             <Info className='h-3.5 w-3.5' />
                                           </button>
                                         </TooltipTrigger>
-                                        <TooltipContent>
-                                          <p>{t('channels.dialogs.fields.supportsRemoteCompaction.description')}</p>
+                                        <TooltipContent className='max-w-72 leading-relaxed'>
+                                          <p>{t('channels.dialogs.fields.remoteCompactionPolicy.description')}</p>
                                         </TooltipContent>
                                       </Tooltip>
                                     </div>
+                                    <FormControl>
+                                      <CompactPolicyRadioGroup
+                                        value={field.value ?? 'auto'}
+                                        onValueChange={field.onChange}
+                                        options={REMOTE_COMPACTION_POLICY_OPTIONS}
+                                        translationPrefix='channels.dialogs.fields.remoteCompactionPolicy.options'
+                                        testId='remote-compaction-policy'
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
                                   </FormItem>
                                 )}
                               />
@@ -2686,46 +2767,13 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                       </Tooltip>
                                     </div>
                                     <FormControl>
-                                      <RadioGroup
+                                      <CompactPolicyRadioGroup
                                         value={field.value ?? 'native'}
                                         onValueChange={field.onChange}
-                                        className='grid grid-cols-1 gap-2 md:grid-cols-3'
-                                        data-testid='web-search-policy'
-                                      >
-                                        {WEB_SEARCH_POLICY_OPTIONS.map((option) => {
-                                          const Icon = option.icon;
-                                          const selected = (field.value ?? 'native') === option.value;
-                                          const id = `web-search-policy-${option.value}`;
-
-                                          return (
-                                            <label
-                                              key={option.value}
-                                              htmlFor={id}
-                                              className={`flex min-h-20 cursor-pointer items-start gap-2.5 rounded-md border p-3 transition-colors ${
-                                                selected
-                                                  ? 'border-primary bg-accent/50'
-                                                  : 'border-border hover:border-foreground/30 hover:bg-accent/30'
-                                              }`}
-                                            >
-                                              <RadioGroupItem
-                                                id={id}
-                                                value={option.value}
-                                                className='mt-0.5 shrink-0'
-                                                data-testid={id}
-                                              />
-                                              <span className='min-w-0 space-y-1'>
-                                                <span className='flex items-center gap-1.5 text-sm font-medium'>
-                                                  <Icon className='text-muted-foreground h-4 w-4 shrink-0' />
-                                                  {t(`channels.dialogs.fields.webSearchPolicy.options.${option.value}.label`)}
-                                                </span>
-                                                <span className='text-muted-foreground block text-xs leading-4'>
-                                                  {t(`channels.dialogs.fields.webSearchPolicy.options.${option.value}.description`)}
-                                                </span>
-                                              </span>
-                                            </label>
-                                          );
-                                        })}
-                                      </RadioGroup>
+                                        options={WEB_SEARCH_POLICY_OPTIONS}
+                                        translationPrefix='channels.dialogs.fields.webSearchPolicy.options'
+                                        testId='web-search-policy'
+                                      />
                                     </FormControl>
                                     <FormMessage />
                                   </FormItem>

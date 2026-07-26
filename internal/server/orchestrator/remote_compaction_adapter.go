@@ -159,7 +159,7 @@ func hasRemoteCompactionCapableCandidate(candidates []*ChannelModelsCandidate) b
 	for _, candidate := range candidates {
 		if candidate != nil && candidate.Channel != nil &&
 			candidate.Channel.Type == channel.TypeCodex &&
-			candidate.Channel.Policies.SupportsRemoteCompaction {
+			candidate.Channel.Policies.PrefersNativeRemoteCompaction() {
 			return true
 		}
 	}
@@ -171,7 +171,7 @@ func hasUnsupportedCodexCandidate(candidates []*ChannelModelsCandidate) bool {
 	for _, candidate := range candidates {
 		if candidate != nil && candidate.Channel != nil &&
 			candidate.Channel.Type == channel.TypeCodex &&
-			!candidate.Channel.Policies.SupportsRemoteCompaction {
+			!candidate.Channel.Policies.PrefersNativeRemoteCompaction() {
 			return true
 		}
 	}

@@ -18,16 +18,22 @@ import (
 )
 
 func TestRemoteCompactionSelectorSelect(t *testing.T) {
-	newCandidate := func(name string, typ channel.Type, supportsRemoteCompaction bool) *ChannelModelsCandidate {
+	newCandidate := func(name string, typ channel.Type, policy objects.RemoteCompactionPolicy) *ChannelModelsCandidate {
 		return &ChannelModelsCandidate{
 			Models: []biz.ChannelModelEntry{{RequestModel: name}},
 			Channel: &biz.Channel{Channel: &ent.Channel{
 				Type: typ,
 				Policies: objects.ChannelPolicies{
-					SupportsRemoteCompaction: supportsRemoteCompaction,
+					RemoteCompaction: policy,
 				},
 			}},
 		}
+	}
+	newLegacyCandidate := func(name string, supportsRemoteCompaction bool) *ChannelModelsCandidate {
+		candidate := newCandidate(name, channel.TypeCodex, "")
+		candidate.Channel.Policies.SupportsRemoteCompaction = supportsRemoteCompaction
+
+		return candidate
 	}
 
 	modelNames := func(candidates []*ChannelModelsCandidate) []string {
@@ -85,9 +91,9 @@ func TestRemoteCompactionSelectorSelect(t *testing.T) {
 			name:    "legacy compact prefers capable Codex channels",
 			request: legacyRequest,
 			candidates: []*ChannelModelsCandidate{
-				newCandidate("unsupported", channel.TypeCodex, false),
-				newCandidate("capable-a", channel.TypeCodex, true),
-				newCandidate("capable-b", channel.TypeCodex, true),
+				newCandidate("automatic", channel.TypeCodex, objects.RemoteCompactionPolicyAuto),
+				newCandidate("capable-a", channel.TypeCodex, objects.RemoteCompactionPolicyNative),
+				newCandidate("capable-b", channel.TypeCodex, objects.RemoteCompactionPolicyNative),
 			},
 			want: []string{"capable-a", "capable-b"},
 		},
@@ -95,8 +101,8 @@ func TestRemoteCompactionSelectorSelect(t *testing.T) {
 			name:    "v2 trigger prefers capable Codex channels",
 			request: v2Request,
 			candidates: []*ChannelModelsCandidate{
-				newCandidate("unsupported", channel.TypeCodex, false),
-				newCandidate("capable", channel.TypeCodex, true),
+				newCandidate("automatic", channel.TypeCodex, objects.RemoteCompactionPolicyAuto),
+				newCandidate("capable", channel.TypeCodex, objects.RemoteCompactionPolicyNative),
 			},
 			want: []string{"capable"},
 		},
@@ -104,8 +110,8 @@ func TestRemoteCompactionSelectorSelect(t *testing.T) {
 			name:    "post-compaction turn prefers capable Codex channels",
 			request: continuationRequest,
 			candidates: []*ChannelModelsCandidate{
-				newCandidate("unsupported", channel.TypeCodex, false),
-				newCandidate("capable", channel.TypeCodex, true),
+				newCandidate("local", channel.TypeCodex, objects.RemoteCompactionPolicyLocalBridge),
+				newCandidate("capable", channel.TypeCodex, objects.RemoteCompactionPolicyNative),
 			},
 			want: []string{"capable"},
 		},
@@ -113,26 +119,61 @@ func TestRemoteCompactionSelectorSelect(t *testing.T) {
 			name:    "normal responses request keeps all candidates",
 			request: normalRequest,
 			candidates: []*ChannelModelsCandidate{
-				newCandidate("unsupported", channel.TypeCodex, false),
-				newCandidate("capable", channel.TypeCodex, true),
+				newCandidate("local", channel.TypeCodex, objects.RemoteCompactionPolicyLocalBridge),
+				newCandidate("capable", channel.TypeCodex, objects.RemoteCompactionPolicyNative),
 			},
-			want: []string{"unsupported", "capable"},
+			want: []string{"local", "capable"},
 		},
 		{
-			name:    "no capable channel falls back to all candidates",
+			name:    "generation fallback excludes explicit local bridge",
 			request: v2Request,
 			candidates: []*ChannelModelsCandidate{
-				newCandidate("first", channel.TypeCodex, false),
-				newCandidate("second", channel.TypeCodex, false),
+				newCandidate("automatic-a", channel.TypeCodex, objects.RemoteCompactionPolicyAuto),
+				newCandidate("local", channel.TypeCodex, objects.RemoteCompactionPolicyLocalBridge),
+				newCandidate("automatic-b", channel.TypeCodex, objects.RemoteCompactionPolicyAuto),
 			},
-			want: []string{"first", "second"},
+			want: []string{"automatic-a", "automatic-b"},
+		},
+		{
+			name:    "continuation fallback keeps automatic and local bridge candidates",
+			request: continuationRequest,
+			candidates: []*ChannelModelsCandidate{
+				newCandidate("automatic", channel.TypeCodex, objects.RemoteCompactionPolicyAuto),
+				newCandidate("local", channel.TypeCodex, objects.RemoteCompactionPolicyLocalBridge),
+			},
+			want: []string{"automatic", "local"},
+		},
+		{
+			name:    "generation with only local bridge has no eligible channel",
+			request: legacyRequest,
+			candidates: []*ChannelModelsCandidate{
+				newCandidate("local", channel.TypeCodex, objects.RemoteCompactionPolicyLocalBridge),
+			},
+			want: []string{},
+		},
+		{
+			name:    "legacy false remains an automatic fallback",
+			request: v2Request,
+			candidates: []*ChannelModelsCandidate{
+				newLegacyCandidate("legacy-automatic", false),
+			},
+			want: []string{"legacy-automatic"},
+		},
+		{
+			name:    "legacy true remains native capable",
+			request: v2Request,
+			candidates: []*ChannelModelsCandidate{
+				newLegacyCandidate("legacy-native", true),
+				newCandidate("automatic", channel.TypeCodex, objects.RemoteCompactionPolicyAuto),
+			},
+			want: []string{"legacy-native"},
 		},
 		{
 			name:    "capability flag is scoped to Codex channels",
 			request: v2Request,
 			candidates: []*ChannelModelsCandidate{
-				newCandidate("openai", channel.TypeOpenaiResponses, true),
-				newCandidate("codex", channel.TypeCodex, true),
+				newCandidate("openai", channel.TypeOpenaiResponses, objects.RemoteCompactionPolicyNative),
+				newCandidate("codex", channel.TypeCodex, objects.RemoteCompactionPolicyNative),
 			},
 			want: []string{"codex"},
 		},
