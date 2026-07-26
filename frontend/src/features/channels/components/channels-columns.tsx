@@ -43,10 +43,12 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { DataTableColumnHeader } from '@/components/data-table-column-header';
 import { useChannels } from '../context/channels-context';
 import { useTestChannel, useUpdateChannel } from '../data/channels';
+import { isOfficialCodexQuotaChannel } from '../data/codex';
 import { CHANNEL_CONFIGS, getProvider } from '../data/config_channels';
 import { Channel } from '../data/schema';
 import { ChannelHealthCell } from './channel-health-cell';
 import { ChannelLimiterCell } from './channel-limiter-cell';
+import { CodexUsageCell } from './codex-usage-cell';
 import { ChannelsStatusDialog } from './channels-status-dialog';
 
 const WEIGHT_PRECISION = 4;
@@ -761,6 +763,14 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       accessorKey: 'health',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.health')} className='justify-center' />,
       cell: ({ row }: { row: Row<Channel> }) => {
+        if (isOfficialCodexQuotaChannel(row.original)) {
+          return (
+            <div className='flex justify-center'>
+              <CodexUsageCell channel={row.original} />
+            </div>
+          );
+        }
+
         const probePoints = (row.original as any).probePoints || [];
         const limiterStats = row.original.liveLimiterStats;
         return (
@@ -771,7 +781,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
         );
       },
       meta: {
-        className: 'text-center',
+        className: 'w-40 min-w-40 text-center',
       },
       enableSorting: false,
       enableHiding: true,

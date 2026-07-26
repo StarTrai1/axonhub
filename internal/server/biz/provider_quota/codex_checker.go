@@ -199,7 +199,7 @@ func (c *CodexQuotaChecker) extractCodexCredentials(ch *ent.Channel) (string, st
 }
 
 func (c *CodexQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (QuotaData, error) {
-	accessToken, _, err := c.extractCodexCredentials(ch)
+	accessToken, accountID, err := c.extractCodexCredentials(ch)
 	if err != nil {
 		return QuotaData{}, err
 	}
@@ -208,6 +208,7 @@ func (c *CodexQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (Qu
 		WithMethod("GET").
 		WithURL("https://chatgpt.com/backend-api/wham/usage").
 		WithBearerToken(accessToken).
+		WithHeader("ChatGPT-Account-Id", accountID).
 		WithHeader("Content-Type", "application/json").
 		Build()
 

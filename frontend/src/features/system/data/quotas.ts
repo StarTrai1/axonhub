@@ -63,7 +63,7 @@ type ProviderClaudeQuotaData = ProviderQuotaDataCommon & {
   representative_claim?: string;
 };
 
-type ProviderCodexQuotaData = ProviderQuotaDataCommon & {
+export type ProviderCodexQuotaData = ProviderQuotaDataCommon & {
   rate_limit?: {
     primary_window?: {
       used_percent?: number;

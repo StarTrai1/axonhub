@@ -864,6 +864,15 @@ const QUERY_CHANNELS_QUERY = `
               jsonData
             }
           }
+          providerQuotaStatus {
+            status
+            providerType
+            quotaData
+            nextResetAt
+            nextCheckAt
+            ready
+            updatedAt
+          }
           supportedModels
           autoSyncSupportedModels
           autoSyncModelPattern
