@@ -408,15 +408,15 @@ const (
 )
 
 type ChannelPolicies struct {
-	Stream                   CapabilityPolicy       `json:"stream,omitempty"`
-	RemoteCompaction         RemoteCompactionPolicy `json:"remoteCompaction,omitempty"`
+	Stream           CapabilityPolicy       `json:"stream,omitempty"`
+	RemoteCompaction RemoteCompactionPolicy `json:"remoteCompaction,omitempty"`
 	// SupportsRemoteCompaction is the legacy two-state field. Keep it for
 	// stored-data compatibility; RemoteCompaction takes precedence when set.
-	SupportsRemoteCompaction bool                   `json:"supportsRemoteCompaction,omitempty"`
-	WebSearch                WebSearchPolicy        `json:"webSearch,omitempty"`
+	SupportsRemoteCompaction bool            `json:"supportsRemoteCompaction,omitempty"`
+	WebSearch                WebSearchPolicy `json:"webSearch,omitempty"`
 	// SupportsWebSearch is the legacy two-state field. Keep it for stored-data
 	// compatibility; WebSearch takes precedence when explicitly configured.
-	SupportsWebSearch        *bool                  `json:"supportsWebSearch,omitempty"`
+	SupportsWebSearch *bool `json:"supportsWebSearch,omitempty"`
 }
 
 // EffectiveRemoteCompactionPolicy translates legacy data without changing its
