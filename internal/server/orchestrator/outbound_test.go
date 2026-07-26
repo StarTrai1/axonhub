@@ -585,7 +585,9 @@ func TestPersistentOutboundTransformer_DisableStreamForcing(t *testing.T) {
 	state := &PersistenceState{
 		ChannelModelsCandidates: []*ChannelModelsCandidate{{
 			Channel: &biz.Channel{
-				Channel: &ent.Channel{Policies: objects.ChannelPolicies{Stream: objects.CapabilityPolicyRequire}},
+				Channel: &ent.Channel{
+					Policies: objects.ChannelPolicies{Stream: objects.CapabilityPolicyRequire},
+				},
 				Outbound: wrapped,
 			},
 			Models: []biz.ChannelModelEntry{{ActualModel: "gpt-5.6-sol"}},
