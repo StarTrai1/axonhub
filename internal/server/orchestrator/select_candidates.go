@@ -72,7 +72,12 @@ func selectCandidates(inbound *PersistentInboundTransformer, quotaProvider Provi
 		selector = WithWebSearchSelector(selector)
 
 		if inbound.state.LoadBalancer != nil {
-			selector = WithLoadBalancedSelector(selector, inbound.state.LoadBalancer, inbound.state.RetryPolicyProvider)
+			selector = WithTraceStickyLoadBalancedSelector(
+				selector,
+				inbound.state.LoadBalancer,
+				inbound.state.RetryPolicyProvider,
+				inbound.state.RequestService,
+			)
 		}
 
 		candidates, err := selector.Select(ctx, llmRequest)
