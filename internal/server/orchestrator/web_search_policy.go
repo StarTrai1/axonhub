@@ -21,7 +21,7 @@ import (
 
 const responsesLiteHostedWebSearchTools = `[{"type":"web_search","external_web_access":true,"search_content_types":["text","image"]}]`
 
-// applyResponsesLiteWebSearchFallback restores the hosted web search tool that
+// applyResponsesLiteWebSearchFallback restores the compatible hosted web search tool that
 // Responses Lite intentionally omits from the top-level tools field. It runs
 // after body pass-through so the injected tool cannot be overwritten by the
 // original inbound payload.
@@ -38,7 +38,7 @@ func applyResponsesLiteWebSearchFallback(outbound *PersistentOutboundTransformer
 		request.Body = body
 
 		channel := outbound.GetCurrentChannel()
-		log.Debug(ctx, "injected hosted web search tool for Responses Lite fallback",
+		log.Debug(ctx, "injected hosted web search tool for Responses Lite compatibility",
 			log.String("channel", channel.Name),
 			log.Int("channel_id", channel.ID))
 

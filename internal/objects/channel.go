@@ -382,12 +382,12 @@ const (
 type WebSearchPolicy string
 
 const (
-	// WebSearchPolicyAuto preserves the historical fallback behavior: prefer
-	// native-capable channels, but keep this channel eligible if none exist.
+	// WebSearchPolicyAuto enables compatibility for channels without standalone
+	// search: they remain eligible as a fallback and can receive hosted-search injection.
 	WebSearchPolicyAuto WebSearchPolicy = "auto"
-	// WebSearchPolicyNative marks the channel as capable of native web search.
+	// WebSearchPolicyNative marks the channel as capable of standalone web search.
 	WebSearchPolicyNative WebSearchPolicy = "native"
-	// WebSearchPolicyMCPOnly prevents native web search from reaching the channel.
+	// WebSearchPolicyMCPOnly prevents standalone and hosted web search from reaching the channel.
 	WebSearchPolicyMCPOnly WebSearchPolicy = "mcp_only"
 )
 
