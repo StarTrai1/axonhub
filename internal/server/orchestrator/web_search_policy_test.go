@@ -19,6 +19,9 @@ import (
 )
 
 func TestApplyResponsesLiteWebSearchFallback_AutoInjectsAfterPassThrough(t *testing.T) {
+	headers := make(http.Header)
+	headers.Set(responses.ResponsesLiteHeader, "true")
+
 	rawBody := []byte(`{
 		"model":"gpt-5.6-sol",
 		"input":[
@@ -43,7 +46,7 @@ func TestApplyResponsesLiteWebSearchFallback_AutoInjectsAfterPassThrough(t *test
 			RequestType: llm.RequestTypeChat,
 			APIFormat:   llm.APIFormatOpenAIResponse,
 			RawRequest: &httpclient.Request{
-				Headers: http.Header{responses.ResponsesLiteHeader: []string{"true"}},
+				Headers: headers,
 				Body:    rawBody,
 			},
 		},
@@ -96,6 +99,9 @@ func TestApplyResponsesLiteWebSearchFallback_RequiresExactAutoLiteShape(t *testi
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			headers := make(http.Header)
+			headers.Set(responses.ResponsesLiteHeader, test.header)
+
 			candidate := &biz.Channel{Channel: &ent.Channel{
 				Type:     channel.TypeCodex,
 				Policies: objects.ChannelPolicies{WebSearch: test.policy},
@@ -106,7 +112,7 @@ func TestApplyResponsesLiteWebSearchFallback_RequiresExactAutoLiteShape(t *testi
 					RequestType: llm.RequestTypeChat,
 					APIFormat:   llm.APIFormatOpenAIResponse,
 					RawRequest: &httpclient.Request{
-						Headers: http.Header{responses.ResponsesLiteHeader: []string{test.header}},
+						Headers: headers,
 						Body:    test.rawBody,
 					},
 				},

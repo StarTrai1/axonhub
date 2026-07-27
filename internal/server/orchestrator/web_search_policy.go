@@ -31,7 +31,7 @@ func applyResponsesLiteWebSearchFallback(outbound *PersistentOutboundTransformer
 			return request, nil
 		}
 
-	body, err := sjson.SetRawBytes(request.Body, "tools", []byte(responsesLiteHostedWebSearchTools))
+		body, err := sjson.SetRawBytes(request.Body, "tools", []byte(responsesLiteHostedWebSearchTools))
 		if err != nil {
 			return nil, fmt.Errorf("inject Responses Lite hosted web search tool: %w", err)
 		}
@@ -89,7 +89,8 @@ func responsesLiteRequestNeedsHostedWebSearch(body []byte) bool {
 
 	return lo.SomeBy(input, func(item struct {
 		Type string `json:"type"`
-	}) bool {
+	},
+	) bool {
 		return item.Type == "additional_tools"
 	})
 }
