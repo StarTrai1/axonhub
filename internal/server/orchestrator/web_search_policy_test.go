@@ -1,7 +1,9 @@
 package orchestrator
 
 import (
+	"context"
 	"encoding/json"
+	"net/http"
 	"testing"
 
 	"github.com/samber/lo"
@@ -12,7 +14,111 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
+
+func TestApplyResponsesLiteWebSearchFallback_AutoInjectsAfterPassThrough(t *testing.T) {
+	rawBody := []byte(`{
+		"model":"gpt-5.6-sol",
+		"input":[
+			{"type":"additional_tools","role":"developer","tools":[{"type":"namespace","name":"web","tools":[{"name":"run"}]}]},
+			{"type":"message","role":"user","content":[{"type":"input_text","text":"search the web"}]}
+		],
+		"stream":true
+	}`)
+	candidate := &biz.Channel{Channel: &ent.Channel{
+		ID:   7,
+		Name: "responses-lite-auto",
+		Type: channel.TypeCodex,
+		Settings: &objects.ChannelSettings{
+			PassThroughBody: lo.ToPtr(true),
+		},
+		Policies: objects.ChannelPolicies{WebSearch: objects.WebSearchPolicyAuto},
+	}}
+	outbound := &PersistentOutboundTransformer{state: &PersistenceState{
+		CurrentCandidate: &ChannelModelsCandidate{Channel: candidate},
+		LlmRequest: &llm.Request{
+			Model:       "gpt-5.6-sol",
+			RequestType: llm.RequestTypeChat,
+			APIFormat:   llm.APIFormatOpenAIResponse,
+			RawRequest: &httpclient.Request{
+				Headers: http.Header{responses.ResponsesLiteHeader: []string{"true"}},
+				Body:    rawBody,
+			},
+		},
+	}}
+	providerRequest := &httpclient.Request{
+		APIFormat: string(llm.APIFormatOpenAIResponse),
+		Body:      []byte(`{"model":"gpt-5.6-sol","input":[],"tools":[{"type":"function","name":"discarded_by_pass_through"}],"stream":true}`),
+	}
+
+	processed, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(context.Background(), providerRequest)
+	require.NoError(t, err)
+	require.True(t, outbound.state.PassThroughApplied)
+	require.False(t, jsonObjectHasKey(processed.Body, "tools"))
+
+	processed, err = applyResponsesLiteWebSearchFallback(outbound).OnOutboundRawRequest(context.Background(), processed)
+	require.NoError(t, err)
+
+	var payload struct {
+		Tools []struct {
+			Type               string   `json:"type"`
+			ExternalWebAccess  bool     `json:"external_web_access"`
+			SearchContentTypes []string `json:"search_content_types"`
+		} `json:"tools"`
+	}
+	require.NoError(t, json.Unmarshal(processed.Body, &payload))
+	require.Len(t, payload.Tools, 1)
+	require.Equal(t, "web_search", payload.Tools[0].Type)
+	require.True(t, payload.Tools[0].ExternalWebAccess)
+	require.Equal(t, []string{"text", "image"}, payload.Tools[0].SearchContentTypes)
+	require.False(t, jsonObjectHasKey(rawBody, "tools"))
+}
+
+func TestApplyResponsesLiteWebSearchFallback_RequiresExactAutoLiteShape(t *testing.T) {
+	missingToolsBody := []byte(`{"model":"gpt-5.6-sol","input":[{"type":"additional_tools","role":"developer","tools":[]}],"stream":true}`)
+
+	tests := []struct {
+		name         string
+		policy       objects.WebSearchPolicy
+		header       string
+		rawBody      []byte
+		providerBody []byte
+	}{
+		{name: "native policy", policy: objects.WebSearchPolicyNative, header: "true", rawBody: missingToolsBody, providerBody: missingToolsBody},
+		{name: "MCP only policy", policy: objects.WebSearchPolicyMCPOnly, header: "true", rawBody: missingToolsBody, providerBody: missingToolsBody},
+		{name: "not Responses Lite", policy: objects.WebSearchPolicyAuto, rawBody: missingToolsBody, providerBody: missingToolsBody},
+		{name: "explicit empty top-level tools", policy: objects.WebSearchPolicyAuto, header: "true", rawBody: []byte(`{"model":"gpt-5.6-sol","input":[{"type":"additional_tools","tools":[]}],"tools":[]}`), providerBody: missingToolsBody},
+		{name: "no additional tools", policy: objects.WebSearchPolicyAuto, header: "true", rawBody: []byte(`{"model":"gpt-5.6-sol","input":[{"type":"message","role":"user","content":[]}]}`), providerBody: missingToolsBody},
+		{name: "outbound already has tools", policy: objects.WebSearchPolicyAuto, header: "true", rawBody: missingToolsBody, providerBody: []byte(`{"model":"gpt-5.6-sol","input":[],"tools":[{"type":"function","name":"existing"}]}`)},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			candidate := &biz.Channel{Channel: &ent.Channel{
+				Type:     channel.TypeCodex,
+				Policies: objects.ChannelPolicies{WebSearch: test.policy},
+			}}
+			outbound := &PersistentOutboundTransformer{state: &PersistenceState{
+				CurrentCandidate: &ChannelModelsCandidate{Channel: candidate},
+				LlmRequest: &llm.Request{
+					RequestType: llm.RequestTypeChat,
+					APIFormat:   llm.APIFormatOpenAIResponse,
+					RawRequest: &httpclient.Request{
+						Headers: http.Header{responses.ResponsesLiteHeader: []string{test.header}},
+						Body:    test.rawBody,
+					},
+				},
+			}}
+			request := &httpclient.Request{Body: append([]byte(nil), test.providerBody...)}
+
+			processed, err := applyResponsesLiteWebSearchFallback(outbound).OnOutboundRawRequest(context.Background(), request)
+			require.NoError(t, err)
+			require.Equal(t, string(test.providerBody), string(processed.Body))
+		})
+	}
+}
 
 func TestApplyWebSearchPolicy_MCPOnly(t *testing.T) {
 	candidate := &biz.Channel{Channel: &ent.Channel{

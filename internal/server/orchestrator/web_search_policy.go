@@ -1,15 +1,109 @@
 package orchestrator
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/samber/lo"
+	"github.com/tidwall/sjson"
 
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/pipeline"
+	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
+
+const responsesLiteHostedWebSearchTools = `[{"type":"web_search","external_web_access":true,"search_content_types":["text","image"]}]`
+
+// applyResponsesLiteWebSearchFallback restores the hosted web search tool that
+// Responses Lite intentionally omits from the top-level tools field. It runs
+// after body pass-through so the injected tool cannot be overwritten by the
+// original inbound payload.
+func applyResponsesLiteWebSearchFallback(outbound *PersistentOutboundTransformer) pipeline.Middleware {
+	return pipeline.OnRawRequest("responses-lite-web-search-fallback", func(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error) {
+		if !shouldInjectResponsesLiteWebSearch(outbound, request) {
+			return request, nil
+		}
+
+	body, err := sjson.SetRawBytes(request.Body, "tools", []byte(responsesLiteHostedWebSearchTools))
+		if err != nil {
+			return nil, fmt.Errorf("inject Responses Lite hosted web search tool: %w", err)
+		}
+		request.Body = body
+
+		channel := outbound.GetCurrentChannel()
+		log.Debug(ctx, "injected hosted web search tool for Responses Lite fallback",
+			log.String("channel", channel.Name),
+			log.Int("channel_id", channel.ID))
+
+		return request, nil
+	})
+}
+
+func shouldInjectResponsesLiteWebSearch(outbound *PersistentOutboundTransformer, request *httpclient.Request) bool {
+	if outbound == nil || outbound.state == nil || request == nil {
+		return false
+	}
+
+	candidate := outbound.GetCurrentChannel()
+	if candidate == nil || candidate.Type != channel.TypeCodex ||
+		candidate.Policies.EffectiveWebSearchPolicy() != objects.WebSearchPolicyAuto {
+		return false
+	}
+
+	llmRequest := outbound.state.LlmRequest
+	if llmRequest == nil || llmRequest.APIFormat != llm.APIFormatOpenAIResponse ||
+		llmRequest.RequestType != llm.RequestTypeChat || llmRequest.RawRequest == nil {
+		return false
+	}
+	if !strings.EqualFold(strings.TrimSpace(llmRequest.RawRequest.Headers.Get(responses.ResponsesLiteHeader)), "true") {
+		return false
+	}
+	if !responsesLiteRequestNeedsHostedWebSearch(llmRequest.RawRequest.Body) {
+		return false
+	}
+
+	return !jsonObjectHasKey(request.Body, "tools")
+}
+
+func responsesLiteRequestNeedsHostedWebSearch(body []byte) bool {
+	var envelope struct {
+		Input json.RawMessage `json:"input"`
+	}
+	if len(body) == 0 || json.Unmarshal(body, &envelope) != nil || jsonObjectHasKey(body, "tools") {
+		return false
+	}
+
+	var input []struct {
+		Type string `json:"type"`
+	}
+	if json.Unmarshal(envelope.Input, &input) != nil {
+		return false
+	}
+
+	return lo.SomeBy(input, func(item struct {
+		Type string `json:"type"`
+	}) bool {
+		return item.Type == "additional_tools"
+	})
+}
+
+func jsonObjectHasKey(body []byte, key string) bool {
+	var object map[string]json.RawMessage
+	if len(body) == 0 || json.Unmarshal(body, &object) != nil {
+		return false
+	}
+
+	_, ok := object[key]
+
+	return ok
+}
 
 func applyWebSearchPolicy(req *llm.Request, candidate *biz.Channel) *llm.Request {
 	if req == nil || candidate == nil || candidate.Type != channel.TypeCodex || !candidate.Policies.UsesMCPOnlyWebSearch() {
