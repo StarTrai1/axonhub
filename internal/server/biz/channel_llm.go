@@ -429,6 +429,7 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 			ResponsesEndpointPath: responsesEndpointPath,
 		})
 	case llm.APIFormatOpenAIEmbedding.String(),
+		llm.APIFormatOpenAIModeration.String(),
 		llm.APIFormatOpenAIImageGeneration.String(),
 		llm.APIFormatOpenAIImageEdit.String(),
 		llm.APIFormatOpenAIImageVariation.String(),

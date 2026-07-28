@@ -14,11 +14,13 @@ func TestSelectAPIFormat(t *testing.T) {
 		{APIFormat: "openai/responses"},
 		{APIFormat: "openai/embeddings"},
 		{APIFormat: "openai/image_generation"},
+		{APIFormat: "openai/moderations"},
 	}
 
 	require.Equal(t, "openai/responses", SelectAPIFormat(endpoints, &llm.Request{RequestType: llm.RequestTypeChat}))
 	require.Equal(t, "openai/embeddings", SelectAPIFormat(endpoints, &llm.Request{RequestType: llm.RequestTypeEmbedding}))
 	require.Equal(t, "openai/image_generation", SelectAPIFormat(endpoints, &llm.Request{RequestType: llm.RequestTypeImage}))
+	require.Equal(t, "openai/moderations", SelectAPIFormat(endpoints, &llm.Request{RequestType: llm.RequestTypeModeration}))
 
 	searchEndpoints := append(endpoints, objects.ChannelEndpoint{APIFormat: llm.APIFormatOpenAISearch.String()})
 	require.Equal(t, llm.APIFormatOpenAISearch.String(), SelectAPIFormat(searchEndpoints, &llm.Request{
