@@ -33,6 +33,7 @@ const (
 	remoteCompactionCacheHeader        = "X-Axonhub-Remote-Compaction-Cache"
 	remoteCompactionCacheExpiration    = 24 * time.Hour
 	remoteCompactionCacheCleanup       = time.Hour
+	localCompactionReferencePrefix     = "axonhub-local-v1."
 
 	localCompactionPrompt = `You are performing a CONTEXT CHECKPOINT COMPACTION. Create a handoff summary for another LLM that will resume the task.
 
@@ -117,31 +118,38 @@ func (m *remoteCompactionMiddleware) OnInboundLlmRequest(ctx context.Context, re
 		return req, nil
 	}
 
-	if isRemoteCompactionGenerationRequest(req) && hasLocalBridgeCodexCandidate(m.inbound.state.ChannelModelsCandidates) {
+	candidates := m.inbound.state.ChannelModelsCandidates
+	if req.RawRequest != nil && len(rawRequestPayload(req.RawRequest)) > 0 &&
+		(req.APIFormat == llm.APIFormatOpenAIResponse || req.RequestType == llm.RequestTypeCompact) {
+		ref, threadID, rawModel, err := parseRemoteCompactionRequest(rawRequestPayload(req.RawRequest))
+		if err != nil {
+			return nil, err
+		}
+		if shouldAdaptRemoteCompactionReference(ref, candidates) {
+			req, err = m.adaptRemoteCompactionHistory(ctx, req, ref, threadID, rawModel)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	// Existing compaction state must be made compatible with the selected route
+	// before a local bridge builds the next compaction generation request.
+	if isRemoteCompactionGenerationRequest(req) && hasLocalBridgeCodexCandidate(candidates) {
 		return m.adaptLocalCompactionGeneration(ctx, req)
 	}
 
-	if req.APIFormat != llm.APIFormatOpenAIResponse || req.RequestType == llm.RequestTypeCompact {
-		return req, nil
-	}
-	if hasRemoteCompactionCapableCandidate(m.inbound.state.ChannelModelsCandidates) {
-		return req, nil
-	}
-	if !hasUnsupportedCodexCandidate(m.inbound.state.ChannelModelsCandidates) {
-		return req, nil
-	}
-	if req.RawRequest == nil || len(rawRequestPayload(req.RawRequest)) == 0 {
-		return req, nil
-	}
+	return req, nil
+}
 
-	ref, threadID, rawModel, err := parseRemoteCompactionRequest(rawRequestPayload(req.RawRequest))
-	if err != nil {
-		return nil, err
-	}
-	if ref == nil {
-		return req, nil
-	}
-	if ref.ID == "" || threadID == "" {
+func (m *remoteCompactionMiddleware) adaptRemoteCompactionHistory(
+	ctx context.Context,
+	req *llm.Request,
+	ref *remoteCompactionReference,
+	threadID string,
+	rawModel string,
+) (*llm.Request, error) {
+	if ref == nil || ref.ID == "" || threadID == "" {
 		return nil, errors.New("remote compaction local fallback requires a compaction id and Codex thread id")
 	}
 
@@ -156,7 +164,7 @@ func (m *remoteCompactionMiddleware) OnInboundLlmRequest(ctx context.Context, re
 		m.executor,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("adapt remote compaction for unsupported Codex channel: %w", err)
+		return nil, fmt.Errorf("adapt remote compaction for selected Codex channel: %w", err)
 	}
 
 	adaptedBody, err := replaceRemoteCompactionWithLocalSummary(rawRequestPayload(req.RawRequest), summary)
@@ -169,20 +177,28 @@ func (m *remoteCompactionMiddleware) OnInboundLlmRequest(ctx context.Context, re
 		adaptedRawRequest.JSONBody = adaptedBody
 	}
 
-	adapted, err := responses.NewInboundTransformer().TransformRequest(ctx, adaptedRawRequest)
-	if err != nil {
-		return nil, fmt.Errorf("parse locally compacted Responses request: %w", err)
+	var adapted *llm.Request
+	if req.RequestType == llm.RequestTypeCompact {
+		adaptedRequest := *req
+		adaptedRequest.RawRequest = adaptedRawRequest
+		adapted = &adaptedRequest
+	} else {
+		adapted, err = responses.NewInboundTransformer().TransformRequest(ctx, adaptedRawRequest)
+		if err != nil {
+			return nil, fmt.Errorf("parse locally compacted Responses request: %w", err)
+		}
+		adapted.Model = req.Model
+		adapted.ReasoningEffort = req.ReasoningEffort
+		adapted.RawRequest = adaptedRawRequest
 	}
-	adapted.Model = req.Model
-	adapted.ReasoningEffort = req.ReasoningEffort
-	adapted.RawRequest = adaptedRawRequest
 
 	m.inbound.state.RawRequest = adaptedRawRequest
 	m.inbound.state.LlmRequest = adapted
 
-	log.Info(ctx, "adapted remote compaction history for unsupported Codex channel",
+	log.Info(ctx, "adapted compaction history for selected Codex channel",
 		log.String("compaction_id", ref.ID),
 		log.String("thread_id", threadID),
+		log.Bool("local_reference", isLocalCompactionReference(ref)),
 		log.Int("candidate_count", len(m.inbound.state.ChannelModelsCandidates)),
 	)
 
@@ -324,8 +340,37 @@ func newLocalCompactionReference() (*remoteCompactionReference, error) {
 
 	return &remoteCompactionReference{
 		ID:               "cmp_axonhub_" + hex.EncodeToString(random[:12]),
-		EncryptedContent: "axonhub-local-v1." + base64.RawURLEncoding.EncodeToString(random),
+		EncryptedContent: localCompactionReferencePrefix + base64.RawURLEncoding.EncodeToString(random),
 	}, nil
+}
+
+func shouldAdaptRemoteCompactionReference(
+	ref *remoteCompactionReference,
+	candidates []*ChannelModelsCandidate,
+) bool {
+	if ref == nil || !hasCodexCandidate(candidates) {
+		return false
+	}
+	if isLocalCompactionReference(ref) {
+		return true
+	}
+
+	return !hasRemoteCompactionCapableCandidate(candidates) && hasUnsupportedCodexCandidate(candidates)
+}
+
+func isLocalCompactionReference(ref *remoteCompactionReference) bool {
+	return ref != nil && (strings.HasPrefix(ref.EncryptedContent, localCompactionReferencePrefix) ||
+		strings.HasPrefix(ref.ID, "cmp_axonhub_"))
+}
+
+func hasCodexCandidate(candidates []*ChannelModelsCandidate) bool {
+	for _, candidate := range candidates {
+		if candidate != nil && candidate.Channel != nil && candidate.Channel.Type == channel.TypeCodex {
+			return true
+		}
+	}
+
+	return false
 }
 
 func localCompactionMessagePart(ref *remoteCompactionReference) llm.MessageContentPart {

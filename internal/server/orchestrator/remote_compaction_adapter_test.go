@@ -98,6 +98,60 @@ func TestUseResponsesEndpointForLocalCompaction(t *testing.T) {
 	require.Equal(t, llm.APIFormatOpenAIResponseCompact.String(), native.APIFormat)
 }
 
+func TestShouldAdaptRemoteCompactionReference(t *testing.T) {
+	newCandidate := func(typ channel.Type, policy objects.RemoteCompactionPolicy) *ChannelModelsCandidate {
+		return &ChannelModelsCandidate{Channel: &biz.Channel{Channel: &ent.Channel{
+			Type: typ,
+			Policies: objects.ChannelPolicies{
+				RemoteCompaction: policy,
+			},
+		}}}
+	}
+	native := newCandidate(channel.TypeCodex, objects.RemoteCompactionPolicyNative)
+	localBridge := newCandidate(channel.TypeCodex, objects.RemoteCompactionPolicyLocalBridge)
+	automatic := newCandidate(channel.TypeCodex, objects.RemoteCompactionPolicyAuto)
+	nonCodex := newCandidate(channel.TypeOpenaiResponses, objects.RemoteCompactionPolicyNative)
+	localRef := &remoteCompactionReference{
+		ID:               "cmp_axonhub_local",
+		EncryptedContent: localCompactionReferencePrefix + "opaque",
+	}
+	remoteRef := &remoteCompactionReference{ID: "cmp_remote", EncryptedContent: "gAAAA-opaque"}
+
+	require.True(t, shouldAdaptRemoteCompactionReference(localRef, []*ChannelModelsCandidate{native}))
+	require.True(t, shouldAdaptRemoteCompactionReference(localRef, []*ChannelModelsCandidate{localBridge}))
+	require.True(t, shouldAdaptRemoteCompactionReference(remoteRef, []*ChannelModelsCandidate{localBridge}))
+	require.True(t, shouldAdaptRemoteCompactionReference(remoteRef, []*ChannelModelsCandidate{automatic}))
+	require.False(t, shouldAdaptRemoteCompactionReference(remoteRef, []*ChannelModelsCandidate{native}))
+	require.False(t, shouldAdaptRemoteCompactionReference(remoteRef, []*ChannelModelsCandidate{nonCodex}))
+	require.False(t, shouldAdaptRemoteCompactionReference(nil, []*ChannelModelsCandidate{native}))
+}
+
+func TestLocalCompactionGenerationUsesAdaptedHistory(t *testing.T) {
+	body := []byte(`{
+		"model":"gpt-5.6-sol",
+		"input":[
+			{"type":"message","role":"user","content":[{"type":"input_text","text":"retained"}]},
+			{"id":"cmp_remote","type":"compaction","encrypted_content":"gAAAA-opaque"},
+			{"type":"compaction_trigger"}
+		],
+		"stream":true,
+		"client_metadata":{"thread_id":"thread-1"}
+	}`)
+
+	adaptedHistory, err := replaceRemoteCompactionWithLocalSummary(body, "handoff summary")
+	require.NoError(t, err)
+	got, err := buildLocalCompactionGenerationRequest(adaptedHistory, llm.RequestTypeChat)
+	require.NoError(t, err)
+
+	_, input, err := decodeResponsesInput(got)
+	require.NoError(t, err)
+	require.Len(t, input, 3)
+	require.NotContains(t, string(got), `"type":"compaction"`)
+	require.NotContains(t, string(got), remoteCompactionTriggerType)
+	require.Contains(t, string(input[1]), localCompactionSummaryPrefix)
+	require.Contains(t, string(input[2]), "CONTEXT CHECKPOINT COMPACTION")
+}
+
 func TestReplaceRemoteCompactionWithLocalSummary(t *testing.T) {
 	body := []byte(`{
 		"model":"gpt-5.6-sol",
