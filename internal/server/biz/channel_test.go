@@ -464,6 +464,36 @@ func TestChannelService_UpdateChannel(t *testing.T) {
 	}
 }
 
+func TestChannelService_UpdateChannelRefreshesRoutingPolicyBeforeReturn(t *testing.T) {
+	svc, client := setupTestChannelService(t)
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	created, err := client.Channel.Create().
+		SetType(channel.TypeCodex).
+		SetName("Codex Channel").
+		SetBaseURL("https://example.com/v1").
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
+		SetSupportedModels([]string{"gpt-5.6-sol"}).
+		SetDefaultTestModel("gpt-5.6-sol").
+		SetStatus(channel.StatusEnabled).
+		Save(ctx)
+	require.NoError(t, err)
+	require.NoError(t, svc.enabledChannelsCache.Load(ctx, true))
+
+	updated, err := svc.UpdateChannel(ctx, created.ID, &ent.UpdateChannelInput{
+		Policies: &objects.ChannelPolicies{
+			RemoteCompaction: objects.RemoteCompactionPolicyLocalBridge,
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, objects.RemoteCompactionPolicyLocalBridge, updated.Policies.EffectiveRemoteCompactionPolicy())
+
+	cached := svc.GetEnabledChannel(created.ID)
+	require.NotNil(t, cached)
+	require.Equal(t, objects.RemoteCompactionPolicyLocalBridge, cached.Policies.EffectiveRemoteCompactionPolicy())
+}
+
 func TestChannelService_UpdateChannelStatus(t *testing.T) {
 	svc, client := setupTestChannelService(t)
 	defer client.Close()

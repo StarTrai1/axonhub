@@ -839,11 +839,13 @@ func (svc *ChannelService) asyncReloadChannels() {
 }
 
 // reloadChannelsAfterCommit waits for a caller-owned Ent transaction, including
-// the GraphQL Transactioner, before publishing the channel cache refresh.
+// the GraphQL Transactioner, before refreshing the local cache. The synchronous
+// local refresh makes a successful channel edit immediately visible to routing;
+// the notification then refreshes other instances asynchronously.
 func (svc *ChannelService) reloadChannelsAfterCommit(ctx context.Context) {
 	tx := ent.TxFromContext(ctx)
 	if tx == nil {
-		svc.asyncReloadChannels()
+		svc.reloadChannelsNow()
 
 		return
 	}
@@ -854,11 +856,21 @@ func (svc *ChannelService) reloadChannelsAfterCommit(ctx context.Context) {
 				return err
 			}
 
-			svc.asyncReloadChannels()
+			svc.reloadChannelsNow()
 
 			return nil
 		})
 	})
+}
+
+func (svc *ChannelService) reloadChannelsNow() {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := svc.enabledChannelsCache.Load(ctx, true); err != nil {
+		log.Warn(ctx, "synchronous channel cache refresh failed", log.Cause(err))
+	}
+	svc.asyncReloadChannels()
 }
 
 // SaveChannelEndpoints updates the endpoints field for a channel.
