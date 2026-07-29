@@ -3,6 +3,7 @@ package biz
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
@@ -12,6 +13,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/pkg/xcache/live"
 )
 
 func TestChannelService_ListModels(t *testing.T) {
@@ -479,6 +481,16 @@ func TestChannelService_UpdateChannelRefreshesRoutingPolicyBeforeReturn(t *testi
 		SetStatus(channel.StatusEnabled).
 		Save(ctx)
 	require.NoError(t, err)
+
+	svc.enabledChannelsCache.Stop()
+	svc.enabledChannelsCache = live.NewCache(live.Options[[]*Channel]{
+		Name:            "channel_policy_refresh_test",
+		InitialValue:    []*Channel{},
+		RefreshInterval: time.Hour,
+		RefreshFunc:     svc.onCacheRefreshed,
+		OnSwap:          svc.onEnabledChannelsSwap,
+	})
+	defer svc.enabledChannelsCache.Stop()
 	require.NoError(t, svc.enabledChannelsCache.Load(ctx, true))
 
 	updated, err := svc.UpdateChannel(ctx, created.ID, &ent.UpdateChannelInput{
