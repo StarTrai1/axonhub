@@ -28,6 +28,7 @@ type Handlers struct {
 	Playground     *api.PlaygroundHandlers
 	System         *api.SystemHandlers
 	Auth           *api.AuthHandlers
+	Invitation     *api.InvitationHandlers
 	Jina           *api.JinaHandlers
 	Codex          *api.CodexHandlers
 	ClaudeCode     *api.ClaudeCodeHandlers
@@ -80,6 +81,8 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 		publicGroup.GET("/favicon", handlers.System.GetFavicon)
 		// Health check endpoint - no authentication required
 		publicGroup.GET("/health", handlers.System.Health)
+		publicGroup.GET("/auth/invitations/:token", handlers.Invitation.Get)
+		publicGroup.POST("/auth/invitations/:token/register", handlers.Invitation.Register)
 	}
 
 	unSecureAdminGroup := server.Group("/admin", middleware.WithTimeout(server.Config.RequestTimeout))
@@ -108,6 +111,7 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 		adminGroup.POST("/system/storage/cleanup/preview", handlers.System.PreviewStorageCleanup)
 		adminGroup.POST("/system/storage/cleanup/jobs", handlers.System.StartStorageCleanup)
 		adminGroup.GET("/system/storage/cleanup/jobs/current", handlers.System.GetStorageCleanupJob)
+		adminGroup.POST("/invitations", handlers.Invitation.Create)
 
 		adminGroup.POST("/codex/oauth/start", handlers.Codex.StartOAuth)
 		adminGroup.POST("/codex/oauth/exchange", handlers.Codex.Exchange)
