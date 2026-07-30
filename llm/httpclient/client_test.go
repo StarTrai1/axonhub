@@ -73,6 +73,46 @@ func TestHttpClientImpl_DoStream_DetachedContextHonorsTimeout(t *testing.T) {
 	require.ErrorIs(t, stream.Err(), context.DeadlineExceeded)
 }
 
+func TestHttpClientImpl_CapturesSuccessfulResponseHeaders(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Codex-Turn-State", "turn-state-1")
+		w.Header().Set("X-Reasoning-Included", "true")
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	defer server.Close()
+
+	ctx, capture := WithResponseHeaderCapture(t.Context())
+	response, err := NewHttpClient().Do(ctx, &Request{
+		Method: http.MethodPost,
+		URL:    server.URL,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, response)
+	require.Equal(t, "turn-state-1", capture.Headers().Get("X-Codex-Turn-State"))
+	require.Equal(t, "true", capture.Headers().Get("X-Reasoning-Included"))
+}
+
+func TestHttpClientImpl_CapturesSuccessfulStreamResponseHeaders(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set("X-Codex-Turn-State", "turn-state-stream")
+		w.WriteHeader(http.StatusOK)
+		_, _ = fmt.Fprint(w, "data: [DONE]\n\n")
+	}))
+	defer server.Close()
+
+	ctx, capture := WithResponseHeaderCapture(t.Context())
+	stream, err := NewHttpClient().DoStream(ctx, &Request{
+		Method: http.MethodPost,
+		URL:    server.URL,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, stream)
+	defer stream.Close()
+	require.Equal(t, "turn-state-stream", capture.Headers().Get("X-Codex-Turn-State"))
+}
+
 func TestHttpClientImpl_Do(t *testing.T) {
 	tests := []struct {
 		name           string

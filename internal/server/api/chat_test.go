@@ -135,6 +135,23 @@ func TestWriteSSEStream_Success(t *testing.T) {
 	assert.Contains(t, body, `[DONE]`)
 }
 
+func TestForwardCodexResponseHeaders_AllowsOnlyCodexProtocolState(t *testing.T) {
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	headers := make(http.Header)
+	headers.Set("X-Codex-Turn-State", "turn-state-1")
+	headers.Set("X-Reasoning-Included", "true")
+	headers.Set("Authorization", "Bearer secret")
+	headers.Set("Set-Cookie", "session=secret")
+
+	forwardCodexResponseHeaders(c, headers)
+
+	require.Equal(t, "turn-state-1", w.Header().Get("X-Codex-Turn-State"))
+	require.Equal(t, "true", w.Header().Get("X-Reasoning-Included"))
+	require.Empty(t, w.Header().Get("Authorization"))
+	require.Empty(t, w.Header().Get("Set-Cookie"))
+}
+
 func TestWriteSSEStream_CanceledContextStillDrainsBufferedEvents(t *testing.T) {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)

@@ -14,6 +14,7 @@ type OpenAIResponsesProviderExtensions struct {
 
 type OpenAIResponsesRequestExtensions struct {
 	ReasoningContext string                       `json:"-"`
+	ClientMetadata   json.RawMessage              `json:"-"`
 	RawTools         []OpenAIResponsesRawFragment `json:"-"`
 	ToolSignatures   []string                     `json:"-"`
 	RawToolChoice    json.RawMessage              `json:"-"`
@@ -57,6 +58,7 @@ func CloneProviderExtensions(src *ProviderExtensions) *ProviderExtensions {
 		if src.OpenAIResponses.Request != nil {
 			cloned.OpenAIResponses.Request = &OpenAIResponsesRequestExtensions{
 				ReasoningContext: src.OpenAIResponses.Request.ReasoningContext,
+				ClientMetadata:   cloneRawMessage(src.OpenAIResponses.Request.ClientMetadata),
 				RawTools:         cloneOpenAIResponsesRawFragments(src.OpenAIResponses.Request.RawTools),
 				ToolSignatures:   append([]string(nil), src.OpenAIResponses.Request.ToolSignatures...),
 				RawToolChoice:    cloneRawMessage(src.OpenAIResponses.Request.RawToolChoice),

@@ -280,6 +280,46 @@ func TestOutboundTransformer_TransformRequest_ReplaysProviderRawToolsAndToolChoi
 	require.Len(t, toolChoice["tools"], 1)
 }
 
+func TestOutboundTransformer_TransformRequest_ReplaysClientMetadata(t *testing.T) {
+	inbound := NewInboundTransformer()
+	inboundReq := &httpclient.Request{
+		Body: []byte(`{
+			"model": "gpt-5.6-codex",
+			"input": "Continue the current turn.",
+			"client_metadata": {
+				"session_id": "session-1",
+				"thread_id": "thread-1",
+				"nested": {"source": "codex"}
+			}
+		}`),
+	}
+
+	llmReq, err := inbound.TransformRequest(context.Background(), inboundReq)
+	require.NoError(t, err)
+	require.NotNil(t, llmReq.ProviderExtensions)
+	require.NotNil(t, llmReq.ProviderExtensions.OpenAIResponses)
+	require.NotNil(t, llmReq.ProviderExtensions.OpenAIResponses.Request)
+	require.JSONEq(t, `{
+		"session_id":"session-1",
+		"thread_id":"thread-1",
+		"nested":{"source":"codex"}
+	}`, string(llmReq.ProviderExtensions.OpenAIResponses.Request.ClientMetadata))
+
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	httpReq, err := outbound.TransformRequest(context.Background(), llmReq)
+	require.NoError(t, err)
+
+	var payload map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal(httpReq.Body, &payload))
+	require.JSONEq(t, `{
+		"session_id":"session-1",
+		"thread_id":"thread-1",
+		"nested":{"source":"codex"}
+	}`, string(payload["client_metadata"]))
+}
+
 func TestOutboundTransformer_TransformRequest_ReplaysNamespaceTool(t *testing.T) {
 	inbound := NewInboundTransformer()
 	inboundReq := &httpclient.Request{
@@ -431,6 +471,7 @@ func TestProviderExtensions_NotSerializedWithLLMRequest(t *testing.T) {
 		ProviderExtensions: &llm.ProviderExtensions{
 			OpenAIResponses: &llm.OpenAIResponsesProviderExtensions{
 				Request: &llm.OpenAIResponsesRequestExtensions{
+					ClientMetadata: json.RawMessage(`{"secret":"client metadata"}`),
 					RawTools: []llm.OpenAIResponsesRawFragment{{
 						Type: "tool_search",
 						Raw:  json.RawMessage(`{"secret":"raw prompt"}`),
@@ -445,6 +486,7 @@ func TestProviderExtensions_NotSerializedWithLLMRequest(t *testing.T) {
 	require.NoError(t, err)
 	require.NotContains(t, string(data), "raw prompt")
 	require.NotContains(t, string(data), "raw choice")
+	require.NotContains(t, string(data), "client metadata")
 	require.NotContains(t, string(data), "provider_extensions")
 }
 

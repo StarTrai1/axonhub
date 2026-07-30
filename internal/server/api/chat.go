@@ -23,6 +23,11 @@ const (
 	errCodeQuotaExhausted = "quota_exhausted"
 )
 
+var codexResponseHeaders = []string{
+	"X-Codex-Turn-State",
+	"X-Reasoning-Included",
+}
+
 // StreamWriter is a function type for writing stream events to the response.
 type StreamWriter func(c *gin.Context, stream streams.Stream[*httpclient.StreamEvent])
 
@@ -81,6 +86,8 @@ func (handlers *ChatCompletionHandlers) ChatCompletionWithRequest(c *gin.Context
 		return
 	}
 
+	forwardCodexResponseHeaders(c, result.ResponseHeaders)
+
 	if result.ChatCompletion != nil {
 		resp := result.ChatCompletion
 
@@ -112,6 +119,21 @@ func (handlers *ChatCompletionHandlers) ChatCompletionWithRequest(c *gin.Context
 		}
 
 		streamWriter(c, newUpstreamErrorStream(ctx, result.ChatCompletionStream, handlers.ChatCompletionOrchestrator.SystemService))
+	}
+}
+
+func forwardCodexResponseHeaders(c *gin.Context, headers http.Header) {
+	if c == nil || len(headers) == 0 {
+		return
+	}
+
+	for _, name := range codexResponseHeaders {
+		values := headers.Values(name)
+		if len(values) == 0 {
+			continue
+		}
+
+		c.Writer.Header()[name] = append([]string(nil), values...)
 	}
 }
 

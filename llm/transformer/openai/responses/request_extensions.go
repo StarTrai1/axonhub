@@ -18,13 +18,14 @@ func attachOpenAIResponsesRequestExtensions(chatReq *llm.Request, req *Request, 
 	}
 	requestExt := &llm.OpenAIResponsesRequestExtensions{
 		ReasoningContext: reasoningContext,
+		ClientMetadata:   cloneRaw(raw.ClientMetadata),
 		RawTools:         buildRawOnlyToolFragments(req.Tools, raw.Tools),
 		ToolSignatures:   buildRepresentedToolSignatures(req.Tools),
 		RawToolChoice:    rawUnsupportedToolChoice(req.ToolChoice, raw.ToolChoice),
 		RawInputItems:    buildRawOnlyInputFragments(req.Input, raw.InputItems),
 	}
 
-	if requestExt.ReasoningContext == "" && len(requestExt.RawTools) == 0 && len(requestExt.RawToolChoice) == 0 && len(requestExt.RawInputItems) == 0 {
+	if requestExt.ReasoningContext == "" && len(requestExt.ClientMetadata) == 0 && len(requestExt.RawTools) == 0 && len(requestExt.RawToolChoice) == 0 && len(requestExt.RawInputItems) == 0 {
 		return
 	}
 
@@ -36,9 +37,10 @@ func attachOpenAIResponsesRequestExtensions(chatReq *llm.Request, req *Request, 
 }
 
 type rawRequestFragments struct {
-	Tools      []json.RawMessage
-	ToolChoice json.RawMessage
-	InputItems []json.RawMessage
+	ClientMetadata json.RawMessage
+	Tools          []json.RawMessage
+	ToolChoice     json.RawMessage
+	InputItems     []json.RawMessage
 }
 
 func parseRawRequestFragments(rawBody []byte) rawRequestFragments {
@@ -47,9 +49,10 @@ func parseRawRequestFragments(rawBody []byte) rawRequestFragments {
 	}
 
 	var raw struct {
-		Tools      []json.RawMessage `json:"tools"`
-		ToolChoice json.RawMessage   `json:"tool_choice"`
-		Input      json.RawMessage   `json:"input"`
+		ClientMetadata json.RawMessage   `json:"client_metadata"`
+		Tools          []json.RawMessage `json:"tools"`
+		ToolChoice     json.RawMessage   `json:"tool_choice"`
+		Input          json.RawMessage   `json:"input"`
 	}
 	if err := json.Unmarshal(rawBody, &raw); err != nil {
 		return rawRequestFragments{}
@@ -61,9 +64,10 @@ func parseRawRequestFragments(rawBody []byte) rawRequestFragments {
 	}
 
 	return rawRequestFragments{
-		Tools:      raw.Tools,
-		ToolChoice: raw.ToolChoice,
-		InputItems: inputItems,
+		ClientMetadata: raw.ClientMetadata,
+		Tools:          raw.Tools,
+		ToolChoice:     raw.ToolChoice,
+		InputItems:     inputItems,
 	}
 }
 
@@ -219,6 +223,10 @@ func marshalRequestPayload(payload Request, llmReq *llm.Request) ([]byte, error)
 	var obj map[string]json.RawMessage
 	if err := json.Unmarshal(body, &obj); err != nil {
 		return nil, err
+	}
+
+	if len(requestExt.ClientMetadata) > 0 {
+		obj["client_metadata"] = cloneRaw(requestExt.ClientMetadata)
 	}
 
 	if tools, ok := mergeRawOnlyTools(obj["tools"], requestExt); ok {

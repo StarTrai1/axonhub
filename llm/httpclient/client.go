@@ -279,6 +279,8 @@ func (hc *HttpClient) Do(ctx context.Context, request *Request) (*Response, erro
 			slog.String("body", string(body)))
 	}
 
+	RecordResponseHeaders(ctx, rawResp.Header)
+
 	// Build generic response
 	response := &Response{
 		StatusCode:  rawResp.StatusCode,
@@ -389,6 +391,8 @@ func (hc *HttpClient) DoStream(ctx context.Context, request *Request) (streams.S
 
 		decoderFactory = NewDefaultSSEDecoder
 	}
+
+	RecordResponseHeaders(streamCtx, rawResp.Header)
 
 	stream := decoderFactory(streamCtx, rawResp.Body)
 	if streamCancel != nil {
