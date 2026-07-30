@@ -1,13 +1,51 @@
 package openai
 
-import "github.com/looplj/axonhub/llm"
+import (
+	"encoding/json"
+
+	"github.com/looplj/axonhub/llm"
+)
 
 // PromptTokensDetails Breakdown of tokens used in the prompt.
 type PromptTokensDetails struct {
 	AudioTokens  int64 `json:"audio_tokens"`
 	CachedTokens int64 `json:"cached_tokens"`
-	// hidden field, used for internal calculation.
-	WriteCachedTokens int64 `json:"write_cached_tokens,omitempty"`
+	// WriteCachedTokens is the number of prompt tokens written to the cache.
+	WriteCachedTokens int64 `json:"cache_write_tokens,omitempty"`
+}
+
+// UnmarshalJSON accepts the official OpenAI field and compatibility aliases
+// emitted by older or third-party OpenAI-compatible gateways.
+func (d *PromptTokensDetails) UnmarshalJSON(data []byte) error {
+	var wire struct {
+		AudioTokens          int64  `json:"audio_tokens"`
+		CachedTokens         int64  `json:"cached_tokens"`
+		CacheWriteTokens     *int64 `json:"cache_write_tokens"`
+		WriteCachedTokens    *int64 `json:"write_cached_tokens"`
+		CacheCreationTokens  *int64 `json:"cache_creation_tokens"`
+		CachedCreationTokens *int64 `json:"cached_creation_tokens"`
+	}
+	if err := json.Unmarshal(data, &wire); err != nil {
+		return err
+	}
+
+	d.AudioTokens = wire.AudioTokens
+	d.CachedTokens = wire.CachedTokens
+	d.WriteCachedTokens = 0
+	for _, value := range []*int64{
+		wire.CacheWriteTokens,
+		wire.WriteCachedTokens,
+		wire.CacheCreationTokens,
+		wire.CachedCreationTokens,
+	} {
+		if value != nil {
+			d.WriteCachedTokens = *value
+
+			break
+		}
+	}
+
+	return nil
 }
 
 // CompletionTokensDetails Breakdown of tokens used in a completion.

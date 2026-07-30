@@ -1,12 +1,54 @@
 package openai
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm"
 )
+
+func TestPromptTokensDetailsCacheWriteTokensJSONCompatibility(t *testing.T) {
+	t.Parallel()
+
+	for _, test := range []struct {
+		name string
+		body string
+		want int64
+	}{
+		{name: "official", body: `{"cache_write_tokens":11}`, want: 11},
+		{name: "legacy AxonHub", body: `{"write_cached_tokens":12}`, want: 12},
+		{name: "cache creation alias", body: `{"cache_creation_tokens":13}`, want: 13},
+		{name: "cached creation alias", body: `{"cached_creation_tokens":14}`, want: 14},
+		{
+			name: "official zero takes precedence",
+			body: `{"cache_write_tokens":0,"write_cached_tokens":15}`,
+			want: 0,
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			var details PromptTokensDetails
+			require.NoError(t, json.Unmarshal([]byte(test.body), &details))
+			require.Equal(t, test.want, details.WriteCachedTokens)
+		})
+	}
+
+	details := PromptTokensDetails{
+		AudioTokens:       1,
+		CachedTokens:      2,
+		WriteCachedTokens: 3,
+	}
+	body, err := json.Marshal(details)
+	require.NoError(t, err)
+	require.JSONEq(t, `{
+		"audio_tokens": 1,
+		"cached_tokens": 2,
+		"cache_write_tokens": 3
+	}`, string(body))
+}
 
 func TestUsage_ToLLMUsage(t *testing.T) {
 	tests := []struct {

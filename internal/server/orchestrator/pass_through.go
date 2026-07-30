@@ -687,7 +687,12 @@ func completedResponsesUsage(event *httpclient.StreamEvent) (*llm.Usage, bool) {
 		return nil, false
 	}
 
-	var responseEvent responses.StreamEvent
+	var responseEvent struct {
+		Type     responses.StreamEventType `json:"type"`
+		Response *struct {
+			Usage *responses.Usage `json:"usage"`
+		} `json:"response"`
+	}
 	if err := json.Unmarshal(event.Data, &responseEvent); err != nil ||
 		responseEvent.Type != responses.StreamEventTypeResponseCompleted {
 		return nil, false
@@ -704,29 +709,51 @@ func (s *delayedCodexResponsesTerminalStream) observe(event *httpclient.StreamEv
 		return
 	}
 
-	var responseEvent responses.StreamEvent
+	// Most Responses Lite events are high-frequency text, reasoning, or tool
+	// deltas. Decode only their small envelope here and defer full object
+	// decoding to the handful of state events used by terminal repair.
+	var responseEvent struct {
+		Type           responses.StreamEventType `json:"type"`
+		SequenceNumber int                       `json:"sequence_number"`
+		OutputIndex    int                       `json:"output_index"`
+		Response       json.RawMessage           `json:"response"`
+		Item           json.RawMessage           `json:"item"`
+	}
 	if err := json.Unmarshal(event.Data, &responseEvent); err != nil {
 		return
 	}
 
-	if responseEvent.SequenceNumber > s.lastSequence {
-		s.lastSequence = responseEvent.SequenceNumber
-	}
-
 	switch responseEvent.Type {
 	case responses.StreamEventTypeResponseCreated, responses.StreamEventTypeResponseInProgress:
-		if responseEvent.Response != nil {
-			responseSnapshot := *responseEvent.Response
-			s.response = &responseSnapshot
+		if len(responseEvent.Response) > 0 {
+			var responseSnapshot *responses.Response
+			if err := json.Unmarshal(responseEvent.Response, &responseSnapshot); err != nil {
+				return
+			}
+			if responseSnapshot != nil {
+				s.response = responseSnapshot
+			}
 		}
 
 	case responses.StreamEventTypeOutputItemAdded:
+		if len(responseEvent.Item) > 0 {
+			var item *responses.Item
+			if err := json.Unmarshal(responseEvent.Item, &item); err != nil {
+				return
+			}
+		}
 		s.activeOutputs[responseEvent.OutputIndex] = struct{}{}
 
 	case responses.StreamEventTypeOutputItemDone:
+		var item *responses.Item
+		if len(responseEvent.Item) > 0 {
+			if err := json.Unmarshal(responseEvent.Item, &item); err != nil {
+				return
+			}
+		}
 		delete(s.activeOutputs, responseEvent.OutputIndex)
-		if responseEvent.Item != nil {
-			s.completedOutputs[responseEvent.OutputIndex] = *responseEvent.Item
+		if item != nil {
+			s.completedOutputs[responseEvent.OutputIndex] = *item
 		}
 
 	case responses.StreamEventTypeResponseCompleted,
@@ -734,7 +761,15 @@ func (s *delayedCodexResponsesTerminalStream) observe(event *httpclient.StreamEv
 		responses.StreamEventTypeResponseCancelled,
 		responses.StreamEventTypeResponseIncomplete,
 		responses.StreamEventTypeError:
+		var terminal responses.StreamEvent
+		if err := json.Unmarshal(event.Data, &terminal); err != nil {
+			return
+		}
 		s.terminalObserved = true
+	}
+
+	if responseEvent.SequenceNumber > s.lastSequence {
+		s.lastSequence = responseEvent.SequenceNumber
 	}
 }
 
