@@ -1,8 +1,10 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { graphqlRequest } from '@/gql/graphql';
 import { useTranslation } from 'react-i18next';
 import { useSelectedProjectId } from '@/stores/projectStore';
 import { useErrorHandler } from '@/hooks/use-error-handler';
+import { apiRequest } from '@/lib/api-client';
+import { extractNumberID } from '@/lib/utils';
 import { useRequestPermissions } from '../../../hooks/useRequestPermissions';
 import {
   Request,
@@ -465,5 +467,31 @@ export function useRequestExecutions(
       }
     },
     enabled: !!requestID,
+  });
+}
+
+export function useSwitchRequestChannel() {
+  const queryClient = useQueryClient();
+  const projectId = useSelectedProjectId();
+
+  return useMutation({
+    mutationFn: async (requestId: string) => {
+      if (!projectId) {
+        throw new Error('Project ID is required');
+      }
+
+      return apiRequest<{ status: string }>(`/admin/requests/${extractNumberID(requestId)}/switch-channel`, {
+        method: 'POST',
+        requireAuth: true,
+        headers: { 'X-Project-ID': projectId },
+      });
+    },
+    onSuccess: async (_data, requestId) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['requests'] }),
+        queryClient.invalidateQueries({ queryKey: ['request', requestId] }),
+        queryClient.invalidateQueries({ queryKey: ['request-executions', requestId] }),
+      ]);
+    },
   });
 }

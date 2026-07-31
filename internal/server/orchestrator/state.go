@@ -7,6 +7,7 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/pipeline"
 )
 
 // PersistenceState holds shared state with channel management and retry capabilities.
@@ -38,8 +39,9 @@ type PersistenceState struct {
 	OriginalRequestStream *bool
 
 	// Persistence state
-	Request     *ent.Request
-	RequestExec *ent.RequestExecution
+	Request             *ent.Request
+	RequestExec         *ent.RequestExecution
+	ManualSwitchControl *pipeline.ManualSwitchControl
 
 	// ChannelModelsCandidates is the primary state for channel selection
 	ChannelModelsCandidates []*ChannelModelsCandidate

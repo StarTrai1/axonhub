@@ -77,7 +77,7 @@ func selectCandidates(inbound *PersistentInboundTransformer, quotaProvider Provi
 				inbound.state.LoadBalancer,
 				inbound.state.RetryPolicyProvider,
 				inbound.state.RequestService,
-			)
+			).WithManualSwitchCandidate()
 		}
 
 		candidates, err := selector.Select(ctx, llmRequest)

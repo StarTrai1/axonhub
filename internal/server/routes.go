@@ -37,6 +37,7 @@ type Handlers struct {
 	RequestContent *api.RequestContentHandlers
 	OIDC           *api.OIDCHandlers
 	RequestPreview *api.RequestPreviewHandlers
+	RequestSwitch  *api.RequestSwitchHandlers
 }
 
 type Services struct {
@@ -146,6 +147,11 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 			"/requests/:request_id/preview",
 			middleware.WithTimeout(server.Config.RequestTimeout),
 			handlers.RequestPreview.PreviewRequest,
+		)
+		adminGroup.POST(
+			"/requests/:request_id/switch-channel",
+			middleware.WithTimeout(server.Config.RequestTimeout),
+			handlers.RequestSwitch.SwitchChannel,
 		)
 	}
 

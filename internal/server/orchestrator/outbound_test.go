@@ -231,6 +231,41 @@ func TestPersistentOutboundTransformer_PrepareForRetry(t *testing.T) {
 	})
 }
 
+func TestPersistentOutboundTransformer_NextAlternativeChannelSkipsSameChannelCandidates(t *testing.T) {
+	ctx := context.Background()
+	firstOutbound := &mockTransformer{}
+	secondOutbound := &mockTransformer{}
+	firstChannel := &biz.Channel{
+		Channel:  &ent.Channel{ID: 1, Name: "first"},
+		Outbound: firstOutbound,
+	}
+	secondChannel := &biz.Channel{
+		Channel:  &ent.Channel{ID: 2, Name: "second"},
+		Outbound: secondOutbound,
+	}
+
+	processor := &PersistentOutboundTransformer{
+		wrapped: firstOutbound,
+		state: &PersistenceState{
+			CurrentCandidateIndex: 0,
+			CurrentCandidate:      &ChannelModelsCandidate{Channel: firstChannel},
+			CurrentModelIndex:     0,
+			RequestExec:           &ent.RequestExecution{ID: 10},
+			ChannelModelsCandidates: []*ChannelModelsCandidate{
+				{Channel: firstChannel, Models: []biz.ChannelModelEntry{{ActualModel: "model-a"}}},
+				{Channel: firstChannel, Models: []biz.ChannelModelEntry{{ActualModel: "model-b"}}},
+				{Channel: secondChannel, Models: []biz.ChannelModelEntry{{ActualModel: "model-c"}}},
+			},
+		},
+	}
+
+	require.True(t, processor.HasAlternativeChannel())
+	require.NoError(t, processor.NextAlternativeChannel(ctx))
+	require.Equal(t, 2, processor.state.CurrentCandidateIndex)
+	require.Equal(t, secondChannel, processor.state.CurrentCandidate.Channel)
+	require.Nil(t, processor.state.RequestExec)
+}
+
 func TestPersistentOutboundTransformer_PrepareForRetry_UsesCandidateAPIFormatOutbound(t *testing.T) {
 	ctx := context.Background()
 

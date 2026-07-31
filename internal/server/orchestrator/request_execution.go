@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"errors"
 	"regexp"
 	"time"
 
@@ -190,6 +191,21 @@ func (m *persistRequestExecutionMiddleware) OnOutboundRawError(ctx context.Conte
 	// Update request execution with the real error message when request fails
 	state := m.outbound.state
 	if state == nil || state.RequestExec == nil {
+		return
+	}
+
+	if errors.Is(context.Cause(ctx), pipeline.ErrManualChannelSwitch) {
+		persistCtx, cancel := xcontext.DetachWithTimeout(ctx, 10*time.Second)
+		defer cancel()
+
+		if updateErr := state.RequestService.UpdateRequestExecutionCanceled(
+			persistCtx,
+			state.RequestExec.ID,
+			pipeline.ErrManualChannelSwitch.Error(),
+		); updateErr != nil {
+			log.Warn(persistCtx, "Failed to mark manually switched request execution as canceled", log.Cause(updateErr))
+		}
+
 		return
 	}
 

@@ -49,6 +49,7 @@ func (m *persistRequestMiddleware) OnInboundLlmRequest(ctx context.Context, llmR
 	}
 
 	m.inbound.state.Request = request
+	registerRequestSwitch(m.inbound.state)
 
 	return llmRequest, nil
 }

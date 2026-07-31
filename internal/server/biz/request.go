@@ -30,11 +30,12 @@ import (
 type RequestService struct {
 	*AbstractService
 
-	SystemService        *SystemService
-	UsageLogService      *UsageLogService
-	DataStorageService   *DataStorageService
-	LiveStreamRegistry   *LiveStreamRegistry
-	previousChannelCache xcache.Cache[int]
+	SystemService         *SystemService
+	UsageLogService       *UsageLogService
+	DataStorageService    *DataStorageService
+	LiveStreamRegistry    *LiveStreamRegistry
+	RequestSwitchRegistry *RequestSwitchRegistry
+	previousChannelCache  xcache.Cache[int]
 }
 
 // NewRequestService creates a new RequestService.
@@ -50,11 +51,12 @@ func NewRequestService(
 		AbstractService: &AbstractService{
 			db: ent,
 		},
-		SystemService:        systemService,
-		UsageLogService:      usageLogService,
-		DataStorageService:   dataStorageService,
-		LiveStreamRegistry:   liveStreamRegistry,
-		previousChannelCache: xcache.NewFromConfig[int](cacheConfig),
+		SystemService:         systemService,
+		UsageLogService:       usageLogService,
+		DataStorageService:    dataStorageService,
+		LiveStreamRegistry:    liveStreamRegistry,
+		RequestSwitchRegistry: NewRequestSwitchRegistry(),
+		previousChannelCache:  xcache.NewFromConfig[int](cacheConfig),
 	}
 }
 

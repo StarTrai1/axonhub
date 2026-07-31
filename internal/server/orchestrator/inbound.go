@@ -13,6 +13,7 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
 )
@@ -144,6 +145,10 @@ func (ts *InboundPersistentStream) Close() error {
 
 	streamErr := ts.stream.Err()
 	ctxErr := ctx.Err()
+	if errors.Is(context.Cause(ctx), pipeline.ErrManualChannelSwitch) {
+		log.Debug(ctx, "Skipping main request finalization for a manually switched upstream attempt")
+		return ts.stream.Close()
+	}
 
 	// If we received the [DONE] event, treat the stream as successfully completed
 	// even if there's a context cancellation error. This handles the case where

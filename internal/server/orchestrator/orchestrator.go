@@ -223,9 +223,11 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		ModelMapper:           processor.ModelMapper,
 		Proxy:                 processor.proxy,
 		CurrentCandidateIndex: 0,
+		ManualSwitchControl:   pipeline.NewManualSwitchControl(),
 	}
 
 	var pipelineOpts []pipeline.Option
+	pipelineOpts = append(pipelineOpts, pipeline.WithManualSwitchControl(state.ManualSwitchControl))
 
 	// Only apply retry if policy is enabled
 	if retryPolicy.Enabled {
@@ -318,6 +320,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 
 	result, err := pipe.Process(ctx, request)
 	if err != nil {
+		unregisterRequestSwitch(state)
 		persistCtx, cancel := xcontext.DetachWithTimeout(ctx, time.Second*10)
 		defer cancel()
 
@@ -351,10 +354,12 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 	if result.Stream {
 		return ChatCompletionResult{
 			ChatCompletion:       nil,
-			ChatCompletionStream: result.EventStream,
+			ChatCompletionStream: withRequestSwitchLifecycle(result.EventStream, state),
 			ResponseHeaders:      result.ResponseHeaders,
 		}, nil
 	}
+
+	unregisterRequestSwitch(state)
 
 	return ChatCompletionResult{
 		ChatCompletion:       result.Response,

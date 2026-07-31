@@ -156,7 +156,17 @@ func isTerminalLlmStreamEvent(resp *llm.Response) bool {
 }
 
 func (p *pipeline) hasStreamRetryBudget() bool {
-	return p.maxSameChannelRetries > 0 || p.maxChannelRetries > 0
+	if p.maxSameChannelRetries > 0 || p.maxChannelRetries > 0 {
+		return true
+	}
+
+	if p.manualSwitchControl == nil {
+		return false
+	}
+
+	manualSwitchable, ok := p.Outbound.(ManualSwitchable)
+
+	return ok && manualSwitchable.HasAlternativeChannel()
 }
 
 func shouldWrapPreReadStreamError(err error) bool {

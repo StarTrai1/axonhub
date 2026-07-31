@@ -186,6 +186,23 @@ func (lb *LoadBalancer) SortWithoutTracking(ctx context.Context, candidates []*C
 	return lb.sort(ctx, candidates, model, stream, false)
 }
 
+// SortWithoutTrackingLimit orders up to limit candidates without recording a
+// selection. Automatic retry limits remain enforced independently by the pipeline.
+func (lb *LoadBalancer) SortWithoutTrackingLimit(ctx context.Context, candidates []*ChannelModelsCandidate, model string, stream bool, limit int) []*ChannelModelsCandidate {
+	if len(candidates) <= 1 {
+		return candidates
+	}
+
+	ctx = contextWithRequestedModel(ctx, model)
+	ctx = contextWithRequestStream(ctx, stream)
+	topK := min(max(limit, 1), len(candidates))
+	if lb.debug || IsDebugEnabled(ctx) {
+		return lb.sortWithDebug(ctx, candidates, model, topK, false)
+	}
+
+	return lb.sortProduction(ctx, candidates, topK, false)
+}
+
 // TrackSelection records a selected channel.
 func (lb *LoadBalancer) TrackSelection(candidate *ChannelModelsCandidate) {
 	if candidate != nil && candidate.Channel != nil && lb.selectionTracker != nil {

@@ -630,10 +630,19 @@ func (s *SelectedChannelsSelector) Select(ctx context.Context, req *llm.Request)
 
 // LoadBalancedSelector is a decorator that sorts candidates using load balancing strategies.
 type LoadBalancedSelector struct {
-	wrapped                 CandidateSelector
-	loadBalancer            *LoadBalancer
-	policy                  RetryPolicyProvider
-	previousChannelProvider PreviousChannelProvider
+	wrapped                     CandidateSelector
+	loadBalancer                *LoadBalancer
+	policy                      RetryPolicyProvider
+	previousChannelProvider     PreviousChannelProvider
+	retainManualSwitchCandidate bool
+}
+
+// WithManualSwitchCandidate retains one extra distinct-channel candidate for
+// an explicit operator switch without changing automatic retry limits.
+func (s *LoadBalancedSelector) WithManualSwitchCandidate() *LoadBalancedSelector {
+	s.retainManualSwitchCandidate = true
+
+	return s
 }
 
 // WithLoadBalancedSelector creates a selector that applies load balancing to sort candidates.
@@ -687,6 +696,11 @@ func (s *LoadBalancedSelector) Select(ctx context.Context, req *llm.Request) ([]
 			stickyCandidate.TraceSticky = true
 
 			fallbackCount := max(requiredCount-1, 0)
+			if s.retainManualSwitchCandidate {
+				// Keep one additional candidate for an explicit operator switch without
+				// consuming the automatic retry budget.
+				fallbackCount++
+			}
 			fallbackCandidates := s.sortCandidates(ctx, remainingCandidates, req, fallbackCount, false)
 			result := append([]*ChannelModelsCandidate{stickyCandidate}, fallbackCandidates...)
 
@@ -694,6 +708,11 @@ func (s *LoadBalancedSelector) Select(ctx context.Context, req *llm.Request) ([]
 
 			return result, nil
 		}
+	}
+
+	if s.retainManualSwitchCandidate && candidatesContainDistinctChannels(candidates) {
+		// Automatic retry limits remain enforced by the pipeline.
+		requiredCount++
 	}
 
 	return s.sortCandidates(ctx, candidates, req, requiredCount, true), nil
@@ -733,6 +752,26 @@ func highestRoutingTierCandidates(candidates []*ChannelModelsCandidate) []*Chann
 	return lo.Filter(candidates, func(candidate *ChannelModelsCandidate, _ int) bool {
 		return candidateRoutingTierOrder(candidate) == highestOrder
 	})
+}
+
+func candidatesContainDistinctChannels(candidates []*ChannelModelsCandidate) bool {
+	firstChannelID := 0
+	for _, candidate := range candidates {
+		if candidate == nil || candidate.Channel == nil {
+			continue
+		}
+
+		if firstChannelID == 0 {
+			firstChannelID = candidate.Channel.ID
+			continue
+		}
+
+		if candidate.Channel.ID != firstChannelID {
+			return true
+		}
+	}
+
+	return false
 }
 
 // selectTraceStickyCandidate selects the previous trace channel first, then
@@ -850,10 +889,13 @@ func (s *LoadBalancedSelector) sortCandidates(
 		return a.priority - b.priority
 	})
 
-	// For each priority group, apply load balancing to sort candidates within the group
-	// Stop early if we have collected enough candidates
+	// For each priority group, apply load balancing to sort candidates within the group.
+	// If multiple physical channels exist, retain enough entries to expose at least
+	// one distinct manual-switch target even when association entries share a channel.
 	var result []*ChannelModelsCandidate
+	mustIncludeDistinctChannel := s.retainManualSwitchCandidate && candidatesContainDistinctChannels(candidates)
 
+	groups:
 	for _, groupKey := range priorities {
 		group := priorityGroups[groupKey]
 
@@ -863,19 +905,23 @@ func (s *LoadBalancedSelector) sortCandidates(
 		// Defer selection tracking until every tier has been assembled. Tracking
 		// each group here would incorrectly count standard and fallback channels
 		// that were only added to the retry plan and never selected.
-		sortedCandidates := s.loadBalancer.SortWithoutTracking(ctx, group, req.Model, useStream)
-
-		// Add candidates, but stop if we have enough
-		remaining := requiredCount - len(result)
-		if remaining <= 0 {
-			break
+		var sortedCandidates []*ChannelModelsCandidate
+		if s.retainManualSwitchCandidate {
+			limit := max(requiredCount-len(result), 1)
+			if mustIncludeDistinctChannel && !candidatesContainDistinctChannels(result) {
+				limit = max(limit, 2)
+			}
+			sortedCandidates = s.loadBalancer.SortWithoutTrackingLimit(ctx, group, req.Model, useStream, limit)
+		} else {
+			sortedCandidates = s.loadBalancer.SortWithoutTracking(ctx, group, req.Model, useStream)
 		}
 
-		if len(sortedCandidates) <= remaining {
-			result = append(result, sortedCandidates...)
-		} else {
-			result = append(result, sortedCandidates[:remaining]...)
-			break
+		for _, candidate := range sortedCandidates {
+			result = append(result, candidate)
+			if len(result) >= requiredCount &&
+				(!mustIncludeDistinctChannel || candidatesContainDistinctChannels(result)) {
+				break groups
+			}
 		}
 	}
 

@@ -508,6 +508,27 @@ func (p *PersistentOutboundTransformer) HasMoreChannels() bool {
 	return p.state.CurrentCandidateIndex+1 < len(p.state.ChannelModelsCandidates)
 }
 
+// HasAlternativeChannel reports whether the retained routing plan contains a
+// later candidate backed by a different physical channel.
+func (p *PersistentOutboundTransformer) HasAlternativeChannel() bool {
+	if p.state == nil || p.state.CurrentCandidateIndex >= len(p.state.ChannelModelsCandidates) {
+		return false
+	}
+
+	current := p.state.ChannelModelsCandidates[p.state.CurrentCandidateIndex]
+	if current == nil || current.Channel == nil {
+		return false
+	}
+
+	for _, candidate := range p.state.ChannelModelsCandidates[p.state.CurrentCandidateIndex+1:] {
+		if candidate != nil && candidate.Channel != nil && candidate.Channel.ID != current.Channel.ID {
+			return true
+		}
+	}
+
+	return false
+}
+
 // resetPassThroughStreamState cancels the current attempt's fan-out goroutine (if any)
 // and clears pass-through stream state so the next attempt starts with a clean slate.
 // Must be called before every retry to prevent goroutine leaks and data races on
@@ -553,6 +574,51 @@ func (p *PersistentOutboundTransformer) NextChannel(ctx context.Context) error {
 			log.String("api_format", candidate.APIFormat),
 		)
 	}
+
+	return nil
+}
+
+// NextAlternativeChannel skips association/model candidates for the current
+// physical channel and advances according to the already load-balanced plan.
+func (p *PersistentOutboundTransformer) NextAlternativeChannel(ctx context.Context) error {
+	if p.state == nil || p.state.CurrentCandidateIndex >= len(p.state.ChannelModelsCandidates) {
+		return errors.New("no alternative channel available")
+	}
+
+	current := p.state.ChannelModelsCandidates[p.state.CurrentCandidateIndex]
+	if current == nil || current.Channel == nil {
+		return errors.New("current channel is unavailable")
+	}
+
+	nextIndex := -1
+	for index := p.state.CurrentCandidateIndex + 1; index < len(p.state.ChannelModelsCandidates); index++ {
+		candidate := p.state.ChannelModelsCandidates[index]
+		if candidate != nil && candidate.Channel != nil && candidate.Channel.ID != current.Channel.ID {
+			nextIndex = index
+			break
+		}
+	}
+	if nextIndex < 0 {
+		return errors.New("no alternative channel available")
+	}
+
+	p.resetPassThroughStreamState()
+	p.state.CurrentCandidateIndex = nextIndex
+	p.state.CurrentModelIndex = 0
+	p.state.RequestExec = nil
+	p.state.PassThroughApplied = false
+
+	candidate := p.state.ChannelModelsCandidates[nextIndex]
+	p.state.CurrentCandidate = candidate
+	p.wrapped = selectOutboundForCandidate(candidate)
+
+	log.Info(ctx, "manually switching request to an alternative channel",
+		log.Int("previous_channel_id", current.Channel.ID),
+		log.Int("channel_id", candidate.Channel.ID),
+		log.String("channel", candidate.Channel.Name),
+		log.Int("candidate_index", nextIndex),
+		log.String("api_format", candidate.APIFormat),
+	)
 
 	return nil
 }

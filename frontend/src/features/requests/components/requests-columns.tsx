@@ -1,10 +1,11 @@
 'use client';
 
+import { useState, type MouseEvent } from 'react';
 import { format } from 'date-fns';
 import { ColumnDef } from '@tanstack/react-table';
 import { IconRoute, IconArrowsJoin2 } from '@tabler/icons-react';
 import { zhCN, enUS } from 'date-fns/locale';
-import { ArrowLeftRight, Ban, FileText } from 'lucide-react';
+import { ArrowLeftRight, Ban, FileText, LoaderCircle, Shuffle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { extractNumberID } from '@/lib/utils';
@@ -12,11 +13,22 @@ import { formatDuration } from '@/utils/format-duration';
 import { usePaginationSearch } from '@/hooks/use-pagination-search';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { DataTableColumnHeader } from '@/components/data-table-column-header';
 import { useGeneralSettings, useSecuritySettings, useUpdateSecuritySettings } from '@/features/system/data/system';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useRequestPermissions } from '../../../hooks/useRequestPermissions';
+import { useSwitchRequestChannel } from '../data';
 import { Request } from '../data/schema';
 import { calculateTokensPerSecond, getEffectiveRequestLatencyMs, useDisplayMode } from '../utils/tokens-per-second';
 import { getStatusColor } from './help';
@@ -26,17 +38,79 @@ interface UseRequestsColumnsOptions {
   onViewDetail?: (requestId: string) => void;
 }
 
+function SwitchChannelAction({ requestId, channelName }: { requestId: string; channelName: string }) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const switchChannel = useSwitchRequestChannel();
+
+  const handleConfirm = async (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+
+    try {
+      await switchChannel.mutateAsync(requestId);
+      setOpen(false);
+      toast.success(t('requests.actions.switchChannelAccepted'));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : t('requests.actions.switchChannelFailed');
+      toast.error(message);
+    }
+  };
+
+  return (
+    <>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type='button'
+            variant='ghost'
+            size='icon-sm'
+            className='text-muted-foreground h-6 w-6 shrink-0 rounded-md border border-dashed border-transparent hover:border-amber-300 hover:bg-amber-50 hover:text-amber-700 dark:hover:border-amber-700/60 dark:hover:bg-amber-950/30 dark:hover:text-amber-300'
+            disabled={switchChannel.isPending}
+            onClick={(event) => {
+              event.stopPropagation();
+              setOpen(true);
+            }}
+            aria-label={t('requests.actions.switchChannel')}
+          >
+            {switchChannel.isPending ? <LoaderCircle className='h-3.5 w-3.5 animate-spin' /> : <Shuffle className='h-3.5 w-3.5' />}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>{t('requests.actions.switchChannel')}</TooltipContent>
+      </Tooltip>
+
+      <AlertDialog open={open} onOpenChange={(nextOpen) => !switchChannel.isPending && setOpen(nextOpen)}>
+        <AlertDialogContent onClick={(event) => event.stopPropagation()}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('requests.dialogs.switchChannel.title')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('requests.dialogs.switchChannel.description', { channel: channelName })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={switchChannel.isPending}>{t('common.buttons.cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirm} disabled={switchChannel.isPending}>
+              {switchChannel.isPending && <LoaderCircle className='mr-2 h-4 w-4 animate-spin' />}
+              {t('requests.actions.switchChannel')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
 export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnDef<Request>[] {
   const { t, i18n } = useTranslation();
   const locale = i18n.language === 'zh' ? zhCN : enUS;
   const permissions = useRequestPermissions();
-  const { hasSystemScope } = usePermissions();
+  const { hasScope, hasSystemScope } = usePermissions();
   const { data: settings } = useGeneralSettings();
   const { data: securitySettings } = useSecuritySettings();
   const updateSecuritySettings = useUpdateSecuritySettings();
   const { navigateWithSearch } = usePaginationSearch({ defaultPageSize: 20 });
   const [displayMode, setDisplayMode] = useDisplayMode();
   const canManageSecuritySettings = hasSystemScope('write_settings');
+  const canSwitchChannels = hasScope('write_requests');
 
   const blockedIPs = securitySettings?.blockedIPs ?? [];
   const showIPBanIcon = securitySettings?.showRequestLogIPBanIcon === true;
@@ -327,6 +401,8 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
               const executions = request.executions?.edges?.map((edge) => edge.node).filter((exe) => !!exe) || [];
               const hasMultipleChannels = executions.some((exe) => exe.channel?.id && exe.channel.id !== channel.id);
 
+              let channelContent = <div className='px-2 font-mono text-xs'>{channel.name}</div>;
+
               if (executions.length > 1 || hasMultipleChannels) {
                 const sortedExecutions = [...executions].sort((a, b) => {
                   const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
@@ -334,7 +410,7 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
                   return dateB - dateA;
                 });
 
-                return (
+                channelContent = (
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <button
@@ -381,7 +457,14 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
                 );
               }
 
-              return <div className='px-2 font-mono text-xs'>{channel.name}</div>;
+              return (
+                <div className='flex items-center gap-1.5'>
+                  {channelContent}
+                  {request.status === 'processing' && canSwitchChannels && (
+                    <SwitchChannelAction requestId={request.id} channelName={channel.name || t('requests.columns.unknown')} />
+                  )}
+                </div>
+              );
             },
             filterFn: (row, _id, value) => {
               // For client-side filtering, check if any of the selected channels match

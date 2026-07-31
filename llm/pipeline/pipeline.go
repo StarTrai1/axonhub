@@ -82,6 +82,14 @@ func WithResponseTimeouts(streamFirstEventTimeout, nonStreamTimeout time.Duratio
 	}
 }
 
+// WithManualSwitchControl allows an operator to cancel the current upstream
+// attempt and move to the next distinct channel before response output starts.
+func WithManualSwitchControl(control *ManualSwitchControl) Option {
+	return func(p *pipeline) {
+		p.manualSwitchControl = control
+	}
+}
+
 // Factory creates pipeline instances.
 type Factory struct {
 	Executor Executor
@@ -126,6 +134,7 @@ type pipeline struct {
 	emptyResponseDetection  bool
 	streamFirstEventTimeout time.Duration
 	nonStreamTimeout        time.Duration
+	manualSwitchControl     *ManualSwitchControl
 }
 
 type Result struct {
@@ -281,14 +290,62 @@ func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*R
 
 	channelSwitches := 0
 	sameChannelRetries := 0
+	manualSwitchable, supportsManualSwitch := p.Outbound.(ManualSwitchable)
 
 	// Step 3: Process the request
 	for {
 		responseHeaders.Reset()
 		llmRequest.Stream = originalStream
 
-		result, err := p.processRequest(ctx, llmRequest)
-		if err == nil {
+		attemptCtx := ctx
+		var cancelAttempt context.CancelCauseFunc
+		if p.manualSwitchControl != nil && supportsManualSwitch {
+			attemptCtx, cancelAttempt = context.WithCancelCause(ctx)
+			p.manualSwitchControl.BeginAttempt(
+				func() { cancelAttempt(ErrManualChannelSwitch) },
+				manualSwitchable.HasAlternativeChannel(),
+			)
+		}
+
+		result, err := p.processRequest(attemptCtx, llmRequest)
+		if p.manualSwitchControl != nil && supportsManualSwitch {
+			if err == nil && p.manualSwitchControl.TryCommit() {
+				result.ResponseHeaders = responseHeaders.Headers()
+				if result.Stream {
+					result.EventStream = newManualSwitchCommittedStream(result.EventStream, cancelAttempt, p.manualSwitchControl)
+				} else {
+					cancelAttempt(nil)
+					p.manualSwitchControl.Close()
+				}
+
+				return result, nil
+			}
+
+			if err == nil {
+				if result.Stream && result.EventStream != nil {
+					_ = result.EventStream.Close()
+				}
+				err = ErrManualChannelSwitch
+			}
+
+			manualSwitchRequested := p.manualSwitchControl.EndAttempt()
+			cancelAttempt(nil)
+			if manualSwitchRequested {
+				lastErr = ErrManualChannelSwitch
+				if ctx.Err() != nil {
+					return nil, ctx.Err()
+				}
+
+				if switchErr := manualSwitchable.NextAlternativeChannel(ctx); switchErr != nil {
+					return nil, fmt.Errorf("failed to switch to an alternative channel: %w", switchErr)
+				}
+
+				sameChannelRetries = 0
+				slog.InfoContext(ctx, "operator switched request to an alternative channel")
+
+				continue
+			}
+		} else if err == nil {
 			result.ResponseHeaders = responseHeaders.Headers()
 			return result, nil
 		}
