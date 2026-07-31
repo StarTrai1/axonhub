@@ -895,7 +895,7 @@ func (s *LoadBalancedSelector) sortCandidates(
 	var result []*ChannelModelsCandidate
 	mustIncludeDistinctChannel := s.retainManualSwitchCandidate && candidatesContainDistinctChannels(candidates)
 
-	groups:
+groups:
 	for _, groupKey := range priorities {
 		group := priorityGroups[groupKey]
 
