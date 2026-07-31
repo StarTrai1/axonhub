@@ -422,7 +422,7 @@ const (
 )
 
 type ChannelPolicies struct {
-	RoutingTier      RoutingTier           `json:"routingTier,omitempty"`
+	RoutingTier      RoutingTier            `json:"routingTier,omitempty"`
 	Stream           CapabilityPolicy       `json:"stream,omitempty"`
 	RemoteCompaction RemoteCompactionPolicy `json:"remoteCompaction,omitempty"`
 	// SupportsRemoteCompaction is the legacy two-state field. Keep it for
