@@ -175,6 +175,12 @@ enum CapabilityPolicy {
   forbid
 }
 
+enum RoutingTier {
+  preferred
+  standard
+  fallback
+}
+
 enum WebSearchPolicy {
   auto
   native
@@ -188,6 +194,7 @@ enum RemoteCompactionPolicy {
 }
 
 type ChannelPolicies {
+  routingTier: RoutingTier
   stream: CapabilityPolicy
   remoteCompaction: RemoteCompactionPolicy
   supportsRemoteCompaction: Boolean
@@ -196,6 +203,7 @@ type ChannelPolicies {
 }
 
 input ChannelPoliciesInput {
+  routingTier: RoutingTier
   stream: CapabilityPolicy
   remoteCompaction: RemoteCompactionPolicy
   supportsRemoteCompaction: Boolean

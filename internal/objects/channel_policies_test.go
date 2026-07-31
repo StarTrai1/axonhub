@@ -7,6 +7,26 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestChannelPolicies_EffectiveRoutingTier(t *testing.T) {
+	tests := []struct {
+		name   string
+		policy ChannelPolicies
+		want   RoutingTier
+	}{
+		{name: "legacy empty defaults to standard", want: RoutingTierStandard},
+		{name: "preferred", policy: ChannelPolicies{RoutingTier: RoutingTierPreferred}, want: RoutingTierPreferred},
+		{name: "standard", policy: ChannelPolicies{RoutingTier: RoutingTierStandard}, want: RoutingTierStandard},
+		{name: "fallback", policy: ChannelPolicies{RoutingTier: RoutingTierFallback}, want: RoutingTierFallback},
+		{name: "unknown defaults to standard", policy: ChannelPolicies{RoutingTier: RoutingTier("unknown")}, want: RoutingTierStandard},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, tt.policy.EffectiveRoutingTier())
+		})
+	}
+}
+
 func TestChannelPolicies_EffectiveWebSearchPolicy(t *testing.T) {
 	tests := []struct {
 		name   string

@@ -139,6 +139,9 @@ models:
   ChannelPoliciesInput:
     model:
       - github.com/looplj/axonhub/internal/objects.ChannelPolicies
+  RoutingTier:
+    model:
+      - github.com/looplj/axonhub/internal/objects.RoutingTier
   ChannelSettings:
     model:
       - github.com/looplj/axonhub/internal/objects.ChannelSettings

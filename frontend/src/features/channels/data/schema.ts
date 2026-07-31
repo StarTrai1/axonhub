@@ -126,6 +126,9 @@ export type ChannelStatus = z.infer<typeof channelStatusSchema>;
 export const capabilityPolicySchema = z.enum(['unlimited', 'require', 'forbid']);
 export type CapabilityPolicy = z.infer<typeof capabilityPolicySchema>;
 
+export const routingTierSchema = z.enum(['preferred', 'standard', 'fallback']);
+export type RoutingTier = z.infer<typeof routingTierSchema>;
+
 export const webSearchPolicySchema = z.enum(['auto', 'native', 'mcp_only']);
 export type WebSearchPolicy = z.infer<typeof webSearchPolicySchema>;
 
@@ -134,6 +137,7 @@ export type RemoteCompactionPolicy = z.infer<typeof remoteCompactionPolicySchema
 
 export const channelPoliciesSchema = z
   .object({
+    routingTier: routingTierSchema.nullish(),
     stream: capabilityPolicySchema.optional(),
     remoteCompaction: remoteCompactionPolicySchema.nullish(),
     supportsRemoteCompaction: z.boolean().optional().default(false),
@@ -145,6 +149,7 @@ export const channelPoliciesSchema = z
   })
   .transform((value) => ({
     ...value,
+    routingTier: value.routingTier ?? 'standard',
     remoteCompaction: value.remoteCompaction ?? (value.supportsRemoteCompaction ? 'native' : 'auto'),
     webSearch: value.webSearch ?? (value.supportsWebSearch ? 'native' : 'auto'),
   }));

@@ -8,6 +8,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 )
@@ -35,6 +36,12 @@ func stickyTestCandidate(channelID, priority int) *ChannelModelsCandidate {
 		},
 		Priority: priority,
 	}
+}
+
+func stickyTestCandidateWithTier(channelID, priority int, tier objects.RoutingTier) *ChannelModelsCandidate {
+	candidate := stickyTestCandidate(channelID, priority)
+	candidate.Channel.Policies.RoutingTier = tier
+	return candidate
 }
 
 func TestLoadBalancedSelector_TraceStickySelection(t *testing.T) {
@@ -153,4 +160,87 @@ func TestLoadBalancedSelector_TraceStickySelection(t *testing.T) {
 		require.Equal(t, 2, result[0].Channel.ID)
 		require.True(t, result[0].TraceSticky)
 	})
+
+	t.Run("sticky standard channel cannot bypass preferred tier", func(t *testing.T) {
+		candidates := []*ChannelModelsCandidate{
+			stickyTestCandidateWithTier(1, 5, objects.RoutingTierPreferred),
+			stickyTestCandidateWithTier(2, 0, objects.RoutingTierStandard),
+			stickyTestCandidateWithTier(3, 0, objects.RoutingTierFallback),
+		}
+		policy := &mockRetryPolicyProvider{policy: &biz.RetryPolicy{
+			Enabled:           true,
+			MaxChannelRetries: 2,
+			TraceStickyMode:   biz.TraceStickyPreferPreviousChannel,
+		}}
+		selector := WithTraceStickyLoadBalancedSelector(
+			&staticChannelSelector{candidates: candidates},
+			NewLoadBalancer(policy, nil),
+			policy,
+			&fakePreviousChannelProvider{traceChannelIDs: map[int]int{trace.ID: 2}},
+		)
+
+		result, err := selector.Select(ctx, &llm.Request{Model: "gpt-4"})
+		require.NoError(t, err)
+		require.Equal(t, []int{1, 2, 3}, []int{result[0].Channel.ID, result[1].Channel.ID, result[2].Channel.ID})
+		require.False(t, result[0].TraceSticky)
+	})
+
+	t.Run("sticky selection is preserved within preferred tier", func(t *testing.T) {
+		candidates := []*ChannelModelsCandidate{
+			stickyTestCandidateWithTier(1, 0, objects.RoutingTierPreferred),
+			stickyTestCandidateWithTier(2, 1, objects.RoutingTierPreferred),
+			stickyTestCandidateWithTier(3, 0, objects.RoutingTierStandard),
+		}
+		policy := &mockRetryPolicyProvider{policy: &biz.RetryPolicy{
+			Enabled:           true,
+			MaxChannelRetries: 2,
+			TraceStickyMode:   biz.TraceStickyPreferPreviousChannel,
+		}}
+		selector := WithTraceStickyLoadBalancedSelector(
+			&staticChannelSelector{candidates: candidates},
+			NewLoadBalancer(policy, nil),
+			policy,
+			&fakePreviousChannelProvider{traceChannelIDs: map[int]int{trace.ID: 2}},
+		)
+
+		result, err := selector.Select(ctx, &llm.Request{Model: "gpt-4"})
+		require.NoError(t, err)
+		require.Equal(t, 2, result[0].Channel.ID)
+		require.True(t, result[0].TraceSticky)
+		require.Equal(t, []int{1, 3}, []int{result[1].Channel.ID, result[2].Channel.ID})
+	})
+}
+
+func TestLoadBalancedSelector_RoutingTiers(t *testing.T) {
+	preferredLowWeight := stickyTestCandidateWithTier(1, 10, objects.RoutingTierPreferred)
+	preferredHighWeight := stickyTestCandidateWithTier(2, 10, objects.RoutingTierPreferred)
+	preferredLowWeight.Channel.OrderingWeight = 10
+	preferredHighWeight.Channel.OrderingWeight = 20
+	standard := stickyTestCandidateWithTier(3, 0, objects.RoutingTierStandard)
+	fallback := stickyTestCandidateWithTier(4, -10, objects.RoutingTierFallback)
+
+	policy := &mockRetryPolicyProvider{policy: &biz.RetryPolicy{
+		Enabled:           true,
+		MaxChannelRetries: 3,
+		TraceStickyMode:   biz.TraceStickyDisabled,
+	}}
+	tracker := &mockSelectionTracker{}
+	selector := WithLoadBalancedSelector(
+		&staticChannelSelector{candidates: []*ChannelModelsCandidate{fallback, standard, preferredLowWeight, preferredHighWeight}},
+		NewLoadBalancer(policy, tracker),
+		policy,
+	)
+
+	result, err := selector.Select(context.Background(), &llm.Request{Model: "gpt-4"})
+	require.NoError(t, err)
+	require.Equal(t, []int{2, 1, 3, 4}, []int{
+		result[0].Channel.ID,
+		result[1].Channel.ID,
+		result[2].Channel.ID,
+		result[3].Channel.ID,
+	})
+	require.Equal(t, 1, tracker.selections[2])
+	require.Zero(t, tracker.selections[1])
+	require.Zero(t, tracker.selections[3])
+	require.Zero(t, tracker.selections[4])
 }

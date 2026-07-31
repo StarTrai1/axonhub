@@ -73,6 +73,9 @@ func (r *channelResolver) ID(ctx context.Context, obj *ent.Channel) (*objects.GU
 // Policies is the resolver for the policies field.
 // It is used to return the default value if the field is not set.
 func (r *channelResolver) Policies(ctx context.Context, obj *ent.Channel) (*objects.ChannelPolicies, error) {
+	if obj.Policies.RoutingTier == "" {
+		obj.Policies.RoutingTier = obj.Policies.EffectiveRoutingTier()
+	}
 	if obj.Policies.Stream == "" {
 		obj.Policies.Stream = objects.CapabilityPolicyUnlimited
 	}

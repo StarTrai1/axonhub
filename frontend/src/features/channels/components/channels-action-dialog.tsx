@@ -77,6 +77,7 @@ import {
   ChannelType,
   ApiFormat,
   RetryableErrorPattern,
+  RoutingTier,
   RemoteCompactionPolicy,
   WebSearchPolicy,
   createChannelInputSchema,
@@ -110,6 +111,14 @@ const OPENAI_RESPONSES_WEBSOCKET: ApiFormatOption = 'openai/responses:websocket'
 // defaults with ## unless the upstream URL should be used fully raw.
 const OPENAI_RESPONSES_WEBSOCKET_BASE_URL = 'wss://api.openai.com/v1#';
 const CODEX_RESPONSES_WEBSOCKET_BASE_URL = 'wss://chatgpt.com/backend-api/codex#';
+
+const ROUTING_TIER_OPTIONS: ReadonlyArray<{
+  value: RoutingTier;
+}> = [
+  { value: 'preferred' },
+  { value: 'standard' },
+  { value: 'fallback' },
+];
 
 const WEB_SEARCH_POLICY_OPTIONS: ReadonlyArray<{
   value: WebSearchPolicy;
@@ -769,6 +778,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             baseURL: currentRow.baseURL,
             name: currentRow.name,
             policies: {
+              routingTier: currentRow.policies?.routingTier ?? 'standard',
               stream: currentRow.policies?.stream ?? 'unlimited',
               remoteCompaction:
                 currentRow.policies?.remoteCompaction ??
@@ -802,6 +812,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               baseURL: duplicateFromRow.baseURL,
               name: duplicateFromRow.name,
               policies: {
+                routingTier: duplicateFromRow.policies?.routingTier ?? 'standard',
                 stream: duplicateFromRow.policies?.stream ?? 'unlimited',
                 remoteCompaction:
                   duplicateFromRow.policies?.remoteCompaction ??
@@ -835,6 +846,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               baseURL: getDefaultBaseURL(derivedChannelType),
               name: '',
               policies: {
+                routingTier: 'standard',
                 stream: 'unlimited',
                 remoteCompaction: 'auto',
                 supportsRemoteCompaction: false,
@@ -2534,6 +2546,48 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                           />
                         </>
                       )}
+
+                      <FormField
+                        control={form.control}
+                        name='policies.routingTier'
+                        render={({ field }) => (
+                          <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                            <div className='flex items-center gap-1.5 pt-2 md:col-span-2 md:justify-end'>
+                              <FormLabel className='font-medium'>{t('channels.dialogs.fields.routingTier.label')}</FormLabel>
+                              <Badge variant='secondary' className='h-5 px-1.5 text-[10px] font-medium'>
+                                {t('channels.dialogs.fields.routingTier.experimental')}
+                              </Badge>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <button
+                                    type='button'
+                                    className='text-muted-foreground hover:text-foreground inline-flex items-center'
+                                    aria-label={t('channels.dialogs.fields.routingTier.description')}
+                                    data-testid='routing-tier-tip'
+                                  >
+                                    <Info className='h-3.5 w-3.5' />
+                                  </button>
+                                </TooltipTrigger>
+                                <TooltipContent className='max-w-72 leading-relaxed'>
+                                  <p>{t('channels.dialogs.fields.routingTier.description')}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </div>
+                            <div className='space-y-1 md:col-span-6'>
+                              <FormControl>
+                                <CompactPolicyRadioGroup
+                                  value={field.value ?? 'standard'}
+                                  onValueChange={field.onChange}
+                                  options={ROUTING_TIER_OPTIONS}
+                                  translationPrefix='channels.dialogs.fields.routingTier.options'
+                                  testId='routing-tier'
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </div>
+                          </FormItem>
+                        )}
+                      />
 
                       <FormField
                         control={form.control}

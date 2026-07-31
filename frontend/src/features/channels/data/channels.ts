@@ -76,6 +76,7 @@ const CREATE_CHANNEL_MUTATION = `
       name
       status
       policies {
+        routingTier
         stream
         remoteCompaction
         supportsRemoteCompaction
@@ -154,6 +155,7 @@ const DUPLICATE_CHANNEL_MUTATION = `
       name
       status
       policies {
+        routingTier
         stream
         remoteCompaction
         supportsRemoteCompaction
@@ -232,6 +234,7 @@ const BULK_CREATE_CHANNELS_MUTATION = `
       name
       status
       policies {
+        routingTier
         stream
         remoteCompaction
         supportsRemoteCompaction
@@ -310,6 +313,7 @@ const UPDATE_CHANNEL_MUTATION = `
       name
       status
       policies {
+        routingTier
         stream
         remoteCompaction
         supportsRemoteCompaction
@@ -502,6 +506,7 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
         name
         status
         policies {
+          routingTier
           stream
           remoteCompaction
           supportsRemoteCompaction
@@ -855,6 +860,7 @@ const QUERY_CHANNELS_QUERY = `
           name
           status
           policies {
+            routingTier
             stream
             remoteCompaction
             supportsRemoteCompaction

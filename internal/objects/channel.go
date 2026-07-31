@@ -379,6 +379,20 @@ const (
 	CapabilityPolicyForbid    CapabilityPolicy = "forbid"
 )
 
+type RoutingTier string
+
+const (
+	// RoutingTierPreferred places the channel ahead of standard and fallback
+	// channels while preserving the configured load-balancing strategy within
+	// the tier.
+	RoutingTierPreferred RoutingTier = "preferred"
+	// RoutingTierStandard preserves the historical channel routing behavior.
+	RoutingTierStandard RoutingTier = "standard"
+	// RoutingTierFallback keeps the channel behind preferred and standard
+	// channels so it is only reached by cross-channel failover.
+	RoutingTierFallback RoutingTier = "fallback"
+)
+
 type WebSearchPolicy string
 
 const (
@@ -408,6 +422,7 @@ const (
 )
 
 type ChannelPolicies struct {
+	RoutingTier      RoutingTier           `json:"routingTier,omitempty"`
 	Stream           CapabilityPolicy       `json:"stream,omitempty"`
 	RemoteCompaction RemoteCompactionPolicy `json:"remoteCompaction,omitempty"`
 	// SupportsRemoteCompaction is the legacy two-state field. Keep it for
@@ -417,6 +432,17 @@ type ChannelPolicies struct {
 	// SupportsWebSearch is the legacy two-state field. Keep it for stored-data
 	// compatibility; WebSearch takes precedence when explicitly configured.
 	SupportsWebSearch *bool `json:"supportsWebSearch,omitempty"`
+}
+
+// EffectiveRoutingTier keeps existing and unknown stored values on the
+// historical standard routing path.
+func (p ChannelPolicies) EffectiveRoutingTier() RoutingTier {
+	switch p.RoutingTier {
+	case RoutingTierPreferred, RoutingTierStandard, RoutingTierFallback:
+		return p.RoutingTier
+	default:
+		return RoutingTierStandard
+	}
 }
 
 // EffectiveRemoteCompactionPolicy translates legacy data without changing its

@@ -678,7 +678,12 @@ func (s *LoadBalancedSelector) Select(ctx context.Context, req *llm.Request) ([]
 	}
 
 	if retryPolicy.TraceStickyMode == biz.TraceStickyPreferPreviousChannel {
-		if stickyCandidate, remainingCandidates := s.selectTraceStickyCandidate(ctx, candidates); stickyCandidate != nil {
+		// Sticky routing remains available within the highest active routing tier,
+		// but must never let a standard or fallback channel jump ahead of an
+		// explicitly preferred channel.
+		stickyCandidates := highestRoutingTierCandidates(candidates)
+		if stickyCandidate, _ := s.selectTraceStickyCandidate(ctx, stickyCandidates); stickyCandidate != nil {
+			stickyCandidate, remainingCandidates := extractStickyCandidate(candidates, stickyCandidate.Channel.ID)
 			stickyCandidate.TraceSticky = true
 
 			fallbackCount := max(requiredCount-1, 0)
@@ -692,6 +697,42 @@ func (s *LoadBalancedSelector) Select(ctx context.Context, req *llm.Request) ([]
 	}
 
 	return s.sortCandidates(ctx, candidates, req, requiredCount, true), nil
+}
+
+const (
+	routingTierPreferredOrder = iota
+	routingTierStandardOrder
+	routingTierFallbackOrder
+)
+
+func candidateRoutingTierOrder(candidate *ChannelModelsCandidate) int {
+	if candidate == nil || candidate.Channel == nil {
+		return routingTierStandardOrder
+	}
+
+	switch candidate.Channel.Policies.EffectiveRoutingTier() {
+	case objects.RoutingTierPreferred:
+		return routingTierPreferredOrder
+	case objects.RoutingTierFallback:
+		return routingTierFallbackOrder
+	default:
+		return routingTierStandardOrder
+	}
+}
+
+func highestRoutingTierCandidates(candidates []*ChannelModelsCandidate) []*ChannelModelsCandidate {
+	if len(candidates) == 0 {
+		return candidates
+	}
+
+	highestOrder := routingTierFallbackOrder
+	for _, candidate := range candidates {
+		highestOrder = min(highestOrder, candidateRoutingTierOrder(candidate))
+	}
+
+	return lo.Filter(candidates, func(candidate *ChannelModelsCandidate, _ int) bool {
+		return candidateRoutingTierOrder(candidate) == highestOrder
+	})
 }
 
 // selectTraceStickyCandidate selects the previous trace channel first, then
@@ -783,34 +824,46 @@ func (s *LoadBalancedSelector) sortCandidates(
 		return candidates
 	}
 
-	// Group candidates by priority first (lower priority value = higher priority)
-	priorityGroups := make(map[int][]*ChannelModelsCandidate)
-	for _, c := range candidates {
-		priorityGroups[c.Priority] = append(priorityGroups[c.Priority], c)
+	// Route tier is the outer ordering boundary. Association priority and the
+	// configured load-balancing strategy continue to apply within each tier.
+	type candidateGroupKey struct {
+		routingTierOrder int
+		priority         int
 	}
 
-	// Get sorted priority keys (lower priority value = higher priority)
-	priorities := lo.Keys(priorityGroups)
+	priorityGroups := make(map[candidateGroupKey][]*ChannelModelsCandidate)
+	for _, c := range candidates {
+		key := candidateGroupKey{
+			routingTierOrder: candidateRoutingTierOrder(c),
+			priority:         c.Priority,
+		}
+		priorityGroups[key] = append(priorityGroups[key], c)
+	}
 
-	// Sort priorities: lower value = higher priority
-	slices.Sort(priorities)
+	// Preferred, standard, and fallback tiers are considered in that order;
+	// lower association priority values remain higher priority within a tier.
+	priorities := lo.Keys(priorityGroups)
+	slices.SortFunc(priorities, func(a, b candidateGroupKey) int {
+		if a.routingTierOrder != b.routingTierOrder {
+			return a.routingTierOrder - b.routingTierOrder
+		}
+		return a.priority - b.priority
+	})
 
 	// For each priority group, apply load balancing to sort candidates within the group
 	// Stop early if we have collected enough candidates
 	var result []*ChannelModelsCandidate
 
-	for _, p := range priorities {
-		group := priorityGroups[p]
+	for _, groupKey := range priorities {
+		group := priorityGroups[groupKey]
 
 		// Apply load balancing to sort candidates within this priority group.
 		useStream := req.Stream != nil && *req.Stream
 		ctx = contextWithQuotaLimitType(ctx, string(provider_quota.RequestModality(req.Image != nil)))
-		var sortedCandidates []*ChannelModelsCandidate
-		if trackSelection {
-			sortedCandidates = s.loadBalancer.Sort(ctx, group, req.Model, useStream)
-		} else {
-			sortedCandidates = s.loadBalancer.SortWithoutTracking(ctx, group, req.Model, useStream)
-		}
+		// Defer selection tracking until every tier has been assembled. Tracking
+		// each group here would incorrectly count standard and fallback channels
+		// that were only added to the retry plan and never selected.
+		sortedCandidates := s.loadBalancer.SortWithoutTracking(ctx, group, req.Model, useStream)
 
 		// Add candidates, but stop if we have enough
 		remaining := requiredCount - len(result)
@@ -824,6 +877,10 @@ func (s *LoadBalancedSelector) sortCandidates(
 			result = append(result, sortedCandidates[:remaining]...)
 			break
 		}
+	}
+
+	if trackSelection && len(result) > 0 {
+		s.loadBalancer.TrackSelection(result[0])
 	}
 
 	if log.DebugEnabled(ctx) {

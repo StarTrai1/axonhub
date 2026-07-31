@@ -329,6 +329,7 @@ const NameCell = memo(({ row }: { row: Row<Channel> }) => {
   const disabledKeysCount = channel.disabledAPIKeys?.length ?? 0;
   const hasDisabledKeys = disabledKeysCount > 0;
   const websiteURL = getChannelWebsiteURL(channel.baseURL);
+  const routingTier = channel.policies?.routingTier ?? 'standard';
 
   const nameElement = websiteURL ? (
     <a
@@ -350,6 +351,18 @@ const NameCell = memo(({ row }: { row: Row<Channel> }) => {
         {hasError && <IconAlertTriangle className='text-destructive h-4 w-4 shrink-0' />}
         {!hasError && hasDisabledKeys && <IconKeyOff className='h-4 w-4 shrink-0 text-amber-500' />}
         {nameElement}
+        {routingTier !== 'standard' && (
+          <Badge
+            variant='outline'
+            className={cn(
+              'h-5 shrink-0 px-1.5 text-[10px] font-medium',
+              routingTier === 'preferred' ? 'border-primary/40 text-primary' : 'text-muted-foreground'
+            )}
+            data-testid={`routing-tier-badge-${routingTier}`}
+          >
+            {t(`channels.dialogs.fields.routingTier.options.${routingTier}.label`)}
+          </Badge>
+        )}
       </div>
     </div>
   );
