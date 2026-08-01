@@ -193,6 +193,27 @@ enum RemoteCompactionPolicy {
   local_bridge
 }
 
+enum APIKeyAutoDisableAction {
+  temporary_disable
+  permanent_disable_delete
+}
+
+type APIKeyAutoDisableRule {
+  statusCodes: [Int!]
+  keywordPatterns: [String!]
+  times: Int!
+  action: APIKeyAutoDisableAction!
+  disableDurationMinutes: Int
+}
+
+input APIKeyAutoDisableRuleInput {
+  statusCodes: [Int!]
+  keywordPatterns: [String!]
+  times: Int!
+  action: APIKeyAutoDisableAction!
+  disableDurationMinutes: Int
+}
+
 type ChannelPolicies {
   routingTier: RoutingTier
   stream: CapabilityPolicy
@@ -200,6 +221,7 @@ type ChannelPolicies {
   supportsRemoteCompaction: Boolean
   webSearch: WebSearchPolicy
   supportsWebSearch: Boolean
+  apiKeyAutoDisableRules: [APIKeyAutoDisableRule!]
 }
 
 input ChannelPoliciesInput {
@@ -209,6 +231,7 @@ input ChannelPoliciesInput {
   supportsRemoteCompaction: Boolean
   webSearch: WebSearchPolicy
   supportsWebSearch: Boolean
+  apiKeyAutoDisableRules: [APIKeyAutoDisableRuleInput!]
 }
 
 input ModelMappingInput {
@@ -263,6 +286,7 @@ type DisabledAPIKey {
   disabledAt: Time!
   errorCode: Int!
   reason: String
+  expiresAt: Time
 }
 
 type OAuthCredentials {
@@ -406,6 +430,7 @@ input APIKeyProfileInput {
   modelIDs: [String!]
   quota: APIKeyQuotaInput
   loadBalanceStrategy: String
+  traceStickyMode: String
 }
 
 input UpdateProjectProfilesInput {
@@ -450,6 +475,7 @@ type APIKeyProfile {
   modelIDs: [String!]
   quota: APIKeyQuota
   loadBalanceStrategy: String
+  traceStickyMode: String
 }
 
 enum ChannelTagsMatchMode {

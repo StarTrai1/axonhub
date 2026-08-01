@@ -25,11 +25,19 @@ import (
 
 // ChannelModelsCandidate represents a resolved channel and its matched model entries.
 type ChannelModelsCandidate struct {
-	Channel     *biz.Channel
-	Priority    int
-	Models      []biz.ChannelModelEntry
-	APIFormat   string // selected endpoint API format for this candidate
-	TraceSticky bool   // selected from the last successful trace or thread channel
+	Channel            *biz.Channel
+	Priority           int
+	Models             []biz.ChannelModelEntry
+	APIFormat          string // selected endpoint API format for this candidate
+	TraceSticky        bool   // selected from the last successful trace or thread channel
+	ModelRoutingPolicy *ModelRoutingPolicy
+}
+
+// ModelRoutingPolicy contains model-level overrides carried from model
+// resolution into the load-balancing decorator without another database query.
+type ModelRoutingPolicy struct {
+	LoadBalancerStrategy string
+	TraceStickyMode      string
 }
 
 // resolvedAssociationCandidate keeps the association-level metadata produced by
@@ -195,6 +203,20 @@ func (s *DefaultSelector) selectModelCandidates(ctx context.Context, req *llm.Re
 		}
 
 		return []*ChannelModelsCandidate{}, nil
+	}
+
+	strategy := objects.RoutingPolicyDefault
+	traceStickyMode := objects.RoutingPolicyDefault
+	if model.Settings != nil {
+		strategy = objects.NormalizeRoutingPolicyValue(model.Settings.LoadBalancerStrategy)
+		traceStickyMode = objects.NormalizeRoutingPolicyValue(model.Settings.TraceStickyMode)
+	}
+	modelRoutingPolicy := &ModelRoutingPolicy{
+		LoadBalancerStrategy: strategy,
+		TraceStickyMode:      traceStickyMode,
+	}
+	for _, candidate := range candidates {
+		candidate.ModelRoutingPolicy = modelRoutingPolicy
 	}
 
 	if log.DebugEnabled(ctx) {
@@ -632,9 +654,12 @@ func (s *SelectedChannelsSelector) Select(ctx context.Context, req *llm.Request)
 type LoadBalancedSelector struct {
 	wrapped                     CandidateSelector
 	loadBalancer                *LoadBalancer
+	loadBalancers               map[string]*LoadBalancer
 	policy                      RetryPolicyProvider
 	previousChannelProvider     PreviousChannelProvider
 	retainManualSwitchCandidate bool
+	apiKey                      *ent.APIKey
+	effectiveRoutingPolicy      *EffectiveRoutingPolicy
 }
 
 // WithManualSwitchCandidate retains one extra distinct-channel candidate for
@@ -672,6 +697,26 @@ func WithTraceStickyLoadBalancedSelector(
 	}
 }
 
+// WithRoutingPolicyLoadBalancedSelector applies the effective request routing
+// policy after the mapped model has been resolved.
+func WithRoutingPolicyLoadBalancedSelector(
+	wrapped CandidateSelector,
+	loadBalancers map[string]*LoadBalancer,
+	policy RetryPolicyProvider,
+	previousChannelProvider PreviousChannelProvider,
+	apiKey *ent.APIKey,
+	effectiveRoutingPolicy *EffectiveRoutingPolicy,
+) *LoadBalancedSelector {
+	return &LoadBalancedSelector{
+		wrapped:                 wrapped,
+		loadBalancers:           loadBalancers,
+		policy:                  policy,
+		previousChannelProvider: previousChannelProvider,
+		apiKey:                  apiKey,
+		effectiveRoutingPolicy:  effectiveRoutingPolicy,
+	}
+}
+
 func (s *LoadBalancedSelector) Select(ctx context.Context, req *llm.Request) ([]*ChannelModelsCandidate, error) {
 	candidates, err := s.wrapped.Select(ctx, req)
 	if err != nil {
@@ -680,13 +725,34 @@ func (s *LoadBalancedSelector) Select(ctx context.Context, req *llm.Request) ([]
 
 	// Get retry policy to determine the required number of candidates
 	retryPolicy := s.policy.RetryPolicyOrDefault(ctx)
+	loadBalancer := s.loadBalancer
+	traceStickyMode := retryPolicy.TraceStickyMode
+	if s.effectiveRoutingPolicy != nil {
+		var modelRoutingPolicy *ModelRoutingPolicy
+		if len(candidates) > 0 && candidates[0] != nil {
+			modelRoutingPolicy = candidates[0].ModelRoutingPolicy
+		}
+
+		resolvedPolicy := deriveRoutingPolicy(retryPolicy, s.apiKey, modelRoutingPolicy)
+		var appliedStrategy string
+		loadBalancer, appliedStrategy = resolveLoadBalancer(s.loadBalancers, resolvedPolicy.LoadBalancerStrategy)
+		if appliedStrategy != resolvedPolicy.LoadBalancerStrategy {
+			log.Warn(ctx, "configured load balancer strategy is unavailable, falling back",
+				log.String("requested_strategy", resolvedPolicy.LoadBalancerStrategy),
+				log.String("applied_strategy", appliedStrategy),
+			)
+			resolvedPolicy.LoadBalancerStrategy = appliedStrategy
+		}
+		*s.effectiveRoutingPolicy = resolvedPolicy
+		traceStickyMode = resolvedPolicy.TraceStickyMode
+	}
 
 	requiredCount := 1
 	if retryPolicy.Enabled {
 		requiredCount = 1 + retryPolicy.MaxChannelRetries
 	}
 
-	if retryPolicy.TraceStickyMode == biz.TraceStickyPreferPreviousChannel {
+	if traceStickyMode == biz.TraceStickyPreferPreviousChannel {
 		// Sticky routing remains available within the highest active routing tier,
 		// but must never let a standard or fallback channel jump ahead of an
 		// explicitly preferred channel.
@@ -701,10 +767,12 @@ func (s *LoadBalancedSelector) Select(ctx context.Context, req *llm.Request) ([]
 				// consuming the automatic retry budget.
 				fallbackCount++
 			}
-			fallbackCandidates := s.sortCandidates(ctx, remainingCandidates, req, fallbackCount, false)
+			fallbackCandidates := s.sortCandidates(ctx, loadBalancer, remainingCandidates, req, fallbackCount, false)
 			result := append([]*ChannelModelsCandidate{stickyCandidate}, fallbackCandidates...)
 
-			s.loadBalancer.TrackSelection(stickyCandidate)
+			if loadBalancer != nil {
+				loadBalancer.TrackSelection(stickyCandidate)
+			}
 
 			return result, nil
 		}
@@ -715,7 +783,19 @@ func (s *LoadBalancedSelector) Select(ctx context.Context, req *llm.Request) ([]
 		requiredCount++
 	}
 
-	return s.sortCandidates(ctx, candidates, req, requiredCount, true), nil
+	return s.sortCandidates(ctx, loadBalancer, candidates, req, requiredCount, true), nil
+}
+
+func resolveLoadBalancer(loadBalancers map[string]*LoadBalancer, strategy string) (*LoadBalancer, string) {
+	if loadBalancer := loadBalancers[strategy]; loadBalancer != nil {
+		return loadBalancer, strategy
+	}
+
+	if loadBalancer := loadBalancers[biz.LoadBalancerStrategyAdaptive]; loadBalancer != nil {
+		return loadBalancer, biz.LoadBalancerStrategyAdaptive
+	}
+
+	return nil, strategy
 }
 
 const (
@@ -850,6 +930,7 @@ func extractStickyCandidate(
 
 func (s *LoadBalancedSelector) sortCandidates(
 	ctx context.Context,
+	loadBalancer *LoadBalancer,
 	candidates []*ChannelModelsCandidate,
 	req *llm.Request,
 	requiredCount int,
@@ -911,9 +992,17 @@ groups:
 			if mustIncludeDistinctChannel && !candidatesContainDistinctChannels(result) {
 				limit = max(limit, 2)
 			}
-			sortedCandidates = s.loadBalancer.SortWithoutTrackingLimit(ctx, group, req.Model, useStream, limit)
+			if loadBalancer == nil {
+				sortedCandidates = group
+			} else {
+				sortedCandidates = loadBalancer.SortWithoutTrackingLimit(ctx, group, req.Model, useStream, limit)
+			}
+		} else if loadBalancer == nil {
+			sortedCandidates = group
+		} else if trackSelection {
+			sortedCandidates = loadBalancer.Sort(ctx, group, req.Model, useStream)
 		} else {
-			sortedCandidates = s.loadBalancer.SortWithoutTracking(ctx, group, req.Model, useStream)
+			sortedCandidates = loadBalancer.SortWithoutTracking(ctx, group, req.Model, useStream)
 		}
 
 		for _, candidate := range sortedCandidates {
@@ -926,7 +1015,9 @@ groups:
 	}
 
 	if trackSelection && len(result) > 0 {
-		s.loadBalancer.TrackSelection(result[0])
+		if loadBalancer != nil {
+			loadBalancer.TrackSelection(result[0])
+		}
 	}
 
 	if log.DebugEnabled(ctx) {
