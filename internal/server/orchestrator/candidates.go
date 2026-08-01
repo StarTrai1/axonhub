@@ -999,9 +999,9 @@ groups:
 			}
 		} else if loadBalancer == nil {
 			sortedCandidates = group
-		} else if trackSelection {
-			sortedCandidates = loadBalancer.Sort(ctx, group, req.Model, useStream)
 		} else {
+			// Selection tracking is deferred until the complete tiered result is
+			// assembled below, so sorting each group must not increment counters.
 			sortedCandidates = loadBalancer.SortWithoutTracking(ctx, group, req.Model, useStream)
 		}
 
