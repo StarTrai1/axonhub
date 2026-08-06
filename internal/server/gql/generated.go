@@ -1500,6 +1500,7 @@ type ComplexityRoot struct {
 		ModelID                    func(childComplexity int) int
 		PassThroughApplied         func(childComplexity int) int
 		ProjectID                  func(childComplexity int) int
+		ReasoningEffort            func(childComplexity int) int
 		Request                    func(childComplexity int) int
 		RequestBody                func(childComplexity int) int
 		RequestHeaders             func(childComplexity int) int
@@ -1909,6 +1910,7 @@ type ComplexityRoot struct {
 	}
 
 	TransformOptions struct {
+		DowngradeMidConversationSystem func(childComplexity int) int
 		ForceArrayInputs               func(childComplexity int) int
 		ForceArrayInstructions         func(childComplexity int) int
 		ReasoningEffortMapping         func(childComplexity int) int
@@ -9049,6 +9051,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.RequestExecution.ProjectID(childComplexity), true
+	case "RequestExecution.reasoningEffort":
+		if e.complexity.RequestExecution.ReasoningEffort == nil {
+			break
+		}
+
+		return e.complexity.RequestExecution.ReasoningEffort(childComplexity), true
 	case "RequestExecution.request":
 		if e.complexity.RequestExecution.Request == nil {
 			break
@@ -10549,6 +10557,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.TraceEdge.Node(childComplexity), true
 
+	case "TransformOptions.downgradeMidConversationSystem":
+		if e.complexity.TransformOptions.DowngradeMidConversationSystem == nil {
+			break
+		}
+
+		return e.complexity.TransformOptions.DowngradeMidConversationSystem(childComplexity), true
 	case "TransformOptions.forceArrayInputs":
 		if e.complexity.TransformOptions.ForceArrayInputs == nil {
 			break
@@ -24606,6 +24620,8 @@ func (ec *executionContext) fieldContext_ChannelSettings_transformOptions(_ cont
 				return ec.fieldContext_TransformOptions_replaceDeveloperRoleWithSystem(ctx, field)
 			case "reasoningEffortMapping":
 				return ec.fieldContext_TransformOptions_reasoningEffortMapping(ctx, field)
+			case "downgradeMidConversationSystem":
+				return ec.fieldContext_TransformOptions_downgradeMidConversationSystem(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type TransformOptions", field.Name)
 		},
@@ -48653,6 +48669,35 @@ func (ec *executionContext) fieldContext_RequestExecution_format(_ context.Conte
 	return fc, nil
 }
 
+func (ec *executionContext) _RequestExecution_reasoningEffort(ctx context.Context, field graphql.CollectedField, obj *ent.RequestExecution) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RequestExecution_reasoningEffort,
+		func(ctx context.Context) (any, error) {
+			return obj.ReasoningEffort, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RequestExecution_reasoningEffort(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RequestExecution",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _RequestExecution_requestBody(ctx context.Context, field graphql.CollectedField, obj *ent.RequestExecution) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -49420,6 +49465,8 @@ func (ec *executionContext) fieldContext_RequestExecutionEdge_node(_ context.Con
 				return ec.fieldContext_RequestExecution_modelID(ctx, field)
 			case "format":
 				return ec.fieldContext_RequestExecution_format(ctx, field)
+			case "reasoningEffort":
+				return ec.fieldContext_RequestExecution_reasoningEffort(ctx, field)
 			case "requestBody":
 				return ec.fieldContext_RequestExecution_requestBody(ctx, field)
 			case "responseBody":
@@ -56663,6 +56710,35 @@ func (ec *executionContext) fieldContext_TransformOptions_reasoningEffortMapping
 				return ec.fieldContext_ReasoningEffortMapping_to(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ReasoningEffortMapping", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TransformOptions_downgradeMidConversationSystem(ctx context.Context, field graphql.CollectedField, obj *objects.TransformOptions) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TransformOptions_downgradeMidConversationSystem,
+		func(ctx context.Context) (any, error) {
+			return obj.DowngradeMidConversationSystem, nil
+		},
+		nil,
+		ec.marshalOBoolean2ᚖbool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_TransformOptions_downgradeMidConversationSystem(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TransformOptions",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -77302,7 +77378,7 @@ func (ec *executionContext) unmarshalInputRequestExecutionWhereInput(ctx context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "projectIDGT", "projectIDGTE", "projectIDLT", "projectIDLTE", "requestID", "requestIDNEQ", "requestIDIn", "requestIDNotIn", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "channelIDIsNil", "channelIDNotNil", "dataStorageID", "dataStorageIDNEQ", "dataStorageIDIn", "dataStorageIDNotIn", "dataStorageIDIsNil", "dataStorageIDNotNil", "externalID", "externalIDNEQ", "externalIDIn", "externalIDNotIn", "externalIDGT", "externalIDGTE", "externalIDLT", "externalIDLTE", "externalIDContains", "externalIDHasPrefix", "externalIDHasSuffix", "externalIDIsNil", "externalIDNotNil", "externalIDEqualFold", "externalIDContainsFold", "modelID", "modelIDNEQ", "modelIDIn", "modelIDNotIn", "modelIDGT", "modelIDGTE", "modelIDLT", "modelIDLTE", "modelIDContains", "modelIDHasPrefix", "modelIDHasSuffix", "modelIDEqualFold", "modelIDContainsFold", "format", "formatNEQ", "formatIn", "formatNotIn", "formatGT", "formatGTE", "formatLT", "formatLTE", "formatContains", "formatHasPrefix", "formatHasSuffix", "formatEqualFold", "formatContainsFold", "errorMessage", "errorMessageNEQ", "errorMessageIn", "errorMessageNotIn", "errorMessageGT", "errorMessageGTE", "errorMessageLT", "errorMessageLTE", "errorMessageContains", "errorMessageHasPrefix", "errorMessageHasSuffix", "errorMessageIsNil", "errorMessageNotNil", "errorMessageEqualFold", "errorMessageContainsFold", "responseStatusCode", "responseStatusCodeNEQ", "responseStatusCodeIn", "responseStatusCodeNotIn", "responseStatusCodeGT", "responseStatusCodeGTE", "responseStatusCodeLT", "responseStatusCodeLTE", "responseStatusCodeIsNil", "responseStatusCodeNotNil", "status", "statusNEQ", "statusIn", "statusNotIn", "stream", "streamNEQ", "metricsLatencyMs", "metricsLatencyMsNEQ", "metricsLatencyMsIn", "metricsLatencyMsNotIn", "metricsLatencyMsGT", "metricsLatencyMsGTE", "metricsLatencyMsLT", "metricsLatencyMsLTE", "metricsLatencyMsIsNil", "metricsLatencyMsNotNil", "metricsFirstTokenLatencyMs", "metricsFirstTokenLatencyMsNEQ", "metricsFirstTokenLatencyMsIn", "metricsFirstTokenLatencyMsNotIn", "metricsFirstTokenLatencyMsGT", "metricsFirstTokenLatencyMsGTE", "metricsFirstTokenLatencyMsLT", "metricsFirstTokenLatencyMsLTE", "metricsFirstTokenLatencyMsIsNil", "metricsFirstTokenLatencyMsNotNil", "metricsReasoningDurationMs", "metricsReasoningDurationMsNEQ", "metricsReasoningDurationMsIn", "metricsReasoningDurationMsNotIn", "metricsReasoningDurationMsGT", "metricsReasoningDurationMsGTE", "metricsReasoningDurationMsLT", "metricsReasoningDurationMsLTE", "metricsReasoningDurationMsIsNil", "metricsReasoningDurationMsNotNil", "requestURL", "requestURLNEQ", "requestURLIn", "requestURLNotIn", "requestURLGT", "requestURLGTE", "requestURLLT", "requestURLLTE", "requestURLContains", "requestURLHasPrefix", "requestURLHasSuffix", "requestURLIsNil", "requestURLNotNil", "requestURLEqualFold", "requestURLContainsFold", "passThroughApplied", "passThroughAppliedNEQ", "hasRequest", "hasRequestWith", "hasChannel", "hasChannelWith", "hasDataStorage", "hasDataStorageWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "projectIDGT", "projectIDGTE", "projectIDLT", "projectIDLTE", "requestID", "requestIDNEQ", "requestIDIn", "requestIDNotIn", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "channelIDIsNil", "channelIDNotNil", "dataStorageID", "dataStorageIDNEQ", "dataStorageIDIn", "dataStorageIDNotIn", "dataStorageIDIsNil", "dataStorageIDNotNil", "externalID", "externalIDNEQ", "externalIDIn", "externalIDNotIn", "externalIDGT", "externalIDGTE", "externalIDLT", "externalIDLTE", "externalIDContains", "externalIDHasPrefix", "externalIDHasSuffix", "externalIDIsNil", "externalIDNotNil", "externalIDEqualFold", "externalIDContainsFold", "modelID", "modelIDNEQ", "modelIDIn", "modelIDNotIn", "modelIDGT", "modelIDGTE", "modelIDLT", "modelIDLTE", "modelIDContains", "modelIDHasPrefix", "modelIDHasSuffix", "modelIDEqualFold", "modelIDContainsFold", "format", "formatNEQ", "formatIn", "formatNotIn", "formatGT", "formatGTE", "formatLT", "formatLTE", "formatContains", "formatHasPrefix", "formatHasSuffix", "formatEqualFold", "formatContainsFold", "reasoningEffort", "reasoningEffortNEQ", "reasoningEffortIn", "reasoningEffortNotIn", "reasoningEffortGT", "reasoningEffortGTE", "reasoningEffortLT", "reasoningEffortLTE", "reasoningEffortContains", "reasoningEffortHasPrefix", "reasoningEffortHasSuffix", "reasoningEffortIsNil", "reasoningEffortNotNil", "reasoningEffortEqualFold", "reasoningEffortContainsFold", "errorMessage", "errorMessageNEQ", "errorMessageIn", "errorMessageNotIn", "errorMessageGT", "errorMessageGTE", "errorMessageLT", "errorMessageLTE", "errorMessageContains", "errorMessageHasPrefix", "errorMessageHasSuffix", "errorMessageIsNil", "errorMessageNotNil", "errorMessageEqualFold", "errorMessageContainsFold", "responseStatusCode", "responseStatusCodeNEQ", "responseStatusCodeIn", "responseStatusCodeNotIn", "responseStatusCodeGT", "responseStatusCodeGTE", "responseStatusCodeLT", "responseStatusCodeLTE", "responseStatusCodeIsNil", "responseStatusCodeNotNil", "status", "statusNEQ", "statusIn", "statusNotIn", "stream", "streamNEQ", "metricsLatencyMs", "metricsLatencyMsNEQ", "metricsLatencyMsIn", "metricsLatencyMsNotIn", "metricsLatencyMsGT", "metricsLatencyMsGTE", "metricsLatencyMsLT", "metricsLatencyMsLTE", "metricsLatencyMsIsNil", "metricsLatencyMsNotNil", "metricsFirstTokenLatencyMs", "metricsFirstTokenLatencyMsNEQ", "metricsFirstTokenLatencyMsIn", "metricsFirstTokenLatencyMsNotIn", "metricsFirstTokenLatencyMsGT", "metricsFirstTokenLatencyMsGTE", "metricsFirstTokenLatencyMsLT", "metricsFirstTokenLatencyMsLTE", "metricsFirstTokenLatencyMsIsNil", "metricsFirstTokenLatencyMsNotNil", "metricsReasoningDurationMs", "metricsReasoningDurationMsNEQ", "metricsReasoningDurationMsIn", "metricsReasoningDurationMsNotIn", "metricsReasoningDurationMsGT", "metricsReasoningDurationMsGTE", "metricsReasoningDurationMsLT", "metricsReasoningDurationMsLTE", "metricsReasoningDurationMsIsNil", "metricsReasoningDurationMsNotNil", "requestURL", "requestURLNEQ", "requestURLIn", "requestURLNotIn", "requestURLGT", "requestURLGTE", "requestURLLT", "requestURLLTE", "requestURLContains", "requestURLHasPrefix", "requestURLHasSuffix", "requestURLIsNil", "requestURLNotNil", "requestURLEqualFold", "requestURLContainsFold", "passThroughApplied", "passThroughAppliedNEQ", "hasRequest", "hasRequestWith", "hasChannel", "hasChannelWith", "hasDataStorage", "hasDataStorageWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -78033,6 +78109,111 @@ func (ec *executionContext) unmarshalInputRequestExecutionWhereInput(ctx context
 				return it, err
 			}
 			it.FormatContainsFold = data
+		case "reasoningEffort":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("reasoningEffort"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ReasoningEffort = data
+		case "reasoningEffortNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("reasoningEffortNEQ"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ReasoningEffortNEQ = data
+		case "reasoningEffortIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("reasoningEffortIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ReasoningEffortIn = data
+		case "reasoningEffortNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("reasoningEffortNotIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ReasoningEffortNotIn = data
+		case "reasoningEffortGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("reasoningEffortGT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ReasoningEffortGT = data
+		case "reasoningEffortGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("reasoningEffortGTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ReasoningEffortGTE = data
+		case "reasoningEffortLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("reasoningEffortLT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ReasoningEffortLT = data
+		case "reasoningEffortLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("reasoningEffortLTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ReasoningEffortLTE = data
+		case "reasoningEffortContains":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("reasoningEffortContains"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ReasoningEffortContains = data
+		case "reasoningEffortHasPrefix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("reasoningEffortHasPrefix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ReasoningEffortHasPrefix = data
+		case "reasoningEffortHasSuffix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("reasoningEffortHasSuffix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ReasoningEffortHasSuffix = data
+		case "reasoningEffortIsNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("reasoningEffortIsNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ReasoningEffortIsNil = data
+		case "reasoningEffortNotNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("reasoningEffortNotNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ReasoningEffortNotNil = data
+		case "reasoningEffortEqualFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("reasoningEffortEqualFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ReasoningEffortEqualFold = data
+		case "reasoningEffortContainsFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("reasoningEffortContainsFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ReasoningEffortContainsFold = data
 		case "errorMessage":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("errorMessage"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -82745,7 +82926,7 @@ func (ec *executionContext) unmarshalInputTransformOptionsInput(ctx context.Cont
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"forceArrayInstructions", "forceArrayInputs", "replaceDeveloperRoleWithSystem", "reasoningEffortMapping"}
+	fieldsInOrder := [...]string{"forceArrayInstructions", "forceArrayInputs", "replaceDeveloperRoleWithSystem", "reasoningEffortMapping", "downgradeMidConversationSystem"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -82780,6 +82961,13 @@ func (ec *executionContext) unmarshalInputTransformOptionsInput(ctx context.Cont
 				return it, err
 			}
 			it.ReasoningEffortMapping = data
+		case "downgradeMidConversationSystem":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("downgradeMidConversationSystem"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DowngradeMidConversationSystem = data
 		}
 	}
 
@@ -102589,6 +102777,8 @@ func (ec *executionContext) _RequestExecution(ctx context.Context, sel ast.Selec
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "reasoningEffort":
+			out.Values[i] = ec._RequestExecution_reasoningEffort(ctx, field, obj)
 		case "requestBody":
 			field := field
 
@@ -106538,6 +106728,8 @@ func (ec *executionContext) _TransformOptions(ctx context.Context, sel ast.Selec
 			}
 		case "reasoningEffortMapping":
 			out.Values[i] = ec._TransformOptions_reasoningEffortMapping(ctx, field, obj)
+		case "downgradeMidConversationSystem":
+			out.Values[i] = ec._TransformOptions_downgradeMidConversationSystem(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
