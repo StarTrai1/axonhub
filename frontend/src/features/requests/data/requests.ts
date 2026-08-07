@@ -69,6 +69,8 @@ function buildRequestsQuery(permissions: { canViewApiKeys: boolean; canViewChann
             executions(first: 10, orderBy: { field: CREATED_AT, direction: DESC }) {
               edges {
                 node {
+                  id
+                  createdAt
                   modelID
                   status
                   reasoningEffort

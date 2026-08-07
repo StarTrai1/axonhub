@@ -32,18 +32,16 @@ export function getEffectiveRequestLatencyMs(request: Request): number | null {
 }
 
 /**
- * Calculate tokens per second for a given request.
- * Handles all edge cases including no usage log, zero latency, zero completion tokens,
- * and streaming vs non-streaming scenarios.
+ * Calculate the numeric tokens-per-second rate for a given request.
  *
  * @param request - The request object containing usage logs and metrics
- * @returns Formatted string like "123 tok/s" or "-" if calculation is not possible
+ * @returns The numeric rate or null if calculation is not possible
  */
-export function calculateTokensPerSecond(request: Request): string {
+export function getTokensPerSecondValue(request: Request): number | null {
   const usageLog = request.usageLogs?.edges?.[0]?.node;
   const requestLatencyMs = getEffectiveRequestLatencyMs(request);
   if (!usageLog || requestLatencyMs == null || requestLatencyMs <= 0) {
-    return '-';
+    return null;
   }
 
   // Sum all completion token types (matching fastest performers logic)
@@ -53,7 +51,7 @@ export function calculateTokensPerSecond(request: Request): string {
     (usageLog.completionAudioTokens || 0);
 
   if (completionTokens === 0) {
-    return '-';
+    return null;
   }
 
   // Calculate effective latency:
@@ -73,9 +71,12 @@ export function calculateTokensPerSecond(request: Request): string {
   }
 
   const latencySeconds = effectiveLatencyMs / 1000;
-  const tokensPerSecond = completionTokens / latencySeconds;
+  return completionTokens / latencySeconds;
+}
 
-  return `${Math.round(tokensPerSecond)} tok/s`;
+export function calculateTokensPerSecond(request: Request): string {
+  const tokensPerSecond = getTokensPerSecondValue(request);
+  return tokensPerSecond == null ? '-' : `${Math.round(tokensPerSecond)} tok/s`;
 }
 
 /**
