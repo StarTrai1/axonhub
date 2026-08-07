@@ -156,6 +156,7 @@ func convertCompactMessageToItems(msg llm.Message) []Item {
 			ID:      msg.ID,
 			Type:    "message",
 			Role:    role,
+			Phase:   msg.Phase,
 			Content: &Input{Items: contentItems},
 			Status:  lo.ToPtr("completed"),
 		})

@@ -61,7 +61,6 @@ type outboundStreamState struct {
 	// Content accumulation
 	textContent         strings.Builder
 	reasoningContent    strings.Builder
-	currentMessageID    string
 	currentMessagePhase *string
 
 	// Tool call tracking
@@ -230,7 +229,6 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		item := streamEvent.Item
 		switch item.Type {
 		case "message":
-			s.state.currentMessageID = item.ID
 			s.state.currentMessagePhase = item.Phase
 
 			return nil
@@ -487,7 +485,6 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 			{
 				Index: 0,
 				Delta: &llm.Message{
-					ID:    s.state.currentMessageID,
 					Phase: s.state.currentMessagePhase,
 					Content: llm.MessageContent{
 						Content: &streamEvent.Delta,
