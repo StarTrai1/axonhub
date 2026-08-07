@@ -59,8 +59,10 @@ type outboundStreamState struct {
 	created            int64
 
 	// Content accumulation
-	textContent      strings.Builder
-	reasoningContent strings.Builder
+	textContent         strings.Builder
+	reasoningContent    strings.Builder
+	currentMessageID    string
+	currentMessagePhase *string
 
 	// Tool call tracking
 	toolCalls     map[string]*llm.ToolCall // callID -> tool call
@@ -227,6 +229,11 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 
 		item := streamEvent.Item
 		switch item.Type {
+		case "message":
+			s.state.currentMessageID = item.ID
+			s.state.currentMessagePhase = item.Phase
+
+			return nil
 		case "reasoning":
 			if item.ID == "" || item.EncryptedContent == nil || *item.EncryptedContent == "" {
 				return nil // Intentionally skip this event
@@ -480,6 +487,8 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 			{
 				Index: 0,
 				Delta: &llm.Message{
+					ID:    s.state.currentMessageID,
+					Phase: s.state.currentMessagePhase,
 					Content: llm.MessageContent{
 						Content: &streamEvent.Delta,
 					},

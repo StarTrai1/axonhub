@@ -134,6 +134,64 @@ func TestOutboundTransformer_StreamTransformation_ErrorEvent(t *testing.T) {
 	require.Contains(t, err.Error(), "Something went wrong")
 }
 
+func TestResponsesStream_RoundTrip_PreservesAssistantMessagePhase(t *testing.T) {
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	upstreamEvents := []*httpclient.StreamEvent{
+		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_phase","object":"response","created_at":1700000000,"model":"gpt-5.6-codex","status":"in_progress","output":[]}}`)},
+		{Type: "response.output_item.added", Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"msg_phase","type":"message","role":"assistant","phase":"final_answer","status":"in_progress","content":[]}}`)},
+		{Type: "response.content_part.added", Data: []byte(`{"type":"response.content_part.added","item_id":"msg_phase","output_index":0,"content_index":0,"part":{"type":"output_text","text":"","annotations":[]}}`)},
+		{Type: "response.output_text.delta", Data: []byte(`{"type":"response.output_text.delta","item_id":"msg_phase","output_index":0,"content_index":0,"delta":"Done."}`)},
+		{Type: "response.output_text.done", Data: []byte(`{"type":"response.output_text.done","item_id":"msg_phase","output_index":0,"content_index":0,"text":"Done."}`)},
+		{Type: "response.output_item.done", Data: []byte(`{"type":"response.output_item.done","output_index":0,"item":{"id":"msg_phase","type":"message","role":"assistant","phase":"final_answer","status":"completed","content":[{"type":"output_text","text":"Done.","annotations":[]}]}}`)},
+		{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":{"id":"resp_phase","object":"response","created_at":1700000000,"model":"gpt-5.6-codex","status":"completed","output":[],"usage":{"input_tokens":10,"output_tokens":2,"total_tokens":12}}}`)},
+	}
+
+	llmStream, err := outbound.TransformStream(t.Context(), nil, streams.SliceStream(upstreamEvents))
+	require.NoError(t, err)
+
+	inbound := NewInboundTransformer()
+	clientStream, err := inbound.TransformStream(t.Context(), llmStream)
+	require.NoError(t, err)
+
+	var (
+		addedPhase     *string
+		donePhase      *string
+		completedPhase *string
+	)
+	for clientStream.Next() {
+		var event StreamEvent
+		require.NoError(t, json.Unmarshal(clientStream.Current().Data, &event))
+
+		switch event.Type {
+		case StreamEventTypeOutputItemAdded:
+			if event.Item != nil && event.Item.Type == "message" {
+				addedPhase = event.Item.Phase
+			}
+		case StreamEventTypeOutputItemDone:
+			if event.Item != nil && event.Item.Type == "message" {
+				donePhase = event.Item.Phase
+			}
+		case StreamEventTypeResponseCompleted:
+			if event.Response != nil {
+				for i := range event.Response.Output {
+					if event.Response.Output[i].Type == "message" {
+						completedPhase = event.Response.Output[i].Phase
+					}
+				}
+			}
+		}
+	}
+	require.NoError(t, clientStream.Err())
+	require.NotNil(t, addedPhase)
+	require.Equal(t, "final_answer", *addedPhase)
+	require.NotNil(t, donePhase)
+	require.Equal(t, "final_answer", *donePhase)
+	require.NotNil(t, completedPhase)
+	require.Equal(t, "final_answer", *completedPhase)
+}
+
 func TestOutboundTransformer_TransformStream_UsesFinalEncryptedContentPerReasoningItem(t *testing.T) {
 	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
 	require.NoError(t, err)

@@ -351,6 +351,9 @@ type Message struct {
 
 	// user, assistant, system, tool, developer
 	Role string `json:"role,omitempty"`
+	// Phase classifies OpenAI Responses assistant messages as commentary or final_answer.
+	// It must be preserved across follow-up requests for recent Codex models.
+	Phase *string `json:"phase,omitempty"`
 	// Content of the message.
 	// string or []ContentPart, be careful about the omitzero tag, it required.
 	// Some framework may depended on the behavior, we should not response the field if not present.

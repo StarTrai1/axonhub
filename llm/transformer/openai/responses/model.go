@@ -527,6 +527,8 @@ type Item struct {
 
 	// Any of "system", "user", "assistant", "developer".
 	Role string `json:"role,omitempty"`
+	// Classifies assistant messages as "commentary" or "final_answer".
+	Phase *string `json:"phase,omitempty"`
 
 	// The content of the message. Can be string or array of content items.
 	// For input items: string or array of input items.

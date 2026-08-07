@@ -54,10 +54,11 @@ type responsesInboundStream struct {
 	createdAt  int64
 
 	// Content tracking
-	outputIndex    int
-	contentIndex   int
-	sequenceNumber int
-	currentItemID  string
+	outputIndex         int
+	contentIndex        int
+	sequenceNumber      int
+	currentItemID       string
+	currentMessagePhase *string
 
 	// Content accumulation for items (used for emitting done events)
 	accumulatedText               strings.Builder
@@ -271,7 +272,7 @@ func (s *responsesInboundStream) Next() bool {
 
 		// Handle text content delta
 		if choice.Delta != nil && choice.Delta.Content.Content != nil && *choice.Delta.Content.Content != "" {
-			if err := s.handleTextContent(choice.Delta.Content.Content); err != nil {
+			if err := s.handleTextContent(choice.Delta); err != nil {
 				s.err = err
 				return false
 			}
@@ -554,7 +555,12 @@ func (s *responsesInboundStream) ensureReasoningItemStarted(sourceID string) err
 	return nil
 }
 
-func (s *responsesInboundStream) handleTextContent(content *string) error {
+func (s *responsesInboundStream) handleTextContent(message *llm.Message) error {
+	content := message.Content.Content
+	if content == nil {
+		return nil
+	}
+
 	if err := s.flushPendingReasoning(); err != nil {
 		return err
 	}
@@ -566,11 +572,25 @@ func (s *responsesInboundStream) handleTextContent(content *string) error {
 		}
 	}
 
-	// Start message output item if not started
+	// A phase or item ID change marks a new assistant output item.
+	if s.hasMessageItemStarted {
+		phaseChanged := message.Phase != nil && s.currentMessagePhase != nil && *message.Phase != *s.currentMessagePhase
+		idChanged := message.ID != "" && s.currentItemID != "" && message.ID != s.currentItemID
+		if phaseChanged || idChanged {
+			if err := s.closeMessageItem(); err != nil {
+				return err
+			}
+		}
+	}
+
+	// Start message output item if not started.
 	if !s.hasMessageItemStarted {
 		s.hasMessageItemStarted = true
-
-		s.currentItemID = generateItemID()
+		s.currentMessagePhase = message.Phase
+		s.currentItemID = message.ID
+		if s.currentItemID == "" {
+			s.currentItemID = generateItemID()
+		}
 
 		err := s.enqueueEvent(&StreamEvent{
 			Type:        StreamEventTypeOutputItemAdded,
@@ -580,6 +600,7 @@ func (s *responsesInboundStream) handleTextContent(content *string) error {
 				Type:    "message",
 				Status:  lo.ToPtr("in_progress"),
 				Role:    "assistant",
+				Phase:   s.currentMessagePhase,
 				Content: &Input{Items: []Item{}},
 			},
 		})
@@ -988,6 +1009,7 @@ func (s *responsesInboundStream) closeMessageItem() error {
 		Type:   "message",
 		Status: lo.ToPtr("completed"),
 		Role:   "assistant",
+		Phase:  s.currentMessagePhase,
 		Content: &Input{
 			Items: []Item{{
 				Type:        "output_text",
@@ -1011,6 +1033,7 @@ func (s *responsesInboundStream) closeMessageItem() error {
 	s.outputIndex++
 	s.contentIndex = 0
 	s.accumulatedText.Reset()
+	s.currentMessagePhase = nil
 
 	return nil
 }

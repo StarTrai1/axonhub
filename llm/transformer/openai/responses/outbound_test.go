@@ -320,6 +320,86 @@ func TestOutboundTransformer_TransformRequest_ReplaysClientMetadata(t *testing.T
 	}`, string(payload["client_metadata"]))
 }
 
+func TestOutboundTransformer_TransformRequest_PreservesAssistantMessagePhase(t *testing.T) {
+	inbound := NewInboundTransformer()
+	inboundReq := &httpclient.Request{
+		Body: []byte(`{
+			"model": "gpt-5.6-codex",
+			"input": [
+				{
+					"type": "message",
+					"role": "assistant",
+					"phase": "commentary",
+					"content": [{"type": "output_text", "text": "Checking the repository."}]
+				},
+				{
+					"type": "message",
+					"role": "user",
+					"content": [{"type": "input_text", "text": "Continue."}]
+				}
+			]
+		}`),
+	}
+
+	llmReq, err := inbound.TransformRequest(context.Background(), inboundReq)
+	require.NoError(t, err)
+	require.Len(t, llmReq.Messages, 2)
+	require.NotNil(t, llmReq.Messages[0].Phase)
+	require.Equal(t, "commentary", *llmReq.Messages[0].Phase)
+
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	httpReq, err := outbound.TransformRequest(context.Background(), llmReq)
+	require.NoError(t, err)
+
+	var payload Request
+	require.NoError(t, json.Unmarshal(httpReq.Body, &payload))
+	require.Len(t, payload.Input.Items, 2)
+	require.NotNil(t, payload.Input.Items[0].Phase)
+	require.Equal(t, "commentary", *payload.Input.Items[0].Phase)
+	require.Nil(t, payload.Input.Items[1].Phase)
+}
+
+func TestResponsesTransformer_NonStreamRoundTrip_PreservesAssistantMessagePhase(t *testing.T) {
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	llmResp, err := outbound.TransformResponse(context.Background(), &httpclient.Response{
+		StatusCode: http.StatusOK,
+		Body: []byte(`{
+			"id": "resp_phase",
+			"object": "response",
+			"created_at": 1700000000,
+			"status": "completed",
+			"model": "gpt-5.6-codex",
+			"output": [{
+				"id": "msg_phase",
+				"type": "message",
+				"role": "assistant",
+				"phase": "final_answer",
+				"status": "completed",
+				"content": [{"type": "output_text", "text": "Done.", "annotations": []}]
+			}]
+		}`),
+	})
+	require.NoError(t, err)
+	require.Len(t, llmResp.Choices, 1)
+	require.NotNil(t, llmResp.Choices[0].Message)
+	require.NotNil(t, llmResp.Choices[0].Message.Phase)
+	require.Equal(t, "final_answer", *llmResp.Choices[0].Message.Phase)
+
+	inbound := NewInboundTransformer()
+	httpResp, err := inbound.TransformResponse(context.Background(), llmResp)
+	require.NoError(t, err)
+
+	var response Response
+	require.NoError(t, json.Unmarshal(httpResp.Body, &response))
+	require.Len(t, response.Output, 1)
+	require.NotNil(t, response.Output[0].Phase)
+	require.Equal(t, "final_answer", *response.Output[0].Phase)
+}
+
 func TestOutboundTransformer_TransformRequest_ReplaysNamespaceTool(t *testing.T) {
 	inbound := NewInboundTransformer()
 	inboundReq := &httpclient.Request{

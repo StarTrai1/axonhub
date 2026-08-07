@@ -261,6 +261,7 @@ func convertAssistantMessage(msg llm.Message) []Item {
 		items = append(items, Item{
 			Type:    "message",
 			Role:    msg.Role,
+			Phase:   msg.Phase,
 			Status:  lo.ToPtr("completed"),
 			Content: &Input{Items: contentItems},
 		})
@@ -651,6 +652,8 @@ func convertOutputToMessage(output []Item, transformerMetadata map[string]any) l
 		toolCalls            []llm.ToolCall
 		annotations          []llm.Annotation
 		visibleTextRuneCount int64
+		messagePhase         *string
+		messagePhaseConflict bool
 	)
 
 	flushText := func() {
@@ -670,6 +673,13 @@ func convertOutputToMessage(output []Item, transformerMetadata map[string]any) l
 		case "message":
 			if messageID == "" {
 				messageID = outputItem.ID
+			}
+			if outputItem.Phase != nil {
+				if messagePhase == nil {
+					messagePhase = outputItem.Phase
+				} else if *messagePhase != *outputItem.Phase {
+					messagePhaseConflict = true
+				}
 			}
 
 			if outputItem.Content == nil {
@@ -790,6 +800,9 @@ func convertOutputToMessage(output []Item, transformerMetadata map[string]any) l
 		Role:        "assistant",
 		ToolCalls:   toolCalls,
 		Annotations: annotations,
+	}
+	if !messagePhaseConflict {
+		msg.Phase = messagePhase
 	}
 
 	if reasoningContent.Len() > 0 {

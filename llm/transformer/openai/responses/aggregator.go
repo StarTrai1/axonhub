@@ -45,6 +45,7 @@ type aggregatedItem struct {
 	Type             string
 	Status           string
 	Role             string
+	Phase            *string
 	CallID           string
 	Name             string
 	Namespace        string
@@ -271,6 +272,7 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 			item.ID = ev.Item.ID
 			item.Type = ev.Item.Type
 			item.Role = ev.Item.Role
+			item.Phase = ev.Item.Phase
 			item.CallID = ev.Item.CallID
 			item.Name = ev.Item.Name
 			item.Namespace = ev.Item.Namespace
@@ -530,6 +532,9 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 				if ev.Item.Status != nil {
 					item.Status = *ev.Item.Status
 				}
+				if ev.Item.Phase != nil {
+					item.Phase = ev.Item.Phase
+				}
 
 				if item.Status == "" {
 					item.Status = "completed"
@@ -676,6 +681,7 @@ func (a *streamAggregator) buildResponse() *Response {
 					ID:     item.ID,
 					Type:   item.Type,
 					Role:   item.Role,
+					Phase:  item.Phase,
 					Status: lo.ToPtr(item.Status),
 					Content: &Input{
 						Items: contentItems,

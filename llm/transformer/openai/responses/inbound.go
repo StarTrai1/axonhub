@@ -488,6 +488,7 @@ func convertReasoningWithFollowing(items []Item, startIdx int) (*llm.Message, in
 			// If we encounter a text message with assistant role, merge its content
 			if nextItem.Role == "assistant" {
 				msg.ID = nextItem.ID
+				msg.Phase = nextItem.Phase
 				if nextItem.Content != nil && len(nextItem.Content.Items) > 0 && nextItem.isOutputMessageContent() {
 					msg.Content = convertContentItemsToMessageContent(nextItem.GetContentItems())
 				} else if nextItem.Content != nil {
@@ -520,8 +521,9 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 	switch item.Type {
 	case "message", "input_text", "":
 		msg := &llm.Message{
-			ID:   item.ID,
-			Role: item.Role,
+			ID:    item.ID,
+			Role:  item.Role,
+			Phase: item.Phase,
 		}
 
 		// Handle content - check Content.Items first (output message format from JSON)
@@ -1017,9 +1019,10 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 				Annotations: []Annotation{},
 			}}, message.Annotations)
 			resp.Output = append(resp.Output, Item{
-				ID:   messageItemID,
-				Type: "message",
-				Role: "assistant",
+				ID:    messageItemID,
+				Type:  "message",
+				Role:  "assistant",
+				Phase: message.Phase,
 				Content: &Input{
 					Items: contentItems,
 				},
@@ -1068,6 +1071,7 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 					ID:      messageItemID,
 					Type:    "message",
 					Role:    "assistant",
+					Phase:   message.Phase,
 					Content: &Input{Items: contentItems},
 					Status:  lo.ToPtr("completed"),
 				})
