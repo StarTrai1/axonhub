@@ -386,6 +386,8 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
         const readCacheTokens = usageLog.promptCachedTokens ?? 0;
         const writeCacheTokens = usageLog.promptWriteCachedTokens ?? 0;
         const hasCache = readCacheTokens > 0 || writeCacheTokens > 0;
+        const cacheHitRate =
+          promptTokens > 0 && readCacheTokens > 0 ? ((readCacheTokens / promptTokens) * 100).toFixed(1) : null;
 
         return (
           <div className='min-w-[170px] space-y-1 text-xs'>
@@ -409,10 +411,26 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
                 <TooltipContent>{t('requests.tooltips.outputTokens')}</TooltipContent>
               </Tooltip>
             </div>
-            <div className='text-muted-foreground whitespace-nowrap'>
-              {hasCache
-                ? `${t('requests.columns.cache')} ${readCacheTokens.toLocaleString()} (${t('requests.columns.read')})  ${writeCacheTokens.toLocaleString()} (${t('requests.columns.write')})`
-                : `${t('requests.columns.cache')} -`}
+            <div className='text-muted-foreground flex flex-wrap items-center gap-x-1.5 whitespace-nowrap'>
+              {hasCache ? (
+                <>
+                  <span>
+                    {t('requests.columns.cache')} {readCacheTokens.toLocaleString()}
+                  </span>
+                  {cacheHitRate && (
+                    <span className='text-foreground/80 font-medium tabular-nums'>
+                      · {t('requests.columns.cacheHitRate', { rate: cacheHitRate })}
+                    </span>
+                  )}
+                  {writeCacheTokens > 0 && (
+                    <span>
+                      · {t('requests.columns.write')} {writeCacheTokens.toLocaleString()}
+                    </span>
+                  )}
+                </>
+              ) : (
+                <span>{t('requests.columns.cache')} -</span>
+              )}
             </div>
           </div>
         );
