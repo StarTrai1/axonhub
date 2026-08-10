@@ -82,7 +82,7 @@ const CREATE_CHANNEL_MUTATION = `
         supportsRemoteCompaction
         webSearch
         supportsWebSearch
-        apiKeyAutoDisableRules { statusCodes keywordPatterns times action disableDurationMinutes }
+        apiKeyAutoDisableRules { statusCodes keywordPatterns times action disableDurationMinutes disableUntilCron disableUntilTimezone }
       }
       supportedModels
       autoSyncSupportedModels
@@ -163,7 +163,7 @@ const DUPLICATE_CHANNEL_MUTATION = `
         supportsRemoteCompaction
         webSearch
         supportsWebSearch
-        apiKeyAutoDisableRules { statusCodes keywordPatterns times action disableDurationMinutes }
+        apiKeyAutoDisableRules { statusCodes keywordPatterns times action disableDurationMinutes disableUntilCron disableUntilTimezone }
       }
       supportedModels
       autoSyncSupportedModels
@@ -244,7 +244,7 @@ const BULK_CREATE_CHANNELS_MUTATION = `
         supportsRemoteCompaction
         webSearch
         supportsWebSearch
-        apiKeyAutoDisableRules { statusCodes keywordPatterns times action disableDurationMinutes }
+        apiKeyAutoDisableRules { statusCodes keywordPatterns times action disableDurationMinutes disableUntilCron disableUntilTimezone }
       }
       supportedModels
       autoSyncSupportedModels
@@ -325,7 +325,7 @@ const UPDATE_CHANNEL_MUTATION = `
         supportsRemoteCompaction
         webSearch
         supportsWebSearch
-        apiKeyAutoDisableRules { statusCodes keywordPatterns times action disableDurationMinutes }
+        apiKeyAutoDisableRules { statusCodes keywordPatterns times action disableDurationMinutes disableUntilCron disableUntilTimezone }
       }
       supportedModels
       autoSyncSupportedModels
@@ -877,7 +877,7 @@ const QUERY_CHANNELS_QUERY = `
             supportsRemoteCompaction
             webSearch
             supportsWebSearch
-            apiKeyAutoDisableRules { statusCodes keywordPatterns times action disableDurationMinutes }
+            apiKeyAutoDisableRules { statusCodes keywordPatterns times action disableDurationMinutes disableUntilCron disableUntilTimezone }
           }
           credentials {
             apiKey
