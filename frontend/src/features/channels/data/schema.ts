@@ -59,6 +59,9 @@ export const channelTypeSchema = z.enum([
   'openai',
   'openai_responses',
   'atlascloud',
+  'qiniu',
+  'qiniu_anthropic',
+  'fenno',
   'cline',
   'codex',
   'anthropic',
@@ -70,7 +73,6 @@ export const channelTypeSchema = z.enum([
   'deepseek',
   'deepseek_anthropic',
   'deepinfra',
-  'qiniu',
   'doubao',
   'doubao_anthropic',
   'moonshot',
@@ -250,7 +252,6 @@ export const transformOptionsSchema = z.object({
   forceArrayInputs: z.boolean().optional(),
   replaceDeveloperRoleWithSystem: z.boolean().optional(),
   reasoningEffortMapping: z.array(reasoningEffortMappingSchema).nullish(),
-  downgradeMidConversationSystem: z.boolean().nullish(),
 });
 export type TransformOptions = z.infer<typeof transformOptionsSchema>;
 
