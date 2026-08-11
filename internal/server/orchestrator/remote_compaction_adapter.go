@@ -1028,7 +1028,7 @@ func collectLocalCompactionBridgeStream(
 			perf.MarkFirstToken()
 		}
 		chunks = append(chunks, event)
-		if isTerminalStreamEvent(event) {
+		if IsTerminalStreamEvent(event) {
 			if perf != nil && !perf.RequestCompleted {
 				perf.MarkSuccess()
 			}

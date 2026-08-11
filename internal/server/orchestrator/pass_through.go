@@ -441,7 +441,7 @@ func captureRawProviderStreamWithTerminalGrace(
 					return
 				}
 
-				if isTerminalStreamEvent(event) {
+				if IsTerminalStreamEvent(event) {
 					return
 				}
 			}
@@ -711,7 +711,7 @@ func (s *delayedCodexResponsesTerminalStream) captureDelayedUsage(
 
 					return
 				}
-				if isTerminalStreamEvent(event) {
+				if IsTerminalStreamEvent(event) {
 					return
 				}
 
