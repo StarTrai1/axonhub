@@ -161,7 +161,7 @@ func (s *recordPerformanceStream) Current() *llm.Response {
 		return event
 	}
 
-	if !s.firstTokenSet && s.state.Perf != nil {
+	if !s.firstTokenSet && s.state.Perf != nil && hasStreamOutput(event) {
 		s.state.Perf.MarkFirstToken()
 		s.firstTokenSet = true
 	}
@@ -196,6 +196,89 @@ func (s *recordPerformanceStream) Current() *llm.Response {
 	}
 
 	return event
+}
+
+// hasStreamOutput reports whether an event carries model output that a client
+// can consume. Protocol preambles, role-only chunks, usage frames, signatures,
+// and terminal markers must not start TTFT.
+func hasStreamOutput(response *llm.Response) bool {
+	if response == nil || response == llm.DoneResponse || response.Object == "[DONE]" {
+		return false
+	}
+
+	if response.SpeechStreamEvent != nil && response.SpeechStreamEvent.AudioBase64 != "" {
+		return true
+	}
+	if response.SpeechAudioChunk != nil && len(response.SpeechAudioChunk.Audio) > 0 {
+		return true
+	}
+	if response.TranscriptionStreamEvent != nil &&
+		(response.TranscriptionStreamEvent.Delta != "" || response.TranscriptionStreamEvent.Text != "") {
+		return true
+	}
+
+	for _, choice := range response.Choices {
+		if hasStreamMessageOutput(choice.Delta) || hasStreamMessageOutput(choice.Message) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func hasStreamMessageOutput(message *llm.Message) bool {
+	if message == nil {
+		return false
+	}
+
+	if message.Content.Content != nil && *message.Content.Content != "" {
+		return true
+	}
+	for _, part := range message.Content.MultipleContent {
+		if part.Text != nil && *part.Text != "" {
+			return true
+		}
+		if part.ImageURL != nil && part.ImageURL.URL != "" {
+			return true
+		}
+		if part.VideoURL != nil && part.VideoURL.URL != "" {
+			return true
+		}
+		if part.Document != nil && part.Document.URL != "" {
+			return true
+		}
+	}
+
+	for _, toolCall := range message.ToolCalls {
+		if toolCall.Function.Arguments != "" ||
+			(toolCall.ResponseCustomToolCall != nil && toolCall.ResponseCustomToolCall.Input != "") {
+			return true
+		}
+	}
+	for _, result := range message.InlineToolResults {
+		if result.Output != "" || result.IsError {
+			return true
+		}
+	}
+	if message.Refusal != "" {
+		return true
+	}
+	if message.ReasoningContent != nil && *message.ReasoningContent != "" {
+		return true
+	}
+	if message.Reasoning != nil && *message.Reasoning != "" {
+		return true
+	}
+	for _, item := range message.ReasoningItems {
+		if item.Content != "" {
+			return true
+		}
+	}
+	if message.Audio != nil && (message.Audio.Data != "" || message.Audio.Transcript != "") {
+		return true
+	}
+
+	return false
 }
 
 func (s *recordPerformanceStream) markSuccess() {

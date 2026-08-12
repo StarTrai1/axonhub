@@ -363,3 +363,96 @@ func TestRecordPerformanceStream_MarksDoneWithoutUsage(t *testing.T) {
 	_, latencyMs, _ := perf.Calculate()
 	require.GreaterOrEqual(t, latencyMs, int64(1000))
 }
+
+func TestRecordPerformanceStream_MarksFirstTokenOnFirstOutput(t *testing.T) {
+	content := "hello"
+	perf := &biz.PerformanceRecord{
+		StartTime: time.Now().Add(-time.Second),
+		Stream:    true,
+	}
+	stream := &recordPerformanceStream{
+		ctx: context.Background(),
+		stream: streams.SliceStream([]*llm.Response{
+			{
+				ID:     "resp_1",
+				Object: "chat.completion.chunk",
+				Choices: []llm.Choice{{
+					Delta: &llm.Message{Role: "assistant"},
+				}},
+			},
+			{
+				ID:     "resp_1",
+				Object: "chat.completion.chunk",
+				Choices: []llm.Choice{{
+					Delta: &llm.Message{Content: llm.MessageContent{Content: &content}},
+				}},
+			},
+		}),
+		state: &PersistenceState{Perf: perf},
+	}
+
+	require.True(t, stream.Next())
+	stream.Current()
+	require.Nil(t, perf.FirstTokenTime, "role-only protocol preamble must not start TTFT")
+
+	require.True(t, stream.Next())
+	stream.Current()
+	require.NotNil(t, perf.FirstTokenTime)
+}
+
+func TestRecordPerformanceStream_DoesNotMarkTerminalFramesAsFirstToken(t *testing.T) {
+	perf := &biz.PerformanceRecord{
+		StartTime: time.Now().Add(-time.Second),
+		Stream:    true,
+	}
+	stream := &recordPerformanceStream{
+		ctx: context.Background(),
+		stream: streams.SliceStream([]*llm.Response{
+			{
+				Object:  "chat.completion.chunk",
+				Choices: []llm.Choice{{FinishReason: new("stop"), Delta: &llm.Message{}}},
+				Usage:   &llm.Usage{CompletionTokens: 1},
+			},
+			llm.DoneResponse,
+		}),
+		state: &PersistenceState{Perf: perf},
+	}
+
+	require.True(t, stream.Next())
+	stream.Current()
+	require.Nil(t, perf.FirstTokenTime, "usage and finish frames must not start TTFT")
+
+	require.True(t, stream.Next())
+	stream.Current()
+	require.Nil(t, perf.FirstTokenTime, "done marker must not start TTFT")
+}
+
+func TestHasStreamOutput_IgnoresOpaqueReasoningMetadata(t *testing.T) {
+	signature := "opaque-signature"
+	reasoning := "thinking"
+
+	require.False(t, hasStreamOutput(&llm.Response{
+		Choices: []llm.Choice{{Delta: &llm.Message{ReasoningSignature: &signature}}},
+	}))
+	require.True(t, hasStreamOutput(&llm.Response{
+		Choices: []llm.Choice{{Delta: &llm.Message{ReasoningContent: &reasoning}}},
+	}))
+}
+
+func TestHasStreamOutput_MarksToolArgumentsNotToolPreamble(t *testing.T) {
+	require.False(t, hasStreamOutput(&llm.Response{
+		Choices: []llm.Choice{{Delta: &llm.Message{ToolCalls: []llm.ToolCall{{
+			ID: "call_1",
+			Function: llm.FunctionCall{
+				Name: "lookup",
+			},
+		}}}}},
+	}))
+	require.True(t, hasStreamOutput(&llm.Response{
+		Choices: []llm.Choice{{Delta: &llm.Message{ToolCalls: []llm.ToolCall{{
+			Function: llm.FunctionCall{
+				Arguments: "{}",
+			},
+		}}}}},
+	}))
+}
