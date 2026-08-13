@@ -332,7 +332,7 @@ func (p *DeviceFlowProvider) getAccessTokenWithRefresh(ctx context.Context) (str
 	}
 
 	// Need to refresh
-	v, err, _ := p.sf.Do("refresh", func() (any, error) {
+	v, err := doSharedRefresh(ctx, &p.sf, "refresh", func(refreshCtx context.Context) (any, error) {
 		p.mu.RLock()
 		current := p.creds
 		onRefreshed := p.onRefreshed
@@ -351,7 +351,7 @@ func (p *DeviceFlowProvider) getAccessTokenWithRefresh(ctx context.Context) (str
 			return current.AccessToken, nil
 		}
 
-		fresh, err := p.refresh(ctx, current)
+		fresh, err := p.refresh(refreshCtx, current)
 		if err != nil {
 			return nil, err
 		}
@@ -361,8 +361,8 @@ func (p *DeviceFlowProvider) getAccessTokenWithRefresh(ctx context.Context) (str
 		p.mu.Unlock()
 
 		if onRefreshed != nil {
-			if err := onRefreshed(ctx, fresh); err != nil {
-				slog.WarnContext(ctx, "failed to persist refreshed credentials", slog.Any("error", err))
+			if err := onRefreshed(refreshCtx, fresh); err != nil {
+				slog.WarnContext(refreshCtx, "failed to persist refreshed credentials", slog.Any("error", err))
 			}
 		}
 

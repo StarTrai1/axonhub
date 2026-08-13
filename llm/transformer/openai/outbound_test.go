@@ -522,6 +522,22 @@ func TestOutboundTransformer_TransformStreamChunk_StreamErrorEvent(t *testing.T)
 	assert.Equal(t, "当前订阅套餐暂未开放GPT-6权限", respErr.Detail.Message)
 	assert.Equal(t, "1311", respErr.Detail.Code)
 	assert.Equal(t, "2026031122524215033670187648af", respErr.Detail.RequestID)
+	assert.Equal(t, http.StatusBadGateway, respErr.StatusCode)
+}
+
+func TestOutboundTransformer_TransformStreamChunk_RateLimitErrorIsRetryable(t *testing.T) {
+	transformerInterface, err := NewOutboundTransformer("https://api.openai.com/v1", "test-key")
+	require.NoError(t, err)
+
+	transformer := transformerInterface.(*OutboundTransformer)
+	_, err = transformer.TransformStreamChunk(t.Context(), &httpclient.StreamEvent{
+		Type: "error",
+		Data: []byte(`{"error":{"type":"rate_limit_error","code":"rate_limit_exceeded","message":"rate limit reached"}}`),
+	})
+
+	var responseErr *llm.ResponseError
+	require.ErrorAs(t, err, &responseErr)
+	require.Equal(t, http.StatusTooManyRequests, responseErr.StatusCode)
 }
 
 func TestOutboundTransformer_TransformStream_FiltersEmptyChoicesWithoutDroppingUsageChunk(t *testing.T) {

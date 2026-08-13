@@ -612,6 +612,15 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		if s.responseCompleted {
 			return nil
 		}
+		failedResponse := streamEvent.Response != nil && (streamEvent.Response.Error != nil ||
+			(streamEvent.Response.Status != nil && *streamEvent.Response.Status == "failed"))
+		if failedResponse && !s.hasGeneratedOutput() {
+			responseErr := responseErrorFromResponse(streamEvent.Response)
+			if responseErr.Detail.RequestID == "" {
+				responseErr.Detail.RequestID = streamEvent.RequestID
+			}
+			return responseErr
+		}
 		// Response completed - emit two events: one with finish_reason, one with usage
 		s.responseCompleted = true
 		emptyCompletion := len(s.state.toolCalls) == 0 &&
@@ -638,6 +647,9 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		// Chat Completions finish_reason; fall back to the tool_calls/stop
 		// inference only when the status is absent or plain "completed".
 		finishReason := ""
+		if failedResponse {
+			finishReason = "error"
+		}
 		if streamEvent.Response != nil && streamEvent.Response.Status != nil {
 			switch *streamEvent.Response.Status {
 			case "incomplete":
@@ -699,14 +711,40 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		if s.responseCompleted {
 			return nil
 		}
-		// Response failed
+		if !s.hasGeneratedOutput() {
+			if streamEvent.Response == nil {
+				return responseErrorFromStreamEvent(streamEvent)
+			}
+			responseErr := responseErrorFromResponse(streamEvent.Response)
+			if responseErr.Detail.RequestID == "" {
+				responseErr.Detail.RequestID = streamEvent.RequestID
+			}
+			return responseErr
+		}
 		s.responseCompleted = true
 		finishReason := "error"
-		resp.Choices = []llm.Choice{
-			{
-				Index:        0,
-				FinishReason: &finishReason,
-			},
+		resp.Choices = []llm.Choice{{
+			Index:        0,
+			Delta:        &llm.Message{},
+			FinishReason: &finishReason,
+		}}
+		if streamEvent.Response != nil {
+			s.state.previousResponseID = streamEvent.Response.PreviousResponseID
+			resp.PreviousResponseID = s.state.previousResponseID
+			if streamEvent.Response.Usage != nil {
+				s.state.usage = streamEvent.Response.Usage.ToUsage()
+				s.enqueue(resp)
+				s.enqueue(&llm.Response{
+					Object:             "chat.completion.chunk",
+					ID:                 s.state.responseID,
+					Model:              s.state.responseModel,
+					Created:            s.state.created,
+					PreviousResponseID: s.state.previousResponseID,
+					Choices:            []llm.Choice{},
+					Usage:              s.state.usage,
+				})
+				return nil
+			}
 		}
 
 	case StreamEventTypeResponseIncomplete:
@@ -738,13 +776,7 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		}
 
 	case StreamEventTypeError:
-		return &llm.ResponseError{
-			Detail: llm.ErrorDetail{
-				Code:    streamEvent.Code,
-				Message: streamEvent.Message,
-				Param:   lo.FromPtr(streamEvent.Param),
-			},
-		}
+		return responseErrorFromStreamEvent(streamEvent)
 
 	case StreamEventTypeImageGenerationPartialImage,
 		StreamEventTypeImageGenerationGenerating,
@@ -787,6 +819,13 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 	s.enqueue(resp)
 
 	return nil
+}
+
+func (s *responsesOutboundStream) hasGeneratedOutput() bool {
+	return len(s.state.toolCalls) > 0 ||
+		s.state.textContent.Len() > 0 ||
+		s.state.reasoningContent.Len() > 0 ||
+		len(s.state.pendingReasoningEncryptedContent) > 0
 }
 
 func equalJSONValues(left, right string) bool {

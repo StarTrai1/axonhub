@@ -275,6 +275,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		applyPassThroughRequestHeaders(outbound),
 		applyResponsesLiteWebSearchFallback(outbound),
 		applyOverrideRequestBody(outbound),
+		repairInvalidOpenAIToolSchemas(),
 		stripUnsupportedCodexPromptCacheOptions(outbound),
 		// applyUserAgentPassThrough runs before header overrides to set the initial
 		// User-Agent value (either from client pass-through or default "axonhub/1.0").

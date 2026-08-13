@@ -72,14 +72,14 @@ func TestPersistentOutboundTransformer_TransformRequest_ClaudeCodeOpenAICompatib
 		{
 			name:           "Claude Code maps DeepSeek OpenAI outbound",
 			channelType:    entchannel.TypeDeepseek,
-			userAgent:      "claude-cli/2.1.170 (external, cli)",
+			userAgent:      "claude-cli/2.1.231 (external, cli)",
 			wantEffort:     "max",
 			wantSecondRole: "user",
 		},
 		{
 			name:           "Claude Code maps OpenCode OpenAI outbound",
 			channelType:    entchannel.TypeOpencodeGo,
-			userAgent:      "claude-cli/2.1.170 (external, cli)",
+			userAgent:      "claude-cli/2.1.231 (external, cli)",
 			wantEffort:     "max",
 			wantSecondRole: "user",
 		},
@@ -187,7 +187,7 @@ func TestPersistentOutboundTransformer_TransformRequest_AppliesSystemCompatibili
 					{Role: "system", Content: llm.MessageContent{Content: lo.ToPtr("reminder")}},
 				},
 				RawRequest: &httpclient.Request{Headers: http.Header{
-					"User-Agent": []string{"claude-cli/2.1.170 (external, cli)"},
+					"User-Agent": []string{"claude-cli/2.1.231 (external, cli)"},
 				}},
 			}
 

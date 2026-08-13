@@ -128,6 +128,16 @@ func TestOutboundTransformer_StreamTransformation_ErrorEvent(t *testing.T) {
 	require.Contains(t, err.Error(), "当前订阅套餐暂未开放GPT-6权限")
 }
 
+func TestParseAnthropicStreamErrorEventInfersRetryableStatus(t *testing.T) {
+	err := parseAnthropicStreamErrorEvent(&httpclient.StreamEvent{
+		Type: "error",
+		Data: []byte(`{"type":"error","error":{"type":"overloaded_error","message":"server is overloaded"},"request_id":"req_123"}`),
+	})
+
+	require.Equal(t, 503, err.StatusCode)
+	require.Equal(t, "req_123", err.Detail.RequestID)
+}
+
 func TestOutboundTransformer_StreamTransformation_UsesFinalPromptTokensWhenPresent(t *testing.T) {
 	transformer, err := NewOutboundTransformerWithConfig(&Config{
 		Type:           PlatformZhipu,

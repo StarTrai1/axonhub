@@ -202,7 +202,7 @@ func TestClaudeCodeTransformer_WithSimulator_InboundHeadersPassthrough(t *testin
 		{
 			name:            "non-claude UA passthrough headers override defaults",
 			inboundUA:       "axonhub-test/0.0.1",
-			wantFinalUA:     UserAgent,
+			wantFinalUA:     "",
 			wantFinalBeta:   "injected",
 			wantFinalXApp:   "web",
 			wantFinalVer:    "1999-01-01",
@@ -241,7 +241,11 @@ func TestClaudeCodeTransformer_WithSimulator_InboundHeadersPassthrough(t *testin
 			require.Contains(t, finalReq.Header.Get("Anthropic-Beta"), tt.wantFinalBeta)
 			require.Equal(t, tt.wantFinalVer, finalReq.Header.Get("Anthropic-Version"))
 			require.Equal(t, tt.wantFinalDanger, finalReq.Header.Get("Anthropic-Dangerous-Direct-Browser-Access"))
-			require.Equal(t, tt.wantFinalUA, finalReq.Header.Get("User-Agent"))
+			if tt.wantFinalUA == "" {
+				require.True(t, isClaudeCLIUserAgent(finalReq.Header.Get("User-Agent")))
+			} else {
+				require.Equal(t, tt.wantFinalUA, finalReq.Header.Get("User-Agent"))
+			}
 			require.Equal(t, tt.wantFinalXApp, finalReq.Header.Get("X-App"))
 			require.Equal(t, tt.wantFinalPkgVer, finalReq.Header.Get("X-Stainless-Package-Version"))
 			// Claude Code OAuth always uses Bearer authentication

@@ -1,6 +1,7 @@
 package orchestrator
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -220,6 +221,119 @@ func stripUnsupportedCodexPromptCacheOptions(outbound *PersistentOutboundTransfo
 
 		return request, nil
 	})
+}
+
+// repairInvalidOpenAIToolSchemas covers same-format pass-through requests that
+// bypass the unified tool conversion path. It only parses bodies that contain
+// both tool parameters and null, keeping the normal hot path allocation-free.
+func repairInvalidOpenAIToolSchemas() pipeline.Middleware {
+	return pipeline.OnRawRequest("repair-openai-tool-schemas", func(_ context.Context, request *httpclient.Request) (*httpclient.Request, error) {
+		switch llm.APIFormat(request.APIFormat) {
+		case llm.APIFormatOpenAIChatCompletion, llm.APIFormatOpenAIResponse:
+		default:
+			return request, nil
+		}
+		if !bytes.Contains(request.Body, []byte(`"parameters"`)) ||
+			(!jsonFieldIsNull(request.Body, []byte(`"parameters"`)) &&
+				!jsonFieldIsNull(request.Body, []byte(`"type"`)) &&
+				!jsonFieldIsNull(request.Body, []byte(`"properties"`))) {
+			return request, nil
+		}
+
+		var payload map[string]any
+		if err := json.Unmarshal(request.Body, &payload); err != nil {
+			return request, nil
+		}
+		if !repairToolSchemaList(payload["tools"]) {
+			return request, nil
+		}
+
+		body, err := json.Marshal(payload)
+		if err != nil {
+			return nil, fmt.Errorf("marshal repaired OpenAI tool schemas: %w", err)
+		}
+		request.Body = body
+
+		return request, nil
+	})
+}
+
+func jsonFieldIsNull(body, field []byte) bool {
+	for offset := 0; offset < len(body); {
+		relative := bytes.Index(body[offset:], field)
+		if relative < 0 {
+			return false
+		}
+		index := offset + relative + len(field)
+		for index < len(body) && (body[index] == ' ' || body[index] == '\t' || body[index] == '\r' || body[index] == '\n') {
+			index++
+		}
+		if index < len(body) && body[index] == ':' {
+			index++
+			for index < len(body) && (body[index] == ' ' || body[index] == '\t' || body[index] == '\r' || body[index] == '\n') {
+				index++
+			}
+			if bytes.HasPrefix(body[index:], []byte("null")) {
+				return true
+			}
+		}
+		offset += relative + len(field)
+	}
+
+	return false
+}
+
+func repairToolSchemaList(value any) bool {
+	tools, ok := value.([]any)
+	if !ok {
+		return false
+	}
+
+	changed := false
+	for _, value := range tools {
+		tool, ok := value.(map[string]any)
+		if !ok {
+			continue
+		}
+
+		if tool["type"] == "namespace" && repairToolSchemaList(tool["tools"]) {
+			changed = true
+		}
+		if tool["type"] != "function" {
+			continue
+		}
+
+		definition := tool
+		if nested, ok := tool["function"].(map[string]any); ok {
+			definition = nested
+		}
+		parametersValue, exists := definition["parameters"]
+		if !exists {
+			continue
+		}
+
+		parameters, ok := parametersValue.(map[string]any)
+		if !ok {
+			if parametersValue != nil {
+				continue
+			}
+			parameters = map[string]any{}
+			definition["parameters"] = parameters
+			changed = true
+		}
+		if typeValue, exists := parameters["type"]; !exists || typeValue == nil {
+			parameters["type"] = "object"
+			changed = true
+		}
+		if parameters["type"] == "object" {
+			if _, ok := parameters["properties"].(map[string]any); !ok {
+				parameters["properties"] = map[string]any{}
+				changed = true
+			}
+		}
+	}
+
+	return changed
 }
 
 func mergePassThroughRequestBody(rawBody []byte, apiFormat llm.APIFormat, model string) ([]byte, error) {

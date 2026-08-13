@@ -15,6 +15,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer/shared"
@@ -252,6 +253,9 @@ func TestWebSocketExecutorDoReturnsErrorForTopLevelErrorEvent(t *testing.T) {
 
 	require.Nil(t, resp)
 	require.ErrorContains(t, err, "bad_request: invalid websocket request")
+	var responseErr *llm.ResponseError
+	require.ErrorAs(t, err, &responseErr)
+	require.Equal(t, http.StatusBadRequest, responseErr.StatusCode)
 }
 
 func TestWebSocketExecutorDoAggregatesFailedResponseEvent(t *testing.T) {

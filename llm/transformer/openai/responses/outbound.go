@@ -412,6 +412,9 @@ func (t *OutboundTransformer) transformStandardResponse(
 	if err := json.Unmarshal(httpResp.Body, &resp); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal responses api response: %w", err)
 	}
+	if resp.Error != nil || (resp.Status != nil && *resp.Status == "failed") {
+		return nil, responseErrorFromResponse(&resp)
+	}
 
 	// Validate that we got a valid response
 	if resp.ID == "" && resp.Model == "" && len(resp.Output) == 0 {

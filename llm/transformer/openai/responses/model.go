@@ -829,6 +829,8 @@ type Response struct {
 	ID string `json:"id"`
 	// An error object returned when the model fails to generate a Response.
 	Error *Error `json:"error,omitempty"`
+	// Provider request identifier returned by some Responses-compatible gateways.
+	RequestID string `json:"request_id,omitempty"`
 	// Unix timestamp (in seconds) of when this Response was created.
 	CreatedAt int64 `json:"created_at"`
 	// Model ID used to generate the response.

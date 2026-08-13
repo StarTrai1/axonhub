@@ -106,9 +106,11 @@ type StreamEvent struct {
 	PartialImageIndex *int   `json:"partial_image_index,omitempty"`
 
 	// For error events
-	Code    string  `json:"code,omitempty"`
-	Message string  `json:"message,omitempty"`
-	Param   *string `json:"param,omitempty"`
+	Code      string  `json:"code,omitempty"`
+	Message   string  `json:"message,omitempty"`
+	Param     *string `json:"param,omitempty"`
+	Error     *Error  `json:"error,omitempty"`
+	RequestID string  `json:"request_id,omitempty"`
 }
 
 // StreamEventContentPart represents a content part in streaming events.

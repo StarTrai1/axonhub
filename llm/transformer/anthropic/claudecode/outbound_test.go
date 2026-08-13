@@ -85,7 +85,7 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 		assert.Equal(t, "true", httpReq.Headers.Get("Anthropic-Dangerous-Direct-Browser-Access"))
 		assert.Equal(t, "cli", httpReq.Headers.Get("X-App"))
 		assert.Equal(t, "stream", httpReq.Headers.Get("X-Stainless-Helper-Method"))
-		assert.Equal(t, UserAgent, httpReq.Headers.Get("User-Agent"))
+		assert.True(t, isClaudeCLIUserAgent(httpReq.Headers.Get("User-Agent")))
 	})
 
 	t.Run("adds beta=true query parameter", func(t *testing.T) {

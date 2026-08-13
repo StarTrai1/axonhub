@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 	"testing"
 
@@ -178,6 +179,73 @@ func TestOutboundTransformer_TransformStream_IncompleteResponseDoesNotEmitDone(t
 			require.NotContains(t, responses, llm.DoneResponse)
 		})
 	}
+}
+
+func TestOutboundTransformer_TransformStream_ProtocolFailuresCarryRetryableStatus(t *testing.T) {
+	transformer, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	tests := []struct {
+		name       string
+		event      *httpclient.StreamEvent
+		wantStatus int
+	}{
+		{
+			name: "top-level rate limit error",
+			event: &httpclient.StreamEvent{Type: "error", Data: []byte(`{
+				"type":"error",
+				"error":{"type":"rate_limit_error","code":"rate_limit_exceeded","message":"slow down"},
+				"request_id":"req_rate"
+			}`)},
+			wantStatus: http.StatusTooManyRequests,
+		},
+		{
+			name: "failed response",
+			event: &httpclient.StreamEvent{Type: "response.failed", Data: []byte(`{
+				"type":"response.failed",
+				"request_id":"req_failed",
+				"response":{"id":"resp_failed","status":"failed","error":{"type":"server_error","code":"server_error","message":"upstream failed"}}
+			}`)},
+			wantStatus: http.StatusBadGateway,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			stream, err := transformer.TransformStream(t.Context(), nil, streams.SliceStream([]*httpclient.StreamEvent{tt.event}))
+			require.NoError(t, err)
+			_, err = streams.All(stream)
+
+			var responseErr *llm.ResponseError
+			require.ErrorAs(t, err, &responseErr)
+			require.Equal(t, tt.wantStatus, responseErr.StatusCode)
+		})
+	}
+}
+
+func TestOutboundTransformer_TransformStream_FailedAfterOutputTerminatesWithoutRetryError(t *testing.T) {
+	transformer, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	events := []*httpclient.StreamEvent{
+		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_partial","object":"response","created_at":1700000000,"model":"gpt-5","status":"in_progress","output":[]}}`)},
+		{Type: "response.output_text.delta", Data: []byte(`{"type":"response.output_text.delta","item_id":"msg_partial","output_index":0,"content_index":0,"delta":"partial"}`)},
+		{Type: "response.failed", Data: []byte(`{"type":"response.failed","response":{"id":"resp_partial","status":"failed","error":{"type":"server_error","code":"server_error","message":"upstream failed"}}}`)},
+	}
+
+	stream, err := transformer.TransformStream(t.Context(), nil, streams.SliceStream(events))
+	require.NoError(t, err)
+	responses, err := streams.All(stream)
+	require.NoError(t, err)
+
+	var finishReason string
+	for _, response := range responses {
+		if response == nil || len(response.Choices) == 0 || response.Choices[0].FinishReason == nil {
+			continue
+		}
+		finishReason = *response.Choices[0].FinishReason
+	}
+	require.Equal(t, "error", finishReason)
 }
 
 func TestOutboundTransformer_TransformStream_ProviderDoneRequiresSemanticTerminal(t *testing.T) {

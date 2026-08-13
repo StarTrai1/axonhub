@@ -390,6 +390,7 @@ func parseAnthropicStreamErrorEvent(event *httpclient.StreamEvent) *llm.Response
 
 	if len(event.Data) == 0 {
 		return &llm.ResponseError{
+			StatusCode: 502,
 			Detail: llm.ErrorDetail{
 				Message: "stream error",
 				Type:    "stream_error",
@@ -438,7 +439,15 @@ func parseAnthropicStreamErrorEvent(event *httpclient.StreamEvent) *llm.Response
 		detail.Type = "stream_error"
 	}
 
-	return &llm.ResponseError{Detail: detail}
+	statusCode := llm.InferResponseErrorStatusCode(detail.Code, detail.Type, detail.Message)
+	if statusCode == 0 {
+		statusCode = 502
+	}
+
+	return &llm.ResponseError{
+		StatusCode: statusCode,
+		Detail:     detail,
+	}
 }
 
 func (s *outboundStream) Current() *llm.Response {

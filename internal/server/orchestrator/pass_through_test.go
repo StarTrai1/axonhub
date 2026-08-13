@@ -2395,6 +2395,59 @@ func TestStripUnsupportedCodexPromptCacheOptionsAfterPassThrough(t *testing.T) {
 	require.JSONEq(t, `{"model":"gpt-5.6-sol","input":"hello"}`, string(processed.Body))
 }
 
+func TestRepairInvalidOpenAIToolSchemas(t *testing.T) {
+	tests := []struct {
+		name      string
+		apiFormat llm.APIFormat
+		body      string
+		path      string
+	}{
+		{
+			name:      "responses function",
+			apiFormat: llm.APIFormatOpenAIResponse,
+			body:      `{"tools":[{"type":"function","name":"lookup","parameters":{"type":null}}]}`,
+			path:      "tools.0.parameters",
+		},
+		{
+			name:      "chat completion nested function",
+			apiFormat: llm.APIFormatOpenAIChatCompletion,
+			body:      `{"tools":[{"type":"function","function":{"name":"lookup","parameters":null}}]}`,
+			path:      "tools.0.function.parameters",
+		},
+		{
+			name:      "responses namespace function",
+			apiFormat: llm.APIFormatOpenAIResponse,
+			body:      `{"tools":[{"type":"namespace","name":"mcp","tools":[{"type":"function","name":"lookup","parameters":{"type":null}}]}]}`,
+			path:      "tools.0.tools.0.parameters",
+		},
+		{
+			name:      "responses null properties",
+			apiFormat: llm.APIFormatOpenAIResponse,
+			body:      `{"tools":[{"type":"function","name":"lookup","parameters":{"type":"object","properties":null}}]}`,
+			path:      "tools.0.parameters",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			request := &httpclient.Request{APIFormat: string(tt.apiFormat), Body: []byte(tt.body)}
+			processed, err := repairInvalidOpenAIToolSchemas().OnOutboundRawRequest(t.Context(), request)
+			require.NoError(t, err)
+			require.Equal(t, "object", gjson.GetBytes(processed.Body, tt.path+".type").String())
+			require.Equal(t, `{}`, gjson.GetBytes(processed.Body, tt.path+".properties").Raw)
+		})
+	}
+}
+
+func TestRepairInvalidOpenAIToolSchemasSkipsUnrelatedNull(t *testing.T) {
+	body := []byte(`{"metadata":null,"tools":[{"type":"function","name":"lookup","parameters":{"type":"object","properties":{}}}]}`)
+	request := &httpclient.Request{APIFormat: string(llm.APIFormatOpenAIResponse), Body: body}
+
+	processed, err := repairInvalidOpenAIToolSchemas().OnOutboundRawRequest(t.Context(), request)
+	require.NoError(t, err)
+	require.Equal(t, body, processed.Body)
+}
+
 func TestApplyPassThroughBodySkipsMultipartFormats(t *testing.T) {
 	ctx := context.Background()
 

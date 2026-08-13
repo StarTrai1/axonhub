@@ -378,6 +378,7 @@ func parseStreamErrorEvent(event *httpclient.StreamEvent) *llm.ResponseError {
 	// A provider may emit `event: error` with empty payload. Treat it as an error anyway.
 	if event.Type == "error" && len(event.Data) == 0 {
 		return &llm.ResponseError{
+			StatusCode: http.StatusBadGateway,
 			Detail: llm.ErrorDetail{
 				Message: "stream error",
 				Type:    "stream_error",
@@ -423,7 +424,7 @@ func parseStreamErrorEvent(event *httpclient.StreamEvent) *llm.ResponseError {
 			detail.RequestID = rid
 		}
 
-		return &llm.ResponseError{Detail: detail}
+		return openAIStreamResponseError(detail)
 	}
 
 	// OpenAI-style: {"error":{...}} or {"error":"..."}
@@ -449,7 +450,19 @@ func parseStreamErrorEvent(event *httpclient.StreamEvent) *llm.ResponseError {
 		detail.RequestID = rid
 	}
 
-	return &llm.ResponseError{Detail: detail}
+	return openAIStreamResponseError(detail)
+}
+
+func openAIStreamResponseError(detail llm.ErrorDetail) *llm.ResponseError {
+	statusCode := llm.InferResponseErrorStatusCode(detail.Code, detail.Type, detail.Message)
+	if statusCode == 0 {
+		statusCode = http.StatusBadGateway
+	}
+
+	return &llm.ResponseError{
+		StatusCode: statusCode,
+		Detail:     detail,
+	}
 }
 
 // buildFullRequestURL constructs the appropriate URL based on the platform.

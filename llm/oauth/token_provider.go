@@ -162,7 +162,7 @@ func (p *TokenProvider) Get(ctx context.Context) (*OAuthCredentials, error) {
 	}
 
 	// Refresh with singleflight to avoid stampede inside the same transformer.
-	v, err, _ := p.sf.Do("refresh", func() (any, error) {
+	v, err := doSharedRefresh(ctx, &p.sf, "refresh", func(refreshCtx context.Context) (any, error) {
 		p.mu.RLock()
 		current := p.creds
 		onRefreshed := p.onRefreshed
@@ -176,7 +176,7 @@ func (p *TokenProvider) Get(ctx context.Context) (*OAuthCredentials, error) {
 			return current, nil
 		}
 
-		fresh, err := p.refresh(ctx, current)
+		fresh, err := p.refresh(refreshCtx, current)
 		if err != nil {
 			return nil, err
 		}
@@ -186,8 +186,8 @@ func (p *TokenProvider) Get(ctx context.Context) (*OAuthCredentials, error) {
 		p.mu.Unlock()
 
 		if onRefreshed != nil {
-			if err := onRefreshed(ctx, fresh); err != nil {
-				slog.WarnContext(ctx, "failed to persist refreshed credentials", slog.Any("error", err))
+			if err := onRefreshed(refreshCtx, fresh); err != nil {
+				slog.WarnContext(refreshCtx, "failed to persist refreshed credentials", slog.Any("error", err))
 			}
 		}
 
@@ -229,7 +229,7 @@ func (p *TokenProvider) EnsureFresh(ctx context.Context, refreshBefore time.Dura
 		return creds, nil
 	}
 
-	v, err, _ := p.sf.Do("refresh", func() (any, error) {
+	v, err := doSharedRefresh(ctx, &p.sf, "refresh", func(refreshCtx context.Context) (any, error) {
 		p.mu.RLock()
 		current := p.creds
 		onRefreshed := p.onRefreshed
@@ -250,7 +250,7 @@ func (p *TokenProvider) EnsureFresh(ctx context.Context, refreshBefore time.Dura
 			return current, nil
 		}
 
-		fresh, err := p.refresh(ctx, current)
+		fresh, err := p.refresh(refreshCtx, current)
 		if err != nil {
 			return nil, err
 		}
@@ -260,8 +260,8 @@ func (p *TokenProvider) EnsureFresh(ctx context.Context, refreshBefore time.Dura
 		p.mu.Unlock()
 
 		if onRefreshed != nil {
-			if err := onRefreshed(ctx, fresh); err != nil {
-				slog.WarnContext(ctx, "failed to persist refreshed credentials", slog.Any("error", err))
+			if err := onRefreshed(refreshCtx, fresh); err != nil {
+				slog.WarnContext(refreshCtx, "failed to persist refreshed credentials", slog.Any("error", err))
 			}
 		}
 

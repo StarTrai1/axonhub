@@ -102,7 +102,7 @@ func TestSystemCacheCompatibilityNoOpConditions(t *testing.T) {
 }
 
 func newClaudeCodeRequest(messages []llm.Message) *llm.Request {
-	return requestWithUserAgent("claude-cli/2.1.170 (external, cli)", messages)
+	return requestWithUserAgent("claude-cli/2.1.231 (external, cli)", messages)
 }
 
 func requestWithUserAgent(userAgent string, messages []llm.Message) *llm.Request {
