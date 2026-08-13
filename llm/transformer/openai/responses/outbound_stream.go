@@ -713,7 +713,7 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		}
 		if !s.hasGeneratedOutput() {
 			if streamEvent.Response == nil {
-				return responseErrorFromStreamEvent(streamEvent)
+				return responseErrorFromStreamEvent(&streamEvent)
 			}
 			responseErr := responseErrorFromResponse(streamEvent.Response)
 			if responseErr.Detail.RequestID == "" {
@@ -776,7 +776,7 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		}
 
 	case StreamEventTypeError:
-		return responseErrorFromStreamEvent(streamEvent)
+		return responseErrorFromStreamEvent(&streamEvent)
 
 	case StreamEventTypeImageGenerationPartialImage,
 		StreamEventTypeImageGenerationGenerating,
