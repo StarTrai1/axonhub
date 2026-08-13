@@ -281,6 +281,9 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		// This allows override headers to modify the User-Agent if configured.
 		applyUserAgentPassThrough(outbound, processor.SystemService),
 		applyOverrideRequestHeaders(outbound),
+		// Keep all Codex OAuth identity carriers coherent after body/header
+		// pass-through and explicit overrides have settled.
+		applyCodexIdentityPolicy(outbound),
 
 		// Unified performance tracking middleware.
 		withPerformanceRecording(outbound),

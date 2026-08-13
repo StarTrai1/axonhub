@@ -907,6 +907,7 @@ func (a *remoteCompactionAdapter) generateLocalSummaryWithCandidate(
 		applyOverrideRequestBody(outbound),
 		applyUserAgentPassThrough(outbound, a.systemService),
 		applyOverrideRequestHeaders(outbound),
+		applyCodexIdentityPolicy(outbound),
 	}
 	for _, middleware := range requestMiddlewares {
 		providerRequest, err = middleware.OnOutboundRawRequest(ctx, providerRequest)

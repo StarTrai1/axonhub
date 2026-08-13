@@ -78,6 +78,7 @@ import {
   ApiFormat,
   RetryableErrorPattern,
   RoutingTier,
+  CodexIdentityPolicy,
   RemoteCompactionPolicy,
   WebSearchPolicy,
   createChannelInputSchema,
@@ -136,6 +137,15 @@ const REMOTE_COMPACTION_POLICY_OPTIONS: ReadonlyArray<{
   { value: 'local_bridge' },
 ];
 
+const CODEX_IDENTITY_POLICY_OPTIONS: ReadonlyArray<{
+  value: CodexIdentityPolicy;
+}> = [
+  { value: 'off' },
+  { value: 'device' },
+  { value: 'session' },
+  { value: 'full' },
+];
+
 function CompactPolicyRadioGroup<T extends string>({
   value,
   onValueChange,
@@ -155,7 +165,7 @@ function CompactPolicyRadioGroup<T extends string>({
     <RadioGroup
       value={value}
       onValueChange={(nextValue) => onValueChange(nextValue as T)}
-      className='grid grid-cols-3 gap-1 rounded-md border bg-muted/40 p-1'
+      className={`grid gap-1 rounded-md border bg-muted/40 p-1 ${options.length === 4 ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3'}`}
       data-testid={testId}
     >
       {options.map((option) => {
@@ -781,6 +791,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               webSearch:
                 currentRow.policies?.webSearch ?? (currentRow.policies?.supportsWebSearch === false ? 'auto' : 'native'),
               supportsWebSearch: currentRow.policies?.supportsWebSearch ?? true,
+              codexIdentity: currentRow.policies?.codexIdentity ?? 'off',
             },
             supportedModels: currentRow.supportedModels,
             autoSyncSupportedModels: currentRow.autoSyncSupportedModels,
@@ -816,6 +827,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                   duplicateFromRow.policies?.webSearch ??
                   (duplicateFromRow.policies?.supportsWebSearch === false ? 'auto' : 'native'),
                 supportsWebSearch: duplicateFromRow.policies?.supportsWebSearch ?? true,
+                codexIdentity: duplicateFromRow.policies?.codexIdentity ?? 'off',
               },
               supportedModels: duplicateFromRow.supportedModels,
               autoSyncSupportedModels: duplicateFromRow.autoSyncSupportedModels,
@@ -846,6 +858,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                 supportsRemoteCompaction: false,
                 webSearch: 'native',
                 supportsWebSearch: true,
+                codexIdentity: 'session',
               },
               credentials: {
                 apiKeys: [],
@@ -1336,12 +1349,17 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         effectiveChannelType === 'codex' ? (dataWithModels.policies?.remoteCompaction ?? 'auto') : 'auto';
       const webSearchPolicy =
         effectiveChannelType === 'codex' ? (dataWithModels.policies?.webSearch ?? 'native') : 'native';
+      const codexIdentityPolicy =
+        effectiveChannelType === 'codex' && authMode !== 'third-party'
+          ? (dataWithModels.policies?.codexIdentity ?? 'session')
+          : 'off';
       dataWithModels.policies = {
         ...dataWithModels.policies,
         remoteCompaction: remoteCompactionPolicy,
         supportsRemoteCompaction: remoteCompactionPolicy === 'native',
         webSearch: webSearchPolicy,
         supportsWebSearch: webSearchPolicy === 'native',
+        codexIdentity: codexIdentityPolicy,
       };
       const settingsForSubmit = values.settings;
 
@@ -2738,6 +2756,47 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                         options={WEB_SEARCH_POLICY_OPTIONS}
                                         translationPrefix='channels.dialogs.fields.webSearchPolicy.options'
                                         testId='web-search-policy'
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                            )}
+
+                            {isCodexType && authMode !== 'third-party' && (
+                              <FormField
+                                control={form.control}
+                                name='policies.codexIdentity'
+                                render={({ field }) => (
+                                  <FormItem className='space-y-2 sm:col-span-2'>
+                                    <div className='flex items-center gap-1.5'>
+                                      <FormLabel className='text-sm font-medium'>
+                                        {t('channels.dialogs.fields.codexIdentityPolicy.label')}
+                                      </FormLabel>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <button
+                                            type='button'
+                                            className='text-muted-foreground hover:text-foreground inline-flex items-center'
+                                            aria-label={t('channels.dialogs.fields.codexIdentityPolicy.description')}
+                                            data-testid='codex-identity-policy-tip'
+                                          >
+                                            <Info className='h-3.5 w-3.5' />
+                                          </button>
+                                        </TooltipTrigger>
+                                        <TooltipContent className='max-w-72 leading-relaxed'>
+                                          <p>{t('channels.dialogs.fields.codexIdentityPolicy.description')}</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </div>
+                                    <FormControl>
+                                      <CompactPolicyRadioGroup
+                                        value={field.value ?? 'session'}
+                                        onValueChange={field.onChange}
+                                        options={CODEX_IDENTITY_POLICY_OPTIONS}
+                                        translationPrefix='channels.dialogs.fields.codexIdentityPolicy.options'
+                                        testId='codex-identity-policy'
                                       />
                                     </FormControl>
                                     <FormMessage />

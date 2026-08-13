@@ -82,6 +82,7 @@ const CREATE_CHANNEL_MUTATION = `
         supportsRemoteCompaction
         webSearch
         supportsWebSearch
+        codexIdentity
         apiKeyAutoDisableRules { statusCodes keywordPatterns times action disableDurationMinutes disableUntilCron disableUntilTimezone }
       }
       supportedModels
@@ -156,6 +157,7 @@ const DUPLICATE_CHANNEL_MUTATION = `
         supportsRemoteCompaction
         webSearch
         supportsWebSearch
+        codexIdentity
         apiKeyAutoDisableRules { statusCodes keywordPatterns times action disableDurationMinutes disableUntilCron disableUntilTimezone }
       }
       supportedModels
@@ -230,6 +232,7 @@ const BULK_CREATE_CHANNELS_MUTATION = `
         supportsRemoteCompaction
         webSearch
         supportsWebSearch
+        codexIdentity
         apiKeyAutoDisableRules { statusCodes keywordPatterns times action disableDurationMinutes disableUntilCron disableUntilTimezone }
       }
       supportedModels
@@ -304,6 +307,7 @@ const UPDATE_CHANNEL_MUTATION = `
         supportsRemoteCompaction
         webSearch
         supportsWebSearch
+        codexIdentity
         apiKeyAutoDisableRules { statusCodes keywordPatterns times action disableDurationMinutes disableUntilCron disableUntilTimezone }
       }
       supportedModels
@@ -492,6 +496,7 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
           supportsRemoteCompaction
           webSearch
           supportsWebSearch
+          codexIdentity
         }
         supportedModels
         autoSyncSupportedModels
@@ -835,6 +840,7 @@ const QUERY_CHANNELS_QUERY = `
             supportsRemoteCompaction
             webSearch
             supportsWebSearch
+            codexIdentity
             apiKeyAutoDisableRules { statusCodes keywordPatterns times action disableDurationMinutes disableUntilCron disableUntilTimezone }
           }
           credentials {

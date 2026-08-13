@@ -172,6 +172,9 @@ export type WebSearchPolicy = z.infer<typeof webSearchPolicySchema>;
 export const remoteCompactionPolicySchema = z.enum(['auto', 'native', 'local_bridge']);
 export type RemoteCompactionPolicy = z.infer<typeof remoteCompactionPolicySchema>;
 
+export const codexIdentityPolicySchema = z.enum(['off', 'device', 'session', 'full']);
+export type CodexIdentityPolicy = z.infer<typeof codexIdentityPolicySchema>;
+
 export const channelPoliciesSchema = z
   .object({
     routingTier: routingTierSchema.nullish(),
@@ -183,6 +186,7 @@ export const channelPoliciesSchema = z
       .boolean()
       .nullish()
       .transform((value) => value ?? true),
+    codexIdentity: codexIdentityPolicySchema.nullish(),
     apiKeyAutoDisableRules: z.array(apiKeyAutoDisableRuleSchema).optional().nullable(),
   })
   .transform((value) => ({
@@ -190,6 +194,7 @@ export const channelPoliciesSchema = z
     routingTier: value.routingTier ?? 'standard',
     remoteCompaction: value.remoteCompaction ?? (value.supportsRemoteCompaction ? 'native' : 'auto'),
     webSearch: value.webSearch ?? (value.supportsWebSearch ? 'native' : 'auto'),
+    codexIdentity: value.codexIdentity ?? 'off',
   }));
 export type ChannelPolicies = z.infer<typeof channelPoliciesSchema>;
 

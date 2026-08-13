@@ -451,6 +451,20 @@ const (
 	RemoteCompactionPolicyLocalBridge RemoteCompactionPolicy = "local_bridge"
 )
 
+type CodexIdentityPolicy string
+
+const (
+	// CodexIdentityPolicyOff preserves every client-provided identity field.
+	CodexIdentityPolicyOff CodexIdentityPolicy = "off"
+	// CodexIdentityPolicyDevice stabilizes only the installation identity.
+	CodexIdentityPolicyDevice CodexIdentityPolicy = "device"
+	// CodexIdentityPolicySession stabilizes installation and session identity
+	// while retaining one deterministic thread per original client session.
+	CodexIdentityPolicySession CodexIdentityPolicy = "session"
+	// CodexIdentityPolicyFull stabilizes installation, session, and thread identity.
+	CodexIdentityPolicyFull CodexIdentityPolicy = "full"
+)
+
 type ChannelPolicies struct {
 	RoutingTier      RoutingTier            `json:"routingTier,omitempty"`
 	Stream           CapabilityPolicy       `json:"stream,omitempty"`
@@ -462,11 +476,23 @@ type ChannelPolicies struct {
 	// SupportsWebSearch is the legacy two-state field. Keep it for stored-data
 	// compatibility; WebSearch takes precedence when explicitly configured.
 	SupportsWebSearch *bool `json:"supportsWebSearch,omitempty"`
+	// CodexIdentity controls OAuth-only normalization of Codex client identity
+	// fields. Empty and unknown values preserve historical pass-through behavior.
+	CodexIdentity CodexIdentityPolicy `json:"codexIdentity,omitempty"`
 
 	// APIKeyAutoDisableRules are the channel's own auto-disable rules. They are
 	// evaluated before the global retry policy and, when one matches, own the
 	// failure outright. Channels without rules fall back to the global policy.
 	APIKeyAutoDisableRules []APIKeyAutoDisableRule `json:"apiKeyAutoDisableRules,omitempty"`
+}
+
+func (p ChannelPolicies) EffectiveCodexIdentityPolicy() CodexIdentityPolicy {
+	switch p.CodexIdentity {
+	case CodexIdentityPolicyDevice, CodexIdentityPolicySession, CodexIdentityPolicyFull:
+		return p.CodexIdentity
+	default:
+		return CodexIdentityPolicyOff
+	}
 }
 
 // EffectiveRoutingTier keeps existing and unknown stored values on the

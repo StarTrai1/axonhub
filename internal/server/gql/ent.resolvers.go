@@ -85,6 +85,9 @@ func (r *channelResolver) Policies(ctx context.Context, obj *ent.Channel) (*obje
 	if obj.Policies.WebSearch == "" {
 		obj.Policies.WebSearch = obj.Policies.EffectiveWebSearchPolicy()
 	}
+	if obj.Policies.CodexIdentity == "" {
+		obj.Policies.CodexIdentity = obj.Policies.EffectiveCodexIdentityPolicy()
+	}
 
 	return &obj.Policies, nil
 }
