@@ -921,6 +921,30 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 			},
 		},
 		{
+			name: "request with null function schema type normalizes object schema",
+			chatReq: &llm.Request{
+				Model:    "gpt-5.6-sol",
+				Messages: []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Run the tool")}}},
+				Tools: []llm.Tool{{
+					Type: "function",
+					Function: llm.Function{
+						Name:       "ping",
+						Parameters: []byte(`{"type":null}`),
+					},
+				}},
+			},
+			expectError: false,
+			validate: func(t *testing.T, result *httpclient.Request, chatReq *llm.Request) {
+				var req Request
+
+				err := json.Unmarshal(result.Body, &req)
+				require.NoError(t, err)
+				require.Len(t, req.Tools, 1)
+				require.Equal(t, "object", req.Tools[0].Parameters["type"])
+				require.Equal(t, map[string]any{}, req.Tools[0].Parameters["properties"])
+			},
+		},
+		{
 			name: "request with reasoning effort and budget - effort takes priority",
 			chatReq: &llm.Request{
 				Model:           "o3",
@@ -1798,4 +1822,25 @@ func TestOutboundTransformer_TransformResponse_WithTestData(t *testing.T) {
 			tt.validate(t, result)
 		})
 	}
+}
+
+func TestOutboundTransformer_TransformResponse_ProtocolFailure(t *testing.T) {
+	transformer, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	result, err := transformer.TransformResponse(t.Context(), &httpclient.Response{
+		StatusCode: http.StatusOK,
+		Body: []byte(`{
+			"id":"resp_failed",
+			"object":"response",
+			"status":"failed",
+			"error":{"type":"server_error","code":"server_error","message":"upstream failed"}
+		}`),
+	})
+	require.Nil(t, result)
+
+	var responseErr *llm.ResponseError
+	require.ErrorAs(t, err, &responseErr)
+	require.Equal(t, http.StatusBadGateway, responseErr.StatusCode)
+	require.Equal(t, "server_error", responseErr.Detail.Code)
 }
