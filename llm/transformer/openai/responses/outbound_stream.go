@@ -612,9 +612,14 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		if s.responseCompleted {
 			return nil
 		}
-		failedResponse := streamEvent.Response != nil && (streamEvent.Response.Error != nil ||
+		explicitResponseError := streamEvent.Response != nil && streamEvent.Response.Error != nil
+		failedResponse := streamEvent.Response != nil && (explicitResponseError ||
 			(streamEvent.Response.Status != nil && *streamEvent.Response.Status == "failed"))
-		if failedResponse && !s.hasGeneratedOutput() {
+		// Only an explicit error object is a transport failure eligible for
+		// failover. Status-only failures are emitted by compatibility providers
+		// even when the response itself remains consumable, so keep mapping those
+		// to finish_reason=error as before.
+		if explicitResponseError && !s.hasGeneratedOutput() {
 			responseErr := responseErrorFromResponse(streamEvent.Response)
 			if responseErr.Detail.RequestID == "" {
 				responseErr.Detail.RequestID = streamEvent.RequestID

@@ -412,7 +412,11 @@ func (t *OutboundTransformer) transformStandardResponse(
 	if err := json.Unmarshal(httpResp.Body, &resp); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal responses api response: %w", err)
 	}
-	if resp.Error != nil || (resp.Status != nil && *resp.Status == "failed") {
+	// A few OpenAI-compatible upstreams return status=failed without an error
+	// object while still carrying usable output. Preserve the historical
+	// finish_reason mapping for those compatibility responses; only an explicit
+	// Responses API error is authoritative enough to fail the request here.
+	if resp.Error != nil {
 		return nil, responseErrorFromResponse(&resp)
 	}
 

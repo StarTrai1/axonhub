@@ -527,7 +527,7 @@ func TestOutboundTransformer_TransformStreamChunk_StreamErrorEvent(t *testing.T)
 
 func TestOutboundTransformer_TransformStreamChunk_RateLimitErrorIsRetryable(t *testing.T) {
 	transformerInterface, err := NewOutboundTransformer("https://api.openai.com/v1", "test-key")
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	transformer := transformerInterface.(*OutboundTransformer)
 	_, err = transformer.TransformStreamChunk(t.Context(), &httpclient.StreamEvent{
@@ -536,8 +536,8 @@ func TestOutboundTransformer_TransformStreamChunk_RateLimitErrorIsRetryable(t *t
 	})
 
 	var responseErr *llm.ResponseError
-	require.ErrorAs(t, err, &responseErr)
-	require.Equal(t, http.StatusTooManyRequests, responseErr.StatusCode)
+	assert.ErrorAs(t, err, &responseErr)
+	assert.Equal(t, http.StatusTooManyRequests, responseErr.StatusCode)
 }
 
 func TestOutboundTransformer_TransformStream_FiltersEmptyChoicesWithoutDroppingUsageChunk(t *testing.T) {
