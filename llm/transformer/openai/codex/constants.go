@@ -29,13 +29,14 @@ func DefaultModels() []string {
 const (
 	defaultImageMainModel = "gpt-5.4-mini"
 
-	AxonHubOriginator = "axonhub"
-	AuthorizeURL      = "https://auth.openai.com/oauth/authorize"
+	AxonHubOriginator   = "axonhub"
+	CodexCLIOriginator  = "codex_cli_rs"
+	AuthorizeURL        = "https://auth.openai.com/oauth/authorize"
 	//nolint:gosec // false alert.
 	TokenURL    = "https://auth.openai.com/oauth/token"
 	ClientID    = "app_EMoamEEZ73f0CkXaXp7hrann"
 	RedirectURI = "http://localhost:1455/auth/callback"
 	Scopes      = "openid profile email offline_access"
 
-	codexDefaultVersion = "0.144.1"
+	codexDefaultVersion = "0.147.0"
 )

@@ -6,9 +6,43 @@ import (
 
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm"
 )
+
+func TestRequestPromptCacheControlsRoundTrip(t *testing.T) {
+	var request Request
+	require.NoError(t, json.Unmarshal([]byte(`{
+		"model":"gpt-5.6",
+		"prompt_cache_options":{"mode":"explicit","ttl":"30m"},
+		"messages":[{"role":"user","content":[
+			{"type":"text","text":"stable prefix","prompt_cache_breakpoint":{"mode":"explicit"}},
+			{"type":"file","file":{"file_id":"file_123","filename":"spec.pdf"},"prompt_cache_breakpoint":{"mode":"explicit"}},
+			{"type":"input_audio","input_audio":{"format":"wav","data":"UklGRg=="},"prompt_cache_breakpoint":{"mode":"explicit"}}
+		]}]
+	}`), &request))
+
+	unified := request.ToLLMRequest()
+	require.NotNil(t, unified.PromptCacheOptions)
+	require.Equal(t, "explicit", unified.PromptCacheOptions.Mode)
+	require.Len(t, unified.Messages, 1)
+	require.Len(t, unified.Messages[0].Content.MultipleContent, 3)
+	require.NotNil(t, unified.Messages[0].Content.MultipleContent[0].PromptCacheBreakpoint)
+	require.NotNil(t, unified.Messages[0].Content.MultipleContent[1].File)
+	require.Equal(t, "file_123", *unified.Messages[0].Content.MultipleContent[1].File.FileID)
+	require.NotNil(t, unified.Messages[0].Content.MultipleContent[2].PromptCacheBreakpoint)
+
+	roundTripped := RequestFromLLM(unified, ReasoningFieldAll)
+	require.NotNil(t, roundTripped.PromptCacheOptions)
+	require.Equal(t, "explicit", roundTripped.PromptCacheOptions.Mode)
+	require.Equal(t, "30m", roundTripped.PromptCacheOptions.TTL)
+
+	body, err := json.Marshal(roundTripped)
+	require.NoError(t, err)
+	require.Contains(t, string(body), `"prompt_cache_breakpoint":{"mode":"explicit"}`)
+	require.Contains(t, string(body), `"file_id":"file_123"`)
+}
 
 // TestToLLMMessage_ReasoningField tests reasoning field conversion from client format to unified format.
 // Both Reasoning and ReasoningContent are preserved and synced.

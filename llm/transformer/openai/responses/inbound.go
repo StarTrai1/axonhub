@@ -183,6 +183,7 @@ func convertToLLMRequest(req *Request, rawBody ...[]byte) (*llm.Request, error) 
 		ServiceTier:         req.ServiceTier,
 		ParallelToolCalls:   req.ParallelToolCalls,
 		PromptCacheKey:      req.PromptCacheKey,
+		PromptCacheOptions:  req.PromptCacheOptions,
 		PreviousResponseID:  req.PreviousResponseID,
 		TransformerMetadata: map[string]any{},
 		TransformOptions:    llm.TransformOptions{},
@@ -549,6 +550,7 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 								URL:    *item.ImageURL,
 								Detail: item.Detail,
 							},
+							PromptCacheBreakpoint: item.PromptCacheBreakpoint,
 						},
 					},
 				},
@@ -556,6 +558,22 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 		}
 
 		return nil, nil
+	case "input_file":
+		return &llm.Message{
+			Role: lo.Ternary(item.Role != "", item.Role, "user"),
+			Content: llm.MessageContent{MultipleContent: []llm.MessageContentPart{{
+				ID:   item.ID,
+				Type: "file",
+				File: &llm.FileContent{
+					FileID:   item.FileID,
+					FileData: item.FileData,
+					FileURL:  item.FileURL,
+					Filename: item.Filename,
+					Detail:   item.Detail,
+				},
+				PromptCacheBreakpoint: item.PromptCacheBreakpoint,
+			}}},
+		}, nil
 
 	case "function_call":
 		// Function call from assistant - convert to tool call
@@ -645,7 +663,10 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 func convertToMessageContent(content Input) llm.MessageContent {
 	items := convertToMessageContentParts(content)
 	// If only one text item, return simple Content
-	if len(items) == 1 && (items[0].Type == "text" || items[0].Type == "input_text") && items[0].Text != nil {
+	if len(items) == 1 &&
+		(items[0].Type == "text" || items[0].Type == "input_text") &&
+		items[0].Text != nil &&
+		items[0].PromptCacheBreakpoint == nil {
 		return llm.MessageContent{
 			Content: items[0].Text,
 		}
@@ -717,9 +738,10 @@ func convertContentItemToPart(item *Item) (*llm.MessageContentPart, error) {
 	case "input_text", "text", "output_text":
 		if item.Text != nil {
 			return &llm.MessageContentPart{
-				ID:   item.ID,
-				Type: "text",
-				Text: item.Text,
+				ID:                    item.ID,
+				Type:                  "text",
+				Text:                  item.Text,
+				PromptCacheBreakpoint: item.PromptCacheBreakpoint,
 			}, nil
 		}
 
@@ -734,10 +756,25 @@ func convertContentItemToPart(item *Item) (*llm.MessageContentPart, error) {
 					URL:    *item.ImageURL,
 					Detail: item.Detail,
 				},
+				PromptCacheBreakpoint: item.PromptCacheBreakpoint,
 			}, nil
 		}
 
 		return nil, nil
+
+	case "input_file":
+		return &llm.MessageContentPart{
+			ID:   item.ID,
+			Type: "file",
+			File: &llm.FileContent{
+				FileID:   item.FileID,
+				FileData: item.FileData,
+				FileURL:  item.FileURL,
+				Filename: item.Filename,
+				Detail:   item.Detail,
+			},
+			PromptCacheBreakpoint: item.PromptCacheBreakpoint,
+		}, nil
 
 	case "compaction", "compaction_summary":
 		return compactionContentPartFromItem(item, item.Type), nil

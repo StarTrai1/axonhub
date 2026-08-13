@@ -163,16 +163,30 @@ func convertUserMessage(msg llm.Message) Item {
 			case "text":
 				if p.Text != nil {
 					contentItems = append(contentItems, Item{
-						Type: "input_text",
-						Text: p.Text,
+						Type:                  "input_text",
+						Text:                  p.Text,
+						PromptCacheBreakpoint: p.PromptCacheBreakpoint,
 					})
 				}
 			case "image_url":
 				if p.ImageURL != nil {
 					contentItems = append(contentItems, Item{
-						Type:     "input_image",
-						ImageURL: &p.ImageURL.URL,
-						Detail:   p.ImageURL.Detail,
+						Type:                  "input_image",
+						ImageURL:              &p.ImageURL.URL,
+						Detail:                p.ImageURL.Detail,
+						PromptCacheBreakpoint: p.PromptCacheBreakpoint,
+					})
+				}
+			case "file", "input_file":
+				if p.File != nil {
+					contentItems = append(contentItems, Item{
+						Type:                  "input_file",
+						FileID:                p.File.FileID,
+						FileData:              p.File.FileData,
+						FileURL:               p.File.FileURL,
+						Filename:              p.File.Filename,
+						Detail:                p.File.Detail,
+						PromptCacheBreakpoint: p.PromptCacheBreakpoint,
 					})
 				}
 			case "compaction", "compaction_summary":
@@ -334,6 +348,17 @@ func convertToolMessageWithType(msg llm.Message, itemType string) Item {
 						Type:     "input_image",
 						ImageURL: &p.ImageURL.URL,
 						Detail:   lo.ToPtr(lo.FromPtrOr(p.ImageURL.Detail, "auto")),
+					})
+				}
+			case "file", "input_file":
+				if p.File != nil {
+					output.Items = append(output.Items, Item{
+						Type:     "input_file",
+						FileID:   p.File.FileID,
+						FileData: p.File.FileData,
+						FileURL:  p.File.FileURL,
+						Filename: p.File.Filename,
+						Detail:   p.File.Detail,
 					})
 				}
 			}

@@ -268,6 +268,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		StreamOptions:        convertStreamOptions(llmReq.StreamOptions, llmReq.TransformerMetadata),
 		Reasoning:            convertReasoning(llmReq),
 		PromptCacheKey:       llmReq.PromptCacheKey,
+		PromptCacheOptions:   llmReq.PromptCacheOptions,
 		PreviousResponseID:   llmReq.PreviousResponseID,
 		Include:              xmap.GetStringSlice(llmReq.TransformerMetadata, "include"),
 		MaxToolCalls:         xmap.GetInt64Ptr(llmReq.TransformerMetadata, "max_tool_calls"),

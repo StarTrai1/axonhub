@@ -89,15 +89,26 @@ func (t *SearchOutboundTransformer) TransformRequest(
 	if llmReq != nil && llmReq.RawRequest != nil {
 		rawHeaders = llmReq.RawRequest.Headers
 	}
+	identityVersion := rawHeaders.Get("Version")
+	if identityVersion == "" {
+		identityVersion, _ = codexVersionFromUserAgent(rawHeaders.Get("User-Agent"))
+	}
+	if identityVersion == "" {
+		identityVersion = currentCodexVersion()
+	}
 
 	if originator := rawHeaders.Get("Originator"); originator != "" {
 		hreq.Headers.Set("Originator", originator)
+		if userAgent := rawHeaders.Get("User-Agent"); userAgent != "" {
+			hreq.Headers.Set("User-Agent", userAgent)
+		} else {
+			hreq.Headers.Set("User-Agent", codexUserAgent(identityVersion))
+		}
 	} else {
-		hreq.Headers.Set("Originator", AxonHubOriginator)
+		hreq.Headers.Set("Originator", CodexCLIOriginator)
+		hreq.Headers.Set("User-Agent", codexUserAgent(identityVersion))
 	}
-	if userAgent := rawHeaders.Get("User-Agent"); userAgent != "" {
-		hreq.Headers.Set("User-Agent", userAgent)
-	}
+	hreq.Headers.Set("Version", identityVersion)
 	for _, header := range PassthroughHeaders {
 		if value := rawHeaders.Get(header); value != "" {
 			hreq.Headers.Set(header, value)

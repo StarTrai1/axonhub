@@ -25,6 +25,7 @@ func RequestFromLLM(r *llm.Request, reasoningField ReasoningField) *Request {
 		TopLogprobs:         r.TopLogprobs,
 		TopP:                r.TopP,
 		PromptCacheKey:      r.PromptCacheKey,
+		PromptCacheOptions:  r.PromptCacheOptions,
 		SafetyIdentifier:    r.SafetyIdentifier,
 		User:                r.User,
 		LogitBias:           r.LogitBias,
@@ -247,8 +248,9 @@ func MessageContentFromLLM(c llm.MessageContent) MessageContent {
 // MessageContentPartFromLLM creates OpenAI MessageContentPart from unified llm.MessageContentPart.
 func MessageContentPartFromLLM(p llm.MessageContentPart) MessageContentPart {
 	part := MessageContentPart{
-		Type: normalizeContentPartType(p.Type),
-		Text: p.Text,
+		Type:                  normalizeContentPartType(p.Type),
+		Text:                  p.Text,
+		PromptCacheBreakpoint: p.PromptCacheBreakpoint,
 	}
 
 	if p.ImageURL != nil {
@@ -261,6 +263,14 @@ func MessageContentPartFromLLM(p llm.MessageContentPart) MessageContentPart {
 	if p.VideoURL != nil {
 		part.VideoURL = &VideoURL{
 			URL: p.VideoURL.URL,
+		}
+	}
+
+	if p.File != nil {
+		part.File = &FileContent{
+			FileID:   p.File.FileID,
+			FileData: p.File.FileData,
+			Filename: p.File.Filename,
 		}
 	}
 
@@ -283,6 +293,8 @@ func normalizeContentPartType(partType string) string {
 	switch partType {
 	case "input_text", "output_text":
 		return "text"
+	case "input_file":
+		return "file"
 	default:
 		return partType
 	}

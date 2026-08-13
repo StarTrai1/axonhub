@@ -365,6 +365,56 @@ func TestPipeline_Process_StreamEmptyResponseDetection(t *testing.T) {
 		require.True(t, res.Stream)
 		require.Equal(t, 1, streamCalls)
 	})
+
+	t.Run("retries protocol empty completion when generic detection is disabled", func(t *testing.T) {
+		streamCalls := 0
+		executor := &mockExecutor{
+			doStream: func(ctx context.Context, req *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
+				streamCalls++
+				return streams.SliceStream([]*httpclient.StreamEvent{{}}), nil
+			},
+		}
+
+		prepareCalls := 0
+		outbound := &mockOutbound{
+			transformStream: func(ctx context.Context, req *httpclient.Request, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
+				if streamCalls == 1 {
+					return streams.SliceStream([]*llm.Response{{
+						Choices:                  []llm.Choice{{FinishReason: lo.ToPtr("stop")}},
+						EmptyCompletionCandidate: true,
+					}}), nil
+				}
+
+				return streams.SliceStream([]*llm.Response{
+					{Choices: []llm.Choice{{Delta: &llm.Message{
+						Content: llm.MessageContent{Content: lo.ToPtr("ok")},
+					}}}},
+					llm.DoneResponse,
+				}), nil
+			},
+			canRetry: func(err error) bool { return errors.Is(err, ErrEmptyResponse) },
+			prepareForRetry: func(ctx context.Context) error {
+				prepareCalls++
+				return nil
+			},
+		}
+
+		streamFlag := true
+		p := &pipeline{
+			Executor: executor,
+			Inbound: &mockInbound{transformRequest: func(ctx context.Context, req *httpclient.Request) (*llm.Request, error) {
+				return &llm.Request{Stream: &streamFlag}, nil
+			}},
+			Outbound:              outbound,
+			maxSameChannelRetries: 1,
+		}
+
+		result, err := p.Process(ctx, &httpclient.Request{})
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		require.Equal(t, 2, streamCalls)
+		require.Equal(t, 1, prepareCalls)
+	})
 }
 
 func TestPipeline_Process_NonStreamEmptyResponseDetection(t *testing.T) {

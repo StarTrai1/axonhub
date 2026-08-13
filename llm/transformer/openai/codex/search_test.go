@@ -3,6 +3,7 @@ package codex
 import (
 	"context"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -66,7 +67,8 @@ func TestCodexSearchOutboundSupportsPlainAPIKeyProvider(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "https://sub.example.test/v1/alpha/search", req.URL)
 	require.Equal(t, "third-party-key", req.Auth.APIKey)
-	require.Equal(t, AxonHubOriginator, req.Headers.Get("Originator"))
+	require.Equal(t, CodexCLIOriginator, req.Headers.Get("Originator"))
+	require.True(t, strings.HasPrefix(req.Headers.Get("User-Agent"), CodexCLIOriginator+"/"))
 	_, customized := any(outbound).(pipeline.ChannelCustomizedExecutor)
 	require.True(t, customized)
 }

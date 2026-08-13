@@ -222,7 +222,8 @@ func (p *pipeline) preReadLlmStream(
 		// terminal events as new *llm.Response (e.g. OpenAI TTS binary streams) must
 		// still trigger empty-response handling when no audio chunks were produced.
 		if isTerminalLlmStreamEvent(event) {
-			if !p.emptyResponseDetection {
+			protocolEmptyCompletion := event != nil && event.EmptyCompletionCandidate && p.hasStreamRetryBudget()
+			if !p.emptyResponseDetection && !protocolEmptyCompletion {
 				return streams.PrependStream(llmStream, buffered...), nil
 			}
 

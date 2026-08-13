@@ -24,9 +24,17 @@ import (
 // from pathological upstream responses that echo large request payloads in
 // validation error messages, producing response bodies of 1+ GB.
 const (
-	MaxErrorBodySize          = 1 << 20 // 1 MB
-	maxIdleConnsPerHost       = 100
+	MaxErrorBodySize       = 1 << 20 // 1 MB
+	maxIdleConnsPerHost    = 100
+	upstreamConnectTimeout = 10 * time.Second
 )
+
+func newUpstreamDialer() *net.Dialer {
+	return &net.Dialer{
+		Timeout:   upstreamConnectTimeout,
+		KeepAlive: 30 * time.Second,
+	}
+}
 
 // HttpClient implements the HttpClient interface.
 type HttpClient struct {
@@ -60,12 +68,9 @@ func NewHttpClientWithProxy(proxyConfig *ProxyConfig, opts ...ClientOption) *Htt
 		proxyConfig.DisableConnectionReuse
 
 	transport := &http.Transport{
-		Proxy:             getProxyFunc(proxyConfig),
-		DisableKeepAlives: disableConnectionReuse,
-		DialContext: (&net.Dialer{
-			Timeout:   30 * time.Second,
-			KeepAlive: 30 * time.Second,
-		}).DialContext,
+		Proxy:               getProxyFunc(proxyConfig),
+		DisableKeepAlives:   disableConnectionReuse,
+		DialContext:         newUpstreamDialer().DialContext,
 		ForceAttemptHTTP2:     !disableConnectionReuse,
 		MaxIdleConns:          100,
 		MaxIdleConnsPerHost:   maxIdleConnsPerHost,
@@ -174,10 +179,7 @@ func NewHttpClient(opts ...ClientOption) *HttpClient {
 		// Fall back to a transport close to http.DefaultTransport when it has been replaced.
 		transport = &http.Transport{
 			Proxy: getProxyFunc(nil),
-			DialContext: (&net.Dialer{
-				Timeout:   30 * time.Second,
-				KeepAlive: 30 * time.Second,
-			}).DialContext,
+			DialContext:         newUpstreamDialer().DialContext,
 			ForceAttemptHTTP2:     true,
 			MaxIdleConns:          100,
 			IdleConnTimeout:       90 * time.Second,
@@ -185,6 +187,7 @@ func NewHttpClient(opts ...ClientOption) *HttpClient {
 			ExpectContinueTimeout: 1 * time.Second,
 		}
 	}
+	transport.DialContext = newUpstreamDialer().DialContext
 	transport.MaxIdleConnsPerHost = maxIdleConnsPerHost
 
 	if options.insecureSkipVerify {

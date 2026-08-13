@@ -451,8 +451,28 @@ func TestOutboundTransformer_TransformStream_StopsAtTerminalEvent(t *testing.T) 
 	require.NoError(t, err)
 	require.NotEmpty(t, responses)
 	require.Equal(t, llm.DoneResponse, responses[len(responses)-1])
+	require.True(t, responses[len(responses)-2].EmptyCompletionCandidate)
 	require.False(t, source.readPastTerminal)
 	require.True(t, source.closed)
+}
+
+func TestOutboundTransformer_TransformStream_EmptyCompletedWithUsageIsRetryCandidate(t *testing.T) {
+	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	events := []*httpclient.StreamEvent{
+		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_empty","object":"response","created_at":1700000000,"model":"gpt-5.6","status":"in_progress","output":[]}}`)},
+		{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":{"id":"resp_empty","object":"response","created_at":1700000000,"model":"gpt-5.6","status":"completed","output":[],"usage":{"input_tokens":100,"output_tokens":0,"total_tokens":100}}}`)},
+	}
+
+	stream, err := trans.TransformStream(t.Context(), nil, streams.SliceStream(events))
+	require.NoError(t, err)
+	transformed, err := streams.All(stream)
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, len(transformed), 3)
+	require.True(t, transformed[len(transformed)-3].EmptyCompletionCandidate)
+	require.NotNil(t, transformed[len(transformed)-2].Usage)
+	require.Equal(t, llm.DoneResponse, transformed[len(transformed)-1])
 }
 
 type terminalGuardStream struct {

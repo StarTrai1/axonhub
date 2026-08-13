@@ -1223,6 +1223,90 @@ func TestOutboundTransformer_TransformRequest_UsesSharedSessionIDAsPromptCacheKe
 	require.Equal(t, "shared-session-123-"+conversationAnchor(req.Messages), *payload.PromptCacheKey)
 }
 
+func TestOutboundTransformer_TransformRequest_PreservesPromptCacheControls(t *testing.T) {
+	transformer, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	text := "stable prefix"
+	httpReq, err := transformer.TransformRequest(t.Context(), &llm.Request{
+		Model: "gpt-5.6",
+		PromptCacheOptions: &llm.PromptCacheOptions{
+			Mode: "explicit",
+			TTL:  "30m",
+		},
+		Messages: []llm.Message{{
+			Role: "user",
+			Content: llm.MessageContent{MultipleContent: []llm.MessageContentPart{{
+				Type: "text",
+				Text: &text,
+				PromptCacheBreakpoint: &llm.PromptCacheBreakpoint{
+					Mode: "explicit",
+				},
+			}}},
+		}},
+	})
+	require.NoError(t, err)
+
+	var payload Request
+	require.NoError(t, json.Unmarshal(httpReq.Body, &payload))
+	require.NotNil(t, payload.PromptCacheOptions)
+	require.Equal(t, "explicit", payload.PromptCacheOptions.Mode)
+	require.Equal(t, "30m", payload.PromptCacheOptions.TTL)
+	require.Len(t, payload.Input.Items, 1)
+	require.NotNil(t, payload.Input.Items[0].Content)
+	require.Len(t, payload.Input.Items[0].Content.Items, 1)
+	require.NotNil(t, payload.Input.Items[0].Content.Items[0].PromptCacheBreakpoint)
+	require.Equal(t, "explicit", payload.Input.Items[0].Content.Items[0].PromptCacheBreakpoint.Mode)
+}
+
+func TestResponsesPromptCacheControlsRoundTrip(t *testing.T) {
+	inbound := NewInboundTransformer()
+	llmReq, err := inbound.TransformRequest(t.Context(), &httpclient.Request{Body: []byte(`{
+		"model":"gpt-5.6",
+		"prompt_cache_key":"tenant:acme:v1",
+		"prompt_cache_options":{"mode":"explicit","ttl":"30m"},
+		"input":[{"type":"message","role":"user","content":[
+			{"type":"input_text","text":"stable prefix","prompt_cache_breakpoint":{"mode":"explicit"}},
+			{"type":"input_file","file_url":"https://example.com/spec.pdf","filename":"spec.pdf","detail":"low","prompt_cache_breakpoint":{"mode":"explicit"}}
+		]}]
+	}`)})
+	require.NoError(t, err)
+	require.NotNil(t, llmReq.PromptCacheOptions)
+	require.Len(t, llmReq.Messages, 1)
+	require.Len(t, llmReq.Messages[0].Content.MultipleContent, 2)
+	require.NotNil(t, llmReq.Messages[0].Content.MultipleContent[0].PromptCacheBreakpoint)
+	require.NotNil(t, llmReq.Messages[0].Content.MultipleContent[1].File)
+	require.Equal(t, "https://example.com/spec.pdf", *llmReq.Messages[0].Content.MultipleContent[1].File.FileURL)
+
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+	httpReq, err := outbound.TransformRequest(t.Context(), llmReq)
+	require.NoError(t, err)
+
+	var payload map[string]any
+	require.NoError(t, json.Unmarshal(httpReq.Body, &payload))
+	options, ok := payload["prompt_cache_options"].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "explicit", options["mode"])
+	require.Equal(t, "30m", options["ttl"])
+	input, ok := payload["input"].([]any)
+	require.True(t, ok)
+	message, ok := input[0].(map[string]any)
+	require.True(t, ok)
+	content, ok := message["content"].([]any)
+	require.True(t, ok)
+	part, ok := content[0].(map[string]any)
+	require.True(t, ok)
+	breakpoint, ok := part["prompt_cache_breakpoint"].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "explicit", breakpoint["mode"])
+	filePart, ok := content[1].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "input_file", filePart["type"])
+	require.Equal(t, "https://example.com/spec.pdf", filePart["file_url"])
+	require.Equal(t, "low", filePart["detail"])
+}
+
 func TestOutboundTransformer_TransformRequest_PromptCacheKeyScopedPerConversation(t *testing.T) {
 	transformer, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
 	require.NoError(t, err)

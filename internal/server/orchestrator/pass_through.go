@@ -11,6 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 
 	"github.com/looplj/axonhub/internal/ent/channel"
@@ -185,6 +186,29 @@ func applyPassThroughRequestHeaders(outbound *PersistentOutboundTransformer) pip
 	})
 }
 
+// stripUnsupportedCodexPromptCacheOptions runs after pass-through and channel
+// body overrides so ChatGPT's private Codex endpoint never receives the public
+// GPT-5.6 prompt_cache_options field those paths may reintroduce.
+func stripUnsupportedCodexPromptCacheOptions(outbound *PersistentOutboundTransformer) pipeline.Middleware {
+	return pipeline.OnRawRequest("strip-codex-prompt-cache-options", func(_ context.Context, request *httpclient.Request) (*httpclient.Request, error) {
+		currentChannel := outbound.GetCurrentChannel()
+		if currentChannel == nil || currentChannel.Channel == nil || currentChannel.Channel.Type != channel.TypeCodex {
+			return request, nil
+		}
+		if !gjson.GetBytes(request.Body, "prompt_cache_options").Exists() {
+			return request, nil
+		}
+
+		body, err := sjson.DeleteBytes(request.Body, "prompt_cache_options")
+		if err != nil {
+			return nil, fmt.Errorf("strip unsupported Codex prompt_cache_options: %w", err)
+		}
+		request.Body = body
+
+		return request, nil
+	})
+}
+
 func mergePassThroughRequestBody(rawBody []byte, apiFormat llm.APIFormat, model string) ([]byte, error) {
 	body := append([]byte(nil), rawBody...)
 
@@ -243,14 +267,14 @@ func passThroughBodyNeedsModelPatch(apiFormat llm.APIFormat) bool {
 // applyUserAgentPassThrough creates a middleware that applies the User-Agent pass-through setting.
 func applyUserAgentPassThrough(outbound *PersistentOutboundTransformer, systemService *biz.SystemService) pipeline.Middleware {
 	return pipeline.OnRawRequest("user-agent-pass-through", func(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error) {
-		channel := outbound.GetCurrentChannel()
-		if channel == nil {
+		currentChannel := outbound.GetCurrentChannel()
+		if currentChannel == nil {
 			return request, nil
 		}
 
 		var passThroughEnabled bool
-		if channel.Settings != nil && channel.Settings.PassThroughUserAgent != nil {
-			passThroughEnabled = *channel.Settings.PassThroughUserAgent
+		if currentChannel.Settings != nil && currentChannel.Settings.PassThroughUserAgent != nil {
+			passThroughEnabled = *currentChannel.Settings.PassThroughUserAgent
 		} else {
 			globalPassThrough, err := systemService.UserAgentPassThrough(ctx)
 			if err != nil {
@@ -272,6 +296,7 @@ func applyUserAgentPassThrough(outbound *PersistentOutboundTransformer, systemSe
 		if outbound.state.LlmRequest != nil && outbound.state.LlmRequest.RawRequest != nil {
 			channelTestRequest = outbound.state.LlmRequest.RawRequest.Metadata[channelTestRequestMetadataKey] == "true"
 		}
+		codexChannel := currentChannel.Channel != nil && currentChannel.Channel.Type == channel.TypeCodex
 
 		if passThroughEnabled || channelTestRequest {
 			// Use the original client identity for pass-through and trusted internal channel tests.
@@ -280,7 +305,12 @@ func applyUserAgentPassThrough(outbound *PersistentOutboundTransformer, systemSe
 					request.Headers.Set("User-Agent", clientUA)
 				}
 			}
-		} else {
+		} else if codexChannel && request.Headers.Get("Originator") == "codex_cli_rs" && request.Headers.Get("Version") != "" {
+			// MergeInboundRequest runs before this middleware and may have restored
+			// a generic client User-Agent. Keep the synthesized private-endpoint
+			// identity coherent when no explicit identity pass-through was requested.
+			request.Headers.Set("User-Agent", "codex_cli_rs/"+request.Headers.Get("Version"))
+		} else if !codexChannel || request.Headers.Get("User-Agent") == "" {
 			// Pass-through disabled: use AxonHub's default User-Agent
 			request.Headers.Set("User-Agent", "axonhub/1.0")
 		}

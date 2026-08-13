@@ -107,6 +107,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	rawSessionID := ""
 	rawOriginator := ""
 	rawUserAgent := ""
+	rawVersion := ""
 	rawTurnMetadata := ""
 	responsesLite := false
 
@@ -122,6 +123,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		llmReq.RawRequest.Headers.Del(SessionHeader)
 		rawOriginator = llmReq.RawRequest.Headers.Get("Originator")
 		rawUserAgent = llmReq.RawRequest.Headers.Get("User-Agent")
+		rawVersion = llmReq.RawRequest.Headers.Get("Version")
 		rawTurnMetadata = llmReq.RawRequest.Headers.Get(TurnMetadataHeader)
 		responsesLite = strings.EqualFold(
 			strings.TrimSpace(llmReq.RawRequest.Headers.Get(responses.ResponsesLiteHeader)),
@@ -140,6 +142,9 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	// Clone request so we do not mutate upstream pipeline state.
 	reqCopy := *llmReq
 	reqCopy.ProviderExtensions = llm.CloneProviderExtensions(llmReq.ProviderExtensions)
+	// ChatGPT's private Codex endpoint rejects the public GPT-5.6
+	// prompt_cache_options request field. Standard Responses channels retain it.
+	reqCopy.PromptCacheOptions = nil
 	originalRequestType := reqCopy.RequestType
 	originalAPIFormat := reqCopy.APIFormat
 	isImageRequest := originalRequestType == llm.RequestTypeImage
@@ -231,15 +236,27 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	}
 
 	hreq.Headers.Del("User-Agent")
+	identityVersion := rawVersion
+	if identityVersion == "" {
+		identityVersion, _ = codexVersionFromUserAgent(rawUserAgent)
+	}
+	if identityVersion == "" {
+		identityVersion = currentCodexVersion()
+	}
 
 	if rawOriginator != "" {
 		hreq.Headers.Set("Originator", rawOriginator)
+		if rawUserAgent != "" {
+			hreq.Headers.Set("User-Agent", rawUserAgent)
+		} else {
+			hreq.Headers.Set("User-Agent", codexUserAgent(identityVersion))
+		}
 	} else {
-		hreq.Headers.Set("Originator", AxonHubOriginator)
-	}
-
-	if rawUserAgent != "" {
-		hreq.Headers.Set("User-Agent", rawUserAgent)
+		// Requests not produced by Codex still need a coherent first-party
+		// identity for ChatGPT's private Codex endpoint. Real Codex identity
+		// headers above always win.
+		hreq.Headers.Set("Originator", CodexCLIOriginator)
+		hreq.Headers.Set("User-Agent", codexUserAgent(identityVersion))
 	}
 
 	for _, header := range PassthroughHeaders {
@@ -271,7 +288,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	}
 
 	if hreq.Headers.Get("Version") == "" {
-		hreq.Headers.Set("Version", codexDefaultVersion)
+		hreq.Headers.Set("Version", identityVersion)
 	}
 
 	return hreq, nil

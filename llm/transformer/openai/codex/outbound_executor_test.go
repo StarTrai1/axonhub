@@ -66,8 +66,8 @@ func TestCodexOutbound_StreamAcceptHeader(t *testing.T) {
 
 	assert.Equal(t, "text/event-stream", headers.Get("Accept"))
 	assert.Equal(t, "application/json", headers.Get("Content-Type"))
-	assert.Equal(t, AxonHubOriginator, headers.Get("Originator"))
-	assert.Equal(t, "axonhub/1.0", headers.Get("User-Agent"))
+	assert.Equal(t, CodexCLIOriginator, headers.Get("Originator"))
+	assert.True(t, strings.HasPrefix(headers.Get("User-Agent"), CodexCLIOriginator+"/"))
 	assert.Equal(t, testChatAccountID, headers.Get("Chatgpt-Account-Id"))
 	assert.Equal(t, "Bearer "+accessToken, headers.Get("Authorization"))
 }
@@ -398,6 +398,28 @@ func TestCodexOutbound_DoesNotInjectCLIInstructions(t *testing.T) {
 	assert.NotContains(t, string(hreq.Body), "You are a coding agent running in the Codex CLI")
 	assert.NotContains(t, string(hreq.Body), "You are Codex")
 	assert.Equal(t, false, body["store"])
+}
+
+func TestCodexOutbound_StripsUnsupportedPromptCacheOptions(t *testing.T) {
+	outbound := newTestCodexOutbound(t)
+
+	hreq, err := outbound.TransformRequest(t.Context(), &llm.Request{
+		Model: "gpt-5.6-sol",
+		Messages: []llm.Message{{
+			Role:    "user",
+			Content: llm.MessageContent{Content: lo.ToPtr("Hello")},
+		}},
+		PromptCacheOptions: &llm.PromptCacheOptions{Mode: "explicit"},
+		RawRequest: &httpclient.Request{Headers: http.Header{
+			"Originator": []string{CodexCLIOriginator},
+			"User-Agent": []string{CodexCLIOriginator + "/0.147.0"},
+			"Version":    []string{"0.147.0"},
+		}},
+	})
+	require.NoError(t, err)
+
+	body := decodeCodexRequestBody(t, hreq)
+	assert.NotContains(t, body, "prompt_cache_options")
 }
 
 func TestCodexOutbound_PreservesMinimalCompatTransforms(t *testing.T) {

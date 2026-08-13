@@ -156,6 +156,7 @@ func buildImageToolRequest(src *llm.Request) (*llm.Request, error) {
 		ServiceTier:         src.ServiceTier,
 		SafetyIdentifier:    src.SafetyIdentifier,
 		PromptCacheKey:      src.PromptCacheKey,
+		PromptCacheOptions:  src.PromptCacheOptions,
 		Metadata:            src.Metadata,
 	}, nil
 }

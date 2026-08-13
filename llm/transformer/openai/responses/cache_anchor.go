@@ -66,6 +66,12 @@ func conversationAnchor(messages []llm.Message) string {
 			case part.Document != nil:
 				writeUnit(part.Document.MIMEType)
 				writeUnit(part.Document.URL)
+			case part.File != nil:
+				writeOptionalUnit(part.File.FileID, writeUnit)
+				writeOptionalUnit(part.File.FileData, writeUnit)
+				writeOptionalUnit(part.File.FileURL, writeUnit)
+				writeOptionalUnit(part.File.Filename, writeUnit)
+				writeOptionalUnit(part.File.Detail, writeUnit)
 			case part.InputAudio != nil:
 				writeUnit(part.InputAudio.Format)
 				writeUnit(part.InputAudio.Data)
@@ -92,4 +98,10 @@ func conversationAnchor(messages []llm.Message) string {
 	}
 
 	return hex.EncodeToString(h.Sum(nil))[:16]
+}
+
+func writeOptionalUnit(value *string, writeUnit func(string)) {
+	if value != nil {
+		writeUnit(*value)
+	}
 }

@@ -136,6 +136,9 @@ type Request struct {
 	// Used by OpenAI to cache responses for similar requests.
 	PromptCacheKey *string `json:"prompt_cache_key,omitempty"`
 
+	// Controls GPT-5.6+ implicit and explicit prompt-cache breakpoints.
+	PromptCacheOptions *llm.PromptCacheOptions `json:"prompt_cache_options,omitempty"`
+
 	// The retention policy for the prompt cache. Any of "in-memory", "24h".
 	PromptCacheRetention *string `json:"prompt_cache_retention,omitempty"`
 
@@ -548,8 +551,17 @@ type Item struct {
 	// The detail of the image. high, low, or auto, for input_image type.
 	Detail *string `json:"detail,omitempty"`
 
+	// File input fields, for input_file type.
+	FileID   *string `json:"file_id,omitempty"`
+	FileData *string `json:"file_data,omitempty"`
+	FileURL  *string `json:"file_url,omitempty"`
+	Filename *string `json:"filename,omitempty"`
+
 	// Text for output_text/input_text type.
 	Text *string `json:"text,omitempty"`
+
+	// Marks the end of a reusable GPT-5.6+ prompt prefix.
+	PromptCacheBreakpoint *llm.PromptCacheBreakpoint `json:"prompt_cache_breakpoint,omitempty"`
 
 	// Image generation fields
 

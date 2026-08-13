@@ -2294,6 +2294,52 @@ func TestApplyUserAgentPassThrough_NoChannel(t *testing.T) {
 	require.NotNil(t, processedRequest)
 }
 
+func TestApplyUserAgentPassThrough_PreservesCanonicalCodexIdentity(t *testing.T) {
+	ctx, client := setupTest(t)
+	systemService := newTestSystemService(client)
+	require.NoError(t, systemService.SetUserAgentPassThrough(ctx, false))
+
+	outbound := &PersistentOutboundTransformer{
+		wrapped: &mockTransformer{},
+		state: &PersistenceState{
+			CurrentCandidate: &ChannelModelsCandidate{Channel: &biz.Channel{Channel: &ent.Channel{
+				ID:       1,
+				Name:     "codex",
+				Type:     channel.TypeCodex,
+				Settings: &objects.ChannelSettings{PassThroughUserAgent: lo.ToPtr(false)},
+			}}},
+			LlmRequest: &llm.Request{RawRequest: &httpclient.Request{
+				Headers:  make(http.Header),
+				Metadata: make(map[string]string),
+			}},
+		},
+	}
+	request := &httpclient.Request{Headers: http.Header{
+		"Originator": []string{"codex_cli_rs"},
+		"User-Agent": []string{"generic-client/1.0"},
+		"Version":    []string{"0.147.0"},
+	}}
+
+	processed, err := applyUserAgentPassThrough(outbound, systemService).OnOutboundRawRequest(ctx, request)
+	require.NoError(t, err)
+	require.Equal(t, "codex_cli_rs/0.147.0", processed.Headers.Get("User-Agent"))
+}
+
+func TestStripUnsupportedCodexPromptCacheOptionsAfterPassThrough(t *testing.T) {
+	outbound := &PersistentOutboundTransformer{state: &PersistenceState{
+		CurrentCandidate: &ChannelModelsCandidate{Channel: &biz.Channel{Channel: &ent.Channel{
+			ID:   1,
+			Name: "codex",
+			Type: channel.TypeCodex,
+		}}},
+	}}
+	request := &httpclient.Request{Body: []byte(`{"model":"gpt-5.6-sol","prompt_cache_options":{"mode":"explicit","ttl":"30m"},"input":"hello"}`)}
+
+	processed, err := stripUnsupportedCodexPromptCacheOptions(outbound).OnOutboundRawRequest(t.Context(), request)
+	require.NoError(t, err)
+	require.JSONEq(t, `{"model":"gpt-5.6-sol","input":"hello"}`, string(processed.Body))
+}
+
 func TestApplyPassThroughBodySkipsMultipartFormats(t *testing.T) {
 	ctx := context.Background()
 

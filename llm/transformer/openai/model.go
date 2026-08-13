@@ -52,6 +52,9 @@ type Request struct {
 	// PromptCacheKey is used by OpenAI to cache responses.
 	PromptCacheKey *string `json:"prompt_cache_key,omitzero"`
 
+	// PromptCacheOptions controls GPT-5.6+ implicit and explicit cache breakpoints.
+	PromptCacheOptions *llm.PromptCacheOptions `json:"prompt_cache_options,omitempty"`
+
 	// SafetyIdentifier identifies users for abuse detection.
 	SafetyIdentifier *string `json:"safety_identifier,omitzero"`
 
@@ -216,7 +219,9 @@ type MessageContent struct {
 
 func (c MessageContent) MarshalJSON() ([]byte, error) {
 	if len(c.MultipleContent) > 0 {
-		if len(c.MultipleContent) == 1 && c.MultipleContent[0].Type == "text" {
+		if len(c.MultipleContent) == 1 &&
+			c.MultipleContent[0].Type == "text" &&
+			c.MultipleContent[0].PromptCacheBreakpoint == nil {
 			return json.Marshal(c.MultipleContent[0].Text)
 		}
 
@@ -259,11 +264,13 @@ func (c *MessageContent) UnmarshalJSON(data []byte) error {
 
 // MessageContentPart represents different types of content (text, image, video, etc.)
 type MessageContentPart struct {
-	Type       string      `json:"type"`
-	Text       *string     `json:"text,omitempty"`
-	ImageURL   *ImageURL   `json:"image_url,omitempty"`
-	VideoURL   *VideoURL   `json:"video_url,omitempty"`
-	InputAudio *InputAudio `json:"input_audio,omitempty"`
+	Type                  string                     `json:"type"`
+	Text                  *string                    `json:"text,omitempty"`
+	ImageURL              *ImageURL                  `json:"image_url,omitempty"`
+	VideoURL              *VideoURL                  `json:"video_url,omitempty"`
+	File                  *FileContent               `json:"file,omitempty"`
+	InputAudio            *InputAudio                `json:"input_audio,omitempty"`
+	PromptCacheBreakpoint *llm.PromptCacheBreakpoint `json:"prompt_cache_breakpoint,omitempty"`
 }
 
 // ImageURL represents an image URL with optional detail level.
@@ -275,6 +282,13 @@ type ImageURL struct {
 // VideoURL represents a video URL.
 type VideoURL struct {
 	URL string `json:"url"`
+}
+
+// FileContent represents the file object used by Chat Completions content parts.
+type FileContent struct {
+	FileID   *string `json:"file_id,omitempty"`
+	FileData *string `json:"file_data,omitempty"`
+	Filename *string `json:"filename,omitempty"`
 }
 
 // InputAudio represents audio content.

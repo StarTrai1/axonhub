@@ -60,8 +60,8 @@ func TestCodexOutbound_MinimalIdentityHeaders(t *testing.T) {
 
 	assert.Equal(t, codexAPIURL, finalReq.URL.String())
 	assert.Equal(t, "application/json", finalReq.Header.Get("Content-Type"))
-	assert.Equal(t, AxonHubOriginator, finalReq.Header.Get("Originator"))
-	assert.Equal(t, "axonhub/1.0", finalReq.Header.Get("User-Agent"))
+	assert.Equal(t, CodexCLIOriginator, finalReq.Header.Get("Originator"))
+	assert.True(t, strings.HasPrefix(finalReq.Header.Get("User-Agent"), CodexCLIOriginator+"/"))
 	assert.Equal(t, "provided-session", finalReq.Header.Get("Session-Id"))
 	assert.Empty(t, finalReq.Header.Get("Session_id"))
 	assert.Equal(t, testChatAccountID, finalReq.Header.Get("Chatgpt-Account-Id"))
@@ -182,7 +182,8 @@ func TestCodexOutbound_SessionIDPrecedence(t *testing.T) {
 		assert.Empty(t, finalReq.Header.Get("Session_id"))
 
 		assert.Equal(t, sessionID, finalReq.Header.Get("Conversation_id"))
-		assert.Equal(t, codexDefaultVersion, finalReq.Header.Get("Version"))
+		_, stableVersion := parseStableCodexVersion(finalReq.Header.Get("Version"))
+		assert.True(t, stableVersion)
 	})
 }
 

@@ -388,6 +388,13 @@ func TestNewHttpClient_ConfiguresPerHostIdlePool(t *testing.T) {
 	require.Equal(t, maxIdleConnsPerHost, tr.MaxIdleConnsPerHost)
 }
 
+func TestNewUpstreamDialer_ConfiguresFastConnectFailure(t *testing.T) {
+	dialer := newUpstreamDialer()
+
+	require.Equal(t, 10*time.Second, dialer.Timeout)
+	require.Equal(t, 30*time.Second, dialer.KeepAlive)
+}
+
 type proxyConnectionIDContextKey struct{}
 
 func TestNewHttpClientWithProxy_ConnectionReuse(t *testing.T) {

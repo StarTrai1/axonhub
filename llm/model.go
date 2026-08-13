@@ -125,6 +125,9 @@ type Request struct {
 	// [Learn more](https://platform.openai.com/docs/guides/prompt-caching).
 	PromptCacheKey *string `json:"prompt_cache_key,omitzero"`
 
+	// PromptCacheOptions controls GPT-5.6+ implicit and explicit cache breakpoints.
+	PromptCacheOptions *PromptCacheOptions `json:"prompt_cache_options,omitempty"`
+
 	// The unique ID of the previous response for multi-turn Responses API requests.
 	PreviousResponseID *string `json:"previous_response_id,omitempty"`
 
@@ -490,7 +493,9 @@ type MessageContent struct {
 
 func (c MessageContent) MarshalJSON() ([]byte, error) {
 	if len(c.MultipleContent) > 0 {
-		if len(c.MultipleContent) == 1 && c.MultipleContent[0].Type == "text" {
+		if len(c.MultipleContent) == 1 &&
+			c.MultipleContent[0].Type == "text" &&
+			c.MultipleContent[0].PromptCacheBreakpoint == nil {
 			return json.Marshal(c.MultipleContent[0].Text)
 		}
 
@@ -530,7 +535,7 @@ type MessageContentPart struct {
 	ID string `json:"id,omitempty"`
 
 	// Type is the type of the content part.
-	// e.g. "text", "image_url", "video_url", "document", "input_audio", "compaction", "compaction_summary"
+	// e.g. "text", "image_url", "video_url", "document", "file", "input_audio", "compaction", "compaction_summary"
 	Type string `json:"type"`
 	// Text is the text content, required when type is "text"
 	Text *string `json:"text,omitempty"`
@@ -545,6 +550,9 @@ type MessageContentPart struct {
 	// Supports PDF and other document formats
 	Document *DocumentURL `json:"document,omitempty"`
 
+	// File is an OpenAI file input, required when type is "file".
+	File *FileContent `json:"file,omitempty"`
+
 	// InputAudio is the input audio content, required when type is "input_audio"
 	InputAudio *InputAudio `json:"input_audio,omitempty"`
 
@@ -555,6 +563,9 @@ type MessageContentPart struct {
 	// CacheControl is used for provider-specific cache control (e.g., Anthropic).
 	// This field is not serialized in JSON.
 	CacheControl *CacheControl `json:"cache_control,omitempty"`
+
+	// PromptCacheBreakpoint marks this OpenAI content block as a reusable prefix boundary.
+	PromptCacheBreakpoint *PromptCacheBreakpoint `json:"prompt_cache_breakpoint,omitempty"`
 
 	// TransformerMetadata stores transformer-specific metadata for preserving format during transformations.
 	// This is a help field and will not be sent to the llm service.
@@ -590,6 +601,15 @@ type DocumentURL struct {
 	// MIMEType is the MIME type of the document.
 	// e.g. "application/pdf", "application/msword"
 	MIMEType string `json:"mime_type,omitempty"`
+}
+
+// FileContent represents an OpenAI file input across Chat Completions and Responses.
+type FileContent struct {
+	FileID   *string `json:"file_id,omitempty"`
+	FileData *string `json:"file_data,omitempty"`
+	FileURL  *string `json:"file_url,omitempty"`
+	Filename *string `json:"filename,omitempty"`
+	Detail   *string `json:"detail,omitempty"`
 }
 
 type InputAudio struct {
@@ -744,6 +764,10 @@ type Response struct {
 	// TransformerMetadata stores metadata from transformers that process the response.
 	// This field is ignored when serializing to JSON and is only used internally by transformers.
 	TransformerMetadata map[string]any `json:"transformer_metadata,omitempty"`
+
+	// EmptyCompletionCandidate identifies a protocol terminal that completed
+	// without semantic output or an error. It is internal retry metadata.
+	EmptyCompletionCandidate bool `json:"-"`
 }
 
 // Choice represents a choice in the response.

@@ -604,10 +604,19 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 	case StreamEventTypeResponseCompleted:
 		// Response completed - emit two events: one with finish_reason, one with usage
 		s.responseCompleted = true
+		emptyCompletion := len(s.state.toolCalls) == 0 &&
+			s.state.textContent.Len() == 0 &&
+			s.state.reasoningContent.Len() == 0 &&
+			len(s.state.pendingReasoningEncryptedContent) == 0
 		if streamEvent.Response != nil {
 			s.state.previousResponseID = streamEvent.Response.PreviousResponseID
 			resp.PreviousResponseID = s.state.previousResponseID
+			emptyCompletion = emptyCompletion &&
+				len(streamEvent.Response.Output) == 0 &&
+				streamEvent.Response.Error == nil &&
+				(streamEvent.Response.Status == nil || *streamEvent.Response.Status == "completed")
 		}
+		resp.EmptyCompletionCandidate = emptyCompletion
 		if len(s.state.transformerMetadata) > 0 && !s.state.transformerMetadataEmitted {
 			resp.TransformerMetadata = s.state.transformerMetadata
 			s.state.transformerMetadataEmitted = true

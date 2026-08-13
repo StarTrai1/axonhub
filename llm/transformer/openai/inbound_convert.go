@@ -53,6 +53,7 @@ func (r *Request) ToLLMRequest() *llm.Request {
 		TopLogprobs:         r.TopLogprobs,
 		TopP:                r.TopP,
 		PromptCacheKey:      r.PromptCacheKey,
+		PromptCacheOptions:  r.PromptCacheOptions,
 		SafetyIdentifier:    r.SafetyIdentifier,
 		User:                r.User,
 		LogitBias:           r.LogitBias,
@@ -217,8 +218,9 @@ func (c MessageContent) ToLLMContent() llm.MessageContent {
 // ToLLMPart converts OpenAI MessageContentPart to unified llm.MessageContentPart.
 func (p MessageContentPart) ToLLMPart() llm.MessageContentPart {
 	part := llm.MessageContentPart{
-		Type: p.Type,
-		Text: p.Text,
+		Type:                  p.Type,
+		Text:                  p.Text,
+		PromptCacheBreakpoint: p.PromptCacheBreakpoint,
 	}
 
 	if p.ImageURL != nil {
@@ -231,6 +233,15 @@ func (p MessageContentPart) ToLLMPart() llm.MessageContentPart {
 	if p.VideoURL != nil {
 		part.VideoURL = &llm.VideoURL{
 			URL: p.VideoURL.URL,
+		}
+	}
+
+	if p.File != nil {
+		part.Type = "file"
+		part.File = &llm.FileContent{
+			FileID:   p.File.FileID,
+			FileData: p.File.FileData,
+			Filename: p.File.Filename,
 		}
 	}
 
