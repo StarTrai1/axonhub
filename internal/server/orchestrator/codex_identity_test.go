@@ -47,6 +47,7 @@ func TestApplyCodexIdentityPolicy_NoOpForOffAndAPIKeyChannels(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			originalBody := []byte(`{"model":"gpt-5.6-sol","input":[]}`)
 			request := &httpclient.Request{
 				Headers: http.Header{

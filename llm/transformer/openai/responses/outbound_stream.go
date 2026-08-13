@@ -106,7 +106,21 @@ func (s *responsesOutboundStream) Next() bool {
 	// A Responses terminal event ends the protocol stream even when a compatible
 	// provider keeps the HTTP connection open. Its derived events are drained now.
 	if s.responseCompleted {
+		// Some decoders publish a terminal source error before the caller asks
+		// for another item. Preserve that error instead of masking it with Done.
+		if streamErr := s.stream.Err(); streamErr != nil {
+			s.err = streamErr
+
+			return false
+		}
 		_ = s.stream.Close()
+
+		if !s.doneEmitted {
+			s.doneEmitted = true
+			s.enqueue(llm.DoneResponse)
+
+			return true
+		}
 
 		return false
 	}
@@ -132,10 +146,6 @@ func (s *responsesOutboundStream) Next() bool {
 		s.err = err
 		return false
 	}
-	if s.responseCompleted {
-		s.enqueue(llm.DoneResponse)
-	}
-
 	// Continue to the next event if no events were enqueued
 	return s.Next()
 }

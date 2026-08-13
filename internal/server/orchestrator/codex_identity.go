@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"net/http"
 	"strings"
 	"time"
@@ -39,7 +40,7 @@ type codexIdentityValues struct {
 }
 
 func deriveCodexIdentityUUID(parts ...any) string {
-	hash := sha256.Sum256([]byte(fmt.Sprint(parts...)))
+	hash := sha256.Sum256(fmt.Append(nil, parts...))
 	id := uuid.UUID(hash[:16])
 	id[6] = (id[6] & 0x0f) | 0x40
 	id[8] = (id[8] & 0x3f) | 0x80
@@ -224,9 +225,7 @@ func rewriteCodexTurnMetadata(raw string, fields map[string]any) (string, bool) 
 	if err := json.Unmarshal([]byte(raw), &metadata); err != nil {
 		return "", false
 	}
-	for key, value := range fields {
-		metadata[key] = value
-	}
+	maps.Copy(metadata, fields)
 	rewritten, err := json.Marshal(metadata)
 	if err != nil {
 		return "", false
