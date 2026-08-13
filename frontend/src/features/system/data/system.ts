@@ -903,6 +903,7 @@ const MODEL_SETTINGS_QUERY = `
       defaultModelAPIIncludeAll
       autoReasoningEffort
       modelBlacklistRegex
+      hideUnroutableModelsInList
       developerSettings {
         developer
         associations {
@@ -1052,6 +1053,7 @@ export interface ModelSettings {
   defaultModelAPIIncludeAll: boolean;
   autoReasoningEffort: boolean;
   modelBlacklistRegex: string;
+  hideUnroutableModelsInList: boolean;
   developerSettings: DeveloperModelSettings[];
 }
 
@@ -1061,6 +1063,7 @@ export interface UpdateModelSettingsInput {
   defaultModelAPIIncludeAll?: boolean;
   autoReasoningEffort?: boolean;
   modelBlacklistRegex?: string;
+  hideUnroutableModelsInList?: boolean;
   developerSettings?: DeveloperModelSettings[];
 }
 

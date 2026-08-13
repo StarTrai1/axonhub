@@ -22,6 +22,7 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/looplj/axonhub/llm/streams"
+	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
 
@@ -122,6 +123,9 @@ func applyPassThroughRequestBody(outbound *PersistentOutboundTransformer, system
 
 		channel := outbound.GetCurrentChannel()
 		llmReq := outbound.state.LlmRequest
+		if !outbound.allowPassThroughBody(ctx, llmReq, request) {
+			return request, nil
+		}
 
 		// Multipart bodies cannot be reused: the outbound transformer rebuilds the
 		// multipart payload with a new boundary in Content-Type, so replaying the inbound
@@ -151,6 +155,15 @@ func applyPassThroughRequestBody(outbound *PersistentOutboundTransformer, system
 
 		return request, nil
 	})
+}
+
+func (p *PersistentOutboundTransformer) allowPassThroughBody(ctx context.Context, llmReq *llm.Request, providerReq *httpclient.Request) bool {
+	policy, ok := p.wrapped.(transformer.PassThroughBodyPolicy)
+	if !ok {
+		return true
+	}
+
+	return policy.AllowPassThroughBody(ctx, llmReq, providerReq)
 }
 
 // applyPassThroughRequestHeaders forwards the Codex Responses metadata paired with
