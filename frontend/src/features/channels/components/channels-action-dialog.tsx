@@ -57,6 +57,7 @@ import {
 } from '../data/channels';
 import { claudecodeOAuthExchange, claudecodeOAuthStart } from '../data/claudecode';
 import { codexDecodeAuthJSON, codexOAuthExchange, codexOAuthStart } from '../data/codex';
+import { xaiDecodeSSO, xaiOAuthExchange, xaiOAuthStart } from '../data/xai';
 import {
   getDefaultBaseURL,
   getDefaultModels,
@@ -405,7 +406,7 @@ function getNextDuplicateName(name: string, existingNames: Set<string>) {
 }
 
 // Providers that are always OAuth (no third-party API key mode)
-const alwaysOAuthProviderKeys = ['antigravity', 'github_copilot'];
+const alwaysOAuthProviderKeys = ['antigravity', 'github_copilot', 'xai_subscription'];
 
 function isOfficialCodexChannel(channel: { credentials?: { apiKey?: string } }): boolean {
   try {
@@ -479,6 +480,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const [confirmDisableKey, setConfirmDisableKey] = useState<string | null>(null);
   const [authMode, setAuthMode] = useState<'official' | 'auth-json' | 'third-party'>('official');
   const [codexAuthJSONText, setCodexAuthJSONText] = useState('');
+  const [xaiSSOToken, setXaiSSOToken] = useState('');
+  const [isImportingXAISSO, setIsImportingXAISSO] = useState(false);
   const [patternError, setPatternError] = useState<string | null>(null);
 
   // Debounced search values for better performance
@@ -554,6 +557,15 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     },
   });
 
+  const xaiOAuth = useOAuthFlow({
+    startFn: xaiOAuthStart,
+    exchangeFn: xaiOAuthExchange,
+    proxyConfig,
+    onSuccess: (credentials) => {
+      form.setValue('credentials.apiKey', credentials);
+    },
+  });
+
   const antigravityOAuth = useOAuthFlow({
     startFn: antigravityOAuthStart,
     exchangeFn: antigravityOAuthExchange,
@@ -623,9 +635,11 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       codexOAuth.reset();
       claudecodeOAuth.reset();
       antigravityOAuth.reset();
+      xaiOAuth.reset();
       setCodexAuthJSONText('');
+      setXaiSSOToken('');
     }
-  }, [open, codexOAuth, claudecodeOAuth, antigravityOAuth]);
+  }, [open, codexOAuth.reset, claudecodeOAuth.reset, antigravityOAuth.reset, xaiOAuth.reset]);
 
   useEffect(() => {
     if (!open) {
@@ -800,7 +814,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             tags: currentRow.tags || [],
             remark: currentRow.remark || '',
             credentials: {
-              // OAuth 类型 (codex/claudecode/antigravity) 的凭据存储在 apiKey 字段，不放入 apiKeys
+              // OAuth 类型的凭据存储在 apiKey 字段，不放入 apiKeys
               apiKey: currentRow.credentials?.apiKey || undefined,
               apiKeys: currentRow.credentials?.apiKeys || [],
               gcp: {
@@ -837,7 +851,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               remark: duplicateFromRow.remark || '',
               settings: duplicateFromRow.settings ?? undefined,
               credentials: {
-                // OAuth 类型 (codex/claudecode/antigravity) 的凭据存储在 apiKey 字段，不放入 apiKeys
+                // OAuth 类型的凭据存储在 apiKey 字段，不放入 apiKeys
                 apiKey: duplicateFromRow.credentials?.apiKey || undefined,
                 apiKeys: duplicateFromRow.credentials?.apiKeys || [],
                 gcp: {
@@ -919,6 +933,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const isClineType = activeChannelType === 'cline';
   const isClaudeCodeType = activeChannelType === 'claudecode';
   const isCopilotType = activeChannelType === 'github_copilot';
+  const isXAISubscriptionType = activeChannelType === 'xai_subscription';
 
   // OAuth providers cannot have their provider/API format changed during edit.
   // Derived from currentRow credentials so it stays stable across re-renders
@@ -986,6 +1001,21 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         form.setValue('type', 'codex');
         if (!isEdit) {
           const baseURL = responsesTransport === 'websocket' ? getResponsesWebSocketBaseURL('codex') : getDefaultBaseURL('codex');
+          if (baseURL) {
+            form.setValue('baseURL', baseURL, { shouldDirty: true });
+          }
+          setFetchedModels([]);
+          setUseFetchedModels(false);
+        }
+        return;
+      }
+
+      if (provider === 'xai_subscription') {
+        setSelectedApiFormat(OPENAI_RESPONSES);
+        setResponsesTransport('http');
+        form.setValue('type', 'xai_subscription');
+        if (!isEdit) {
+          const baseURL = getDefaultBaseURL('xai_subscription');
           if (baseURL) {
             form.setValue('baseURL', baseURL, { shouldDirty: true });
           }
@@ -1194,11 +1224,16 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     if (selectedProvider !== 'antigravity') {
       antigravityOAuth.reset();
     }
+    if (selectedProvider !== 'xai_subscription') {
+      xaiOAuth.reset();
+      setXaiSSOToken('');
+    }
 
     const providerToChannelType: Partial<Record<string, ChannelType>> = {
       claudecode: authMode === 'official' ? 'claudecode' : undefined,
       codex: authMode === 'official' || authMode === 'auth-json' ? 'codex' : undefined,
       antigravity: 'antigravity',
+      xai_subscription: 'xai_subscription',
     };
 
     const channelTypeForURL: ChannelType | undefined = providerToChannelType[selectedProvider];
@@ -1223,9 +1258,10 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     selectedProvider,
     authMode,
     form,
-    codexOAuth,
-    claudecodeOAuth,
-    antigravityOAuth,
+    codexOAuth.reset,
+    claudecodeOAuth.reset,
+    antigravityOAuth.reset,
+    xaiOAuth.reset,
     responsesTransport,
   ]);
 
@@ -1292,6 +1328,33 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     ),
     [t]
   );
+
+  const applyXAISSO = useCallback(async () => {
+    const token = xaiSSOToken.trim();
+    if (!token) {
+      toast.error(t('channels.dialogs.xaiSso.errors.required'));
+      return;
+    }
+
+    setIsImportingXAISSO(true);
+    try {
+      const result = await xaiDecodeSSO({
+        sso_token: token,
+        ...(proxyConfig ? { proxy: proxyConfig } : {}),
+      });
+      form.setValue('credentials.apiKey', result.credentials, {
+        shouldDirty: true,
+        shouldTouch: true,
+        shouldValidate: true,
+      });
+      setXaiSSOToken('');
+      toast.success(t('channels.dialogs.xaiSso.messages.imported'));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error));
+    } finally {
+      setIsImportingXAISSO(false);
+    }
+  }, [form, proxyConfig, t, xaiSSOToken]);
 
   const applyCodexAuthJSON = useCallback(async () => {
     try {
@@ -1365,7 +1428,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
       const shouldUseProtocolDefaultBaseURL =
         (isCodexType && (authMode === 'official' || authMode === 'auth-json')) ||
-        (isClaudeCodeType && authMode === 'official' && !isDuplicate);
+        (isClaudeCodeType && authMode === 'official' && !isDuplicate) ||
+        isXAISubscriptionType;
       if (shouldUseProtocolDefaultBaseURL) {
         const currentType = selectedType || derivedChannelType;
         const baseURL =
@@ -1394,7 +1458,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         const updateInput = {
           ...dataWithModels,
           settings: nextSettings,
-          ...(isOAuthChannel ? { type: undefined } : {}),
+          ...(isOAuthChannel ? { type: currentRow.type } : {}),
         } as z.infer<typeof updateChannelInputSchema>;
 
         const apiKey = values.credentials?.apiKey || '';
@@ -1638,7 +1702,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     const apiKeys = form.watch('credentials.apiKeys');
     const hasApiKey = apiKeys?.some((key) => key.trim().length > 0);
 
-    if (isCodexType || isAntigravityType || isClineType) {
+    if (isCodexType || isAntigravityType || isClineType || isXAISubscriptionType) {
       return !!baseURL;
     }
 
@@ -2315,6 +2379,42 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                         </div>
                       )}
 
+                      {isXAISubscriptionType && (
+                        <div className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                          <div className='col-span-2' />
+                          <div className='space-y-4 md:col-span-6'>
+                            {renderOAuthSection(xaiOAuth, t('channels.dialogs.fields.apiFormat.xaiSubscription.description'))}
+                            <div className='rounded-md border p-3'>
+                              <div className='space-y-2'>
+                                <FormLabel htmlFor='xai-sso-token' className='text-sm font-medium'>
+                                  {t('channels.dialogs.xaiSso.label')}
+                                </FormLabel>
+                                <Textarea
+                                  id='xai-sso-token'
+                                  value={xaiSSOToken}
+                                  onChange={(event) => setXaiSSOToken(event.target.value)}
+                                  spellCheck={false}
+                                  autoComplete='off'
+                                  placeholder={t('channels.dialogs.xaiSso.placeholder')}
+                                  className='min-h-[96px] resize-y font-mono text-xs'
+                                />
+                                <Button
+                                  type='button'
+                                  variant='secondary'
+                                  onClick={applyXAISSO}
+                                  disabled={isImportingXAISSO || !xaiSSOToken.trim()}
+                                >
+                                  {isImportingXAISSO
+                                    ? t('channels.dialogs.xaiSso.buttons.importing')
+                                    : t('channels.dialogs.xaiSso.buttons.import')}
+                                </Button>
+                                <p className='text-muted-foreground text-xs'>{t('channels.dialogs.xaiSso.description')}</p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       <FormField
                         control={form.control}
                         name='baseURL'
@@ -2331,7 +2431,10 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                 aria-invalid={!!fieldState.error}
                                 data-testid='channel-base-url-input'
                                 disabled={
-                                  (isCodexType && authMode !== 'third-party') || (isClaudeCodeType && authMode === 'official') || selectedProvider === 'antigravity'
+                                  (isCodexType && authMode !== 'third-party') ||
+                                  (isClaudeCodeType && authMode === 'official') ||
+                                  isXAISubscriptionType ||
+                                  selectedProvider === 'antigravity'
                                 }
                                 {...field}
                               />
@@ -2341,7 +2444,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                         )}
                       />
 
-                      {(!(isCodexType || isClaudeCodeType || isCopilotType) || authMode === 'third-party') &&
+                      {(!(isCodexType || isClaudeCodeType || isCopilotType || isXAISubscriptionType) || authMode === 'third-party') &&
                         selectedProvider !== 'antigravity' &&
                         selectedType !== 'anthropic_gcp' && (
                           <FormField

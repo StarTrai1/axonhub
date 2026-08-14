@@ -155,7 +155,7 @@ func getProxyFunc(config *ProxyConfig) func(*http.Request) (*url.URL, error) {
 			proxyURL.User = url.UserPassword(config.Username, config.Password)
 		}
 
-		slog.DebugContext(context.Background(), "use custom proxy", slog.Any("proxy_url", proxyURL.Redacted()))
+		slog.DebugContext(context.Background(), "use custom proxy", slog.String("proxy_url", urlForLog(proxyURL)))
 
 		return http.ProxyURL(proxyURL)
 
@@ -215,12 +215,14 @@ func NewHttpClientWithClient(client *http.Client) *HttpClient {
 
 // Do executes the HTTP request.
 func (hc *HttpClient) Do(ctx context.Context, request *Request) (*Response, error) {
-	slog.DebugContext(ctx, "execute http request", slog.Any("request", request), slog.Any("proxy", hc.proxyConfig))
-
 	rawReq, err := hc.BuildHttpRequest(ctx, request)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build HTTP request: %w", err)
 	}
+	slog.DebugContext(ctx, "execute http request",
+		slog.String("method", rawReq.Method),
+		slog.String("url", urlForLog(rawReq.URL)),
+		slog.Int("body_size", len(request.Body)))
 
 	// Only set the default Accept when the transformer did not specify one
 	// (e.g. TTS sets Accept: */* to receive binary audio).
@@ -254,9 +256,9 @@ func (hc *HttpClient) Do(ctx context.Context, request *Request) (*Response, erro
 		if slog.Default().Enabled(ctx, slog.LevelDebug) {
 			slog.DebugContext(ctx, "HTTP request failed",
 				slog.String("method", rawReq.Method),
-				slog.String("url", rawReq.URL.String()),
+				slog.String("url", urlForLog(rawReq.URL)),
 				slog.Int("status_code", rawResp.StatusCode),
-				slog.String("body", string(body)))
+				slog.Int("body_size", len(body)))
 		}
 
 		return nil, &Error{
@@ -277,9 +279,9 @@ func (hc *HttpClient) Do(ctx context.Context, request *Request) (*Response, erro
 	if slog.Default().Enabled(ctx, slog.LevelDebug) {
 		slog.DebugContext(ctx, "HTTP request success",
 			slog.String("method", rawReq.Method),
-			slog.String("url", rawReq.URL.String()),
+			slog.String("url", urlForLog(rawReq.URL)),
 			slog.Int("status_code", rawResp.StatusCode),
-			slog.String("body", string(body)))
+			slog.Int("body_size", len(body)))
 	}
 
 	RecordResponseHeaders(ctx, rawResp.Header)
@@ -300,8 +302,6 @@ func (hc *HttpClient) Do(ctx context.Context, request *Request) (*Response, erro
 
 // DoStream executes a streaming HTTP request using Server-Sent Events.
 func (hc *HttpClient) DoStream(ctx context.Context, request *Request) (streams.Stream[*StreamEvent], error) {
-	slog.DebugContext(ctx, "execute stream request", slog.Any("request", request))
-
 	streamCtx := ctx
 	var streamCancel context.CancelFunc
 	if request.DetachedStreamTimeout > 0 {
@@ -316,6 +316,10 @@ func (hc *HttpClient) DoStream(ctx context.Context, request *Request) (streams.S
 
 		return nil, fmt.Errorf("failed to build HTTP request: %w", err)
 	}
+	slog.DebugContext(ctx, "execute stream request",
+		slog.String("method", rawReq.Method),
+		slog.String("url", urlForLog(rawReq.URL)),
+		slog.Int("body_size", len(request.Body)))
 
 	// Add streaming headers. Force SSE Accept unless the outbound transformer
 	// explicitly opted into a non-JSON Accept (e.g. "*/*" for binary TTS chunks),
@@ -360,9 +364,9 @@ func (hc *HttpClient) DoStream(ctx context.Context, request *Request) (streams.S
 		if slog.Default().Enabled(ctx, slog.LevelDebug) {
 			slog.DebugContext(ctx, "HTTP stream request failed",
 				slog.String("method", rawReq.Method),
-				slog.String("url", rawReq.URL.String()),
+				slog.String("url", urlForLog(rawReq.URL)),
 				slog.Int("status_code", rawResp.StatusCode),
-				slog.String("body", string(body)))
+				slog.Int("body_size", len(body)))
 		}
 
 		return nil, &Error{
@@ -432,6 +436,18 @@ func (s *detachedContextStream) Close() error {
 	})
 
 	return s.closeErr
+}
+
+func urlForLog(value *url.URL) string {
+	if value == nil {
+		return ""
+	}
+	redacted := *value
+	redacted.User = nil
+	redacted.RawQuery = ""
+	redacted.ForceQuery = false
+	redacted.Fragment = ""
+	return redacted.String()
 }
 
 // BuildHttpRequest builds an HTTP request from Request.
