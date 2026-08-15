@@ -2388,11 +2388,50 @@ func TestStripUnsupportedCodexPromptCacheOptionsAfterPassThrough(t *testing.T) {
 			Type: channel.TypeCodex,
 		}}},
 	}}
-	request := &httpclient.Request{Body: []byte(`{"model":"gpt-5.6-sol","prompt_cache_options":{"mode":"explicit","ttl":"30m"},"input":"hello"}`)}
+	request := &httpclient.Request{Body: []byte(`{
+		"model":"gpt-5.6-sol",
+		"prompt_cache_options":{"mode":"explicit","ttl":"30m"},
+		"input":[
+			{"role":"user","content":[
+				{"type":"input_text","text":"hello","prompt_cache_breakpoint":{"type":"ephemeral"}},
+				{"type":"input_image","image_url":"data:image/png;base64,AA=="}
+			]},
+			{"role":"assistant","content":[
+				{"type":"output_text","text":"hi","prompt_cache_breakpoint":{"type":"ephemeral"}}
+			]}
+		]
+	}`)}
 
 	processed, err := stripUnsupportedCodexPromptCacheOptions(outbound).OnOutboundRawRequest(t.Context(), request)
 	require.NoError(t, err)
-	require.JSONEq(t, `{"model":"gpt-5.6-sol","input":"hello"}`, string(processed.Body))
+	require.JSONEq(t, `{
+		"model":"gpt-5.6-sol",
+		"input":[
+			{"role":"user","content":[
+				{"type":"input_text","text":"hello"},
+				{"type":"input_image","image_url":"data:image/png;base64,AA=="}
+			]},
+			{"role":"assistant","content":[
+				{"type":"output_text","text":"hi"}
+			]}
+		]
+	}`, string(processed.Body))
+}
+
+func TestStripUnsupportedCodexPromptCacheOptionsPreservesPublicResponsesFields(t *testing.T) {
+	outbound := &PersistentOutboundTransformer{state: &PersistenceState{
+		CurrentCandidate: &ChannelModelsCandidate{Channel: &biz.Channel{Channel: &ent.Channel{
+			ID:   1,
+			Name: "openai",
+			Type: channel.TypeOpenAI,
+		}}},
+	}}
+	body := []byte(`{"prompt_cache_options":{"mode":"explicit"},"input":[{"content":[{"type":"input_text","text":"hello","prompt_cache_breakpoint":{"type":"ephemeral"}}]}]}`)
+	request := &httpclient.Request{Body: append([]byte(nil), body...)}
+
+	processed, err := stripUnsupportedCodexPromptCacheOptions(outbound).OnOutboundRawRequest(t.Context(), request)
+	require.NoError(t, err)
+	require.JSONEq(t, string(body), string(processed.Body))
 }
 
 func TestRepairInvalidOpenAIToolSchemas(t *testing.T) {

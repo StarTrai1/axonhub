@@ -201,22 +201,47 @@ func applyPassThroughRequestHeaders(outbound *PersistentOutboundTransformer) pip
 }
 
 // stripUnsupportedCodexPromptCacheOptions runs after pass-through and channel
-// body overrides so ChatGPT's private Codex endpoint never receives the public
-// GPT-5.6 prompt_cache_options field those paths may reintroduce.
+// body overrides so ChatGPT's private Codex endpoint never receives public
+// prompt cache fields those paths may reintroduce.
 func stripUnsupportedCodexPromptCacheOptions(outbound *PersistentOutboundTransformer) pipeline.Middleware {
 	return pipeline.OnRawRequest("strip-codex-prompt-cache-options", func(_ context.Context, request *httpclient.Request) (*httpclient.Request, error) {
 		currentChannel := outbound.GetCurrentChannel()
 		if currentChannel == nil || currentChannel.Channel == nil || currentChannel.Channel.Type != channel.TypeCodex {
 			return request, nil
 		}
-		if !gjson.GetBytes(request.Body, "prompt_cache_options").Exists() {
+
+		hasPromptCacheOptions := gjson.GetBytes(request.Body, "prompt_cache_options").Exists()
+		hasPromptCacheBreakpoints := bytes.Contains(request.Body, []byte(`"prompt_cache_breakpoint"`))
+		if !hasPromptCacheOptions && !hasPromptCacheBreakpoints {
 			return request, nil
 		}
 
-		body, err := sjson.DeleteBytes(request.Body, "prompt_cache_options")
-		if err != nil {
-			return nil, fmt.Errorf("strip unsupported Codex prompt_cache_options: %w", err)
+		body := request.Body
+		if hasPromptCacheOptions {
+			var err error
+			body, err = sjson.DeleteBytes(body, "prompt_cache_options")
+			if err != nil {
+				return nil, fmt.Errorf("strip unsupported Codex prompt_cache_options: %w", err)
+			}
 		}
+
+		if hasPromptCacheBreakpoints {
+			for inputIndex, input := range gjson.GetBytes(body, "input").Array() {
+				for contentIndex, content := range input.Get("content").Array() {
+					if !content.Get("prompt_cache_breakpoint").Exists() {
+						continue
+					}
+
+					path := fmt.Sprintf("input.%d.content.%d.prompt_cache_breakpoint", inputIndex, contentIndex)
+					var err error
+					body, err = sjson.DeleteBytes(body, path)
+					if err != nil {
+						return nil, fmt.Errorf("strip unsupported Codex %s: %w", path, err)
+					}
+				}
+			}
+		}
+
 		request.Body = body
 
 		return request, nil
