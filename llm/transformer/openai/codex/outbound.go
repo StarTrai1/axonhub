@@ -147,8 +147,15 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		rawUserAgent = llmReq.RawRequest.Headers.Get("User-Agent")
 		rawVersion = llmReq.RawRequest.Headers.Get("Version")
 		rawTurnMetadata = llmReq.RawRequest.Headers.Get(TurnMetadataHeader)
+
+		// Non-Codex inbound clients omit the Responses Lite signal. Fabricate it
+		// before the underlying Responses outbound builds the request body so the
+		// header, reasoning context, and parallel tool-call mode stay consistent.
+		if strings.TrimSpace(rawHeaders.Get(responses.ResponsesLiteHeader)) == "" {
+			rawHeaders.Set(responses.ResponsesLiteHeader, "true")
+		}
 		responsesLite = strings.EqualFold(
-			strings.TrimSpace(llmReq.RawRequest.Headers.Get(responses.ResponsesLiteHeader)),
+			strings.TrimSpace(rawHeaders.Get(responses.ResponsesLiteHeader)),
 			"true",
 		)
 	}
@@ -228,6 +235,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 			// Enable reasoning summary for Codex CLI requests.
 			reqCopy.ReasoningSummary = lo.ToPtr("auto")
 		}
+
 	}
 
 	// Codex Responses rejects token limit fields, so strip them out.
@@ -297,6 +305,46 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		} else {
 			hreq.Headers.Set(SessionHeaderHyphen, uuid.NewString())
 		}
+	}
+
+	// Fabricate the remaining Codex identity headers for non-Codex inbound
+	// clients so the upstream always sees a complete Codex session shape.
+	sessionID := hreq.Headers.Get(SessionHeaderHyphen)
+	windowID := sessionID + ":0"
+	if hreq.Headers.Get(ThreadIDHeader) == "" {
+		// Codex clients send Thread-Id equal to Session-Id (both identify the
+		// conversation/thread); keep thread-scoped upstream behavior (e.g.
+		// prompt caching) consistent for non-Codex clients too.
+		hreq.Headers.Set(ThreadIDHeader, sessionID)
+	}
+	if hreq.Headers.Get(WindowIDHeader) == "" {
+		hreq.Headers.Set(WindowIDHeader, windowID)
+	}
+	if hreq.Headers.Get(TurnMetadataHeader) == "" {
+		installationID := ""
+		if accountID != "" {
+			// Deterministic per-account installation id derived from the
+			// ChatGPT account id.
+			installationID = uuid.NewSHA1(uuid.NameSpaceOID, []byte(accountID)).String()
+		}
+		turnMetadata, _ := json.Marshal(TurnMetadata{
+			InstallationID:      installationID,
+			SessionID:           sessionID,
+			ThreadID:            sessionID,
+			TurnID:              uuid.NewString(),
+			WindowID:            windowID,
+			RequestKind:         "turn",
+			ThreadSource:        "user",
+			Sandbox:             "none",
+			TurnStartedAtUnixMS: turnStartedAtUnixMS(sessionID),
+		})
+		hreq.Headers.Set(TurnMetadataHeader, string(turnMetadata))
+	}
+	if hreq.Headers.Get(ClientRequestIDHeader) == "" {
+		hreq.Headers.Set(ClientRequestIDHeader, uuid.NewString())
+	}
+	if hreq.Headers.Get(BetaFeaturesHeader) == "" {
+		hreq.Headers.Set(BetaFeaturesHeader, fabricatedBetaFeatures)
 	}
 
 	if accountID != "" {
