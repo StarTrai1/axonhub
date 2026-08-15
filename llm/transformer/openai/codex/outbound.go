@@ -201,9 +201,6 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		if ext.Request == nil {
 			ext.Request = &llm.OpenAIResponsesRequestExtensions{}
 		}
-		if ext.Request.ReasoningContext == "" {
-			ext.Request.ReasoningContext = "all_turns"
-		}
 		if len(reqCopy.Tools) == 0 && len(ext.Request.RawInputItems) == 0 {
 			ext.Request.RawInputItems = append(ext.Request.RawInputItems, llm.OpenAIResponsesRawFragment{
 				Type:          "additional_tools",
@@ -229,6 +226,14 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	if !isImageRequest {
 		if _, ok := reqCopy.TransformerMetadata["include"]; !ok {
 			reqCopy.TransformerMetadata["include"] = []string{"reasoning.encrypted_content"}
+		}
+
+		ext := llm.EnsureOpenAIResponsesProviderExtensions(&reqCopy)
+		if ext.Request == nil {
+			ext.Request = &llm.OpenAIResponsesRequestExtensions{}
+		}
+		if ext.Request.ReasoningContext == "" {
+			ext.Request.ReasoningContext = "all_turns"
 		}
 
 		if !responsesLite && (reqCopy.ReasoningSummary == nil || *reqCopy.ReasoningSummary == "") {
