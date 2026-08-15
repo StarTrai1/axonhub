@@ -2423,7 +2423,7 @@ func TestStripUnsupportedCodexPromptCacheOptionsPreservesPublicResponsesFields(t
 		CurrentCandidate: &ChannelModelsCandidate{Channel: &biz.Channel{Channel: &ent.Channel{
 			ID:   1,
 			Name: "openai",
-			Type: channel.TypeOpenAI,
+			Type: channel.TypeOpenai,
 		}}},
 	}}
 	body := []byte(`{"prompt_cache_options":{"mode":"explicit"},"input":[{"content":[{"type":"input_text","text":"hello","prompt_cache_breakpoint":{"type":"ephemeral"}}]}]}`)
