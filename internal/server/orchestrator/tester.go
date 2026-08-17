@@ -14,7 +14,6 @@ import (
 	"github.com/tidwall/gjson"
 	"golang.org/x/sync/errgroup"
 
-	entchannel "github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xjson"
@@ -28,6 +27,7 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/openai"
 	"github.com/looplj/axonhub/llm/transformer/openai/codex"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
+	entchannel "github.com/looplj/axonhub/internal/ent/channel"
 )
 
 const (
@@ -286,7 +286,7 @@ func responseBodyContainsCompactionItem(body []byte) bool {
 		return false
 	}
 	if text := strings.TrimSpace(string(body)); strings.HasPrefix(text, "data:") {
-		for _, line := range strings.Split(text, "\n") {
+		for line := range strings.SplitSeq(text, "\n") {
 			line = strings.TrimSpace(line)
 			if !strings.HasPrefix(line, "data:") {
 				continue
