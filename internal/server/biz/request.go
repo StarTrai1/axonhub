@@ -211,7 +211,7 @@ func (s *RequestService) CreateRequest(
 		mut = mut.SetRequestBody([]byte("{}"))
 	} else {
 		// Store in database
-		mut = mut.SetRequestBody(requestBodyBytes)
+		mut = mut.SetRequestBody(compressStoredPayloadForDatabase(ctx, requestBodyBytes))
 	}
 
 	if dataStorage != nil {
@@ -322,7 +322,7 @@ func (s *RequestService) CreateRequestExecution(
 		requestBodyForDB = []byte("{}")
 	} else {
 		// Store in database
-		requestBodyForDB = requestBodyBytes
+		requestBodyForDB = compressStoredPayloadForDatabase(ctx, requestBodyBytes)
 	}
 
 	mut := client.RequestExecution.Create().
@@ -486,7 +486,7 @@ func (s *RequestService) UpdateRequestCompleted(
 			}
 		} else {
 			// Store in database
-			upd = upd.SetResponseBody(responseBodyBytes)
+			upd = upd.SetResponseBody(compressStoredPayloadForDatabase(ctx, responseBodyBytes))
 		}
 	}
 
@@ -570,7 +570,7 @@ func (s *RequestService) UpdateRequestCompletedWithAudio(
 				log.Error(ctx, "Failed to save response body to external storage", log.Cause(err))
 			}
 		} else {
-			upd = upd.SetResponseBody(responseBodyBytes)
+			upd = upd.SetResponseBody(compressStoredPayloadForDatabase(ctx, responseBodyBytes))
 		}
 	}
 
@@ -671,7 +671,7 @@ func (s *RequestService) UpdateRequestStatusExternalIDAndResponseBody(
 			}
 		} else {
 			// Store in database
-			upd = upd.SetResponseBody(responseBodyBytes)
+			upd = upd.SetResponseBody(compressStoredPayloadForDatabase(ctx, responseBodyBytes))
 		}
 	}
 
@@ -754,7 +754,7 @@ func (s *RequestService) UpdateRequestExecutionCompleted(
 			}
 		} else {
 			// Store in database
-			upd = upd.SetResponseBody(responseBodyBytes)
+			upd = upd.SetResponseBody(compressStoredPayloadForDatabase(ctx, responseBodyBytes))
 		}
 	}
 
@@ -1189,7 +1189,12 @@ func (s *RequestService) LoadRequestBody(ctx context.Context, req *ent.Request) 
 			return xjson.EmptyJSONRawMessage, nil
 		}
 
-		return req.RequestBody, nil
+		data, err := DecodeStoredPayload(req.RequestBody)
+		if err != nil {
+			return nil, fmt.Errorf("decode request body: %w", err)
+		}
+
+		return objects.JSONRawMessage(data), nil
 	}
 
 	key := GenerateRequestBodyKey(req.ProjectID, req.ID)
@@ -1228,7 +1233,12 @@ func (s *RequestService) LoadResponseBody(ctx context.Context, req *ent.Request)
 			return xjson.EmptyJSONRawMessage, nil
 		}
 
-		return req.ResponseBody, nil
+		data, err := DecodeStoredPayload(req.ResponseBody)
+		if err != nil {
+			return nil, fmt.Errorf("decode response body: %w", err)
+		}
+
+		return objects.JSONRawMessage(data), nil
 	}
 
 	key := GenerateResponseBodyKey(req.ProjectID, req.ID)
@@ -1333,7 +1343,12 @@ func (s *RequestService) LoadRequestExecutionRequestBody(ctx context.Context, ex
 			return xjson.EmptyJSONRawMessage, nil
 		}
 
-		return exec.RequestBody, nil
+		data, err := DecodeStoredPayload(exec.RequestBody)
+		if err != nil {
+			return nil, fmt.Errorf("decode execution request body: %w", err)
+		}
+
+		return objects.JSONRawMessage(data), nil
 	}
 
 	key := GenerateExecutionRequestBodyKey(exec.ProjectID, exec.RequestID, exec.ID)
@@ -1372,7 +1387,12 @@ func (s *RequestService) LoadRequestExecutionResponseBody(ctx context.Context, e
 			return xjson.EmptyJSONRawMessage, nil
 		}
 
-		return exec.ResponseBody, nil
+		data, err := DecodeStoredPayload(exec.ResponseBody)
+		if err != nil {
+			return nil, fmt.Errorf("decode execution response body: %w", err)
+		}
+
+		return objects.JSONRawMessage(data), nil
 	}
 
 	key := GenerateExecutionResponseBodyKey(exec.ProjectID, exec.RequestID, exec.ID)

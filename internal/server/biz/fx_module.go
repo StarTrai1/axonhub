@@ -16,6 +16,7 @@ var Module = fx.Module("biz",
 	fx.Provide(NewAuthService),
 	fx.Provide(NewChannelService),
 	fx.Provide(NewRequestService),
+	fx.Provide(NewPayloadCompressionService),
 	fx.Provide(NewUsageLogService),
 	fx.Provide(NewVideoService),
 	fx.Provide(NewUserService),
@@ -83,6 +84,13 @@ var Module = fx.Module("biz",
 		})
 	}),
 	fx.Invoke(func(lc fx.Lifecycle, svc *DataStorageService, s *scheduler.Scheduler) {
+		lc.Append(fx.Hook{
+			OnStart: func(ctx context.Context) error {
+				return svc.RegisterScheduledTasks(ctx, s)
+			},
+		})
+	}),
+	fx.Invoke(func(lc fx.Lifecycle, svc *PayloadCompressionService, s *scheduler.Scheduler) {
 		lc.Append(fx.Hook{
 			OnStart: func(ctx context.Context) error {
 				return svc.RegisterScheduledTasks(ctx, s)

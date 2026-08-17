@@ -160,7 +160,12 @@ func (w *Worker) scanAndSave(ctx context.Context) error {
 func (w *Worker) processOne(ctx context.Context, ds *ent.DataStorage, req *ent.Request) error {
 	var videoURL string
 
-	if v, err := extractVideoURLFromResponseBody(req.ResponseBody); err == nil && strings.TrimSpace(v) != "" {
+	responseBody, err := biz.DecodeStoredPayload(req.ResponseBody)
+	if err != nil {
+		return fmt.Errorf("decode stored video response body: %w", err)
+	}
+
+	if v, err := extractVideoURLFromResponseBody(responseBody); err == nil && strings.TrimSpace(v) != "" {
 		videoURL = v
 	}
 
