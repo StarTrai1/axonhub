@@ -538,6 +538,10 @@ func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateCh
 	}
 
 	if input.Settings != nil {
+		if err := NormalizeHTTPTransportSettings(input.Settings); err != nil {
+			return nil, err
+		}
+
 		if input.Settings.BodyOverrideOperations != nil {
 			if err := ValidateBodyOverrideOperations(input.Settings.BodyOverrideOperations); err != nil {
 				return nil, fmt.Errorf("invalid body override operations: %w", err)
@@ -821,6 +825,10 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 	}
 
 	if input.Settings != nil {
+		if err := NormalizeHTTPTransportSettings(input.Settings); err != nil {
+			return nil, err
+		}
+
 		// Always normalize and validate override settings.
 		if input.Settings.BodyOverrideOperations != nil {
 			if err := ValidateBodyOverrideOperations(input.Settings.BodyOverrideOperations); err != nil {

@@ -107,6 +107,8 @@ export function mergeChannelSettingsForUpdate(
     bodyOverrideOperations: pick('bodyOverrideOperations', existing?.bodyOverrideOperations ?? []),
     headerOverrideOperations: pick('headerOverrideOperations', existing?.headerOverrideOperations ?? []),
     proxy: pick('proxy', existing?.proxy ?? null),
+    httpProtocol: pick('httpProtocol', existing?.httpProtocol ?? null),
+    http2ConnectionShards: pick('http2ConnectionShards', existing?.http2ConnectionShards ?? 0),
     transformOptions: pick('transformOptions', existing?.transformOptions ?? undefined),
     passThroughUserAgent: pick('passThroughUserAgent', existing?.passThroughUserAgent ?? null),
     passThroughBody: pick('passThroughBody', existing?.passThroughBody ?? null),

@@ -107,11 +107,23 @@ func getProxyConfig(channelSettings *objects.ChannelSettings) *httpclient.ProxyC
 // getHttpClient returns the injected default HTTP client when no custom proxy is configured,
 // or creates a new one with proxy support (inheriting TLS settings from the default client).
 func (svc *ChannelService) getHttpClient(channelSettings *objects.ChannelSettings) *httpclient.HttpClient {
-	if channelSettings == nil || channelSettings.Proxy == nil {
-		return svc.httpClient
+	client := svc.httpClient
+	if channelSettings == nil {
+		return client
 	}
 
-	return svc.httpClient.WithProxy(channelSettings.Proxy)
+	if channelSettings.Proxy != nil {
+		client = client.WithProxy(channelSettings.Proxy)
+	}
+
+	if channelSettings.HTTPProtocol == string(httpclient.HTTPProtocolHTTP1) || channelSettings.HTTP2ConnectionShards > 1 {
+		client = client.WithHTTPTransport(
+			httpclient.HTTPProtocol(channelSettings.HTTPProtocol),
+			channelSettings.HTTP2ConnectionShards,
+		)
+	}
+
+	return client
 }
 
 // buildChannel creates a Channel with precomputed caches (transformer is set separately).

@@ -521,6 +521,44 @@ func TestNewHttpClient_ConfiguresPerHostIdlePool(t *testing.T) {
 	require.Equal(t, maxIdleConnsPerHost, tr.MaxIdleConnsPerHost)
 }
 
+func TestNewHttpClient_HTTPTransportPolicy(t *testing.T) {
+	t.Run("default preserves automatic HTTP2", func(t *testing.T) {
+		hc := NewHttpClient()
+		transport, ok := hc.GetNativeClient().Transport.(*http.Transport)
+		require.True(t, ok)
+		require.True(t, transport.ForceAttemptHTTP2)
+	})
+
+	t.Run("http1 disables HTTP2 negotiation", func(t *testing.T) {
+		hc := NewHttpClient(WithHTTPTransport(HTTPProtocolHTTP1, 1))
+		transport, ok := hc.GetNativeClient().Transport.(*http.Transport)
+		require.True(t, ok)
+		require.False(t, transport.ForceAttemptHTTP2)
+		require.NotNil(t, transport.TLSNextProto)
+	})
+
+	t.Run("http2 shards use independent reusable transports", func(t *testing.T) {
+		hc := NewHttpClient(WithHTTPTransport(HTTPProtocolAuto, 4))
+		transport, ok := hc.GetNativeClient().Transport.(*shardedRoundTripper)
+		require.True(t, ok)
+		require.Len(t, transport.transports, 4)
+		for _, shard := range transport.transports {
+			require.True(t, shard.ForceAttemptHTTP2)
+			require.False(t, shard.DisableKeepAlives)
+		}
+	})
+
+	t.Run("connection rotation disables sharding", func(t *testing.T) {
+		hc := NewHttpClientWithProxy(
+			&ProxyConfig{Type: ProxyTypeURL, URL: "http://127.0.0.1:8080", DisableConnectionReuse: true},
+			WithHTTPTransport(HTTPProtocolAuto, 4),
+		)
+		transport, ok := hc.GetNativeClient().Transport.(*http.Transport)
+		require.True(t, ok)
+		require.True(t, transport.DisableKeepAlives)
+	})
+}
+
 func TestNewUpstreamDialer_ConfiguresFastConnectFailure(t *testing.T) {
 	dialer := newUpstreamDialer()
 

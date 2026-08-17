@@ -106,6 +106,7 @@ const duplicateNameRegex = /^(.*) \((\d+)\)$/;
 
 type ApiFormatOption = ApiFormat | 'openai/responses:websocket';
 type ResponsesTransport = 'http' | 'websocket';
+type HTTPProtocolOption = 'auto' | 'http1';
 
 const OPENAI_RESPONSES_WEBSOCKET: ApiFormatOption = 'openai/responses:websocket';
 // A single trailing # suppresses automatic version suffix appending while still
@@ -113,6 +114,7 @@ const OPENAI_RESPONSES_WEBSOCKET: ApiFormatOption = 'openai/responses:websocket'
 // defaults with ## unless the upstream URL should be used fully raw.
 const OPENAI_RESPONSES_WEBSOCKET_BASE_URL = 'wss://api.openai.com/v1#';
 const CODEX_RESPONSES_WEBSOCKET_BASE_URL = 'wss://chatgpt.com/backend-api/codex#';
+const HTTP2_CONNECTION_SHARD_OPTIONS = [1, 2, 4, 8] as const;
 
 const ROUTING_TIER_OPTIONS: ReadonlyArray<{
   value: RoutingTier;
@@ -506,6 +508,13 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   });
   const [passThroughBody, setPassThroughBody] = useState<boolean | null>(() => {
     return initialRow?.settings?.passThroughBody ?? null;
+  });
+  const [httpProtocol, setHTTPProtocol] = useState<HTTPProtocolOption>(() =>
+    initialRow?.settings?.httpProtocol === 'http1' ? 'http1' : 'auto'
+  );
+  const [http2ConnectionShards, setHTTP2ConnectionShards] = useState(() => {
+    const shards = initialRow?.settings?.http2ConnectionShards ?? 0;
+    return shards >= 1 && shards <= 8 ? shards : 1;
   });
   const [retryableStatusCodesText, setRetryableStatusCodesText] = useState(() =>
     formatRetryableStatusCodes(initialRow?.settings?.retryableStatusCodes)
@@ -1451,6 +1460,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         const nextSettings = mergeChannelSettingsForUpdate(settingsForSubmit, {
           passThroughUserAgent,
           passThroughBody,
+          httpProtocol,
+          http2ConnectionShards: httpProtocol === 'http1' || http2ConnectionShards === 1 ? 0 : http2ConnectionShards,
           retryableStatusCodes,
           retryableErrorPatterns,
         });
@@ -1495,6 +1506,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           proxy: proxyConfig,
           passThroughUserAgent,
           passThroughBody,
+          httpProtocol,
+          http2ConnectionShards: httpProtocol === 'http1' || http2ConnectionShards === 1 ? 0 : http2ConnectionShards,
           retryableStatusCodes,
           retryableErrorPatterns,
         });
@@ -1925,6 +1938,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             setProxyPassword(initialRow?.settings?.proxy?.password || '');
             setPassThroughUserAgent(initialRow?.settings?.passThroughUserAgent ?? null);
             setPassThroughBody(initialRow?.settings?.passThroughBody ?? null);
+            setHTTPProtocol(initialRow?.settings?.httpProtocol === 'http1' ? 'http1' : 'auto');
+            const initialShards = initialRow?.settings?.http2ConnectionShards ?? 0;
+            setHTTP2ConnectionShards(initialShards >= 1 && initialShards <= 8 ? initialShards : 1);
             setRetryableStatusCodesText(formatRetryableStatusCodes(initialRow?.settings?.retryableStatusCodes));
             setRetryableErrorPatternsText(formatRetryableErrorPatterns(initialRow?.settings?.retryableErrorPatterns));
             // Reset provider and API format state
@@ -3060,6 +3076,66 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                           {passThroughBody === true && (
                             <p className='text-xs text-amber-600 dark:text-amber-400'>{t('channels.dialogs.bodyPassThrough.warning')}</p>
                           )}
+                        </div>
+                      </FormItem>
+
+                      <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                        <div className='flex items-center gap-1.5 pt-2 md:col-span-2 md:justify-end'>
+                          <FormLabel className='font-medium'>{t('channels.dialogs.httpTransport.label')}</FormLabel>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                type='button'
+                                className='text-muted-foreground hover:text-foreground inline-flex items-center'
+                                aria-label={t('channels.dialogs.httpTransport.description')}
+                              >
+                                <Info className='h-3.5 w-3.5' />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent className='max-w-sm'>
+                              <p>{t('channels.dialogs.httpTransport.description')}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
+                        <div className='grid grid-cols-1 gap-2 sm:grid-cols-2 md:col-span-6'>
+                          <div className='space-y-1'>
+                            <span className='text-muted-foreground text-xs'>{t('channels.dialogs.httpTransport.protocol')}</span>
+                            <Select
+                              value={httpProtocol}
+                              onValueChange={(value) => {
+                                const protocol = value as HTTPProtocolOption;
+                                setHTTPProtocol(protocol);
+                                if (protocol === 'http1') setHTTP2ConnectionShards(1);
+                              }}
+                            >
+                              <SelectTrigger data-testid='channel-http-protocol-select'>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value='auto'>{t('channels.dialogs.httpTransport.options.auto')}</SelectItem>
+                                <SelectItem value='http1'>{t('channels.dialogs.httpTransport.options.http1')}</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className='space-y-1'>
+                            <span className='text-muted-foreground text-xs'>{t('channels.dialogs.httpTransport.shards')}</span>
+                            <Select
+                              value={String(httpProtocol === 'http1' ? 1 : http2ConnectionShards)}
+                              onValueChange={(value) => setHTTP2ConnectionShards(Number(value))}
+                              disabled={httpProtocol === 'http1'}
+                            >
+                              <SelectTrigger data-testid='channel-http2-shards-select'>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {HTTP2_CONNECTION_SHARD_OPTIONS.map((shards) => (
+                                  <SelectItem key={shards} value={String(shards)}>
+                                    {shards}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
                       </FormItem>
 

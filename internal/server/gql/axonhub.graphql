@@ -140,6 +140,8 @@ type ChannelSettings {
   hideMappedModels: Boolean
   lowercaseModelId: Boolean
   proxy: ProxyConfig
+  httpProtocol: String
+  http2ConnectionShards: Int
   transformOptions: TransformOptions
   headerOverrideOperations: [OverrideOperation!]! @goField(forceResolver: true)
   bodyOverrideOperations: [OverrideOperation!]! @goField(forceResolver: true)
@@ -243,6 +245,8 @@ input ChannelSettingsInput {
   hideMappedModels: Boolean
   lowercaseModelId: Boolean
   proxy: ProxyConfigInput
+  httpProtocol: String
+  http2ConnectionShards: Int
   transformOptions: TransformOptionsInput
   headerOverrideOperations: [OverrideOperationInput!]
   bodyOverrideOperations: [OverrideOperationInput!]

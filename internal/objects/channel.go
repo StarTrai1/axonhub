@@ -179,6 +179,14 @@ type ChannelSettings struct {
 	// Proxy configuration for the channel. If not set, defaults to environment proxy type.
 	Proxy *httpclient.ProxyConfig `json:"proxy,omitempty"`
 
+	// HTTPProtocol controls upstream protocol negotiation. Empty or "auto" negotiates
+	// HTTP/2 when available; "http1" forces HTTP/1.1 for incompatible upstreams.
+	HTTPProtocol string `json:"httpProtocol,omitempty"`
+
+	// HTTP2ConnectionShards spreads requests across independent reusable HTTP/2
+	// transports. Zero and one preserve the default single connection pool.
+	HTTP2ConnectionShards int `json:"http2ConnectionShards,omitempty"`
+
 	// TransformOptions configures the transform options for the channel.
 	TransformOptions TransformOptions `json:"transformOptions"`
 

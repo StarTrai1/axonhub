@@ -14,6 +14,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/looplj/axonhub/llm/streams"
@@ -27,6 +28,17 @@ const (
 	MaxErrorBodySize       = 1 << 20 // 1 MB
 	maxIdleConnsPerHost    = 100
 	upstreamConnectTimeout = 10 * time.Second
+)
+
+// MaxHTTP2ConnectionShards bounds per-channel connection-pool fan-out.
+const MaxHTTP2ConnectionShards = 8
+
+// HTTPProtocol selects upstream HTTP protocol negotiation behavior.
+type HTTPProtocol string
+
+const (
+	HTTPProtocolAuto  HTTPProtocol = "auto"
+	HTTPProtocolHTTP1 HTTPProtocol = "http1"
 )
 
 func newUpstreamDialer() *net.Dialer {
@@ -47,7 +59,9 @@ type HttpClient struct {
 type ClientOption func(*clientOptions)
 
 type clientOptions struct {
-	insecureSkipVerify bool
+	insecureSkipVerify     bool
+	httpProtocol          HTTPProtocol
+	http2ConnectionShards int
 }
 
 // WithInsecureSkipVerify disables TLS certificate verification.
@@ -57,37 +71,130 @@ func WithInsecureSkipVerify(skip bool) ClientOption {
 	}
 }
 
+// WithHTTPTransport configures upstream HTTP protocol negotiation and optional
+// HTTP/2 connection-pool sharding. A single shard preserves the default transport.
+func WithHTTPTransport(protocol HTTPProtocol, shards int) ClientOption {
+	return func(o *clientOptions) {
+		o.httpProtocol = protocol
+		o.http2ConnectionShards = shards
+	}
+}
+
+type shardedRoundTripper struct {
+	transports []*http.Transport
+	next       atomic.Uint64
+}
+
+func (s *shardedRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	index := (s.next.Add(1) - 1) % uint64(len(s.transports))
+	return s.transports[index].RoundTrip(req)
+}
+
+func (s *shardedRoundTripper) CloseIdleConnections() {
+	for _, transport := range s.transports {
+		transport.CloseIdleConnections()
+	}
+}
+
+func normalizeHTTPTransport(options clientOptions, disableConnectionReuse bool) (HTTPProtocol, int) {
+	protocol := options.httpProtocol
+	if protocol != HTTPProtocolHTTP1 {
+		protocol = HTTPProtocolAuto
+	}
+
+	shards := options.http2ConnectionShards
+	if shards < 1 {
+		shards = 1
+	} else if shards > MaxHTTP2ConnectionShards {
+		shards = MaxHTTP2ConnectionShards
+	}
+
+	if protocol == HTTPProtocolHTTP1 || disableConnectionReuse {
+		shards = 1
+	}
+
+	return protocol, shards
+}
+
+func configureHTTPTransport(
+	transport *http.Transport,
+	proxyConfig *ProxyConfig,
+	options clientOptions,
+	disableConnectionReuse bool,
+) {
+	transport.Proxy = getProxyFunc(proxyConfig)
+	transport.DisableKeepAlives = disableConnectionReuse
+	transport.DialContext = newUpstreamDialer().DialContext
+	transport.MaxIdleConns = 100
+	transport.MaxIdleConnsPerHost = maxIdleConnsPerHost
+	transport.IdleConnTimeout = 90 * time.Second
+	transport.TLSHandshakeTimeout = 10 * time.Second
+	transport.ExpectContinueTimeout = 1 * time.Second
+
+	protocol, _ := normalizeHTTPTransport(options, disableConnectionReuse)
+	transport.ForceAttemptHTTP2 = protocol != HTTPProtocolHTTP1 && !disableConnectionReuse
+	if protocol == HTTPProtocolHTTP1 {
+		// An empty TLSNextProto map prevents automatic HTTP/2 negotiation.
+		transport.TLSNextProto = make(map[string]func(string, *tls.Conn) http.RoundTripper)
+	}
+
+	if options.insecureSkipVerify {
+		if transport.TLSClientConfig == nil {
+			transport.TLSClientConfig = &tls.Config{}
+		} else {
+			transport.TLSClientConfig = transport.TLSClientConfig.Clone()
+		}
+
+		transport.TLSClientConfig.InsecureSkipVerify = true //nolint:gosec // User-configured option for self-signed certificates
+	}
+}
+
+func buildHTTPTransport(proxyConfig *ProxyConfig, options clientOptions, cloneDefault bool) *http.Transport {
+	var transport *http.Transport
+	if cloneDefault {
+		if defaultTransport, ok := http.DefaultTransport.(*http.Transport); ok {
+			transport = defaultTransport.Clone()
+		}
+	}
+	if transport == nil {
+		transport = &http.Transport{}
+	}
+
+	disableConnectionReuse := proxyConfig != nil &&
+		proxyConfig.Type == ProxyTypeURL &&
+		proxyConfig.DisableConnectionReuse
+	configureHTTPTransport(transport, proxyConfig, options, disableConnectionReuse)
+
+	return transport
+}
+
+func buildHTTPRoundTripper(proxyConfig *ProxyConfig, options clientOptions, cloneDefault bool) http.RoundTripper {
+	disableConnectionReuse := proxyConfig != nil &&
+		proxyConfig.Type == ProxyTypeURL &&
+		proxyConfig.DisableConnectionReuse
+	_, shards := normalizeHTTPTransport(options, disableConnectionReuse)
+
+	if shards == 1 {
+		return buildHTTPTransport(proxyConfig, options, cloneDefault)
+	}
+
+	transports := make([]*http.Transport, 0, shards)
+	for range shards {
+		transports = append(transports, buildHTTPTransport(proxyConfig, options, cloneDefault))
+	}
+
+	return &shardedRoundTripper{transports: transports}
+}
+
 // NewHttpClientWithProxy creates a new HTTP client with proxy configuration.
 func NewHttpClientWithProxy(proxyConfig *ProxyConfig, opts ...ClientOption) *HttpClient {
 	var options clientOptions
 	for _, opt := range opts {
 		opt(&options)
 	}
-	disableConnectionReuse := proxyConfig != nil &&
-		proxyConfig.Type == ProxyTypeURL &&
-		proxyConfig.DisableConnectionReuse
-
-	transport := &http.Transport{
-		Proxy:               getProxyFunc(proxyConfig),
-		DisableKeepAlives:   disableConnectionReuse,
-		DialContext:         newUpstreamDialer().DialContext,
-		ForceAttemptHTTP2:     !disableConnectionReuse,
-		MaxIdleConns:          100,
-		MaxIdleConnsPerHost:   maxIdleConnsPerHost,
-		IdleConnTimeout:       90 * time.Second,
-		TLSHandshakeTimeout:   10 * time.Second,
-		ExpectContinueTimeout: 1 * time.Second,
-	}
-
-	if options.insecureSkipVerify {
-		transport.TLSClientConfig = &tls.Config{
-			InsecureSkipVerify: true, //nolint:gosec // User-configured option for self-signed certificates
-		}
-	}
-
 	return &HttpClient{
 		client: &http.Client{
-			Transport: transport,
+			Transport: buildHTTPRoundTripper(proxyConfig, options, proxyConfig == nil),
 		},
 		proxyConfig: proxyConfig,
 		opts:        opts,
@@ -98,6 +205,14 @@ func NewHttpClientWithProxy(proxyConfig *ProxyConfig, opts ...ClientOption) *Htt
 // while preserving all other options (e.g., InsecureSkipVerify) from the original client.
 func (hc *HttpClient) WithProxy(proxyConfig *ProxyConfig) *HttpClient {
 	return NewHttpClientWithProxy(proxyConfig, hc.opts...)
+}
+
+// WithHTTPTransport returns a new client with the requested transport policy,
+// preserving proxy and TLS options from the original client.
+func (hc *HttpClient) WithHTTPTransport(protocol HTTPProtocol, shards int) *HttpClient {
+	opts := append([]ClientOption{}, hc.opts...)
+	opts = append(opts, WithHTTPTransport(protocol, shards))
+	return NewHttpClientWithProxy(hc.proxyConfig, opts...)
 }
 
 // GetNativeClient returns the underlying *http.Client for advanced use cases.
@@ -172,36 +287,8 @@ func NewHttpClient(opts ...ClientOption) *HttpClient {
 		opt(&options)
 	}
 
-	var transport *http.Transport
-	if defaultTransport, ok := http.DefaultTransport.(*http.Transport); ok {
-		transport = defaultTransport.Clone()
-	} else {
-		// Fall back to a transport close to http.DefaultTransport when it has been replaced.
-		transport = &http.Transport{
-			Proxy: getProxyFunc(nil),
-			DialContext:         newUpstreamDialer().DialContext,
-			ForceAttemptHTTP2:     true,
-			MaxIdleConns:          100,
-			IdleConnTimeout:       90 * time.Second,
-			TLSHandshakeTimeout:   10 * time.Second,
-			ExpectContinueTimeout: 1 * time.Second,
-		}
-	}
-	transport.DialContext = newUpstreamDialer().DialContext
-	transport.MaxIdleConnsPerHost = maxIdleConnsPerHost
-
-	if options.insecureSkipVerify {
-		if transport.TLSClientConfig == nil {
-			transport.TLSClientConfig = &tls.Config{}
-		} else {
-			transport.TLSClientConfig = transport.TLSClientConfig.Clone()
-		}
-
-		transport.TLSClientConfig.InsecureSkipVerify = true //nolint:gosec // User-configured option for self-signed certificates
-	}
-
 	return &HttpClient{
-		client: &http.Client{Transport: transport},
+		client: &http.Client{Transport: buildHTTPRoundTripper(nil, options, true)},
 		opts:   opts,
 	}
 }

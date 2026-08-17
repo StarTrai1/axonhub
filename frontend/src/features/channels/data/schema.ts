@@ -315,6 +315,8 @@ export const channelSettingsSchema = z.object({
   bodyOverrideOperations: z.array(overrideOperationSchema).optional(),
   headerOverrideOperations: z.array(overrideOperationSchema).optional(),
   proxy: proxyConfigSchema.optional().nullable(),
+  httpProtocol: z.enum(['auto', 'http1', '']).optional().nullable(),
+  http2ConnectionShards: z.number().int().min(0).max(8).optional().nullable(),
   transformOptions: transformOptionsSchema.optional(),
   passThroughUserAgent: z.boolean().optional().nullable(),
   passThroughBody: z.boolean().optional().nullable(),
