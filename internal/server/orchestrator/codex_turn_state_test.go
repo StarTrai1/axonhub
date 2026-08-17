@@ -51,7 +51,10 @@ func TestCodexTurnStateIsolation_PreservesSameChannelAndStripsCrossChannel(t *te
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			outbound := codexTurnStateTestOutbound(test.channelID, "session-1")
-			request := &httpclient.Request{Headers: http.Header{codexTurnStateHeader: []string{"state-a"}}}
+			request := &httpclient.Request{Headers: http.Header{
+				codexTurnStateHeader: []string{"state-a"},
+				"Session-Id":        []string{"session-1"},
+			}}
 
 			processed, err := applyCodexTurnStateIsolation(outbound, tracker).
 				OnOutboundRawRequest(context.Background(), request)
@@ -65,7 +68,10 @@ func TestCodexTurnStateIsolation_PreservesSameChannelAndStripsCrossChannel(t *te
 func TestCodexTurnStateIsolation_UnknownOrExpiredOriginPassesThrough(t *testing.T) {
 	tracker := newCodexTurnStateTracker()
 	outbound := codexTurnStateTestOutbound(12, "session-unknown")
-	request := &httpclient.Request{Headers: http.Header{codexTurnStateHeader: []string{"external-state"}}}
+	request := &httpclient.Request{Headers: http.Header{
+		codexTurnStateHeader: []string{"external-state"},
+		"Session-Id":        []string{"session-unknown"},
+	}}
 
 	processed, err := applyCodexTurnStateIsolation(outbound, tracker).
 		OnOutboundRawRequest(context.Background(), request)
@@ -85,7 +91,10 @@ func TestCodexTurnStateIsolation_ThirdPartyAPIKeyChannelPassesThrough(t *testing
 	origin := codexTurnStateTestOutbound(11, "session-1")
 	tracker.noteSuccessfulResponse(origin.state, http.Header{codexTurnStateHeader: []string{"state-a"}})
 	outbound := codexTurnStateAPIKeyTestOutbound(12, "session-1")
-	request := &httpclient.Request{Headers: http.Header{codexTurnStateHeader: []string{"state-a"}}}
+	request := &httpclient.Request{Headers: http.Header{
+		codexTurnStateHeader: []string{"state-a"},
+		"Session-Id":        []string{"session-1"},
+	}}
 
 	processed, err := applyCodexTurnStateIsolation(outbound, tracker).
 		OnOutboundRawRequest(context.Background(), request)
