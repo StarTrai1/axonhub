@@ -14,6 +14,7 @@ import (
 	"github.com/tidwall/gjson"
 	"golang.org/x/sync/errgroup"
 
+	entchannel "github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xjson"
@@ -23,17 +24,20 @@ import (
 	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/looplj/axonhub/llm/pipeline/stream"
 	"github.com/looplj/axonhub/llm/streams"
+	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/openai"
 	"github.com/looplj/axonhub/llm/transformer/openai/codex"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
 
 const (
-	testChannelAPIKeysMaxConcurrency = 8
-	channelTestMaxCompletionTokens   = int64(64)
-	channelTestRequestMetadataKey    = "axonhub.channel_test"
-	channelTestOriginator            = "codex_vscode"
-	channelTestUserAgent             = "codex_vscode/0.144.5 (Ubuntu 24.4.0; x86_64) xterm-256color (VS Code; 26.707.91948)"
+	testChannelAPIKeysMaxConcurrency          = 8
+	channelTestMaxCompletionTokens            = int64(64)
+	channelTestRequestMetadataKey             = "axonhub.channel_test"
+	channelTestRemoteCompactionProbeMetadataKey = "axonhub.channel_test.remote_compaction"
+	channelTestOriginator                     = "codex_vscode"
+	channelTestUserAgent                      = "codex_vscode/0.144.5 (Ubuntu 24.4.0; x86_64) xterm-256color (VS Code; 26.707.91948)"
+	channelTestModeRemoteCompaction            = "remote_compaction"
 )
 
 type channelTestTurnMetadata struct {
@@ -106,8 +110,13 @@ func (processor *TestChannelOrchestrator) TestChannel(
 	channelID objects.GUID,
 	modelID *string,
 	proxy *httpclient.ProxyConfig,
+	mode *string,
 ) (*TestChannelResult, error) {
-	inbound := openai.NewInboundTransformer()
+	remoteCompactionProbe := mode != nil && *mode == channelTestModeRemoteCompaction
+	var inbound transformer.Inbound = openai.NewInboundTransformer()
+	if remoteCompactionProbe {
+		inbound = responses.NewInboundTransformer()
+	}
 	// Create ChatCompletionOrchestrator for this test request
 	chatProcessor := &ChatCompletionOrchestrator{
 		channelSelector: NewSpecifiedChannelSelector(processor.channelService, channelID),
@@ -135,6 +144,9 @@ func (processor *TestChannelOrchestrator) TestChannel(
 	if err != nil {
 		return nil, err
 	}
+	if remoteCompactionProbe && channel.Type != entchannel.TypeCodex {
+		return nil, fmt.Errorf("remote compaction probe is only available for Codex channels")
+	}
 
 	testModel := lo.FromPtr(modelID)
 	if testModel == "" {
@@ -148,7 +160,12 @@ func (processor *TestChannelOrchestrator) TestChannel(
 	// Check if the channel requires streaming
 	useStream := channel != nil && channel.Policies.Stream == objects.CapabilityPolicyRequire
 
-	testRequest, err := buildChannelTestRequest(testModel, useStream, systemPrompt, userPrompt)
+	var testRequest *httpclient.Request
+	if remoteCompactionProbe {
+		testRequest, err = buildRemoteCompactionChannelTestRequest(testModel, systemPrompt, userPrompt)
+	} else {
+		testRequest, err = buildChannelTestRequest(testModel, useStream, systemPrompt, userPrompt)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -171,10 +188,29 @@ func (processor *TestChannelOrchestrator) TestChannel(
 
 	// Handle streaming response
 	if rawResponse.ChatCompletionStream != nil {
+		if remoteCompactionProbe {
+			return processor.handleRemoteCompactionProbeStream(ctx, rawResponse.ChatCompletionStream, startTime)
+		}
 		return processor.handleStreamResponse(ctx, rawResponse.ChatCompletionStream, startTime)
 	}
 
 	latency := time.Since(startTime).Seconds()
+	if remoteCompactionProbe {
+		if !responseBodyContainsCompactionItem(rawResponse.ChatCompletion.Body) {
+			return &TestChannelResult{
+				Latency: latency,
+				Success: false,
+				Message: new(""),
+				Error:   new("Upstream returned 2xx without a remote compaction output item"),
+			}, nil
+		}
+
+		return &TestChannelResult{
+			Latency: latency,
+			Success: true,
+			Message: new("remote_compaction_v2"),
+		}, nil
+	}
 
 	// Handle non-streaming response
 	response, err := xjson.To[llm.Response](rawResponse.ChatCompletion.Body)
@@ -195,13 +231,112 @@ func (processor *TestChannelOrchestrator) TestChannel(
 			Error:   new("No message in response"),
 		}, nil
 	}
-
 	return &TestChannelResult{
 		Latency: latency,
 		Success: true,
 		Message: response.Choices[0].Message.Content.Content,
 		Error:   nil,
 	}, nil
+}
+
+func (processor *TestChannelOrchestrator) handleRemoteCompactionProbeStream(
+	ctx context.Context,
+	stream streams.Stream[*httpclient.StreamEvent],
+	startTime time.Time,
+) (*TestChannelResult, error) {
+	defer func() { _ = stream.Close() }()
+
+	found := false
+	for stream.Next() {
+		if err := ctx.Err(); err != nil {
+			return &TestChannelResult{
+				Latency: time.Since(startTime).Seconds(),
+				Success: false,
+				Message: new(""),
+				Error:   new(err.Error()),
+			}, nil
+		}
+		if event := stream.Current(); event != nil && responseBodyContainsCompactionItem(event.Data) {
+			found = true
+		}
+	}
+
+	latency := time.Since(startTime).Seconds()
+	if err := stream.Err(); err != nil {
+		return &TestChannelResult{Latency: latency, Success: false, Message: new(""), Error: new(err.Error())}, nil
+	}
+	if !found {
+		return &TestChannelResult{
+			Latency: latency,
+			Success: false,
+			Message: new(""),
+			Error:   new("Upstream returned 2xx without a remote compaction output item"),
+		}, nil
+	}
+
+	return &TestChannelResult{
+		Latency: latency,
+		Success: true,
+		Message: new("remote_compaction_v2"),
+	}, nil
+}
+
+func responseBodyContainsCompactionItem(body []byte) bool {
+	if len(body) == 0 {
+		return false
+	}
+	if text := strings.TrimSpace(string(body)); strings.HasPrefix(text, "data:") {
+		for _, line := range strings.Split(text, "\n") {
+			line = strings.TrimSpace(line)
+			if !strings.HasPrefix(line, "data:") {
+				continue
+			}
+			payload := strings.TrimSpace(strings.TrimPrefix(line, "data:"))
+			if payload != "" && payload != "[DONE]" && responseBodyContainsCompactionItem([]byte(payload)) {
+				return true
+			}
+		}
+
+		return false
+	}
+	var envelope struct {
+		Type string `json:"type"`
+		Item *struct {
+			Type string `json:"type"`
+		} `json:"item"`
+		Output []struct {
+			Type string `json:"type"`
+		} `json:"output"`
+		Response *struct {
+			Output []struct {
+				Type string `json:"type"`
+			} `json:"output"`
+		} `json:"response"`
+	}
+	if json.Unmarshal(body, &envelope) != nil {
+		return false
+	}
+	if envelope.Item != nil && isCompactionItemType(envelope.Item.Type) {
+		return true
+	}
+	for _, item := range envelope.Output {
+		if isCompactionItemType(item.Type) {
+			return true
+		}
+	}
+	if envelope.Response != nil {
+		for _, item := range envelope.Response.Output {
+			if isCompactionItemType(item.Type) {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+func isCompactionItemType(itemType string) bool {
+	return itemType == remoteCompactionItemType || itemType == legacyRemoteCompactionSummaryType
 }
 
 // handleStreamResponse processes a streaming response and accumulates the content.
@@ -648,6 +783,62 @@ func buildChannelTestRequest(model string, useStream bool, systemPrompt string, 
 		Body:     body,
 		Metadata: requestMetadata,
 	}, nil
+}
+
+func buildRemoteCompactionChannelTestRequest(model string, systemPrompt string, userPrompt string) (*httpclient.Request, error) {
+	request, err := buildChannelTestRequest(model, true, systemPrompt, userPrompt)
+	if err != nil {
+		return nil, err
+	}
+
+	inputText := strings.TrimSpace(userPrompt)
+	if inputText == "" {
+		inputText = "Preserve this context."
+	}
+	body := map[string]any{
+		"model": model,
+		"input": []any{
+			map[string]any{
+				"type": "message",
+				"role": "user",
+				"content": []map[string]string{{
+					"type": "input_text",
+					"text": inputText,
+				}},
+			},
+			map[string]string{"type": remoteCompactionTriggerType},
+		},
+		"stream": true,
+		"store":  false,
+	}
+	if instructions := strings.TrimSpace(systemPrompt); instructions != "" {
+		body["instructions"] = instructions
+	}
+	request.Body, err = json.Marshal(body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode remote compaction channel test request: %w", err)
+	}
+	codex.EnsureRemoteCompactionV2Feature(request.Headers)
+	if request.Metadata == nil {
+		request.Metadata = make(map[string]string)
+	}
+	request.Metadata[channelTestRemoteCompactionProbeMetadataKey] = "true"
+
+	if raw := request.Headers.Get(codex.TurnMetadataHeader); raw != "" {
+		var metadata map[string]any
+		if json.Unmarshal([]byte(raw), &metadata) == nil {
+			metadata["request_kind"] = "compaction"
+			metadata["compaction"] = map[string]any{
+				"trigger": "manual",
+				"reason":  "capability_probe",
+			}
+			if encoded, encodeErr := json.Marshal(metadata); encodeErr == nil {
+				request.Headers.Set(codex.TurnMetadataHeader, string(encoded))
+			}
+		}
+	}
+
+	return request, nil
 }
 
 func isCodexStyleTestModel(model string) bool {

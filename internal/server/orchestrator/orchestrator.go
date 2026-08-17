@@ -97,6 +97,7 @@ func NewChatCompletionOrchestrator(
 		circuitBreakerLoadBalancer: circuitBreakerLoadBalancer,
 		roundRobinLoadBalancer:     roundRobinLoadBalancer,
 		modelCircuitBreaker:        modelCircuitBreaker,
+		codexTurnStateTracker:      newCodexTurnStateTracker(),
 		quotaProvider:              quotaProvider,
 		proxy:                      nil,
 	}
@@ -138,6 +139,9 @@ type ChatCompletionOrchestrator struct {
 	rateLimitTracker *ChannelRequestTracker
 	// The model circuit breaker for circuit-breaker load balancing.
 	modelCircuitBreaker *biz.ModelCircuitBreaker
+	// codexTurnStateTracker prevents an opaque sticky-routing token minted by
+	// one Codex channel from being replayed after failover selects another.
+	codexTurnStateTracker *codexTurnStateTracker
 	// The provider quota status provider for quota-aware load balancing and selection.
 	quotaProvider ProviderQuotaStatusProvider
 	// Bridges remote compaction generation and continuation when an eligible
@@ -282,6 +286,9 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		// This allows override headers to modify the User-Agent if configured.
 		applyUserAgentPassThrough(outbound, processor.SystemService),
 		applyOverrideRequestHeaders(outbound),
+		// Guard the client-minted sticky token before an OAuth identity policy
+		// rewrites the original session used as its provenance key.
+		applyCodexTurnStateIsolation(outbound, processor.codexTurnStateTracker),
 		// Keep all Codex OAuth identity carriers coherent after body/header
 		// pass-through and explicit overrides have settled.
 		applyCodexIdentityPolicy(outbound),
@@ -353,6 +360,8 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 
 		return ChatCompletionResult{}, err
 	}
+
+	processor.codexTurnStateTracker.noteSuccessfulResponse(state, result.ResponseHeaders)
 
 	// Return result based on stream type
 	if result.Stream {

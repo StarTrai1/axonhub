@@ -117,6 +117,9 @@ func (m *remoteCompactionMiddleware) OnInboundLlmRequest(ctx context.Context, re
 	if m.adapter == nil || m.inbound == nil || req == nil || m.executor == nil {
 		return req, nil
 	}
+	if req.RawRequest != nil && req.RawRequest.Metadata[channelTestRemoteCompactionProbeMetadataKey] == "true" {
+		return req, nil
+	}
 
 	candidates := m.inbound.state.ChannelModelsCandidates
 	if req.RawRequest != nil && len(rawRequestPayload(req.RawRequest)) > 0 &&
@@ -872,6 +875,10 @@ func (a *remoteCompactionAdapter) generateLocalSummaryWithCandidate(
 		APIFormat:   string(llm.APIFormatOpenAIResponse),
 	}
 	rawRequest.Headers.Del(remoteCompactionCacheHeader)
+	// Local bridge generation is a gateway-authored summary turn rather than a
+	// continuation of the client's upstream turn. Never replay an opaque state
+	// token minted by the channel that handled the preceding client request.
+	rawRequest.Headers.Del(codexTurnStateHeader)
 
 	bridgeRequest, err := responses.NewInboundTransformer().TransformRequest(ctx, rawRequest)
 	if err != nil {

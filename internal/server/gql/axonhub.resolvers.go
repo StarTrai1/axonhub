@@ -258,7 +258,7 @@ func (r *mutationResolver) TestChannel(ctx context.Context, input TestChannelInp
 	// Set test source context for test channel requests
 	ctx = contexts.WithSource(ctx, request.SourceTest)
 
-	result, err := r.TestChannelOrchestrator.TestChannel(ctx, input.ChannelID, input.ModelID, input.Proxy)
+	result, err := r.TestChannelOrchestrator.TestChannel(ctx, input.ChannelID, input.ModelID, input.Proxy, input.Mode)
 	if err != nil {
 		if httpclient.IsNotFoundErr(err) {
 			return nil, fmt.Errorf("URL not found, please check if the URL is correct and try again")

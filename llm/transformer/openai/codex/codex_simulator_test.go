@@ -107,6 +107,37 @@ func TestCodexOutbound_PassthroughModernCodexHeaders(t *testing.T) {
 	assert.Equal(t, "true", finalReq.Header.Get("X-Openai-Internal-Codex-Responses-Lite"))
 }
 
+func TestEnsureRemoteCompactionV2Feature_MergesAndDeduplicates(t *testing.T) {
+	tests := []struct {
+		name string
+		raw  string
+		want string
+	}{
+		{name: "empty", want: "remote_compaction_v2"},
+		{name: "preserves other features", raw: "js_repl", want: "js_repl,remote_compaction_v2"},
+		{name: "keeps existing feature", raw: "js_repl,remote_compaction_v2", want: "js_repl,remote_compaction_v2"},
+		{name: "deduplicates and trims", raw: " js_repl, JS_REPL , remote_compaction_v2 ", want: "js_repl,remote_compaction_v2"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			headers := make(http.Header)
+			if test.raw != "" {
+				headers.Set(BetaFeaturesHeader, test.raw)
+			}
+
+			EnsureRemoteCompactionV2Feature(headers)
+
+			require.Equal(t, test.want, headers.Get(BetaFeaturesHeader))
+		})
+	}
+}
+
+func TestHasRemoteCompactionV2Trigger(t *testing.T) {
+	require.True(t, HasRemoteCompactionV2Trigger([]byte(`{"input":[{"type":"message"},{"type":"compaction_trigger"}]}`)))
+	require.False(t, HasRemoteCompactionV2Trigger([]byte(`{"input":[{"type":"message"}]}`)))
+}
+
 func TestCodexOutbound_NonCodexInboundDefaults(t *testing.T) {
 	ctx := context.Background()
 	sim := newCodexSimulator(t)

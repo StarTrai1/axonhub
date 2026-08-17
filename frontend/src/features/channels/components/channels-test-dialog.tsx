@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { IconSearch, IconPlayerPlay } from '@tabler/icons-react';
+import { IconArrowsMinimize, IconMessageCircle, IconPlayerPlay, IconSearch } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -10,12 +10,14 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import LongText from '@/components/long-text';
 import { useTestChannel, useUpdateChannel } from '../data/channels';
 import { Channel } from '../data/schema';
 import { ErrorDisplay } from '../utils/error-formatter';
 
 type TestStatus = 'not_started' | 'testing' | 'success' | 'failed';
+type TestMode = 'chat' | 'remote_compaction';
 
 interface ModelTestResult {
   modelName: string;
@@ -37,6 +39,7 @@ export function ChannelsTestDialog({ open, onOpenChange, channel }: Props) {
   const [testResults, setTestResults] = useState<Record<string, ModelTestResult>>({});
   const [localSupportedModels, setLocalSupportedModels] = useState<string[]>(channel.supportedModels);
   const [isTesting, setIsTesting] = useState(false);
+  const [testMode, setTestMode] = useState<TestMode>('chat');
   const [isRemovePopoverOpen, setIsRemovePopoverOpen] = useState(false);
   const testChannel = useTestChannel();
   const updateChannel = useUpdateChannel();
@@ -58,6 +61,7 @@ export function ChannelsTestDialog({ open, onOpenChange, channel }: Props) {
       setLocalSupportedModels(channel.supportedModels);
       setSelectedModels([]);
       setSearchQuery('');
+      setTestMode('chat');
     }
   }, [open, channel.supportedModels]);
 
@@ -91,6 +95,7 @@ export function ChannelsTestDialog({ open, onOpenChange, channel }: Props) {
       const result = await testChannel.mutateAsync({
         channelID: channel.id,
         modelID: modelName,
+        mode: testMode,
       });
       const latency = (Date.now() - startTime) / 1000;
 
@@ -150,6 +155,19 @@ export function ChannelsTestDialog({ open, onOpenChange, channel }: Props) {
 
   const failedModels = selectedModels.filter((model) => testResults[model]?.status === 'failed');
 
+  const handleTestModeChange = (value: string) => {
+    const nextMode = value as TestMode;
+    setTestMode(nextMode);
+    setTestResults((current) =>
+      Object.fromEntries(
+        Object.entries(current).map(([modelName, result]) => [
+          modelName,
+          { ...result, status: 'not_started' as const, latency: undefined, error: undefined },
+        ])
+      )
+    );
+  };
+
   const handleRemoveFailed = async () => {
     const failedModelNames = new Set(failedModels);
     const newSupportedModels = localSupportedModels.filter((model) => !failedModelNames.has(model));
@@ -178,6 +196,21 @@ export function ChannelsTestDialog({ open, onOpenChange, channel }: Props) {
         </DialogHeader>
 
         <div className='min-h-0 flex-1 space-y-4'>
+          {channel.type === 'codex' && (
+            <Tabs value={testMode} onValueChange={handleTestModeChange}>
+              <TabsList className='grid h-9 w-full grid-cols-2 sm:w-[320px]'>
+                <TabsTrigger value='chat' className='gap-1.5 text-xs sm:text-sm'>
+                  <IconMessageCircle className='h-4 w-4' />
+                  {t('channels.dialogs.test.modes.chat')}
+                </TabsTrigger>
+                <TabsTrigger value='remote_compaction' className='gap-1.5 text-xs sm:text-sm'>
+                  <IconArrowsMinimize className='h-4 w-4' />
+                  {t('channels.dialogs.test.modes.remoteCompaction')}
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          )}
+
           {/* Search */}
           <div className='relative'>
             <IconSearch className='text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 transform' />

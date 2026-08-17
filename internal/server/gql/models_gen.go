@@ -487,6 +487,7 @@ type TestChannelInput struct {
 	ChannelID objects.GUID            `json:"channelID"`
 	ModelID   *string                 `json:"modelID,omitempty"`
 	Proxy     *httpclient.ProxyConfig `json:"proxy,omitempty"`
+	Mode      *string                 `json:"mode,omitempty"`
 }
 
 type TestChannelPayload struct {

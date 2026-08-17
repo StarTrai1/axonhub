@@ -1465,10 +1465,12 @@ export function useTestChannel(options?: { silent?: boolean }) {
       channelID,
       modelID,
       proxy,
+      mode,
     }: {
       channelID: string;
       modelID?: string;
       proxy?: ProxyConfig;
+      mode?: 'chat' | 'remote_compaction';
     }) => {
       try {
         const data = await graphqlRequest<{
@@ -1478,7 +1480,7 @@ export function useTestChannel(options?: { silent?: boolean }) {
             message?: string | null;
             error?: string | null;
           };
-        }>(TEST_CHANNEL_MUTATION, { input: { channelID, modelID, proxy } });
+        }>(TEST_CHANNEL_MUTATION, { input: { channelID, modelID, proxy, mode } });
         return data.testChannel;
       } catch (error) {
         if (!silent) {

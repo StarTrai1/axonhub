@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/tidwall/gjson"
 )
 
 const (
@@ -96,4 +98,61 @@ func GetSessionIDFromHeaders(headers http.Header) string {
 	}
 
 	return ExtractSessionIDFromTurnMetadata(strings.TrimSpace(headers.Get(TurnMetadataHeader)))
+}
+
+// EnsureRemoteCompactionV2Feature appends the stable remote compaction feature
+// to a Codex session header without discarding other enabled features. Codex
+// builds this header once per session, so a gateway must merge rather than only
+// fabricate it when the inbound header is empty.
+func EnsureRemoteCompactionV2Feature(headers http.Header) {
+	if headers == nil {
+		return
+	}
+
+	const feature = "remote_compaction_v2"
+	raw := strings.TrimSpace(headers.Get(BetaFeaturesHeader))
+	if raw == "" {
+		headers.Set(BetaFeaturesHeader, feature)
+		return
+	}
+
+	features := make([]string, 0, 4)
+	seen := make(map[string]struct{})
+	for _, item := range strings.Split(raw, ",") {
+		item = strings.TrimSpace(item)
+		if item == "" {
+			continue
+		}
+		key := strings.ToLower(item)
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		features = append(features, item)
+	}
+	if _, ok := seen[feature]; !ok {
+		features = append(features, feature)
+	}
+	headers.Set(BetaFeaturesHeader, strings.Join(features, ","))
+}
+
+// HasRemoteCompactionV2Trigger reports whether a Responses request is a native
+// v2 compaction turn. Only these requests may override a non-empty client beta
+// feature declaration to ensure the required negotiation token is present.
+func HasRemoteCompactionV2Trigger(body []byte) bool {
+	input := gjson.GetBytes(body, "input")
+	if !input.IsArray() {
+		return false
+	}
+	found := false
+	input.ForEach(func(_, item gjson.Result) bool {
+		if item.Get("type").String() == "compaction_trigger" {
+			found = true
+			return false
+		}
+
+		return true
+	})
+
+	return found
 }

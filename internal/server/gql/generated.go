@@ -82107,7 +82107,7 @@ func (ec *executionContext) unmarshalInputTestChannelInput(ctx context.Context, 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"channelID", "modelID", "proxy"}
+	fieldsInOrder := [...]string{"channelID", "modelID", "proxy", "mode"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -82135,6 +82135,13 @@ func (ec *executionContext) unmarshalInputTestChannelInput(ctx context.Context, 
 				return it, err
 			}
 			it.Proxy = data
+		case "mode":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("mode"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Mode = data
 		}
 	}
 

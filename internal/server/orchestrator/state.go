@@ -34,6 +34,9 @@ type PersistenceState struct {
 	OriginalModel string
 	RawRequest    *httpclient.Request
 	LlmRequest    *llm.Request
+	// codexTurnStateSessionKey captures the downstream API key and original
+	// client session before an OAuth identity policy rewrites outbound headers.
+	codexTurnStateSessionKey string
 
 	// OriginalRequestStream stores the client's original stream intent before any
 	// candidate-specific forcing to provider-side streaming happens.

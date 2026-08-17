@@ -348,7 +348,9 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	if hreq.Headers.Get(ClientRequestIDHeader) == "" {
 		hreq.Headers.Set(ClientRequestIDHeader, uuid.NewString())
 	}
-	if hreq.Headers.Get(BetaFeaturesHeader) == "" {
+	if HasRemoteCompactionV2Trigger(hreq.Body) {
+		EnsureRemoteCompactionV2Feature(hreq.Headers)
+	} else if hreq.Headers.Get(BetaFeaturesHeader) == "" {
 		hreq.Headers.Set(BetaFeaturesHeader, fabricatedBetaFeatures)
 	}
 

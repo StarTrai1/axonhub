@@ -115,3 +115,38 @@ func TestBuildChannelTestRequestOmitsEmptySystemPrompt(t *testing.T) {
 	require.Equal(t, "user", gjson.GetBytes(request.Body, "messages.0.role").String())
 	require.Equal(t, "user prompt", gjson.GetBytes(request.Body, "messages.0.content").String())
 }
+
+func TestBuildRemoteCompactionChannelTestRequestUsesNativeV2Shape(t *testing.T) {
+	request, err := buildRemoteCompactionChannelTestRequest("gpt-5.6-sol", "system prompt", "user prompt")
+	require.NoError(t, err)
+
+	require.Equal(t, "gpt-5.6-sol", gjson.GetBytes(request.Body, "model").String())
+	require.Equal(t, "system prompt", gjson.GetBytes(request.Body, "instructions").String())
+	require.Equal(t, "user prompt", gjson.GetBytes(request.Body, "input.0.content.0.text").String())
+	require.Equal(t, remoteCompactionTriggerType, gjson.GetBytes(request.Body, "input.1.type").String())
+	require.True(t, gjson.GetBytes(request.Body, "stream").Bool())
+	require.False(t, gjson.GetBytes(request.Body, "store").Bool())
+	require.Contains(t, request.Headers.Get(codex.BetaFeaturesHeader), "remote_compaction_v2")
+	require.Equal(t, "compaction", gjson.Get(request.Headers.Get(codex.TurnMetadataHeader), "request_kind").String())
+	require.Equal(t, "capability_probe", gjson.Get(request.Headers.Get(codex.TurnMetadataHeader), "compaction.reason").String())
+}
+
+func TestResponseBodyContainsCompactionItem(t *testing.T) {
+	tests := []struct {
+		name string
+		body string
+		want bool
+	}{
+		{name: "output item event", body: `{"type":"response.output_item.done","item":{"type":"compaction","id":"cmp_1"}}`, want: true},
+		{name: "terminal output", body: `{"type":"response.completed","response":{"output":[{"type":"compaction_summary","id":"cmp_2"}]}}`, want: true},
+		{name: "json output", body: `{"output":[{"type":"compaction","id":"cmp_3"}]}`, want: true},
+		{name: "complete SSE body", body: "data: {\"type\":\"response.output_item.done\",\"item\":{\"type\":\"compaction\",\"id\":\"cmp_4\"}}\n\ndata: [DONE]\n\n", want: true},
+		{name: "message only", body: `{"type":"response.output_item.done","item":{"type":"message","id":"msg_1"}}`},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			require.Equal(t, test.want, responseBodyContainsCompactionItem([]byte(test.body)))
+		})
+	}
+}

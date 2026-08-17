@@ -881,7 +881,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                 supportsRemoteCompaction: false,
                 webSearch: 'native',
                 supportsWebSearch: true,
-                codexIdentity: 'session',
+                codexIdentity: 'off',
               },
               credentials: {
                 apiKeys: [],
@@ -1423,7 +1423,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         effectiveChannelType === 'codex' ? (dataWithModels.policies?.webSearch ?? 'native') : 'native';
       const codexIdentityPolicy =
         effectiveChannelType === 'codex' && authMode !== 'third-party'
-          ? (dataWithModels.policies?.codexIdentity ?? 'session')
+          ? (dataWithModels.policies?.codexIdentity ?? 'off')
           : 'off';
       dataWithModels.policies = {
         ...dataWithModels.policies,
@@ -2911,7 +2911,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                     </div>
                                     <FormControl>
                                       <CompactPolicyRadioGroup
-                                        value={field.value ?? 'session'}
+                                        value={field.value ?? 'off'}
                                         onValueChange={field.onChange}
                                         options={CODEX_IDENTITY_POLICY_OPTIONS}
                                         translationPrefix='channels.dialogs.fields.codexIdentityPolicy.options'

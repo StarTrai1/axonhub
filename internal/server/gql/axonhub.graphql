@@ -339,6 +339,7 @@ input TestChannelInput {
   channelID: ID!
   modelID: String
   proxy: ProxyConfigInput
+  mode: String
 }
 
 type TestChannelPayload {

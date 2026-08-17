@@ -243,6 +243,8 @@
   "channels.dialogs.edit.description": "Modify channel configuration.",
   "channels.dialogs.test.title": "Test Channel",
   "channels.dialogs.test.description": "Test {{name}} with selected models",
+  "channels.dialogs.test.modes.chat": "Conversation",
+  "channels.dialogs.test.modes.remoteCompaction": "Native compaction",
   "channels.dialogs.test.searchPlaceholder": "Search models...",
   "channels.dialogs.test.modelNameColumn": "Model Name",
   "channels.dialogs.test.statusColumn": "Status",
