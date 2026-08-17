@@ -6,9 +6,11 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
+	"github.com/looplj/axonhub/internal/objects"
 )
 
 func TestRequestService_LoadReferencedExecutionRequestBody(t *testing.T) {
@@ -21,6 +23,15 @@ func TestRequestService_LoadReferencedExecutionRequestBody(t *testing.T) {
 		Save(ctx)
 	require.NoError(t, err)
 
+	primaryStorage, err := client.DataStorage.Create().
+		SetName("primary-database").
+		SetDescription("primary test database").
+		SetPrimary(true).
+		SetType(datastorage.TypeDatabase).
+		SetSettings(&objects.DataStorageSettings{}).
+		Save(ctx)
+	require.NoError(t, err)
+
 	raw := []byte("{\"input\":\"" + strings.Repeat("shared request history ", 8192) + "\"}")
 	storedParent, err := CompressStoredPayload(raw)
 	require.NoError(t, err)
@@ -30,6 +41,7 @@ func TestRequestService_LoadReferencedExecutionRequestBody(t *testing.T) {
 		SetModelID("gpt-5.6-sol").
 		SetFormat("openai/responses").
 		SetRequestBody(storedParent).
+		SetDataStorageID(primaryStorage.ID).
 		SetStatus(request.StatusCompleted).
 		SetStream(true).
 		Save(ctx)
@@ -45,6 +57,7 @@ func TestRequestService_LoadReferencedExecutionRequestBody(t *testing.T) {
 		SetModelID("gpt-5.6-sol").
 		SetFormat("openai/responses").
 		SetRequestBody(reference).
+		SetDataStorageID(primaryStorage.ID).
 		SetStatus(requestexecution.StatusCompleted).
 		SetStream(true).
 		Save(ctx)
