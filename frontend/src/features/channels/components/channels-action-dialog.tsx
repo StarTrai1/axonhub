@@ -20,6 +20,8 @@ import {
   Play,
   Info,
   Ban,
+  Settings2,
+  ShieldCheck,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -2806,7 +2808,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                 control={form.control}
                                 name='policies.remoteCompaction'
                                 render={({ field }) => (
-                                  <FormItem className='space-y-2 sm:col-span-2'>
+                                  <FormItem className='min-w-0 space-y-2'>
                                     <div className='flex items-center gap-1.5'>
                                       <FormLabel className='text-sm font-medium'>
                                         {t('channels.dialogs.fields.remoteCompactionPolicy.label')}
@@ -2847,7 +2849,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                 control={form.control}
                                 name='policies.webSearch'
                                 render={({ field }) => (
-                                  <FormItem className='space-y-2 sm:col-span-2'>
+                                  <FormItem className='min-w-0 space-y-2'>
                                     <div className='flex items-center gap-1.5'>
                                       <FormLabel className='text-sm font-medium'>
                                         {t('channels.dialogs.fields.webSearchPolicy.label')}
@@ -3009,236 +3011,243 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                         </div>
                       </div>
 
-                      <FormField
-                        control={form.control}
-                        name='defaultTestModel'
-                        render={({ field }) => (
-                          <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
-                            <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
-                              {t('channels.dialogs.fields.defaultTestModel.label')}
-                            </FormLabel>
-                            <div className='space-y-1 md:col-span-6'>
-                              <SelectDropdown
-                                defaultValue={field.value}
-                                onValueChange={field.onChange}
-                                items={supportedModels.map((model) => ({ value: model, label: model }))}
-                                placeholder={t('channels.dialogs.fields.defaultTestModel.description')}
-                                className='md:col-span-6'
-                                disabled={supportedModels.length === 0}
-                                isControlled={true}
-                                data-testid='default-test-model-select'
-                              />
-                              <FormMessage />
-                            </div>
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
-                        <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
-                          {t('channels.dialogs.userAgentPassThrough.label')}
-                        </FormLabel>
-                        <div className='space-y-1 md:col-span-6'>
-                          <Select
-                            value={passThroughUserAgent === null ? 'inherit' : passThroughUserAgent ? 'enabled' : 'disabled'}
-                            onValueChange={(value) => setPassThroughUserAgent(value === 'inherit' ? null : value === 'enabled')}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder={t('channels.dialogs.userAgentPassThrough.inherit')} />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value='inherit'>{t('channels.dialogs.userAgentPassThrough.inherit')}</SelectItem>
-                              <SelectItem value='enabled'>{t('channels.dialogs.userAgentPassThrough.enabled')}</SelectItem>
-                              <SelectItem value='disabled'>{t('channels.dialogs.userAgentPassThrough.disabled')}</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </FormItem>
-
-                      <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
-                        <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
-                          {t('channels.dialogs.bodyPassThrough.label')}
-                        </FormLabel>
-                        <div className='space-y-2 md:col-span-6'>
-                          <Select
-                            value={passThroughBody === null ? 'inherit' : passThroughBody ? 'enabled' : 'disabled'}
-                            onValueChange={(value) => setPassThroughBody(value === 'inherit' ? null : value === 'enabled')}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder={t('channels.dialogs.bodyPassThrough.inherit')} />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value='inherit'>{t('channels.dialogs.bodyPassThrough.inherit')}</SelectItem>
-                              <SelectItem value='enabled'>{t('channels.dialogs.bodyPassThrough.enabled')}</SelectItem>
-                              <SelectItem value='disabled'>{t('channels.dialogs.bodyPassThrough.disabled')}</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          {passThroughBody === true && (
-                            <p className='text-xs text-amber-600 dark:text-amber-400'>{t('channels.dialogs.bodyPassThrough.warning')}</p>
-                          )}
-                        </div>
-                      </FormItem>
-
-                      <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
-                        <div className='flex items-center gap-1.5 pt-2 md:col-span-2 md:justify-end'>
-                          <FormLabel className='font-medium'>{t('channels.dialogs.httpTransport.label')}</FormLabel>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <button
-                                type='button'
-                                className='text-muted-foreground hover:text-foreground inline-flex items-center'
-                                aria-label={t('channels.dialogs.httpTransport.description')}
-                              >
-                                <Info className='h-3.5 w-3.5' />
-                              </button>
-                            </TooltipTrigger>
-                            <TooltipContent className='max-w-sm'>
-                              <p>{t('channels.dialogs.httpTransport.description')}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </div>
-                        <div className='grid grid-cols-1 gap-2 sm:grid-cols-2 md:col-span-6'>
-                          <div className='space-y-1'>
-                            <span className='text-muted-foreground text-xs'>{t('channels.dialogs.httpTransport.protocol')}</span>
-                            <Select
-                              value={httpProtocol}
-                              onValueChange={(value) => {
-                                const protocol = value as HTTPProtocolOption;
-                                setHTTPProtocol(protocol);
-                                if (protocol === 'http1') setHTTP2ConnectionShards(1);
-                              }}
-                            >
-                              <SelectTrigger data-testid='channel-http-protocol-select'>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value='auto'>{t('channels.dialogs.httpTransport.options.auto')}</SelectItem>
-                                <SelectItem value='http1'>{t('channels.dialogs.httpTransport.options.http1')}</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className='space-y-1'>
-                            <span className='text-muted-foreground text-xs'>{t('channels.dialogs.httpTransport.shards')}</span>
-                            <Select
-                              value={String(httpProtocol === 'http1' ? 1 : http2ConnectionShards)}
-                              onValueChange={(value) => setHTTP2ConnectionShards(Number(value))}
-                              disabled={httpProtocol === 'http1'}
-                            >
-                              <SelectTrigger data-testid='channel-http2-shards-select'>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {HTTP2_CONNECTION_SHARD_OPTIONS.map((shards) => (
-                                  <SelectItem key={shards} value={String(shards)}>
-                                    {shards}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                      <section className='border-border/60 space-y-4 border-t pt-4'>
+                        <div className='flex items-start gap-2'>
+                          <Settings2 className='text-muted-foreground mt-0.5 h-4 w-4 shrink-0' />
+                          <div className='min-w-0'>
+                            <h3 className='text-sm font-medium'>{t('channels.dialogs.sections.runtime.title')}</h3>
+                            <p className='text-muted-foreground text-xs'>{t('channels.dialogs.sections.runtime.description')}</p>
                           </div>
                         </div>
-                      </FormItem>
 
-                      <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
-                        <div className='flex items-center gap-1.5 pt-2 md:col-span-2 md:justify-end'>
-                          <FormLabel className='font-medium'>{t('channels.dialogs.retryableStatusCodes.label')}</FormLabel>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <button
-                                type='button'
-                                className='text-muted-foreground hover:text-foreground inline-flex items-center'
-                                aria-label={t('channels.dialogs.retryableStatusCodes.tooltip')}
-                              >
-                                <Info className='h-3.5 w-3.5' />
-                              </button>
-                            </TooltipTrigger>
-                            <TooltipContent className='max-w-sm'>
-                              <p>{t('channels.dialogs.retryableStatusCodes.tooltip')}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </div>
-                        <div className='md:col-span-6'>
-                          <Input
-                            value={retryableStatusCodesText}
-                            onChange={(event) => setRetryableStatusCodesText(event.target.value)}
-                            placeholder={t('channels.dialogs.retryableStatusCodes.placeholder')}
-                            className='font-mono text-sm'
+                        <div className='grid grid-cols-1 items-start gap-x-4 gap-y-4 sm:grid-cols-2'>
+                          <FormField
+                            control={form.control}
+                            name='defaultTestModel'
+                            render={({ field }) => (
+                              <FormItem className='min-w-0 space-y-1.5'>
+                                <FormLabel className='min-h-5 text-sm font-medium'>
+                                  {t('channels.dialogs.fields.defaultTestModel.label')}
+                                </FormLabel>
+                                <SelectDropdown
+                                  defaultValue={field.value}
+                                  onValueChange={field.onChange}
+                                  items={supportedModels.map((model) => ({ value: model, label: model }))}
+                                  placeholder={t('channels.dialogs.fields.defaultTestModel.description')}
+                                  disabled={supportedModels.length === 0}
+                                  isControlled={true}
+                                  data-testid='default-test-model-select'
+                                />
+                                <FormMessage />
+                              </FormItem>
+                            )}
                           />
-                        </div>
-                      </FormItem>
 
-                      <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
-                        <div className='flex items-center gap-1.5 pt-2 md:col-span-2 md:justify-end'>
-                          <FormLabel className='font-medium'>{t('channels.dialogs.retryableErrorPatterns.label')}</FormLabel>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <button
-                                type='button'
-                                className='text-muted-foreground hover:text-foreground inline-flex items-center'
-                                aria-label={t('channels.dialogs.retryableErrorPatterns.description')}
-                              >
-                                <Info className='h-3.5 w-3.5' />
-                              </button>
-                            </TooltipTrigger>
-                            <TooltipContent className='max-w-sm'>
-                              <p>{t('channels.dialogs.retryableErrorPatterns.description')}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </div>
-                        <div className='md:col-span-6'>
-                          <Textarea
-                            value={retryableErrorPatternsText}
-                            onChange={(event) => setRetryableErrorPatternsText(event.target.value)}
-                            placeholder={t('channels.dialogs.retryableErrorPatterns.placeholder')}
-                            className='min-h-[88px] resize-y font-mono text-sm'
-                          />
-                        </div>
-                      </FormItem>
-
-                      <FormField
-                        control={form.control}
-                        name='tags'
-                        render={({ field }) => (
-                          <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
-                            <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
-                              {t('channels.dialogs.fields.tags.label')}
+                          <FormItem className='min-w-0 space-y-1.5'>
+                            <FormLabel className='min-h-5 text-sm font-medium'>
+                              {t('channels.dialogs.userAgentPassThrough.label')}
                             </FormLabel>
-                            <div className='space-y-1 md:col-span-6'>
-                              <TagsAutocompleteInput
-                                value={field.value || []}
-                                onChange={field.onChange}
-                                placeholder={t('channels.dialogs.fields.tags.placeholder')}
-                                suggestions={allTags}
-                                isLoading={isLoadingTags}
-                              />
-                              <p className='text-muted-foreground text-xs'>{t('channels.dialogs.fields.tags.description')}</p>
-                              <FormMessage />
+                            <Select
+                              value={passThroughUserAgent === null ? 'inherit' : passThroughUserAgent ? 'enabled' : 'disabled'}
+                              onValueChange={(value) => setPassThroughUserAgent(value === 'inherit' ? null : value === 'enabled')}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder={t('channels.dialogs.userAgentPassThrough.inherit')} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value='inherit'>{t('channels.dialogs.userAgentPassThrough.inherit')}</SelectItem>
+                                <SelectItem value='enabled'>{t('channels.dialogs.userAgentPassThrough.enabled')}</SelectItem>
+                                <SelectItem value='disabled'>{t('channels.dialogs.userAgentPassThrough.disabled')}</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </FormItem>
+
+                          <FormItem className='min-w-0 space-y-1.5'>
+                            <FormLabel className='min-h-5 text-sm font-medium'>
+                              {t('channels.dialogs.bodyPassThrough.label')}
+                            </FormLabel>
+                            <Select
+                              value={passThroughBody === null ? 'inherit' : passThroughBody ? 'enabled' : 'disabled'}
+                              onValueChange={(value) => setPassThroughBody(value === 'inherit' ? null : value === 'enabled')}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder={t('channels.dialogs.bodyPassThrough.inherit')} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value='inherit'>{t('channels.dialogs.bodyPassThrough.inherit')}</SelectItem>
+                                <SelectItem value='enabled'>{t('channels.dialogs.bodyPassThrough.enabled')}</SelectItem>
+                                <SelectItem value='disabled'>{t('channels.dialogs.bodyPassThrough.disabled')}</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            {passThroughBody === true && (
+                              <p className='text-xs leading-relaxed text-amber-600 dark:text-amber-400'>
+                                {t('channels.dialogs.bodyPassThrough.warning')}
+                              </p>
+                            )}
+                          </FormItem>
+
+                          <FormItem className='min-w-0 space-y-1.5'>
+                            <div className='flex min-h-5 items-center gap-1.5'>
+                              <FormLabel className='text-sm font-medium'>{t('channels.dialogs.httpTransport.label')}</FormLabel>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <button
+                                    type='button'
+                                    className='text-muted-foreground hover:text-foreground inline-flex items-center'
+                                    aria-label={t('channels.dialogs.httpTransport.description')}
+                                  >
+                                    <Info className='h-3.5 w-3.5' />
+                                  </button>
+                                </TooltipTrigger>
+                                <TooltipContent className='max-w-sm'>
+                                  <p>{t('channels.dialogs.httpTransport.description')}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </div>
+                            <div className='grid grid-cols-2 gap-2'>
+                              <div className='min-w-0 space-y-1'>
+                                <span className='text-muted-foreground text-xs'>{t('channels.dialogs.httpTransport.protocol')}</span>
+                                <Select
+                                  value={httpProtocol}
+                                  onValueChange={(value) => {
+                                    const protocol = value as HTTPProtocolOption;
+                                    setHTTPProtocol(protocol);
+                                    if (protocol === 'http1') setHTTP2ConnectionShards(1);
+                                  }}
+                                >
+                                  <SelectTrigger data-testid='channel-http-protocol-select'>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value='auto'>{t('channels.dialogs.httpTransport.options.auto')}</SelectItem>
+                                    <SelectItem value='http1'>{t('channels.dialogs.httpTransport.options.http1')}</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className='min-w-0 space-y-1'>
+                                <span className='text-muted-foreground text-xs'>{t('channels.dialogs.httpTransport.shards')}</span>
+                                <Select
+                                  value={String(httpProtocol === 'http1' ? 1 : http2ConnectionShards)}
+                                  onValueChange={(value) => setHTTP2ConnectionShards(Number(value))}
+                                  disabled={httpProtocol === 'http1'}
+                                >
+                                  <SelectTrigger data-testid='channel-http2-shards-select'>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {HTTP2_CONNECTION_SHARD_OPTIONS.map((shards) => (
+                                      <SelectItem key={shards} value={String(shards)}>
+                                        {shards}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
                             </div>
                           </FormItem>
-                        )}
-                      />
+                        </div>
+                      </section>
 
-                      <FormField
-                        control={form.control}
-                        name='remark'
-                        render={({ field }) => (
-                          <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
-                            <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
-                              {t('channels.dialogs.fields.remark.label')}
-                            </FormLabel>
-                            <div className='space-y-1 md:col-span-6'>
-                              <Textarea
-                                placeholder={t('channels.dialogs.fields.remark.placeholder')}
-                                className='min-h-[80px] resize-y'
-                                {...field}
-                                value={field.value || ''}
-                              />
-                              <p className='text-muted-foreground text-xs'>{t('channels.dialogs.fields.remark.description')}</p>
-                              <FormMessage />
+                      <section className='border-border/60 space-y-4 border-t pt-4'>
+                        <div className='flex items-start gap-2'>
+                          <ShieldCheck className='text-muted-foreground mt-0.5 h-4 w-4 shrink-0' />
+                          <div className='min-w-0'>
+                            <h3 className='text-sm font-medium'>{t('channels.dialogs.sections.reliability.title')}</h3>
+                            <p className='text-muted-foreground text-xs'>{t('channels.dialogs.sections.reliability.description')}</p>
+                          </div>
+                        </div>
+
+                        <div className='grid grid-cols-1 items-start gap-x-4 gap-y-4 sm:grid-cols-2'>
+                          <FormItem className='min-w-0 space-y-1.5'>
+                            <div className='flex min-h-5 items-center gap-1.5'>
+                              <FormLabel className='text-sm font-medium'>{t('channels.dialogs.retryableStatusCodes.label')}</FormLabel>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <button
+                                    type='button'
+                                    className='text-muted-foreground hover:text-foreground inline-flex items-center'
+                                    aria-label={t('channels.dialogs.retryableStatusCodes.tooltip')}
+                                  >
+                                    <Info className='h-3.5 w-3.5' />
+                                  </button>
+                                </TooltipTrigger>
+                                <TooltipContent className='max-w-sm'>
+                                  <p>{t('channels.dialogs.retryableStatusCodes.tooltip')}</p>
+                                </TooltipContent>
+                              </Tooltip>
                             </div>
+                            <Input
+                              value={retryableStatusCodesText}
+                              onChange={(event) => setRetryableStatusCodesText(event.target.value)}
+                              placeholder={t('channels.dialogs.retryableStatusCodes.placeholder')}
+                              className='font-mono text-sm'
+                            />
                           </FormItem>
-                        )}
-                      />
+
+                          <FormItem className='min-w-0 space-y-1.5'>
+                            <div className='flex min-h-5 items-center gap-1.5'>
+                              <FormLabel className='text-sm font-medium'>{t('channels.dialogs.retryableErrorPatterns.label')}</FormLabel>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <button
+                                    type='button'
+                                    className='text-muted-foreground hover:text-foreground inline-flex items-center'
+                                    aria-label={t('channels.dialogs.retryableErrorPatterns.description')}
+                                  >
+                                    <Info className='h-3.5 w-3.5' />
+                                  </button>
+                                </TooltipTrigger>
+                                <TooltipContent className='max-w-sm'>
+                                  <p>{t('channels.dialogs.retryableErrorPatterns.description')}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </div>
+                            <Textarea
+                              value={retryableErrorPatternsText}
+                              onChange={(event) => setRetryableErrorPatternsText(event.target.value)}
+                              placeholder={t('channels.dialogs.retryableErrorPatterns.placeholder')}
+                              className='min-h-[72px] resize-y font-mono text-sm'
+                            />
+                          </FormItem>
+
+                          <FormField
+                            control={form.control}
+                            name='tags'
+                            render={({ field }) => (
+                              <FormItem className='min-w-0 space-y-1.5'>
+                                <FormLabel className='min-h-5 text-sm font-medium'>{t('channels.dialogs.fields.tags.label')}</FormLabel>
+                                <TagsAutocompleteInput
+                                  value={field.value || []}
+                                  onChange={field.onChange}
+                                  placeholder={t('channels.dialogs.fields.tags.placeholder')}
+                                  suggestions={allTags}
+                                  isLoading={isLoadingTags}
+                                />
+                                <p className='text-muted-foreground text-xs'>{t('channels.dialogs.fields.tags.description')}</p>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name='remark'
+                            render={({ field }) => (
+                              <FormItem className='min-w-0 space-y-1.5'>
+                                <FormLabel className='min-h-5 text-sm font-medium'>{t('channels.dialogs.fields.remark.label')}</FormLabel>
+                                <Textarea
+                                  placeholder={t('channels.dialogs.fields.remark.placeholder')}
+                                  className='min-h-[72px] resize-y'
+                                  {...field}
+                                  value={field.value || ''}
+                                />
+                                <p className='text-muted-foreground text-xs'>{t('channels.dialogs.fields.remark.description')}</p>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      </section>
                     </div>
                   </div>
                 </form>
