@@ -55,7 +55,10 @@ func CompressStoredPayload(raw []byte) (objects.JSONRawMessage, error) {
 		}
 		encoder = created
 	}
-	zstdEncoder := encoder.(*zstd.Encoder)
+	zstdEncoder, ok := encoder.(*zstd.Encoder)
+	if !ok {
+		return nil, errors.New("invalid payload compressor in pool")
+	}
 	compressed := zstdEncoder.EncodeAll(raw, nil)
 	databasePayloadEncoderPool.Put(zstdEncoder)
 
@@ -111,7 +114,10 @@ func DecodeStoredPayload(raw []byte) ([]byte, error) {
 		}
 		decoder = created
 	}
-	zstdDecoder := decoder.(*zstd.Decoder)
+	zstdDecoder, ok := decoder.(*zstd.Decoder)
+	if !ok {
+		return nil, errors.New("invalid payload decompressor in pool")
+	}
 	decompressed, err := zstdDecoder.DecodeAll(compressed, nil)
 	databasePayloadDecoderPool.Put(zstdDecoder)
 	if err != nil {
