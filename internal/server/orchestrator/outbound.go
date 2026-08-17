@@ -613,6 +613,8 @@ func (p *PersistentOutboundTransformer) NextChannel(ctx context.Context) error {
 	// Reset request execution for the new candidate
 	p.state.RequestExec = nil
 	p.state.PassThroughApplied = false
+	p.state.responsesLiteWebSearchInjectedChannel = 0
+	p.state.responsesLiteWebSearchRetryChannel = 0
 
 	candidate := p.state.ChannelModelsCandidates[p.state.CurrentCandidateIndex]
 	p.state.CurrentCandidate = candidate
@@ -683,6 +685,10 @@ func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
 	if p.state.CurrentCandidate == nil {
 		return false
 	}
+	if p.state.CurrentCandidate.Channel != nil &&
+		hasResponsesLiteWebSearchCompatibilityRetry(p.state, p.state.CurrentCandidate.Channel.ID) {
+		return true
+	}
 
 	// Trace/thread sticky candidates are intentionally one-shot. A failed
 	// sticky attempt must proceed to the normal fallback candidates instead of
@@ -750,6 +756,17 @@ func (p *PersistentOutboundTransformer) PrepareForRetry(ctx context.Context) err
 	// Cancel any in-flight pass-through stream goroutine from the previous attempt
 	// so it exits promptly and releases its upstream HTTP connection.
 	p.resetPassThroughStreamState()
+
+	if candidate != nil && candidate.Channel != nil &&
+		hasResponsesLiteWebSearchCompatibilityRetry(p.state, candidate.Channel.ID) {
+		p.state.responsesLiteWebSearchRetryChannel = 0
+		p.state.responsesLiteWebSearchInjectedChannel = 0
+		log.Info(ctx, "prepared same-channel retry without hosted web search injection",
+			log.Int("channel_id", candidate.Channel.ID),
+			log.String("channel", candidate.Channel.Name))
+
+		return nil
+	}
 
 	// If there's another model in the list, advance to it.
 	if p.state.CurrentModelIndex+1 < len(candidate.Models) {

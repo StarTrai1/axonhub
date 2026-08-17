@@ -126,6 +126,90 @@ func TestApplyResponsesLiteWebSearchFallback_RequiresExactAutoLiteShape(t *testi
 	}
 }
 
+func TestApplyResponsesLiteWebSearchFallback_RetriesWithoutGatewayToolAfterProviderRejection(t *testing.T) {
+	for _, statusCode := range []int{http.StatusBadRequest, http.StatusUnprocessableEntity} {
+		t.Run(http.StatusText(statusCode), func(t *testing.T) {
+			headers := make(http.Header)
+			headers.Set(responses.ResponsesLiteHeader, "true")
+			rawBody := []byte(`{
+				"model":"gpt-5.6-sol",
+				"input":[
+					{"type":"additional_tools","role":"developer","tools":[{"type":"namespace","name":"web"}]},
+					{"type":"compaction","id":"cmp_existing","encrypted_content":"opaque"},
+					{"type":"message","role":"user","content":[{"type":"input_text","text":"continue"}]}
+				],
+				"stream":true
+			}`)
+			candidate := &ChannelModelsCandidate{Channel: &biz.Channel{Channel: &ent.Channel{
+				ID:       7,
+				Name:     "responses-lite-auto",
+				Type:     channel.TypeCodex,
+				Policies: objects.ChannelPolicies{WebSearch: objects.WebSearchPolicyAuto},
+			}}}
+			state := &PersistenceState{
+				CurrentCandidate: candidate,
+				LlmRequest: &llm.Request{
+					RequestType: llm.RequestTypeChat,
+					APIFormat:   llm.APIFormatOpenAIResponse,
+					RawRequest: &httpclient.Request{
+						Headers: headers,
+						Body:    rawBody,
+					},
+				},
+			}
+			outbound := &PersistentOutboundTransformer{state: state}
+			middleware := applyResponsesLiteWebSearchFallback(outbound)
+
+			first, err := middleware.OnOutboundRawRequest(context.Background(), &httpclient.Request{Body: append([]byte(nil), rawBody...)})
+			require.NoError(t, err)
+			require.True(t, jsonObjectHasKey(first.Body, "tools"))
+			require.Equal(t, candidate.Channel.ID, state.responsesLiteWebSearchInjectedChannel)
+
+			providerErr := &httpclient.Error{StatusCode: statusCode}
+			middleware.OnOutboundRawError(context.Background(), providerErr)
+			require.True(t, outbound.CanRetry(providerErr))
+			require.True(t, responsesLiteWebSearchBlockedForChannel(state, candidate.Channel.ID))
+			require.NoError(t, outbound.PrepareForRetry(context.Background()))
+			require.False(t, outbound.CanRetry(providerErr))
+
+			second, err := middleware.OnOutboundRawRequest(context.Background(), &httpclient.Request{Body: append([]byte(nil), rawBody...)})
+			require.NoError(t, err)
+			require.False(t, jsonObjectHasKey(second.Body, "tools"))
+			require.Zero(t, state.responsesLiteWebSearchInjectedChannel)
+		})
+	}
+}
+
+func TestApplyResponsesLiteWebSearchFallback_DoesNotRetryUnrelatedErrors(t *testing.T) {
+	headers := make(http.Header)
+	headers.Set(responses.ResponsesLiteHeader, "true")
+	rawBody := []byte(`{"input":[{"type":"additional_tools","tools":[]}],"stream":true}`)
+	candidate := &ChannelModelsCandidate{Channel: &biz.Channel{Channel: &ent.Channel{
+		ID:       7,
+		Name:     "responses-lite-auto",
+		Type:     channel.TypeCodex,
+		Policies: objects.ChannelPolicies{WebSearch: objects.WebSearchPolicyAuto},
+	}}}
+	state := &PersistenceState{
+		CurrentCandidate: candidate,
+		LlmRequest: &llm.Request{
+			RequestType: llm.RequestTypeChat,
+			APIFormat:   llm.APIFormatOpenAIResponse,
+			RawRequest:  &httpclient.Request{Headers: headers, Body: rawBody},
+		},
+	}
+	outbound := &PersistentOutboundTransformer{state: state}
+	middleware := applyResponsesLiteWebSearchFallback(outbound)
+
+	_, err := middleware.OnOutboundRawRequest(context.Background(), &httpclient.Request{Body: append([]byte(nil), rawBody...)})
+	require.NoError(t, err)
+	providerErr := &httpclient.Error{StatusCode: http.StatusBadGateway}
+	middleware.OnOutboundRawError(context.Background(), providerErr)
+
+	require.False(t, hasResponsesLiteWebSearchCompatibilityRetry(state, candidate.Channel.ID))
+	require.False(t, responsesLiteWebSearchBlockedForChannel(state, candidate.Channel.ID))
+}
+
 func TestApplyWebSearchPolicy_MCPOnly(t *testing.T) {
 	candidate := &biz.Channel{Channel: &ent.Channel{
 		Type: channel.TypeCodex,

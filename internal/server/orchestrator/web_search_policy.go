@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"strings"
 
 	"github.com/samber/lo"
@@ -24,26 +25,87 @@ const responsesLiteHostedWebSearchTools = `[{"type":"web_search","external_web_a
 // applyResponsesLiteWebSearchFallback restores the compatible hosted web search tool that
 // Responses Lite intentionally omits from the top-level tools field. It runs
 // after body pass-through so the injected tool cannot be overwritten by the
-// original inbound payload.
+// original inbound payload. Providers that reject the compatibility tool with
+// 400/422 get one same-channel retry without this gateway-authored field.
 func applyResponsesLiteWebSearchFallback(outbound *PersistentOutboundTransformer) pipeline.Middleware {
-	return pipeline.OnRawRequest("responses-lite-web-search-fallback", func(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error) {
-		if !shouldInjectResponsesLiteWebSearch(outbound, request) {
-			return request, nil
-		}
+	return &responsesLiteWebSearchFallbackMiddleware{outbound: outbound}
+}
 
-		body, err := sjson.SetRawBytes(request.Body, "tools", []byte(responsesLiteHostedWebSearchTools))
-		if err != nil {
-			return nil, fmt.Errorf("inject Responses Lite hosted web search tool: %w", err)
-		}
-		request.Body = body
+type responsesLiteWebSearchFallbackMiddleware struct {
+	pipeline.DummyMiddleware
+	outbound *PersistentOutboundTransformer
+}
 
-		channel := outbound.GetCurrentChannel()
-		log.Debug(ctx, "injected hosted web search tool for Responses Lite compatibility",
-			log.String("channel", channel.Name),
-			log.Int("channel_id", channel.ID))
+func (m *responsesLiteWebSearchFallbackMiddleware) Name() string {
+	return "responses-lite-web-search-fallback"
+}
 
+func (m *responsesLiteWebSearchFallbackMiddleware) OnOutboundRawRequest(
+	ctx context.Context,
+	request *httpclient.Request,
+) (*httpclient.Request, error) {
+	if m.outbound == nil || m.outbound.state == nil {
 		return request, nil
-	})
+	}
+	m.outbound.state.responsesLiteWebSearchInjectedChannel = 0
+
+	channel := m.outbound.GetCurrentChannel()
+	if channel == nil || responsesLiteWebSearchBlockedForChannel(m.outbound.state, channel.ID) ||
+		!shouldInjectResponsesLiteWebSearch(m.outbound, request) {
+		return request, nil
+	}
+
+	body, err := sjson.SetRawBytes(request.Body, "tools", []byte(responsesLiteHostedWebSearchTools))
+	if err != nil {
+		return nil, fmt.Errorf("inject Responses Lite hosted web search tool: %w", err)
+	}
+	request.Body = body
+	m.outbound.state.responsesLiteWebSearchInjectedChannel = channel.ID
+
+	log.Debug(ctx, "injected hosted web search tool for Responses Lite compatibility",
+		log.String("channel", channel.Name),
+		log.Int("channel_id", channel.ID))
+
+	return request, nil
+}
+
+func (m *responsesLiteWebSearchFallbackMiddleware) OnOutboundRawError(ctx context.Context, err error) {
+	if m.outbound == nil || m.outbound.state == nil {
+		return
+	}
+	state := m.outbound.state
+	channel := m.outbound.GetCurrentChannel()
+	if channel == nil || state.responsesLiteWebSearchInjectedChannel != channel.ID {
+		return
+	}
+
+	statusCode := ExtractStatusCodeFromError(err)
+	if statusCode != http.StatusBadRequest && statusCode != http.StatusUnprocessableEntity {
+		return
+	}
+	if state.responsesLiteWebSearchBlockedChannels == nil {
+		state.responsesLiteWebSearchBlockedChannels = make(map[int]struct{})
+	}
+	state.responsesLiteWebSearchBlockedChannels[channel.ID] = struct{}{}
+	state.responsesLiteWebSearchRetryChannel = channel.ID
+
+	log.Info(ctx, "hosted web search tool rejected; scheduling compatibility retry without gateway injection",
+		log.String("channel", channel.Name),
+		log.Int("channel_id", channel.ID),
+		log.Int("status_code", statusCode))
+}
+
+func responsesLiteWebSearchBlockedForChannel(state *PersistenceState, channelID int) bool {
+	if state == nil || state.responsesLiteWebSearchBlockedChannels == nil {
+		return false
+	}
+	_, blocked := state.responsesLiteWebSearchBlockedChannels[channelID]
+
+	return blocked
+}
+
+func hasResponsesLiteWebSearchCompatibilityRetry(state *PersistenceState, channelID int) bool {
+	return state != nil && channelID > 0 && state.responsesLiteWebSearchRetryChannel == channelID
 }
 
 func shouldInjectResponsesLiteWebSearch(outbound *PersistentOutboundTransformer, request *httpclient.Request) bool {
