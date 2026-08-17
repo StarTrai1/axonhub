@@ -14,6 +14,7 @@ import (
 	"github.com/tidwall/gjson"
 	"golang.org/x/sync/errgroup"
 
+	entchannel "github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xjson"
@@ -27,17 +28,16 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/openai"
 	"github.com/looplj/axonhub/llm/transformer/openai/codex"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
-	entchannel "github.com/looplj/axonhub/internal/ent/channel"
 )
 
 const (
-	testChannelAPIKeysMaxConcurrency          = 8
-	channelTestMaxCompletionTokens            = int64(64)
-	channelTestRequestMetadataKey             = "axonhub.channel_test"
+	testChannelAPIKeysMaxConcurrency            = 8
+	channelTestMaxCompletionTokens              = int64(64)
+	channelTestRequestMetadataKey               = "axonhub.channel_test"
 	channelTestRemoteCompactionProbeMetadataKey = "axonhub.channel_test.remote_compaction"
-	channelTestOriginator                     = "codex_vscode"
-	channelTestUserAgent                      = "codex_vscode/0.144.5 (Ubuntu 24.4.0; x86_64) xterm-256color (VS Code; 26.707.91948)"
-	channelTestModeRemoteCompaction            = "remote_compaction"
+	channelTestOriginator                       = "codex_vscode"
+	channelTestUserAgent                        = "codex_vscode/0.144.5 (Ubuntu 24.4.0; x86_64) xterm-256color (VS Code; 26.707.91948)"
+	channelTestModeRemoteCompaction             = "remote_compaction"
 )
 
 type channelTestTurnMetadata struct {
