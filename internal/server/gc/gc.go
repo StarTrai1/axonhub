@@ -28,6 +28,8 @@ import (
 
 var defaultBatchSize = 500
 
+var errSQLiteWALCheckpointBusy = errors.New("SQLite WAL checkpoint remained busy")
+
 type TriggerGcCleanupInput struct {
 	RequestsCleanupDays  int `json:"requests_cleanup_days"`
 	UsageLogsCleanupDays int `json:"usage_logs_cleanup_days"`
@@ -224,6 +226,14 @@ func (w *Worker) runCleanupLocked(
 			cleanupErrors = append(cleanupErrors, fmt.Errorf("vacuum: %w", err))
 			log.Error(ctx, "Failed to run VACUUM after cleanup",
 				log.Cause(err))
+		}
+	}
+	if err := w.truncateSQLiteWAL(ctx); err != nil {
+		if errors.Is(err, errSQLiteWALCheckpointBusy) {
+			log.Warn(ctx, "SQLite WAL remains in use and will be retried after the next cleanup", log.Cause(err))
+		} else {
+			cleanupErrors = append(cleanupErrors, fmt.Errorf("truncate sqlite wal: %w", err))
+			log.Error(ctx, "Failed to truncate SQLite WAL after cleanup", log.Cause(err))
 		}
 	}
 
@@ -716,9 +726,55 @@ func (w *Worker) runVacuum(ctx context.Context) error {
 	return nil
 }
 
+func (w *Worker) truncateSQLiteWAL(ctx context.Context) error {
+	if w.Ent == nil || w.Ent.Driver() == nil {
+		return nil
+	}
+	sqlDriver, ok := w.Ent.Driver().(*entsql.Driver)
+	if !ok || sqlDriver.Dialect() != dialect.SQLite {
+		return nil
+	}
+
+	startTime := time.Now()
+	rows, err := sqlDriver.DB().QueryContext(ctx, "PRAGMA wal_checkpoint(TRUNCATE)")
+	if err != nil {
+		return fmt.Errorf("failed to execute SQLite WAL checkpoint: %w", err)
+	}
+	defer rows.Close()
+
+	var busy, logFrames, checkpointedFrames int
+	if !rows.Next() {
+		return errors.New("SQLite WAL checkpoint returned no status")
+	}
+	if err := rows.Scan(&busy, &logFrames, &checkpointedFrames); err != nil {
+		return fmt.Errorf("scan SQLite WAL checkpoint status: %w", err)
+	}
+	if err := rows.Close(); err != nil {
+		return fmt.Errorf("close SQLite WAL checkpoint status: %w", err)
+	}
+	if busy != 0 {
+		return fmt.Errorf(
+			"%w: log_frames=%d checkpointed_frames=%d",
+			errSQLiteWALCheckpointBusy,
+			logFrames,
+			checkpointedFrames,
+		)
+	}
+	log.Info(ctx, "SQLite WAL checkpoint completed successfully",
+		log.Duration("duration", time.Since(startTime)),
+		log.Int("log_frames", logFrames),
+		log.Int("checkpointed_frames", checkpointedFrames))
+
+	return nil
+}
+
 // RunVacuumNow manually triggers the VACUUM operation.
 func (w *Worker) RunVacuumNow(ctx context.Context) error {
-	return w.runVacuum(ctx)
+	if err := w.runVacuum(ctx); err != nil {
+		return err
+	}
+
+	return w.truncateSQLiteWAL(ctx)
 }
 
 // RunCleanupNow manually triggers the cleanup process with the specified days.

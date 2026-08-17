@@ -66,3 +66,37 @@ func TestStoredPayloadCompressionRejectsChecksumMismatch(t *testing.T) {
 	_, err = DecodeStoredPayload(corrupted)
 	require.ErrorContains(t, err, "checksum mismatch")
 }
+
+func TestStoredRequestBodyReferenceMatchesCompressedParent(t *testing.T) {
+	t.Parallel()
+
+	raw := []byte("{\"input\":\"" + strings.Repeat("shared request history ", 8192) + "\"}")
+	parent, err := CompressStoredPayload(raw)
+	require.NoError(t, err)
+
+	reference, referenced, err := referenceStoredRequestBody(42, parent, raw)
+	require.NoError(t, err)
+	require.True(t, referenced)
+	require.Less(t, len(reference), len(parent))
+	require.True(t, json.Valid(reference))
+
+	decoded, ok, err := decodeStoredRequestBodyReference(reference)
+	require.NoError(t, err)
+	require.True(t, ok)
+	require.Equal(t, 42, decoded.RequestID)
+	require.NoError(t, validateStoredRequestBodyReference(decoded, raw))
+}
+
+func TestStoredRequestBodyReferenceKeepsDifferentBody(t *testing.T) {
+	t.Parallel()
+
+	parentRaw := []byte("{\"input\":\"" + strings.Repeat("parent ", 16384) + "\"}")
+	candidate := []byte("{\"input\":\"" + strings.Repeat("candidate ", 16384) + "\"}")
+	parent, err := CompressStoredPayload(parentRaw)
+	require.NoError(t, err)
+
+	stored, referenced, err := referenceStoredRequestBody(42, parent, candidate)
+	require.NoError(t, err)
+	require.False(t, referenced)
+	require.Equal(t, candidate, []byte(stored))
+}

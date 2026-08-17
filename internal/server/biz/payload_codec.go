@@ -21,6 +21,8 @@ const (
 	databasePayloadCodecMarker          = "axonhub.payload"
 	databasePayloadCodecVersion         = 1
 	databasePayloadCompressionThreshold = 64 * 1024
+	databaseRequestBodyReferenceMarker  = "axonhub.request_body_ref"
+	databaseRequestBodyReferenceVersion = 1
 )
 
 type databasePayloadEnvelope struct {
@@ -32,10 +34,19 @@ type databasePayloadEnvelope struct {
 	Compressed string `json:"data"`
 }
 
+type databaseRequestBodyReferenceEnvelope struct {
+	Marker    string `json:"_axonhub_payload"`
+	Version   int    `json:"version"`
+	RequestID int    `json:"request_id"`
+	RawBytes  int    `json:"raw_bytes"`
+	SHA256    string `json:"sha256"`
+}
+
 var (
-	databasePayloadEnvelopePrefix = []byte(`{"_axonhub_payload":"axonhub.payload"`)
-	databasePayloadEncoderPool    sync.Pool
-	databasePayloadDecoderPool    sync.Pool
+	databasePayloadEnvelopePrefix      = []byte(`{"_axonhub_payload":"axonhub.payload"`)
+	databaseRequestBodyReferencePrefix = []byte(`{"_axonhub_payload":"axonhub.request_body_ref"`)
+	databasePayloadEncoderPool         sync.Pool
+	databasePayloadDecoderPool         sync.Pool
 )
 
 // CompressStoredPayload losslessly compresses large JSON payloads for database persistence.
@@ -132,6 +143,103 @@ func DecodeStoredPayload(raw []byte) ([]byte, error) {
 	}
 
 	return decompressed, nil
+}
+
+func referenceStoredRequestBody(
+	parentRequestID int,
+	parentStored []byte,
+	candidateRaw []byte,
+) (objects.JSONRawMessage, bool, error) {
+	if parentRequestID <= 0 || len(candidateRaw) < databasePayloadCompressionThreshold {
+		return objects.JSONRawMessage(candidateRaw), false, nil
+	}
+
+	parentBytes, parentSHA256, err := storedPayloadIdentity(parentStored)
+	if err != nil {
+		return nil, false, fmt.Errorf("identify parent request body: %w", err)
+	}
+	if parentBytes != len(candidateRaw) {
+		return objects.JSONRawMessage(candidateRaw), false, nil
+	}
+
+	digest := sha256.Sum256(candidateRaw)
+	candidateSHA256 := hex.EncodeToString(digest[:])
+	if parentSHA256 != candidateSHA256 {
+		return objects.JSONRawMessage(candidateRaw), false, nil
+	}
+
+	reference, err := json.Marshal(databaseRequestBodyReferenceEnvelope{
+		Marker:    databaseRequestBodyReferenceMarker,
+		Version:   databaseRequestBodyReferenceVersion,
+		RequestID: parentRequestID,
+		RawBytes:  len(candidateRaw),
+		SHA256:    candidateSHA256,
+	})
+	if err != nil {
+		return nil, false, fmt.Errorf("marshal request body reference: %w", err)
+	}
+
+	return objects.JSONRawMessage(reference), true, nil
+}
+
+func storedPayloadIdentity(raw []byte) (int, string, error) {
+	if !isCompressedStoredPayload(raw) {
+		digest := sha256.Sum256(raw)
+		return len(raw), hex.EncodeToString(digest[:]), nil
+	}
+
+	var envelope databasePayloadEnvelope
+	if err := json.Unmarshal(raw, &envelope); err != nil {
+		return 0, "", fmt.Errorf("decode compressed payload identity: %w", err)
+	}
+	if envelope.Codec != "zstd" || envelope.Version != databasePayloadCodecVersion {
+		return 0, "", errors.New("unsupported compressed payload identity")
+	}
+	if envelope.RawBytes < 0 || !isSHA256Hex(envelope.SHA256) {
+		return 0, "", errors.New("invalid compressed payload identity")
+	}
+
+	return envelope.RawBytes, envelope.SHA256, nil
+}
+
+func decodeStoredRequestBodyReference(raw []byte) (databaseRequestBodyReferenceEnvelope, bool, error) {
+	if !bytes.HasPrefix(bytes.TrimSpace(raw), databaseRequestBodyReferencePrefix) {
+		return databaseRequestBodyReferenceEnvelope{}, false, nil
+	}
+
+	var reference databaseRequestBodyReferenceEnvelope
+	if err := json.Unmarshal(raw, &reference); err != nil {
+		return databaseRequestBodyReferenceEnvelope{}, true, fmt.Errorf("decode request body reference: %w", err)
+	}
+	if reference.Marker != databaseRequestBodyReferenceMarker ||
+		reference.Version != databaseRequestBodyReferenceVersion ||
+		reference.RequestID <= 0 ||
+		reference.RawBytes < 0 ||
+		!isSHA256Hex(reference.SHA256) {
+		return databaseRequestBodyReferenceEnvelope{}, true, errors.New("invalid request body reference")
+	}
+
+	return reference, true, nil
+}
+
+func validateStoredRequestBodyReference(reference databaseRequestBodyReferenceEnvelope, raw []byte) error {
+	if len(raw) != reference.RawBytes {
+		return fmt.Errorf("referenced request body length mismatch: got %d, want %d", len(raw), reference.RawBytes)
+	}
+	digest := sha256.Sum256(raw)
+	if hex.EncodeToString(digest[:]) != reference.SHA256 {
+		return errors.New("referenced request body checksum mismatch")
+	}
+
+	return nil
+}
+
+func isSHA256Hex(value string) bool {
+	if len(value) != sha256.Size*2 {
+		return false
+	}
+	decoded, err := hex.DecodeString(value)
+	return err == nil && len(decoded) == sha256.Size
 }
 
 func isCompressedStoredPayload(raw []byte) bool {

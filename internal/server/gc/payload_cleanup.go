@@ -28,10 +28,12 @@ func (w *Worker) cleanupRequestPayloads(ctx context.Context, cleanupDays int) er
 	}
 
 	cutoff := cleanupCutoff(cleanupDays)
-	if _, err := w.clearRequestRecordPayloads(ctx, cutoff); err != nil {
+	// Execution payloads may reference their parent request body. Clear
+	// references first so an interrupted cleanup cannot leave dangling data.
+	if _, err := w.clearExecutionRequestPayloads(ctx, cutoff); err != nil {
 		return err
 	}
-	if _, err := w.clearExecutionRequestPayloads(ctx, cutoff); err != nil {
+	if _, err := w.clearRequestRecordPayloads(ctx, cutoff); err != nil {
 		return err
 	}
 

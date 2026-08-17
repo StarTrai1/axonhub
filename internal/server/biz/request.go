@@ -321,8 +321,19 @@ func (s *RequestService) CreateRequestExecution(
 		// Set empty JSON for database, actual data will be in external storage
 		requestBodyForDB = []byte("{}")
 	} else {
-		// Store in database
-		requestBodyForDB = compressStoredPayloadForDatabase(ctx, requestBodyBytes)
+		reference, referenced, referenceErr := referenceStoredRequestBody(
+			request.ID,
+			request.RequestBody,
+			requestBodyBytes,
+		)
+		if referenceErr != nil {
+			log.Warn(ctx, "Failed to reference duplicate execution request body", log.Cause(referenceErr))
+		}
+		if referenced {
+			requestBodyForDB = reference
+		} else {
+			requestBodyForDB = compressStoredPayloadForDatabase(ctx, requestBodyBytes)
+		}
 	}
 
 	mut := client.RequestExecution.Create().
@@ -1341,6 +1352,33 @@ func (s *RequestService) LoadRequestExecutionRequestBody(ctx context.Context, ex
 	if !s.shouldUseExternalStorage(ctx, dataStorage) {
 		if exec.RequestBody == nil {
 			return xjson.EmptyJSONRawMessage, nil
+		}
+
+		reference, referenced, err := decodeStoredRequestBodyReference(exec.RequestBody)
+		if err != nil {
+			return nil, fmt.Errorf("decode execution request body reference: %w", err)
+		}
+		if referenced {
+			if reference.RequestID != exec.RequestID {
+				return nil, fmt.Errorf(
+					"execution request body reference mismatch: got request %d, want %d",
+					reference.RequestID,
+					exec.RequestID,
+				)
+			}
+			parent, err := s.entFromContext(ctx).Request.Get(ctx, exec.RequestID)
+			if err != nil {
+				return nil, fmt.Errorf("load referenced request %d: %w", exec.RequestID, err)
+			}
+			data, err := s.LoadRequestBody(ctx, parent)
+			if err != nil {
+				return nil, fmt.Errorf("load referenced request body: %w", err)
+			}
+			if err := validateStoredRequestBodyReference(reference, data); err != nil {
+				return nil, err
+			}
+
+			return data, nil
 		}
 
 		data, err := DecodeStoredPayload(exec.RequestBody)

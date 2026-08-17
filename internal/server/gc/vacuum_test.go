@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -12,6 +13,7 @@ import (
 
 	entsql "entgo.io/ent/dialect/sql"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
 )
@@ -41,8 +43,39 @@ func TestWorker_runVacuum_SQLite(t *testing.T) {
 
 			w := &Worker{Ent: client, Config: Config{VacuumEnabled: true, VacuumFull: full}}
 			require.NoError(t, w.runVacuum(context.Background()))
+			require.NoError(t, w.truncateSQLiteWAL(context.Background()))
 		})
 	}
+}
+
+func TestWorker_truncateSQLiteWAL(t *testing.T) {
+	t.Parallel()
+
+	dbPath := filepath.Join(t.TempDir(), "checkpoint.db")
+	client := enttest.NewEntClient(t, "sqlite3", "file:"+dbPath+"?_fk=1")
+	t.Cleanup(func() { _ = client.Close() })
+
+	sqlDriver, ok := client.Driver().(*entsql.Driver)
+	require.True(t, ok)
+	_, err := sqlDriver.DB().ExecContext(context.Background(), "PRAGMA journal_mode=WAL")
+	require.NoError(t, err)
+	_, err = sqlDriver.DB().ExecContext(context.Background(), "PRAGMA wal_autocheckpoint=0")
+	require.NoError(t, err)
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	_, err = client.Project.Create().SetName("wal-checkpoint").Save(ctx)
+	require.NoError(t, err)
+
+	before, err := os.Stat(dbPath + "-wal")
+	require.NoError(t, err)
+	require.Positive(t, before.Size())
+
+	w := &Worker{Ent: client}
+	require.NoError(t, w.truncateSQLiteWAL(context.Background()))
+
+	after, err := os.Stat(dbPath + "-wal")
+	require.NoError(t, err)
+	require.Zero(t, after.Size())
 }
 
 // TestWorker_runVacuum_Postgres exercises the real pgx code path that previously
