@@ -65,6 +65,10 @@ type MessageRequest struct {
 	// Any of "auto", "standard_only".
 	ServiceTier string `json:"service_tier,omitempty"`
 
+	// Inference speed mode. "fast" requests faster output token generation at
+	// premium pricing when supported by the selected Claude model.
+	Speed string `json:"speed,omitempty"`
+
 	// Custom text sequences that will cause the model to stop generating.
 	//
 	// Our models will normally stop when they have naturally completed their turn,

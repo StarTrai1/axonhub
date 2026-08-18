@@ -157,6 +157,88 @@ func TestConvertToolChoiceToAnthropic(t *testing.T) {
 	}
 }
 
+func TestBuildBaseRequestMapsPriorityServiceTierToClaudeFast(t *testing.T) {
+	priority := "priority"
+	tests := []struct {
+		name      string
+		config    *Config
+		wantSpeed string
+	}{
+		{name: "claude code", config: &Config{Type: PlatformClaudeCode}, wantSpeed: "fast"},
+		{name: "direct", config: &Config{Type: PlatformDirect}},
+		{name: "default config", config: nil},
+		{name: "anthropic compatible provider", config: &Config{Type: PlatformDeepSeek}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := buildBaseRequest(&llm.Request{
+				Model:       "claude-test",
+				ServiceTier: &priority,
+			}, tt.config)
+
+			require.Equal(t, tt.wantSpeed, req.Speed)
+		})
+	}
+
+	standard := "default"
+	req := buildBaseRequest(&llm.Request{
+		Model:       "claude-test",
+		ServiceTier: &standard,
+	}, &Config{Type: PlatformClaudeCode})
+	require.Empty(t, req.Speed)
+}
+
+func TestConvertMessagesDeduplicatesToolResultsUsingFinalPayload(t *testing.T) {
+	callID := "call_dup"
+	messages := convertMessages(&llm.Request{Messages: []llm.Message{
+		{
+			Role: "assistant",
+			ToolCalls: []llm.ToolCall{{
+				ID:   callID,
+				Type: "function",
+				Function: llm.FunctionCall{
+					Name:      "lookup",
+					Arguments: `{}`,
+				},
+			}},
+		},
+		{Role: "tool", ToolCallID: &callID, Content: llm.MessageContent{Content: lo.ToPtr("first output")}},
+		{Role: "tool", ToolCallID: &callID, Content: llm.MessageContent{Content: lo.ToPtr("final output")}},
+	}}, nil)
+
+	require.Len(t, messages, 2)
+	require.Equal(t, "assistant", messages[0].Role)
+	require.Equal(t, "user", messages[1].Role)
+	require.Len(t, messages[1].Content.MultipleContent, 1)
+	result := messages[1].Content.MultipleContent[0]
+	require.Equal(t, "tool_result", result.Type)
+	require.Equal(t, callID, lo.FromPtr(result.ToolUseID))
+	require.Equal(t, "final output", lo.FromPtr(result.Content.Content))
+}
+
+func TestGroupToolResultMessagesKeepsEmptyIDs(t *testing.T) {
+	emptyID := ""
+	messages := []llm.Message{
+		{Role: "tool", ToolCallID: &emptyID, Content: llm.MessageContent{Content: lo.ToPtr("first")}},
+		{Role: "tool", ToolCallID: &emptyID, Content: llm.MessageContent{Content: lo.ToPtr("second")}},
+	}
+
+	result, lastIndex, ok := groupToolResultMessages(
+		messages,
+		0,
+		map[int]bool{},
+		map[string]bool{},
+		lastToolResultMessages(messages),
+	)
+
+	require.True(t, ok)
+	require.Equal(t, 1, lastIndex)
+	require.Len(t, result.Content.MultipleContent, 2)
+	require.Equal(t, "first", lo.FromPtr(result.Content.MultipleContent[0].Content.Content))
+	require.Equal(t, "second", lo.FromPtr(result.Content.MultipleContent[1].Content.Content))
+}
+
 func TestOutboundTransformer_ToolArgsRepair(t *testing.T) {
 	transformer, _ := NewOutboundTransformer("https://api.anthropic.com", "test-api-key")
 

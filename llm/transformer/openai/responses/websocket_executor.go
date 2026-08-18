@@ -934,6 +934,10 @@ func inputSuffix(previous, current []json.RawMessage) ([]json.RawMessage, bool) 
 }
 
 func jsonRawEqual(a, b json.RawMessage) bool {
+	if bytes.Equal(a, b) {
+		return true
+	}
+
 	var compactA bytes.Buffer
 	if err := json.Compact(&compactA, a); err != nil {
 		return bytes.Equal(a, b)

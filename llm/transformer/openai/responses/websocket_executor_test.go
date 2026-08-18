@@ -619,6 +619,25 @@ func TestRestorePayloadMapRestoresMutatedPayload(t *testing.T) {
 	require.NotContains(t, payload, "previous_response_id")
 }
 
+func TestJSONRawEqualExactPayloadHasNoAllocations(t *testing.T) {
+	payload := json.RawMessage(`{"id":"msg_1","type":"message","role":"user","content":[{"type":"input_text","text":"hello"}]}`)
+	var equal bool
+
+	allocations := testing.AllocsPerRun(100, func() {
+		equal = jsonRawEqual(payload, payload)
+	})
+
+	require.True(t, equal)
+	require.Zero(t, allocations)
+}
+
+func TestJSONRawEqualFallsBackToSemanticWhitespaceComparison(t *testing.T) {
+	require.True(t, jsonRawEqual(
+		json.RawMessage(`{"id":"msg_1","type":"message"}`),
+		json.RawMessage(`{ "id": "msg_1", "type": "message" }`),
+	))
+}
+
 func TestWebSocketExecutorReconnectsWhenSuffixStartsWithAssistantOutput(t *testing.T) {
 	upgrader := websocket.Upgrader{}
 	var upgrades atomic.Int32

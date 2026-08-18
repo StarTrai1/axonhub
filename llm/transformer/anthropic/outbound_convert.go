@@ -119,6 +119,9 @@ func buildBaseRequest(chatReq *llm.Request, config *Config) *MessageRequest {
 		System:      convertToAnthropicSystemPrompt(chatReq),
 		MaxTokens:   resolveMaxTokens(chatReq),
 	}
+	if lo.FromPtr(chatReq.ServiceTier) == "priority" && supportsAnthropicFastMode(config) {
+		req.Speed = "fast"
+	}
 
 	if chatReq.Metadata != nil && chatReq.Metadata["user_id"] != "" {
 		req.Metadata = &AnthropicMetadata{UserID: chatReq.Metadata["user_id"]}
@@ -185,6 +188,10 @@ func buildBaseRequest(chatReq *llm.Request, config *Config) *MessageRequest {
 	}
 
 	return req
+}
+
+func supportsAnthropicFastMode(config *Config) bool {
+	return config != nil && config.Type == PlatformClaudeCode
 }
 
 // resolveMaxTokens determines the max_tokens value with fallback.
@@ -326,6 +333,7 @@ func convertMessages(chatReq *llm.Request, config *Config) []MessageParam {
 	// Track which message indexes have been processed (for user messages with MessageIndex and tool messages)
 	processedMessageIndexes := make(map[int]bool)
 	processedToolCallIDs := make(map[string]bool)
+	lastToolResults := lastToolResultMessages(nonSystemMsgs)
 
 	for i := 0; i < len(nonSystemMsgs); i++ {
 		msg := nonSystemMsgs[i]
@@ -338,7 +346,7 @@ func convertMessages(chatReq *llm.Request, config *Config) []MessageParam {
 		case "tool":
 			// Handle standalone tool messages (not following an assistant with tool calls)
 			// Group consecutive tool messages into a single user message with tool_results
-			if toolMsg, newIndex, created := groupToolResultMessages(nonSystemMsgs, i, processedMessageIndexes, processedToolCallIDs); created {
+			if toolMsg, newIndex, created := groupToolResultMessages(nonSystemMsgs, i, processedMessageIndexes, processedToolCallIDs, lastToolResults); created {
 				messages = append(messages, toolMsg)
 				i = newIndex
 			}
@@ -361,11 +369,11 @@ func convertMessages(chatReq *llm.Request, config *Config) []MessageParam {
 			// After an assistant message with tool calls, the next message might be tool results.
 			if len(msg.ToolCalls) > 0 {
 				// Try to find corresponding tool results, even if not immediately following.
-				if toolMsg, ok := findToolResultsForAssistant(nonSystemMsgs, msg.ToolCalls, processedToolCallIDs, processedMessageIndexes); ok {
+				if toolMsg, ok := findToolResultsForAssistant(nonSystemMsgs, msg.ToolCalls, processedToolCallIDs, processedMessageIndexes, lastToolResults); ok {
 					messages = append(messages, toolMsg)
 				} else if i+1 < len(nonSystemMsgs) {
 					// Fallback to grouping consecutive tool messages if no explicit match found (legacy behavior)
-					if toolMsg, newIndex, created := groupToolResultMessages(nonSystemMsgs, i+1, processedMessageIndexes, processedToolCallIDs); created {
+					if toolMsg, newIndex, created := groupToolResultMessages(nonSystemMsgs, i+1, processedMessageIndexes, processedToolCallIDs, lastToolResults); created {
 						messages = append(messages, toolMsg)
 						i = newIndex
 					}
@@ -377,12 +385,25 @@ func convertMessages(chatReq *llm.Request, config *Config) []MessageParam {
 	return messages
 }
 
+func lastToolResultMessages(messages []llm.Message) map[string]llm.Message {
+	lastResults := make(map[string]llm.Message)
+	for _, msg := range messages {
+		if msg.Role != "tool" || msg.ToolCallID == nil || *msg.ToolCallID == "" {
+			continue
+		}
+		lastResults[*msg.ToolCallID] = msg
+	}
+
+	return lastResults
+}
+
 // findToolResultsForAssistant looks for tool results matching the given tool calls.
 func findToolResultsForAssistant(
 	messages []llm.Message,
 	toolCalls []llm.ToolCall,
 	processedToolCallIDs map[string]bool,
 	processedMessageIndexes map[int]bool,
+	lastToolResults map[string]llm.Message,
 ) (MessageParam, bool) {
 	var (
 		toolResultBlocks []MessageContentBlock
@@ -397,12 +418,20 @@ func findToolResultsForAssistant(
 		// Look for this tool call ID in all messages
 		for i, msg := range messages {
 			if msg.Role == "tool" && msg.ToolCallID != nil && *msg.ToolCallID == tc.ID {
-				toolResultBlocks = append(toolResultBlocks, convertToToolResultBlock(msg))
-				processedToolCallIDs[tc.ID] = true
+				toolResult := msg
+				if tc.ID != "" {
+					if lastResult, ok := lastToolResults[tc.ID]; ok {
+						toolResult = lastResult
+					}
+				}
+				toolResultBlocks = append(toolResultBlocks, convertToToolResultBlock(toolResult))
+				if tc.ID != "" {
+					processedToolCallIDs[tc.ID] = true
+				}
 				processedMessageIndexes[i] = true
 
-				if msg.MessageIndex != nil {
-					toolMsgIndexes[*msg.MessageIndex] = struct{}{}
+				if toolResult.MessageIndex != nil {
+					toolMsgIndexes[*toolResult.MessageIndex] = struct{}{}
 				}
 
 				break
@@ -442,7 +471,13 @@ func findToolResultsForAssistant(
 
 // groupToolResultMessages groups consecutive tool messages and finds related user message content.
 // Returns the combined message param, updated index, and whether a message was created.
-func groupToolResultMessages(messages []llm.Message, startIndex int, processedIndexes map[int]bool, processedIDs map[string]bool) (MessageParam, int, bool) {
+func groupToolResultMessages(
+	messages []llm.Message,
+	startIndex int,
+	processedIndexes map[int]bool,
+	processedIDs map[string]bool,
+	lastToolResults map[string]llm.Message,
+) (MessageParam, int, bool) {
 	var (
 		toolResultBlocks []MessageContentBlock
 		toolMsgIndexes   = make(map[int]struct{})
@@ -452,18 +487,24 @@ func groupToolResultMessages(messages []llm.Message, startIndex int, processedIn
 	// Group consecutive tool messages
 	for currentIndex < len(messages) && messages[currentIndex].Role == "tool" {
 		toolMsg := messages[currentIndex]
-		if toolMsg.ToolCallID != nil && processedIDs[*toolMsg.ToolCallID] {
+		if toolMsg.ToolCallID != nil && *toolMsg.ToolCallID != "" && processedIDs[*toolMsg.ToolCallID] {
 			currentIndex++
 			continue
 		}
 
-		toolResultBlocks = append(toolResultBlocks, convertToToolResultBlock(toolMsg))
-		if toolMsg.ToolCallID != nil {
+		toolResult := toolMsg
+		if toolMsg.ToolCallID != nil && *toolMsg.ToolCallID != "" {
+			if lastResult, ok := lastToolResults[*toolMsg.ToolCallID]; ok {
+				toolResult = lastResult
+			}
+		}
+		toolResultBlocks = append(toolResultBlocks, convertToToolResultBlock(toolResult))
+		if toolMsg.ToolCallID != nil && *toolMsg.ToolCallID != "" {
 			processedIDs[*toolMsg.ToolCallID] = true
 		}
 
-		if toolMsg.MessageIndex != nil {
-			toolMsgIndexes[*toolMsg.MessageIndex] = struct{}{}
+		if toolResult.MessageIndex != nil {
+			toolMsgIndexes[*toolResult.MessageIndex] = struct{}{}
 		}
 
 		processedIndexes[currentIndex] = true
