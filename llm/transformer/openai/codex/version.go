@@ -76,6 +76,12 @@ func codexUserAgent(version string) string {
 	return CodexCLIOriginator + "/" + version
 }
 
+// CurrentUserAgent returns the same non-blocking, stable-release identity used
+// by real Codex outbound requests. A stale cache refreshes in the background.
+func CurrentUserAgent() string {
+	return codexUserAgent(currentCodexVersion())
+}
+
 func codexVersionFromUserAgent(userAgent string) (string, bool) {
 	product := strings.Fields(userAgent)
 	if len(product) == 0 {

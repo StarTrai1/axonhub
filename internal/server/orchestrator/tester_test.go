@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -75,7 +76,7 @@ func TestBuildChannelTestRequestResponsesCompatibility(t *testing.T) {
 
 			require.Equal(t, "text/event-stream", request.Headers.Get("Accept"))
 			require.Equal(t, channelTestOriginator, request.Headers.Get("Originator"))
-			require.Equal(t, channelTestUserAgent, request.Headers.Get("User-Agent"))
+			require.True(t, strings.HasPrefix(request.Headers.Get("User-Agent"), codex.CodexCLIOriginator+"/"))
 			require.Equal(t, "true", request.Metadata[channelTestRequestMetadataKey])
 			require.NotEmpty(t, request.Headers.Get(codex.SessionHeaderHyphen))
 			require.Equal(t, request.Headers.Get(codex.SessionHeaderHyphen), request.Headers.Get("Thread-Id"))
@@ -131,7 +132,7 @@ func TestBuildChannelTestRequestUsesPingForResponsesWebSocket(t *testing.T) {
 	require.Equal(t, responsesWebSocketTestPrompt, gjson.GetBytes(request.Body, "messages.0.content").String())
 	require.False(t, gjson.GetBytes(request.Body, "max_completion_tokens").Exists())
 	require.True(t, gjson.GetBytes(request.Body, "stream").Bool())
-	require.Equal(t, channelTestUserAgent, request.Headers.Get("User-Agent"))
+	require.True(t, strings.HasPrefix(request.Headers.Get("User-Agent"), codex.CodexCLIOriginator+"/"))
 }
 
 func TestUsesResponsesWebSocket(t *testing.T) {

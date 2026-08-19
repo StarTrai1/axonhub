@@ -2194,6 +2194,7 @@ func TestMergePassThroughBodyPatchesModerationModel(t *testing.T) {
 
 // TestApplyUserAgentPassThrough tests the User-Agent pass-through middleware.
 func TestApplyUserAgentPassThrough(t *testing.T) {
+	channelTestUA := channelTestUserAgent()
 	tests := []struct {
 		name             string
 		channelUASetting *bool // Channel-level override
@@ -2241,9 +2242,9 @@ func TestApplyUserAgentPassThrough(t *testing.T) {
 			name:             "channel_test_preserves_realistic_ua_when_pass_through_disabled",
 			channelUASetting: new(false),
 			globalUAEnabled:  false,
-			clientUA:         channelTestUserAgent,
+			clientUA:         channelTestUA,
 			channelTest:      true,
-			wantUAHeader:     channelTestUserAgent,
+			wantUAHeader:     channelTestUA,
 		},
 	}
 

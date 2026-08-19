@@ -35,8 +35,7 @@ const (
 	channelTestMaxCompletionTokens              = int64(64)
 	channelTestRequestMetadataKey               = "axonhub.channel_test"
 	channelTestRemoteCompactionProbeMetadataKey = "axonhub.channel_test.remote_compaction"
-	channelTestOriginator                       = "codex_vscode"
-	channelTestUserAgent                        = "codex_vscode/0.144.5 (Ubuntu 24.4.0; x86_64) xterm-256color (VS Code; 26.707.91948)"
+	channelTestOriginator                       = codex.CodexCLIOriginator
 	channelTestModeRemoteCompaction             = "remote_compaction"
 	responsesWebSocketTestPrompt                = "ping"
 )
@@ -51,6 +50,10 @@ type channelTestTurnMetadata struct {
 	ThreadSource        string `json:"thread_source"`
 	Sandbox             string `json:"sandbox"`
 	TurnStartedAtUnixMS int64  `json:"turn_started_at_unix_ms"`
+}
+
+func channelTestUserAgent() string {
+	return codex.CurrentUserAgent()
 }
 
 // TestChannelOrchestrator handles channel testing functionality.
@@ -819,7 +822,7 @@ func buildChannelTestRequest(
 
 		headers.Set("Accept", "text/event-stream")
 		headers.Set("Originator", channelTestOriginator)
-		headers.Set("User-Agent", channelTestUserAgent)
+		headers.Set("User-Agent", channelTestUserAgent())
 		headers.Set(codex.SessionHeaderHyphen, sessionID)
 		headers.Set("Thread-Id", sessionID)
 		headers.Set(codex.ClientRequestIDHeader, sessionID)

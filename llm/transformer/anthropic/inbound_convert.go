@@ -720,8 +720,11 @@ func convertToolToLLM(tool Tool) (llm.Tool, bool) {
 	switch tool.Type {
 	case ToolTypeWebSearch20250305, WebSearchFunctionName:
 		return llm.Tool{
-			Type:         llm.ToolTypeWebSearch,
-			CacheControl: convertToLLMCacheControl(tool.CacheControl),
+			Type:           llm.ToolTypeWebSearch,
+			CacheControl:   convertToLLMCacheControl(tool.CacheControl),
+			AllowedCallers: append([]string(nil), tool.AllowedCallers...),
+			DeferLoading:   tool.DeferLoading,
+			InputExamples:  append([]json.RawMessage(nil), tool.InputExamples...),
 			WebSearch: &llm.WebSearch{
 				MaxUses:        tool.MaxUses,
 				Strict:         tool.Strict,
@@ -738,11 +741,15 @@ func convertToolToLLM(tool Tool) (llm.Tool, bool) {
 		}, true
 	case "", "custom":
 		return llm.Tool{
-			Type: llm.ToolTypeFunction,
+			Type:           llm.ToolTypeFunction,
+			AllowedCallers: append([]string(nil), tool.AllowedCallers...),
+			DeferLoading:   tool.DeferLoading,
+			InputExamples:  append([]json.RawMessage(nil), tool.InputExamples...),
 			Function: llm.Function{
 				Name:        tool.Name,
 				Description: tool.Description,
 				Parameters:  tool.InputSchema,
+				Strict:      tool.Strict,
 			},
 			CacheControl: convertToLLMCacheControl(tool.CacheControl),
 		}, true

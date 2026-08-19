@@ -187,6 +187,9 @@ type Request struct {
 	// Controls effort on reasoning for reasoning models. It can be set to "none", "low", "medium", or "high".
 	ReasoningEffort string `json:"reasoning_effort,omitempty"`
 
+	// Selects a provider reasoning mode, such as GPT-5.6 pro mode.
+	ReasoningMode string `json:"reasoning_mode,omitempty"`
+
 	// Reasoning budget for reasoning models.
 	// Help fields， will not be sent to the llm service.
 	ReasoningBudget *int64 `json:"reasoning_budget,omitempty"`

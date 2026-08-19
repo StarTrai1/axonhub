@@ -178,6 +178,8 @@ type Reasoning struct {
 	Context string `json:"context,omitempty"`
 	// The effort level for reasoning. Any of "low", "medium", "high".
 	Effort string `json:"effort,omitempty"`
+	// The reasoning mode. GPT-5.6 supports "pro" for quality-first workloads.
+	Mode string `json:"mode,omitempty"`
 	// Whether to generate a summary of the reasoning. Any of "auto", "concise", "detailed".
 	GenerateSummary string `json:"generate_summary,omitempty"`
 	// The summary type. Any of "auto", "concise", "detailed".

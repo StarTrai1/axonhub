@@ -572,6 +572,7 @@ func convertReasoning(req *llm.Request) *Reasoning {
 	// Check if any reasoning-related fields are present
 	hasReasoningFields := reasoningContext != "" ||
 		req.ReasoningEffort != "" ||
+		req.ReasoningMode != "" ||
 		req.ReasoningBudget != nil ||
 		req.ReasoningSummary != nil
 	if !hasReasoningFields {
@@ -581,6 +582,7 @@ func convertReasoning(req *llm.Request) *Reasoning {
 	reasoning := &Reasoning{
 		Context:   reasoningContext,
 		Effort:    req.ReasoningEffort,
+		Mode:      req.ReasoningMode,
 		MaxTokens: req.ReasoningBudget,
 	}
 

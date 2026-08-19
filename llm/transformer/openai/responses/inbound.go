@@ -208,6 +208,8 @@ func convertToLLMRequest(req *Request, rawBody ...[]byte) (*llm.Request, error) 
 
 	// Convert reasoning
 	if req.Reasoning != nil {
+		chatReq.ReasoningMode = req.Reasoning.Mode
+
 		if req.Reasoning.Effort != "" {
 			chatReq.ReasoningEffort = req.Reasoning.Effort
 		}

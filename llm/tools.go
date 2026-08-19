@@ -33,6 +33,16 @@ type Tool struct {
 	// CacheControl is used for provider-specific cache control (e.g., Anthropic).
 	// This field is not serialized in JSON.
 	CacheControl *CacheControl `json:"cache_control,omitempty"`
+
+	// AllowedCallers limits which provider-side runtimes may invoke the tool.
+	AllowedCallers []string `json:"allowed_callers,omitempty"`
+
+	// DeferLoading keeps an Anthropic tool out of the initial prompt until it is
+	// referenced by tool search, reducing prompt size without changing the wire toolset.
+	DeferLoading *bool `json:"defer_loading,omitempty"`
+
+	// InputExamples preserves provider-native examples attached to a tool definition.
+	InputExamples []json.RawMessage `json:"input_examples,omitempty"`
 }
 
 // Function represents a function definition.

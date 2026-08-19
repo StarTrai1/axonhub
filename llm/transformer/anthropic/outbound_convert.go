@@ -233,10 +233,14 @@ func convertToolsAnthropic(tools []llm.Tool, config *Config) []Tool {
 		switch tool.Type {
 		case llm.ToolTypeFunction:
 			anthropicTools = append(anthropicTools, Tool{
-				Name:         tool.Function.Name,
-				Description:  tool.Function.Description,
-				InputSchema:  tool.Function.Parameters,
-				CacheControl: convertToAnthropicCacheControl(tool.CacheControl),
+				Name:           tool.Function.Name,
+				Description:    tool.Function.Description,
+				InputSchema:    tool.Function.Parameters,
+				CacheControl:   convertToAnthropicCacheControl(tool.CacheControl),
+				Strict:         tool.Function.Strict,
+				AllowedCallers: append([]string(nil), tool.AllowedCallers...),
+				DeferLoading:   tool.DeferLoading,
+				InputExamples:  append([]json.RawMessage(nil), tool.InputExamples...),
 			})
 		case llm.ToolTypeWebSearch:
 			// Already transformed Anthropic native tool type
@@ -246,8 +250,11 @@ func convertToolsAnthropic(tools []llm.Tool, config *Config) []Tool {
 			}
 
 			anthropicTool := Tool{
-				Type: ToolTypeWebSearch20250305,
-				Name: WebSearchFunctionName,
+				Type:           ToolTypeWebSearch20250305,
+				Name:           WebSearchFunctionName,
+				AllowedCallers: append([]string(nil), tool.AllowedCallers...),
+				DeferLoading:   tool.DeferLoading,
+				InputExamples:  append([]json.RawMessage(nil), tool.InputExamples...),
 			}
 			// Copy web search parameters if available
 			if tool.WebSearch != nil {

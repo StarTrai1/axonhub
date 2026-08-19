@@ -207,11 +207,14 @@ type ToolChoice struct {
 type Tool struct {
 	// Type is used for native tools (e.g., "web_search_20250305").
 	// For custom/function tools, this field is omitted.
-	Type         string          `json:"type,omitempty"`
-	Name         string          `json:"name"`
-	Description  string          `json:"description,omitempty"`
-	InputSchema  json.RawMessage `json:"input_schema,omitempty"`
-	CacheControl *CacheControl   `json:"cache_control,omitempty"`
+	Type           string            `json:"type,omitempty"`
+	Name           string            `json:"name"`
+	Description    string            `json:"description,omitempty"`
+	InputSchema    json.RawMessage   `json:"input_schema,omitempty"`
+	CacheControl   *CacheControl     `json:"cache_control,omitempty"`
+	AllowedCallers []string          `json:"allowed_callers,omitempty"`
+	DeferLoading   *bool             `json:"defer_loading,omitempty"`
+	InputExamples  []json.RawMessage `json:"input_examples,omitempty"`
 
 	// Params for web_search_20250305 tool.
 
