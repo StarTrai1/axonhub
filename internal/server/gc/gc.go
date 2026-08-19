@@ -31,8 +31,11 @@ var defaultBatchSize = 500
 var errSQLiteWALCheckpointBusy = errors.New("SQLite WAL checkpoint remained busy")
 
 type TriggerGcCleanupInput struct {
-	RequestsCleanupDays  int `json:"requests_cleanup_days"`
-	UsageLogsCleanupDays int `json:"usage_logs_cleanup_days"`
+	RequestsCleanupDays       int `json:"requests_cleanup_days"`
+	UsageLogsCleanupDays      int `json:"usage_logs_cleanup_days"`
+	RequestBodiesCleanupDays  int `json:"request_bodies_cleanup_days"`
+	ResponseBodiesCleanupDays int `json:"response_bodies_cleanup_days"`
+	ResponseChunksCleanupDays int `json:"response_chunks_cleanup_days"`
 }
 
 type GcCleanupPreviewItem struct {
@@ -151,6 +154,9 @@ func (w *Worker) runCleanupLocked(
 			ResourceRequests,
 			ResourceRequestPayloads,
 			ResourceResponsePayloads,
+			biz.CleanupResourceRequestBodies,
+			biz.CleanupResourceResponseBodies,
+			biz.CleanupResourceResponseChunks,
 			ResourceUsageLogs,
 			ResourceChannelProbes,
 		} {
@@ -172,6 +178,9 @@ func (w *Worker) runCleanupLocked(
 			ResourceRequests,
 			ResourceRequestPayloads,
 			ResourceResponsePayloads,
+			biz.CleanupResourceRequestBodies,
+			biz.CleanupResourceResponseBodies,
+			biz.CleanupResourceResponseChunks,
 			ResourceUsageLogs,
 			ResourceChannelProbes,
 		} {
@@ -247,6 +256,12 @@ func (w *Worker) cleanupResource(ctx context.Context, resourceType string, clean
 		return w.cleanupRequestPayloads(ctx, cleanupDays)
 	case ResourceResponsePayloads:
 		return w.cleanupResponsePayloads(ctx, cleanupDays)
+	case biz.CleanupResourceRequestBodies:
+		return w.cleanupRequestBodies(ctx, cleanupDays)
+	case biz.CleanupResourceResponseBodies:
+		return w.cleanupResponseBodies(ctx, cleanupDays)
+	case biz.CleanupResourceResponseChunks:
+		return w.cleanupResponseChunks(ctx, cleanupDays)
 	case ResourceRequests:
 		if err := w.cleanupRequests(ctx, cleanupDays, manual); err != nil {
 			return err
@@ -784,7 +799,16 @@ func (w *Worker) RunCleanupNow(ctx context.Context, input TriggerGcCleanupInput)
 		manualDays["requests"] = input.RequestsCleanupDays
 	}
 	if input.UsageLogsCleanupDays > 0 {
-		manualDays["usage_logs"] = input.UsageLogsCleanupDays
+		manualDays[biz.CleanupResourceUsageLogs] = input.UsageLogsCleanupDays
+	}
+	if input.RequestBodiesCleanupDays > 0 {
+		manualDays[biz.CleanupResourceRequestBodies] = input.RequestBodiesCleanupDays
+	}
+	if input.ResponseBodiesCleanupDays > 0 {
+		manualDays[biz.CleanupResourceResponseBodies] = input.ResponseBodiesCleanupDays
+	}
+	if input.ResponseChunksCleanupDays > 0 {
+		manualDays[biz.CleanupResourceResponseChunks] = input.ResponseChunksCleanupDays
 	}
 	return w.runCleanup(ctx, true, manualDays)
 }
@@ -795,9 +819,10 @@ func (w *Worker) PreviewCleanup(ctx context.Context, input TriggerGcCleanupInput
 	ctx = schematype.SkipSoftDelete(ctx)
 
 	var items []GcCleanupPreviewItem
+	now := time.Now()
 
 	if input.RequestsCleanupDays > 0 {
-		cutoff := time.Now().AddDate(0, 0, -input.RequestsCleanupDays)
+		cutoff := now.AddDate(0, 0, -input.RequestsCleanupDays)
 		count, err := w.Ent.Request.Query().Where(
 			request.CreatedAtLT(cutoff),
 			request.Not(request.HasTraceWith(trace.StatusEQ(trace.StatusRetained))),
@@ -814,7 +839,7 @@ func (w *Worker) PreviewCleanup(ctx context.Context, input TriggerGcCleanupInput
 	}
 
 	if input.UsageLogsCleanupDays > 0 {
-		cutoff := time.Now().AddDate(0, 0, -input.UsageLogsCleanupDays)
+		cutoff := now.AddDate(0, 0, -input.UsageLogsCleanupDays)
 		count, err := w.Ent.UsageLog.Query().Where(
 			usagelog.CreatedAtLT(cutoff),
 			usagelog.Not(usagelog.HasRequestWith(
@@ -830,6 +855,32 @@ func (w *Worker) PreviewCleanup(ctx context.Context, input TriggerGcCleanupInput
 			CutoffTime:     cutoff,
 			RetentionDays:  input.UsageLogsCleanupDays,
 		})
+	}
+
+	bodySpecs := []struct {
+		resourceType string
+		days         int
+	}{
+		{biz.CleanupResourceRequestBodies, input.RequestBodiesCleanupDays},
+		{biz.CleanupResourceResponseBodies, input.ResponseBodiesCleanupDays},
+		{biz.CleanupResourceResponseChunks, input.ResponseChunksCleanupDays},
+	}
+	bodyWindows := make(map[int]GcCleanupPreviewItem, len(bodySpecs))
+	for _, spec := range bodySpecs {
+		if spec.days <= 0 {
+			continue
+		}
+		item, ok := bodyWindows[spec.days]
+		if !ok {
+			var err error
+			item, err = w.previewBodyCleanup(ctx, spec.resourceType, spec.days, now)
+			if err != nil {
+				return nil, err
+			}
+			bodyWindows[spec.days] = item
+		}
+		item.ResourceType = spec.resourceType
+		items = append(items, item)
 	}
 
 	return items, nil

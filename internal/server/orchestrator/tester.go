@@ -38,6 +38,7 @@ const (
 	channelTestOriginator                       = "codex_vscode"
 	channelTestUserAgent                        = "codex_vscode/0.144.5 (Ubuntu 24.4.0; x86_64) xterm-256color (VS Code; 26.707.91948)"
 	channelTestModeRemoteCompaction             = "remote_compaction"
+	responsesWebSocketTestPrompt                = "ping"
 )
 
 type channelTestTurnMetadata struct {
@@ -94,6 +95,38 @@ func NewTestChannelOrchestrator(
 type TestChannelRequest struct {
 	ChannelID objects.GUID
 	ModelID   *string
+}
+
+// usesResponsesWebSocket reports whether a channel routes Responses requests over WebSocket.
+func usesResponsesWebSocket(channel *biz.Channel) bool {
+	if channel == nil {
+		return false
+	}
+
+	for _, endpoint := range channel.ResolveEndpoints() {
+		if endpoint.APIFormat != llm.APIFormatOpenAIResponse.String() && endpoint.APIFormat != llm.APIFormatOpenAIResponseCompact.String() {
+			continue
+		}
+
+		transport := strings.ToLower(strings.TrimSpace(endpoint.Transport))
+		if transport == objects.ChannelEndpointTransportWebSocket {
+			return true
+		}
+		if transport != "" {
+			continue
+		}
+
+		baseURL := endpoint.BaseURL
+		if baseURL == "" {
+			baseURL = channel.BaseURL
+		}
+		baseURL = strings.ToLower(strings.TrimSpace(baseURL))
+		if strings.HasPrefix(baseURL, "ws://") || strings.HasPrefix(baseURL, "wss://") {
+			return true
+		}
+	}
+
+	return false
 }
 
 // TestChannelResult represents the result of a channel test.
@@ -164,7 +197,7 @@ func (processor *TestChannelOrchestrator) TestChannel(
 	if remoteCompactionProbe {
 		testRequest, err = buildRemoteCompactionChannelTestRequest(testModel, systemPrompt, userPrompt)
 	} else {
-		testRequest, err = buildChannelTestRequest(testModel, useStream, systemPrompt, userPrompt)
+		testRequest, err = buildChannelTestRequest(testModel, useStream, systemPrompt, userPrompt, usesResponsesWebSocket(channel))
 	}
 	if err != nil {
 		return nil, err
@@ -507,7 +540,17 @@ func (processor *TestChannelOrchestrator) TestChannelAPIKeys(
 			default:
 			}
 
-			result := processor.testSingleKey(groupCtx, channelID, apiKey, testModel, useStream, proxy, systemPrompt, userPrompt)
+			result := processor.testSingleKey(
+				groupCtx,
+				channelID,
+				apiKey,
+				testModel,
+				useStream,
+				usesResponsesWebSocket(ch),
+				proxy,
+				systemPrompt,
+				userPrompt,
+			)
 			_, isDisabled := disabledSet[apiKey]
 			result.Disabled = isDisabled
 			results[index] = result
@@ -577,7 +620,7 @@ func (processor *TestChannelOrchestrator) TestSingleAPIKey(
 		disabledSet[dk.Key] = struct{}{}
 	}
 
-	result := processor.testSingleKey(ctx, channelID, key, testModel, useStream, proxy, systemPrompt, userPrompt)
+	result := processor.testSingleKey(ctx, channelID, key, testModel, useStream, usesResponsesWebSocket(ch), proxy, systemPrompt, userPrompt)
 	_, isDisabled := disabledSet[key]
 	result.Disabled = isDisabled
 
@@ -591,6 +634,7 @@ func (processor *TestChannelOrchestrator) testSingleKey(
 	key string,
 	testModel string,
 	useStream bool,
+	responsesWebSocket bool,
 	proxy *httpclient.ProxyConfig,
 	systemPrompt string,
 	userPrompt string,
@@ -625,7 +669,7 @@ func (processor *TestChannelOrchestrator) testSingleKey(
 		modelCircuitBreaker:        processor.modelCircuitBreaker,
 	}
 
-	testRequest, err := buildChannelTestRequest(testModel, useStream, systemPrompt, userPrompt)
+	testRequest, err := buildChannelTestRequest(testModel, useStream, systemPrompt, userPrompt, responsesWebSocket)
 	if err != nil {
 		errMsg := err.Error()
 
@@ -696,7 +740,13 @@ func (processor *TestChannelOrchestrator) testSingleKey(
 	}
 }
 
-func buildChannelTestRequest(model string, useStream bool, systemPrompt string, userPrompt string) (*httpclient.Request, error) {
+func buildChannelTestRequest(
+	model string,
+	useStream bool,
+	systemPrompt string,
+	userPrompt string,
+	responsesWebSocket bool,
+) (*httpclient.Request, error) {
 	codexStyle := isCodexStyleTestModel(model)
 	responsesLite := isResponsesLiteTestModel(model)
 	if codexStyle {
@@ -717,6 +767,13 @@ func buildChannelTestRequest(model string, useStream bool, systemPrompt string, 
 			Content: llm.MessageContent{Content: lo.ToPtr(userPrompt)},
 		})
 	}
+	if responsesWebSocket {
+		messages = []llm.Message{{
+			Role:    "user",
+			Content: llm.MessageContent{Content: lo.ToPtr(responsesWebSocketTestPrompt)},
+		}}
+		useStream = true
+	}
 
 	llmRequest := &llm.Request{
 		Model:               model,
@@ -724,6 +781,9 @@ func buildChannelTestRequest(model string, useStream bool, systemPrompt string, 
 		MaxCompletionTokens: lo.ToPtr(channelTestMaxCompletionTokens),
 		Stream:              lo.ToPtr(useStream),
 		Store:               lo.ToPtr(false),
+	}
+	if responsesWebSocket {
+		llmRequest.MaxCompletionTokens = nil
 	}
 
 	headers := http.Header{
@@ -786,7 +846,7 @@ func buildChannelTestRequest(model string, useStream bool, systemPrompt string, 
 }
 
 func buildRemoteCompactionChannelTestRequest(model string, systemPrompt string, userPrompt string) (*httpclient.Request, error) {
-	request, err := buildChannelTestRequest(model, true, systemPrompt, userPrompt)
+	request, err := buildChannelTestRequest(model, true, systemPrompt, userPrompt, false)
 	if err != nil {
 		return nil, err
 	}

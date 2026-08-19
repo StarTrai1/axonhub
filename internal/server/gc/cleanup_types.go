@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"time"
+
+	"github.com/looplj/axonhub/internal/server/biz"
 )
 
 const (
@@ -18,18 +20,24 @@ const (
 var ErrCleanupAlreadyRunning = errors.New("a storage cleanup job is already running")
 
 var supportedResourceTypes = map[string]struct{}{
-	ResourceRequestPayloads:  {},
-	ResourceResponsePayloads: {},
-	ResourceRequests:         {},
-	ResourceUsageLogs:        {},
-	ResourceChannelProbes:     {},
+	ResourceRequestPayloads:                {},
+	ResourceResponsePayloads:               {},
+	ResourceRequests:                       {},
+	ResourceUsageLogs:                      {},
+	ResourceChannelProbes:                  {},
+	biz.CleanupResourceRequestBodies:       {},
+	biz.CleanupResourceResponseBodies:      {},
+	biz.CleanupResourceResponseChunks:      {},
 }
 
 var sensitiveResourceTypes = map[string]struct{}{
-	ResourceRequestPayloads:  {},
-	ResourceResponsePayloads: {},
-	ResourceRequests:         {},
-	ResourceUsageLogs:        {},
+	ResourceRequestPayloads:                {},
+	ResourceResponsePayloads:               {},
+	ResourceRequests:                       {},
+	ResourceUsageLogs:                      {},
+	biz.CleanupResourceRequestBodies:       {},
+	biz.CleanupResourceResponseBodies:      {},
+	biz.CleanupResourceResponseChunks:      {},
 }
 
 type CleanupSelection struct {

@@ -7,6 +7,11 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
 
+	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/transformer/openai/codex"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
@@ -48,7 +53,7 @@ func TestBuildChannelTestRequestResponsesCompatibility(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			request, err := buildChannelTestRequest(test.model, test.requestedStream, "system prompt", "user prompt")
+			request, err := buildChannelTestRequest(test.model, test.requestedStream, "system prompt", "user prompt", false)
 			require.NoError(t, err)
 			require.Equal(t, "application/json", request.Headers.Get("Content-Type"))
 			require.Equal(t, test.model, gjson.GetBytes(request.Body, "model").String())
@@ -109,11 +114,57 @@ func TestNormalizeChannelTestModel(t *testing.T) {
 }
 
 func TestBuildChannelTestRequestOmitsEmptySystemPrompt(t *testing.T) {
-	request, err := buildChannelTestRequest("generic-model", false, "", "user prompt")
+	request, err := buildChannelTestRequest("generic-model", false, "", "user prompt", false)
 	require.NoError(t, err)
 	require.Equal(t, 1, int(gjson.GetBytes(request.Body, "messages.#").Int()))
 	require.Equal(t, "user", gjson.GetBytes(request.Body, "messages.0.role").String())
 	require.Equal(t, "user prompt", gjson.GetBytes(request.Body, "messages.0.content").String())
+}
+
+func TestBuildChannelTestRequestUsesPingForResponsesWebSocket(t *testing.T) {
+	request, err := buildChannelTestRequest("gpt-5.6-sol", false, "system prompt", "user prompt", true)
+	require.NoError(t, err)
+
+	require.Equal(t, "gpt-5.6-sol", gjson.GetBytes(request.Body, "model").String())
+	require.Equal(t, 1, int(gjson.GetBytes(request.Body, "messages.#").Int()))
+	require.Equal(t, "user", gjson.GetBytes(request.Body, "messages.0.role").String())
+	require.Equal(t, responsesWebSocketTestPrompt, gjson.GetBytes(request.Body, "messages.0.content").String())
+	require.False(t, gjson.GetBytes(request.Body, "max_completion_tokens").Exists())
+	require.True(t, gjson.GetBytes(request.Body, "stream").Bool())
+	require.Equal(t, channelTestUserAgent, request.Headers.Get("User-Agent"))
+}
+
+func TestUsesResponsesWebSocket(t *testing.T) {
+	t.Run("inferred from channel base URL", func(t *testing.T) {
+		ch := &biz.Channel{Channel: &ent.Channel{
+			Type:    channel.TypeOpenaiResponses,
+			BaseURL: "wss://api.openai.com/v1",
+		}}
+
+		require.True(t, usesResponsesWebSocket(ch))
+	})
+
+	t.Run("explicit transport", func(t *testing.T) {
+		ch := &biz.Channel{Channel: &ent.Channel{
+			Type:    channel.TypeOpenai,
+			BaseURL: "https://api.example.com/v1",
+			Endpoints: []objects.ChannelEndpoint{{
+				APIFormat: llm.APIFormatOpenAIResponse.String(),
+				Transport: objects.ChannelEndpointTransportWebSocket,
+			}},
+		}}
+
+		require.True(t, usesResponsesWebSocket(ch))
+	})
+
+	t.Run("HTTP transport", func(t *testing.T) {
+		ch := &biz.Channel{Channel: &ent.Channel{
+			Type:    channel.TypeOpenaiResponses,
+			BaseURL: "https://api.openai.com/v1",
+		}}
+
+		require.False(t, usesResponsesWebSocket(ch))
+	})
 }
 
 func TestBuildRemoteCompactionChannelTestRequestUsesNativeV2Shape(t *testing.T) {
