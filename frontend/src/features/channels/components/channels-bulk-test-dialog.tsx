@@ -1,11 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { IconCheck, IconFlask, IconLoader2, IconRefresh } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useChannels } from '../context/channels-context';
 import { useBulkRecoverChannels, useTestChannel } from '../data/channels';
@@ -21,9 +22,16 @@ interface BulkTestResult {
   status: BulkTestStatus;
   latency?: number;
   error?: string;
+  attempts?: number;
 }
 
 const MAX_CONCURRENT_TESTS = 4;
+const LOOP_MIN_DELAY_MS = 30_000;
+const LOOP_MAX_DELAY_MS = 60_000;
+
+function randomLoopDelayMs() {
+  return Math.floor(LOOP_MIN_DELAY_MS + Math.random() * (LOOP_MAX_DELAY_MS - LOOP_MIN_DELAY_MS + 1));
+}
 
 export function ChannelsBulkTestDialog() {
   const { t } = useTranslation();
@@ -33,6 +41,8 @@ export function ChannelsBulkTestDialog() {
   const [dialogContent, setDialogContent] = useState<HTMLDivElement | null>(null);
   const [results, setResults] = useState<Record<string, BulkTestResult>>({});
   const [isTesting, setIsTesting] = useState(false);
+  const [loopUntilSuccess, setLoopUntilSuccess] = useState(false);
+  const stopRequestedRef = useRef(false);
 
   const isDialogOpen = open === 'bulkTest';
 
@@ -60,6 +70,8 @@ export function ChannelsBulkTestDialog() {
     if (isDialogOpen && dialogContent) {
       initializeResults();
       setIsTesting(false);
+      setLoopUntilSuccess(false);
+      stopRequestedRef.current = false;
     }
   }, [dialogContent, initializeResults, isDialogOpen]);
 
@@ -113,45 +125,69 @@ export function ChannelsBulkTestDialog() {
   );
 
   const runSingleTest = useCallback(
-    async (channel: Channel) => {
+    async (channel: Channel, retryUntilSuccess: boolean) => {
       const modelID = resolveTestModel(channel);
       if (!modelID) {
         setResultStatus(channel, 'skipped', { error: t('channels.dialogs.bulkTest.noTestModel') });
         return;
       }
 
-      setResultStatus(channel, 'testing', { error: undefined, latency: undefined, modelID });
+      let attempts = 0;
+      while (!stopRequestedRef.current) {
+        attempts += 1;
+        setResultStatus(channel, 'testing', { error: undefined, latency: undefined, modelID, attempts });
 
-      try {
-        const result = await testChannel.mutateAsync({
-          channelID: channel.id,
-          modelID,
-        });
+        let success = false;
+        let latency: number | undefined;
+        let errorMessage: string | undefined;
+        try {
+          const result = await testChannel.mutateAsync({
+            channelID: channel.id,
+            modelID,
+          });
+          success = result.success;
+          latency = result.success ? result.latency : undefined;
+          errorMessage = result.success ? undefined : result.error || t('common.errors.internalServerError');
+        } catch (error) {
+          errorMessage = error instanceof Error ? error.message : t('common.errors.internalServerError');
+        }
 
-        setResultStatus(channel, result.success ? 'success' : 'failed', {
-          modelID,
-          latency: result.success ? result.latency : undefined,
-          error: result.success ? undefined : (result.error || t('common.errors.internalServerError')),
-        });
-      } catch (error) {
-        setResultStatus(channel, 'failed', {
-          modelID,
-          error: error instanceof Error ? error.message : t('common.errors.internalServerError'),
-        });
+        if (success || !retryUntilSuccess || stopRequestedRef.current) {
+          const finalStatus: BulkTestStatus = success ? 'success' : stopRequestedRef.current ? 'idle' : 'failed';
+          setResultStatus(channel, finalStatus, {
+            modelID,
+            latency,
+            error: finalStatus === 'failed' ? errorMessage : undefined,
+            attempts,
+          });
+          return;
+        }
+
+        const delayMs = randomLoopDelayMs();
+        for (let remaining = delayMs; remaining > 0; remaining -= 1000) {
+          if (stopRequestedRef.current) {
+            break;
+          }
+          await new Promise((resolve) => setTimeout(resolve, Math.min(remaining, 1000)));
+        }
       }
+
+      setResultStatus(channel, 'idle', { modelID, attempts });
     },
     [resolveTestModel, setResultStatus, t, testChannel]
   );
 
   const runBatch = useCallback(
-    async (channels: Channel[]) => {
+    async (channels: Channel[], retryUntilSuccess: boolean) => {
       const runnableChannels = channels.filter((channel) => !!resolveTestModel(channel));
       if (runnableChannels.length === 0) {
         return;
       }
 
       const queue = [...runnableChannels];
-      const workerCount = Math.min(MAX_CONCURRENT_TESTS, queue.length);
+      // A loop run intentionally uses one worker to avoid burst traffic while
+      // each channel waits for its own randomized retry window.
+      const workerCount = retryUntilSuccess ? 1 : Math.min(MAX_CONCURRENT_TESTS, queue.length);
 
       const workers = Array.from({ length: workerCount }, async () => {
         while (queue.length > 0) {
@@ -160,7 +196,7 @@ export function ChannelsBulkTestDialog() {
             return;
           }
 
-          await runSingleTest(channel);
+          await runSingleTest(channel, retryUntilSuccess);
         }
       });
 
@@ -175,14 +211,15 @@ export function ChannelsBulkTestDialog() {
     }
 
     initializeResults();
+    stopRequestedRef.current = false;
     setIsTesting(true);
 
     try {
-      await runBatch(selectedChannels);
+      await runBatch(selectedChannels, loopUntilSuccess);
     } finally {
       setIsTesting(false);
     }
-  }, [initializeResults, isTesting, runBatch, selectedChannels]);
+  }, [initializeResults, isTesting, loopUntilSuccess, runBatch, selectedChannels]);
 
   const handleRetryFailed = useCallback(async () => {
     if (failedChannels.length === 0 || isTesting) {
@@ -193,13 +230,18 @@ export function ChannelsBulkTestDialog() {
       setResultStatus(channel, 'idle', { error: undefined, latency: undefined });
     });
 
+    stopRequestedRef.current = false;
     setIsTesting(true);
     try {
-      await runBatch(failedChannels);
+      await runBatch(failedChannels, loopUntilSuccess);
     } finally {
       setIsTesting(false);
     }
-  }, [failedChannels, isTesting, runBatch, setResultStatus]);
+  }, [failedChannels, isTesting, loopUntilSuccess, runBatch, setResultStatus]);
+
+  const handleStop = useCallback(() => {
+    stopRequestedRef.current = true;
+  }, []);
 
   const handleRecoverChannels = useCallback(async () => {
     const ids = recoverableChannels.map((channel) => channel.id);
@@ -220,6 +262,9 @@ export function ChannelsBulkTestDialog() {
   const handleOpenChange = useCallback(
     (nextOpen: boolean) => {
       if (!nextOpen && isTesting) {
+        if (loopUntilSuccess) {
+          handleStop();
+        }
         return;
       }
 
@@ -232,7 +277,7 @@ export function ChannelsBulkTestDialog() {
         setOpen('bulkTest');
       }
     },
-    [isDialogOpen, isTesting, setOpen]
+    [handleStop, isDialogOpen, isTesting, loopUntilSuccess, setOpen]
   );
 
   const getStatusBadge = useCallback(
@@ -285,6 +330,24 @@ export function ChannelsBulkTestDialog() {
               <div className='text-xs text-amber-700'>{t('channels.dialogs.bulkTest.summary.skipped', { count: skippedCount })}</div>
               <div className='mt-1 text-lg font-semibold text-amber-800'>{skippedCount}</div>
             </div>
+          </div>
+
+          <div className='bg-muted/20 mt-4 flex items-center justify-between gap-4 rounded-lg border px-4 py-3'>
+            <div className='min-w-0'>
+              <div className='flex items-center gap-2 text-sm font-medium'>
+                {t('channels.dialogs.bulkTest.loopLabel')}
+                <Badge variant='outline' className='text-[11px] font-normal'>
+                  {t('channels.dialogs.bulkTest.loopInterval')}
+                </Badge>
+              </div>
+              <p className='text-muted-foreground mt-1 text-xs'>{t('channels.dialogs.bulkTest.loopDescription')}</p>
+            </div>
+            <Switch
+              checked={loopUntilSuccess}
+              onCheckedChange={setLoopUntilSuccess}
+              disabled={isTesting || bulkRecoverChannels.isPending}
+              aria-label={t('channels.dialogs.bulkTest.loopLabel')}
+            />
           </div>
 
           <div className='min-h-0 flex-1 overflow-y-auto py-4'>
@@ -355,8 +418,12 @@ export function ChannelsBulkTestDialog() {
               : t('channels.dialogs.bulkTest.noRecoverableChannels')}
           </div>
           <div className='flex flex-wrap justify-end gap-2'>
-            <Button variant='outline' onClick={() => handleOpenChange(false)} disabled={isTesting || bulkRecoverChannels.isPending}>
-              {t('common.buttons.cancel')}
+            <Button
+              variant='outline'
+              onClick={() => (isTesting && loopUntilSuccess ? handleStop() : handleOpenChange(false))}
+              disabled={(!isTesting && bulkRecoverChannels.isPending) || (isTesting && !loopUntilSuccess)}
+            >
+              {isTesting && loopUntilSuccess ? t('channels.dialogs.bulkTest.stopButton') : t('common.buttons.cancel')}
             </Button>
             <Button variant='outline' onClick={handleRetryFailed} disabled={failedChannels.length === 0 || isTesting || bulkRecoverChannels.isPending}>
               <IconRefresh className='mr-2 h-4 w-4' />
