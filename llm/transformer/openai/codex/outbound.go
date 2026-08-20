@@ -256,7 +256,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		if ext.Request == nil {
 			ext.Request = &llm.OpenAIResponsesRequestExtensions{}
 		}
-		if ext.Request.ReasoningContext == "" {
+		if responsesLite && ext.Request.ReasoningContext == "" {
 			ext.Request.ReasoningContext = "all_turns"
 		}
 
