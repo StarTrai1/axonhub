@@ -26,8 +26,8 @@ interface BulkTestResult {
 }
 
 const MAX_CONCURRENT_TESTS = 4;
-const LOOP_MIN_DELAY_MS = 30_000;
-const LOOP_MAX_DELAY_MS = 60_000;
+const LOOP_MIN_DELAY_MS = 5_000;
+const LOOP_MAX_DELAY_MS = 10_000;
 
 function randomLoopDelayMs() {
   return Math.floor(LOOP_MIN_DELAY_MS + Math.random() * (LOOP_MAX_DELAY_MS - LOOP_MIN_DELAY_MS + 1));

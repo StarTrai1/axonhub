@@ -693,6 +693,7 @@ func TestCodexOutbound_PreservesMinimalCompatTransforms(t *testing.T) {
 	assert.Equal(t, true, body["parallel_tool_calls"])
 	assert.Equal(t, topP, body["top_p"])
 	assert.Equal(t, serviceTier, body["service_tier"])
+	assert.Equal(t, "model=gpt-5-codex;tier=flex", hreq.Headers.Get(RoutingHintHeader))
 	assert.NotContains(t, body, "metadata")
 	assert.Equal(t, []any{"reasoning.encrypted_content"}, body["include"])
 
@@ -813,6 +814,7 @@ func TestCodexOutbound_ResponsesLiteIsExplicitAndOfficialOnly(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Empty(t, outboundRequest.Headers.Get(responses.ResponsesLiteHeader))
+		assert.Empty(t, outboundRequest.Headers.Get(RoutingHintHeader))
 		body := decodeCodexRequestBody(t, outboundRequest)
 		reasoning, ok := body["reasoning"].(map[string]any)
 		require.True(t, ok)

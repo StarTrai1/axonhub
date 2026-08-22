@@ -63,6 +63,12 @@ type ProviderClaudeQuotaData = ProviderQuotaDataCommon & {
 };
 
 export type ProviderCodexQuotaData = ProviderQuotaDataCommon & {
+  rate_limit_reset_credits?: {
+    available_count: number;
+    next_expires_at?: string;
+    checked_at?: string;
+  };
+  rate_limit_reset_credits_error?: string;
   rate_limit?: {
     primary_window?: {
       used_percent?: number;

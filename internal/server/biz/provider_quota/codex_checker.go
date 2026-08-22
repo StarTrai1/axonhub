@@ -4,7 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -18,9 +21,10 @@ import (
 
 // CodexUsageResponse matches ChatGPT backend API response.
 type CodexUsageResponse struct {
-	PlanType            string             `json:"plan_type,omitempty"`
-	RateLimit           *CodeRateLimitInfo `json:"rate_limit,omitempty"`
-	CodeReviewRateLimit *CodeRateLimitInfo `json:"code_review_rate_limit,omitempty"`
+	PlanType              string                    `json:"plan_type,omitempty"`
+	RateLimit             *CodeRateLimitInfo        `json:"rate_limit,omitempty"`
+	CodeReviewRateLimit   *CodeRateLimitInfo        `json:"code_review_rate_limit,omitempty"`
+	RateLimitResetCredits *CodexResetCreditsSummary `json:"rate_limit_reset_credits,omitempty"`
 }
 
 type CodeRateLimitInfo struct {
@@ -48,7 +52,13 @@ type CodexResetCredit struct {
 
 type CodexResetCreditsResponse struct {
 	Credits        []CodexResetCredit `json:"credits"`
-	AvailableCount int                `json:"available_count"`
+	AvailableCount *int               `json:"available_count"`
+}
+
+type CodexResetCreditsSummary struct {
+	AvailableCount int    `json:"available_count"`
+	NextExpiresAt  string `json:"next_expires_at,omitempty"`
+	CheckedAt      string `json:"checked_at,omitempty"`
 }
 
 type CodexResetConsumeResponse struct {
@@ -58,23 +68,37 @@ type CodexResetConsumeResponse struct {
 }
 
 type CodexQuotaChecker struct {
-	httpClient *httpclient.HttpClient
+	httpClient        *httpclient.HttpClient
+	resetCreditsMu    sync.RWMutex
+	resetCreditsCache map[string]codexResetCreditsCacheEntry
 }
+
+type codexResetCreditsCacheEntry struct {
+	summary   CodexResetCreditsSummary
+	expiresAt time.Time
+}
+
+const codexResetCreditsCacheTTL = 5 * time.Minute
 
 func NewCodexQuotaChecker(httpClient *httpclient.HttpClient) *CodexQuotaChecker {
 	return &CodexQuotaChecker{
-		httpClient: httpClient,
+		httpClient:        httpClient,
+		resetCreditsCache: make(map[string]codexResetCreditsCacheEntry),
 	}
 }
 
 func (c *CodexQuotaChecker) CanResetNow(ctx context.Context, ch *ent.Channel) (bool, error) {
+	if !isOfficialCodexQuotaChannel(ch) {
+		return false, nil
+	}
+
 	resp, err := c.listResetCredits(ctx, ch)
 	if err != nil {
 		return false, err
 	}
 
 	for _, credit := range resp.Credits {
-		if credit.Status == "available" {
+		if isAvailableResetCredit(credit, time.Now()) {
 			return true, nil
 		}
 	}
@@ -83,6 +107,10 @@ func (c *CodexQuotaChecker) CanResetNow(ctx context.Context, ch *ent.Channel) (b
 }
 
 func (c *CodexQuotaChecker) ResetNow(ctx context.Context, ch *ent.Channel) (*CodexResetConsumeResponse, error) {
+	if !isOfficialCodexQuotaChannel(ch) {
+		return nil, fmt.Errorf("quota reset is only supported for official codex channels")
+	}
+
 	credits, err := c.listResetCredits(ctx, ch)
 	if err != nil {
 		return nil, err
@@ -90,7 +118,7 @@ func (c *CodexQuotaChecker) ResetNow(ctx context.Context, ch *ent.Channel) (*Cod
 
 	var target *CodexResetCredit
 	for i := range credits.Credits {
-		if credits.Credits[i].Status == "available" {
+		if isAvailableResetCredit(credits.Credits[i], time.Now()) {
 			target = &credits.Credits[i]
 			break
 		}
@@ -99,7 +127,17 @@ func (c *CodexQuotaChecker) ResetNow(ctx context.Context, ch *ent.Channel) (*Cod
 		return nil, fmt.Errorf("no available codex reset credit")
 	}
 
-	return c.consumeResetCredit(ctx, ch, target.ID)
+	result, err := c.consumeResetCredit(ctx, ch, target.ID)
+	if err == nil {
+		_, accountID, credentialErr := c.extractCodexCredentials(ch)
+		if credentialErr == nil {
+			c.resetCreditsMu.Lock()
+			delete(c.resetCreditsCache, accountID)
+			c.resetCreditsMu.Unlock()
+		}
+	}
+
+	return result, err
 }
 
 func (c *CodexQuotaChecker) listResetCredits(ctx context.Context, ch *ent.Channel) (*CodexResetCreditsResponse, error) {
@@ -124,6 +162,9 @@ func (c *CodexQuotaChecker) listResetCredits(ctx context.Context, ch *ent.Channe
 	resp, err := hc.Do(ctx, httpRequest)
 	if err != nil {
 		return nil, fmt.Errorf("list codex reset credits failed: %w", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("list codex reset credits failed with status %d", resp.StatusCode)
 	}
 
 	var result CodexResetCreditsResponse
@@ -160,6 +201,9 @@ func (c *CodexQuotaChecker) consumeResetCredit(ctx context.Context, ch *ent.Chan
 	resp, err := hc.Do(ctx, httpRequest)
 	if err != nil {
 		return nil, fmt.Errorf("consume codex reset credit failed: %w", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("consume codex reset credit failed with status %d", resp.StatusCode)
 	}
 
 	var result CodexResetConsumeResponse
@@ -223,7 +267,145 @@ func (c *CodexQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (Qu
 		return QuotaData{}, fmt.Errorf("quota request failed: %w", err)
 	}
 
-	return c.parseResponse(resp.Body)
+	quota, err := c.parseResponse(resp.Body)
+	if err != nil {
+		return QuotaData{}, err
+	}
+
+	if !isOfficialCodexQuotaChannel(ch) {
+		return quota, nil
+	}
+	if summary, summaryErr := c.getResetCreditsSummary(ctx, ch, accountID, embeddedResetCreditsCount(quota.RawData)); summaryErr == nil {
+		quota.RawData["rate_limit_reset_credits"] = map[string]any{
+			"available_count": summary.AvailableCount,
+			"next_expires_at": summary.NextExpiresAt,
+			"checked_at":      summary.CheckedAt,
+		}
+	} else {
+		quota.RawData["rate_limit_reset_credits_error"] = summaryErr.Error()
+	}
+
+	return quota, nil
+}
+
+func (c *CodexQuotaChecker) getResetCreditsSummary(
+	ctx context.Context,
+	ch *ent.Channel,
+	accountID string,
+	embeddedCount *int,
+) (CodexResetCreditsSummary, error) {
+	now := time.Now()
+	c.resetCreditsMu.RLock()
+	cached, ok := c.resetCreditsCache[accountID]
+	c.resetCreditsMu.RUnlock()
+	if ok && now.Before(cached.expiresAt) && (embeddedCount == nil || cached.summary.AvailableCount == *embeddedCount) {
+		return cached.summary, nil
+	}
+	if embeddedCount != nil && *embeddedCount == 0 {
+		summary := CodexResetCreditsSummary{
+			AvailableCount: 0,
+			CheckedAt:      now.UTC().Format(time.RFC3339),
+		}
+		c.cacheResetCreditsSummary(accountID, summary, now)
+		return summary, nil
+	}
+
+	credits, err := c.listResetCredits(ctx, ch)
+	if err != nil {
+		return CodexResetCreditsSummary{}, err
+	}
+
+	summary := summarizeResetCredits(credits, now)
+	c.cacheResetCreditsSummary(accountID, summary, now)
+
+	return summary, nil
+}
+
+func (c *CodexQuotaChecker) cacheResetCreditsSummary(accountID string, summary CodexResetCreditsSummary, now time.Time) {
+	c.resetCreditsMu.Lock()
+	c.resetCreditsCache[accountID] = codexResetCreditsCacheEntry{
+		summary:   summary,
+		expiresAt: now.Add(codexResetCreditsCacheTTL),
+	}
+	c.resetCreditsMu.Unlock()
+}
+
+func embeddedResetCreditsCount(rawData map[string]any) *int {
+	summary, ok := rawData["rate_limit_reset_credits"].(map[string]any)
+	if !ok {
+		return nil
+	}
+	count, ok := summary["available_count"].(int)
+	if !ok {
+		return nil
+	}
+
+	return &count
+}
+
+func isOfficialCodexQuotaChannel(ch *ent.Channel) bool {
+	if ch == nil || strings.TrimSpace(ch.BaseURL) == "" {
+		return true
+	}
+
+	parsed, err := url.Parse(strings.TrimSpace(ch.BaseURL))
+	if err != nil {
+		return false
+	}
+
+	return strings.EqualFold(parsed.Hostname(), "chatgpt.com")
+}
+
+func summarizeResetCredits(response *CodexResetCreditsResponse, checkedAt time.Time) CodexResetCreditsSummary {
+	availableCount := 0
+	if response.AvailableCount != nil {
+		availableCount = max(0, *response.AvailableCount)
+	}
+
+	availableFromRecords := 0
+	var nextExpiresAt time.Time
+	for _, credit := range response.Credits {
+		if !isAvailableResetCredit(credit, checkedAt) {
+			continue
+		}
+
+		availableFromRecords++
+		expiresAt, err := time.Parse(time.RFC3339, strings.TrimSpace(credit.ExpiresAt))
+		if err != nil || !expiresAt.After(checkedAt) {
+			continue
+		}
+		if nextExpiresAt.IsZero() || expiresAt.Before(nextExpiresAt) {
+			nextExpiresAt = expiresAt
+		}
+	}
+	if response.AvailableCount == nil {
+		availableCount = availableFromRecords
+	}
+
+	summary := CodexResetCreditsSummary{
+		AvailableCount: availableCount,
+		CheckedAt:      checkedAt.UTC().Format(time.RFC3339),
+	}
+	if !nextExpiresAt.IsZero() {
+		summary.NextExpiresAt = nextExpiresAt.UTC().Format(time.RFC3339)
+	}
+
+	return summary
+}
+
+func isAvailableResetCredit(credit CodexResetCredit, now time.Time) bool {
+	if !strings.EqualFold(strings.TrimSpace(credit.Status), "available") {
+		return false
+	}
+	if resetType := strings.TrimSpace(credit.ResetType); resetType != "" && !strings.EqualFold(resetType, "codex_rate_limits") {
+		return false
+	}
+	if strings.TrimSpace(credit.ExpiresAt) == "" {
+		return true
+	}
+
+	expiresAt, err := time.Parse(time.RFC3339, strings.TrimSpace(credit.ExpiresAt))
+	return err == nil && expiresAt.After(now)
 }
 
 func (c *CodexQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
@@ -276,6 +458,12 @@ func (c *CodexQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 
 	if response.CodeReviewRateLimit != nil {
 		rawData["code_review_rate_limit"] = convertRateLimitToMap(response.CodeReviewRateLimit)
+	}
+
+	if response.RateLimitResetCredits != nil {
+		rawData["rate_limit_reset_credits"] = map[string]any{
+			"available_count": response.RateLimitResetCredits.AvailableCount,
+		}
 	}
 
 	usageRatio := 0.0

@@ -835,7 +835,31 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
                   </div>
                 )}
 
-                {(status === 'exhausted' || status === 'warning') && (
+                {qd.rate_limit_reset_credits && (
+                  <div className='border-border/60 flex items-start justify-between gap-4 border-t border-dashed pt-3 text-xs'>
+                    <div className='space-y-0.5'>
+                      <div className='text-muted-foreground font-medium'>{t('quota.codex.resetCredits')}</div>
+                      <div className='text-muted-foreground text-[11px]'>
+                        {qd.rate_limit_reset_credits.next_expires_at
+                          ? t('quota.codex.nearestExpiry', {
+                              time: format(new Date(qd.rate_limit_reset_credits.next_expires_at), 'yyyy-MM-dd HH:mm'),
+                            })
+                          : t('quota.codex.noExpiry')}
+                      </div>
+                    </div>
+                    <span className='text-foreground font-semibold tabular-nums'>
+                      {t('quota.codex.availableCount', { count: qd.rate_limit_reset_credits.available_count })}
+                    </span>
+                  </div>
+                )}
+
+                {qd.rate_limit_reset_credits_error && !qd.rate_limit_reset_credits && (
+                  <div className='text-muted-foreground border-border/60 border-t border-dashed pt-3 text-[11px]'>
+                    {t('quota.codex.unavailable')}
+                  </div>
+                )}
+
+                {(status === 'exhausted' || status === 'warning') && qd.rate_limit_reset_credits?.available_count !== 0 && (
                   <div className='border-border/60 flex items-center justify-end gap-2 border-t border-dashed pt-3'>
                     <Button size='sm' variant='outline' className='h-7 text-xs' disabled={isResetting} onClick={handleResetCodexQuota}>
                       {isResetting ? <Loader2 className='mr-1.5 h-3.5 w-3.5 animate-spin' /> : <Zap className='mr-1.5 h-3.5 w-3.5' />}

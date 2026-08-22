@@ -102,6 +102,7 @@ export function CodexUsageCell({ channel }: { channel: Channel }) {
   const quotaData = (quotaStatus?.quotaData ?? {}) as ProviderCodexQuotaData;
   const fiveHourWindow = findWindow(quotaData, 4 * HOUR_SECONDS, 6 * HOUR_SECONDS);
   const weeklyWindow = findWindow(quotaData, 6 * DAY_SECONDS, 8 * DAY_SECONDS);
+  const resetCredits = quotaData.rate_limit_reset_credits;
   const hasQuotaData = Boolean(fiveHourWindow || weeklyWindow);
 
   if (!quotaStatus || quotaStatus.providerType !== 'codex' || quotaData.error) {
@@ -152,6 +153,26 @@ export function CodexUsageCell({ channel }: { channel: Channel }) {
           </div>
         ) : (
           <p className='text-background/80 text-xs'>{t('channels.codexUsage.noWindowData')}</p>
+        )}
+        {resetCredits && (
+          <div className='border-background/20 space-y-1 border-t border-dashed pt-2 text-xs'>
+            <div className='flex items-center justify-between gap-4'>
+              <span className='text-background/80'>{t('channels.codexUsage.resetCredits')}</span>
+              <span className='font-semibold tabular-nums'>
+                {t('channels.codexUsage.resetCreditCount', { count: resetCredits.available_count })}
+              </span>
+            </div>
+            <div className='text-background/75 text-[11px]'>
+              {resetCredits.next_expires_at
+                ? t('channels.codexUsage.resetCreditExpiry', { time: formatISOString(resetCredits.next_expires_at) })
+                : t('channels.codexUsage.resetCreditNoExpiry')}
+            </div>
+          </div>
+        )}
+        {quotaData.rate_limit_reset_credits_error && !resetCredits && (
+          <div className='text-background/75 border-background/20 border-t border-dashed pt-2 text-[11px]'>
+            {t('channels.codexUsage.resetCreditUnavailable')}
+          </div>
         )}
         <div className='text-background/75 border-background/20 space-y-1 border-t border-dashed pt-2 text-[11px]'>
           {lastUpdated && <div>{t('channels.codexUsage.lastUpdated', { time: lastUpdated })}</div>}

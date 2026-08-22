@@ -17,19 +17,43 @@ import (
 
 func TestCodexQuotaChecker_UsesOfficialUsageHeaders(t *testing.T) {
 	accessToken := buildCodexQuotaTestJWT(t, "acct_test")
+	requestCount := 0
 
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
 		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			requestCount++
 			require.Equal(t, "axonhub/1.0", req.Header.Get("User-Agent"))
 			require.Empty(t, req.Header.Get("Originator"))
 			require.Equal(t, "acct_test", req.Header.Get("Chatgpt-Account-Id"))
 			require.Equal(t, "Bearer "+accessToken, req.Header.Get("Authorization"))
 
-			return &http.Response{
-				StatusCode: http.StatusOK,
-				Header:     make(http.Header),
-				Body:       io.NopCloser(strings.NewReader(`{"plan_type":"plus","rate_limit":{"allowed":true}}`)),
-			}, nil
+			switch req.URL.Path {
+			case "/backend-api/wham/usage":
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Header:     make(http.Header),
+					Body: io.NopCloser(strings.NewReader(`{
+						"plan_type":"plus",
+						"rate_limit":{"allowed":true},
+						"rate_limit_reset_credits":{"available_count":2}
+					}`)),
+				}, nil
+			case "/backend-api/wham/rate-limit-reset-credits":
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Header:     make(http.Header),
+					Body: io.NopCloser(strings.NewReader(`{
+						"credits":[
+							{"id":"later","status":"available","reset_type":"codex_rate_limits","expires_at":"2099-08-23T10:00:00Z"},
+							{"id":"next","status":"available","reset_type":"codex_rate_limits","expires_at":"2099-08-22T10:00:00Z"}
+						],
+						"available_count":2
+					}`)),
+				}, nil
+			default:
+				t.Fatalf("unexpected request path: %s", req.URL.Path)
+				return nil, nil
+			}
 		}),
 	})
 
@@ -43,6 +67,79 @@ func TestCodexQuotaChecker_UsesOfficialUsageHeaders(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "available", quota.Status)
 	require.True(t, quota.Ready)
+	require.Equal(t, 2, requestCount)
+	resetCredits, ok := quota.RawData["rate_limit_reset_credits"].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, 2, resetCredits["available_count"])
+	require.Equal(t, "2099-08-22T10:00:00Z", resetCredits["next_expires_at"])
+
+	_, err = checker.CheckQuota(context.Background(), &ent.Channel{
+		Credentials: objects.ChannelCredentials{
+			OAuth: &objects.OAuthCredentials{AccessToken: accessToken},
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, 3, requestCount, "reset-credit details should be served from the short-lived cache")
+}
+
+func TestCodexQuotaChecker_CustomRelaySkipsResetCreditEndpoint(t *testing.T) {
+	accessToken := buildCodexQuotaTestJWT(t, "acct_relay")
+	requestCount := 0
+	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			requestCount++
+			require.Equal(t, "/backend-api/wham/usage", req.URL.Path)
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     make(http.Header),
+				Body:       io.NopCloser(strings.NewReader(`{"plan_type":"plus","rate_limit":{"allowed":true}}`)),
+			}, nil
+		}),
+	})
+
+	checker := NewCodexQuotaChecker(httpClient)
+	quota, err := checker.CheckQuota(context.Background(), &ent.Channel{
+		BaseURL: "https://relay.example/v1",
+		Credentials: objects.ChannelCredentials{
+			OAuth: &objects.OAuthCredentials{AccessToken: accessToken},
+		},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, 1, requestCount)
+	require.NotContains(t, quota.RawData, "rate_limit_reset_credits_error")
+}
+
+func TestCodexQuotaChecker_ZeroEmbeddedResetCreditCountSkipsDetailEndpoint(t *testing.T) {
+	accessToken := buildCodexQuotaTestJWT(t, "acct_zero")
+	requestCount := 0
+	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			requestCount++
+			require.Equal(t, "/backend-api/wham/usage", req.URL.Path)
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     make(http.Header),
+				Body: io.NopCloser(strings.NewReader(`{
+					"rate_limit":{"allowed":true},
+					"rate_limit_reset_credits":{"available_count":0}
+				}`)),
+			}, nil
+		}),
+	})
+
+	checker := NewCodexQuotaChecker(httpClient)
+	quota, err := checker.CheckQuota(context.Background(), &ent.Channel{
+		Credentials: objects.ChannelCredentials{
+			OAuth: &objects.OAuthCredentials{AccessToken: accessToken},
+		},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, 1, requestCount)
+	resetCredits, ok := quota.RawData["rate_limit_reset_credits"].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, 0, resetCredits["available_count"])
 }
 
 type roundTripFunc func(req *http.Request) (*http.Response, error)

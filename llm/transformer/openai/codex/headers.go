@@ -18,6 +18,7 @@ const (
 	WindowIDHeader        = "X-Codex-Window-Id"
 	ClientRequestIDHeader = "X-Client-Request-Id"
 	BetaFeaturesHeader    = "X-Codex-Beta-Features"
+	RoutingHintHeader     = "X-Codex-Routing-Hint"
 	ThreadIDHeader        = "Thread-Id"
 	// ResponsesLiteHeader uses the canonical spelling ("Openai"): Go's
 	// http.Header canonicalizes keys, so lookups match regardless of case, and

@@ -392,6 +392,16 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		hreq.Headers.Set("Version", identityVersion)
 	}
 
+	// Codex 0.149.0 sends a routing hint to the official backend. Keep this
+	// private header scoped to ChatGPT auth so compatible relays are unchanged.
+	if t.isOfficialCodex() {
+		hint := "model=" + reqCopy.Model
+		if reqCopy.ServiceTier != nil && strings.TrimSpace(*reqCopy.ServiceTier) != "" {
+			hint += ";tier=" + strings.TrimSpace(*reqCopy.ServiceTier)
+		}
+		hreq.Headers.Set(RoutingHintHeader, hint)
+	}
+
 	return hreq, nil
 }
 
