@@ -304,6 +304,7 @@ func (c *CodexQuotaChecker) getResetCreditsSummary(
 	if embeddedCount != nil && *embeddedCount == 0 {
 		summary := CodexResetCreditsSummary{
 			AvailableCount: 0,
+			NextExpiresAt:  "",
 			CheckedAt:      now.UTC().Format(time.RFC3339),
 		}
 		c.cacheResetCreditsSummary(accountID, summary, now)
@@ -384,6 +385,7 @@ func summarizeResetCredits(response *CodexResetCreditsResponse, checkedAt time.T
 
 	summary := CodexResetCreditsSummary{
 		AvailableCount: availableCount,
+		NextExpiresAt:  "",
 		CheckedAt:      checkedAt.UTC().Format(time.RFC3339),
 	}
 	if !nextExpiresAt.IsZero() {
