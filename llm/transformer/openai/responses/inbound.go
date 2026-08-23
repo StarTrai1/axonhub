@@ -347,15 +347,16 @@ func convertInputToMessages(input *Input) ([]llm.Message, error) {
 	}
 
 	// If input is an array of items
-	messages := make([]llm.Message, 0, len(input.Items))
+	items := sanitizeMalformedFunctionCalls(input.Items)
+	messages := make([]llm.Message, 0, len(items))
 	i := 0
 
-	for i < len(input.Items) {
-		item := &input.Items[i]
+	for i < len(items) {
+		item := &items[i]
 
 		// Handle reasoning item - merge with subsequent function_call or text items
 		if item.Type == "reasoning" {
-			msg, consumed, err := convertReasoningWithFollowing(input.Items, i)
+			msg, consumed, err := convertReasoningWithFollowing(items, i)
 			if err != nil {
 				return nil, err
 			}
@@ -372,8 +373,8 @@ func convertInputToMessages(input *Input) ([]llm.Message, error) {
 		if item.Type == "function_call" || item.Type == "custom_tool_call" {
 			msg := llm.Message{Role: "assistant"}
 
-			for i < len(input.Items) {
-				callItem := &input.Items[i]
+			for i < len(items) {
+				callItem := &items[i]
 				if callItem.Type != "function_call" && callItem.Type != "custom_tool_call" {
 					break
 				}
@@ -407,6 +408,54 @@ func convertInputToMessages(input *Input) ([]llm.Message, error) {
 	}
 
 	return messages, nil
+}
+
+// sanitizeMalformedFunctionCalls removes poisoned ordinary function calls from
+// replay history together with their matching outputs. Some Chat-compatible
+// upstreams can truncate arguments mid-JSON; replaying such a call makes the
+// next provider reject the entire conversation. Custom tools use free-form
+// input and are intentionally left untouched.
+func sanitizeMalformedFunctionCalls(items []Item) []Item {
+	validityByCallID := make(map[string][]bool)
+	for i := range items {
+		if items[i].Type == "function_call" {
+			validityByCallID[items[i].CallID] = append(
+				validityByCallID[items[i].CallID],
+				validFunctionArguments(items[i].Arguments),
+			)
+		}
+	}
+
+	if len(validityByCallID) == 0 {
+		return items
+	}
+
+	outputIndexByCallID := make(map[string]int)
+	sanitized := make([]Item, 0, len(items))
+	for i := range items {
+		item := items[i]
+		switch item.Type {
+		case "function_call":
+			if !validFunctionArguments(item.Arguments) {
+				continue
+			}
+		case "function_call_output":
+			validity := validityByCallID[item.CallID]
+			idx := outputIndexByCallID[item.CallID]
+			outputIndexByCallID[item.CallID] = idx + 1
+			if idx < len(validity) && !validity[idx] {
+				continue
+			}
+		}
+
+		sanitized = append(sanitized, item)
+	}
+
+	return sanitized
+}
+
+func validFunctionArguments(arguments string) bool {
+	return strings.TrimSpace(arguments) == "" || json.Valid([]byte(arguments))
 }
 
 // convertReasoningWithFollowing converts a reasoning item and merges it with subsequent
@@ -1035,7 +1084,7 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 						Input:  lo.ToPtr(toolCall.ResponseCustomToolCall.Input),
 						Status: lo.ToPtr("completed"),
 					})
-				} else {
+				} else if validFunctionArguments(toolCall.Function.Arguments) {
 					resp.Output = append(resp.Output, Item{
 						ID:        toolCall.ID,
 						Type:      "function_call",

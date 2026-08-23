@@ -488,6 +488,44 @@ func TestInboundTransformer_TransformStream_EmitsUpstreamErrorEvents(t *testing.
 	}
 }
 
+func TestInboundTransformer_TransformStream_DoesNotFinalizeMalformedFunctionArguments(t *testing.T) {
+	stream, err := NewInboundTransformer().TransformStream(t.Context(), streams.SliceStream([]*llm.Response{
+		{
+			ID:      "resp_malformed_tool",
+			Model:   "gpt-test",
+			Created: 1,
+			Choices: []llm.Choice{{Delta: &llm.Message{ToolCalls: []llm.ToolCall{{
+				Index: 0,
+				ID:    "call_bad",
+				Type:  "function",
+				Function: llm.FunctionCall{
+					Name:      "broken_tool",
+					Arguments: `{"value":`,
+				},
+			}}}}},
+		},
+		{
+			ID:      "resp_malformed_tool",
+			Model:   "gpt-test",
+			Created: 1,
+			Choices: []llm.Choice{{Delta: &llm.Message{}, FinishReason: lo.ToPtr("tool_calls")}},
+		},
+	}))
+	require.NoError(t, err)
+
+	var eventTypes []StreamEventType
+	for stream.Next() {
+		var event StreamEvent
+		require.NoError(t, json.Unmarshal(stream.Current().Data, &event))
+		eventTypes = append(eventTypes, event.Type)
+	}
+
+	require.ErrorContains(t, stream.Err(), "invalid function call arguments from upstream")
+	require.NotContains(t, eventTypes, StreamEventTypeFunctionCallArgumentsDone)
+	require.NotContains(t, eventTypes, StreamEventTypeOutputItemDone)
+	require.NotContains(t, eventTypes, StreamEventTypeResponseCompleted)
+}
+
 type errorResponseStream struct {
 	items []*llm.Response
 	index int

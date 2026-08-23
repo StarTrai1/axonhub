@@ -1647,6 +1647,43 @@ func TestConvertInputToMessages_GroupsConsecutiveToolCalls(t *testing.T) {
 	require.Equal(t, "Continue.", lo.FromPtr(messages[4].Content.Content))
 }
 
+func TestConvertInputToMessages_SkipsMalformedFunctionCallsAndMatchingOutputs(t *testing.T) {
+	input := &Input{Items: []Item{
+		{Role: "user", Content: &Input{Text: lo.ToPtr("Run the tools.")}},
+		{Type: "function_call", CallID: "call_bad", Name: "broken_tool", Arguments: `{"value":`},
+		{Type: "function_call", CallID: "call_good", Name: "working_tool", Arguments: `{"value":2}`},
+		{Type: "function_call_output", CallID: "call_bad", Output: &Input{Text: lo.ToPtr("bad result")}},
+		{Type: "function_call_output", CallID: "call_good", Output: &Input{Text: lo.ToPtr("good result")}},
+		{Role: "user", Content: &Input{Text: lo.ToPtr("Continue.")}},
+	}}
+
+	messages, err := convertInputToMessages(input)
+	require.NoError(t, err)
+	require.Len(t, messages, 4)
+	require.Equal(t, "user", messages[0].Role)
+	require.Equal(t, "assistant", messages[1].Role)
+	require.Len(t, messages[1].ToolCalls, 1)
+	require.Equal(t, "call_good", messages[1].ToolCalls[0].ID)
+	require.Equal(t, "tool", messages[2].Role)
+	require.Equal(t, "call_good", lo.FromPtr(messages[2].ToolCallID))
+	require.Equal(t, "user", messages[3].Role)
+}
+
+func TestConvertInputToMessages_PreservesCustomAndEmptyFunctionArguments(t *testing.T) {
+	input := &Input{Items: []Item{
+		{Type: "function_call", CallID: "call_empty", Name: "empty_tool"},
+		{Type: "custom_tool_call", CallID: "call_custom", Name: "custom_tool", Input: lo.ToPtr("free-form")},
+	}}
+
+	messages, err := convertInputToMessages(input)
+	require.NoError(t, err)
+	require.Len(t, messages, 1)
+	require.Len(t, messages[0].ToolCalls, 2)
+	require.Equal(t, "call_empty", messages[0].ToolCalls[0].ID)
+	require.Equal(t, "", messages[0].ToolCalls[0].Function.Arguments)
+	require.Equal(t, llm.ToolTypeResponsesCustomTool, messages[0].ToolCalls[1].Type)
+}
+
 func TestConvertInputToMessages_GroupsMixedToolCallTypes(t *testing.T) {
 	input := &Input{Items: []Item{
 		{
@@ -2139,6 +2176,33 @@ func TestConvertToResponsesAPIResponse_PreservesMultipleReasoningItems(t *testin
 	require.NotNil(t, resp.Output[1].EncryptedContent)
 	require.Equal(t, "gAAAA_SECOND_BLOB", *resp.Output[1].EncryptedContent)
 	require.Equal(t, "function_call", resp.Output[2].Type)
+}
+
+func TestConvertToResponsesAPIResponse_SkipsMalformedFunctionCalls(t *testing.T) {
+	resp := convertToResponsesAPIResponse(&llm.Response{
+		ID:    "resp_tool_arguments",
+		Model: "gpt-test",
+		Choices: []llm.Choice{{Message: &llm.Message{
+			Role: "assistant",
+			ToolCalls: []llm.ToolCall{
+				{ID: "call_bad", Type: "function", Function: llm.FunctionCall{Name: "broken_tool", Arguments: `{"value":`}},
+				{ID: "call_good", Type: "function", Function: llm.FunctionCall{Name: "working_tool", Arguments: `{"value":2}`}},
+				{
+					ID:   "call_custom",
+					Type: llm.ToolTypeResponsesCustomTool,
+					ResponseCustomToolCall: &llm.ResponseCustomToolCall{
+						CallID: "call_custom",
+						Name:   "custom_tool",
+						Input:  "free-form",
+					},
+				},
+			},
+		}}},
+	})
+
+	require.Len(t, resp.Output, 2)
+	require.Equal(t, "call_good", resp.Output[0].CallID)
+	require.Equal(t, "custom_tool_call", resp.Output[1].Type)
 }
 
 func TestInboundTransformer_TransformResponse_WithReasoningContent(t *testing.T) {

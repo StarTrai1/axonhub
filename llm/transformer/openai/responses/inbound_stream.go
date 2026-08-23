@@ -1122,6 +1122,15 @@ func (s *responsesInboundStream) closeCurrentOutputItem() error {
 		}
 	}
 
+	// Validate every ordinary function call before finalizing any of them. A
+	// truncated JSON argument must never be advertised as a completed Responses
+	// item because clients persist and replay completed tool calls.
+	for idx, tc := range s.toolCalls {
+		if s.toolCallItemStarted[idx] && tc.ResponseCustomToolCall == nil && !validFunctionArguments(tc.Function.Arguments) {
+			return fmt.Errorf("invalid function call arguments from upstream for %q", tc.Function.Name)
+		}
+	}
+
 	// Close any open tool call items
 	for idx, tc := range s.toolCalls {
 		if !s.toolCallItemStarted[idx] {
