@@ -78,6 +78,12 @@ func (m *responsesLiteWebSearchFallbackMiddleware) OnOutboundRawError(ctx contex
 	if channel == nil || state.responsesLiteWebSearchInjectedChannel != channel.ID {
 		return
 	}
+	// A precise input[N].status rejection is unrelated to the injected search
+	// tool. Let the status compatibility middleware own that retry instead of
+	// incorrectly blacklisting hosted search for this channel.
+	if hasResponsesRejectedStatusCompatibilityRetry(state, channel.ID) {
+		return
+	}
 
 	statusCode := ExtractStatusCodeFromError(err)
 	if statusCode != http.StatusBadRequest && statusCode != http.StatusUnprocessableEntity {

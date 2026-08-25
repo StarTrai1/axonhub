@@ -2,6 +2,10 @@ package orchestrator
 
 import (
 	"context"
+	"errors"
+	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/looplj/axonhub/internal/log"
@@ -24,7 +28,7 @@ func withRateLimitTracking(outbound *PersistentOutboundTransformer, tracker *Cha
 	}
 }
 
-// rateLimitTracking records TPM usage and provider Retry-After cooldowns. RPM
+// rateLimitTracking records TPM usage and provider cooldown signals. RPM
 // accounting is owned by rateLimitAdmissionMiddleware so request slots are
 // consumed atomically before an attempt reaches upstream.
 type rateLimitTracking struct {
@@ -87,6 +91,20 @@ func (m *rateLimitTracking) OnOutboundRawError(ctx context.Context, err error) {
 		return
 	}
 
+	// Codex exposes the exhausted quota window and its reset delay separately
+	// from Retry-After. Honor that explicit signal without the generic five
+	// minute cap so an exhausted 5-hour/weekly channel is not retried repeatedly.
+	if cooldown, ok := codexQuotaResetCooldown(err); ok {
+		m.tracker.SetCooldown(channel.ID, time.Now().Add(cooldown))
+		log.Warn(ctx, "channel cooling down until Codex quota reset",
+			log.Int("channel_id", channel.ID),
+			log.String("channel_name", channel.Name),
+			log.Duration("cooldown", cooldown),
+		)
+
+		return
+	}
+
 	// Only cool down a channel when the upstream explicitly provides a cooldown.
 	if !httpclient.HasRetryAfterHeader(err) {
 		return
@@ -106,6 +124,27 @@ func (m *rateLimitTracking) OnOutboundRawError(ctx context.Context, err error) {
 		log.String("channel_name", channel.Name),
 		log.Duration("cooldown", cooldown),
 	)
+}
+
+func codexQuotaResetCooldown(err error) (time.Duration, bool) {
+	var httpErr *httpclient.Error
+	if !errors.As(err, &httpErr) || httpErr.StatusCode != http.StatusTooManyRequests || httpErr.Headers == nil {
+		return 0, false
+	}
+
+	var longest time.Duration
+	for _, window := range []string{"primary", "secondary"} {
+		prefix := "x-codex-" + window + "-"
+		used, parseUsedErr := strconv.ParseFloat(strings.TrimSpace(httpErr.Headers.Get(prefix+"used-percent")), 64)
+		resetSeconds, parseResetErr := strconv.ParseInt(strings.TrimSpace(httpErr.Headers.Get(prefix+"reset-after-seconds")), 10, 64)
+		if parseUsedErr != nil || parseResetErr != nil || used < 100 || resetSeconds <= 0 {
+			continue
+		}
+
+		longest = max(longest, time.Duration(resetSeconds)*time.Second)
+	}
+
+	return longest, longest > 0
 }
 
 // rateLimitTrackingStream wraps a stream to track token usage for rate limiting.

@@ -615,6 +615,7 @@ func (p *PersistentOutboundTransformer) NextChannel(ctx context.Context) error {
 	p.state.PassThroughApplied = false
 	p.state.responsesLiteWebSearchInjectedChannel = 0
 	p.state.responsesLiteWebSearchRetryChannel = 0
+	p.state.responsesRejectedStatusRetryChannel = 0
 
 	candidate := p.state.ChannelModelsCandidates[p.state.CurrentCandidateIndex]
 	p.state.CurrentCandidate = candidate
@@ -686,7 +687,8 @@ func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
 		return false
 	}
 	if p.state.CurrentCandidate.Channel != nil &&
-		hasResponsesLiteWebSearchCompatibilityRetry(p.state, p.state.CurrentCandidate.Channel.ID) {
+		(hasResponsesLiteWebSearchCompatibilityRetry(p.state, p.state.CurrentCandidate.Channel.ID) ||
+			hasResponsesRejectedStatusCompatibilityRetry(p.state, p.state.CurrentCandidate.Channel.ID)) {
 		return true
 	}
 
@@ -756,6 +758,16 @@ func (p *PersistentOutboundTransformer) PrepareForRetry(ctx context.Context) err
 	// Cancel any in-flight pass-through stream goroutine from the previous attempt
 	// so it exits promptly and releases its upstream HTTP connection.
 	p.resetPassThroughStreamState()
+
+	if candidate != nil && candidate.Channel != nil &&
+		hasResponsesRejectedStatusCompatibilityRetry(p.state, candidate.Channel.ID) {
+		p.state.responsesRejectedStatusRetryChannel = 0
+		log.Info(ctx, "prepared same-channel retry without rejected Responses status fields",
+			log.Int("channel_id", candidate.Channel.ID),
+			log.String("channel", candidate.Channel.Name))
+
+		return nil
+	}
 
 	if candidate != nil && candidate.Channel != nil &&
 		hasResponsesLiteWebSearchCompatibilityRetry(p.state, candidate.Channel.ID) {

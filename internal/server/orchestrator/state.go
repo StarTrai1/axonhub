@@ -44,6 +44,10 @@ type PersistenceState struct {
 	responsesLiteWebSearchBlockedChannels map[int]struct{}
 	responsesLiteWebSearchInjectedChannel int
 	responsesLiteWebSearchRetryChannel    int
+	// responsesRejectedStatusRules records per-channel Responses input item
+	// types whose status field was explicitly rejected by that upstream.
+	responsesRejectedStatusRules        map[int][]responsesRejectedStatusRule
+	responsesRejectedStatusRetryChannel int
 
 	// OriginalRequestStream stores the client's original stream intent before any
 	// candidate-specific forcing to provider-side streaming happens.

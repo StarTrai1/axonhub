@@ -279,6 +279,9 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		applyPassThroughRequestHeaders(outbound),
 		applyResponsesLiteWebSearchFallback(outbound),
 		applyOverrideRequestBody(outbound),
+		// Compatibility rewrites must run after explicit body overrides so a
+		// retry cannot reintroduce the precise field the upstream rejected.
+		applyResponsesRejectedStatusCompatibility(outbound),
 		repairInvalidOpenAIToolSchemas(),
 		stripUnsupportedCodexPromptCacheOptions(outbound),
 		// applyUserAgentPassThrough runs before header overrides to set the initial

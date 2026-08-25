@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -286,6 +287,46 @@ func TestRateLimitTracking_OnOutboundRawError_429(t *testing.T) {
 
 	// Verify channel is in cooldown
 	assert.True(t, tracker.IsCoolingDown(channel.ID))
+}
+
+func TestRateLimitTracking_OnOutboundRawError_CodexExhaustedWindowUsesReset(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+	channel := &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "codex"}}
+	middleware := &rateLimitTracking{
+		outbound: &PersistentOutboundTransformer{state: &PersistenceState{
+			CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+		}},
+		tracker: tracker,
+	}
+	now := time.Now()
+
+	middleware.OnOutboundRawError(context.Background(), &httpclient.Error{
+		StatusCode: http.StatusTooManyRequests,
+		Headers: http.Header{
+			"X-Codex-Primary-Used-Percent":        []string{"100"},
+			"X-Codex-Primary-Reset-After-Seconds": []string{"18000"},
+			"Retry-After":                         []string{"30"},
+		},
+	})
+
+	until, ok := tracker.GetCooldownUntil(channel.ID)
+	require.True(t, ok)
+	require.WithinDuration(t, now.Add(5*time.Hour), until, time.Second)
+}
+
+func TestCodexQuotaResetCooldownUsesLongestExhaustedWindow(t *testing.T) {
+	cooldown, ok := codexQuotaResetCooldown(&httpclient.Error{
+		StatusCode: http.StatusTooManyRequests,
+		Headers: http.Header{
+			"X-Codex-Primary-Used-Percent":          []string{"100"},
+			"X-Codex-Primary-Reset-After-Seconds":   []string{"18000"},
+			"X-Codex-Secondary-Used-Percent":        []string{"100.0"},
+			"X-Codex-Secondary-Reset-After-Seconds": []string{"604800"},
+		},
+	})
+
+	require.True(t, ok)
+	require.Equal(t, 7*24*time.Hour, cooldown)
 }
 
 func TestRateLimitTracking_OnOutboundRawError_QueueErrorIgnored(t *testing.T) {
