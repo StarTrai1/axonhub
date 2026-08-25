@@ -289,6 +289,7 @@ func TestRateLimitTracking_OnOutboundRawError_429(t *testing.T) {
 	assert.True(t, tracker.IsCoolingDown(channel.ID))
 }
 
+//nolint:exhaustruct // Test initializes only fields used by rate-limit tracking.
 func TestRateLimitTracking_OnOutboundRawError_CodexExhaustedWindowUsesReset(t *testing.T) {
 	tracker := NewChannelRequestTracker()
 	channel := &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "codex"}}
@@ -314,6 +315,7 @@ func TestRateLimitTracking_OnOutboundRawError_CodexExhaustedWindowUsesReset(t *t
 	require.WithinDuration(t, now.Add(5*time.Hour), until, time.Second)
 }
 
+//nolint:exhaustruct // Test initializes only fields used by the parser.
 func TestCodexQuotaResetCooldownUsesLongestExhaustedWindow(t *testing.T) {
 	cooldown, ok := codexQuotaResetCooldown(&httpclient.Error{
 		StatusCode: http.StatusTooManyRequests,

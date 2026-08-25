@@ -31,11 +31,15 @@ type responsesRejectedStatusRule struct {
 }
 
 func applyResponsesRejectedStatusCompatibility(outbound *PersistentOutboundTransformer) pipeline.Middleware {
-	return &responsesRejectedStatusCompatibilityMiddleware{outbound: outbound}
+	return &responsesRejectedStatusCompatibilityMiddleware{
+		DummyMiddleware: pipeline.DummyMiddleware{},
+		outbound:        outbound,
+	}
 }
 
 type responsesRejectedStatusCompatibilityMiddleware struct {
 	pipeline.DummyMiddleware
+
 	outbound *PersistentOutboundTransformer
 }
 
@@ -100,7 +104,7 @@ func (m *responsesRejectedStatusCompatibilityMiddleware) OnOutboundRawError(ctx 
 func responsesRejectedStatusRuleFromError(err error, requestBody []byte) (responsesRejectedStatusRule, bool) {
 	var httpErr *httpclient.Error
 	if !errors.As(err, &httpErr) || httpErr.StatusCode != http.StatusBadRequest || len(httpErr.Body) == 0 {
-		return responsesRejectedStatusRule{}, false
+		return responsesRejectedStatusRule{itemType: "", index: 0}, false
 	}
 
 	code := strings.ToLower(strings.TrimSpace(gjson.GetBytes(httpErr.Body, "error.code").String()))
@@ -108,10 +112,10 @@ func responsesRejectedStatusRuleFromError(err error, requestBody []byte) (respon
 	param := strings.ToLower(strings.TrimSpace(gjson.GetBytes(httpErr.Body, "error.param").String()))
 	messageParam := responsesRejectedStatusParamFromMessage(message)
 	if param != "" && messageParam != "" && param != messageParam {
-		return responsesRejectedStatusRule{}, false
+		return responsesRejectedStatusRule{itemType: "", index: 0}, false
 	}
 	if code != "unknown_parameter" && code != "unsupported_parameter" && messageParam == "" {
-		return responsesRejectedStatusRule{}, false
+		return responsesRejectedStatusRule{itemType: "", index: 0}, false
 	}
 	if param == "" {
 		param = messageParam
@@ -119,16 +123,16 @@ func responsesRejectedStatusRuleFromError(err error, requestBody []byte) (respon
 
 	match := responsesRejectedStatusParamPattern.FindStringSubmatch(param)
 	if len(match) != 2 {
-		return responsesRejectedStatusRule{}, false
+		return responsesRejectedStatusRule{itemType: "", index: 0}, false
 	}
 	index, parseErr := strconv.Atoi(match[1])
 	if parseErr != nil || index < 0 {
-		return responsesRejectedStatusRule{}, false
+		return responsesRejectedStatusRule{itemType: "", index: 0}, false
 	}
 
 	item := gjson.GetBytes(requestBody, fmt.Sprintf("input.%d", index))
 	if !item.IsObject() || !item.Get("status").Exists() {
-		return responsesRejectedStatusRule{}, false
+		return responsesRejectedStatusRule{itemType: "", index: 0}, false
 	}
 
 	return responsesRejectedStatusRule{

@@ -14,6 +14,7 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
+//nolint:exhaustruct // Tests initialize only fields relevant to the compatibility path.
 func TestResponsesRejectedStatusCompatibilityClearsWholeItemType(t *testing.T) {
 	body := []byte(`{
 		"model":"gpt-5.6-sol",
@@ -60,6 +61,7 @@ func TestResponsesRejectedStatusCompatibilityClearsWholeItemType(t *testing.T) {
 	require.Equal(t, "call_0", gjson.GetBytes(retry.Body, "input.0.call_id").String())
 }
 
+//nolint:exhaustruct // Tests initialize only fields relevant to the compatibility path.
 func TestResponsesRejectedStatusCompatibilityClearsOnlyUntypedIndex(t *testing.T) {
 	body := []byte(`{"input":[{"status":"keep"},{"status":"remove"}]}`)
 	state := &PersistenceState{
@@ -81,6 +83,7 @@ func TestResponsesRejectedStatusCompatibilityClearsOnlyUntypedIndex(t *testing.T
 	require.False(t, gjson.GetBytes(retry.Body, "input.1.status").Exists())
 }
 
+//nolint:exhaustruct // Tests initialize only fields relevant to the compatibility path.
 func TestResponsesRejectedStatusCompatibilityIgnoresUnrelatedBadRequest(t *testing.T) {
 	body := []byte(`{"input":[{"type":"message","status":"completed"}]}`)
 	state := &PersistenceState{
@@ -100,6 +103,7 @@ func TestResponsesRejectedStatusCompatibilityIgnoresUnrelatedBadRequest(t *testi
 	require.Empty(t, state.responsesRejectedStatusRules)
 }
 
+//nolint:exhaustruct // Tests initialize only fields relevant to the compatibility path.
 func TestResponsesRejectedStatusCompatibilityDoesNotDisableInjectedWebSearch(t *testing.T) {
 	body := []byte(`{"input":[{"type":"tool_search_output","status":"completed"}]}`)
 	candidate := &ChannelModelsCandidate{Channel: &biz.Channel{Channel: &ent.Channel{ID: 10, Name: "lite-relay"}}}
