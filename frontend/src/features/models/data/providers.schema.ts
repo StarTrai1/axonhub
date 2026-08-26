@@ -57,11 +57,14 @@ const modelExperimentalModeSchema = z
   })
   .passthrough();
 
-const modelExperimentalSchema = z
-  .object({
-    modes: z.record(z.string(), modelExperimentalModeSchema).optional(),
-  })
-  .passthrough();
+const modelExperimentalSchema = z.union([
+  z.boolean(),
+  z
+    .object({
+      modes: z.record(z.string(), modelExperimentalModeSchema).optional(),
+    })
+    .passthrough(),
+]);
 
 // Single model schema
 export const providerModelSchema = z.object({
