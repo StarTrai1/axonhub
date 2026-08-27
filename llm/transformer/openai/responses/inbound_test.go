@@ -126,7 +126,7 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 				require.Equal(t, anthropicServerToolUseType, metadataString(message.ToolCalls[0].TransformerMetadata, anthropicTypeMetadataKey))
 				require.Len(t, message.InlineToolResults, 1)
 				require.JSONEq(t, `[{"type":"web_search_result","url":"https://example.com","encrypted_content":"ENC"}]`, message.InlineToolResults[0].Output)
-			}
+			},
 		},
 		{
 			name: "request with instructions",
