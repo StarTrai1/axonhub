@@ -601,7 +601,9 @@ func convertReasoning(req *llm.Request) *Reasoning {
 
 func annotationToLLM(a Annotation, textRuneOffset int64) llm.Annotation {
 	annotation := llm.Annotation{
-		Type: a.Type,
+		Type:           a.Type,
+		EncryptedIndex: a.EncryptedIndex,
+		CitedText:      a.CitedText,
 	}
 
 	if a.StartIndex != nil {
@@ -643,27 +645,31 @@ func appendOutputText(textContent *strings.Builder, visibleTextRuneCount *int64,
 }
 
 func appendResponseWebSearchCallMetadata(transformerMetadata map[string]any, outputItem Item) {
-	if transformerMetadata == nil || outputItem.Action == nil || outputItem.Action.WebSearch == nil {
+	if transformerMetadata == nil || outputItem.Type != "web_search_call" {
 		return
-	}
-
-	src := outputItem.Action.WebSearch
-	action := &WebSearchAction{
-		Type:  src.Type,
-		Query: src.Query,
-	}
-	if len(src.Queries) > 0 {
-		action.Queries = append([]string(nil), src.Queries...)
-	}
-	if len(src.Sources) > 0 {
-		action.Sources = append([]WebSearchSource(nil), src.Sources...)
 	}
 
 	call := Item{
 		ID:     outputItem.ID,
 		Type:   outputItem.Type,
 		Status: outputItem.Status,
-		Action: NewWebSearchAction(action),
+		Results: append(json.RawMessage(nil), outputItem.Results...),
+	}
+	if outputItem.Action != nil && outputItem.Action.WebSearch != nil {
+		src := outputItem.Action.WebSearch
+		action := &WebSearchAction{
+			Type:    src.Type,
+			Query:   src.Query,
+			URL:     src.URL,
+			Pattern: src.Pattern,
+		}
+		if len(src.Queries) > 0 {
+			action.Queries = append([]string(nil), src.Queries...)
+		}
+		if len(src.Sources) > 0 {
+			action.Sources = append([]WebSearchSource(nil), src.Sources...)
+		}
+		call.Action = NewWebSearchAction(action)
 	}
 
 	existing, _ := transformerMetadata[responsesWebSearchCallsTransformerMetadataKey].([]Item)

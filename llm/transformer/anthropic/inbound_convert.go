@@ -420,7 +420,11 @@ func citationFromLLMAnnotation(annotation llm.Annotation, metadata map[string]an
 		citationType = "web_search_result_location"
 	}
 
-	citation := TextCitation{Type: citationType}
+	citation := TextCitation{
+		Type:           citationType,
+		EncryptedIndex: annotation.EncryptedIndex,
+		CitedText:      annotation.CitedText,
+	}
 	if annotation.URLCitation != nil {
 		citation.URL = annotation.URLCitation.URL
 		citation.Title = annotation.URLCitation.Title

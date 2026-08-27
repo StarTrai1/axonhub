@@ -20,6 +20,34 @@ func TestNewInboundTransformer(t *testing.T) {
 	require.NotNil(t, transformer)
 }
 
+func TestConvertToResponsesAPIResponse_MapsAnthropicServerWebSearch(t *testing.T) {
+	resultContent := json.RawMessage(`[{"type":"web_search_result","url":"https://example.com","encrypted_content":"ENC"}]`)
+	response := convertToResponsesAPIResponse(&llm.Response{
+		ID: "resp_search", Model: "claude-test",
+		Choices: []llm.Choice{{Message: &llm.Message{
+			Role: "assistant",
+			ToolCalls: []llm.ToolCall{{
+				ID: "srvtoolu_search_1", Type: "function",
+				Function: llm.FunctionCall{Name: webSearchFunctionName, Arguments: `{"query":"latest codex release"}`},
+				TransformerMetadata: map[string]any{anthropicTypeMetadataKey: anthropicServerToolUseType},
+			}},
+			InlineToolResults: []llm.InlineToolResult{{
+				ToolCallID: "srvtoolu_search_1", Output: string(resultContent),
+				TransformerMetadata: map[string]any{
+					anthropicTypeMetadataKey:              anthropicWebSearchToolResultType,
+					anthropicToolResultContentMetadataKey: resultContent,
+				},
+			}},
+		}}},
+	})
+
+	require.Len(t, response.Output, 1)
+	require.Equal(t, "web_search_call", response.Output[0].Type)
+	require.Equal(t, "ws_srvtoolu_search_1", response.Output[0].ID)
+	require.Equal(t, "latest codex release", response.Output[0].Action.WebSearch.Query)
+	require.JSONEq(t, string(resultContent), string(response.Output[0].Results))
+}
+
 func TestInboundTransformer_TransformRequest(t *testing.T) {
 	trans := NewInboundTransformer()
 
@@ -70,6 +98,35 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 				require.Equal(t, "user", result.Messages[0].Role)
 				require.Equal(t, "Hello, world!", *result.Messages[0].Content.Content)
 			},
+		},
+		{
+			name: "web search call replay for anthropic server tool",
+			httpReq: &httpclient.Request{Body: []byte(`{
+				"model":"claude-test",
+				"input":[{
+					"type":"web_search_call",
+					"id":"ws_srvtoolu_search_1",
+					"status":"completed",
+					"action":{"type":"search","query":"latest codex release"},
+					"results":[
+						{"type":"web_search_result","url":"https://example.com","encrypted_content":"ENC"},
+						{"type":"web_search_result","url":"https://invalid.example.com"}
+					]
+				}]
+			}`)},
+			expectError: false,
+			validate: func(t *testing.T, result *llm.Request) {
+				require.Len(t, result.Messages, 1)
+				message := result.Messages[0]
+				require.Equal(t, "assistant", message.Role)
+				require.Len(t, message.ToolCalls, 1)
+				require.Equal(t, "srvtoolu_search_1", message.ToolCalls[0].ID)
+				require.Equal(t, webSearchFunctionName, message.ToolCalls[0].Function.Name)
+				require.JSONEq(t, `{"query":"latest codex release"}`, message.ToolCalls[0].Function.Arguments)
+				require.Equal(t, anthropicServerToolUseType, metadataString(message.ToolCalls[0].TransformerMetadata, anthropicTypeMetadataKey))
+				require.Len(t, message.InlineToolResults, 1)
+				require.JSONEq(t, `[{"type":"web_search_result","url":"https://example.com","encrypted_content":"ENC"}]`, message.InlineToolResults[0].Output)
+			}
 		},
 		{
 			name: "request with instructions",

@@ -655,7 +655,9 @@ func TestConvertToLlmResponse_WithTextBlockCitations(t *testing.T) {
 	require.NotNil(t, result.Choices[0].Message)
 	require.Equal(t, []llm.Annotation{
 		{
-			Type: "url_citation",
+			Type:           "url_citation",
+			EncryptedIndex: lo.ToPtr("secret"),
+			CitedText:      lo.ToPtr("quoted"),
 			URLCitation: &llm.URLCitation{
 				URL:   "https://example.com/a",
 				Title: "Example A",

@@ -359,15 +359,7 @@ func TestInboundTransformer_TransformStream_PreservesWebSearchCallsFromChunkMeta
 					ID:     "ws_456",
 					Type:   "web_search_call",
 					Status: lo.ToPtr("completed"),
-					Action: NewWebSearchAction(&WebSearchAction{
-						Type:  "search",
-						Query: "latest ai news",
-						Sources: []WebSearchSource{{
-							Type:  "url",
-							URL:   "https://example.com/source",
-							Title: "Example Source",
-						}},
-					}),
+					Results: json.RawMessage(`[{"type":"search_result","url":"https://example.com/source"}]`),
 				}},
 			},
 			Choices: []llm.Choice{{
@@ -402,13 +394,78 @@ func TestInboundTransformer_TransformStream_PreservesWebSearchCallsFromChunkMeta
 	require.Len(t, lastEvent.Response.Output, 2)
 	require.Equal(t, "web_search_call", lastEvent.Response.Output[0].Type)
 	require.Equal(t, "ws_456", lastEvent.Response.Output[0].ID)
-	require.NotNil(t, lastEvent.Response.Output[0].Action)
-	require.NotNil(t, lastEvent.Response.Output[0].Action.WebSearch)
-	require.Equal(t, "latest ai news", lastEvent.Response.Output[0].Action.WebSearch.Query)
+	require.Nil(t, lastEvent.Response.Output[0].Action)
+	require.JSONEq(t, `[{"type":"search_result","url":"https://example.com/source"}]`, string(lastEvent.Response.Output[0].Results))
 	require.Equal(t, "message", lastEvent.Response.Output[1].Type)
 	require.NotNil(t, lastEvent.Response.Output[1].Content)
 	require.Len(t, lastEvent.Response.Output[1].Content.Items, 1)
 	require.Equal(t, "Search result without inline citations", lo.FromPtr(lastEvent.Response.Output[1].Content.Items[0].Text))
+}
+
+func TestInboundTransformer_TransformStream_MapsAnthropicServerWebSearch(t *testing.T) {
+	toolMetadata := map[string]any{anthropicTypeMetadataKey: anthropicServerToolUseType}
+	resultContent := json.RawMessage(`[{"type":"web_search_result","url":"https://example.com","encrypted_content":"ENC"}]`)
+	resultMetadata := map[string]any{
+		anthropicTypeMetadataKey:              anthropicWebSearchToolResultType,
+		anthropicToolResultContentMetadataKey: resultContent,
+	}
+
+	stream, err := NewInboundTransformer().TransformStream(t.Context(), streams.SliceStream([]*llm.Response{
+		{
+			ID: "resp_anthropic_search", Model: "claude-test", Created: 1700000000,
+			Choices: []llm.Choice{{Delta: &llm.Message{ToolCalls: []llm.ToolCall{{
+				Index: 0, ID: "srvtoolu_search_1", Type: "function",
+				Function: llm.FunctionCall{Name: webSearchFunctionName},
+				TransformerMetadata: toolMetadata,
+			}}}}},
+		},
+		{
+			ID: "resp_anthropic_search", Model: "claude-test",
+			Choices: []llm.Choice{{Delta: &llm.Message{ToolCalls: []llm.ToolCall{{
+				Index: 0, Function: llm.FunctionCall{Arguments: `{"query":"latest codex release"}`},
+			}}}}},
+		},
+		{
+			ID: "resp_anthropic_search", Model: "claude-test",
+			Choices: []llm.Choice{{Delta: &llm.Message{InlineToolResults: []llm.InlineToolResult{{
+				ToolCallID: "srvtoolu_search_1", Output: string(resultContent), TransformerMetadata: resultMetadata,
+			}}}}},
+		},
+		{
+			ID: "resp_anthropic_search", Model: "claude-test",
+			Choices: []llm.Choice{{Delta: &llm.Message{}, FinishReason: lo.ToPtr("stop")}},
+		},
+		{
+			ID: "resp_anthropic_search", Model: "claude-test",
+			Usage: &llm.Usage{PromptTokens: 1, CompletionTokens: 1, TotalTokens: 2},
+		},
+	}))
+	require.NoError(t, err)
+
+	var events []StreamEvent
+	for stream.Next() {
+		var event StreamEvent
+		require.NoError(t, json.Unmarshal(stream.Current().Data, &event))
+		events = append(events, event)
+	}
+	require.NoError(t, stream.Err())
+
+	var done *Item
+	for i := range events {
+		if events[i].Type == StreamEventTypeOutputItemDone && events[i].Item != nil && events[i].Item.Type == "web_search_call" {
+			done = events[i].Item
+		}
+	}
+	require.NotNil(t, done)
+	require.Equal(t, "ws_srvtoolu_search_1", done.ID)
+	require.Equal(t, "latest codex release", done.Action.WebSearch.Query)
+	require.JSONEq(t, string(resultContent), string(done.Results))
+
+	completed := events[len(events)-1]
+	require.Equal(t, StreamEventTypeResponseCompleted, completed.Type)
+	require.Len(t, completed.Response.Output, 1)
+	require.Equal(t, "web_search_call", completed.Response.Output[0].Type)
+	require.JSONEq(t, string(resultContent), string(completed.Response.Output[0].Results))
 }
 
 func TestInboundTransformer_TransformStream_EmitsUpstreamErrorEvents(t *testing.T) {

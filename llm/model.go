@@ -477,6 +477,10 @@ type Annotation struct {
 	EndIndex *int64 `json:"end_index,omitempty"`
 	// URLCitation contains URL citation details when Type is "url_citation"
 	URLCitation *URLCitation `json:"url_citation,omitempty"`
+	// EncryptedIndex and CitedText preserve provider-authenticated web-search
+	// citations when a stateless Responses turn is replayed to Anthropic.
+	EncryptedIndex *string `json:"encrypted_index,omitempty"`
+	CitedText      *string `json:"cited_text,omitempty"`
 }
 
 // URLCitation represents a URL-based citation.

@@ -51,6 +51,8 @@ type aggregatedItem struct {
 	Namespace        string
 	Arguments        *strings.Builder
 	EncryptedContent *string
+	Action           *ItemAction
+	Results          json.RawMessage
 
 	// For custom_tool_call type
 	Input *string
@@ -279,6 +281,8 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 			item.Arguments.WriteString(ev.Item.Arguments)
 			item.EncryptedContent = ev.Item.EncryptedContent
 			item.Input = ev.Item.Input
+			item.Action = ev.Item.Action
+			item.Results = append(item.Results[:0], ev.Item.Results...)
 
 			if len(ev.Item.Summary) > 0 {
 				for idx, s := range ev.Item.Summary {
@@ -580,6 +584,12 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 				if ev.Item.Result != nil {
 					item.Result = ev.Item.Result
 				}
+				if ev.Item.Action != nil {
+					item.Action = ev.Item.Action
+				}
+				if ev.Item.Results != nil {
+					item.Results = append(item.Results[:0], ev.Item.Results...)
+				}
 			}
 		}
 
@@ -774,6 +784,15 @@ func (a *streamAggregator) buildResponse() *Response {
 					Status: lo.ToPtr(item.Status),
 					CallID: item.CallID,
 					Result: item.Result,
+				})
+
+			case "web_search_call":
+				output = append(output, Item{
+					ID:      item.ID,
+					Type:    item.Type,
+					Status:  lo.ToPtr(item.Status),
+					Action:  item.Action,
+					Results: append(json.RawMessage(nil), item.Results...),
 				})
 
 			case "compaction", "compaction_summary":

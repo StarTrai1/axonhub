@@ -396,6 +396,8 @@ type Annotation struct {
 	EndIndex *int64 `json:"end_index,omitempty"`
 	// URLCitation contains URL citation details when Type is "url_citation".
 	URLCitation *URLCitation `json:"url_citation,omitempty"`
+	EncryptedIndex *string `json:"encrypted_index,omitempty"`
+	CitedText      *string `json:"cited_text,omitempty"`
 }
 
 func (a *Annotation) UnmarshalJSON(data []byte) error {
@@ -453,6 +455,8 @@ type WebSearchAction struct {
 	Query   string            `json:"query,omitempty"`
 	Queries []string          `json:"queries,omitempty"`
 	Sources []WebSearchSource `json:"sources,omitempty"`
+	URL     string            `json:"url,omitempty"`
+	Pattern string            `json:"pattern,omitempty"`
 }
 
 // ItemAction is the polymorphic "action" field of an output item.
@@ -604,6 +608,10 @@ type Item struct {
 	// Action is the polymorphic "action" field: web_search_call uses an object,
 	// image_generation_call uses a bare string. See ItemAction.
 	Action *ItemAction `json:"action,omitempty"`
+	// Results contains optional provider-encrypted web search results. Keeping
+	// the raw shape lets stateless clients replay a server-side search without
+	// fabricating or dropping provider-specific result fields.
+	Results json.RawMessage `json:"results,omitempty"`
 
 	// Compaction fields (for type="compaction")
 	// The identifier of the actor that created the item.

@@ -992,7 +992,11 @@ func llmAnnotationFromCitation(citation TextCitation) (llm.Annotation, bool) {
 		return llm.Annotation{}, false
 	}
 
-	annotation := llm.Annotation{Type: citation.Type}
+	annotation := llm.Annotation{
+		Type:           citation.Type,
+		EncryptedIndex: citation.EncryptedIndex,
+		CitedText:      citation.CitedText,
+	}
 	if citation.URL != "" || citation.Title != "" {
 		annotation.URLCitation = &llm.URLCitation{
 			URL:   citation.URL,

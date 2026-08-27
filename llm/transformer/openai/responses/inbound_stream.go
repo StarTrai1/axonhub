@@ -295,6 +295,12 @@ func (s *responsesInboundStream) Next() bool {
 				return false
 			}
 		}
+		if choice.Delta != nil && len(choice.Delta.InlineToolResults) > 0 {
+			if err := s.handleInlineToolResults(choice.Delta.InlineToolResults); err != nil {
+				s.err = err
+				return false
+			}
+		}
 
 		// Handle finish reason
 		if choice.FinishReason != nil && !s.hasFinished {
@@ -747,6 +753,10 @@ func (s *responsesInboundStream) handleToolCalls(toolCalls []llm.ToolCall) error
 
 		// Process delta based on tool type
 		switch {
+		case isAnthropicWebSearchToolCall(*s.toolCalls[toolCallIndex]):
+			if err := s.handleWebSearchCallDelta(tc); err != nil {
+				return err
+			}
 		case tc.ResponseCustomToolCall != nil:
 			if err := s.handleCustomToolCallDelta(tc); err != nil {
 				return err
@@ -782,6 +792,7 @@ func (s *responsesInboundStream) initToolCall(tc llm.ToolCall) error {
 			Namespace: tc.Function.Namespace,
 			Arguments: "",
 		},
+		TransformerMetadata: tc.TransformerMetadata,
 	}
 
 	// A Responses function_call must include its name in output_item.added for
@@ -807,6 +818,27 @@ func (s *responsesInboundStream) startToolCallItem(toolCallIndex int) error {
 	}
 
 	switch {
+	case isAnthropicWebSearchToolCall(*tc):
+		if tc.ID != "" {
+			itemID = responsesWebSearchCallID(tc.ID)
+		}
+		item := &Item{
+			ID:     itemID,
+			Type:   "web_search_call",
+			Status: lo.ToPtr("in_progress"),
+			Action: NewWebSearchAction(&WebSearchAction{
+				Type:  "search",
+				Query: webSearchQueryFromArguments(tc.Function.Arguments),
+			}),
+		}
+
+		if err := s.enqueueEvent(&StreamEvent{
+			Type:        StreamEventTypeOutputItemAdded,
+			OutputIndex: s.outputIndex,
+			Item:        item,
+		}); err != nil {
+			return fmt.Errorf("failed to enqueue web_search_call output_item.added event: %w", err)
+		}
 	case tc.ResponseCustomToolCall != nil:
 		item := &Item{
 			ID:     itemID,
@@ -904,6 +936,53 @@ func (s *responsesInboundStream) handleFunctionCallDelta(tc llm.ToolCall) error 
 		}
 	}
 
+	return nil
+}
+
+func (s *responsesInboundStream) handleWebSearchCallDelta(tc llm.ToolCall) error {
+	stored := s.toolCalls[tc.Index]
+	if tc.ID != "" {
+		stored.ID = tc.ID
+	}
+	if tc.Function.Name != "" {
+		stored.Function.Name = tc.Function.Name
+	}
+	stored.Function.Arguments += tc.Function.Arguments
+
+	if !s.toolCallItemStarted[tc.Index] && stored.Function.Name != "" {
+		return s.startToolCallItem(tc.Index)
+	}
+	return nil
+}
+
+func (s *responsesInboundStream) handleInlineToolResults(results []llm.InlineToolResult) error {
+	for _, result := range results {
+		if metadataString(result.TransformerMetadata, anthropicTypeMetadataKey) != anthropicWebSearchToolResultType {
+			continue
+		}
+
+		for idx, toolCall := range s.toolCalls {
+			if toolCall.ID != result.ToolCallID || !isAnthropicWebSearchToolCall(*toolCall) {
+				continue
+			}
+			if !s.toolCallItemStarted[idx] {
+				if err := s.startToolCallItem(idx); err != nil {
+					return err
+				}
+			}
+
+			item, _ := anthropicWebSearchCallItem(*toolCall, []llm.InlineToolResult{result})
+			if err := s.enqueueEvent(&StreamEvent{
+				Type:        StreamEventTypeOutputItemDone,
+				OutputIndex: s.toolCallOutputIndex[idx],
+				Item:        &item,
+			}); err != nil {
+				return fmt.Errorf("failed to enqueue web_search_call output_item.done event: %w", err)
+			}
+			s.toolCallItemStarted[idx] = false
+			break
+		}
+	}
 	return nil
 }
 
@@ -1126,7 +1205,7 @@ func (s *responsesInboundStream) closeCurrentOutputItem() error {
 	// truncated JSON argument must never be advertised as a completed Responses
 	// item because clients persist and replay completed tool calls.
 	for idx, tc := range s.toolCalls {
-		if s.toolCallItemStarted[idx] && tc.ResponseCustomToolCall == nil && !validFunctionArguments(tc.Function.Arguments) {
+		if s.toolCallItemStarted[idx] && tc.ResponseCustomToolCall == nil && !isAnthropicWebSearchToolCall(*tc) && !validFunctionArguments(tc.Function.Arguments) {
 			return fmt.Errorf("invalid function call arguments from upstream for %q", tc.Function.Name)
 		}
 	}
@@ -1143,6 +1222,15 @@ func (s *responsesInboundStream) closeCurrentOutputItem() error {
 		}
 
 		switch {
+		case isAnthropicWebSearchToolCall(*tc):
+			item, _ := anthropicWebSearchCallItem(*tc, nil)
+			if err := s.enqueueEvent(&StreamEvent{
+				Type:        StreamEventTypeOutputItemDone,
+				OutputIndex: s.toolCallOutputIndex[idx],
+				Item:        &item,
+			}); err != nil {
+				return fmt.Errorf("failed to enqueue web_search_call output_item.done event: %w", err)
+			}
 		case tc.ResponseCustomToolCall != nil:
 			// Custom tool call - emit custom_tool_call_input.done then output_item.done
 			fullInput := tc.ResponseCustomToolCall.Input

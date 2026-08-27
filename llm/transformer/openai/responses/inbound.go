@@ -1,6 +1,7 @@
 package responses
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -665,6 +666,9 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 			},
 		}, nil
 
+	case "web_search_call":
+		return anthropicWebSearchMessage(item), nil
+
 	case "function_call_output":
 		if item.Output == nil {
 			return nil, fmt.Errorf("%w: %s", transformer.ErrInvalidRequest, "function_call_output item must have non-nil Output")
@@ -948,6 +952,209 @@ func namespaceFunctionName(namespaceName, functionName string) string {
 	return namespaceName + "__" + functionName
 }
 
+const (
+	anthropicTypeMetadataKey              = "anthropic_type"
+	anthropicBlockIndexMetadataKey        = "anthropic_block_index"
+	anthropicToolResultContentMetadataKey = "anthropic_tool_result_content"
+	anthropicServerToolUseType             = "server_tool_use"
+	anthropicWebSearchToolResultType       = "web_search_tool_result"
+	webSearchFunctionName                  = "web_search"
+)
+
+func anthropicWebSearchCallItem(toolCall llm.ToolCall, inlineResults []llm.InlineToolResult) (Item, bool) {
+	if !isAnthropicWebSearchToolCall(toolCall) {
+		return Item{}, false
+	}
+
+	query := webSearchQueryFromArguments(toolCall.Function.Arguments)
+	item := Item{
+		ID:     responsesWebSearchCallID(toolCall.ID),
+		Type:   "web_search_call",
+		Status: lo.ToPtr("completed"),
+		Action: NewWebSearchAction(&WebSearchAction{Type: "search", Query: query}),
+	}
+
+	for _, result := range inlineResults {
+		if result.ToolCallID != toolCall.ID || metadataString(result.TransformerMetadata, anthropicTypeMetadataKey) != anthropicWebSearchToolResultType {
+			continue
+		}
+
+		item.Results = rawMetadata(result.TransformerMetadata, anthropicToolResultContentMetadataKey)
+		if len(item.Results) == 0 && json.Valid([]byte(result.Output)) {
+			item.Results = append(json.RawMessage(nil), result.Output...)
+		}
+		break
+	}
+
+	return item, true
+}
+
+func isAnthropicWebSearchToolCall(toolCall llm.ToolCall) bool {
+	return toolCall.Function.Name == webSearchFunctionName &&
+		metadataString(toolCall.TransformerMetadata, anthropicTypeMetadataKey) == anthropicServerToolUseType
+}
+
+func responsesWebSearchCallID(toolUseID string) string {
+	if strings.HasPrefix(toolUseID, "ws_") {
+		return toolUseID
+	}
+	return "ws_" + toolUseID
+}
+
+func webSearchQueryFromArguments(arguments string) string {
+	var input struct {
+		Query string `json:"query"`
+	}
+	if err := json.Unmarshal([]byte(arguments), &input); err != nil {
+		return ""
+	}
+	return strings.TrimSpace(input.Query)
+}
+
+func webSearchQueryFromItem(item *Item) string {
+	if item == nil || item.Action == nil || item.Action.WebSearch == nil {
+		return ""
+	}
+	action := item.Action.WebSearch
+	if query := strings.TrimSpace(action.Query); query != "" {
+		return query
+	}
+	if len(action.Queries) > 0 {
+		return strings.TrimSpace(action.Queries[0])
+	}
+	return strings.TrimSpace(action.URL)
+}
+
+func anthropicWebSearchMessage(item *Item) *llm.Message {
+	toolUseID := anthropicServerToolUseID(item.ID)
+	if toolUseID == "" {
+		return nil
+	}
+
+	arguments := "{}"
+	if query := webSearchQueryFromItem(item); query != "" {
+		data, err := json.Marshal(map[string]string{"query": query})
+		if err == nil {
+			arguments = string(data)
+		}
+	}
+
+	toolMetadata := map[string]any{
+		anthropicTypeMetadataKey:       anthropicServerToolUseType,
+		anthropicBlockIndexMetadataKey: 0,
+	}
+	resultContent := anthropicWebSearchResultContent(item.Results)
+	resultMetadata := map[string]any{
+		anthropicTypeMetadataKey:              anthropicWebSearchToolResultType,
+		anthropicBlockIndexMetadataKey:        1,
+		anthropicToolResultContentMetadataKey: resultContent,
+	}
+
+	return &llm.Message{
+		Role: "assistant",
+		ToolCalls: []llm.ToolCall{{
+			ID:   toolUseID,
+			Type: "function",
+			Function: llm.FunctionCall{
+				Name:      webSearchFunctionName,
+				Arguments: arguments,
+			},
+			TransformerMetadata: toolMetadata,
+		}},
+		InlineToolResults: []llm.InlineToolResult{{
+			ToolCallID:         toolUseID,
+			Output:             string(resultContent),
+			TransformerMetadata: resultMetadata,
+		}},
+	}
+}
+
+func anthropicServerToolUseID(itemID string) string {
+	body := strings.TrimSpace(strings.TrimPrefix(itemID, "ws_"))
+	body = strings.TrimPrefix(body, "srvtoolu_")
+	if body == "" {
+		return ""
+	}
+
+	var normalized strings.Builder
+	for _, r := range body {
+		if r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '_' {
+			normalized.WriteRune(r)
+		} else {
+			normalized.WriteByte('_')
+		}
+	}
+	return "srvtoolu_" + normalized.String()
+}
+
+func anthropicWebSearchResultContent(results json.RawMessage) json.RawMessage {
+	empty := json.RawMessage("[]")
+	trimmed := bytes.TrimSpace(results)
+	if len(trimmed) == 0 || !json.Valid(trimmed) {
+		return empty
+	}
+
+	if trimmed[0] == '{' {
+		if validAnthropicWebSearchResult(trimmed) {
+			return append(json.RawMessage(nil), trimmed...)
+		}
+		return empty
+	}
+
+	var entries []json.RawMessage
+	if err := json.Unmarshal(trimmed, &entries); err != nil {
+		return empty
+	}
+	filtered := make([]json.RawMessage, 0, len(entries))
+	for _, entry := range entries {
+		if validAnthropicWebSearchResult(entry) {
+			filtered = append(filtered, entry)
+		}
+	}
+	data, err := json.Marshal(filtered)
+	if err != nil {
+		return empty
+	}
+	return data
+}
+
+func validAnthropicWebSearchResult(result json.RawMessage) bool {
+	var fields struct {
+		Type             string `json:"type"`
+		EncryptedContent string `json:"encrypted_content"`
+	}
+	if err := json.Unmarshal(result, &fields); err != nil {
+		return false
+	}
+	return strings.HasSuffix(fields.Type, "_error") || strings.TrimSpace(fields.EncryptedContent) != ""
+}
+
+func metadataString(metadata map[string]any, key string) string {
+	value, _ := metadata[key].(string)
+	return value
+}
+
+func rawMetadata(metadata map[string]any, key string) json.RawMessage {
+	switch value := metadata[key].(type) {
+	case json.RawMessage:
+		return append(json.RawMessage(nil), value...)
+	case []byte:
+		return append(json.RawMessage(nil), value...)
+	case string:
+		if json.Valid([]byte(value)) {
+			return append(json.RawMessage(nil), value...)
+		}
+	case nil:
+		return nil
+	default:
+		data, err := json.Marshal(value)
+		if err == nil {
+			return data
+		}
+	}
+	return nil
+}
+
 func getResponseWebSearchCallsFromMetadata(metadata map[string]any) []Item {
 	if len(metadata) == 0 {
 		return nil
@@ -972,22 +1179,28 @@ func getResponseWebSearchCallsFromMetadata(metadata map[string]any) []Item {
 
 	result := make([]Item, 0, len(items))
 	for _, item := range items {
-		if item.Type != "web_search_call" || item.Action == nil || item.Action.WebSearch == nil {
+		if item.Type != "web_search_call" {
 			continue
 		}
 
-		src := item.Action.WebSearch
-		result = append(result, Item{
+		call := Item{
 			ID:     item.ID,
 			Type:   item.Type,
 			Status: item.Status,
-			Action: NewWebSearchAction(&WebSearchAction{
+			Results: append(json.RawMessage(nil), item.Results...),
+		}
+		if item.Action != nil && item.Action.WebSearch != nil {
+			src := item.Action.WebSearch
+			call.Action = NewWebSearchAction(&WebSearchAction{
 				Type:    src.Type,
 				Query:   src.Query,
 				Queries: append([]string(nil), src.Queries...),
 				Sources: append([]WebSearchSource(nil), src.Sources...),
-			}),
-		})
+				URL:     src.URL,
+				Pattern: src.Pattern,
+			})
+		}
+		result = append(result, call)
 	}
 
 	return result
@@ -1016,9 +1229,11 @@ func attachAnnotationsToFirstTextItem(items []Item, annotations []llm.Annotation
 
 	items[firstTextItemIdx].Annotations = lo.Map(annotations, func(annotation llm.Annotation, _ int) Annotation {
 		result := Annotation{
-			Type:       annotation.Type,
-			StartIndex: annotation.StartIndex,
-			EndIndex:   annotation.EndIndex,
+			Type:           annotation.Type,
+			StartIndex:     annotation.StartIndex,
+			EndIndex:       annotation.EndIndex,
+			EncryptedIndex: annotation.EncryptedIndex,
+			CitedText:      annotation.CitedText,
 		}
 
 		if annotation.URLCitation != nil {
@@ -1075,7 +1290,9 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 		// Handle tool calls (function calls and custom tool calls)
 		if len(message.ToolCalls) > 0 {
 			for _, toolCall := range message.ToolCalls {
-				if toolCall.ResponseCustomToolCall != nil {
+				if item, ok := anthropicWebSearchCallItem(toolCall, message.InlineToolResults); ok {
+					resp.Output = append(resp.Output, item)
+				} else if toolCall.ResponseCustomToolCall != nil {
 					resp.Output = append(resp.Output, Item{
 						ID:     toolCall.ID,
 						Type:   "custom_tool_call",
