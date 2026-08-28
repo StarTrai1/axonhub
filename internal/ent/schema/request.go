@@ -85,10 +85,11 @@ func (Request) Fields() []ent.Field {
 			entgql.Directives(forceResolver()),
 		),
 		field.Int("channel_id").Optional(),
-		// External ID for tracking requests in external systems
+		// External ID for tracking requests in external systems. Some relays
+		// return compound response IDs that exceed the historical 512-byte cap.
 		field.String("external_id").
 			Optional().
-			MaxLen(512),
+			MaxLen(4096),
 		// The status of the request.
 		field.Enum("status").Values("pending", "processing", "completed", "failed", "canceled"),
 		// Whether the request is a streaming request

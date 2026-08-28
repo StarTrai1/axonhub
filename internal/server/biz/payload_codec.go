@@ -158,12 +158,20 @@ func referenceStoredRequestBody(
 	if err != nil {
 		return nil, false, fmt.Errorf("identify parent request body: %w", err)
 	}
-	if parentBytes != len(candidateRaw) {
+
+	var candidateBytes int
+	var candidateSHA256 string
+	if isCompressedStoredPayload(parentStored) {
+		candidateBytes, candidateSHA256 = rawPayloadIdentity(candidateRaw)
+	} else {
+		candidateBytes, candidateSHA256, err = storedPayloadIdentity(candidateRaw)
+		if err != nil {
+			return nil, false, fmt.Errorf("identify candidate request body: %w", err)
+		}
+	}
+	if parentBytes != candidateBytes {
 		return objects.JSONRawMessage(candidateRaw), false, nil
 	}
-
-	digest := sha256.Sum256(candidateRaw)
-	candidateSHA256 := hex.EncodeToString(digest[:])
 	if parentSHA256 != candidateSHA256 {
 		return objects.JSONRawMessage(candidateRaw), false, nil
 	}
@@ -172,7 +180,7 @@ func referenceStoredRequestBody(
 		Marker:    databaseRequestBodyReferenceMarker,
 		Version:   databaseRequestBodyReferenceVersion,
 		RequestID: parentRequestID,
-		RawBytes:  len(candidateRaw),
+		RawBytes:  candidateBytes,
 		SHA256:    candidateSHA256,
 	})
 	if err != nil {
@@ -184,8 +192,13 @@ func referenceStoredRequestBody(
 
 func storedPayloadIdentity(raw []byte) (int, string, error) {
 	if !isCompressedStoredPayload(raw) {
-		digest := sha256.Sum256(raw)
-		return len(raw), hex.EncodeToString(digest[:]), nil
+		stored, err := json.Marshal(objects.JSONRawMessage(raw))
+		if err != nil {
+			return 0, "", fmt.Errorf("encode database JSON payload identity: %w", err)
+		}
+
+		length, digest := rawPayloadIdentity(stored)
+		return length, digest, nil
 	}
 
 	var envelope databasePayloadEnvelope
@@ -200,6 +213,11 @@ func storedPayloadIdentity(raw []byte) (int, string, error) {
 	}
 
 	return envelope.RawBytes, envelope.SHA256, nil
+}
+
+func rawPayloadIdentity(raw []byte) (int, string) {
+	digest := sha256.Sum256(raw)
+	return len(raw), hex.EncodeToString(digest[:])
 }
 
 func decodeStoredRequestBodyReference(raw []byte) (databaseRequestBodyReferenceEnvelope, bool, error) {
@@ -223,15 +241,52 @@ func decodeStoredRequestBodyReference(raw []byte) (databaseRequestBodyReferenceE
 }
 
 func validateStoredRequestBodyReference(reference databaseRequestBodyReferenceEnvelope, raw []byte) error {
+	if requestBodyReferenceMatches(reference, raw) {
+		return nil
+	}
+
+	// References created before database JSON normalization was accounted for
+	// identify the client bytes, while Ent stores HTML-sensitive characters as
+	// \u00xx escapes. Recover those existing references without weakening the
+	// checksum validation.
+	legacyRaw := restoreDatabaseJSONHTMLEscapes(raw)
+	if requestBodyReferenceMatches(reference, legacyRaw) {
+		return nil
+	}
+
 	if len(raw) != reference.RawBytes {
 		return fmt.Errorf("referenced request body length mismatch: got %d, want %d", len(raw), reference.RawBytes)
 	}
-	digest := sha256.Sum256(raw)
-	if hex.EncodeToString(digest[:]) != reference.SHA256 {
-		return errors.New("referenced request body checksum mismatch")
+
+	return errors.New("referenced request body checksum mismatch")
+}
+
+func requestBodyReferenceMatches(reference databaseRequestBodyReferenceEnvelope, raw []byte) bool {
+	if len(raw) != reference.RawBytes {
+		return false
 	}
 
-	return nil
+	_, digest := rawPayloadIdentity(raw)
+	return digest == reference.SHA256
+}
+
+func restoreDatabaseJSONHTMLEscapes(raw []byte) []byte {
+	restored := raw
+	replacements := [...]struct {
+		from []byte
+		to   []byte
+	}{
+		{from: []byte(`\u003c`), to: []byte("<")},
+		{from: []byte(`\u003e`), to: []byte(">")},
+		{from: []byte(`\u0026`), to: []byte("&")},
+		{from: []byte(`\u2028`), to: []byte("\u2028")},
+		{from: []byte(`\u2029`), to: []byte("\u2029")},
+	}
+	for _, replacement := range replacements {
+		restored = bytes.ReplaceAll(restored, replacement.from, replacement.to)
+	}
+
+	return restored
 }
 
 func isSHA256Hex(value string) bool {
