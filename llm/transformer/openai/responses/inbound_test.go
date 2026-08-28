@@ -1121,6 +1121,22 @@ func TestConvertItemToMessage_Compaction(t *testing.T) {
 	}
 }
 
+func TestConvertNamedStandaloneFunctionOutputToMessage(t *testing.T) {
+	message, err := convertItemToMessage(&Item{
+		Type:      "function_call_output",
+		Name:      "notifications",
+		Namespace: "slack",
+		Output:    &Input{Text: lo.ToPtr("Alice mentioned you.")},
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, message)
+	require.Nil(t, message.ToolCallID)
+	require.Equal(t, "notifications", lo.FromPtr(message.ToolCallName))
+	require.Equal(t, "slack", lo.FromPtr(message.ToolCallNamespace))
+	require.Equal(t, "Alice mentioned you.", lo.FromPtr(message.Content.Content))
+}
+
 func TestConvertContentItemToPart_Compaction(t *testing.T) {
 	tests := []struct {
 		name     string

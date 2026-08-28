@@ -382,6 +382,22 @@ func TestConvertToolMessage(t *testing.T) {
 	}
 }
 
+func TestConvertNamedStandaloneFunctionOutput(t *testing.T) {
+	item := convertToolMessageWithType(llm.Message{
+		Role:              "tool",
+		ToolCallName:      lo.ToPtr("notifications"),
+		ToolCallNamespace: lo.ToPtr("slack"),
+		Content: llm.MessageContent{
+			Content: lo.ToPtr("Alice mentioned you."),
+		},
+	}, "function_call_output")
+
+	require.Empty(t, item.CallID)
+	require.Equal(t, "notifications", item.Name)
+	require.Equal(t, "slack", item.Namespace)
+	require.Equal(t, "Alice mentioned you.", lo.FromPtr(item.Output.Text))
+}
+
 // The wire shape matters as much as the struct: a tool result carrying an image
 // has to serialise as an output array of content parts, not as a string.
 func TestConvertToolMessageImageSerializesAsOutputArray(t *testing.T) {

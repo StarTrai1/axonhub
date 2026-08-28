@@ -202,6 +202,7 @@ func estimatePromptTokens(req *llm.Request) int64 {
 		total += countPromptMessageContent(message.Content)
 		total += estimateTokensPtr(message.ToolCallID)
 		total += estimateTokensPtr(message.ToolCallName)
+		total += estimateTokensPtr(message.ToolCallNamespace)
 		total += estimateTokensPtr(message.ReasoningContent)
 
 		for _, toolCall := range message.ToolCalls {

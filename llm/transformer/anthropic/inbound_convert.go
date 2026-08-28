@@ -2,6 +2,7 @@ package anthropic
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/samber/lo"
 
@@ -363,15 +364,46 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 	}
 
 	// Convert output_config
-	if anthropicReq.OutputConfig != nil && anthropicReq.OutputConfig.Effort != "" {
-		chatReq.TransformerMetadata[TransformerMetadataKeyOutputConfigEffort] = anthropicReq.OutputConfig.Effort
-		// Map output_config effort to reasoning_effort so other outbound transformers can use it.
-		// Anthropic "max" has no direct equivalent in other providers; map to "xhigh"
-		// so downstream transformers can handle it explicitly.
-		if anthropicReq.OutputConfig.Effort == "max" {
-			chatReq.ReasoningEffort = "xhigh"
-		} else {
-			chatReq.ReasoningEffort = anthropicReq.OutputConfig.Effort
+	if anthropicReq.OutputConfig != nil {
+		if anthropicReq.OutputConfig.Effort != "" {
+			chatReq.TransformerMetadata[TransformerMetadataKeyOutputConfigEffort] = anthropicReq.OutputConfig.Effort
+			// Map output_config effort to reasoning_effort so other outbound transformers can use it.
+			// Anthropic "max" has no direct equivalent in other providers; map to "xhigh"
+			// so downstream transformers can handle it explicitly.
+			if anthropicReq.OutputConfig.Effort == "max" {
+				chatReq.ReasoningEffort = "xhigh"
+			} else {
+				chatReq.ReasoningEffort = anthropicReq.OutputConfig.Effort
+			}
+		}
+
+		if format := anthropicReq.OutputConfig.Format; format != nil && format.Type == "json_schema" && len(format.Schema) > 0 {
+			name := format.Name
+			if name == "" {
+				name = "anthropic_structured_output"
+			}
+			strict := format.Strict
+			if strict == nil {
+				strict = lo.ToPtr(true)
+			}
+			jsonSchema, err := json.Marshal(struct {
+				Name        string          `json:"name"`
+				Description string          `json:"description,omitempty"`
+				Schema      json.RawMessage `json:"schema"`
+				Strict      *bool           `json:"strict,omitempty"`
+			}{
+				Name:        name,
+				Description: format.Description,
+				Schema:      format.Schema,
+				Strict:      strict,
+			})
+			if err != nil {
+				return nil, fmt.Errorf("marshal Anthropic output_config.format: %w", err)
+			}
+			chatReq.ResponseFormat = &llm.ResponseFormat{
+				Type:       "json_schema",
+				JSONSchema: jsonSchema,
+			}
 		}
 	}
 

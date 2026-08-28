@@ -2,6 +2,7 @@ package anthropic
 
 import (
 	"encoding/json"
+	"strings"
 
 	"github.com/samber/lo"
 
@@ -22,6 +23,7 @@ func convertToAnthropicRequestWithConfig(chatReq *llm.Request, config *Config) *
 	req.Tools = convertToolsAnthropic(chatReq.Tools, config)
 	req.ToolChoice = convertToolChoiceToAnthropic(chatReq.ToolChoice)
 	req.Messages = convertMessages(chatReq, config)
+	req.Messages = dropUnsupportedFableAssistantPrefill(chatReq.Model, req.Messages)
 	req.StopSequences = convertStopSequences(chatReq.Stop)
 
 	// DeepSeek requires assistant messages in history to include a thinking block
@@ -31,6 +33,25 @@ func convertToAnthropicRequestWithConfig(chatReq *llm.Request, config *Config) *
 	}
 
 	return req
+}
+
+func dropUnsupportedFableAssistantPrefill(model string, messages []MessageParam) []MessageParam {
+	if len(messages) == 0 || !strings.Contains(strings.ToLower(strings.TrimSpace(model)), "fable") {
+		return messages
+	}
+	if !strings.EqualFold(strings.TrimSpace(messages[len(messages)-1].Role), "assistant") {
+		return messages
+	}
+
+	messages = messages[:len(messages)-1]
+	if len(messages) == 0 {
+		messages = append(messages, MessageParam{
+			Role:    "user",
+			Content: MessageContent{Content: lo.ToPtr("")},
+		})
+	}
+
+	return messages
 }
 
 func isThinkingEnabled(req *MessageRequest) bool {

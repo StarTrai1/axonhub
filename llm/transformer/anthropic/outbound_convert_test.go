@@ -1221,3 +1221,22 @@ func TestConvertToAnthropicRequest(t *testing.T) {
 		})
 	}
 }
+
+func TestDropUnsupportedFableAssistantPrefill(t *testing.T) {
+	user := MessageParam{Role: "user", Content: MessageContent{Content: lo.ToPtr("hello")}}
+	assistant := MessageParam{Role: "assistant", Content: MessageContent{Content: lo.ToPtr("prefill")}}
+
+	require.Equal(t, []MessageParam{user}, dropUnsupportedFableAssistantPrefill(
+		"claude-fable-5",
+		[]MessageParam{user, assistant},
+	))
+	require.Equal(t, []MessageParam{user, assistant}, dropUnsupportedFableAssistantPrefill(
+		"claude-sonnet-5",
+		[]MessageParam{user, assistant},
+	))
+
+	result := dropUnsupportedFableAssistantPrefill("claude-fable-5", []MessageParam{assistant})
+	require.Len(t, result, 1)
+	require.Equal(t, "user", result[0].Role)
+	require.Equal(t, "", lo.FromPtr(result[0].Content.Content))
+}

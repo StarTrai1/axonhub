@@ -888,6 +888,38 @@ func TestOutputConfig_Inbound(t *testing.T) {
 			},
 		},
 		{
+			name: "OutputConfig JSON schema -> ResponseFormat",
+			anthropicReq: &MessageRequest{
+				Model:     "claude-sonnet-5",
+				MaxTokens: 4096,
+				Messages: []MessageParam{
+					{
+						Role:    "user",
+						Content: MessageContent{Content: lo.ToPtr("return JSON")},
+					},
+				},
+				OutputConfig: &OutputConfig{Format: &JSONOutputFormat{
+					Type:   "json_schema",
+					Schema: json.RawMessage(`{"type":"object","properties":{"answer":{"type":"string"}}}`),
+				}},
+			},
+			validate: func(t *testing.T, chatReq *llm.Request) {
+				t.Helper()
+				require.NotNil(t, chatReq.ResponseFormat)
+				require.Equal(t, "json_schema", chatReq.ResponseFormat.Type)
+
+				var schema struct {
+					Name   string          `json:"name"`
+					Schema json.RawMessage `json:"schema"`
+					Strict *bool           `json:"strict"`
+				}
+				require.NoError(t, json.Unmarshal(chatReq.ResponseFormat.JSONSchema, &schema))
+				require.Equal(t, "anthropic_structured_output", schema.Name)
+				require.JSONEq(t, `{"type":"object","properties":{"answer":{"type":"string"}}}`, string(schema.Schema))
+				require.True(t, lo.FromPtr(schema.Strict))
+			},
+		},
+		{
 			name: "without output_config -> TransformerMetadata has no output_config_effort",
 			anthropicReq: &MessageRequest{
 				Model:     "claude-3-sonnet-20240229",
