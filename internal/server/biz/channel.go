@@ -789,6 +789,16 @@ func NormalizeAPIKeyAutoDisableRules(policies *objects.ChannelPolicies) error {
 // UpdateChannel updates an existing channel with the provided input.
 func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent.UpdateChannelInput) (*ent.Channel, error) {
 	log.Debug(ctx, "UpdateChannel", log.Int("id", id), log.Any("input", input))
+	if input.Policies != nil {
+		existing, err := svc.entFromContext(ctx).Channel.Query().
+			Where(channel.IDEQ(id)).
+			Select(channel.FieldPolicies).
+			Only(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load channel schedules: %w", err)
+		}
+		input.Policies.ScheduledHealthChecks = slices.Clone(existing.Policies.ScheduledHealthChecks)
+	}
 	if err := NormalizeAPIKeyAutoDisableRules(input.Policies); err != nil {
 		return nil, err
 	}
@@ -976,6 +986,28 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 	// next request. Calling Forget on every update (including unrelated
 	// settings) would orphan in-flight slots and let the next batch of
 	// requests transiently exceed MaxConcurrent.
+	svc.reloadChannelsAfterCommit(ctx)
+
+	return updated, nil
+}
+
+// UpdateChannelScheduledHealthChecks updates only the scheduler-owned policy
+// field, preserving every user-editable channel policy.
+func (svc *ChannelService) UpdateChannelScheduledHealthChecks(ctx context.Context, id int, schedules []string) (*ent.Channel, error) {
+	existing, err := svc.entFromContext(ctx).Channel.Get(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load channel: %w", err)
+	}
+
+	policies := existing.Policies
+	policies.ScheduledHealthChecks = slices.Clone(schedules)
+	updated, err := svc.entFromContext(ctx).Channel.UpdateOneID(id).
+		SetPolicies(policies).
+		Save(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update channel health check schedules: %w", err)
+	}
+
 	svc.reloadChannelsAfterCommit(ctx)
 
 	return updated, nil

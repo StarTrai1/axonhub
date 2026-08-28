@@ -77,6 +77,7 @@ type Dependencies struct {
 	DefaultSelector                *orchestrator.DefaultSelector
 	CandidateSelectorDiagnostics   *orchestrator.CandidateSelectorDiagnostics
 	ChannelLimiterManager          *orchestrator.ChannelLimiterManager
+	TestChannelOrchestrator        *orchestrator.TestChannelOrchestrator
 	HttpClient                     *httpclient.HttpClient
 	GCWorker                       *gc.Worker
 	VideoWorker                    *video_storage.Worker
@@ -118,6 +119,7 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 			deps.CandidateSelectorDiagnostics,
 			deps.ChannelLimiterManager,
 			deps.HttpClient,
+			deps.TestChannelOrchestrator,
 			deps.GCWorker,
 			deps.VideoWorker,
 			deps.CatalogService,

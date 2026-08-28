@@ -2,6 +2,8 @@ import { z } from 'zod';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { graphqlRequest } from '@/gql/graphql';
 import { pageInfoSchema } from '@/gql/pagination';
+import { apiRequest } from '@/lib/api-client';
+import { extractNumberID } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useErrorHandler } from '@/hooks/use-error-handler';
@@ -1994,5 +1996,71 @@ export function useDeleteDisabledChannelAPIKeys() {
         toast.success(t('channels.messages.deleteDisabledAPIKeysSuccess'));
       }
     },
+  });
+}
+
+export interface ChannelHealthCheckScheduleConfig {
+  times: string[];
+  timezone: string;
+}
+
+export interface ScheduledChannelHealthCheckResult {
+  id: number;
+  channelID: number;
+  channelName: string;
+  scheduledAt: string;
+  completedAt: string;
+  latency: number;
+  success: boolean;
+  error?: string;
+}
+
+interface ScheduledChannelHealthCheckResults {
+  results: ScheduledChannelHealthCheckResult[];
+  latestID: number;
+}
+
+export function useChannelHealthCheckSchedules(channelID: string, enabled: boolean) {
+  return useQuery({
+    enabled: enabled && !!channelID,
+    queryKey: ['channelHealthCheckSchedules', channelID],
+    queryFn: () =>
+      apiRequest<ChannelHealthCheckScheduleConfig>(
+        `/admin/channels/${extractNumberID(channelID)}/health-check-schedules`,
+        { requireAuth: true }
+      ),
+  });
+}
+
+export function useUpdateChannelHealthCheckSchedules() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ channelID, times }: { channelID: string; times: string[] }) =>
+      apiRequest<ChannelHealthCheckScheduleConfig>(
+        `/admin/channels/${extractNumberID(channelID)}/health-check-schedules`,
+        {
+          method: 'PUT',
+          requireAuth: true,
+          body: { times },
+        }
+      ),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['channelHealthCheckSchedules', variables.channelID] });
+    },
+  });
+}
+
+export function useScheduledChannelHealthCheckResults(after: number, enabled = true) {
+  return useQuery({
+    enabled,
+    queryKey: ['scheduledChannelHealthCheckResults', after],
+    queryFn: () =>
+      apiRequest<ScheduledChannelHealthCheckResults>(
+        `/admin/scheduled-channel-health-check-results?after=${after}`,
+        { requireAuth: true }
+      ),
+    refetchInterval: 5000,
+    refetchIntervalInBackground: true,
   });
 }

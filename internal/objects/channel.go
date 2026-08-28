@@ -502,6 +502,11 @@ type ChannelPolicies struct {
 	// evaluated before the global retry policy and, when one matches, own the
 	// failure outright. Channels without rules fall back to the global policy.
 	APIKeyAutoDisableRules []APIKeyAutoDisableRule `json:"apiKeyAutoDisableRules,omitempty"`
+
+	// ScheduledHealthChecks contains daily server-local times in HH:MM:SS form.
+	// The field is managed through the dedicated scheduler API so older GraphQL
+	// clients cannot accidentally clear it while editing other channel policies.
+	ScheduledHealthChecks []string `json:"scheduledHealthChecks,omitempty"`
 }
 
 func (p ChannelPolicies) EffectiveCodexIdentityPolicy() CodexIdentityPolicy {

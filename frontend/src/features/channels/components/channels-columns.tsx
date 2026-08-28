@@ -25,6 +25,7 @@ import {
   IconHistory,
   IconPlugConnected,
   IconClockPlay,
+  IconCalendarClock,
 } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
@@ -147,6 +148,17 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
             <IconHistory size={16} className='mr-2' />
             {t('channels.actions.testHistory')}
           </DropdownMenuItem>
+          {channelPermissions.canWrite && (
+            <DropdownMenuItem
+              onClick={() => {
+                setCurrentRow(channel);
+                setOpen('scheduledHealthCheck');
+              }}
+            >
+              <IconCalendarClock size={16} className='mr-2' />
+              {t('channels.actions.scheduledHealthCheck')}
+            </DropdownMenuItem>
+          )}
           <DropdownMenuSeparator />
 
           <DropdownMenuItem
