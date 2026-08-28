@@ -298,6 +298,7 @@ func (svc *ChannelService) buildCodexOutbound(
 	ch *Channel,
 	baseURL string,
 	transport string,
+	alphaSearchPath string,
 	httpClient *httpclient.HttpClient,
 ) (transformer.Outbound, error) {
 	if c.Credentials.IsOAuth() {
@@ -305,9 +306,10 @@ func (svc *ChannelService) buildCodexOutbound(
 			if existing, ok := ch.Outbound.(*codex.OutboundTransformer); ok {
 				if tokens := existing.TokenProvider(); tokens != nil {
 					return codex.NewOutboundTransformer(codex.Params{
-						TokenProvider: tokens,
-						BaseURL:       baseURL,
-						Transport:     transport,
+						TokenProvider:   tokens,
+						BaseURL:         baseURL,
+						Transport:       transport,
+						AlphaSearchPath: alphaSearchPath,
 					})
 				}
 			}
@@ -348,9 +350,10 @@ func (svc *ChannelService) buildCodexOutbound(
 		}
 
 		return codex.NewOutboundTransformer(codex.Params{
-			TokenProvider: p,
-			BaseURL:       baseURL,
-			Transport:     transport,
+			TokenProvider:   p,
+			BaseURL:         baseURL,
+			Transport:       transport,
+			AlphaSearchPath: alphaSearchPath,
 		})
 	}
 
@@ -358,9 +361,10 @@ func (svc *ChannelService) buildCodexOutbound(
 	tokens := oauth.NewAPIKeyTokenProvider(apiKeyProvider.Get)
 
 	return codex.NewOutboundTransformer(codex.Params{
-		TokenProvider: tokens,
-		BaseURL:       baseURL,
-		Transport:     transport,
+		TokenProvider:   tokens,
+		BaseURL:         baseURL,
+		Transport:       transport,
+		AlphaSearchPath: alphaSearchPath,
 	})
 }
 
@@ -410,7 +414,7 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 		llm.APIFormatOpenAIResponseCompact.String():
 		transport := endpointTransport(ep)
 		if (c.Type == channel.TypeCodex || c.Type == channel.TypeFenno) && ep.APIFormat == llm.APIFormatOpenAIResponse.String() {
-			return svc.buildCodexOutbound(c, ch, baseURL, transport, ch.HTTPClient)
+			return svc.buildCodexOutbound(c, ch, baseURL, transport, "", ch.HTTPClient)
 		}
 
 		return responses.NewOutboundTransformerWithConfig(&responses.Config{
@@ -443,6 +447,17 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 			ResponsesBaseURL:      responsesBaseURL,
 			ResponsesEndpointPath: responsesEndpointPath,
 		})
+	case llm.APIFormatOpenAIAlphaSearch.String():
+		if c.Type == channel.TypeCodex {
+			return svc.buildCodexOutbound(c, ch, baseURL, endpointTransport(ep), ep.Path, ch.HTTPClient)
+		}
+
+		return openai.NewOutboundTransformerWithConfig(&openai.Config{
+			PlatformType:   openai.PlatformOpenAI,
+			BaseURL:        baseURL,
+			APIKeyProvider: apiKeyProvider(),
+			EndpointPath:   ep.Path,
+		})
 	case llm.APIFormatOpenAIEmbedding.String(),
 		llm.APIFormatOpenAIModeration.String(),
 		llm.APIFormatOpenAIImageGeneration.String(),
@@ -457,7 +472,7 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 				ep.APIFormat == llm.APIFormatOpenAIImageEdit.String()) {
 			transport := endpointTransport(ep)
 
-			return svc.buildCodexOutbound(c, ch, baseURL, transport, ch.HTTPClient)
+			return svc.buildCodexOutbound(c, ch, baseURL, transport, "", ch.HTTPClient)
 		}
 
 		return openai.NewOutboundTransformerWithConfig(&openai.Config{
@@ -1023,7 +1038,7 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel, apiKeyOve
 		return ch, nil
 	case channel.TypeCodex, channel.TypeFenno:
 		transport := primaryEndpointTransport(c, llm.APIFormatOpenAIResponse.String())
-		transformer, err := svc.buildCodexOutbound(c, ch, c.BaseURL, transport, httpClient)
+		transformer, err := svc.buildCodexOutbound(c, ch, c.BaseURL, transport, "", httpClient)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create codex outbound transformer: %w", err)
 		}
