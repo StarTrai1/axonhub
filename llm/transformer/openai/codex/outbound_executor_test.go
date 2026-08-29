@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -909,6 +910,7 @@ func TestCodexOutbound_PreservesResponsesLiteRequirements(t *testing.T) {
 	headers := make(http.Header)
 	headers.Set("Content-Type", "application/json")
 	headers.Set(responses.ResponsesLiteHeader, "true")
+	headers.Set(SessionHeaderHyphen, "lite-session")
 	inboundRequest := &httpclient.Request{
 		Headers: headers,
 		Body: []byte(`{
@@ -946,6 +948,8 @@ func TestCodexOutbound_PreservesResponsesLiteRequirements(t *testing.T) {
 	require.Len(t, input, 2)
 	additionalTools, ok := input[0].(map[string]any)
 	require.True(t, ok)
+	itemNamespace := uuid.NewSHA1(uuid.NameSpaceOID, []byte("lite-session"))
+	assert.Equal(t, "at_"+uuid.NewSHA1(itemNamespace, []byte("[]")).String(), additionalTools["id"])
 	assert.Equal(t, "additional_tools", additionalTools["type"])
 	assert.Equal(t, "developer", additionalTools["role"])
 	assert.Empty(t, additionalTools["tools"])

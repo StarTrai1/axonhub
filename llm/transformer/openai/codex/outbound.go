@@ -196,6 +196,21 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		)
 	}
 
+	requestSessionID := rawSessionID
+	if requestSessionID == "" {
+		requestSessionID = ExtractSessionIDFromTurnMetadata(rawTurnMetadata)
+	}
+	if requestSessionID == "" {
+		requestSessionID, _ = shared.GetSessionID(ctx)
+	}
+	if requestSessionID == "" {
+		requestSessionID = uuid.NewString()
+	}
+	requestThreadID := strings.TrimSpace(rawHeaders.Get(ThreadIDHeader))
+	if requestThreadID == "" {
+		requestThreadID = requestSessionID
+	}
+
 	creds, err := t.tokens.Get(ctx)
 	if err != nil {
 		return nil, err
@@ -238,10 +253,14 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 			ext.Request = &llm.OpenAIResponsesRequestExtensions{}
 		}
 		if len(reqCopy.Tools) == 0 && len(ext.Request.RawInputItems) == 0 {
+			// Codex 0.151.0 hashes synthesized Responses Lite prefix items within
+			// the thread so retries and resumed sessions preserve their identity.
+			itemNamespace := uuid.NewSHA1(uuid.NameSpaceOID, []byte(requestThreadID))
+			itemID := "at_" + uuid.NewSHA1(itemNamespace, []byte("[]")).String()
 			ext.Request.RawInputItems = append(ext.Request.RawInputItems, llm.OpenAIResponsesRawFragment{
 				Type:          "additional_tools",
 				OriginalIndex: 0,
-				Raw:           json.RawMessage(`{"type":"additional_tools","role":"developer","tools":[]}`),
+				Raw:           json.RawMessage(fmt.Sprintf(`{"id":%q,"type":"additional_tools","role":"developer","tools":[]}`, itemID)),
 			})
 		}
 	} else {
@@ -341,11 +360,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	} else if sessionID := ExtractSessionIDFromTurnMetadata(rawTurnMetadata); sessionID != "" {
 		hreq.Headers.Set(SessionHeaderHyphen, sessionID)
 	} else if hreq.Headers.Get(SessionHeaderHyphen) == "" {
-		if sessionID, ok := shared.GetSessionID(ctx); ok {
-			hreq.Headers.Set(SessionHeaderHyphen, sessionID)
-		} else {
-			hreq.Headers.Set(SessionHeaderHyphen, uuid.NewString())
-		}
+		hreq.Headers.Set(SessionHeaderHyphen, requestSessionID)
 	}
 
 	// Fabricate the remaining Codex identity headers for non-Codex inbound

@@ -147,6 +147,71 @@ func configureHTTPTransport(
 
 		transport.TLSClientConfig.InsecureSkipVerify = true //nolint:gosec // User-configured option for self-signed certificates
 	}
+
+	if proxyURL := configuredHTTPSProxyURL(proxyConfig); proxyURL != nil {
+		transport.DialTLSContext = buildHTTPSProxyDialTLSContext(
+			proxyURL,
+			transport.TLSClientConfig,
+			transport.TLSHandshakeTimeout,
+			transport.DialContext,
+		)
+	}
+}
+
+func configuredHTTPSProxyURL(config *ProxyConfig) *url.URL {
+	if config == nil || config.Type != ProxyTypeURL {
+		return nil
+	}
+
+	proxyURL, err := url.Parse(config.URL)
+	if err != nil || !strings.EqualFold(proxyURL.Scheme, "https") {
+		return nil
+	}
+
+	return proxyURL
+}
+
+func buildHTTPSProxyDialTLSContext(
+	proxyURL *url.URL,
+	baseTLS *tls.Config,
+	handshakeTimeout time.Duration,
+	baseDialContext func(context.Context, string, string) (net.Conn, error),
+) func(context.Context, string, string) (net.Conn, error) {
+	return func(ctx context.Context, network, addr string) (net.Conn, error) {
+		rawConn, err := baseDialContext(ctx, network, addr)
+		if err != nil {
+			return nil, err
+		}
+
+		tlsConn := tls.Client(rawConn, httpsProxyTLSConfig(proxyURL, baseTLS))
+		handshakeCtx := ctx
+		if handshakeTimeout > 0 {
+			var cancel context.CancelFunc
+			handshakeCtx, cancel = context.WithTimeout(ctx, handshakeTimeout)
+			defer cancel()
+		}
+		if err := tlsConn.HandshakeContext(handshakeCtx); err != nil {
+			_ = rawConn.Close()
+			return nil, fmt.Errorf("HTTPS proxy TLS handshake failed: %w", err)
+		}
+
+		return tlsConn, nil
+	}
+}
+
+func httpsProxyTLSConfig(proxyURL *url.URL, baseTLS *tls.Config) *tls.Config {
+	tlsConfig := &tls.Config{}
+	if baseTLS != nil {
+		tlsConfig = baseTLS.Clone()
+	}
+	if tlsConfig.ServerName == "" {
+		tlsConfig.ServerName = proxyURL.Hostname()
+	}
+	// Go's proxy path sends an HTTP/1.1 CONNECT request. Do not negotiate h2
+	// with an HTTPS proxy and then write an HTTP/1.1 request on that connection.
+	tlsConfig.NextProtos = []string{"http/1.1"}
+
+	return tlsConfig
 }
 
 func buildHTTPTransport(proxyConfig *ProxyConfig, options clientOptions, cloneDefault bool) *http.Transport {

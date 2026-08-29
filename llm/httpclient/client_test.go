@@ -559,6 +559,24 @@ func TestNewHttpClient_HTTPTransportPolicy(t *testing.T) {
 	})
 }
 
+func TestNewHttpClient_HTTPSProxyForcesHTTP1OnProxyTLSLeg(t *testing.T) {
+	proxyURL, err := url.Parse("https://proxy.example.com:8443")
+	require.NoError(t, err)
+	tlsConfig := httpsProxyTLSConfig(proxyURL, nil)
+	require.Equal(t, "proxy.example.com", tlsConfig.ServerName)
+	require.Equal(t, []string{"http/1.1"}, tlsConfig.NextProtos)
+
+	httpsClient := NewHttpClientWithProxy(&ProxyConfig{Type: ProxyTypeURL, URL: "https://proxy.example.com:8443"})
+	httpsTransport, ok := httpsClient.GetNativeClient().Transport.(*http.Transport)
+	require.True(t, ok)
+	require.NotNil(t, httpsTransport.DialTLSContext)
+
+	httpClient := NewHttpClientWithProxy(&ProxyConfig{Type: ProxyTypeURL, URL: "http://proxy.example.com:8080"})
+	httpTransport, ok := httpClient.GetNativeClient().Transport.(*http.Transport)
+	require.True(t, ok)
+	require.Nil(t, httpTransport.DialTLSContext)
+}
+
 func TestNewUpstreamDialer_ConfiguresFastConnectFailure(t *testing.T) {
 	dialer := newUpstreamDialer()
 
