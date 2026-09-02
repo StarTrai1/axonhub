@@ -340,6 +340,10 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 	if anthropicReq.Thinking != nil {
 		switch anthropicReq.Thinking.Type {
 		case "enabled":
+			// budget_tokens is the client's native expression here: mark it so the
+			// outbound transformer round-trips the budget verbatim instead of
+			// re-deriving a thinking config from the derived effort level.
+			chatReq.TransformerMetadata[TransformerMetadataKeyThinkingType] = "enabled"
 			chatReq.ReasoningEffort = thinkingBudgetToReasoningEffort(anthropicReq.Thinking.BudgetTokens)
 			chatReq.ReasoningBudget = lo.ToPtr(anthropicReq.Thinking.BudgetTokens)
 
@@ -367,14 +371,9 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 	if anthropicReq.OutputConfig != nil {
 		if anthropicReq.OutputConfig.Effort != "" {
 			chatReq.TransformerMetadata[TransformerMetadataKeyOutputConfigEffort] = anthropicReq.OutputConfig.Effort
-			// Map output_config effort to reasoning_effort so other outbound transformers can use it.
-			// Anthropic "max" has no direct equivalent in other providers; map to "xhigh"
-			// so downstream transformers can handle it explicitly.
-			if anthropicReq.OutputConfig.Effort == "max" {
-				chatReq.ReasoningEffort = "xhigh"
-			} else {
-				chatReq.ReasoningEffort = anthropicReq.OutputConfig.Effort
-			}
+			// Preserve the explicit value (including "max") so the channel-level
+			// reasoning mapping can translate it for the selected provider.
+			chatReq.ReasoningEffort = anthropicReq.OutputConfig.Effort
 		}
 
 		if format := anthropicReq.OutputConfig.Format; format != nil && format.Type == "json_schema" && len(format.Schema) > 0 {
