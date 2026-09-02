@@ -358,7 +358,22 @@ func shouldAdaptRemoteCompactionReference(
 		return true
 	}
 
-	return !hasRemoteCompactionCapableCandidate(candidates) && hasUnsupportedCodexCandidate(candidates)
+	// Candidate order is authoritative after routing-tier and load-balancing
+	// selection. A later native channel must not disable the explicit local
+	// bridge policy of the channel that will receive the first attempt.
+	for _, candidate := range candidates {
+		if candidate == nil || candidate.Channel == nil || candidate.Channel.Type != channel.TypeCodex {
+			continue
+		}
+		if candidate.Channel.Policies.UsesLocalRemoteCompactionBridge() {
+			return true
+		}
+		if candidate.Channel.Policies.PrefersNativeRemoteCompaction() {
+			return false
+		}
+	}
+
+	return hasUnsupportedCodexCandidate(candidates)
 }
 
 func isLocalCompactionReference(ref *remoteCompactionReference) bool {
@@ -603,18 +618,6 @@ func extractAssistantResponseText(response *llm.Response) string {
 	}
 
 	return text.String()
-}
-
-func hasRemoteCompactionCapableCandidate(candidates []*ChannelModelsCandidate) bool {
-	for _, candidate := range candidates {
-		if candidate != nil && candidate.Channel != nil &&
-			candidate.Channel.Type == channel.TypeCodex &&
-			candidate.Channel.Policies.PrefersNativeRemoteCompaction() {
-			return true
-		}
-	}
-
-	return false
 }
 
 func hasUnsupportedCodexCandidate(candidates []*ChannelModelsCandidate) bool {

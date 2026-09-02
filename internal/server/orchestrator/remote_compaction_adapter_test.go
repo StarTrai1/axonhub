@@ -121,7 +121,9 @@ func TestShouldAdaptRemoteCompactionReference(t *testing.T) {
 	require.True(t, shouldAdaptRemoteCompactionReference(localRef, []*ChannelModelsCandidate{localBridge}))
 	require.True(t, shouldAdaptRemoteCompactionReference(remoteRef, []*ChannelModelsCandidate{localBridge}))
 	require.True(t, shouldAdaptRemoteCompactionReference(remoteRef, []*ChannelModelsCandidate{automatic}))
+	require.True(t, shouldAdaptRemoteCompactionReference(remoteRef, []*ChannelModelsCandidate{localBridge, native}))
 	require.False(t, shouldAdaptRemoteCompactionReference(remoteRef, []*ChannelModelsCandidate{native}))
+	require.False(t, shouldAdaptRemoteCompactionReference(remoteRef, []*ChannelModelsCandidate{native, localBridge}))
 	require.False(t, shouldAdaptRemoteCompactionReference(remoteRef, []*ChannelModelsCandidate{nonCodex}))
 	require.False(t, shouldAdaptRemoteCompactionReference(nil, []*ChannelModelsCandidate{native}))
 }
