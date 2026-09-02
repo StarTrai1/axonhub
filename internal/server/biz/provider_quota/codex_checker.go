@@ -21,10 +21,17 @@ import (
 
 // CodexUsageResponse matches ChatGPT backend API response.
 type CodexUsageResponse struct {
-	PlanType              string                    `json:"plan_type,omitempty"`
-	RateLimit             *CodeRateLimitInfo        `json:"rate_limit,omitempty"`
-	CodeReviewRateLimit   *CodeRateLimitInfo        `json:"code_review_rate_limit,omitempty"`
-	RateLimitResetCredits *CodexResetCreditsSummary `json:"rate_limit_reset_credits,omitempty"`
+	PlanType              string                     `json:"plan_type,omitempty"`
+	RateLimit             *CodeRateLimitInfo         `json:"rate_limit,omitempty"`
+	CodeReviewRateLimit   *CodeRateLimitInfo         `json:"code_review_rate_limit,omitempty"`
+	AdditionalRateLimits  []CodexAdditionalRateLimit `json:"additional_rate_limits,omitempty"`
+	RateLimitResetCredits *CodexResetCreditsSummary  `json:"rate_limit_reset_credits,omitempty"`
+}
+
+type CodexAdditionalRateLimit struct {
+	LimitName      string             `json:"limit_name,omitempty"`
+	MeteredFeature string             `json:"metered_feature,omitempty"`
+	RateLimit      *CodeRateLimitInfo `json:"rate_limit,omitempty"`
 }
 
 type CodeRateLimitInfo struct {
@@ -460,6 +467,21 @@ func (c *CodexQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 
 	if response.CodeReviewRateLimit != nil {
 		rawData["code_review_rate_limit"] = convertRateLimitToMap(response.CodeReviewRateLimit)
+	}
+
+	if len(response.AdditionalRateLimits) > 0 {
+		additionalRateLimits := make([]map[string]any, 0, len(response.AdditionalRateLimits))
+		for _, additional := range response.AdditionalRateLimits {
+			entry := map[string]any{
+				"limit_name":      additional.LimitName,
+				"metered_feature": additional.MeteredFeature,
+			}
+			if additional.RateLimit != nil {
+				entry["rate_limit"] = convertRateLimitToMap(additional.RateLimit)
+			}
+			additionalRateLimits = append(additionalRateLimits, entry)
+		}
+		rawData["additional_rate_limits"] = additionalRateLimits
 	}
 
 	if response.RateLimitResetCredits != nil {

@@ -103,6 +103,40 @@ func TestCodexQuotaChecker_ZeroEmbeddedResetCreditCountSkipsDetailEndpoint(t *te
 	require.Equal(t, 0, resetCredits["available_count"])
 }
 
+func TestCodexQuotaChecker_ParseResponsePreservesAdditionalRateLimits(t *testing.T) {
+	checker := NewCodexQuotaChecker(nil)
+	quota, err := checker.parseResponse([]byte(`{
+		"plan_type":"plus",
+		"rate_limit":{"allowed":true},
+		"additional_rate_limits":[{
+			"limit_name":"GPT-Reserve",
+			"metered_feature":"base_model_inference",
+			"rate_limit":{
+				"allowed":true,
+				"limit_reached":false,
+				"primary_window":{
+					"used_percent":24,
+					"reset_at":1788249600,
+					"reset_after_seconds":3600,
+					"limit_window_seconds":604800
+				}
+			}
+		}]
+	}`))
+
+	require.NoError(t, err)
+	additional, ok := quota.RawData["additional_rate_limits"].([]map[string]any)
+	require.True(t, ok)
+	require.Len(t, additional, 1)
+	require.Equal(t, "GPT-Reserve", additional[0]["limit_name"])
+	require.Equal(t, "base_model_inference", additional[0]["metered_feature"])
+	rateLimit, ok := additional[0]["rate_limit"].(map[string]any)
+	require.True(t, ok)
+	primary, ok := rateLimit["primary_window"].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, 24.0, primary["used_percent"])
+}
+
 type roundTripFunc func(req *http.Request) (*http.Response, error)
 
 func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {

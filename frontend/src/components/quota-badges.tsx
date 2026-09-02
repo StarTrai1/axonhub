@@ -24,6 +24,7 @@ import {
   ProviderKimiCodeQuotaData,
   ProviderMinimaxQuotaData,
   ProviderZhipuQuotaData,
+  ProviderCodexAdditionalRateLimit,
   ClineQuotaWindow,
   isClineActivePassQuotaData,
   isClineUnavailablePassQuotaData,
@@ -239,6 +240,47 @@ function ProgressBar({
   return (
     <div className='bg-muted/60 h-1.5 w-full overflow-hidden rounded-full'>
       <div className='h-full transition-all duration-500' style={{ width: `${clamped}%`, ...bgStyle }} />
+    </div>
+  );
+}
+
+function CodexAdditionalLimit({ limit }: { limit: ProviderCodexAdditionalRateLimit }) {
+  const { t } = useTranslation();
+  const title = limit.limit_name || limit.metered_feature || t('quota.codex.additionalLimit');
+  const windows = [
+    { key: 'primary', label: t('quota.label.primary_window'), value: limit.rate_limit?.primary_window },
+    { key: 'secondary', label: t('quota.label.secondary_window'), value: limit.rate_limit?.secondary_window },
+  ].filter((entry) => entry.value);
+
+  if (windows.length === 0) return null;
+
+  return (
+    <div className='border-border/60 bg-muted/20 space-y-2.5 rounded-md border px-3 py-2.5'>
+      <div className='flex items-center justify-between gap-3 text-xs'>
+        <span className='text-foreground font-medium'>{title}</span>
+        {limit.limit_name && limit.metered_feature && (
+          <span className='text-muted-foreground max-w-40 truncate font-mono text-[10px]'>{limit.metered_feature}</span>
+        )}
+      </div>
+      {windows.map(({ key, label, value }) => {
+        if (!value) return null;
+        const usedPercent = value.used_percent ?? 0;
+
+        return (
+          <div key={key} className='space-y-1.5'>
+            <div className='flex items-center justify-between gap-3 text-[11px]'>
+              <span className='text-muted-foreground'>{windows.length > 1 ? label : t('quota.codex.usage')}</span>
+              <span className='text-foreground font-medium tabular-nums'>{Math.round(usedPercent)}%</span>
+            </div>
+            <ProgressBar percentage={usedPercent} />
+            {value.reset_at && (
+              <div className='text-muted-foreground text-right text-[10px]'>
+                {formatTimeToReset(value.reset_after_seconds)} ({formatDate(value.reset_at)})
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -832,6 +874,18 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
                         {formatDate(qd.rate_limit.secondary_window.reset_at)})
                       </div>
                     )}
+                  </div>
+                )}
+
+                {qd.additional_rate_limits?.some((limit) => limit.rate_limit) && (
+                  <div className='border-border/60 mt-3 space-y-2 border-t border-dashed pt-3'>
+                    <div className='text-muted-foreground text-xs font-medium'>{t('quota.codex.additionalLimits')}</div>
+                    {qd.additional_rate_limits.map((limit, index) => (
+                      <CodexAdditionalLimit
+                        key={`${limit.metered_feature || limit.limit_name || 'additional'}-${index}`}
+                        limit={limit}
+                      />
+                    ))}
                   </div>
                 )}
 

@@ -62,6 +62,24 @@ type ProviderClaudeQuotaData = ProviderQuotaDataCommon & {
   representative_claim?: string;
 };
 
+export type ProviderCodexQuotaWindow = {
+  used_percent?: number;
+  reset_at?: number;
+  reset_after_seconds?: number;
+  limit_window_seconds?: number;
+};
+
+export type ProviderCodexRateLimit = {
+  primary_window?: ProviderCodexQuotaWindow;
+  secondary_window?: ProviderCodexQuotaWindow;
+};
+
+export type ProviderCodexAdditionalRateLimit = {
+  limit_name?: string;
+  metered_feature?: string;
+  rate_limit?: ProviderCodexRateLimit;
+};
+
 export type ProviderCodexQuotaData = ProviderQuotaDataCommon & {
   rate_limit_reset_credits?: {
     available_count: number;
@@ -69,20 +87,8 @@ export type ProviderCodexQuotaData = ProviderQuotaDataCommon & {
     checked_at?: string;
   };
   rate_limit_reset_credits_error?: string;
-  rate_limit?: {
-    primary_window?: {
-      used_percent?: number;
-      reset_at?: number;
-      reset_after_seconds?: number;
-      limit_window_seconds?: number;
-    };
-    secondary_window?: {
-      used_percent?: number;
-      reset_at?: number;
-      reset_after_seconds?: number;
-      limit_window_seconds?: number;
-    };
-  };
+  rate_limit?: ProviderCodexRateLimit;
+  additional_rate_limits?: ProviderCodexAdditionalRateLimit[];
 };
 
 export type XAISubscriptionBillingWindow = {

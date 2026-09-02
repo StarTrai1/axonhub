@@ -22,7 +22,17 @@ import (
 	"github.com/looplj/axonhub/internal/server/scheduler"
 )
 
-const scheduledChannelTestResultLimit = 100
+const (
+	scheduledChannelTestResultLimit  = 100
+	scheduledChannelDispatchInterval = time.Second
+	scheduledChannelDispatcherName   = "scheduled-channel-health-check-dispatcher"
+)
+
+type scheduledChannelCheck struct {
+	channelID   int
+	scheduledAt string
+	occursAt    time.Time
+}
 
 type ScheduledChannelTestResult struct {
 	ID          int64     `json:"id"`
@@ -45,7 +55,7 @@ type ScheduledChannelTestServiceParams struct {
 }
 
 // ScheduledChannelTestService owns the persisted daily schedules and their
-// runtime registrations. Results stay in a small in-memory ring for UI toasts;
+// runtime dispatch. Results stay in a small in-memory ring for UI toasts;
 // the normal test request and usage records remain the durable history.
 type ScheduledChannelTestService struct {
 	ent            *ent.Client
@@ -53,10 +63,11 @@ type ScheduledChannelTestService struct {
 	tester         *TestChannelOrchestrator
 	scheduler      *scheduler.Scheduler
 
-	mu         sync.Mutex
-	registered map[int][]string
-	results    []ScheduledChannelTestResult
-	nextID     int64
+	mu          sync.Mutex
+	registered  map[int][]string
+	lastSweepAt time.Time
+	results     []ScheduledChannelTestResult
+	nextID      int64
 }
 
 func NewScheduledChannelTestService(params ScheduledChannelTestServiceParams) *ScheduledChannelTestService {
@@ -87,9 +98,19 @@ func (svc *ScheduledChannelTestService) Start(ctx context.Context) error {
 			)
 			continue
 		}
-		if err := svc.replaceRuntimeSchedules(ctx, ch.ID, times); err != nil {
-			return err
-		}
+		svc.replaceRuntimeSchedules(ch.ID, times)
+	}
+
+	svc.mu.Lock()
+	svc.lastSweepAt = time.Now()
+	svc.mu.Unlock()
+
+	if err := svc.scheduler.Register(ctx, scheduler.TaskSpec{
+		Name:        scheduledChannelDispatcherName,
+		Description: "Dispatch daily channel health checks and catch up after system wake",
+		FixRate:     scheduledChannelDispatchInterval,
+	}, svc.dispatchScheduledTests); err != nil {
+		return fmt.Errorf("register scheduled channel health check dispatcher: %w", err)
 	}
 
 	return nil
@@ -113,9 +134,7 @@ func (svc *ScheduledChannelTestService) UpdateSchedules(ctx context.Context, cha
 	if _, err := svc.channelService.UpdateChannelScheduledHealthChecks(ctx, channelID, normalized); err != nil {
 		return nil, err
 	}
-	if err := svc.replaceRuntimeSchedules(ctx, channelID, normalized); err != nil {
-		return nil, err
-	}
+	svc.replaceRuntimeSchedules(channelID, normalized)
 
 	return normalized, nil
 }
@@ -154,47 +173,68 @@ func normalizeScheduledHealthCheckTimes(times []string) ([]string, error) {
 	return slices.Compact(normalized), nil
 }
 
-func (svc *ScheduledChannelTestService) replaceRuntimeSchedules(ctx context.Context, channelID int, times []string) error {
+func (svc *ScheduledChannelTestService) replaceRuntimeSchedules(channelID int, times []string) {
 	svc.mu.Lock()
 	defer svc.mu.Unlock()
 
-	for _, value := range svc.registered[channelID] {
-		svc.scheduler.Unregister(scheduledChannelTestTaskName(channelID, value))
-	}
 	delete(svc.registered, channelID)
+	if len(times) > 0 {
+		svc.registered[channelID] = slices.Clone(times)
+	}
+}
 
-	registered := make([]string, 0, len(times))
-	for _, value := range times {
-		spec := scheduler.TaskSpec{
-			Name:        scheduledChannelTestTaskName(channelID, value),
-			Description: fmt.Sprintf("Daily health check for channel %d at %s server time", channelID, value),
-			CronExpr:    scheduledChannelTestCron(value),
-			Timezone:    "Local",
-		}
-		if err := svc.scheduler.Register(ctx, spec, func(taskCtx context.Context) {
-			svc.runScheduledTest(taskCtx, channelID, value)
-		}); err != nil {
-			for _, rollback := range registered {
-				svc.scheduler.Unregister(scheduledChannelTestTaskName(channelID, rollback))
+func (svc *ScheduledChannelTestService) dispatchScheduledTests(ctx context.Context) {
+	now := time.Now()
+
+	svc.mu.Lock()
+	lastSweepAt := svc.lastSweepAt
+	svc.lastSweepAt = now
+	due := scheduledChannelChecksDueBetween(svc.registered, lastSweepAt, now)
+	svc.mu.Unlock()
+
+	for _, check := range due {
+		svc.runScheduledTest(ctx, check.channelID, check.scheduledAt)
+	}
+}
+
+func scheduledChannelChecksDueBetween(registered map[int][]string, lastSweepAt, now time.Time) []scheduledChannelCheck {
+	if lastSweepAt.IsZero() || now.Before(lastSweepAt) {
+		return nil
+	}
+
+	due := make([]scheduledChannelCheck, 0)
+	for channelID, times := range registered {
+		for _, value := range times {
+			parsed, err := time.Parse("15:04:05", value)
+			if err != nil {
+				continue
 			}
-			return fmt.Errorf("register scheduled health check for channel %d: %w", channelID, err)
+
+			occursAt := time.Date(now.Year(), now.Month(), now.Day(), parsed.Hour(), parsed.Minute(), parsed.Second(), 0, now.Location())
+			if occursAt.After(now) {
+				occursAt = occursAt.AddDate(0, 0, -1)
+			}
+			if occursAt.After(lastSweepAt) {
+				due = append(due, scheduledChannelCheck{
+					channelID:   channelID,
+					scheduledAt: value,
+					occursAt:    occursAt,
+				})
+			}
 		}
-		registered = append(registered, value)
-	}
-	if len(registered) > 0 {
-		svc.registered[channelID] = registered
 	}
 
-	return nil
-}
+	sort.Slice(due, func(i, j int) bool {
+		if !due[i].occursAt.Equal(due[j].occursAt) {
+			return due[i].occursAt.Before(due[j].occursAt)
+		}
+		if due[i].channelID != due[j].channelID {
+			return due[i].channelID < due[j].channelID
+		}
+		return due[i].scheduledAt < due[j].scheduledAt
+	})
 
-func scheduledChannelTestTaskName(channelID int, value string) string {
-	return fmt.Sprintf("channel-health-check-%d-%s", channelID, strings.ReplaceAll(value, ":", ""))
-}
-
-func scheduledChannelTestCron(value string) string {
-	parsed, _ := time.Parse("15:04:05", value)
-	return fmt.Sprintf("%d %d %d * * * *", parsed.Second(), parsed.Minute(), parsed.Hour())
+	return due
 }
 
 func (svc *ScheduledChannelTestService) runScheduledTest(ctx context.Context, channelID int, scheduledAt string) {
