@@ -1,6 +1,7 @@
 package responses
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -942,6 +943,9 @@ func inputSuffix(previous, current []json.RawMessage) ([]json.RawMessage, bool) 
 }
 
 func jsonRawEqual(a, b json.RawMessage) bool {
+	if bytes.Equal(a, b) {
+		return true
+	}
 	return equalJSONValues(string(a), string(b))
 }
 
