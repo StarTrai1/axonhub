@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -342,28 +343,6 @@ func TestPerformanceRecording_StreamFlagBugRegression(t *testing.T) {
 			"This indicates the fix from commit 8afd95c3 has been reverted.")
 }
 
-// TestRecordPerformanceStream_MarksDoneWithoutUsage verifies that a protocol
-// completion records latency even when a compatible provider omits usage.
-func TestRecordPerformanceStream_MarksDoneWithoutUsage(t *testing.T) {
-	perf := &biz.PerformanceRecord{
-		StartTime: time.Now().Add(-time.Second),
-		Stream:    true,
-	}
-	stream := &recordPerformanceStream{
-		ctx:    context.Background(),
-		stream: streams.SliceStream([]*llm.Response{llm.DoneResponse}),
-		state:  &PersistenceState{Perf: perf},
-	}
-
-	require.True(t, stream.Next())
-	require.Same(t, llm.DoneResponse, stream.Current())
-	require.True(t, perf.Success)
-	require.True(t, perf.RequestCompleted)
-	require.False(t, perf.EndTime.IsZero())
-	_, latencyMs, _ := perf.Calculate()
-	require.GreaterOrEqual(t, latencyMs, int64(1000))
-}
-
 func TestRecordPerformanceStream_MarksFirstTokenOnFirstOutput(t *testing.T) {
 	content := "hello"
 	perf := &biz.PerformanceRecord{
@@ -371,7 +350,6 @@ func TestRecordPerformanceStream_MarksFirstTokenOnFirstOutput(t *testing.T) {
 		Stream:    true,
 	}
 	stream := &recordPerformanceStream{
-		ctx: context.Background(),
 		stream: streams.SliceStream([]*llm.Response{
 			{
 				ID:     "resp_1",
@@ -406,7 +384,6 @@ func TestRecordPerformanceStream_DoesNotMarkTerminalFramesAsFirstToken(t *testin
 		Stream:    true,
 	}
 	stream := &recordPerformanceStream{
-		ctx: context.Background(),
 		stream: streams.SliceStream([]*llm.Response{
 			{
 				Object:  "chat.completion.chunk",
@@ -455,4 +432,77 @@ func TestHasStreamOutput_MarksToolArgumentsNotToolPreamble(t *testing.T) {
 			},
 		}}}}},
 	}))
+}
+
+// TestRecordPerformanceStream_MarksFirstToken verifies that recordPerformanceStream
+// correctly marks the first token time.
+func TestRecordPerformanceStream_UsageDoesNotMarkFirstTokenOrComplete(t *testing.T) {
+	perf := &biz.PerformanceRecord{
+		StartTime: time.Now(),
+		Stream:    true,
+	}
+	state := &PersistenceState{Perf: perf}
+	stream := streams.SliceStream([]*llm.Response{
+		{
+			Choices: []llm.Choice{{Delta: &llm.Message{Role: "assistant"}}},
+			Usage:   &llm.Usage{CompletionTokens: 2},
+		},
+		{
+			Choices: []llm.Choice{{Delta: &llm.Message{Content: llm.MessageContent{Content: lo.ToPtr("hello")}}}},
+		},
+	})
+	recording := &recordPerformanceStream{stream: stream, state: state}
+
+	require.True(t, recording.Next())
+	recording.Current()
+
+	assert.Nil(t, perf.FirstTokenTime, "usage on a lifecycle event must not count as the first token")
+	assert.Equal(t, int64(2), perf.CompletionTokens)
+	assert.False(t, perf.RequestCompleted, "usage must not complete an active stream")
+
+	require.True(t, recording.Next())
+	recording.Current()
+
+	assert.NotNil(t, perf.FirstTokenTime, "the first non-empty output delta should mark first token")
+}
+
+func TestRecordPerformanceStream_QueuesCompletedPerformanceAfterFinalUsage(t *testing.T) {
+	perf := &biz.PerformanceRecord{
+		StartTime: time.Now(),
+		Stream:    true,
+	}
+	state := &PersistenceState{Perf: perf}
+	stream := streams.SliceStream([]*llm.Response{
+		{Choices: []llm.Choice{{Delta: &llm.Message{}, FinishReason: lo.ToPtr("stop")}}},
+		{Usage: &llm.Usage{CompletionTokens: 9}},
+	})
+
+	var recorded *biz.PerformanceRecord
+	recordCalls := 0
+	recording := &recordPerformanceStream{
+		stream: stream,
+		state:  state,
+		onClose: func() {
+			recordCalls++
+			recorded = state.Perf
+		},
+	}
+
+	// The raw terminal event is observed before the normalized finish and usage events.
+	perf.MarkSuccess()
+	require.True(t, recording.Next())
+	recording.Current()
+	assert.Nil(t, recorded, "finish event must not submit metrics before the final usage event")
+
+	require.True(t, recording.Next())
+	recording.Current()
+	assert.Nil(t, recorded, "usage must be applied before metrics are submitted")
+
+	require.NoError(t, recording.Close())
+
+	require.Same(t, perf, recorded)
+	assert.Equal(t, int64(9), recorded.CompletionTokens)
+	assert.Equal(t, 1, recordCalls)
+	require.NoError(t, recording.Close())
+	assert.Equal(t, 1, recordCalls)
 }

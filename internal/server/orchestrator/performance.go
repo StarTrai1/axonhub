@@ -119,9 +119,11 @@ func (m *performanceRecording) OnOutboundRawStream(ctx context.Context, stream s
 
 func (m *performanceRecording) OnOutboundLlmStream(ctx context.Context, stream streams.Stream[*llm.Response]) (streams.Stream[*llm.Response], error) {
 	return &recordPerformanceStream{
-		ctx:    ctx,
 		stream: stream,
 		state:  m.outbound.state,
+		onClose: func() {
+			enqueueCompletedPerformance(ctx, m.outbound.state)
+		},
 	}, nil
 }
 
@@ -143,12 +145,11 @@ func (m *performanceRecording) OnOutboundRawError(ctx context.Context, err error
 }
 
 // recordPerformanceStream records performance metrics for a stream of responses.
-//
-//nolint:containedctx // ctx is used for logging.
 type recordPerformanceStream struct {
-	ctx    context.Context
-	stream streams.Stream[*llm.Response]
-	state  *PersistenceState
+	stream  streams.Stream[*llm.Response]
+	state   *PersistenceState
+	onClose func()
+	closed  bool
 
 	firstTokenSet     bool
 	reasoningStartSet bool
@@ -185,14 +186,6 @@ func (s *recordPerformanceStream) Current() *llm.Response {
 
 	if tokenCount := event.Usage.GetCompletionTokens(); tokenCount != nil && *tokenCount > 0 {
 		s.state.Perf.CompletionTokens = *tokenCount
-		s.markSuccess()
-	}
-
-	// A Responses-compatible provider may omit usage from response.completed.
-	// Its transformer still emits the unified [DONE] event, which is the protocol
-	// completion boundary and must finalize latency before persistence runs.
-	if event == llm.DoneResponse || event.Object == "[DONE]" {
-		s.markSuccess()
 	}
 
 	return event
@@ -281,23 +274,31 @@ func hasStreamMessageOutput(message *llm.Message) bool {
 	return false
 }
 
-func (s *recordPerformanceStream) markSuccess() {
-	if s.state == nil || s.state.Perf == nil || s.state.Perf.RequestCompleted {
-		return
-	}
-
-	s.state.Perf.MarkSuccess()
-	if s.state.ChannelService != nil {
-		s.state.ChannelService.AsyncRecordPerformance(s.ctx, s.state.Perf)
-	}
-}
-
 func (s *recordPerformanceStream) Next() bool {
 	return s.stream.Next()
 }
 
 func (s *recordPerformanceStream) Close() error {
+	if s.closed {
+		return nil
+	}
+
+	s.closed = true
+	if s.onClose != nil {
+		s.onClose()
+	}
+
 	return s.stream.Close()
+}
+
+// enqueueCompletedPerformance submits a completed stream only after its normalized
+// events have been consumed, so final usage is visible to the metrics worker.
+func enqueueCompletedPerformance(ctx context.Context, state *PersistenceState) {
+	if state == nil || state.Perf == nil || !state.Perf.RequestCompleted || state.ChannelService == nil {
+		return
+	}
+
+	state.ChannelService.AsyncRecordPerformance(ctx, state.Perf)
 }
 
 func (s *recordPerformanceStream) Err() error {
