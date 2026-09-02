@@ -44,10 +44,13 @@ func TestOutboundCustomizeExecutorUsesCurrentExecutor(t *testing.T) {
 
 	firstClient := httpclient.NewHttpClientWithProxy(&httpclient.ProxyConfig{Type: httpclient.ProxyTypeDisabled}, httpclient.WithInsecureSkipVerify(true))
 	secondClient := httpclient.NewHttpClientWithProxy(&httpclient.ProxyConfig{Type: httpclient.ProxyTypeURL, URL: "http://127.0.0.1:18080"})
+	thirdClient := httpclient.NewHttpClientWithProxy(&httpclient.ProxyConfig{Type: httpclient.ProxyTypeURL, URL: "socks5h://user:pass@proxy.example:1080"})
 
 	first, ok := outbound.CustomizeExecutor(firstClient).(*WebSocketExecutor)
 	require.True(t, ok)
 	second, ok := outbound.CustomizeExecutor(secondClient).(*WebSocketExecutor)
+	require.True(t, ok)
+	third, ok := outbound.CustomizeExecutor(thirdClient).(*WebSocketExecutor)
 	require.True(t, ok)
 	again, ok := outbound.CustomizeExecutor(firstClient).(*WebSocketExecutor)
 	require.True(t, ok)
@@ -66,6 +69,9 @@ func TestOutboundCustomizeExecutorUsesCurrentExecutor(t *testing.T) {
 	secondProxy, err := second.dialer.Proxy(req)
 	require.NoError(t, err)
 	require.Equal(t, "http://127.0.0.1:18080", secondProxy.String())
+	thirdProxy, err := third.dialer.Proxy(req)
+	require.NoError(t, err)
+	require.Equal(t, "socks5://user:pass@proxy.example:1080", thirdProxy.String())
 }
 
 func TestWebSocketExecutorDoStreamSendsResponseCreate(t *testing.T) {
@@ -1237,6 +1243,8 @@ func TestHeaderPoolIdentityIgnoresPerRequestTraceHeaders(t *testing.T) {
 		"X-Trace-Id":           []string{"trace-1"},
 		"X-Request-Id":         []string{"request-1"},
 		"Traceparent":          []string{"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-01"},
+		"Thread-Id":            []string{"thread-1"},
+		"X-Codex-Window-Id":    []string{"session-1:1"},
 		"X-Custom-Routing":     []string{"stable"},
 		"OpenAI-Beta":          []string{WebSocketBetaHeaderValue},
 		webSocketSessionHeader: []string{"session-1"},
@@ -1245,12 +1253,16 @@ func TestHeaderPoolIdentityIgnoresPerRequestTraceHeaders(t *testing.T) {
 	changedTrace.Set("X-Trace-Id", "trace-2")
 	changedTrace.Set("X-Request-Id", "request-2")
 	changedTrace.Set("Traceparent", "00-cccccccccccccccccccccccccccccccc-dddddddddddddddd-01")
+	changedTrace.Set("X-Codex-Window-Id", "session-1:2")
 
 	reKeyed := base.Clone()
 	reKeyed.Set("X-Custom-Routing", "other")
+	changedThread := base.Clone()
+	changedThread.Set("Thread-Id", "thread-2")
 
 	require.Equal(t, headerPoolIdentity(base), headerPoolIdentity(changedTrace))
 	require.NotEqual(t, headerPoolIdentity(base), headerPoolIdentity(reKeyed))
+	require.NotEqual(t, headerPoolIdentity(base), headerPoolIdentity(changedThread))
 }
 
 func TestWebSocketExecutorBackgroundCleanupClosesIdleConnections(t *testing.T) {

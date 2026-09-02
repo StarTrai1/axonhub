@@ -265,11 +265,19 @@ function CodexAdditionalLimit({ limit }: { limit: ProviderCodexAdditionalRateLim
       {windows.map(({ key, label, value }) => {
         if (!value) return null;
         const usedPercent = value.used_percent ?? 0;
+        const windowLabel =
+          value.limit_window_seconds === 7 * 24 * 60 * 60
+            ? t('quota.window.7d')
+            : value.limit_window_seconds === 5 * 60 * 60
+              ? t('quota.window.5h')
+              : windows.length > 1
+                ? label
+                : t('quota.codex.usage');
 
         return (
           <div key={key} className='space-y-1.5'>
             <div className='flex items-center justify-between gap-3 text-[11px]'>
-              <span className='text-muted-foreground'>{windows.length > 1 ? label : t('quota.codex.usage')}</span>
+              <span className='text-muted-foreground'>{windowLabel}</span>
               <span className='text-foreground font-medium tabular-nums'>{Math.round(usedPercent)}%</span>
             </div>
             <ProgressBar percentage={usedPercent} />
@@ -877,7 +885,7 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
                   </div>
                 )}
 
-                {qd.additional_rate_limits?.some((limit) => limit.rate_limit) && (
+                {qd.additional_rate_limits?.some((limit) => limit.rate_limit) ? (
                   <div className='border-border/60 mt-3 space-y-2 border-t border-dashed pt-3'>
                     <div className='text-muted-foreground text-xs font-medium'>{t('quota.codex.additionalLimits')}</div>
                     {qd.additional_rate_limits.map((limit, index) => (
@@ -886,6 +894,11 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
                         limit={limit}
                       />
                     ))}
+                  </div>
+                ) : (
+                  <div className='border-border/60 mt-3 flex items-center justify-between gap-4 border-t border-dashed pt-3 text-xs'>
+                    <span className='text-muted-foreground font-medium'>{t('quota.codex.reserve')}</span>
+                    <span className='text-muted-foreground text-right'>{t('quota.codex.reserveNotReported')}</span>
                   </div>
                 )}
 

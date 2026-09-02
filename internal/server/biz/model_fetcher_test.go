@@ -33,6 +33,17 @@ func TestModelFetcher_getDefaultModelsByType_returns_xAI_subscription_models(t *
 	require.Equal(t, subscription.DefaultModels()[0], models[0].ID)
 }
 
+func TestModelFetcher_getDefaultModelsByType_returns_Codex_reserve(t *testing.T) {
+	// Given
+	fetcher := NewModelFetcher(httpclient.NewHttpClient(), nil)
+
+	// When
+	models := fetcher.getDefaultModelsByType(t.Context(), channel.TypeCodex)
+
+	// Then
+	require.Contains(t, models, ModelIdentify{ID: "gpt-reserve"})
+}
+
 // setupProviderConfMockServer creates a mock HTTP server returning provider conf JSON.
 // The callCounter is incremented on each request (if not nil).
 func setupProviderConfMockServer(t *testing.T, responseBody string, callCounter *atomic.Int32) *httptest.Server {

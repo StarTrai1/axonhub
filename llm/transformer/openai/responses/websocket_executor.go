@@ -68,7 +68,7 @@ func NewWebSocketExecutor(inner pipeline.Executor) *WebSocketExecutor {
 		Proxy:            http.ProxyFromEnvironment,
 	}
 	if hc, ok := inner.(*httpclient.HttpClient); ok {
-		dialer.Proxy = hc.ProxyFunc()
+		dialer.Proxy = normalizeWebSocketProxy(hc.ProxyFunc())
 		if native := hc.GetNativeClient(); native != nil {
 			if transport, ok := native.Transport.(*http.Transport); ok && transport.TLSClientConfig != nil {
 				dialer.TLSClientConfig = transport.TLSClientConfig.Clone()
@@ -84,6 +84,23 @@ func NewWebSocketExecutor(inner pipeline.Executor) *WebSocketExecutor {
 		maxLifetime:      defaultWebSocketMaxLifetime,
 		maxPoolSize:      defaultWebSocketMaxPoolSize,
 		maxRetainedInput: defaultWebSocketMaxRetainedIn,
+	}
+}
+
+func normalizeWebSocketProxy(proxy func(*http.Request) (*url.URL, error)) func(*http.Request) (*url.URL, error) {
+	if proxy == nil {
+		return nil
+	}
+
+	return func(req *http.Request) (*url.URL, error) {
+		proxyURL, err := proxy(req)
+		if err != nil || proxyURL == nil || !strings.EqualFold(proxyURL.Scheme, "socks5h") {
+			return proxyURL, err
+		}
+
+		normalized := *proxyURL
+		normalized.Scheme = "socks5"
+		return &normalized, nil
 	}
 }
 
@@ -529,6 +546,7 @@ var webSocketPoolIdentityExcludedHeaders = canonicalHeaderSet(
 	"X-Cloud-Trace-Context",
 	"X-Client-Request-Id",
 	"X-Codex-Turn-Metadata",
+	"X-Codex-Window-Id",
 	"X-Correlation-Id",
 	"X-Datadog-Parent-Id",
 	"X-Datadog-Sampling-Priority",

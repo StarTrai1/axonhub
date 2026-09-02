@@ -405,6 +405,8 @@
   "quota.codex.additionalLimits": "Additional allowances",
   "quota.codex.additionalLimit": "Additional allowance",
   "quota.codex.usage": "Usage",
+  "quota.codex.reserve": "GPT-Reserve weekly allowance",
+  "quota.codex.reserveNotReported": "Not reported for this account",
   "quota.label.today": "Today",
   "quota.label.5h_limiting": "5h limiting",
   "quota.label.7d_limiting": "7d limiting",
