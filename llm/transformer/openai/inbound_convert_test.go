@@ -1,6 +1,7 @@
 package openai
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 
@@ -33,7 +34,7 @@ func TestRequestPromptCacheControlsRoundTrip(t *testing.T) {
 	require.Equal(t, "file_123", *unified.Messages[0].Content.MultipleContent[1].File.FileID)
 	require.NotNil(t, unified.Messages[0].Content.MultipleContent[2].PromptCacheBreakpoint)
 
-	roundTripped := RequestFromLLM(unified, ReasoningFieldAll)
+	roundTripped := RequestFromLLM(context.Background(), unified, ReasoningFieldAll)
 	require.NotNil(t, roundTripped.PromptCacheOptions)
 	require.Equal(t, "explicit", roundTripped.PromptCacheOptions.Mode)
 	require.Equal(t, "30m", roundTripped.PromptCacheOptions.TTL)
