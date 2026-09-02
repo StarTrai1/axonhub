@@ -49,12 +49,20 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, request *llm
 		}
 	}
 
+	statelessRequest := request
+	if request != nil {
+		cloned := *request
+		store := false
+		cloned.Store = &store
+		statelessRequest = &cloned
+	}
+
 	credentials, err := t.tokens.Get(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	httpRequest, err := t.responses.TransformRequest(ctx, request)
+	httpRequest, err := t.responses.TransformRequest(ctx, statelessRequest)
 	if err != nil {
 		return nil, err
 	}

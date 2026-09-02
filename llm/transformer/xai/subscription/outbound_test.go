@@ -2,6 +2,7 @@ package subscription
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -28,6 +29,7 @@ func TestOutboundTransformer_TransformRequest_uses_xAI_CLI_responses_identity(t 
 			{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hello")}},
 		},
 		Stream: lo.ToPtr(true),
+		Store:  lo.ToPtr(true),
 	}
 
 	// When
@@ -41,6 +43,12 @@ func TestOutboundTransformer_TransformRequest_uses_xAI_CLI_responses_identity(t 
 	require.Equal(t, CLIClientVersion, httpRequest.Headers.Get(CLIClientVersionHeader))
 	require.Equal(t, CLIClientIdentifier, httpRequest.Headers.Get(CLIClientIdentifierHeader))
 	require.Equal(t, CLIUserAgent, httpRequest.Headers.Get("User-Agent"))
+	var payload map[string]any
+	require.NoError(t, json.Unmarshal(httpRequest.Body, &payload))
+	store, ok := payload["store"].(bool)
+	require.True(t, ok)
+	require.False(t, store)
+	require.True(t, *request.Store, "transform must not mutate the shared inbound request")
 }
 
 func TestOutboundTransformer_APIFormat_returns_responses(t *testing.T) {

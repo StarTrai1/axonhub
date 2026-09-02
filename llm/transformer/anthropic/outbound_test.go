@@ -1800,6 +1800,43 @@ func TestOutboundTransformer_OllamaBearerAuth(t *testing.T) {
 	require.Equal(t, "2023-06-01", httpReq.Headers.Get("Anthropic-Version"))
 }
 
+func TestConvertToolsAnthropicNormalizesFunctionInputSchema(t *testing.T) {
+	tests := []struct {
+		name       string
+		parameters json.RawMessage
+		want       string
+	}{
+		{name: "omitted parameters", want: `{"type":"object","properties":{}}`},
+		{name: "null parameters", parameters: json.RawMessage(`null`), want: `{"type":"object","properties":{}}`},
+		{name: "empty object", parameters: json.RawMessage(`{}`), want: `{"type":"object","properties":{}}`},
+		{
+			name:       "preserves constraints while adding object defaults",
+			parameters: json.RawMessage(`{"additionalProperties":false}`),
+			want:       `{"type":"object","properties":{},"additionalProperties":false}`,
+		},
+		{
+			name:       "preserves complete schema",
+			parameters: json.RawMessage(`{"type":"object","properties":{"city":{"type":"string"}},"required":["city"]}`),
+			want:       `{"type":"object","properties":{"city":{"type":"string"}},"required":["city"]}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tools := convertToolsAnthropic([]llm.Tool{{
+				Type: llm.ToolTypeFunction,
+				Function: llm.Function{
+					Name:       "lookup",
+					Parameters: tt.parameters,
+				},
+			}}, nil)
+
+			require.Len(t, tools, 1)
+			require.JSONEq(t, tt.want, string(tools[0].InputSchema))
+		})
+	}
+}
+
 // TestOutboundTransformer_OllamaNoAuthWhenKeyAbsent verifies that when no API key
 // is configured (the common local Ollama case), no auth header is sent at all
 // rather than an empty Bearer token.

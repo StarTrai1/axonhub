@@ -1,6 +1,7 @@
 package anthropic
 
 import (
+	"bytes"
 	"encoding/json"
 	"strings"
 
@@ -258,7 +259,7 @@ func convertToolsAnthropic(tools []llm.Tool, config *Config) []Tool {
 			anthropicTools = append(anthropicTools, Tool{
 				Name:           tool.Function.Name,
 				Description:    tool.Function.Description,
-				InputSchema:    tool.Function.Parameters,
+				InputSchema:    normalizeAnthropicToolInputSchema(tool.Function.Parameters),
 				CacheControl:   convertToAnthropicCacheControl(tool.CacheControl),
 				Strict:         tool.Function.Strict,
 				AllowedCallers: append([]string(nil), tool.AllowedCallers...),
@@ -302,6 +303,41 @@ func convertToolsAnthropic(tools []llm.Tool, config *Config) []Tool {
 	}
 
 	return anthropicTools
+}
+
+func normalizeAnthropicToolInputSchema(raw json.RawMessage) json.RawMessage {
+	fallback := json.RawMessage(`{"type":"object","properties":{}}`)
+	if len(bytes.TrimSpace(raw)) == 0 {
+		return fallback
+	}
+
+	var schema map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &schema); err != nil || schema == nil {
+		return fallback
+	}
+
+	typeName := ""
+	typeRaw, hasType := schema["type"]
+	if !hasType || bytes.Equal(bytes.TrimSpace(typeRaw), []byte("null")) {
+		schema["type"] = json.RawMessage(`"object"`)
+		typeName = "object"
+	} else {
+		_ = json.Unmarshal(typeRaw, &typeName)
+	}
+	if typeName == "object" {
+		var properties map[string]json.RawMessage
+		if rawProperties, ok := schema["properties"]; !ok ||
+			json.Unmarshal(rawProperties, &properties) != nil ||
+			properties == nil {
+			schema["properties"] = json.RawMessage(`{}`)
+		}
+	}
+
+	encoded, err := json.Marshal(schema)
+	if err != nil {
+		return fallback
+	}
+	return encoded
 }
 
 // convertToolChoiceToAnthropic converts llm.ToolChoice to Anthropic ToolChoice.
