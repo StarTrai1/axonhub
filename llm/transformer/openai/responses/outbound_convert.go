@@ -435,7 +435,8 @@ func convertWebSearchToTool(src llm.Tool) Tool {
 // convertCustomToTool converts an llm.Tool custom tool to Responses API Tool format.
 func convertCustomToTool(src llm.Tool) Tool {
 	tool := Tool{
-		Type: "custom",
+		Type:  "custom",
+		Async: src.Async,
 	}
 	if src.ResponseCustomTool != nil {
 		tool.Name = src.ResponseCustomTool.Name
@@ -460,6 +461,7 @@ func convertFunctionToTool(src llm.Tool) Tool {
 		Name:        src.Function.Name,
 		Description: src.Function.Description,
 		Strict:      src.Function.Strict,
+		Async:       src.Async,
 	}
 
 	// Convert parameters from json.RawMessage to map[string]any

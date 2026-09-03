@@ -13,6 +13,10 @@ type Tool struct {
 	// Any of "function", "image_generation", "web_search", or "google" (for Google-specific tools).
 	Type string `json:"type"`
 
+	// Async allows GPT-6 Astra to continue reasoning while a function or custom
+	// tool is still running. It is emitted as a top-level Responses tool field.
+	Async *bool `json:"async,omitempty"`
+
 	// Function is the function definition, will be used when Type is "function".
 	Function Function `json:"function"`
 

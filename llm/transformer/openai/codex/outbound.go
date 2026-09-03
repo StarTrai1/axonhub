@@ -146,8 +146,34 @@ func (t *OutboundTransformer) AllowPassThroughBody(_ context.Context, llmReq *ll
 			return false
 		}
 	}
+	if requiresGPT6AstraRequestNormalization(llmReq.Model, llmReq.RawRequest.Body) {
+		return false
+	}
 
 	return true
+}
+
+func requiresGPT6AstraRequestNormalization(model string, body []byte) bool {
+	if !strings.EqualFold(strings.TrimSpace(model), "gpt-6-astra") {
+		return false
+	}
+	for _, field := range []string{"temperature", "top_p", "top_logprobs"} {
+		if gjson.GetBytes(body, field).Exists() {
+			return true
+		}
+	}
+	effort := gjson.GetBytes(body, "reasoning.effort").String()
+	if effort == llm.ReasoningEffortNone || effort == llm.ReasoningEffortMinimal {
+		return true
+	}
+
+	for _, field := range gjson.GetBytes(body, "include").Array() {
+		if field.String() == "message.output_text.logprobs" {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (t *OutboundTransformer) TransformError(ctx context.Context, rawErr *httpclient.Error) *llm.ResponseError {

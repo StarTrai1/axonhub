@@ -44,6 +44,8 @@ const (
 	defaultWebSocketMaxLifetime   = 50 * time.Minute
 	defaultWebSocketMaxPoolSize   = 128
 	defaultWebSocketMaxRetainedIn = 1 << 20
+	defaultWebSocketPingInterval  = 2 * time.Minute
+	webSocketPingWriteTimeout     = 10 * time.Second
 	minWebSocketCleanupDelay      = 10 * time.Millisecond
 )
 
@@ -219,6 +221,7 @@ func (e *WebSocketExecutor) DoStream(ctx context.Context, request *httpclient.Re
 	}
 
 	stream := &webSocketStream{ctx: ctx, lease: lease, done: make(chan struct{})}
+	go runWebSocketPings(ctx, lease, stream.done)
 	go func() {
 		select {
 		case <-ctx.Done():
@@ -228,6 +231,33 @@ func (e *WebSocketExecutor) DoStream(ctx context.Context, request *httpclient.Re
 	}()
 
 	return stream, nil
+}
+
+// runWebSocketPings keeps an active upstream Responses connection alive while
+// the model is reasoning without emitting an event. WriteControl is safe to
+// call alongside the single reader and the response.create writer, and closing
+// the connection on failure lets the blocked reader surface the transport error.
+func runWebSocketPings(ctx context.Context, lease *webSocketLease, done <-chan struct{}) {
+	if lease == nil || lease.conn == nil || defaultWebSocketPingInterval <= 0 {
+		return
+	}
+
+	ticker := time.NewTicker(defaultWebSocketPingInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-done:
+			return
+		case <-ticker.C:
+			deadline := time.Now().Add(webSocketPingWriteTimeout)
+			if err := lease.conn.WriteControl(websocket.PingMessage, nil, deadline); err != nil {
+				_ = lease.conn.Close()
+				return
+			}
+		}
+	}
 }
 
 func (e *WebSocketExecutor) Inner() pipeline.Executor {

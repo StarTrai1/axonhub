@@ -45,6 +45,15 @@ func TestBuildChannelTestRequestResponsesCompatibility(t *testing.T) {
 			wantReasoningEffort: "low",
 		},
 		{
+			name:                "gpt-6 astra uses responses lite",
+			model:               "gpt-6-astra",
+			requestedStream:     false,
+			wantStream:          true,
+			wantCodexHeaders:    true,
+			wantResponsesLite:   true,
+			wantReasoningEffort: "low",
+		},
+		{
 			name:            "generic model keeps channel stream policy",
 			model:           "generic-model",
 			requestedStream: false,
@@ -110,6 +119,8 @@ func TestBuildChannelTestRequestResponsesCompatibility(t *testing.T) {
 func TestNormalizeChannelTestModel(t *testing.T) {
 	require.True(t, isCodexStyleTestModel("provider/gpt-5.6-luna"))
 	require.True(t, isResponsesLiteTestModel("GPT-5.6-TERRA"))
+	require.True(t, isCodexStyleTestModel("provider/gpt-6-astra"))
+	require.True(t, isResponsesLiteTestModel("GPT-6-ASTRA"))
 	require.False(t, isCodexStyleTestModel("gpt-5.5-pro"))
 	require.False(t, isResponsesLiteTestModel("gpt-5.5"))
 }

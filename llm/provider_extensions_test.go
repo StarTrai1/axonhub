@@ -7,11 +7,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCloneProviderExtensions_ClonesClientMetadata(t *testing.T) {
+func TestCloneProviderExtensions_ClonesRawFields(t *testing.T) {
 	source := &ProviderExtensions{
 		OpenAIResponses: &OpenAIResponsesProviderExtensions{
 			Request: &OpenAIResponsesRequestExtensions{
-				ClientMetadata: json.RawMessage(`{"thread_id":"thread-1"}`),
+				RawFields: map[string]json.RawMessage{
+					"client_metadata": json.RawMessage(`{"thread_id":"thread-1"}`),
+				},
 			},
 		},
 	}
@@ -20,8 +22,8 @@ func TestCloneProviderExtensions_ClonesClientMetadata(t *testing.T) {
 	require.NotNil(t, cloned)
 	require.NotNil(t, cloned.OpenAIResponses)
 	require.NotNil(t, cloned.OpenAIResponses.Request)
-	require.JSONEq(t, `{"thread_id":"thread-1"}`, string(cloned.OpenAIResponses.Request.ClientMetadata))
+	require.JSONEq(t, `{"thread_id":"thread-1"}`, string(cloned.OpenAIResponses.Request.RawFields["client_metadata"]))
 
-	source.OpenAIResponses.Request.ClientMetadata[0] = '['
-	require.JSONEq(t, `{"thread_id":"thread-1"}`, string(cloned.OpenAIResponses.Request.ClientMetadata))
+	source.OpenAIResponses.Request.RawFields["client_metadata"][0] = '['
+	require.JSONEq(t, `{"thread_id":"thread-1"}`, string(cloned.OpenAIResponses.Request.RawFields["client_metadata"]))
 }

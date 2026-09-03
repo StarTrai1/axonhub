@@ -33,7 +33,7 @@ func TestModelFetcher_getDefaultModelsByType_returns_xAI_subscription_models(t *
 	require.Equal(t, subscription.DefaultModels()[0], models[0].ID)
 }
 
-func TestModelFetcher_getDefaultModelsByType_returns_Codex_reserve(t *testing.T) {
+func TestModelFetcher_getDefaultModelsByType_returns_current_Codex_models(t *testing.T) {
 	// Given
 	fetcher := NewModelFetcher(httpclient.NewHttpClient(), nil)
 
@@ -42,6 +42,7 @@ func TestModelFetcher_getDefaultModelsByType_returns_Codex_reserve(t *testing.T)
 
 	// Then
 	require.Contains(t, models, ModelIdentify{ID: "gpt-reserve"})
+	require.Contains(t, models, ModelIdentify{ID: "gpt-6-astra"})
 }
 
 // setupProviderConfMockServer creates a mock HTTP server returning provider conf JSON.

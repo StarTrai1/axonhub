@@ -316,6 +316,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	if payload.MaxOutputTokens == nil {
 		payload.MaxOutputTokens = llmReq.MaxTokens
 	}
+	applyGPT6AstraCompatibility(&payload)
 
 	body, err := marshalRequestPayload(payload, llmReq)
 	if err != nil {
@@ -351,6 +352,30 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	}
 
 	return httpReq, nil
+}
+
+func applyGPT6AstraCompatibility(payload *Request) {
+	if payload == nil || !strings.EqualFold(strings.TrimSpace(payload.Model), "gpt-6-astra") {
+		return
+	}
+
+	payload.Temperature = nil
+	payload.TopP = nil
+	payload.TopLogprobs = nil
+	if payload.Reasoning != nil {
+		switch payload.Reasoning.Effort {
+		case llm.ReasoningEffortNone, llm.ReasoningEffortMinimal:
+			payload.Reasoning.Effort = llm.ReasoningEffortLow
+		}
+	}
+
+	filtered := make([]string, 0, len(payload.Include))
+	for _, field := range payload.Include {
+		if field != "message.output_text.logprobs" {
+			filtered = append(filtered, field)
+		}
+	}
+	payload.Include = filtered
 }
 
 // buildFullRequestURL constructs the appropriate URL based on the platform.

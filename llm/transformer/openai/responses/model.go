@@ -30,6 +30,8 @@ type Tool struct {
 	Type        string `json:"type,omitempty"`
 	Name        string `json:"name,omitempty"`
 	Description string `json:"description,omitempty"`
+	// Async lets GPT-6 Astra continue while a function or custom tool runs.
+	Async *bool `json:"async,omitempty"`
 
 	// This field is from variant [FunctionTool].
 	Parameters map[string]any `json:"parameters,omitempty"`

@@ -339,7 +339,7 @@ func TestOutboundTransformer_TransformRequest_ReplaysClientMetadata(t *testing.T
 		"session_id":"session-1",
 		"thread_id":"thread-1",
 		"nested":{"source":"codex"}
-	}`, string(llmReq.ProviderExtensions.OpenAIResponses.Request.ClientMetadata))
+	}`, string(llmReq.ProviderExtensions.OpenAIResponses.Request.RawFields["client_metadata"]))
 
 	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
 	require.NoError(t, err)
@@ -354,6 +354,69 @@ func TestOutboundTransformer_TransformRequest_ReplaysClientMetadata(t *testing.T
 		"thread_id":"thread-1",
 		"nested":{"source":"codex"}
 	}`, string(payload["client_metadata"]))
+}
+
+func TestOutboundTransformer_TransformRequest_PreservesGPT6AsyncToolsAndConfigurationUpdate(t *testing.T) {
+	inbound := NewInboundTransformer()
+	inboundReq := &httpclient.Request{Body: []byte(`{
+		"model":"gpt-6-astra",
+		"input":[
+			{"type":"configuration_update","reasoning":{"effort":"high"}},
+			{"type":"message","role":"user","content":[{"type":"input_text","text":"Continue."}]}
+		],
+		"tools":[
+			{"type":"function","name":"lookup","async":true,"parameters":{"type":"object","properties":{}}},
+			{"type":"custom","name":"worker","async":true}
+		]
+	}`)}
+
+	llmReq, err := inbound.TransformRequest(context.Background(), inboundReq)
+	require.NoError(t, err)
+	require.Len(t, llmReq.Tools, 2)
+	require.True(t, lo.FromPtr(llmReq.Tools[0].Async))
+	require.True(t, lo.FromPtr(llmReq.Tools[1].Async))
+
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+	httpReq, err := outbound.TransformRequest(context.Background(), llmReq)
+	require.NoError(t, err)
+
+	var payload map[string]any
+	require.NoError(t, json.Unmarshal(httpReq.Body, &payload))
+	input := payload["input"].([]any)
+	require.Equal(t, "configuration_update", input[0].(map[string]any)["type"])
+	require.Equal(t, "high", input[0].(map[string]any)["reasoning"].(map[string]any)["effort"])
+	tools := payload["tools"].([]any)
+	require.Equal(t, true, tools[0].(map[string]any)["async"])
+	require.Equal(t, true, tools[1].(map[string]any)["async"])
+}
+
+func TestOutboundTransformer_TransformRequest_NormalizesGPT6UnsupportedParameters(t *testing.T) {
+	transformer, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	httpReq, err := transformer.TransformRequest(context.Background(), &llm.Request{
+		Model:           "gpt-6-astra",
+		Temperature:     lo.ToPtr(0.7),
+		TopP:            lo.ToPtr(0.9),
+		TopLogprobs:     lo.ToPtr(int64(5)),
+		ReasoningEffort: llm.ReasoningEffortMinimal,
+		Messages: []llm.Message{{
+			Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")},
+		}},
+		TransformerMetadata: map[string]any{
+			"include": []string{"message.output_text.logprobs", "reasoning.encrypted_content"},
+		},
+	})
+	require.NoError(t, err)
+
+	var payload Request
+	require.NoError(t, json.Unmarshal(httpReq.Body, &payload))
+	require.Nil(t, payload.Temperature)
+	require.Nil(t, payload.TopP)
+	require.Nil(t, payload.TopLogprobs)
+	require.Equal(t, llm.ReasoningEffortLow, payload.Reasoning.Effort)
+	require.Equal(t, []string{"reasoning.encrypted_content"}, payload.Include)
 }
 
 func TestOutboundTransformer_TransformRequest_PreservesAssistantMessagePhase(t *testing.T) {
@@ -587,7 +650,9 @@ func TestProviderExtensions_NotSerializedWithLLMRequest(t *testing.T) {
 		ProviderExtensions: &llm.ProviderExtensions{
 			OpenAIResponses: &llm.OpenAIResponsesProviderExtensions{
 				Request: &llm.OpenAIResponsesRequestExtensions{
-					ClientMetadata: json.RawMessage(`{"secret":"client metadata"}`),
+					RawFields: map[string]json.RawMessage{
+						"client_metadata": json.RawMessage(`{"secret":"client metadata"}`),
+					},
 					RawTools: []llm.OpenAIResponsesRawFragment{{
 						Type: "tool_search",
 						Raw:  json.RawMessage(`{"secret":"raw prompt"}`),

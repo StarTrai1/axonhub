@@ -192,6 +192,32 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 	}
 }
 
+func TestOutboundTransformer_TransformRequest_NormalizesGPT6UnsupportedParameters(t *testing.T) {
+	transformer, err := NewOutboundTransformer("https://api.openai.com/v1", "test-api-key")
+	require.NoError(t, err)
+
+	httpReq, err := transformer.TransformRequest(context.Background(), &llm.Request{
+		Model:           "gpt-6-astra",
+		Temperature:     lo.ToPtr(0.7),
+		TopP:            lo.ToPtr(0.9),
+		TopLogprobs:     lo.ToPtr(int64(5)),
+		Logprobs:        lo.ToPtr(true),
+		ReasoningEffort: llm.ReasoningEffortNone,
+		Messages: []llm.Message{{
+			Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")},
+		}},
+	})
+	require.NoError(t, err)
+
+	var payload Request
+	require.NoError(t, json.Unmarshal(httpReq.Body, &payload))
+	require.Nil(t, payload.Temperature)
+	require.Nil(t, payload.TopP)
+	require.Nil(t, payload.TopLogprobs)
+	require.Nil(t, payload.Logprobs)
+	require.Equal(t, llm.ReasoningEffortLow, payload.ReasoningEffort)
+}
+
 func TestOutboundTransformer_TransformRequest_PromptCacheKeyFallback(t *testing.T) {
 	tr, err := NewOutboundTransformer("https://api.openai.com/v1", "test-api-key")
 	require.NoError(t, err)

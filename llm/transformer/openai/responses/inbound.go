@@ -862,7 +862,8 @@ func convertToolsToLLM(tools []Tool) ([]llm.Tool, error) {
 			}
 
 			result = append(result, llm.Tool{
-				Type: "function",
+				Type:  "function",
+				Async: tool.Async,
 				Function: llm.Function{
 					Name:        tool.Name,
 					Description: tool.Description,
@@ -924,6 +925,7 @@ func convertToolsToLLM(tools []Tool) ([]llm.Tool, error) {
 
 			result = append(result, llm.Tool{
 				Type:               llm.ToolTypeResponsesCustomTool,
+				Async:              tool.Async,
 				ResponseCustomTool: customTool,
 			})
 
@@ -939,7 +941,8 @@ func convertToolsToLLM(tools []Tool) ([]llm.Tool, error) {
 				}
 
 				result = append(result, llm.Tool{
-					Type: "function",
+					Type:  "function",
+					Async: subTool.Async,
 					Function: llm.Function{
 						Name:        namespaceFunctionName(tool.Name, subTool.Name),
 						Description: subTool.Description,

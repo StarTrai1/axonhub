@@ -12,6 +12,7 @@ const (
 	ReasoningEffortHigh    = "high"
 	ReasoningEffortXHigh   = "xhigh"
 	ReasoningEffortMax     = "max"
+	ReasoningEffortUltra   = "ultra"
 )
 
 // ApplyReasoningEffortMapping replaces an effort value according to a per-channel

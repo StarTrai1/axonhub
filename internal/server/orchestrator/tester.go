@@ -906,7 +906,7 @@ func buildRemoteCompactionChannelTestRequest(model string, systemPrompt string, 
 
 func isCodexStyleTestModel(model string) bool {
 	switch normalizeChannelTestModel(model) {
-	case "gpt-5.5", "gpt-5.6", "gpt-5.6-sol", "gpt-5.6-luna", "gpt-5.6-terra":
+	case "gpt-5.5", "gpt-5.6", "gpt-5.6-sol", "gpt-5.6-luna", "gpt-5.6-terra", "gpt-6-astra":
 		return true
 	default:
 		return false
@@ -915,7 +915,7 @@ func isCodexStyleTestModel(model string) bool {
 
 func isResponsesLiteTestModel(model string) bool {
 	switch normalizeChannelTestModel(model) {
-	case "gpt-5.6", "gpt-5.6-sol", "gpt-5.6-luna", "gpt-5.6-terra":
+	case "gpt-5.6", "gpt-5.6-sol", "gpt-5.6-luna", "gpt-5.6-terra", "gpt-6-astra":
 		return true
 	default:
 		return false

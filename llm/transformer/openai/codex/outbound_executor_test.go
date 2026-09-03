@@ -113,6 +113,24 @@ func TestCodexOutbound_AllowsPassThroughBodyWithoutTokenLimitFields(t *testing.T
 	require.True(t, outbound.AllowPassThroughBody(context.Background(), llmReq, &httpclient.Request{}))
 }
 
+func TestCodexOutbound_RejectsGPT6PassThroughBodyThatNeedsNormalization(t *testing.T) {
+	outbound := &OutboundTransformer{}
+	for _, body := range []string{
+		`{"model":"gpt-6-astra","input":"hi","temperature":0.7}`,
+		`{"model":"gpt-6-astra","input":"hi","reasoning":{"effort":"none"}}`,
+		`{"model":"gpt-6-astra","input":"hi","include":["message.output_text.logprobs"]}`,
+	} {
+		llmReq := &llm.Request{
+			Model:     "gpt-6-astra",
+			APIFormat: llm.APIFormatOpenAIResponse,
+			RawRequest: &httpclient.Request{
+				Body: []byte(body),
+			},
+		}
+		require.False(t, outbound.AllowPassThroughBody(context.Background(), llmReq, &httpclient.Request{}))
+	}
+}
+
 func TestCodexOutbound_StreamAllowsDownstreamIdentityOverrides(t *testing.T) {
 	ctx := context.Background()
 	accessToken := testAccessTokenWithAccountID(t)

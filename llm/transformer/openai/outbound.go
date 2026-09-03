@@ -196,6 +196,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	case PlatformOpenAI:
 		stripUnsupportedToolCallExtraContent(oaiReq)
 	}
+	applyGPT6AstraCompatibility(oaiReq)
 
 	body, err := json.Marshal(oaiReq)
 	if err != nil {
@@ -230,6 +231,20 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		APIFormat: string(llm.APIFormatOpenAIChatCompletion),
 		Metadata:  nil,
 	}, nil
+}
+
+func applyGPT6AstraCompatibility(request *Request) {
+	if request == nil || !strings.EqualFold(strings.TrimSpace(request.Model), "gpt-6-astra") {
+		return
+	}
+
+	request.Temperature = nil
+	request.TopP = nil
+	request.TopLogprobs = nil
+	request.Logprobs = nil
+	if request.ReasoningEffort == llm.ReasoningEffortNone || request.ReasoningEffort == llm.ReasoningEffortMinimal {
+		request.ReasoningEffort = llm.ReasoningEffortLow
+	}
 }
 
 // TransformResponse transforms Response to ChatCompletionResponse.
