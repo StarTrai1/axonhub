@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/require"
@@ -17,34 +18,14 @@ import (
 
 func TestCodexQuotaChecker_UsesOfficialUsageHeaders(t *testing.T) {
 	accessToken := buildCodexQuotaTestJWT(t, "acct_test")
-	requestCount := 0
-
 	httpClient := newCodexQuotaTestHTTPClient(roundTripFunc(func(req *http.Request) (*http.Response, error) {
-		requestCount++
+		require.Equal(t, "/backend-api/wham/usage", req.URL.Path)
 		require.Equal(t, "axonhub/1.0", req.Header.Get("User-Agent"))
 		require.Empty(t, req.Header.Get("Originator"))
 		require.Equal(t, "acct_test", req.Header.Get("Chatgpt-Account-Id"))
 		require.Equal(t, "Bearer "+accessToken, req.Header.Get("Authorization"))
 
-		switch req.URL.Path {
-		case "/backend-api/wham/usage":
-			return codexQuotaTestResponse(`{
-				"plan_type":"plus",
-				"rate_limit":{"allowed":true},
-				"rate_limit_reset_credits":{"available_count":2}
-			}`), nil
-		case "/backend-api/wham/rate-limit-reset-credits":
-			return codexQuotaTestResponse(`{
-				"credits":[
-					{"id":"later","status":"available","reset_type":"codex_rate_limits","expires_at":"2099-08-23T10:00:00Z"},
-					{"id":"next","status":"available","reset_type":"codex_rate_limits","expires_at":"2099-08-22T10:00:00Z"}
-				],
-				"available_count":2
-			}`), nil
-		default:
-			t.Fatalf("unexpected request path: %s", req.URL.Path)
-			return nil, nil
-		}
+		return codexQuotaTestResponse(`{"plan_type":"plus","rate_limit":{"allowed":true}}`), nil
 	}))
 
 	checker := NewCodexQuotaChecker(httpClient)
@@ -53,54 +34,6 @@ func TestCodexQuotaChecker_UsesOfficialUsageHeaders(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "available", quota.Status)
 	require.True(t, quota.Ready)
-	require.Equal(t, 2, requestCount)
-	resetCredits, ok := quota.RawData["rate_limit_reset_credits"].(map[string]any)
-	require.True(t, ok)
-	require.Equal(t, 2, resetCredits["available_count"])
-	require.Equal(t, "2099-08-22T10:00:00Z", resetCredits["next_expires_at"])
-
-	_, err = checker.CheckQuota(context.Background(), codexQuotaTestChannel(accessToken, ""))
-	require.NoError(t, err)
-	require.Equal(t, 3, requestCount, "reset-credit details should be served from the short-lived cache")
-}
-
-func TestCodexQuotaChecker_CustomRelaySkipsResetCreditEndpoint(t *testing.T) {
-	accessToken := buildCodexQuotaTestJWT(t, "acct_relay")
-	requestCount := 0
-	httpClient := newCodexQuotaTestHTTPClient(roundTripFunc(func(req *http.Request) (*http.Response, error) {
-		requestCount++
-		require.Equal(t, "/backend-api/wham/usage", req.URL.Path)
-		return codexQuotaTestResponse(`{"plan_type":"plus","rate_limit":{"allowed":true}}`), nil
-	}))
-
-	checker := NewCodexQuotaChecker(httpClient)
-	quota, err := checker.CheckQuota(context.Background(), codexQuotaTestChannel(accessToken, "https://relay.example/v1"))
-
-	require.NoError(t, err)
-	require.Equal(t, 1, requestCount)
-	require.NotContains(t, quota.RawData, "rate_limit_reset_credits_error")
-}
-
-func TestCodexQuotaChecker_ZeroEmbeddedResetCreditCountSkipsDetailEndpoint(t *testing.T) {
-	accessToken := buildCodexQuotaTestJWT(t, "acct_zero")
-	requestCount := 0
-	httpClient := newCodexQuotaTestHTTPClient(roundTripFunc(func(req *http.Request) (*http.Response, error) {
-		requestCount++
-		require.Equal(t, "/backend-api/wham/usage", req.URL.Path)
-		return codexQuotaTestResponse(`{
-			"rate_limit":{"allowed":true},
-			"rate_limit_reset_credits":{"available_count":0}
-		}`), nil
-	}))
-
-	checker := NewCodexQuotaChecker(httpClient)
-	quota, err := checker.CheckQuota(context.Background(), codexQuotaTestChannel(accessToken, ""))
-
-	require.NoError(t, err)
-	require.Equal(t, 1, requestCount)
-	resetCredits, ok := quota.RawData["rate_limit_reset_credits"].(map[string]any)
-	require.True(t, ok)
-	require.Equal(t, 0, resetCredits["available_count"])
 }
 
 func TestCodexQuotaChecker_ParseResponsePreservesAdditionalRateLimits(t *testing.T) {
@@ -180,7 +113,7 @@ func buildCodexQuotaTestJWT(t *testing.T, accountID string) string {
 	return signed
 }
 
-func TestCodexQuotaChecker_CanResetNow_TrueWhenAvailableCredit(t *testing.T) {
+func TestCodexQuotaChecker_ListResets_ReturnsAvailableResets(t *testing.T) {
 	accessToken := buildCodexQuotaTestJWT(t, "acct_reset")
 
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
@@ -195,7 +128,7 @@ func TestCodexQuotaChecker_CanResetNow_TrueWhenAvailableCredit(t *testing.T) {
 				Header:     make(http.Header),
 				Body: io.NopCloser(strings.NewReader(`{
 					"credits": [
-						{"id": "cred_1", "status": "available", "reset_type": "codex_rate_limits"},
+						{"id": "cred_1", "status": "available", "reset_type": "codex_rate_limits", "granted_at": "2026-09-01T00:00:00Z", "expires_at": "2026-09-08T00:00:00Z"},
 						{"id": "cred_2", "status": "redeemed"}
 					],
 					"available_count": 1
@@ -205,17 +138,23 @@ func TestCodexQuotaChecker_CanResetNow_TrueWhenAvailableCredit(t *testing.T) {
 	})
 
 	checker := NewCodexQuotaChecker(httpClient)
-	canReset, err := checker.CanResetNow(context.Background(), &ent.Channel{
+	resets, err := checker.ListResets(context.Background(), &ent.Channel{
 		Credentials: objects.ChannelCredentials{
 			OAuth: &objects.OAuthCredentials{AccessToken: accessToken},
 		},
 	})
 
 	require.NoError(t, err)
-	require.True(t, canReset)
+	require.True(t, resets.Supported)
+	require.Len(t, resets.Resets, 1)
+	require.Equal(t, "cred_1", resets.Resets[0].ID)
+	require.Equal(t, "available", resets.Resets[0].Status)
+	require.Equal(t, "codex_rate_limits", resets.Resets[0].Type)
+	require.Equal(t, "2026-09-01T00:00:00Z", resets.Resets[0].GrantedAt.Format(time.RFC3339))
+	require.Equal(t, "2026-09-08T00:00:00Z", resets.Resets[0].ExpiresAt.Format(time.RFC3339))
 }
 
-func TestCodexQuotaChecker_CanResetNow_FalseWhenNoAvailableCredit(t *testing.T) {
+func TestCodexQuotaChecker_ListResets_ReturnsEmptyAvailability(t *testing.T) {
 	accessToken := buildCodexQuotaTestJWT(t, "acct_reset")
 
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
@@ -234,17 +173,18 @@ func TestCodexQuotaChecker_CanResetNow_FalseWhenNoAvailableCredit(t *testing.T) 
 	})
 
 	checker := NewCodexQuotaChecker(httpClient)
-	canReset, err := checker.CanResetNow(context.Background(), &ent.Channel{
+	resets, err := checker.ListResets(context.Background(), &ent.Channel{
 		Credentials: objects.ChannelCredentials{
 			OAuth: &objects.OAuthCredentials{AccessToken: accessToken},
 		},
 	})
 
 	require.NoError(t, err)
-	require.False(t, canReset)
+	require.True(t, resets.Supported)
+	require.Empty(t, resets.Resets)
 }
 
-func TestCodexQuotaChecker_ResetNow_ConsumesFirstAvailableCredit(t *testing.T) {
+func TestCodexQuotaChecker_Reset_ConsumesFirstAvailableReset(t *testing.T) {
 	accessToken := buildCodexQuotaTestJWT(t, "acct_reset")
 	requestCount := 0
 
@@ -293,21 +233,17 @@ func TestCodexQuotaChecker_ResetNow_ConsumesFirstAvailableCredit(t *testing.T) {
 	})
 
 	checker := NewCodexQuotaChecker(httpClient)
-	resp, err := checker.ResetNow(context.Background(), &ent.Channel{
+	err := checker.Reset(context.Background(), &ent.Channel{
 		Credentials: objects.ChannelCredentials{
 			OAuth: &objects.OAuthCredentials{AccessToken: accessToken},
 		},
 	})
 
 	require.NoError(t, err)
-	require.Equal(t, "reset", resp.Code)
-	require.Equal(t, 1, resp.WindowsReset)
-	require.Equal(t, "cred_2", resp.Credit.ID)
-	require.Equal(t, "redeemed", resp.Credit.Status)
 	require.Equal(t, 2, requestCount)
 }
 
-func TestCodexQuotaChecker_ResetNow_ReturnsErrorWhenNoAvailableCredit(t *testing.T) {
+func TestCodexQuotaChecker_Reset_ReturnsErrorWhenNoAvailableReset(t *testing.T) {
 	accessToken := buildCodexQuotaTestJWT(t, "acct_reset")
 
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
@@ -324,7 +260,7 @@ func TestCodexQuotaChecker_ResetNow_ReturnsErrorWhenNoAvailableCredit(t *testing
 	})
 
 	checker := NewCodexQuotaChecker(httpClient)
-	resp, err := checker.ResetNow(context.Background(), &ent.Channel{
+	err := checker.Reset(context.Background(), &ent.Channel{
 		Credentials: objects.ChannelCredentials{
 			OAuth: &objects.OAuthCredentials{AccessToken: accessToken},
 		},
@@ -332,5 +268,4 @@ func TestCodexQuotaChecker_ResetNow_ReturnsErrorWhenNoAvailableCredit(t *testing
 
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "no available codex reset credit")
-	require.Nil(t, resp)
 }
