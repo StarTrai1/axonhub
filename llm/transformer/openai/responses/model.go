@@ -559,12 +559,6 @@ type Item struct {
 
 	// The detail of the image. high, low, or auto, for input_image type.
 	Detail *string `json:"detail,omitempty"`
-	// File fields for input_file content.
-	FileData *string `json:"file_data,omitempty"`
-	FileID   *string `json:"file_id,omitempty"`
-	FileURL  *string `json:"file_url,omitempty"`
-	Filename *string `json:"filename,omitempty"`
-
 	// File input fields, for input_file type.
 	FileID   *string `json:"file_id,omitempty"`
 	FileData *string `json:"file_data,omitempty"`

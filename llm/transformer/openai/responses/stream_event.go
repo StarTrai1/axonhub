@@ -112,7 +112,6 @@ type StreamEvent struct {
 	Code      string  `json:"code,omitempty"`
 	Message   string  `json:"message,omitempty"`
 	Param     *string `json:"param,omitempty"`
-	Error     *Error  `json:"error,omitempty"`
 	RequestID string  `json:"request_id,omitempty"`
 }
 
