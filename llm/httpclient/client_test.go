@@ -584,6 +584,15 @@ func TestNewUpstreamDialer_ConfiguresFastConnectFailure(t *testing.T) {
 	require.Equal(t, 30*time.Second, dialer.KeepAlive)
 }
 
+func TestNewHttpClientWithProxy_RejectsHTTPSDowngrade(t *testing.T) {
+	client := NewHttpClientWithProxy(nil, WithInsecureSkipVerify(true)).WithRejectHTTPSDowngrade().WithProxy(nil)
+	previous := httptest.NewRequest(http.MethodGet, "https://example.com", nil)
+	next := httptest.NewRequest(http.MethodGet, "http://example.com", nil)
+	err := client.GetNativeClient().CheckRedirect(next, []*http.Request{previous})
+
+	require.ErrorContains(t, err, "refusing HTTPS to HTTP redirect")
+}
+
 type proxyConnectionIDContextKey struct{}
 
 func TestNewHttpClientWithProxy_ConnectionReuse(t *testing.T) {

@@ -161,6 +161,45 @@ func TopLevelWebSocketError(chunks []*httpclient.StreamEvent) error {
 		if err := json.Unmarshal(chunk.Data, &event); err != nil {
 			return fmt.Errorf("websocket error event")
 		}
+		if event.Status >= http.StatusBadRequest && event.Status <= 599 {
+			detail := map[string]any{}
+			if event.Message != "" {
+				detail["message"] = event.Message
+			}
+			if event.Code != "" {
+				detail["type"] = event.Code
+				detail["code"] = event.Code
+			}
+			if event.Param != nil && *event.Param != "" {
+				detail["param"] = *event.Param
+			}
+			if event.Error != nil {
+				if event.Error.Type != "" {
+					detail["type"] = event.Error.Type
+				}
+				if event.Error.Code != "" {
+					detail["code"] = event.Error.Code
+				}
+				if event.Error.Message != "" {
+					detail["message"] = event.Error.Message
+				}
+				if event.Error.Param != "" {
+					detail["param"] = event.Error.Param
+				}
+			}
+			body, err := json.Marshal(struct {
+				Error map[string]any `json:"error"`
+			}{Error: detail})
+			if err != nil {
+				return fmt.Errorf("failed to encode websocket error response: %w", err)
+			}
+
+			return &httpclient.Error{
+				StatusCode: event.Status,
+				Status:     http.StatusText(event.Status),
+				Body:       body,
+			}
+		}
 		responseErr := responseErrorFromStreamEvent(&event)
 		if event.Code != "" && event.Message != "" {
 			return fmt.Errorf("websocket error event: %s: %s: %w", event.Code, event.Message, responseErr)
@@ -1456,13 +1495,19 @@ func normalizeWebSocketEvent(raw []byte) []byte {
 	if !ok {
 		return append([]byte(nil), raw...)
 	}
-	if value, ok := errorValue["code"]; ok {
-		payload["code"] = value
-	} else if value, ok := errorValue["type"]; ok {
-		payload["code"] = value
+	if jsonValueIsEmpty(payload["code"]) {
+		if value, ok := errorValue["code"]; ok {
+			payload["code"] = value
+		} else if value, ok := errorValue["type"]; ok {
+			payload["code"] = value
+		}
 	}
 	for _, key := range []string{"message", "param"} {
-		if value, ok := errorValue[key]; ok {
+		if jsonValueIsEmpty(payload[key]) {
+			value, ok := errorValue[key]
+			if !ok {
+				continue
+			}
 			payload[key] = value
 		}
 	}
@@ -1471,4 +1516,12 @@ func normalizeWebSocketEvent(raw []byte) []byte {
 		return append([]byte(nil), raw...)
 	}
 	return body
+}
+
+func jsonValueIsEmpty(value any) bool {
+	if value == nil {
+		return true
+	}
+	text, ok := value.(string)
+	return ok && text == ""
 }

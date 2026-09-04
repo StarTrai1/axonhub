@@ -268,9 +268,15 @@ type MessageContentPart struct {
 	Text                  *string                    `json:"text,omitempty"`
 	ImageURL              *ImageURL                  `json:"image_url,omitempty"`
 	VideoURL              *VideoURL                  `json:"video_url,omitempty"`
-	File                  *FileContent               `json:"file,omitempty"`
+	File                  *File                      `json:"file,omitempty"`
 	InputAudio            *InputAudio                `json:"input_audio,omitempty"`
 	PromptCacheBreakpoint *llm.PromptCacheBreakpoint `json:"prompt_cache_breakpoint,omitempty"`
+}
+
+type File struct {
+	FileData string `json:"file_data,omitempty"`
+	FileID   string `json:"file_id,omitempty"`
+	Filename string `json:"filename,omitempty"`
 }
 
 // ImageURL represents an image URL with optional detail level.
@@ -282,13 +288,6 @@ type ImageURL struct {
 // VideoURL represents a video URL.
 type VideoURL struct {
 	URL string `json:"url"`
-}
-
-// FileContent represents the file object used by Chat Completions content parts.
-type FileContent struct {
-	FileID   *string `json:"file_id,omitempty"`
-	FileData *string `json:"file_data,omitempty"`
-	Filename *string `json:"filename,omitempty"`
 }
 
 // InputAudio represents audio content.
