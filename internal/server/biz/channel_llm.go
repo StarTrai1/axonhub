@@ -239,6 +239,11 @@ func (svc *ChannelService) buildChannelWithOutbounds(c *ent.Channel, apiKeyOverr
 			outbounds[ep.APIFormat] = ch.Outbound
 			continue
 		}
+		if ep.APIFormat == llm.APIFormatOpenAISearch.String() && ep.Transport == "" {
+			// Standalone search is always HTTP, even when the channel's primary
+			// Responses endpoint uses a ws(s) base URL.
+			ep.Transport = objects.ChannelEndpointTransportHTTP
+		}
 
 		out, err := svc.buildNonDefaultEndpointOutbound(c, ch, ep)
 		if err != nil {
