@@ -128,7 +128,7 @@ func TestCodexQuotaChecker_ListResets_ReturnsAvailableResets(t *testing.T) {
 				Header:     make(http.Header),
 				Body: io.NopCloser(strings.NewReader(`{
 					"credits": [
-						{"id": "cred_1", "status": "available", "reset_type": "codex_rate_limits", "granted_at": "2026-09-01T00:00:00Z", "expires_at": "2026-09-08T00:00:00Z"},
+						{"id": "cred_1", "status": "available", "reset_type": "codex_rate_limits", "granted_at": "2026-09-01T00:00:00Z", "expires_at": "2026-09-08T00:00:00Z", "title": "Full reset", "description": "Ready to redeem"},
 						{"id": "cred_2", "status": "redeemed"}
 					],
 					"available_count": 1
@@ -146,12 +146,15 @@ func TestCodexQuotaChecker_ListResets_ReturnsAvailableResets(t *testing.T) {
 
 	require.NoError(t, err)
 	require.True(t, resets.Supported)
+	require.Equal(t, 1, resets.AvailableCount)
 	require.Len(t, resets.Resets, 1)
 	require.Equal(t, "cred_1", resets.Resets[0].ID)
 	require.Equal(t, "available", resets.Resets[0].Status)
 	require.Equal(t, "codex_rate_limits", resets.Resets[0].Type)
 	require.Equal(t, "2026-09-01T00:00:00Z", resets.Resets[0].GrantedAt.Format(time.RFC3339))
 	require.Equal(t, "2026-09-08T00:00:00Z", resets.Resets[0].ExpiresAt.Format(time.RFC3339))
+	require.Equal(t, "Full reset", resets.Resets[0].Title)
+	require.Equal(t, "Ready to redeem", resets.Resets[0].Description)
 }
 
 func TestCodexQuotaChecker_ListResets_ReturnsEmptyAvailability(t *testing.T) {
@@ -184,7 +187,7 @@ func TestCodexQuotaChecker_ListResets_ReturnsEmptyAvailability(t *testing.T) {
 	require.Empty(t, resets.Resets)
 }
 
-func TestCodexQuotaChecker_Reset_ConsumesFirstAvailableReset(t *testing.T) {
+func TestCodexQuotaChecker_Reset_ConsumesSelectedReset(t *testing.T) {
 	accessToken := buildCodexQuotaTestJWT(t, "acct_reset")
 	requestCount := 0
 
@@ -201,9 +204,10 @@ func TestCodexQuotaChecker_Reset_ConsumesFirstAvailableReset(t *testing.T) {
 					Body: io.NopCloser(strings.NewReader(`{
 						"credits": [
 							{"id": "cred_1", "status": "redeemed"},
-							{"id": "cred_2", "status": "available", "reset_type": "codex_rate_limits"}
+							{"id": "cred_2", "status": "available", "reset_type": "codex_rate_limits"},
+							{"id": "cred_3", "status": "available", "reset_type": "codex_rate_limits"}
 						],
-						"available_count": 1
+						"available_count": 2
 					}`)),
 				}, nil
 			case 2:
@@ -213,7 +217,7 @@ func TestCodexQuotaChecker_Reset_ConsumesFirstAvailableReset(t *testing.T) {
 
 				body, err := io.ReadAll(req.Body)
 				require.NoError(t, err)
-				require.Contains(t, string(body), `"credit_id":"cred_2"`)
+				require.Contains(t, string(body), `"credit_id":"cred_3"`)
 				require.Contains(t, string(body), `"redeem_request_id":"`)
 
 				return &http.Response{
@@ -222,7 +226,7 @@ func TestCodexQuotaChecker_Reset_ConsumesFirstAvailableReset(t *testing.T) {
 					Body: io.NopCloser(strings.NewReader(`{
 						"code": "reset",
 						"windows_reset": 1,
-						"credit": {"id": "cred_2", "status": "redeemed", "redeemed_at": "2026-06-13T13:12:31Z"}
+						"credit": {"id": "cred_3", "status": "redeemed", "redeemed_at": "2026-06-13T13:12:31Z"}
 					}`)),
 				}, nil
 			default:
@@ -237,7 +241,7 @@ func TestCodexQuotaChecker_Reset_ConsumesFirstAvailableReset(t *testing.T) {
 		Credentials: objects.ChannelCredentials{
 			OAuth: &objects.OAuthCredentials{AccessToken: accessToken},
 		},
-	})
+	}, "cred_3")
 
 	require.NoError(t, err)
 	require.Equal(t, 2, requestCount)
@@ -264,7 +268,7 @@ func TestCodexQuotaChecker_Reset_ReturnsErrorWhenNoAvailableReset(t *testing.T) 
 		Credentials: objects.ChannelCredentials{
 			OAuth: &objects.OAuthCredentials{AccessToken: accessToken},
 		},
-	})
+	}, "")
 
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "no available codex reset credit")

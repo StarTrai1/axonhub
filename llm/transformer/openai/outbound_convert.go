@@ -264,10 +264,10 @@ func MessageContentPartFromLLM(p llm.MessageContentPart) MessageContentPart {
 	}
 
 	if p.File != nil {
-		part.File = &FileContent{
-			FileID:   p.File.FileID,
-			FileData: p.File.FileData,
-			Filename: p.File.Filename,
+		part.File = &File{
+			FileID:   lo.FromPtr(p.File.FileID),
+			FileData: lo.FromPtr(p.File.FileData),
+			Filename: lo.FromPtr(p.File.Filename),
 		}
 	}
 

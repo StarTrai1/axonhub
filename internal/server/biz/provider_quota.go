@@ -647,7 +647,7 @@ func (svc *ProviderQuotaService) ListResets(ctx context.Context, channelID int) 
 }
 
 // ResetChannelQuotaNow attempts to redeem a provider-managed reset for a channel.
-func (svc *ProviderQuotaService) ResetChannelQuotaNow(ctx context.Context, channelID int) error {
+func (svc *ProviderQuotaService) ResetChannelQuotaNow(ctx context.Context, channelID int, resetID string) error {
 	ch, err := svc.db.Channel.Query().Where(channel.IDEQ(channelID)).Only(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to load channel: %w", err)
@@ -674,7 +674,7 @@ func (svc *ProviderQuotaService) ResetChannelQuotaNow(ctx context.Context, chann
 		return fmt.Errorf("channel has no credentials")
 	}
 
-	if err := resetter.Reset(ctx, ch); err != nil {
+	if err := resetter.Reset(ctx, ch, resetID); err != nil {
 		return fmt.Errorf("failed to reset %s quota: %w", providerType, err)
 	}
 

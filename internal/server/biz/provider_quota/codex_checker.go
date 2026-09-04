@@ -46,12 +46,13 @@ type CodeUsageWindow struct {
 }
 
 type CodexResetCredit struct {
-	ID        string `json:"id"`
-	Status    string `json:"status"`
-	ResetType string `json:"reset_type,omitempty"`
-	GrantedAt string `json:"granted_at,omitempty"`
-	ExpiresAt string `json:"expires_at,omitempty"`
-	Title     string `json:"title,omitempty"`
+	ID          string `json:"id"`
+	Status      string `json:"status"`
+	ResetType   string `json:"reset_type,omitempty"`
+	GrantedAt   string `json:"granted_at,omitempty"`
+	ExpiresAt   string `json:"expires_at,omitempty"`
+	Title       string `json:"title,omitempty"`
+	Description string `json:"description,omitempty"`
 }
 
 type CodexResetCreditsResponse struct {
@@ -79,7 +80,7 @@ func NewCodexQuotaChecker(httpClient *httpclient.HttpClient) *CodexQuotaChecker 
 	}
 }
 
-func (c *CodexQuotaChecker) Reset(ctx context.Context, ch *ent.Channel) error {
+func (c *CodexQuotaChecker) Reset(ctx context.Context, ch *ent.Channel, resetID string) error {
 	resets, err := c.ListResets(ctx, ch)
 	if err != nil {
 		return err
@@ -89,8 +90,30 @@ func (c *CodexQuotaChecker) Reset(ctx context.Context, ch *ent.Channel) error {
 		return fmt.Errorf("no available codex reset credit")
 	}
 
-	_, err = c.consumeResetCredit(ctx, ch, resets.Resets[0].ID)
-	return err
+	selected := resets.Resets[0]
+	if resetID != "" {
+		found := false
+		for _, reset := range resets.Resets {
+			if reset.ID == resetID {
+				selected = reset
+				found = true
+				break
+			}
+		}
+		if !found {
+			return fmt.Errorf("codex reset credit %q is not available", resetID)
+		}
+	}
+
+	result, err := c.consumeResetCredit(ctx, ch, selected.ID)
+	if err != nil {
+		return err
+	}
+	if !strings.EqualFold(result.Code, "reset") {
+		return fmt.Errorf("codex reset credit was not consumed: %s", result.Code)
+	}
+
+	return nil
 }
 
 func (c *CodexQuotaChecker) ListResets(ctx context.Context, ch *ent.Channel) (ResetList, error) {
@@ -106,18 +129,24 @@ func (c *CodexQuotaChecker) ListResets(ctx context.Context, ch *ent.Channel) (Re
 		}
 
 		resets = append(resets, Reset{
-			ID:        credit.ID,
-			Status:    credit.Status,
-			Type:      credit.ResetType,
-			GrantedAt: parseCodexResetTime(credit.GrantedAt),
-			ExpiresAt: parseCodexResetTime(credit.ExpiresAt),
-			Title:     credit.Title,
+			ID:          credit.ID,
+			Status:      credit.Status,
+			Type:        credit.ResetType,
+			GrantedAt:   parseCodexResetTime(credit.GrantedAt),
+			ExpiresAt:   parseCodexResetTime(credit.ExpiresAt),
+			Title:       credit.Title,
+			Description: credit.Description,
 		})
+	}
+	availableCount := len(resets)
+	if response.AvailableCount != nil && *response.AvailableCount > availableCount {
+		availableCount = *response.AvailableCount
 	}
 
 	return ResetList{
-		Supported: true,
-		Resets:    resets,
+		Supported:      true,
+		AvailableCount: availableCount,
+		Resets:         resets,
 	}, nil
 }
 

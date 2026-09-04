@@ -39,6 +39,7 @@
   "channels.codexUsage.resetCredits": "Reset credits",
   "channels.codexUsage.resetCreditCount": "{{count}} remaining",
   "channels.codexUsage.resetCreditExpiry": "Nearest expiry {{time}}",
+  "channels.codexUsage.resetCreditExpiresAt": "Expires {{time}}",
   "channels.codexUsage.resetCreditNoExpiry": "No expiry reported",
   "channels.codexUsage.resetCreditUnavailable": "Reset credit details are temporarily unavailable",
   "channels.columns.limiterTooltip.inFlight": "In flight",

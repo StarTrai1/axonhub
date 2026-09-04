@@ -237,11 +237,10 @@ func (p MessageContentPart) ToLLMPart() llm.MessageContentPart {
 	}
 
 	if p.File != nil {
-		part.Type = "file"
 		part.File = &llm.FileContent{
-			FileID:   p.File.FileID,
-			FileData: p.File.FileData,
-			Filename: p.File.Filename,
+			FileID:   lo.ToPtr(p.File.FileID),
+			FileData: lo.ToPtr(p.File.FileData),
+			Filename: lo.ToPtr(p.File.Filename),
 		}
 	}
 

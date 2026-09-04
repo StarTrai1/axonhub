@@ -103,6 +103,8 @@ export function CodexUsageCell({ channel }: { channel: Channel }) {
   const fiveHourWindow = findWindow(quotaData, 4 * HOUR_SECONDS, 6 * HOUR_SECONDS);
   const weeklyWindow = findWindow(quotaData, 6 * DAY_SECONDS, 8 * DAY_SECONDS);
   const resetCredits = quotaData.rate_limit_reset_credits;
+  const resetDetails = quotaData._resets?.resets ?? [];
+  const resetCreditCount = quotaData._resets?.availableCount ?? resetCredits?.available_count;
   const hasQuotaData = Boolean(fiveHourWindow || weeklyWindow);
 
   if (!quotaStatus || quotaStatus.providerType !== 'codex' || quotaData.error) {
@@ -154,19 +156,36 @@ export function CodexUsageCell({ channel }: { channel: Channel }) {
         ) : (
           <p className='text-background/80 text-xs'>{t('channels.codexUsage.noWindowData')}</p>
         )}
-        {resetCredits && (
+        {resetCreditCount !== undefined && (
           <div className='border-background/20 space-y-1 border-t border-dashed pt-2 text-xs'>
             <div className='flex items-center justify-between gap-4'>
               <span className='text-background/80'>{t('channels.codexUsage.resetCredits')}</span>
               <span className='font-semibold tabular-nums'>
-                {t('channels.codexUsage.resetCreditCount', { count: resetCredits.available_count })}
+                {t('channels.codexUsage.resetCreditCount', { count: resetCreditCount })}
               </span>
             </div>
-            <div className='text-background/75 text-[11px]'>
-              {resetCredits.next_expires_at
-                ? t('channels.codexUsage.resetCreditExpiry', { time: formatISOString(resetCredits.next_expires_at) })
-                : t('channels.codexUsage.resetCreditNoExpiry')}
-            </div>
+            {resetDetails.length > 0 ? (
+              <div className='space-y-1 pt-0.5'>
+                {resetDetails.map((reset, index) => (
+                  <div key={reset.id} className='text-background/75 flex items-center justify-between gap-3 text-[11px]'>
+                    <span className='min-w-0 truncate'>
+                      {reset.title || t('quota.codex.resetCreditLabel', { index: index + 1 })}
+                    </span>
+                    <span className='shrink-0 tabular-nums'>
+                      {reset.expiresAt
+                        ? t('channels.codexUsage.resetCreditExpiresAt', { time: formatISOString(reset.expiresAt) })
+                        : t('channels.codexUsage.resetCreditNoExpiry')}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className='text-background/75 text-[11px]'>
+                {resetCredits?.next_expires_at
+                  ? t('channels.codexUsage.resetCreditExpiry', { time: formatISOString(resetCredits.next_expires_at) })
+                  : t('channels.codexUsage.resetCreditNoExpiry')}
+              </div>
+            )}
           </div>
         )}
         {quotaData.rate_limit_reset_credits_error && !resetCredits && (

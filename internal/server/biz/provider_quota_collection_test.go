@@ -44,7 +44,7 @@ func (c *countingQuotaResetter) ListResets(context.Context, *ent.Channel) (provi
 	return c.resets, nil
 }
 
-func (c *countingQuotaResetter) Reset(context.Context, *ent.Channel) error {
+func (c *countingQuotaResetter) Reset(context.Context, *ent.Channel, string) error {
 	c.resetCalls.Add(1)
 	return nil
 }
@@ -189,7 +189,7 @@ func TestProviderQuotaService_ResetChannelQuotaNow_CollectionDisabledForCodex(t 
 		{Provider: "codex", Enabled: false},
 	}))
 
-	err := service.ResetChannelQuotaNow(ctx, channelEntity.ID)
+	err := service.ResetChannelQuotaNow(ctx, channelEntity.ID, "")
 
 	require.ErrorContains(t, err, "provider quota collection is disabled for codex")
 	require.Zero(t, codexChecker.calls.Load())
@@ -217,7 +217,7 @@ func TestProviderQuotaService_ResetChannelQuotaNow_ReturnsUnsupportedForCheckerW
 	service.checkers["minimax"] = &countingQuotaChecker{providerType: "minimax"}
 	channelEntity := createProviderQuotaCollectionChannel(t, ctx, client, "MiniMax", channel.TypeMinimax)
 
-	err := service.ResetChannelQuotaNow(ctx, channelEntity.ID)
+	err := service.ResetChannelQuotaNow(ctx, channelEntity.ID, "")
 
 	require.Error(t, err)
 	require.True(t, errors.Is(err, provider_quota.ErrResetUnsupported))

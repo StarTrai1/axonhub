@@ -2634,6 +2634,34 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                           />
                         )}
 
+                      {isZenmuxType && (
+                        <FormField
+                          control={form.control}
+                          name='credentials.managementApiKey'
+                          render={({ field }) => (
+                            <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                              <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
+                                {t('channels.dialogs.fields.managementApiKey.label')}
+                              </FormLabel>
+                              <div className='space-y-1 md:col-span-6'>
+                                <Input
+                                  type='password'
+                                  placeholder={t('channels.dialogs.fields.managementApiKey.placeholder')}
+                                  autoComplete='new-password'
+                                  data-form-type='other'
+                                  spellCheck={false}
+                                  {...field}
+                                  value={field.value ?? ''}
+                                />
+                                <p className='text-muted-foreground text-xs'>
+                                  {t('channels.dialogs.fields.managementApiKey.hint')}
+                                </p>
+                              </div>
+                            </FormItem>
+                          )}
+                        />
+                      )}
+
                       <div className='border-border/60 flex items-start gap-2 border-t pt-4'>
                         <Route className='text-muted-foreground mt-0.5 h-4 w-4 shrink-0' />
                         <div className='min-w-0'>
@@ -2667,34 +2695,6 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                           </FormItem>
                         )}
                       />
-
-                      {isZenmuxType && (
-                        <FormField
-                          control={form.control}
-                          name='credentials.managementApiKey'
-                          render={({ field }) => (
-                            <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
-                              <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
-                                {t('channels.dialogs.fields.managementApiKey.label')}
-                              </FormLabel>
-                              <div className='space-y-1 md:col-span-6'>
-                                <Input
-                                  type='password'
-                                  placeholder={t('channels.dialogs.fields.managementApiKey.placeholder')}
-                                  autoComplete='new-password'
-                                  data-form-type='other'
-                                  spellCheck={false}
-                                  {...field}
-                                  value={field.value ?? ''}
-                                />
-                                <p className='text-muted-foreground text-xs'>
-                                  {t('channels.dialogs.fields.managementApiKey.hint')}
-                                </p>
-                              </div>
-                            </FormItem>
-                          )}
-                        />
-                          )}
 
                       <FormField
                         control={form.control}

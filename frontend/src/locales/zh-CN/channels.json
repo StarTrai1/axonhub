@@ -39,6 +39,7 @@
   "channels.codexUsage.resetCredits": "额度刷新卡",
   "channels.codexUsage.resetCreditCount": "剩余 {{count}} 张",
   "channels.codexUsage.resetCreditExpiry": "最近于 {{time}} 过期",
+  "channels.codexUsage.resetCreditExpiresAt": "{{time}} 过期",
   "channels.codexUsage.resetCreditNoExpiry": "暂无过期时间",
   "channels.codexUsage.resetCreditUnavailable": "额度刷新卡信息暂不可用",
   "channels.columns.limiterTooltip.inFlight": "正在执行",

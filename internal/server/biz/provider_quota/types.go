@@ -21,26 +21,28 @@ var ErrResetUnsupported = errors.New("provider quota reset is not supported")
 
 // Reset is a provider-agnostic quota reset that can be consumed.
 type Reset struct {
-	ID        string     `json:"id"`
-	Status    string     `json:"status"`
-	Type      string     `json:"type,omitempty"`
-	GrantedAt *time.Time `json:"grantedAt,omitempty"`
-	ExpiresAt *time.Time `json:"expiresAt,omitempty"`
-	Title     string     `json:"title,omitempty"`
+	ID          string     `json:"id"`
+	Status      string     `json:"status"`
+	Type        string     `json:"type,omitempty"`
+	GrantedAt   *time.Time `json:"grantedAt,omitempty"`
+	ExpiresAt   *time.Time `json:"expiresAt,omitempty"`
+	Title       string     `json:"title,omitempty"`
+	Description string     `json:"description,omitempty"`
 }
 
 // ResetList describes a provider's optional reset capability and current resets.
 type ResetList struct {
-	Supported bool    `json:"supported"`
-	Resets    []Reset `json:"resets"`
-	Error     string  `json:"error,omitempty"`
+	Supported      bool    `json:"supported"`
+	AvailableCount int     `json:"availableCount"`
+	Resets         []Reset `json:"resets"`
+	Error          string  `json:"error,omitempty"`
 }
 
 // Resetter is an optional capability implemented by quota providers that can
 // list and consume provider-managed quota resets.
 type Resetter interface {
 	ListResets(ctx context.Context, channel *ent.Channel) (ResetList, error)
-	Reset(ctx context.Context, channel *ent.Channel) error
+	Reset(ctx context.Context, channel *ent.Channel, resetID string) error
 }
 
 type QuotaLimitType string
