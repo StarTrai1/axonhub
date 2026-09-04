@@ -39,7 +39,7 @@ export async function checkProviderQuotas() {
   return graphqlRequest(CHECK_PROVIDER_QUOTAS_QUERY);
 }
 
-export async function resetChannelQuotaNow(channelID: string, creditID: string) {
+export async function resetChannelQuotaNow(channelID: string, creditID?: string) {
   return graphqlRequest(RESET_CHANNEL_QUOTA_NOW_MUTATION, { channelID, creditID });
 }
 

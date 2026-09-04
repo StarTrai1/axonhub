@@ -444,8 +444,8 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
   const batteryLevel = getBatteryLevel(percentage, status);
   const BatteryIcon = getBatteryIcon(batteryLevel);
 
-  const handleResetCodexQuota = async (creditID: string) => {
-    if (channel.type !== 'codex' || !creditID) return;
+  const handleResetCodexQuota = async (creditID?: string) => {
+    if (channel.type !== 'codex') return;
 
     setIsResetting(true);
     try {
@@ -833,7 +833,8 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
             const availableResetCount =
               qd._resets?.availableCount ?? qd.rate_limit_reset_credits?.available_count ?? availableResets.length;
             const hasResetInfo = qd._resets?.supported === true && !qd._resets.error;
-            const canAttemptReset = qd._resets?.supported === true && availableResets.length > 0;
+            const canAttemptReset =
+              qd._resets?.supported === true && (Boolean(qd._resets.error) || availableResetCount > 0);
             return (
               <>
                 {qd.rate_limit?.primary_window && (
@@ -1027,6 +1028,11 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
                           </label>
                         ))}
                       </RadioGroup>
+                      {availableResets.length === 0 && (
+                        <p className='bg-muted/50 text-muted-foreground rounded-lg border p-3 text-sm'>
+                          {t('quota.codex.resetDetailsUnavailable')}
+                        </p>
+                      )}
                       {availableResetCount > availableResets.length && (
                         <p className='text-muted-foreground text-xs'>
                           {t('quota.codex.resetDetailsCapped', {
@@ -1038,7 +1044,7 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
                       <AlertDialogFooter>
                         <AlertDialogCancel disabled={isResetting}>{t('quota.codex.resetCancel')}</AlertDialogCancel>
                         <AlertDialogAction
-                          disabled={isResetting || !selectedResetID}
+                          disabled={isResetting || (availableResets.length > 0 && !selectedResetID)}
                           onClick={(event) => {
                             event.preventDefault();
                             void handleResetCodexQuota(selectedResetID);

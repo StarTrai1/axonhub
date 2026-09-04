@@ -413,6 +413,7 @@
   "quota.codex.resetDialogTitle": "Use a quota reset?",
   "quota.codex.resetDialogDescription": "Choose the reset credit to redeem. This immediately resets the eligible Codex usage windows and cannot be undone.",
   "quota.codex.resetDetailsCapped": "OpenAI reports {{total}} available credits, but returned details for {{visible}}. Only listed credits can be selected.",
+  "quota.codex.resetDetailsUnavailable": "Reset-credit details are temporarily unavailable. AxonHub will retry and let OpenAI select the available credit automatically.",
   "quota.codex.resetCancel": "Cancel",
   "quota.codex.resetConfirm": "Confirm reset",
   "quota.codex.noResetCredits": "No Codex reset credits are available",

@@ -412,6 +412,7 @@
   "quota.codex.resetDialogTitle": "确认使用额度刷新卡？",
   "quota.codex.resetDialogDescription": "请选择要兑换的额度刷新卡。确认后会立即重置适用的 Codex 用量窗口，且无法撤销。",
   "quota.codex.resetDetailsCapped": "OpenAI 报告有 {{total}} 张可用刷新卡，但仅返回 {{visible}} 张的详情；当前只能选择已列出的刷新卡。",
+  "quota.codex.resetDetailsUnavailable": "额度刷新卡详情暂时不可用。AxonHub 将重新查询，并由 OpenAI 自动选择可用刷新卡。",
   "quota.codex.resetCancel": "取消",
   "quota.codex.resetConfirm": "确认重置",
   "quota.codex.noResetCredits": "当前没有可用的 Codex 重置次数",
