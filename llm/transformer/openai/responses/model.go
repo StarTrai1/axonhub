@@ -1085,10 +1085,11 @@ type ContentItem struct {
 }
 
 type Error struct {
-	Type    string `json:"type,omitempty"`
-	Code    string `json:"code,omitempty"`
-	Message string `json:"message"`
-	Param   string `json:"param,omitempty"`
+	Type      string `json:"type,omitempty"`
+	Code      string `json:"code,omitempty"`
+	Message   string `json:"message"`
+	Param     string `json:"param,omitempty"`
+	RequestID string `json:"request_id,omitempty"`
 }
 
 type rawJSONSchema struct {

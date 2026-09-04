@@ -36,6 +36,7 @@ func responseErrorFromStreamEvent(event *StreamEvent) *llm.ResponseError {
 	detail := llm.ErrorDetail{
 		Code:      event.Code,
 		Message:   event.Message,
+		Type:      string(event.Type),
 		RequestID: event.RequestID,
 	}
 	if event.Param != nil {
@@ -51,12 +52,22 @@ func responseErrorFromStreamEvent(event *StreamEvent) *llm.ResponseError {
 		if event.Error.Type != "" {
 			detail.Type = event.Error.Type
 		}
+		if event.Error.Param != "" {
+			detail.Param = event.Error.Param
+		}
+		if event.Error.RequestID != "" {
+			detail.RequestID = event.Error.RequestID
+		}
 	}
 	if detail.Message == "" {
 		detail.Message = "stream error"
 	}
 	if detail.Code == "" && detail.Type == "" {
 		detail.Type = "stream_error"
+	}
+
+	if event.Status >= 400 && event.Status <= 599 {
+		return &llm.ResponseError{StatusCode: event.Status, Detail: detail}
 	}
 
 	return newProtocolResponseError(detail)

@@ -1420,7 +1420,7 @@ func TestResponsesPromptCacheControlsRoundTrip(t *testing.T) {
 		"prompt_cache_options":{"mode":"explicit","ttl":"30m"},
 		"input":[{"type":"message","role":"user","content":[
 			{"type":"input_text","text":"stable prefix","prompt_cache_breakpoint":{"mode":"explicit"}},
-			{"type":"input_file","file_url":"https://example.com/spec.pdf","filename":"spec.pdf","detail":"low","prompt_cache_breakpoint":{"mode":"explicit"}}
+			{"type":"input_file","file_url":"https://example.com/spec.pdf","filename":"spec.pdf","prompt_cache_breakpoint":{"mode":"explicit"}}
 		]}]
 	}`)})
 	require.NoError(t, err)
@@ -1428,8 +1428,9 @@ func TestResponsesPromptCacheControlsRoundTrip(t *testing.T) {
 	require.Len(t, llmReq.Messages, 1)
 	require.Len(t, llmReq.Messages[0].Content.MultipleContent, 2)
 	require.NotNil(t, llmReq.Messages[0].Content.MultipleContent[0].PromptCacheBreakpoint)
-	require.NotNil(t, llmReq.Messages[0].Content.MultipleContent[1].File)
-	require.Equal(t, "https://example.com/spec.pdf", *llmReq.Messages[0].Content.MultipleContent[1].File.FileURL)
+	require.NotNil(t, llmReq.Messages[0].Content.MultipleContent[1].Document)
+	require.Equal(t, "https://example.com/spec.pdf", llmReq.Messages[0].Content.MultipleContent[1].Document.URL)
+	require.NotNil(t, llmReq.Messages[0].Content.MultipleContent[1].PromptCacheBreakpoint)
 
 	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
 	require.NoError(t, err)
@@ -1457,7 +1458,9 @@ func TestResponsesPromptCacheControlsRoundTrip(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, "input_file", filePart["type"])
 	require.Equal(t, "https://example.com/spec.pdf", filePart["file_url"])
-	require.Equal(t, "low", filePart["detail"])
+	fileBreakpoint, ok := filePart["prompt_cache_breakpoint"].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "explicit", fileBreakpoint["mode"])
 }
 
 func TestOutboundTransformer_TransformRequest_PromptCacheKeyScopedPerConversation(t *testing.T) {

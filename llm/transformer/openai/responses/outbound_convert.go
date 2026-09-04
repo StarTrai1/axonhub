@@ -191,7 +191,9 @@ func convertUserMessage(msg llm.Message) Item {
 				}
 			case "document":
 				if p.Document != nil {
-					contentItems = append(contentItems, responseInputFile(p.Document))
+					item := responseInputFile(p.Document)
+					item.PromptCacheBreakpoint = p.PromptCacheBreakpoint
+					contentItems = append(contentItems, item)
 				}
 			case "compaction", "compaction_summary":
 				if p.Compact != nil {

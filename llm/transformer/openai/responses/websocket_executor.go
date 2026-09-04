@@ -173,6 +173,9 @@ func TopLevelWebSocketError(chunks []*httpclient.StreamEvent) error {
 			if event.Param != nil && *event.Param != "" {
 				detail["param"] = *event.Param
 			}
+			if event.RequestID != "" {
+				detail["request_id"] = event.RequestID
+			}
 			if event.Error != nil {
 				if event.Error.Type != "" {
 					detail["type"] = event.Error.Type
@@ -185,6 +188,9 @@ func TopLevelWebSocketError(chunks []*httpclient.StreamEvent) error {
 				}
 				if event.Error.Param != "" {
 					detail["param"] = event.Error.Param
+				}
+				if event.Error.RequestID != "" {
+					detail["request_id"] = event.Error.RequestID
 				}
 			}
 			body, err := json.Marshal(struct {
