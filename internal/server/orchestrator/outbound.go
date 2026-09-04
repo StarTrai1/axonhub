@@ -40,6 +40,7 @@ type OutboundPersistentStream struct {
 	responseChunks []*httpclient.StreamEvent
 	closed         bool
 	state          *PersistenceState
+	steering       *responsesSteeringState
 }
 
 var _ streams.Stream[*httpclient.StreamEvent] = (*OutboundPersistentStream)(nil)
@@ -67,6 +68,7 @@ func NewOutboundPersistentStream(
 		responseChunks:  make([]*httpclient.StreamEvent, 0),
 		closed:          false,
 		state:           state,
+		steering:        newResponsesSteeringState(),
 	}
 
 	return s
@@ -85,7 +87,7 @@ func (ts *OutboundPersistentStream) Current() *httpclient.StreamEvent {
 		// Check if this is a terminal event, which indicates the stream completed successfully.
 		// For Chat Completions API this is the raw [DONE] event; for Responses API this is
 		// response.completed; for Anthropic Messages API this is message_stop.
-		if IsTerminalStreamEvent(event) {
+		if ts.steering.isFinalTerminal(event) {
 			ts.state.StreamCompleted = true
 			ts.markPerformanceCompleted()
 		}

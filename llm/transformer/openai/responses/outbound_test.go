@@ -362,6 +362,8 @@ func TestOutboundTransformer_TransformRequest_PreservesGPT6AsyncToolsAndConfigur
 		"model":"gpt-6-astra",
 		"input":[
 			{"type":"configuration_update","reasoning":{"effort":"high"}},
+			{"type":"function_call","call_id":"call_lookup","name":"lookup","arguments":"{}","async":true},
+			{"type":"function_call_output","call_id":"call_lookup","output":"done"},
 			{"type":"message","role":"user","content":[{"type":"input_text","text":"Continue."}]}
 		],
 		"tools":[
@@ -386,9 +388,35 @@ func TestOutboundTransformer_TransformRequest_PreservesGPT6AsyncToolsAndConfigur
 	input := payload["input"].([]any)
 	require.Equal(t, "configuration_update", input[0].(map[string]any)["type"])
 	require.Equal(t, "high", input[0].(map[string]any)["reasoning"].(map[string]any)["effort"])
+	require.Equal(t, "function_call", input[1].(map[string]any)["type"])
+	require.Equal(t, true, input[1].(map[string]any)["async"])
+	require.Equal(t, "function_call_output", input[2].(map[string]any)["type"])
 	tools := payload["tools"].([]any)
 	require.Equal(t, true, tools[0].(map[string]any)["async"])
 	require.Equal(t, true, tools[1].(map[string]any)["async"])
+}
+
+func TestOutboundTransformer_TransformRequest_GPT6AstraDropsAsyncFromUnsupportedTools(t *testing.T) {
+	transformer, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	httpReq, err := transformer.TransformRequest(context.Background(), &llm.Request{
+		Model: "gpt-6-astra",
+		Tools: []llm.Tool{{
+			Type:  llm.ToolTypeWebSearch,
+			Async: lo.ToPtr(true),
+			WebSearch: &llm.WebSearch{},
+		}},
+		Messages: []llm.Message{{
+			Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Search.")},
+		}},
+	})
+	require.NoError(t, err)
+
+	var payload map[string]any
+	require.NoError(t, json.Unmarshal(httpReq.Body, &payload))
+	tools := payload["tools"].([]any)
+	require.NotContains(t, tools[0].(map[string]any), "async")
 }
 
 func TestOutboundTransformer_TransformRequest_NormalizesGPT6UnsupportedParameters(t *testing.T) {

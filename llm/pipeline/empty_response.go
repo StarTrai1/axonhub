@@ -74,6 +74,10 @@ func hasResponseContent(resp *llm.Response) bool {
 		return false
 	}
 
+	if len(resp.RawResponsesEvent) > 0 {
+		return true
+	}
+
 	if resp.Moderation != nil && len(resp.Moderation.Results) > 0 {
 		return true
 	}

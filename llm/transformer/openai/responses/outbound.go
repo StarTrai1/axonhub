@@ -362,6 +362,11 @@ func applyGPT6AstraCompatibility(payload *Request) {
 	payload.Temperature = nil
 	payload.TopP = nil
 	payload.TopLogprobs = nil
+	for i := range payload.Tools {
+		if payload.Tools[i].Type != "function" && payload.Tools[i].Type != "custom" {
+			payload.Tools[i].Async = nil
+		}
+	}
 	if payload.Reasoning != nil {
 		switch payload.Reasoning.Effort {
 		case llm.ReasoningEffortNone, llm.ReasoningEffortMinimal:

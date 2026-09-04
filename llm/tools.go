@@ -82,6 +82,10 @@ type ToolCall struct {
 	// The type of the tool. Currently, only `function` is supported.
 	Type string `json:"type,omitempty"`
 
+	// Async reports that GPT-6 Astra may continue while this function or custom
+	// tool call is still running.
+	Async *bool `json:"async,omitempty"`
+
 	Function FunctionCall `json:"function"`
 
 	// ResponseCustomToolCall holds the custom tool call data for OpenAI Responses API.

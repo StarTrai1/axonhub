@@ -26,6 +26,9 @@ func TestHasResponseContent_ReasoningSignature(t *testing.T) {
 
 func TestHasResponseContent(t *testing.T) {
 	require.True(t, hasResponseContent(&llm.Response{
+		RawResponsesEvent: []byte(`{"type":"response.steer.accepted"}`),
+	}))
+	require.True(t, hasResponseContent(&llm.Response{
 		Search: &llm.SearchResponse{Raw: []byte(`{"output":"result"}`)},
 	}))
 	t.Run("empty response", func(t *testing.T) {

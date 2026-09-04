@@ -794,6 +794,10 @@ type Response struct {
 	// EmptyCompletionCandidate identifies a protocol terminal that completed
 	// without semantic output or an error. It is internal retry metadata.
 	EmptyCompletionCandidate bool `json:"-"`
+
+	// RawResponsesEvent carries GPT-6 Astra WebSocket steering acknowledgements
+	// and lifecycle events that do not have a unified chat representation.
+	RawResponsesEvent json.RawMessage `json:"-"`
 }
 
 // Choice represents a choice in the response.

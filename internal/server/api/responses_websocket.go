@@ -25,6 +25,7 @@ import (
 
 const (
 	responseCreateWebSocketEventType   = "response.create"
+	responseSteerWebSocketEventType    = "response.steer"
 	responsesWebSocketMaxMessageSize   = 1 << 20
 	responsesWebSocketIdleTimeout      = 5 * time.Minute
 	responsesWebSocketPingInterval     = responsesWebSocketIdleTimeout / 2
@@ -98,16 +99,24 @@ func serveResponsesWebSocket(
 		}
 
 		if messageType != websocket.TextMessage {
-			if err := writeResponsesWebSocketError(writer, invalidResponsesWebSocketRequest("response.create must be sent as a text message", ""), ""); err != nil {
+			if err := writeResponsesWebSocketError(writer, invalidResponsesWebSocketRequest("Responses WebSocket events must be sent as text messages", ""), ""); err != nil {
 				return
 			}
 			continue
 		}
 
-		streamID, envelopeErr := responsesWebSocketEnvelopeStreamID(message)
+		streamID, eventType, envelopeErr := responsesWebSocketEnvelope(message)
 		if envelopeErr != nil {
 			if err := writeResponsesWebSocketError(writer, envelopeErr, ""); err != nil {
 				return
+			}
+			continue
+		}
+		if eventType == responseSteerWebSocketEventType {
+			if steerErr := dispatcher.routeSteer(message); steerErr != nil {
+				if err := writeResponsesWebSocketError(writer, steerErr, ""); err != nil {
+					return
+				}
 			}
 			continue
 		}
@@ -138,6 +147,10 @@ type responsesWebSocketWriter struct {
 type responsesWebSocketLane struct {
 	session responsesWebSocketSession
 	tail    <-chan struct{}
+	mu      sync.Mutex
+	active  bool
+	astra   bool
+	steer   *shared.ResponsesWebSocketSteering
 }
 
 type responsesWebSocketDispatcher struct {
@@ -152,6 +165,8 @@ type responsesWebSocketDispatcher struct {
 	active         chan struct{}
 	pending        chan struct{}
 	lanes          map[string]*responsesWebSocketLane
+	responseLanes  map[string]*responsesWebSocketLane
+	mu             sync.Mutex
 	namedStreams   int
 	wg             sync.WaitGroup
 	closeOnce      sync.Once
@@ -179,6 +194,7 @@ func newResponsesWebSocketDispatcher(
 		active:         make(chan struct{}, responsesWebSocketMaxActive),
 		pending:        make(chan struct{}, responsesWebSocketMaxPending),
 		lanes:          make(map[string]*responsesWebSocketLane),
+		responseLanes:  make(map[string]*responsesWebSocketLane),
 	}
 }
 
@@ -189,6 +205,68 @@ func (d *responsesWebSocketDispatcher) reserve() bool {
 	default:
 		return false
 	}
+}
+
+func (d *responsesWebSocketDispatcher) routeSteer(message []byte) *httpclient.Error {
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(message, &raw); err != nil || raw == nil {
+		return invalidResponsesWebSocketRequest("invalid response.steer JSON payload", "")
+	}
+	for key := range raw {
+		switch key {
+		case "type", "previous_response_id", "input":
+		default:
+			return invalidResponsesWebSocketRequest("response.steer accepts only type, previous_response_id, and input", key)
+		}
+	}
+	var payload struct {
+		Type               string          `json:"type"`
+		PreviousResponseID string          `json:"previous_response_id"`
+		Input              json.RawMessage `json:"input"`
+	}
+	if err := json.Unmarshal(message, &payload); err != nil || payload.Type != responseSteerWebSocketEventType || payload.PreviousResponseID == "" || len(payload.Input) == 0 {
+		return invalidResponsesWebSocketRequest("response.steer requires previous_response_id and input", "input")
+	}
+	var inputItems []json.RawMessage
+	if err := json.Unmarshal(payload.Input, &inputItems); err == nil {
+		if len(inputItems) == 0 {
+			return invalidResponsesWebSocketRequest("response.steer input must be a non-empty string or array", "input")
+		}
+	} else {
+		var inputText string
+		if json.Unmarshal(payload.Input, &inputText) != nil || strings.TrimSpace(inputText) == "" {
+			return invalidResponsesWebSocketRequest("response.steer input must be a non-empty string or array", "input")
+		}
+	}
+	d.mu.Lock()
+	lane := d.responseLanes[payload.PreviousResponseID]
+	d.mu.Unlock()
+	if lane == nil {
+		return responsesWebSocketRequestError("response not found on this WebSocket connection", "previous_response_id", "response_not_found")
+	}
+	return lane.sendActiveEvent(message)
+}
+
+func (d *responsesWebSocketDispatcher) registerResponseID(id string, lane *responsesWebSocketLane) {
+	if strings.TrimSpace(id) == "" || lane == nil {
+		return
+	}
+	d.mu.Lock()
+	d.responseLanes[id] = lane
+	d.mu.Unlock()
+}
+
+func (d *responsesWebSocketDispatcher) unregisterLane(lane *responsesWebSocketLane) {
+	if lane == nil {
+		return
+	}
+	d.mu.Lock()
+	for responseID, registeredLane := range d.responseLanes {
+		if registeredLane == lane {
+			delete(d.responseLanes, responseID)
+		}
+	}
+	d.mu.Unlock()
 }
 
 func (d *responsesWebSocketDispatcher) lane(streamID string) (*responsesWebSocketLane, *httpclient.Error) {
@@ -212,6 +290,57 @@ func (d *responsesWebSocketDispatcher) lane(streamID string) (*responsesWebSocke
 	}
 
 	return lane, nil
+}
+
+func (l *responsesWebSocketLane) begin(model string) (*shared.ResponsesWebSocketSteering, bool) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.active = true
+	l.astra = strings.EqualFold(strings.TrimSpace(model), "gpt-6-astra")
+	if l.astra {
+		l.steer = shared.NewResponsesWebSocketSteering(16)
+	} else {
+		l.steer = nil
+	}
+	return l.steer, l.astra
+}
+
+func (l *responsesWebSocketLane) end() {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.active = false
+	l.astra = false
+	l.steer = nil
+}
+
+func (l *responsesWebSocketLane) sendActiveEvent(message []byte) *httpclient.Error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if !l.active || !l.astra || l.steer == nil || !l.steer.Ready() {
+		if !l.active {
+			return responsesWebSocketRequestError(
+				"response not found on this WebSocket connection",
+				"previous_response_id",
+				"response_not_found",
+			)
+		}
+		return responsesWebSocketRequestError(
+			"response.steer is available only for an active GPT-6 Astra response on this WebSocket connection",
+			"previous_response_id",
+			"steering_not_supported",
+		)
+	}
+	if l.steer.Send(message) {
+		return nil
+	}
+	if !l.steer.Ready() {
+		return responsesWebSocketRequestError(
+			"response.steer is available only while the upstream GPT-6 Astra WebSocket remains active",
+			"previous_response_id",
+			"steering_not_supported",
+		)
+	}
+	return responsesWebSocketSteerQueueLimitError()
 }
 
 func (d *responsesWebSocketDispatcher) dispatch(lane *responsesWebSocketLane, streamID string, message []byte) {
@@ -243,7 +372,7 @@ func (d *responsesWebSocketDispatcher) dispatch(lane *responsesWebSocketLane, st
 			return
 		}
 
-		if err := d.processMessage(&lane.session, streamID, message); err != nil {
+		if err := d.processMessage(lane, streamID, message); err != nil {
 			if !errors.Is(err, context.Canceled) && d.ctx.Err() == nil {
 				log.Warn(d.ctx, "Failed to write Responses WebSocket result", log.Cause(err))
 			}
@@ -255,8 +384,8 @@ func (d *responsesWebSocketDispatcher) dispatch(lane *responsesWebSocketLane, st
 	})
 }
 
-func (d *responsesWebSocketDispatcher) processMessage(session *responsesWebSocketSession, streamID string, message []byte) error {
-	request, warmup, requestErr := session.prepareRequest(d.rawRequest, message)
+func (d *responsesWebSocketDispatcher) processMessage(lane *responsesWebSocketLane, streamID string, message []byte) error {
+	request, warmup, requestErr := lane.session.prepareRequest(d.rawRequest, message)
 	if requestErr != nil {
 		return writeResponsesWebSocketError(d.writer, requestErr, streamID)
 	}
@@ -264,10 +393,23 @@ func (d *responsesWebSocketDispatcher) processMessage(session *responsesWebSocke
 		return writeResponsesWebSocketWarmup(d.writer, warmup, streamID)
 	}
 
+	var modelPayload struct {
+		Model string `json:"model"`
+	}
+	_ = json.Unmarshal(request.Body, &modelPayload)
+	steers, astra := lane.begin(modelPayload.Model)
+	defer func() {
+		lane.end()
+		d.unregisterLane(lane)
+	}()
+
 	requestCtx := d.ctx
 	cancel := func() {}
 	if d.requestTimeout > 0 {
 		requestCtx, cancel = context.WithTimeout(d.ctx, d.requestTimeout)
+	}
+	if astra {
+		requestCtx = shared.WithResponsesWebSocketSteer(requestCtx, steers)
 	}
 	defer cancel()
 	if request.RawRequest != nil {
@@ -280,12 +422,17 @@ func (d *responsesWebSocketDispatcher) processMessage(session *responsesWebSocke
 		return writeResponsesWebSocketError(d.writer, httpErr, streamID)
 	}
 
-	return writeResponsesWebSocketResult(requestCtx, d.writer, result, d.transformError, streamID)
+	return writeResponsesWebSocketResult(requestCtx, d.writer, result, d.transformError, streamID, func(id string) {
+		d.registerResponseID(id, lane)
+	})
 }
 
 func (d *responsesWebSocketDispatcher) wait() {
 	d.cancel()
 	d.wg.Wait()
+	d.mu.Lock()
+	clear(d.responseLanes)
+	d.mu.Unlock()
 }
 
 func runResponsesWebSocketPings(ctx context.Context, conn *websocket.Conn, done <-chan struct{}) {
@@ -313,31 +460,36 @@ func runResponsesWebSocketPings(ctx context.Context, conn *websocket.Conn, done 
 	}
 }
 
-func responsesWebSocketEnvelopeStreamID(message []byte) (string, *httpclient.Error) {
+func responsesWebSocketEnvelope(message []byte) (string, string, *httpclient.Error) {
 	var payload map[string]json.RawMessage
 	if err := json.Unmarshal(message, &payload); err != nil || payload == nil {
-		return "", invalidResponsesWebSocketRequest("invalid response.create JSON payload", "")
+		return "", "", invalidResponsesWebSocketRequest("invalid Responses WebSocket event JSON payload", "")
 	}
 
 	var eventType string
-	if rawType, ok := payload["type"]; !ok || json.Unmarshal(rawType, &eventType) != nil || eventType != responseCreateWebSocketEventType {
-		return "", invalidResponsesWebSocketRequest("expected a response.create event", "type")
+	if rawType, ok := payload["type"]; !ok || json.Unmarshal(rawType, &eventType) != nil || (eventType != responseCreateWebSocketEventType && eventType != responseSteerWebSocketEventType) {
+		return "", "", invalidResponsesWebSocketRequest("expected a response.create or response.steer event", "type")
 	}
 
 	rawStreamID, ok := payload["stream_id"]
 	if !ok {
-		return "", nil
+		return "", eventType, nil
 	}
 	var streamID string
 	if json.Unmarshal(rawStreamID, &streamID) != nil || !validResponsesWebSocketStreamID(streamID) {
-		return "", responsesWebSocketRequestError(
+		return "", "", responsesWebSocketRequestError(
 			"The 'stream_id' field must be a non-empty string with at most 256 characters and may only contain letters, numbers, underscores, hyphens, and periods.",
 			"stream_id",
 			"invalid_stream_id",
 		)
 	}
 
-	return streamID, nil
+	return streamID, eventType, nil
+}
+
+func responsesWebSocketEnvelopeStreamID(message []byte) (string, *httpclient.Error) {
+	streamID, _, err := responsesWebSocketEnvelope(message)
+	return streamID, err
 }
 
 func validResponsesWebSocketStreamID(streamID string) bool {
@@ -607,19 +759,24 @@ func writeResponsesWebSocketResult(
 	result orchestrator.ChatCompletionResult,
 	transformError responsesWebSocketErrorFunc,
 	streamID string,
+	registerResponseID func(string),
 ) error {
 	if result.ChatCompletionStream != nil {
 		stream := result.ChatCompletionStream
 		defer stream.Close()
 
 		terminalSeen := false
+		steeringState := newResponsesWebSocketSteeringState()
 		for stream.Next() {
 			event := stream.Current()
 			if event == nil || len(event.Data) == 0 {
 				continue
 			}
-			if orchestrator.IsTerminalStreamEvent(event) {
+			if steeringState.isFinalTerminal(event) {
 				terminalSeen = true
+			}
+			if registerResponseID != nil && event.Type == "response.created" {
+				registerResponseID(responseIDFromWebSocketEvent(event.Data))
 			}
 			data, err := withResponsesWebSocketStreamID(event.Data, streamID)
 			if err != nil {
@@ -644,6 +801,9 @@ func writeResponsesWebSocketResult(
 		}
 		response = result.ChatCompletion.Body
 
+		if registerResponseID != nil {
+			registerResponseID(responseIDFromResponseBody(response))
+		}
 		return writeResponsesWebSocketJSON(writer, responsesWebSocketEvent(streamID, gin.H{
 			"type":            "response.completed",
 			"sequence_number": 0,
@@ -652,6 +812,104 @@ func writeResponsesWebSocketResult(
 	}
 
 	return writeResponsesWebSocketError(writer, invalidResponsesWebSocketRequest("Responses request returned no result", ""), streamID)
+}
+
+type responsesWebSocketSteeringState struct {
+	accepted map[string]string
+	terminal map[string]struct{}
+}
+
+type responsesWebSocketProtocolEvent struct {
+	Type  string `json:"type"`
+	Steer *struct {
+		ID                 string `json:"id"`
+		PreviousResponseID string `json:"previous_response_id"`
+	} `json:"steer,omitempty"`
+	Response *struct {
+		ID                string `json:"id"`
+		IncompleteDetails *struct {
+			Reason string `json:"reason"`
+		} `json:"incomplete_details,omitempty"`
+	} `json:"response,omitempty"`
+}
+
+func newResponsesWebSocketSteeringState() *responsesWebSocketSteeringState {
+	return &responsesWebSocketSteeringState{
+		accepted: make(map[string]string),
+		terminal: make(map[string]struct{}),
+	}
+}
+
+func (s *responsesWebSocketSteeringState) hasAccepted(responseID string) bool {
+	for _, acceptedResponseID := range s.accepted {
+		if acceptedResponseID == responseID {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *responsesWebSocketSteeringState) isFinalTerminal(event *httpclient.StreamEvent) bool {
+	if event == nil {
+		return false
+	}
+	var payload responsesWebSocketProtocolEvent
+	if err := json.Unmarshal(event.Data, &payload); err != nil {
+		return orchestrator.IsTerminalStreamEvent(event)
+	}
+	switch payload.Type {
+	case "response.steer.accepted":
+		if payload.Steer != nil && payload.Steer.ID != "" && payload.Steer.PreviousResponseID != "" {
+			s.accepted[payload.Steer.ID] = payload.Steer.PreviousResponseID
+		}
+		return false
+	case "response.steer.failed":
+		if payload.Steer == nil {
+			return false
+		}
+		responseID := payload.Steer.PreviousResponseID
+		delete(s.accepted, payload.Steer.ID)
+		_, terminal := s.terminal[responseID]
+		return terminal && !s.hasAccepted(responseID)
+	case "response.steer.pending", "response.failed", "response.cancelled":
+		return true
+	case "response.completed":
+		if payload.Response != nil {
+			if s.hasAccepted(payload.Response.ID) {
+				s.terminal[payload.Response.ID] = struct{}{}
+				return false
+			}
+		}
+		return true
+	case "response.incomplete":
+		if payload.Response != nil && payload.Response.IncompleteDetails != nil && payload.Response.IncompleteDetails.Reason == "steered" {
+			if s.hasAccepted(payload.Response.ID) {
+				s.terminal[payload.Response.ID] = struct{}{}
+				return false
+			}
+		}
+		return true
+	default:
+		return orchestrator.IsTerminalStreamEvent(event)
+	}
+}
+
+func responseIDFromResponseBody(raw []byte) string {
+	var payload struct {
+		ID string `json:"id"`
+	}
+	_ = json.Unmarshal(raw, &payload)
+	return payload.ID
+}
+
+func responseIDFromWebSocketEvent(raw []byte) string {
+	var payload struct {
+		Response struct {
+			ID string `json:"id"`
+		} `json:"response"`
+	}
+	_ = json.Unmarshal(raw, &payload)
+	return payload.Response.ID
 }
 
 func transformResponsesWebSocketError(ctx context.Context, err error, transformError responsesWebSocketErrorFunc) *httpclient.Error {
@@ -701,6 +959,18 @@ func responsesWebSocketQueueLimitError() *httpclient.Error {
 		"This WebSocket connection has reached its pending response limit (64). Wait for an active response to finish before sending more response.create events.",
 		"",
 		"websocket_queue_limit_reached",
+	)
+	httpErr.StatusCode = http.StatusTooManyRequests
+	httpErr.Status = http.StatusText(http.StatusTooManyRequests)
+
+	return httpErr
+}
+
+func responsesWebSocketSteerQueueLimitError() *httpclient.Error {
+	httpErr := responsesWebSocketRequestError(
+		"Too much steering input is pending. Wait for the continuation or return required tool results before submitting more.",
+		"input",
+		"too_many_pending_steers",
 	)
 	httpErr.StatusCode = http.StatusTooManyRequests
 	httpErr.Status = http.StatusText(http.StatusTooManyRequests)

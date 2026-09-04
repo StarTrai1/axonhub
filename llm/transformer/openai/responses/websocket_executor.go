@@ -215,12 +215,17 @@ func (e *WebSocketExecutor) DoStream(ctx context.Context, request *httpclient.Re
 		return nil, err
 	}
 
-	if err := lease.conn.WriteJSON(payload); err != nil {
+	if err := lease.writeJSON(payload); err != nil {
 		lease.release(true)
 		return nil, fmt.Errorf("failed to write response.create websocket event: %w", err)
 	}
 
 	stream := &webSocketStream{ctx: ctx, lease: lease, done: make(chan struct{})}
+	if steering, ok := shared.GetResponsesWebSocketSteer(ctx); ok {
+		stream.steering = steering
+		steering.Activate()
+		go runWebSocketSteers(ctx, lease, stream)
+	}
 	go runWebSocketPings(ctx, lease, stream.done)
 	go func() {
 		select {
@@ -322,6 +327,7 @@ type pooledWebSocketConn struct {
 	used       bool
 
 	mu             sync.Mutex
+	writeMu        sync.Mutex
 	closed         bool
 	lastInput      []json.RawMessage
 	lastResponseID string
@@ -334,6 +340,51 @@ type webSocketLease struct {
 	reused        bool
 	nextFullInput []json.RawMessage
 	once          sync.Once
+}
+
+func (l *webSocketLease) writeJSON(value any) error {
+	if l == nil || l.conn == nil {
+		return fmt.Errorf("websocket lease is nil")
+	}
+	if l.pooled == nil {
+		return l.conn.WriteJSON(value)
+	}
+	l.pooled.writeMu.Lock()
+	defer l.pooled.writeMu.Unlock()
+	return l.conn.WriteJSON(value)
+}
+
+func runWebSocketSteers(ctx context.Context, lease *webSocketLease, stream *webSocketStream) {
+	if lease == nil || stream == nil || stream.steering == nil {
+		return
+	}
+	defer stream.steering.Deactivate()
+	steers := stream.steering.Events()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-stream.done:
+			return
+		case message, ok := <-steers:
+			if !ok {
+				return
+			}
+			if len(message) == 0 {
+				continue
+			}
+			stream.markSteerSent(message)
+			written, err := stream.writeSteer(lease, message)
+			if !written {
+				return
+			}
+			if err != nil {
+				stream.setErr(err)
+				stream.finish(true)
+				return
+			}
+		}
+	}
 }
 
 func (e *WebSocketExecutor) acquirePreparedLease(ctx context.Context, request *httpclient.Request, wsURL string, headers http.Header, payload map[string]any) (*webSocketLease, error) {
@@ -1077,16 +1128,20 @@ func newWebSocketDialError(request *httpclient.Request, resp *http.Response, err
 }
 
 type webSocketStream struct {
-	ctx      context.Context
-	lease    *webSocketLease
-	done     chan struct{}
-	doneOnce sync.Once
-	mu       sync.Mutex
-	current  *httpclient.StreamEvent
-	err      error
-	closed   bool
-	sawEvent bool
-	terminal bool
+	ctx            context.Context
+	lease          *webSocketLease
+	done           chan struct{}
+	doneOnce       sync.Once
+	mu             sync.Mutex
+	current        *httpclient.StreamEvent
+	err            error
+	closed         bool
+	sawEvent       bool
+	terminal       bool
+	steering       *shared.ResponsesWebSocketSteering
+	steerMu        sync.Mutex
+	steerTargets   map[string]int
+	steerTerminals map[string]struct{}
 }
 
 func (s *webSocketStream) Next() bool {
@@ -1118,28 +1173,140 @@ func (s *webSocketStream) Next() bool {
 		Type: typ,
 		Data: normalizeWebSocketEvent(msg),
 	})
-	if isTerminalWebSocketEvent(typ) {
+	if typ == "response.steer.pending" {
+		// The pending notification ends this upstream turn. Keep the pooled
+		// connection and its response context so a following response.create
+		// can return the required tool result on the same upstream connection.
+		s.markTerminal()
+		s.finish(false)
+		return true
+	}
+	if typ == "response.steer.failed" && s.recordSteerFailed(msg) {
+		s.markTerminal()
+		s.finish(false)
+		return true
+	}
+	continueAfterSteer := s.shouldContinueAfterSteer(typ, msg)
+	if typ == "response.completed" {
+		responseID := responseIDFromWebSocketEvent(msg)
+		if responseID == "" {
+			continueAfterSteer = false
+		} else {
+			// Preserve the completed response in the pooled session even when
+			// steering keeps this WebSocket turn open for its continuation.
+			s.lease.rememberTurn(responseID, responseOutputFromWebSocketEvent(msg))
+		}
+	}
+	if isTerminalWebSocketEvent(typ) && !continueAfterSteer {
 		s.markTerminal()
 		// Only top-level `error` events are transport failures. Response-level
 		// terminal events are yielded and then close the stream normally so the
 		// non-streaming Do path can aggregate their response object.
 		evict := terminalWebSocketEventEvicts(typ)
 		if typ == "response.completed" {
-			responseID := responseIDFromWebSocketEvent(msg)
-			if responseID == "" {
+			if responseIDFromWebSocketEvent(msg) == "" {
 				evict = true
-			} else {
-				// Retaining the full input is a local cache optimization for
-				// future incremental sends. If the input exceeds the memory
-				// budget, keep the healthy WebSocket connection and let the
-				// next turn send full context instead of evicting the session.
-				s.lease.rememberTurn(responseID, responseOutputFromWebSocketEvent(msg))
 			}
 		}
 		s.finish(evict)
 	}
 
 	return true
+}
+
+func (s *webSocketStream) writeSteer(lease *webSocketLease, message []byte) (bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.closed {
+		return false, nil
+	}
+	return true, lease.writeJSON(json.RawMessage(message))
+}
+
+func (s *webSocketStream) markSteerSent(raw []byte) {
+	var payload struct {
+		PreviousResponseID string `json:"previous_response_id"`
+	}
+	_ = json.Unmarshal(raw, &payload)
+	if payload.PreviousResponseID == "" {
+		return
+	}
+	s.steerMu.Lock()
+	if s.steerTargets == nil {
+		s.steerTargets = make(map[string]int)
+	}
+	s.steerTargets[payload.PreviousResponseID]++
+	s.steerMu.Unlock()
+}
+
+func (s *webSocketStream) recordSteerFailed(raw []byte) bool {
+	responseID := steerPreviousResponseID(raw)
+	if responseID == "" {
+		return false
+	}
+	s.steerMu.Lock()
+	defer s.steerMu.Unlock()
+	if pending := s.steerTargets[responseID]; pending > 1 {
+		s.steerTargets[responseID] = pending - 1
+	} else {
+		delete(s.steerTargets, responseID)
+	}
+	_, terminal := s.steerTerminals[responseID]
+	return terminal && s.steerTargets[responseID] == 0
+}
+
+func (s *webSocketStream) shouldContinueAfterSteer(eventType string, raw []byte) bool {
+	if eventType != "response.incomplete" && eventType != "response.completed" {
+		return false
+	}
+	responseID := responseIDFromWebSocketEvent(raw)
+	s.steerMu.Lock()
+	defer s.steerMu.Unlock()
+	if s.steerTargets[responseID] == 0 {
+		return false
+	}
+	if eventType == "response.incomplete" && incompleteReason(raw) == "steered" {
+		if s.steerTargets[responseID] > 0 {
+			if s.steerTerminals == nil {
+				s.steerTerminals = make(map[string]struct{})
+			}
+			s.steerTerminals[responseID] = struct{}{}
+			return true
+		}
+		return false
+	}
+	if eventType == "response.completed" {
+		if s.steerTargets[responseID] > 0 {
+			if s.steerTerminals == nil {
+				s.steerTerminals = make(map[string]struct{})
+			}
+			s.steerTerminals[responseID] = struct{}{}
+			return true
+		}
+	}
+	return false
+}
+
+func steerPreviousResponseID(raw []byte) string {
+	var payload struct {
+		Steer struct {
+			PreviousResponseID string `json:"previous_response_id"`
+		} `json:"steer"`
+	}
+	_ = json.Unmarshal(raw, &payload)
+	return payload.Steer.PreviousResponseID
+}
+
+func incompleteReason(raw []byte) string {
+	var payload struct {
+		Response struct {
+			IncompleteDetails struct {
+				Reason string `json:"reason"`
+			} `json:"incomplete_details"`
+		} `json:"response"`
+	}
+	_ = json.Unmarshal(raw, &payload)
+	return payload.Response.IncompleteDetails.Reason
 }
 
 func (s *webSocketStream) Current() *httpclient.StreamEvent {

@@ -69,6 +69,7 @@ type StreamEvent struct {
 
 	// For response.* events
 	Response *Response `json:"response,omitempty"`
+	Steer    *Steer    `json:"steer,omitempty"`
 
 	// For output_item.* events
 	OutputIndex int   `json:"output_index"`
@@ -111,6 +112,14 @@ type StreamEvent struct {
 	Param     *string `json:"param,omitempty"`
 	Error     *Error  `json:"error,omitempty"`
 	RequestID string  `json:"request_id,omitempty"`
+}
+
+// Steer describes a GPT-6 Astra mid-turn steering acknowledgement.
+type Steer struct {
+	ID                 string          `json:"id,omitempty"`
+	PreviousResponseID string          `json:"previous_response_id,omitempty"`
+	Input              json.RawMessage `json:"input,omitempty"`
+	Error              *Error          `json:"error,omitempty"`
 }
 
 // StreamEventContentPart represents a content part in streaming events.

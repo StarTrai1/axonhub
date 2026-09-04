@@ -675,6 +675,60 @@ func TestOutboundTransformer_TransformStream_ResponseCancelledCompletes(t *testi
 	require.Equal(t, "cancelled", *responses[1].Choices[0].FinishReason)
 }
 
+func TestResponsesStream_RoundTrip_PreservesGPT6AstraSteeringLifecycle(t *testing.T) {
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	upstreamEvents := []*httpclient.StreamEvent{
+		{Type: "response.created", Data: []byte(`{"type":"response.created","sequence_number":0,"response":{"id":"resp_initial","object":"response","created_at":1700000000,"model":"gpt-6-astra","status":"in_progress","output":[]}}`)},
+		{Type: "response.steer.accepted", Data: []byte(`{"type":"response.steer.accepted","sequence_number":1,"steer":{"id":"steer_1","previous_response_id":"resp_initial"}}`)},
+		{Type: "response.incomplete", Data: []byte(`{"type":"response.incomplete","sequence_number":2,"response":{"id":"resp_initial","object":"response","created_at":1700000000,"model":"gpt-6-astra","status":"incomplete","incomplete_details":{"reason":"steered"},"output":[]}}`)},
+		{Type: "response.created", Data: []byte(`{"type":"response.created","sequence_number":3,"response":{"id":"resp_successor","object":"response","created_at":1700000001,"model":"gpt-6-astra","status":"in_progress","output":[]}}`)},
+		{Type: "response.completed", Data: []byte(`{"type":"response.completed","sequence_number":4,"response":{"id":"resp_successor","object":"response","created_at":1700000001,"model":"gpt-6-astra","status":"completed","output":[]}}`)},
+	}
+
+	unifiedStream, err := outbound.TransformStream(t.Context(), nil, streams.SliceStream(upstreamEvents))
+	require.NoError(t, err)
+	clientStream, err := NewInboundTransformer().TransformStream(t.Context(), unifiedStream)
+	require.NoError(t, err)
+
+	var eventTypes []string
+	var responseIDs []string
+	for clientStream.Next() {
+		event := clientStream.Current()
+		eventTypes = append(eventTypes, event.Type)
+		var payload StreamEvent
+		require.NoError(t, json.Unmarshal(event.Data, &payload))
+		if payload.Response != nil {
+			responseIDs = append(responseIDs, payload.Response.ID)
+		}
+	}
+	require.NoError(t, clientStream.Err())
+	require.Contains(t, eventTypes, "response.steer.accepted")
+	require.Contains(t, eventTypes, "response.incomplete")
+	require.Contains(t, responseIDs, "resp_successor")
+	require.Equal(t, "response.completed", eventTypes[len(eventTypes)-1])
+}
+
+func TestOutboundTransformer_TransformStream_GPT6AstraPendingSteerEndsTurn(t *testing.T) {
+	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	events := []*httpclient.StreamEvent{
+		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_initial","object":"response","created_at":1700000000,"model":"gpt-6-astra","status":"in_progress","output":[]}}`)},
+		{Type: "response.steer.accepted", Data: []byte(`{"type":"response.steer.accepted","steer":{"id":"steer_1","previous_response_id":"resp_initial"}}`)},
+		{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":{"id":"resp_initial","object":"response","created_at":1700000000,"model":"gpt-6-astra","status":"completed","output":[]}}`)},
+		{Type: "response.steer.pending", Data: []byte(`{"type":"response.steer.pending","steer":{"id":"steer_1","previous_response_id":"resp_initial"},"reason":"waiting_for_required_input","required_input":[{"type":"function_call_output","call_id":"call_1","name":"lookup"}]}`)},
+	}
+
+	stream, err := trans.TransformStream(t.Context(), nil, streams.SliceStream(events))
+	require.NoError(t, err)
+	responses, err := streams.All(stream)
+	require.NoError(t, err)
+	require.Equal(t, llm.DoneResponse, responses[len(responses)-1])
+	require.JSONEq(t, string(events[len(events)-1].Data), string(responses[len(responses)-2].RawResponsesEvent))
+}
+
 func TestOutboundTransformer_TransformStream_StopsAtTerminalEvent(t *testing.T) {
 	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
 	require.NoError(t, err)
@@ -842,10 +896,10 @@ func TestResponsesStream_RoundTrip_PreservesToolIdentityProvidedOnlyInDone(t *te
 	require.NoError(t, err)
 
 	upstreamEvents := []*httpclient.StreamEvent{
-		{Data: []byte(`{"type":"response.created","response":{"id":"resp_done_identity","object":"response","created_at":1700000000,"model":"gpt-5","status":"in_progress","output":[]}}`)},
-		{Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"fc_done_identity","type":"function_call","call_id":"call_done_identity","arguments":""}}`)},
+		{Data: []byte(`{"type":"response.created","response":{"id":"resp_done_identity","object":"response","created_at":1700000000,"model":"gpt-6-astra","status":"in_progress","output":[]}}`)},
+		{Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"fc_done_identity","type":"function_call","call_id":"call_done_identity","arguments":"","async":true}}`)},
 		{Data: []byte(`{"type":"response.function_call_arguments.done","item_id":"fc_done_identity","output_index":0,"name":"spawn_agent","namespace":"collaboration","arguments":"{\"task\":\"delegate this task\"}"}`)},
-		{Data: []byte(`{"type":"response.completed","response":{"id":"resp_done_identity","object":"response","created_at":1700000000,"model":"gpt-5","status":"completed","output":[]}}`)},
+		{Data: []byte(`{"type":"response.completed","response":{"id":"resp_done_identity","object":"response","created_at":1700000000,"model":"gpt-6-astra","status":"completed","output":[]}}`)},
 	}
 
 	unifiedStream, err := outbound.TransformStream(t.Context(), nil, streams.SliceStream(upstreamEvents))
@@ -887,8 +941,10 @@ func TestResponsesStream_RoundTrip_PreservesToolIdentityProvidedOnlyInDone(t *te
 	require.JSONEq(t, `{"task":"delegate this task"}`, completedArguments.Arguments)
 	require.Equal(t, "spawn_agent", addedItem.Name)
 	require.Equal(t, "collaboration", addedItem.Namespace)
+	require.True(t, lo.FromPtr(addedItem.Async))
 	require.Equal(t, "spawn_agent", completedItem.Name)
 	require.Equal(t, "collaboration", completedItem.Namespace)
+	require.True(t, lo.FromPtr(completedItem.Async))
 	require.JSONEq(t, `{"task":"delegate this task"}`, completedItem.Arguments)
 }
 

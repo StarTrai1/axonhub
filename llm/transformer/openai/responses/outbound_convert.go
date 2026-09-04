@@ -253,6 +253,7 @@ func convertAssistantMessage(msg llm.Message) []Item {
 				CallID: tc.ResponseCustomToolCall.CallID,
 				Name:   tc.ResponseCustomToolCall.Name,
 				Input:  lo.ToPtr(tc.ResponseCustomToolCall.Input),
+				Async:  tc.Async,
 			})
 		} else {
 			toolCallItems = append(toolCallItems, Item{
@@ -261,6 +262,7 @@ func convertAssistantMessage(msg llm.Message) []Item {
 				Name:      tc.Function.Name,
 				Namespace: tc.Function.Namespace,
 				Arguments: tc.Function.Arguments,
+				Async:     tc.Async,
 			})
 		}
 	}
@@ -736,8 +738,9 @@ func convertOutputToMessage(output []Item, transformerMetadata map[string]any) l
 			annotations = appendOutputText(&textContent, &visibleTextRuneCount, annotations, outputItem)
 		case "function_call":
 			toolCalls = append(toolCalls, llm.ToolCall{
-				ID:   outputItem.CallID,
-				Type: "function",
+				ID:    outputItem.CallID,
+				Type:  "function",
+				Async: outputItem.Async,
 				Function: llm.FunctionCall{
 					Name:      outputItem.Name,
 					Namespace: outputItem.Namespace,
@@ -751,8 +754,9 @@ func convertOutputToMessage(output []Item, transformerMetadata map[string]any) l
 			}
 
 			toolCalls = append(toolCalls, llm.ToolCall{
-				ID:   outputItem.CallID,
-				Type: llm.ToolTypeResponsesCustomTool,
+				ID:    outputItem.CallID,
+				Type:  llm.ToolTypeResponsesCustomTool,
+				Async: outputItem.Async,
 				ResponseCustomToolCall: &llm.ResponseCustomToolCall{
 					CallID: outputItem.CallID,
 					Name:   outputItem.Name,

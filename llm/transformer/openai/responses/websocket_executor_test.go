@@ -126,6 +126,68 @@ func TestWebSocketExecutorDoStreamSendsResponseCreate(t *testing.T) {
 	require.NoError(t, stream.Err())
 }
 
+func TestWebSocketExecutorDoStreamForwardsGPT6AstraSteering(t *testing.T) {
+	upgrader := websocket.Upgrader{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, err := upgrader.Upgrade(w, r, nil)
+		require.NoError(t, err)
+		defer conn.Close()
+
+		var create map[string]any
+		require.NoError(t, conn.ReadJSON(&create))
+		require.Equal(t, "response.create", create["type"])
+		require.NoError(t, conn.WriteJSON(map[string]any{
+			"type": "response.created",
+			"response": map[string]any{"id": "resp_initial", "model": "gpt-6-astra", "status": "in_progress"},
+		}))
+
+		var steer map[string]any
+		require.NoError(t, conn.ReadJSON(&steer))
+		require.Equal(t, "response.steer", steer["type"])
+		require.Equal(t, "resp_initial", steer["previous_response_id"])
+		require.NoError(t, conn.WriteJSON(map[string]any{
+			"type": "response.steer.accepted",
+			"steer": map[string]any{"id": "steer_1", "previous_response_id": "resp_initial"},
+		}))
+		require.NoError(t, conn.WriteJSON(map[string]any{
+			"type": "response.incomplete",
+			"response": map[string]any{"id": "resp_initial", "model": "gpt-6-astra", "status": "incomplete", "incomplete_details": map[string]any{"reason": "steered"}},
+		}))
+		require.NoError(t, conn.WriteJSON(map[string]any{
+			"type": "response.created",
+			"response": map[string]any{"id": "resp_successor", "model": "gpt-6-astra", "status": "in_progress"},
+		}))
+		require.NoError(t, conn.WriteJSON(map[string]any{
+			"type": "response.completed",
+			"response": map[string]any{"id": "resp_successor", "model": "gpt-6-astra", "status": "completed", "output": []any{}},
+		}))
+	}))
+	defer server.Close()
+
+	steering := shared.NewResponsesWebSocketSteering(1)
+	ctx := shared.WithResponsesWebSocketSteer(webSocketTestContext(), steering)
+	executor := NewWebSocketExecutor(nil)
+	stream, err := executor.DoStream(ctx, &httpclient.Request{
+		Method: http.MethodPost,
+		URL:    "http" + strings.TrimPrefix(server.URL, "http") + "/v1/responses",
+		Auth:   &httpclient.AuthConfig{Type: httpclient.AuthTypeBearer, APIKey: "test-key"},
+		Body:   []byte(`{"model":"gpt-6-astra"}`),
+	})
+	require.NoError(t, err)
+	defer stream.Close()
+
+	require.True(t, stream.Next())
+	require.Equal(t, "response.created", stream.Current().Type)
+	require.True(t, steering.Send([]byte(`{"type":"response.steer","previous_response_id":"resp_initial","input":"Use the new requirement."}`)))
+
+	for _, eventType := range []string{"response.steer.accepted", "response.incomplete", "response.created", "response.completed"} {
+		require.True(t, stream.Next())
+		require.Equal(t, eventType, stream.Current().Type)
+	}
+	require.False(t, stream.Next())
+	require.NoError(t, stream.Err())
+}
+
 func TestWebSocketStreamStopsAfterTerminalEventWithoutCloseFrame(t *testing.T) {
 	upgrader := websocket.Upgrader{}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

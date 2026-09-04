@@ -275,6 +275,40 @@ func TestIsTerminalStreamEvent_AudioDoneEvents(t *testing.T) {
 	require.False(t, IsTerminalStreamEvent(&httpclient.StreamEvent{Type: "audio/mpeg"}))
 }
 
+func TestResponsesSteeringStateWaitsForGPT6AstraContinuation(t *testing.T) {
+	state := newResponsesSteeringState()
+	events := []struct {
+		data string
+		want bool
+	}{
+		{data: `{"type":"response.steer.accepted","steer":{"id":"steer_1","previous_response_id":"resp_initial"}}`, want: false},
+		{data: `{"type":"response.incomplete","response":{"id":"resp_initial","incomplete_details":{"reason":"steered"}}}`, want: false},
+		{data: `{"type":"response.created","response":{"id":"resp_successor"}}`, want: false},
+		{data: `{"type":"response.completed","response":{"id":"resp_successor"}}`, want: true},
+	}
+
+	for _, tt := range events {
+		event := &httpclient.StreamEvent{Data: []byte(tt.data)}
+		require.Equal(t, tt.want, state.isFinalTerminal(event), tt.data)
+	}
+}
+
+func TestResponsesSteeringStateTreatsPendingToolInputAsTurnTerminal(t *testing.T) {
+	state := newResponsesSteeringState()
+	require.False(t, state.isFinalTerminal(&httpclient.StreamEvent{Data: []byte(`{"type":"response.steer.accepted","steer":{"id":"steer_1","previous_response_id":"resp_initial"}}`)}))
+	require.False(t, state.isFinalTerminal(&httpclient.StreamEvent{Data: []byte(`{"type":"response.completed","response":{"id":"resp_initial"}}`)}))
+	require.True(t, state.isFinalTerminal(&httpclient.StreamEvent{Data: []byte(`{"type":"response.steer.pending","steer":{"previous_response_id":"resp_initial"}}`)}))
+}
+
+func TestResponsesSteeringStateTracksAcceptedIDsIndependently(t *testing.T) {
+	state := newResponsesSteeringState()
+	require.False(t, state.isFinalTerminal(&httpclient.StreamEvent{Data: []byte(`{"type":"response.steer.accepted","steer":{"id":"steer_1","previous_response_id":"resp_initial"}}`)}))
+	require.False(t, state.isFinalTerminal(&httpclient.StreamEvent{Data: []byte(`{"type":"response.steer.accepted","steer":{"id":"steer_2","previous_response_id":"resp_initial"}}`)}))
+	require.False(t, state.isFinalTerminal(&httpclient.StreamEvent{Data: []byte(`{"type":"response.completed","response":{"id":"resp_initial"}}`)}))
+	require.False(t, state.isFinalTerminal(&httpclient.StreamEvent{Data: []byte(`{"type":"response.steer.failed","steer":{"id":"steer_1","previous_response_id":"resp_initial"}}`)}))
+	require.True(t, state.isFinalTerminal(&httpclient.StreamEvent{Data: []byte(`{"type":"response.steer.failed","steer":{"id":"steer_2","previous_response_id":"resp_initial"}}`)}))
+}
+
 // TestInboundPersistentStream_Close_IncompleteStillPersistsChunks ensures a clean
 // upstream EOF without terminal/completion still saves buffered chunks when
 // store_chunks is on — without marking the request completed.

@@ -38,6 +38,7 @@ type InboundPersistentStream struct {
 	responseChunks []*httpclient.StreamEvent
 	closed         bool
 	state          *PersistenceState
+	steering       *responsesSteeringState
 }
 
 var _ streams.Stream[*httpclient.StreamEvent] = (*InboundPersistentStream)(nil)
@@ -63,6 +64,7 @@ func NewInboundPersistentStream(
 		responseChunks: make([]*httpclient.StreamEvent, 0),
 		closed:         false,
 		state:          state,
+		steering:       newResponsesSteeringState(),
 	}
 
 	return s
@@ -78,7 +80,7 @@ func (ts *InboundPersistentStream) Current() *httpclient.StreamEvent {
 		// For raw binary audio chunks (TTS stream_format=audio), persist only a size
 		// summary to avoid buffering the full audio payload in memory.
 		ts.responseChunks = append(ts.responseChunks, httpclient.SummarizeBinaryChunk(event))
-		if IsTerminalStreamEvent(event) {
+		if ts.steering.isFinalTerminal(event) {
 			ts.state.StreamCompleted = true
 		}
 	}
@@ -128,6 +130,71 @@ func IsTerminalStreamEvent(event *httpclient.StreamEvent) bool {
 	// Gemini generateContent streams have no [DONE] sentinel. Completion is
 	// signaled by candidates[].finishReason (e.g. STOP, MAX_TOKENS, SAFETY).
 	return hasNonEmptyJSONStringField(event.Data, "candidates", "finishReason")
+}
+
+type responsesSteeringState struct {
+	accepted map[string]string
+	terminal map[string]struct{}
+}
+
+func newResponsesSteeringState() *responsesSteeringState {
+	return &responsesSteeringState{
+		accepted: make(map[string]string),
+		terminal: make(map[string]struct{}),
+	}
+}
+
+func (s *responsesSteeringState) hasAccepted(responseID string) bool {
+	for _, acceptedResponseID := range s.accepted {
+		if acceptedResponseID == responseID {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *responsesSteeringState) isFinalTerminal(event *httpclient.StreamEvent) bool {
+	if event == nil || s == nil {
+		return IsTerminalStreamEvent(event)
+	}
+	eventType := gjson.GetBytes(event.Data, "type").String()
+	if eventType == "" {
+		eventType = event.Type
+	}
+	switch eventType {
+	case "response.steer.accepted":
+		steerID := gjson.GetBytes(event.Data, "steer.id").String()
+		responseID := gjson.GetBytes(event.Data, "steer.previous_response_id").String()
+		if steerID != "" && responseID != "" {
+			s.accepted[steerID] = responseID
+		}
+		return false
+	case "response.steer.failed":
+		steerID := gjson.GetBytes(event.Data, "steer.id").String()
+		responseID := gjson.GetBytes(event.Data, "steer.previous_response_id").String()
+		delete(s.accepted, steerID)
+		_, terminal := s.terminal[responseID]
+		return terminal && !s.hasAccepted(responseID)
+	case "response.steer.pending", "response.failed", "response.cancelled":
+		return true
+	case "response.completed":
+		responseID := gjson.GetBytes(event.Data, "response.id").String()
+		if s.hasAccepted(responseID) {
+			s.terminal[responseID] = struct{}{}
+			return false
+		}
+		return true
+	case "response.incomplete":
+		responseID := gjson.GetBytes(event.Data, "response.id").String()
+		reason := gjson.GetBytes(event.Data, "response.incomplete_details.reason").String()
+		if s.hasAccepted(responseID) && reason == "steered" {
+			s.terminal[responseID] = struct{}{}
+			return false
+		}
+		return true
+	default:
+		return IsTerminalStreamEvent(event)
+	}
 }
 
 func hasNonEmptyJSONStringField(data []byte, arrayPath, field string) bool {

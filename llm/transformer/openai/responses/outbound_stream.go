@@ -48,6 +48,9 @@ type responsesOutboundStream struct {
 	// provider `[DONE]` marker is valid only after this becomes true.
 	responseCompleted bool
 	doneEmitted       bool
+	steerAccepted     map[string]string
+	steerTerminals    map[string]struct{}
+	steerPassthrough  bool
 }
 
 // outboundStreamState holds the state for a streaming session.
@@ -86,6 +89,8 @@ func newResponsesOutboundStream(stream streams.Stream[*httpclient.StreamEvent]) 
 			pendingReasoningEncryptedContent: make(map[string]*string),
 			transformerMetadata:              make(map[string]any),
 		},
+		steerAccepted:  make(map[string]string),
+		steerTerminals: make(map[string]struct{}),
 	}
 }
 
@@ -146,6 +151,7 @@ func (s *responsesOutboundStream) Next() bool {
 		s.err = err
 		return false
 	}
+
 	// Continue to the next event if no events were enqueued
 	return s.Next()
 }
@@ -173,6 +179,34 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 	err := json.Unmarshal(event.Data, &streamEvent)
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal responses api stream event: %w", err)
+	}
+
+	if streamEvent.Type == "response.steer.accepted" {
+		if streamEvent.Steer != nil && streamEvent.Steer.ID != "" && streamEvent.Steer.PreviousResponseID != "" {
+			s.steerAccepted[streamEvent.Steer.ID] = streamEvent.Steer.PreviousResponseID
+			s.steerPassthrough = true
+		}
+		s.enqueue(rawResponsesEvent(event.Data, &streamEvent))
+		return nil
+	}
+	if streamEvent.Type == "response.steer.failed" {
+		if streamEvent.Steer != nil {
+			responseID := streamEvent.Steer.PreviousResponseID
+			delete(s.steerAccepted, streamEvent.Steer.ID)
+			if _, terminal := s.steerTerminals[responseID]; terminal && !s.hasAcceptedSteer(responseID) {
+				s.responseCompleted = true
+			}
+		}
+		s.enqueue(rawResponsesEvent(event.Data, &streamEvent))
+		return nil
+	}
+	if s.steerPassthrough {
+		if streamEvent.Type == StreamEventTypeError {
+			return responseErrorFromStreamEvent(&streamEvent)
+		}
+		s.enqueue(rawResponsesEvent(event.Data, &streamEvent))
+		s.responseCompleted = s.steeringEventEndsTurn(streamEvent)
+		return nil
 	}
 
 	if slog.Default().Enabled(context.Background(), slog.LevelDebug) {
@@ -259,8 +293,9 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 			// Initialize tool call tracking
 			toolCallIdx := len(s.state.toolCalls)
 			s.state.toolCalls[item.CallID] = &llm.ToolCall{
-				ID:   item.CallID,
-				Type: "function",
+				ID:    item.CallID,
+				Type:  "function",
+				Async: item.Async,
 				Function: llm.FunctionCall{
 					Name:      item.Name,
 					Namespace: item.Namespace,
@@ -279,6 +314,7 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 							{
 								ID:    item.CallID,
 								Type:  "function",
+								Async: item.Async,
 								Index: toolCallIdx,
 								Function: llm.FunctionCall{
 									Name:      item.Name,
@@ -294,8 +330,9 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 			// Custom tool call - initialize tracking, input will be streamed via delta events
 			toolCallIdx := len(s.state.toolCalls)
 			s.state.toolCalls[item.CallID] = &llm.ToolCall{
-				ID:   item.CallID,
-				Type: llm.ToolTypeResponsesCustomTool,
+				ID:    item.CallID,
+				Type:  llm.ToolTypeResponsesCustomTool,
+				Async: item.Async,
 				ResponseCustomToolCall: &llm.ResponseCustomToolCall{
 					CallID: item.CallID,
 					Name:   item.Name,
@@ -313,6 +350,7 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 							{
 								ID:    item.CallID,
 								Type:  llm.ToolTypeResponsesCustomTool,
+								Async: item.Async,
 								Index: toolCallIdx,
 								ResponseCustomToolCall: &llm.ResponseCustomToolCall{
 									CallID: item.CallID,
@@ -824,6 +862,57 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 	s.enqueue(resp)
 
 	return nil
+}
+
+func rawResponsesEvent(raw []byte, event *StreamEvent) *llm.Response {
+	response := &llm.Response{RawResponsesEvent: append([]byte(nil), raw...)}
+	if event != nil && event.Response != nil {
+		response.ID = event.Response.ID
+		response.Model = event.Response.Model
+		response.Created = event.Response.CreatedAt
+		if event.Response.Usage != nil {
+			response.Usage = event.Response.Usage.ToUsage()
+		}
+	}
+	return response
+}
+
+func (s *responsesOutboundStream) hasAcceptedSteer(responseID string) bool {
+	for _, acceptedResponseID := range s.steerAccepted {
+		if acceptedResponseID == responseID {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *responsesOutboundStream) steeringEventEndsTurn(event StreamEvent) bool {
+	if event.Type == "response.steer.pending" {
+		return true
+	}
+	if event.Type == StreamEventTypeResponseFailed || event.Type == StreamEventTypeResponseCancelled {
+		return true
+	}
+	if event.Response == nil {
+		return false
+	}
+	isSteeredResponse := s.hasAcceptedSteer(event.Response.ID)
+	switch event.Type {
+	case StreamEventTypeResponseCompleted:
+		if isSteeredResponse {
+			s.steerTerminals[event.Response.ID] = struct{}{}
+			return false
+		}
+		return true
+	case StreamEventTypeResponseIncomplete:
+		if isSteeredResponse && event.Response.IncompleteDetails != nil && event.Response.IncompleteDetails.Reason == "steered" {
+			s.steerTerminals[event.Response.ID] = struct{}{}
+			return false
+		}
+		return true
+	default:
+		return false
+	}
 }
 
 func (s *responsesOutboundStream) hasGeneratedOutput() bool {

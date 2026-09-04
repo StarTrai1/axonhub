@@ -115,6 +115,83 @@ func TestResponsesWebSocketStreamIDIsClientOnlyAndReturnedOnEveryEvent(t *testin
 	require.Equal(t, "lane.alpha-1", gjson.GetBytes(request.JSONBody, "stream_id").String())
 }
 
+func TestResponsesWebSocketRoutesSteeringOnlyToActiveGPT6Astra(t *testing.T) {
+	steerReceived := make(chan []byte, 1)
+	release := make(chan struct{})
+	process := func(ctx context.Context, _ *httpclient.Request) (orchestrator.ChatCompletionResult, error) {
+		steers, ok := shared.GetResponsesWebSocketSteer(ctx)
+		if !ok {
+			return orchestrator.ChatCompletionResult{}, errors.New("missing GPT-6 Astra steering channel")
+		}
+		steers.Activate()
+		return orchestrator.ChatCompletionResult{
+			ChatCompletionStream: &testSteeringEventStream{
+				steers:        steers.Events(),
+				steerReceived: steerReceived,
+				release:       release,
+			},
+		}, nil
+	}
+
+	server := newResponsesWebSocketTestServer(t, process, nil)
+	conn := dialResponsesWebSocket(t, server.URL, nil)
+	defer conn.Close()
+
+	require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create","model":"gpt-6-astra","input":"hello"}`)))
+	_, created, err := conn.ReadMessage()
+	require.NoError(t, err)
+	require.Equal(t, "resp_initial", gjson.GetBytes(created, "response.id").String())
+
+	steer := []byte(`{"type":"response.steer","previous_response_id":"resp_initial","input":"Use the new requirement."}`)
+	require.NoError(t, conn.WriteMessage(websocket.TextMessage, steer))
+	select {
+	case got := <-steerReceived:
+		require.JSONEq(t, string(steer), string(got))
+	case <-time.After(time.Second):
+		t.Fatal("response.steer was not forwarded to the active GPT-6 Astra request")
+	}
+
+	close(release)
+	_, completed, err := conn.ReadMessage()
+	require.NoError(t, err)
+	require.Equal(t, "response.completed", gjson.GetBytes(completed, "type").String())
+}
+
+func TestResponsesWebSocketRejectsSteeringForOtherModelsAndExtraFields(t *testing.T) {
+	release := make(chan struct{})
+	started := make(chan struct{})
+	process := func(_ context.Context, _ *httpclient.Request) (orchestrator.ChatCompletionResult, error) {
+		return orchestrator.ChatCompletionResult{
+			ChatCompletionStream: &blockingResponseEventStream{started: started, release: release},
+		}, nil
+	}
+
+	server := newResponsesWebSocketTestServer(t, process, nil)
+	conn := dialResponsesWebSocket(t, server.URL, nil)
+	defer conn.Close()
+
+	require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create","model":"gpt-5.6-sol","input":"hello"}`)))
+	_, created, err := conn.ReadMessage()
+	require.NoError(t, err)
+	require.Equal(t, "resp_blocked", gjson.GetBytes(created, "response.id").String())
+	<-started
+
+	require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.steer","previous_response_id":"resp_blocked","input":"change"}`)))
+	_, unsupported, err := conn.ReadMessage()
+	require.NoError(t, err)
+	require.Equal(t, "steering_not_supported", gjson.GetBytes(unsupported, "error.code").String())
+
+	require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.steer","previous_response_id":"resp_blocked","input":"change","stream_id":"lane"}`)))
+	_, invalid, err := conn.ReadMessage()
+	require.NoError(t, err)
+	require.Equal(t, "stream_id", gjson.GetBytes(invalid, "error.param").String())
+
+	close(release)
+	_, completed, err := conn.ReadMessage()
+	require.NoError(t, err)
+	require.Equal(t, "response.completed", gjson.GetBytes(completed, "type").String())
+}
+
 func TestResponsesWebSocketRunsDifferentStreamsConcurrentlyAndSameStreamFIFO(t *testing.T) {
 	startedA1 := make(chan struct{})
 	startedA2 := make(chan struct{})
@@ -610,6 +687,92 @@ func TestResponsesWebSocketRequiresUpgrade(t *testing.T) {
 
 	require.Equal(t, http.StatusBadRequest, recorder.Code)
 	require.Contains(t, recorder.Body.String(), "websocket upgrade required")
+}
+
+type testSteeringEventStream struct {
+	steers        <-chan []byte
+	steerReceived chan<- []byte
+	release       <-chan struct{}
+	index         int
+	current       *httpclient.StreamEvent
+}
+
+func (s *testSteeringEventStream) Next() bool {
+	switch s.index {
+	case 0:
+		s.current = &httpclient.StreamEvent{
+			Type: "response.created",
+			Data: []byte(`{"type":"response.created","response":{"id":"resp_initial","model":"gpt-6-astra","status":"in_progress"}}`),
+		}
+		s.index++
+		return true
+	case 1:
+		message := <-s.steers
+		s.steerReceived <- message
+		<-s.release
+		s.current = &httpclient.StreamEvent{
+			Type: "response.completed",
+			Data: []byte(`{"type":"response.completed","response":{"id":"resp_successor","model":"gpt-6-astra","status":"completed"}}`),
+		}
+		s.index++
+		return true
+	default:
+		return false
+	}
+}
+
+func (s *testSteeringEventStream) Current() *httpclient.StreamEvent {
+	return s.current
+}
+
+func (s *testSteeringEventStream) Err() error {
+	return nil
+}
+
+func (s *testSteeringEventStream) Close() error {
+	return nil
+}
+
+type blockingResponseEventStream struct {
+	started chan<- struct{}
+	release <-chan struct{}
+	index   int
+	current *httpclient.StreamEvent
+}
+
+func (s *blockingResponseEventStream) Next() bool {
+	switch s.index {
+	case 0:
+		s.current = &httpclient.StreamEvent{
+			Type: "response.created",
+			Data: []byte(`{"type":"response.created","response":{"id":"resp_blocked","model":"gpt-5.6-sol","status":"in_progress"}}`),
+		}
+		s.index++
+		close(s.started)
+		return true
+	case 1:
+		<-s.release
+		s.current = &httpclient.StreamEvent{
+			Type: "response.completed",
+			Data: []byte(`{"type":"response.completed","response":{"id":"resp_blocked","model":"gpt-5.6-sol","status":"completed"}}`),
+		}
+		s.index++
+		return true
+	default:
+		return false
+	}
+}
+
+func (s *blockingResponseEventStream) Current() *httpclient.StreamEvent {
+	return s.current
+}
+
+func (s *blockingResponseEventStream) Err() error {
+	return nil
+}
+
+func (s *blockingResponseEventStream) Close() error {
+	return nil
 }
 
 func newResponsesWebSocketTestServer(

@@ -509,8 +509,9 @@ func convertReasoningWithFollowing(items []Item, startIdx int) (*llm.Message, in
 		case "function_call":
 			// Merge function_call into the same assistant message
 			msg.ToolCalls = append(msg.ToolCalls, llm.ToolCall{
-				ID:   nextItem.CallID,
-				Type: "function",
+				ID:    nextItem.CallID,
+				Type:  "function",
+				Async: nextItem.Async,
 				Function: llm.FunctionCall{
 					Name:      nextItem.Name,
 					Namespace: nextItem.Namespace,
@@ -527,8 +528,9 @@ func convertReasoningWithFollowing(items []Item, startIdx int) (*llm.Message, in
 			}
 
 			msg.ToolCalls = append(msg.ToolCalls, llm.ToolCall{
-				ID:   nextItem.CallID,
-				Type: llm.ToolTypeResponsesCustomTool,
+				ID:    nextItem.CallID,
+				Type:  llm.ToolTypeResponsesCustomTool,
+				Async: nextItem.Async,
 				ResponseCustomToolCall: &llm.ResponseCustomToolCall{
 					CallID: nextItem.CallID,
 					Name:   nextItem.Name,
@@ -633,8 +635,9 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 			Role: "assistant",
 			ToolCalls: []llm.ToolCall{
 				{
-					ID:   item.CallID,
-					Type: "function",
+					ID:    item.CallID,
+					Type:  "function",
+					Async: item.Async,
 					Function: llm.FunctionCall{
 						Name:      item.Name,
 						Namespace: item.Namespace,
@@ -655,8 +658,9 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 			Role: "assistant",
 			ToolCalls: []llm.ToolCall{
 				{
-					ID:   item.CallID,
-					Type: llm.ToolTypeResponsesCustomTool,
+					ID:    item.CallID,
+					Type:  llm.ToolTypeResponsesCustomTool,
+					Async: item.Async,
 					ResponseCustomToolCall: &llm.ResponseCustomToolCall{
 						CallID: item.CallID,
 						Name:   item.Name,

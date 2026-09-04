@@ -183,6 +183,44 @@ func (s *responsesInboundStream) Next() bool {
 		return s.Next() // Try next chunk
 	}
 
+	// GPT-6 Astra steering acknowledgements are protocol events without a
+	// unified chat-completion representation. Preserve them verbatim so the
+	// downstream Responses WebSocket client can observe accepted/pending/failed
+	// steering and make the required follow-up decision.
+	if len(chunk.RawResponsesEvent) > 0 {
+		var event map[string]json.RawMessage
+		if err := json.Unmarshal(chunk.RawResponsesEvent, &event); err != nil {
+			s.err = fmt.Errorf("failed to decode Responses protocol event: %w", err)
+			return false
+		}
+		if event == nil {
+			s.err = fmt.Errorf("responses protocol event must be an object")
+			return false
+		}
+		var eventType string
+		if err := json.Unmarshal(event["type"], &eventType); err != nil || eventType == "" {
+			s.err = fmt.Errorf("responses protocol event is missing type")
+			return false
+		}
+		sequenceNumber, err := json.Marshal(s.sequenceNumber)
+		if err != nil {
+			s.err = fmt.Errorf("failed to encode Responses protocol sequence number: %w", err)
+			return false
+		}
+		s.sequenceNumber++
+		event["sequence_number"] = sequenceNumber
+		data, err := json.Marshal(event)
+		if err != nil {
+			s.err = fmt.Errorf("failed to encode Responses protocol event: %w", err)
+			return false
+		}
+		s.eventQueue = append(s.eventQueue, &httpclient.StreamEvent{
+			Type: eventType,
+			Data: data,
+		})
+		return s.Next()
+	}
+
 	// Handle [DONE] marker
 	if chunk.Object == "[DONE]" {
 		return s.Next() // Try next chunk
@@ -786,6 +824,7 @@ func (s *responsesInboundStream) initToolCall(tc llm.ToolCall) error {
 		Index:                  toolCallIndex,
 		ID:                     tc.ID,
 		Type:                   tc.Type,
+		Async:                  tc.Async,
 		ResponseCustomToolCall: tc.ResponseCustomToolCall,
 		Function: llm.FunctionCall{
 			Name:      tc.Function.Name,
@@ -847,6 +886,7 @@ func (s *responsesInboundStream) startToolCallItem(toolCallIndex int) error {
 			CallID: tc.ResponseCustomToolCall.CallID,
 			Name:   tc.ResponseCustomToolCall.Name,
 			Input:  lo.ToPtr(""),
+			Async:  tc.Async,
 		}
 
 		err := s.enqueueEvent(&StreamEvent{
@@ -866,6 +906,7 @@ func (s *responsesInboundStream) startToolCallItem(toolCallIndex int) error {
 			CallID:    tc.ID,
 			Name:      tc.Function.Name,
 			Namespace: tc.Function.Namespace,
+			Async:     tc.Async,
 		}
 
 		err := s.enqueueEvent(&StreamEvent{
@@ -1252,6 +1293,7 @@ func (s *responsesInboundStream) closeCurrentOutputItem() error {
 				CallID: tc.ResponseCustomToolCall.CallID,
 				Name:   tc.ResponseCustomToolCall.Name,
 				Input:  lo.ToPtr(fullInput),
+				Async:  tc.Async,
 			}
 
 			err = s.enqueueEvent(&StreamEvent{
@@ -1286,6 +1328,7 @@ func (s *responsesInboundStream) closeCurrentOutputItem() error {
 				Name:      tc.Function.Name,
 				Namespace: tc.Function.Namespace,
 				Arguments: tc.Function.Arguments,
+				Async:     tc.Async,
 			}
 
 			err = s.enqueueEvent(&StreamEvent{
