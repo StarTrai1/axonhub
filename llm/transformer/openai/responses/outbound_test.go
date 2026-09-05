@@ -426,7 +426,7 @@ func TestOutboundTransformer_TransformRequest_PreservesAstraAsyncHistoryOrder(t 
 				"model":"gpt-6-astra",
 				"reasoning":{"effort":"low"},
 				"input":[
-					{"type":"reasoning","id":"reason_1","summary":[],"encrypted_content":"opaque"},
+					{"type":"reasoning","id":"reason_1","summary":[],"encrypted_content":"gAAAA_astra_test"},
 					{"type":"` + callType + `","call_id":"call_async","name":"lookup","arguments":"{}","input":"query","async":true},
 					{"type":"message","role":"assistant","phase":"commentary","content":[{"type":"output_text","text":"Working while the tool runs."}]},
 					{"type":"message","role":"assistant","phase":"commentary","content":[{"type":"output_text","text":"Independent progress."}]},
