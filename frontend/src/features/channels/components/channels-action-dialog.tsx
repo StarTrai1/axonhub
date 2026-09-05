@@ -33,7 +33,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -82,6 +82,7 @@ import {
   Channel,
   ChannelType,
   ApiFormat,
+  ChannelSettings,
   RetryableErrorPattern,
   RoutingTier,
   CodexIdentityPolicy,
@@ -502,6 +503,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const [applyPatternFilter, setApplyPatternFilter] = useState(false);
   const hasAutoSetDuplicateNameRef = useRef(false);
   const [showApiKey, setShowApiKey] = useState(false);
+  const [showCommandCodeAuthCookie, setShowCommandCodeAuthCookie] = useState(false);
   const [showApiKeysPanel, setShowApiKeysPanel] = useState(false);
   const [apiKeysSearch, setApiKeysSearch] = useState('');
   const [selectedKeysToRemove, setSelectedKeysToRemove] = useState<Set<string>>(new Set());
@@ -685,6 +687,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   useEffect(() => {
     if (!open) {
       setShowApiKey(false);
+      setShowCommandCodeAuthCookie(false);
       setShowApiKeysPanel(false);
       setApiKeysSearch('');
       setSelectedKeysToRemove(new Set());
@@ -979,6 +982,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const isCopilotType = activeChannelType === 'github_copilot';
   const isXAISubscriptionType = activeChannelType === 'xai_subscription';
   const isZenmuxType = ['zenmux', 'zenmux_responses', 'zenmux_anthropic', 'zenmux_gemini'].includes(activeChannelType);
+  const isCommandCodeType = activeChannelType === 'commandcode' || activeChannelType === 'commandcode_anthropic';
 
   // OAuth providers cannot have their provider/API format changed during edit.
   // Derived from currentRow credentials so it stays stable across re-renders
@@ -1257,6 +1261,14 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     [selectedApiFormat, form, isDuplicate, isEdit, isOAuthChannel]
   );
 
+  // The Command Code quota cookie only exists on Command Code channel types.
+  // Reset the reveal state as soon as the active type leaves the two types.
+  useEffect(() => {
+    if (!isCommandCodeType) {
+      setShowCommandCodeAuthCookie(false);
+    }
+  }, [isCommandCodeType]);
+
   useEffect(() => {
     if (isEdit || isDuplicate) return;
 
@@ -1469,7 +1481,21 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         supportsWebSearch: webSearchPolicy === 'native',
         codexIdentity: codexIdentityPolicy,
       };
-      const settingsForSubmit = values.settings;
+      // The Command Code quota cookie is a browser-session credential that only
+      // belongs on Command Code channels. Never let a duplicate/type-switch
+      // flow attach it to an unrelated channel type. Clearing it explicitly
+      // sends providerQuota: null so the backend removes the stored cookie.
+      const isCommandCodeSubmit =
+        valuesForSubmit.type === 'commandcode' || valuesForSubmit.type === 'commandcode_anthropic';
+      const commandCodeAuthCookie = isCommandCodeSubmit
+        ? values.settings?.providerQuota?.commandCode?.authCookie?.trim()
+        : undefined;
+      const settingsForSubmit = values.settings
+        ? {
+            ...values.settings,
+            ...(isCommandCodeSubmit && commandCodeAuthCookie ? {} : { providerQuota: null }),
+          }
+        : undefined;
 
       const shouldUseProtocolDefaultBaseURL =
         (isCodexType && (authMode === 'official' || authMode === 'auth-json')) ||
@@ -1493,13 +1519,17 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       }
 
       if (isEdit && currentRow) {
-        const settingsPatch = {
+        const settingsPatch: Partial<ChannelSettings> = {
           passThroughUserAgent,
           passThroughBody,
           httpProtocol,
           http2ConnectionShards: httpProtocol === 'http1' || http2ConnectionShards === 1 ? 0 : http2ConnectionShards,
           retryableStatusCodes,
           retryableErrorPatterns,
+          // Cookie edits (including clearing the saved cookie) travel through
+          // the settings patch; mergeChannelSettingsForUpdate preserves the
+          // field when the patch omits it and carries the null clear through.
+          providerQuota: settingsForSubmit?.providerQuota,
         };
 
         const updateInput = {
@@ -2280,7 +2310,6 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                           />
                         </div>
                       )}
-
                       <FormField
                         control={form.control}
                         name='name'
@@ -2695,6 +2724,50 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                           </FormItem>
                         )}
                       />
+                      {isCommandCodeType && (
+                        <FormField
+                          control={form.control}
+                          name='settings.providerQuota.commandCode.authCookie'
+                          render={({ field, fieldState }) => (
+                            <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                              <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
+                                {t('channels.dialogs.fields.commandCodeQuota.authCookie.label')}
+                              </FormLabel>
+                              <div className='space-y-1 md:col-span-6'>
+                                <div className='relative'>
+                                  <Input
+                                    type={showCommandCodeAuthCookie ? 'text' : 'password'}
+                                    value={field.value ?? ''}
+                                    onChange={field.onChange}
+                                    onBlur={field.onBlur}
+                                    placeholder={t('channels.dialogs.fields.commandCodeQuota.authCookie.placeholder')}
+                                    autoComplete='new-password'
+                                    data-form-type='other'
+                                    spellCheck={false}
+                                    aria-invalid={!!fieldState.error}
+                                    data-testid='channel-commandcode-auth-cookie-input'
+                                    className='pr-10 font-mono text-xs'
+                                  />
+                                  <Button
+                                    type='button'
+                                    variant='ghost'
+                                    size='sm'
+                                    className='absolute top-0 right-0 h-full px-3'
+                                    onClick={() => setShowCommandCodeAuthCookie((visible) => !visible)}
+                                  >
+                                    {showCommandCodeAuthCookie ? <EyeOff className='h-4 w-4' /> : <Eye className='h-4 w-4' />}
+                                  </Button>
+                                </div>
+                                <FormDescription className='text-xs'>
+                                  {t('channels.dialogs.fields.commandCodeQuota.authCookie.description')}
+                                </FormDescription>
+                                <FormMessage />
+                              </div>
+                            </FormItem>
+                          )}
+                        />
+                      )}
+
 
                       <FormField
                         control={form.control}
