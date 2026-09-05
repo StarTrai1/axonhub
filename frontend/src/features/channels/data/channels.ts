@@ -1108,15 +1108,15 @@ const CHANNEL_QUERY_ORDERING_WEIGHT_SELECTION = `
 `;
 
 const CHANNEL_QUERY_HEALTH_SELECTION = `
+          credentials {
+            apiKey
+          }
           liveLimiterStats {
             inFlight
             waiting
             capacity
             queueSize
           }
-`;
-
-const CHANNEL_QUERY_QUOTA_SELECTION = `
           providerQuotaStatus {
             status
             nextResetAt
@@ -1145,7 +1145,6 @@ export function buildQueryChannelsQuery(
         isChannelColumnVisible(columnVisibility, 'proxy') ? CHANNEL_QUERY_PROXY_SELECTION : '',
         isChannelColumnVisible(columnVisibility, 'orderingWeight') ? CHANNEL_QUERY_ORDERING_WEIGHT_SELECTION : '',
         isChannelColumnVisible(columnVisibility, 'health') ? CHANNEL_QUERY_HEALTH_SELECTION : '',
-        isChannelColumnVisible(columnVisibility, 'quota') ? CHANNEL_QUERY_QUOTA_SELECTION : '',
       ].join('');
 
   return `

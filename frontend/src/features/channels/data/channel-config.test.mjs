@@ -93,34 +93,35 @@ test('xAI subscription is exposed as an OAuth Responses channel', () => {
   );
 });
 
-test('channel table shows provider quota only for OAuth channel types', () => {
+test('channel table keeps official Codex usage in the health column without a separate quota column', () => {
   const schema = read('features/channels/data/schema.ts');
   const channelsData = read('features/channels/data/channels.ts');
   const channelColumns = read('features/channels/components/channels-columns.tsx');
+  const codexData = read('features/channels/data/codex.ts');
+  const healthSelection = channelsData.match(/const CHANNEL_QUERY_HEALTH_SELECTION = `([\s\S]*?)`;/)?.[1];
 
   assert.match(schema, /providerQuotaStatus:\s*providerQuotaStatusSchema\.optional\(\)\.nullable\(\)/);
+  assert.ok(healthSelection, 'health/usage should have its own query selection');
+  assert.match(healthSelection, /credentials\s*\{\s*apiKey\s*\}/, 'official Codex identification needs its OAuth credentials');
+  assert.match(healthSelection, /liveLimiterStats\s*\{/, 'other channels should retain live limiter health data');
+  assert.match(
+    healthSelection,
+    /providerQuotaStatus\s*\{[\s\S]*nextCheckAt[\s\S]*updatedAt[\s\S]*quotaData[\s\S]*providerType[\s\S]*\}/,
+    'health/usage visibility should load all persisted quota fields used by CodexUsageCell'
+  );
   assert.match(
     channelsData,
-    /providerQuotaStatus\s*\{[\s\S]*status[\s\S]*quotaData[\s\S]*providerType[\s\S]*\}/,
-    'channel list query should load the persisted provider quota status'
+    /isChannelColumnVisible\(columnVisibility, 'health'\)\s*\?\s*CHANNEL_QUERY_HEALTH_SELECTION/,
+    'health/usage visibility should control its data fetching'
   );
-  const oauthTypes = channelColumns.match(/const OAUTH_CHANNEL_TYPES\s*=\s*new Set<Channel\['type'\]>\(\[([\s\S]*?)\]\);/)?.[1];
-  assert.ok(oauthTypes, 'OAuth channel type Set declaration should exist');
-  for (const type of ['codex', 'claudecode', 'antigravity', 'github_copilot', 'xai_subscription']) {
-    assert.match(oauthTypes, new RegExp(`'${type}'`));
-  }
-  assert.match(channelColumns, /100\s*-\s*usageRatio\s*\*\s*100/, 'the table should display remaining quota percentage');
-  assert.match(channelColumns, /QUOTA_VISIBLE_LIMIT\s*=\s*5/, 'quota cells should initially show at most five rows');
-  assert.match(channelColumns, /isExpanded\s*\?\s*limits\s*:\s*limits\.slice\(0,\s*QUOTA_VISIBLE_LIMIT\)/);
-  assert.match(channelColumns, /channels\.quota\.expand/);
-  assert.match(channelColumns, /channels\.quota\.collapse/);
-  assert.doesNotMatch(channelColumns, /limit\.window\s*=\s*labels\[index\]/, 'xAI windows must not be labeled by array position');
-  assert.match(channelColumns, /Math\.abs\(limit\.usageRatio\s*-\s*usageRatio\)/, 'legacy xAI limits should match raw billing usage');
-  assert.match(
-    channelColumns,
-    /if\s*\(!OAUTH_CHANNEL_TYPES\.has\(channel\.type\)\)[\s\S]*?>-<\/span>/,
-    'non-OAuth channels should display a dash'
-  );
+  assert.doesNotMatch(channelsData, /isChannelColumnVisible\(columnVisibility, 'quota'\)/);
+  assert.doesNotMatch(channelColumns, /id:\s*'quota'|cell:\s*QuotaCell|channels\.columns\.quota/);
+  assert.match(channelColumns, /id:\s*'health'[\s\S]*isOfficialCodexQuotaChannel\(row\.original\)[\s\S]*<CodexUsageCell/);
+  assert.match(channelColumns, /<ChannelHealthCell points=\{probePoints\}\s*\/>/);
+  assert.match(codexData, /channel\.type !== 'codex'\s*\|\|\s*!OFFICIAL_CODEX_BASE_URLS\.has/);
+  assert.match(codexData, /JSON\.parse\(channel\.credentials\?\.apiKey/);
+  assert.equal(parseLocale('zh-CN')['channels.columns.health'], '健康 / 用量');
+  assert.equal(parseLocale('en')['channels.columns.health'], 'Health / Usage');
 });
 
 test('channel proxy connection reuse setting is submitted, echoed, and localized', () => {
