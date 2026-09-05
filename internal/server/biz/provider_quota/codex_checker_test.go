@@ -204,8 +204,8 @@ func TestCodexQuotaChecker_Reset_ConsumesSelectedReset(t *testing.T) {
 					Body: io.NopCloser(strings.NewReader(`{
 						"credits": [
 							{"id": "cred_1", "status": "redeemed"},
-							{"id": "cred_2", "status": "available", "reset_type": "codex_rate_limits"},
-							{"id": "cred_3", "status": "available", "reset_type": "codex_rate_limits"}
+							{"id": "cred_2", "status": "available", "reset_type": "codex_rate_limits", "expires_at": "2099-09-01T00:00:00Z"},
+							{"id": "cred_3", "status": "available", "reset_type": "codex_rate_limits", "expires_at": "2099-10-01T00:00:00Z"}
 						],
 						"available_count": 2
 					}`)),
@@ -268,8 +268,52 @@ func TestCodexQuotaChecker_Reset_ReturnsErrorWhenNoAvailableReset(t *testing.T) 
 		Credentials: objects.ChannelCredentials{
 			OAuth: &objects.OAuthCredentials{AccessToken: accessToken},
 		},
-	}, "")
+	}, "cred_1")
 
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "no available codex reset credit")
+}
+
+func TestCodexQuotaChecker_Reset_RequiresExplicitSelection(t *testing.T) {
+	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			t.Fatalf("unselected reset must not contact upstream: %s", req.Method)
+			return nil, nil
+		}),
+	})
+	checker := NewCodexQuotaChecker(httpClient)
+	for _, resetID := range []string{"", " "} {
+		err := checker.Reset(context.Background(), &ent.Channel{}, resetID)
+		require.ErrorContains(t, err, "select a codex reset credit")
+	}
+}
+
+func TestCodexQuotaChecker_Reset_DoesNotSubstituteUnavailableSelection(t *testing.T) {
+	accessToken := buildCodexQuotaTestJWT(t, "acct_reset")
+	requestCount := 0
+	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			requestCount++
+			require.Equal(t, "GET", req.Method)
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     make(http.Header),
+				Body: io.NopCloser(strings.NewReader(`{
+					"credits": [
+						{"id": "other", "status": "available"},
+						{"id": "selected", "status": "redeemed"}
+					],
+					"available_count": 1
+				}`)),
+			}, nil
+		}),
+	})
+	checker := NewCodexQuotaChecker(httpClient)
+	err := checker.Reset(context.Background(), &ent.Channel{
+		Credentials: objects.ChannelCredentials{
+			OAuth: &objects.OAuthCredentials{AccessToken: accessToken},
+		},
+	}, "selected")
+	require.ErrorContains(t, err, `codex reset credit "selected" is not available`)
+	require.Equal(t, 1, requestCount)
 }

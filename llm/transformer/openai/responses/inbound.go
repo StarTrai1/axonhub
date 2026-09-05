@@ -553,6 +553,9 @@ func convertReasoningWithFollowing(items []Item, startIdx int) (*llm.Message, in
 			consumed++
 
 		case "message", "input_text", "":
+			if len(msg.ToolCalls) > 0 {
+				return msg, consumed, nil
+			}
 			// If we encounter a text message with assistant role, merge its content
 			if nextItem.Role == "assistant" {
 				msg.ID = nextItem.ID
@@ -566,6 +569,7 @@ func convertReasoningWithFollowing(items []Item, startIdx int) (*llm.Message, in
 				}
 
 				consumed++
+				return msg, consumed, nil
 			} else {
 				// Non-assistant message, stop merging
 				return msg, consumed, nil

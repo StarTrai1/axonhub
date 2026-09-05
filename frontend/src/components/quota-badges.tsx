@@ -471,14 +471,15 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
   const batteryLevel = getBatteryLevel(percentage, status);
   const BatteryIcon = getBatteryIcon(batteryLevel);
 
-  const handleResetCodexQuota = async (creditID?: string) => {
-    if (channel.type !== 'codex') return;
+  const handleResetCodexQuota = async (creditID: string) => {
+    if (channel.type !== 'codex' || !creditID || isResetting) return;
 
     setIsResetting(true);
     try {
       await resetChannelQuotaNow(channel.id, creditID);
       toast.success(t('quota.codex.resetSuccess'));
       setResetDialogOpen(false);
+      setSelectedResetID('');
       // Trigger a backend quota refresh, then refetch the cached statuses.
       await checkProviderQuotas();
       await queryClient.invalidateQueries({ queryKey: ['provider-quotas'] });
@@ -845,16 +846,12 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
           {(() => {
             const qd = channel.quotaStatus.quotaData;
             if (!qd) return null;
-            const availableResets = [...(qd._resets?.resets ?? [])].sort((a, b) => {
-              const aExpiry = a.expiresAt ? new Date(a.expiresAt).getTime() : Number.POSITIVE_INFINITY;
-              const bExpiry = b.expiresAt ? new Date(b.expiresAt).getTime() : Number.POSITIVE_INFINITY;
-              return aExpiry - bExpiry;
-            });
+            const availableResets = qd._resets?.resets ?? [];
             const availableResetCount =
               qd._resets?.availableCount ?? qd.rate_limit_reset_credits?.available_count ?? availableResets.length;
             const hasResetInfo = qd._resets?.supported === true && !qd._resets.error;
-            const canAttemptReset =
-              qd._resets?.supported === true && (Boolean(qd._resets.error) || availableResetCount > 0);
+            const selectedReset = availableResets.find((reset) => reset.id === selectedResetID);
+            const canAttemptReset = hasResetInfo && Boolean(selectedReset);
             return (
               <>
                 {qd.rate_limit?.primary_window && (
@@ -979,29 +976,48 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
                     </span>
                   </div>
                   {availableResets.length > 0 && (
-                    <div className='bg-muted/35 divide-border/60 divide-y rounded-md border px-2.5'>
+                    <RadioGroup
+                      value={selectedReset?.id ?? ''}
+                      onValueChange={setSelectedResetID}
+                      disabled={isResetting}
+                      aria-label={t('quota.codex.selectReset')}
+                      className='gap-1.5'
+                    >
                       {availableResets.map((reset, index) => (
-                        <div key={reset.id} className='flex items-center justify-between gap-3 py-2 text-xs'>
-                          <span className='text-muted-foreground min-w-0 truncate'>
-                            {reset.title || t('quota.codex.resetCreditLabel', { index: index + 1 })}
+                        <label
+                          key={reset.id}
+                          className='border-border hover:bg-muted/50 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/5 flex cursor-pointer items-start gap-2.5 rounded-md border p-2.5 text-xs transition-colors'
+                        >
+                          <RadioGroupItem value={reset.id} className='mt-0.5 shrink-0' />
+                          <span className='min-w-0 flex-1 space-y-1'>
+                            <span className='text-foreground block font-medium'>
+                              {t('quota.codex.resetCreditLabel', { index: index + 1 })}
+                            </span>
+                            <span className='text-muted-foreground block tabular-nums'>
+                              {t('quota.codex.grantedAt')}: {reset.grantedAt ? formatQuotaResetTime(reset.grantedAt) : t('quota.label.unavailable')}
+                            </span>
+                            <span className='text-muted-foreground block tabular-nums'>
+                              {t('quota.codex.expiresAt')}: {reset.expiresAt ? formatQuotaResetTime(reset.expiresAt) : t('quota.codex.noExpiry')}
+                            </span>
                           </span>
-                          <span className='text-foreground shrink-0 font-medium tabular-nums'>
-                            {reset.expiresAt
-                              ? formatQuotaResetTime(reset.expiresAt)
-                              : t('quota.codex.noExpiry')}
-                          </span>
-                        </div>
+                        </label>
                       ))}
-                    </div>
+                    </RadioGroup>
+                  )}
+                  {!hasResetInfo && (
+                    <p className='text-muted-foreground text-xs'>{t('quota.codex.resetDetailsUnavailable')}</p>
+                  )}
+                  {hasResetInfo && availableResets.length > 0 && !selectedReset && (
+                    <p className='text-muted-foreground text-xs'>{t('quota.codex.selectReset')}</p>
+                  )}
+                  {availableResetCount > availableResets.length && (
+                    <p className='text-muted-foreground text-xs'>
+                      {t('quota.codex.resetDetailsCapped', { visible: availableResets.length, total: availableResetCount })}
+                    </p>
                   )}
                   <AlertDialog
                     open={resetDialogOpen}
-                    onOpenChange={(open) => {
-                      setResetDialogOpen(open);
-                      if (open && !availableResets.some((reset) => reset.id === selectedResetID)) {
-                        setSelectedResetID(availableResets[0]?.id ?? '');
-                      }
-                    }}
+                    onOpenChange={setResetDialogOpen}
                   >
                     <div className='flex items-center justify-end pt-1'>
                       <AlertDialogTrigger asChild>
@@ -1010,7 +1026,7 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
                           variant='outline'
                           className='h-7 text-xs'
                           disabled={isResetting || !canAttemptReset}
-                          title={!canAttemptReset ? t('quota.codex.noResetCredits') : undefined}
+                          title={!canAttemptReset ? t(availableResets.length > 0 ? 'quota.codex.selectReset' : 'quota.codex.noResetCredits') : undefined}
                         >
                           {isResetting ? <Loader2 className='mr-1.5 h-3.5 w-3.5 animate-spin' /> : <Zap className='mr-1.5 h-3.5 w-3.5' />}
                           {t('quota.codex.resetNow')}
@@ -1022,52 +1038,26 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
                         <AlertDialogTitle>{t('quota.codex.resetDialogTitle')}</AlertDialogTitle>
                         <AlertDialogDescription>{t('quota.codex.resetDialogDescription')}</AlertDialogDescription>
                       </AlertDialogHeader>
-                      <RadioGroup value={selectedResetID} onValueChange={setSelectedResetID} className='gap-2'>
-                        {availableResets.map((reset, index) => (
-                          <label
-                            key={reset.id}
-                            className='border-border hover:bg-muted/50 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/5 flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors'
-                          >
-                            <RadioGroupItem value={reset.id} className='mt-0.5 shrink-0' />
-                            <span className='min-w-0 flex-1 space-y-1'>
-                              <span className='text-foreground block text-sm font-medium'>
-                                {reset.title || t('quota.codex.resetCreditLabel', { index: index + 1 })}
-                              </span>
-                              {reset.description && (
-                                <span className='text-muted-foreground block text-xs'>{reset.description}</span>
-                              )}
-                              <span className='text-muted-foreground flex flex-wrap gap-x-4 gap-y-1 text-xs'>
-                                <span>
-                                  {t('quota.codex.grantedAt')}: {reset.grantedAt ? formatQuotaResetTime(reset.grantedAt) : t('quota.label.unavailable')}
-                                </span>
-                                <span>
-                                  {t('quota.codex.expiresAt')}: {reset.expiresAt ? formatQuotaResetTime(reset.expiresAt) : t('quota.codex.noExpiry')}
-                                </span>
-                              </span>
-                            </span>
-                          </label>
-                        ))}
-                      </RadioGroup>
-                      {availableResets.length === 0 && (
-                        <p className='bg-muted/50 text-muted-foreground rounded-lg border p-3 text-sm'>
-                          {t('quota.codex.resetDetailsUnavailable')}
-                        </p>
-                      )}
-                      {availableResetCount > availableResets.length && (
-                        <p className='text-muted-foreground text-xs'>
-                          {t('quota.codex.resetDetailsCapped', {
-                            visible: availableResets.length,
-                            total: availableResetCount,
-                          })}
-                        </p>
+                      {selectedReset && (
+                        <div className='bg-muted/50 space-y-2 rounded-lg border p-3 text-sm'>
+                          <div className='font-medium'>
+                            {t('quota.codex.resetCreditLabel', { index: availableResets.indexOf(selectedReset) + 1 })}
+                          </div>
+                          <div className='text-muted-foreground text-xs tabular-nums'>
+                            {t('quota.codex.grantedAt')}: {selectedReset.grantedAt ? formatQuotaResetTime(selectedReset.grantedAt) : t('quota.label.unavailable')}
+                          </div>
+                          <div className='text-muted-foreground text-xs tabular-nums'>
+                            {t('quota.codex.expiresAt')}: {selectedReset.expiresAt ? formatQuotaResetTime(selectedReset.expiresAt) : t('quota.codex.noExpiry')}
+                          </div>
+                        </div>
                       )}
                       <AlertDialogFooter>
                         <AlertDialogCancel disabled={isResetting}>{t('quota.codex.resetCancel')}</AlertDialogCancel>
                         <AlertDialogAction
-                          disabled={isResetting || (availableResets.length > 0 && !selectedResetID)}
+                          disabled={isResetting || !canAttemptReset}
                           onClick={(event) => {
                             event.preventDefault();
-                            void handleResetCodexQuota(selectedResetID);
+                            if (canAttemptReset && selectedReset) void handleResetCodexQuota(selectedReset.id);
                           }}
                         >
                           {isResetting && <Loader2 className='mr-1.5 h-4 w-4 animate-spin' />}

@@ -419,6 +419,54 @@ func TestOutboundTransformer_TransformRequest_GPT6AstraDropsAsyncFromUnsupported
 	require.NotContains(t, tools[0].(map[string]any), "async")
 }
 
+func TestOutboundTransformer_TransformRequest_PreservesAstraAsyncHistoryOrder(t *testing.T) {
+	for _, callType := range []string{"function_call", "custom_tool_call"} {
+		t.Run(callType, func(t *testing.T) {
+			body := []byte(`{
+				"model":"gpt-6-astra",
+				"reasoning":{"effort":"low"},
+				"input":[
+					{"type":"reasoning","id":"reason_1","summary":[],"encrypted_content":"opaque"},
+					{"type":"` + callType + `","call_id":"call_async","name":"lookup","arguments":"{}","input":"query","async":true},
+					{"type":"message","role":"assistant","phase":"commentary","content":[{"type":"output_text","text":"Working while the tool runs."}]},
+					{"type":"message","role":"assistant","phase":"commentary","content":[{"type":"output_text","text":"Independent progress."}]},
+					{"type":"configuration_update","reasoning":{"effort":"max"}},
+					{"type":"` + callType + `_output","call_id":"call_async","output":"result"},
+					{"type":"configuration_update","reasoning":{"effort":"medium"}},
+					{"type":"message","role":"user","content":[{"type":"input_text","text":"Continue."}]}
+				]
+			}`)
+			request, err := NewInboundTransformer().TransformRequest(t.Context(), &httpclient.Request{Body: body})
+			require.NoError(t, err)
+			outbound, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+			require.NoError(t, err)
+			result, err := outbound.TransformRequest(t.Context(), request)
+			require.NoError(t, err)
+			var payload struct {
+				Input     []json.RawMessage `json:"input"`
+				Reasoning json.RawMessage   `json:"reasoning"`
+			}
+			require.NoError(t, json.Unmarshal(result.Body, &payload))
+			require.Len(t, payload.Input, 8)
+			var types []string
+			for _, raw := range payload.Input {
+				var item struct {
+					Type string `json:"type"`
+				}
+				require.NoError(t, json.Unmarshal(raw, &item))
+				types = append(types, item.Type)
+			}
+			require.Equal(t, []string{"reasoning", callType, "message", "message", "configuration_update", callType + "_output", "configuration_update", "message"}, types)
+			require.Contains(t, string(payload.Input[1]), `"async":true`)
+			require.Contains(t, string(payload.Input[2]), "Working while the tool runs.")
+			require.Contains(t, string(payload.Input[3]), "Independent progress.")
+			require.JSONEq(t, `{"type":"configuration_update","reasoning":{"effort":"max"}}`, string(payload.Input[4]))
+			require.JSONEq(t, `{"type":"configuration_update","reasoning":{"effort":"medium"}}`, string(payload.Input[6]))
+			require.Contains(t, string(payload.Reasoning), `"effort":"low"`)
+		})
+	}
+}
+
 func TestOutboundTransformer_TransformRequest_NormalizesGPT6UnsupportedParameters(t *testing.T) {
 	transformer, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
 	require.NoError(t, err)

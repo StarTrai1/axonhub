@@ -81,6 +81,10 @@ func NewCodexQuotaChecker(httpClient *httpclient.HttpClient) *CodexQuotaChecker 
 }
 
 func (c *CodexQuotaChecker) Reset(ctx context.Context, ch *ent.Channel, resetID string) error {
+	if strings.TrimSpace(resetID) == "" {
+		return fmt.Errorf("select a codex reset credit before resetting quota")
+	}
+
 	resets, err := c.ListResets(ctx, ch)
 	if err != nil {
 		return err
@@ -90,22 +94,18 @@ func (c *CodexQuotaChecker) Reset(ctx context.Context, ch *ent.Channel, resetID 
 		return fmt.Errorf("no available codex reset credit")
 	}
 
-	selected := resets.Resets[0]
-	if resetID != "" {
-		found := false
-		for _, reset := range resets.Resets {
-			if reset.ID == resetID {
-				selected = reset
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("codex reset credit %q is not available", resetID)
+	found := false
+	for _, reset := range resets.Resets {
+		if reset.ID == resetID {
+			found = true
+			break
 		}
 	}
+	if !found {
+		return fmt.Errorf("codex reset credit %q is not available", resetID)
+	}
 
-	result, err := c.consumeResetCredit(ctx, ch, selected.ID)
+	result, err := c.consumeResetCredit(ctx, ch, resetID)
 	if err != nil {
 		return err
 	}
