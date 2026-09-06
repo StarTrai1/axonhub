@@ -299,6 +299,7 @@ func TestClaudeCodeTransformerPreservesInboundHeadersAcrossRetries(t *testing.T)
 	for range 2 {
 		outgoing, transformErr := transformer.TransformRequest(t.Context(), request)
 		require.NoError(t, transformErr)
+		outgoing = httpclient.MergeInboundRequest(outgoing, request.RawRequest)
 		require.Equal(t, "claude-cli/2.1.263 (external, cli)", outgoing.Headers.Get("User-Agent"))
 		require.Equal(t, "third-party-client/1.0", request.RawRequest.Headers.Get("User-Agent"))
 		require.Equal(t, "custom-beta", request.RawRequest.Headers.Get("Anthropic-Beta"))

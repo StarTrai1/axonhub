@@ -56,7 +56,8 @@ type Request struct {
 
 	// SkipInboundQueryMerge when set to true, prevents query parameters from the original
 	// inbound request from being merged into this request during MergeInboundRequest.
-	SkipInboundQueryMerge bool `json:"-"`
+	SkipInboundQueryMerge bool     `json:"-"`
+	SkipInboundHeaders   []string `json:"-"`
 
 	// DetachedStreamTimeout keeps an upstream stream alive after the inbound request is
 	// canceled, bounded by this timeout. It is reserved for protocols that must drain a

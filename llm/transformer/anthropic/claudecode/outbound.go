@@ -196,6 +196,7 @@ func (t *ClaudeCodeTransformer) TransformRequest(
 		httpReq.Headers.Set("User-Agent", rawUA)
 	} else {
 		httpReq.Headers.Set("User-Agent", currentClaudeCodeUserAgent())
+		httpReq.SkipInboundHeaders = append(httpReq.SkipInboundHeaders, "User-Agent")
 	}
 
 	// Claude Code OAuth always uses Bearer token authentication.

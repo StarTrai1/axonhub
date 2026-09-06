@@ -14,6 +14,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestMergeInboundRequestSkipsSelectedHeadersWithoutMutatingSource(t *testing.T) {
+	source := &Request{Headers: http.Header{
+		"user-agent": {"original-client"}, "X-Client-Request-Id": {"trace"},
+	}}
+	destination := &Request{
+		Headers: http.Header{"User-Agent": {"provider-client"}},
+		SkipInboundHeaders: []string{"USER-AGENT"},
+	}
+	merged := MergeInboundRequest(destination, source)
+	require.Equal(t, "provider-client", merged.Headers.Get("User-Agent"))
+	require.Equal(t, "trace", merged.Headers.Get("X-Client-Request-Id"))
+	require.Equal(t, []string{"original-client"}, source.Headers["user-agent"])
+	require.Len(t, source.Headers, 2)
+}
+
 func TestReadHTTPRequest_NoContentEncoding(t *testing.T) {
 	body := []byte(`{"model":"gpt-4","messages":[{"role":"user","content":"hello"}]}`)
 	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", bytes.NewReader(body))

@@ -269,7 +269,19 @@ func MergeInboundRequest(dest, src *Request) *Request {
 		return dest
 	}
 
-	dest.Headers = MergeHTTPHeaders(dest.Headers, src.Headers)
+	inboundHeaders := src.Headers
+	if len(dest.SkipInboundHeaders) > 0 {
+		inboundHeaders = src.Headers.Clone()
+		for name := range inboundHeaders {
+			for _, skipped := range dest.SkipInboundHeaders {
+				if strings.EqualFold(name, skipped) {
+					delete(inboundHeaders, name)
+					break
+				}
+			}
+		}
+	}
+	dest.Headers = MergeHTTPHeaders(dest.Headers, inboundHeaders)
 
 	if !dest.SkipInboundQueryMerge {
 		dest.Query = MergeHTTPQuery(dest.Query, src.Query)
