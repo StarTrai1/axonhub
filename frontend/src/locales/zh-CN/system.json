@@ -188,7 +188,7 @@
   "system.retry.retryDelayMs.label": "重试延迟",
   "system.retry.retryDelayMs.description": "重试间隔时间，单位毫秒 (100-10000ms)。较短的延迟提供更快的恢复速度，但可能会压倒 struggling 服务。较长的延迟给服务更多时间恢复。",
   "system.retry.streamFirstEventTimeoutSeconds.label": "流式首字超时",
-  "system.retry.streamFirstEventTimeoutSeconds.description": "等待流式响应首个事件的最长秒数 (0-600s)。设为 0 时关闭。",
+  "system.retry.streamFirstEventTimeoutSeconds.description": "等待首个有效输出（文本、推理或工具调用）的最长秒数 (0-600s)，心跳及初始化事件不会结束计时。设为 0 时关闭。",
   "system.retry.nonStreamResponseTimeoutSeconds.label": "非流式传输超时",
   "system.retry.nonStreamResponseTimeoutSeconds.description": "等待非流式响应完成的最长秒数 (0-600s)。设为 0 时关闭。",
   "system.retry.emptyResponseDetection.label": "空回检测",

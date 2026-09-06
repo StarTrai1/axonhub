@@ -188,14 +188,15 @@ func (p *pipeline) preReadLlmStream(
 	llmStream streams.Stream[*llm.Response],
 	firstEventGuard *firstEventTimeoutGuard,
 ) (streams.Stream[*llm.Response], error) {
-	preReadUntilContent := p.hasStreamRetryBudget()
+	preReadUntilContent := p.hasStreamRetryBudget() || firstEventGuard != nil
+	defer firstEventGuard.completeFirstEventPhase()
 	probeLimit := maxPreReadEvents
 
 	var buffered []*llm.Response
 	bufferedBytes := 0
 
-	for i := 0; ; i++ {
-		hasNext, err := nextLlmStreamEvent(ctx, llmStream, i == 0, firstEventGuard)
+	for {
+		hasNext, err := nextLlmStreamEvent(ctx, llmStream, firstEventGuard)
 		if err != nil {
 			llmStream.Close()
 
@@ -207,6 +208,10 @@ func (p *pipeline) preReadLlmStream(
 
 		event := llmStream.Current()
 		if hasResponseContent(event) {
+			if !firstEventGuard.acceptFirstEvent() {
+				llmStream.Close()
+				return nil, ErrStreamFirstEventTimeout
+			}
 			// Meaningful output commits the attempt immediately. Do not apply the
 			// private metadata budget to legitimate large media/audio payloads.
 			buffered = append(buffered, event)
@@ -286,21 +291,18 @@ func (p *pipeline) preReadLlmStream(
 func nextLlmStreamEvent(
 	ctx context.Context,
 	llmStream streams.Stream[*llm.Response],
-	firstEvent bool,
 	firstEventGuard *firstEventTimeoutGuard,
 ) (bool, error) {
-	if !firstEvent || firstEventGuard == nil {
+	if firstEventGuard == nil {
 		return llmStream.Next(), nil
 	}
 
 	hasNext := llmStream.Next()
+	if firstEventGuard.timedOut() {
+		llmStream.Close()
+		return false, ErrStreamFirstEventTimeout
+	}
 	if hasNext {
-		if !firstEventGuard.acceptFirstEvent() {
-			llmStream.Close()
-
-			return false, ErrStreamFirstEventTimeout
-		}
-
 		return true, nil
 	}
 

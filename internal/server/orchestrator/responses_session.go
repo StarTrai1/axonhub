@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"bytes"
+	"container/list"
 	"context"
 	"encoding/json"
 	"strings"
@@ -27,6 +28,8 @@ const (
 type responsesSessionStore struct {
 	mu         sync.Mutex
 	byResponse map[responsesSessionKey]*responsesSessionRecord
+	order      *list.List
+	positions  map[responsesSessionKey]*list.Element
 	totalBytes int
 	load       responsesSessionLoadFunc
 }
@@ -49,6 +52,8 @@ type responsesSessionRecord struct {
 func newResponsesSessionStore(loaders ...responsesSessionLoadFunc) *responsesSessionStore {
 	store := new(responsesSessionStore)
 	store.byResponse = make(map[responsesSessionKey]*responsesSessionRecord)
+	store.order = list.New()
+	store.positions = make(map[responsesSessionKey]*list.Element)
 	if len(loaders) > 0 {
 		store.load = loaders[0]
 	}
@@ -164,7 +169,7 @@ func (s *responsesSessionStore) record(ctx context.Context, requestBody, respons
 	}
 
 	input := responseSessionInputItems(requestPayload["input"])
-	output := cloneResponseSessionValues(response.Output)
+	output := response.Output
 	size := rawResponseSessionValuesSize(input) + rawResponseSessionValuesSize(output)
 	if size > responsesSessionMaxResponse {
 		return
@@ -187,12 +192,10 @@ func (s *responsesSessionStore) record(ctx context.Context, requestBody, respons
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	now = time.Now()
+	record.updatedAt = now
 	s.evictExpiredLocked(now)
-	if previous := s.byResponse[key]; previous != nil {
-		s.totalBytes -= previous.size
-	}
-	s.byResponse[key] = record
-	s.totalBytes += size
+	s.insertLocked(key, record)
 	for len(s.byResponse) > responsesSessionMaxRecords || s.totalBytes > responsesSessionMaxBytes {
 		if !s.evictOldestLocked() {
 			s.totalBytes = 0
@@ -210,9 +213,9 @@ func (s *responsesSessionStore) lookup(ctx context.Context, responseID string) *
 	key := responsesSessionKey{scope: scope, responseID: responseID}
 
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	s.evictExpiredLocked(now)
 	record := s.byResponse[key]
+	s.mu.Unlock()
 	if record == nil {
 		return nil
 	}
@@ -227,40 +230,41 @@ func (s *responsesSessionStore) lookup(ctx context.Context, responseID string) *
 }
 
 func (s *responsesSessionStore) evictExpiredLocked(now time.Time) {
-	for key, record := range s.byResponse {
-		if record == nil || now.Sub(record.updatedAt) > responsesSessionTTL {
-			if record != nil {
-				s.totalBytes -= record.size
-			}
-			delete(s.byResponse, key)
+	for oldest := s.order.Front(); oldest != nil; oldest = s.order.Front() {
+		key := oldest.Value.(responsesSessionKey)
+		record := s.byResponse[key]
+		if record != nil && now.Sub(record.updatedAt) <= responsesSessionTTL {
+			return
 		}
+		s.removeLocked(key)
 	}
 }
 
 func (s *responsesSessionStore) evictOldestLocked() bool {
-	var oldestKey responsesSessionKey
-	var oldest time.Time
-	found := false
-	for key, record := range s.byResponse {
-		if record == nil {
-			oldestKey = key
-			found = true
-			break
-		}
-		if !found || record.updatedAt.Before(oldest) {
-			oldestKey = key
-			oldest = record.updatedAt
-			found = true
-		}
-	}
-	if !found {
+	oldest := s.order.Front()
+	if oldest == nil {
 		return false
 	}
-	if record := s.byResponse[oldestKey]; record != nil {
+	s.removeLocked(oldest.Value.(responsesSessionKey))
+	return true
+}
+
+func (s *responsesSessionStore) insertLocked(key responsesSessionKey, record *responsesSessionRecord) {
+	s.removeLocked(key)
+	s.byResponse[key] = record
+	s.positions[key] = s.order.PushBack(key)
+	s.totalBytes += record.size
+}
+
+func (s *responsesSessionStore) removeLocked(key responsesSessionKey) {
+	if record := s.byResponse[key]; record != nil {
 		s.totalBytes -= record.size
 	}
-	delete(s.byResponse, oldestKey)
-	return true
+	if position := s.positions[key]; position != nil {
+		s.order.Remove(position)
+	}
+	delete(s.positions, key)
+	delete(s.byResponse, key)
 }
 
 func (s *responsesSessionStore) wrapStream(
@@ -358,9 +362,16 @@ func cloneResponseSessionValue(value json.RawMessage) json.RawMessage {
 }
 
 func cloneResponseSessionValues(values []json.RawMessage) []json.RawMessage {
-	cloned := make([]json.RawMessage, 0, len(values))
-	for _, value := range values {
-		cloned = append(cloned, cloneResponseSessionValue(value))
+	cloned := make([]json.RawMessage, len(values))
+	storage := make([]byte, rawResponseSessionValuesSize(values))
+	offset := 0
+	for index, value := range values {
+		if len(value) == 0 {
+			continue
+		}
+		end := offset + copy(storage[offset:], value)
+		cloned[index] = storage[offset:end:end]
+		offset = end
 	}
 	return cloned
 }
@@ -393,7 +404,7 @@ func responseSessionInputItems(value json.RawMessage) []json.RawMessage {
 
 	var items []json.RawMessage
 	if json.Unmarshal(value, &items) == nil {
-		return cloneResponseSessionValues(items)
+		return items
 	}
 
 	var text string

@@ -31,6 +31,21 @@ jobs:
       - name: Test
         run: make test-backend-all
 
+      - name: Responses concurrency regression
+        run: |
+          go test -race ./internal/server/orchestrator -run 'TestResponsesSession|TestResponsesRejected' -count=1
+          cd llm
+          go test -race ./pipeline -run 'TestFirstOutput' -count=1
+
+      - name: Responses cache benchmarks
+        run: go test ./internal/server/orchestrator -run '^$' -bench '^BenchmarkResponsesSession' -benchmem -count=3 | tee responses-cache-benchmarks.txt
+
+      - name: Upload Responses cache benchmarks
+        uses: actions/upload-artifact@v6
+        with:
+          name: responses-cache-benchmarks
+          path: responses-cache-benchmarks.txt
+
   test-frontend-unit:
     name: Test Frontend Unit
     runs-on: ubuntu-latest

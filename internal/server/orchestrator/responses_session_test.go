@@ -326,21 +326,20 @@ func TestResponsesSessionStreamStopsBufferingOversizedResponse(t *testing.T) {
 func TestResponsesSessionStoreEvictsExpiredRecords(t *testing.T) {
 	store := newResponsesSessionStore()
 	now := time.Now()
-	store.byResponse[responsesSessionKey{scope: "scope", responseID: "expired"}] = &responsesSessionRecord{
+	store.insertLocked(responsesSessionKey{scope: "scope", responseID: "expired"}, &responsesSessionRecord{
 		input:     nil,
 		output:    nil,
 		sessionID: "",
 		updatedAt: now.Add(-responsesSessionTTL - time.Minute),
 		size:      11,
-	}
-	store.byResponse[responsesSessionKey{scope: "scope", responseID: "fresh"}] = &responsesSessionRecord{
+	})
+	store.insertLocked(responsesSessionKey{scope: "scope", responseID: "fresh"}, &responsesSessionRecord{
 		input:     nil,
 		output:    nil,
 		sessionID: "",
 		updatedAt: now,
 		size:      13,
-	}
-	store.totalBytes = 24
+	})
 
 	ctx := shared.WithSessionScope(shared.WithResponsesAPI(context.Background()), "scope")
 	require.NotNil(t, store.lookup(ctx, "fresh"))
@@ -353,9 +352,8 @@ func TestResponsesSessionStoreEnforcesMaximumRecordCount(t *testing.T) {
 	now := time.Now()
 	for i := range responsesSessionMaxRecords {
 		key := responsesSessionKey{scope: "scope", responseID: fmt.Sprintf("resp_%d", i)}
-		store.byResponse[key] = &responsesSessionRecord{input: nil, output: nil, sessionID: "", updatedAt: now.Add(-time.Minute), size: 1}
+		store.insertLocked(key, &responsesSessionRecord{input: nil, output: nil, sessionID: "", updatedAt: now.Add(-time.Minute), size: 1})
 	}
-	store.totalBytes = responsesSessionMaxRecords
 
 	ctx := shared.WithSessionScope(shared.WithResponsesAPI(context.Background()), "scope")
 	store.record(ctx,
@@ -373,9 +371,8 @@ func TestResponsesSessionStoreEnforcesMaximumBytes(t *testing.T) {
 	perRecord := responsesSessionMaxBytes / 64
 	for i := range 64 {
 		key := responsesSessionKey{scope: "scope", responseID: fmt.Sprintf("resp_%d", i)}
-		store.byResponse[key] = &responsesSessionRecord{input: nil, output: nil, sessionID: "", updatedAt: now.Add(-time.Minute), size: perRecord}
+		store.insertLocked(key, &responsesSessionRecord{input: nil, output: nil, sessionID: "", updatedAt: now.Add(-time.Minute), size: perRecord})
 	}
-	store.totalBytes = perRecord * 64
 
 	ctx := shared.WithSessionScope(shared.WithResponsesAPI(context.Background()), "scope")
 	store.record(ctx,
