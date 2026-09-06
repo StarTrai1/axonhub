@@ -173,6 +173,11 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		return nil
 	}
 
+	var singleEvent StreamEvent
+	if data := bytes.TrimSpace(event.Data); len(data) > 0 && data[0] == '{' && json.Unmarshal(data, &singleEvent) == nil {
+		return s.transformStreamEvent(event, singleEvent)
+	}
+
 	decoder := json.NewDecoder(bytes.NewReader(event.Data))
 	type decodedEvent struct {
 		data   json.RawMessage
