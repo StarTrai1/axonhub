@@ -65,18 +65,22 @@ test('Command Code monthly hover matches the other windows', () => {
   assert.doesNotMatch(commandCodeBlock, /subscription_status/);
 });
 
-test('Codex reset can be attempted after a transient reset-list failure', () => {
+test('Codex reset requires an explicitly selected available credit', () => {
   const quotaBadges = read('components/quota-badges.tsx');
   const codexBlock = isolateCodexBlock(quotaBadges);
 
   assert.match(
     codexBlock,
-    /const canAttemptReset =\s*qd\._resets\?\.supported === true && \(Boolean\(qd\._resets\.error\) \|\| availableResetCount > 0\)/,
-    'a supported provider should allow a fresh reset attempt when reset-list metadata failed'
+    /const canAttemptReset = qd\._resets\?\.supported === true && availableResets\.length > 0/,
+    'reset must have an available credit ID, not just an aggregate count'
   );
   assert.match(
     codexBlock,
     /disabled=\{isResetting \|\| !canAttemptReset\}/,
-    'the reset button should use the retry-aware availability condition'
+    'the reset button remains visible but unavailable without credit details'
   );
+  assert.match(codexBlock, /disabled=\{isResetting \|\| !hasSelectedReset\}/);
+  assert.doesNotMatch(codexBlock, /setSelectedResetID\(availableResets\[0\]/);
+  assert.doesNotMatch(codexBlock, /reset\.title/);
+  assert.match(codexBlock, /<RadioGroup value=\{selectedResetID\} onValueChange=\{setSelectedResetID\}/);
 });

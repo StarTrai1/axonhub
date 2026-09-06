@@ -1,6 +1,7 @@
 package responses
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -159,7 +160,6 @@ func (s *responsesOutboundStream) Next() bool {
 // transformStreamChunk transforms a single OpenAI Responses API streaming chunk to unified llm.Response.
 // Events are enqueued via s.enqueue() instead of being returned.
 //
-//nolint:maintidx,gocognit // It is complex and hard to split.
 func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamEvent) error {
 	if event == nil || len(event.Data) == 0 {
 		return nil
@@ -173,14 +173,39 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		return nil
 	}
 
-	// Parse the streaming event
-	var streamEvent StreamEvent
-
-	err := json.Unmarshal(event.Data, &streamEvent)
-	if err != nil {
-		return fmt.Errorf("failed to unmarshal responses api stream event: %w", err)
+	decoder := json.NewDecoder(bytes.NewReader(event.Data))
+	type decodedEvent struct {
+		data   json.RawMessage
+		parsed StreamEvent
 	}
+	var events []decodedEvent
+	for {
+		var decoded decodedEvent
+		if err := decoder.Decode(&decoded.data); errors.Is(err, io.EOF) {
+			break
+		} else if err != nil {
+			return fmt.Errorf("failed to unmarshal responses api stream event: %w", err)
+		}
+		if len(decoded.data) == 0 || decoded.data[0] != '{' {
+			return errors.New("responses api stream event must be a JSON object")
+		}
+		if err := json.Unmarshal(decoded.data, &decoded.parsed); err != nil {
+			return fmt.Errorf("failed to unmarshal responses api stream event: %w", err)
+		}
+		events = append(events, decoded)
+	}
+	for _, decoded := range events {
+		chunk := *event
+		chunk.Data = decoded.data
+		if err := s.transformStreamEvent(&chunk, decoded.parsed); err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
+//nolint:maintidx,gocognit // It is complex and hard to split.
+func (s *responsesOutboundStream) transformStreamEvent(event *httpclient.StreamEvent, streamEvent StreamEvent) error {
 	if streamEvent.Type == "response.steer.accepted" {
 		if streamEvent.Steer != nil && streamEvent.Steer.ID != "" && streamEvent.Steer.PreviousResponseID != "" {
 			s.steerAccepted[streamEvent.Steer.ID] = streamEvent.Steer.PreviousResponseID

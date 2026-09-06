@@ -169,7 +169,7 @@ export function CodexUsageCell({ channel }: { channel: Channel }) {
                 {resetDetails.map((reset, index) => (
                   <div key={reset.id} className='text-background/75 flex items-center justify-between gap-3 text-[11px]'>
                     <span className='min-w-0 truncate'>
-                      {reset.title || t('quota.codex.resetCreditLabel', { index: index + 1 })}
+                      {t('quota.codex.resetCreditLabel', { index: index + 1 })}
                     </span>
                     <span className='shrink-0 tabular-nums'>
                       {reset.expiresAt

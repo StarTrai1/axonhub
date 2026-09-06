@@ -19,6 +19,44 @@ import (
 	"github.com/looplj/axonhub/llm/streams"
 )
 
+func TestOutboundStreamConcatenatedJSONEvents(t *testing.T) {
+	created := `{"type":"response.created","response":{"id":"resp_concat","model":"gpt-6-astra","status":"in_progress","output":[]}}`
+	delta := `{"type":"response.output_text.delta","item_id":"msg_concat","output_index":0,"content_index":0,"delta":"literal }{ text"}`
+	completed := `{"type":"response.completed","response":{"id":"resp_concat","model":"gpt-6-astra","status":"completed","output":[]}}`
+	for _, separator := range []string{"", "\n", "\r\n", " "} {
+		t.Run(fmt.Sprintf("separator_%q", separator), func(t *testing.T) {
+			payload := strings.Join([]string{created, delta, completed}, separator)
+			stream := newResponsesOutboundStream(streams.SliceStream([]*httpclient.StreamEvent{{Data: []byte(payload)}}))
+			responses, err := streams.All(stream)
+			require.NoError(t, err)
+			require.Contains(t, responses, llm.DoneResponse)
+			require.True(t, stream.responseCompleted)
+			var text strings.Builder
+			for _, response := range responses {
+				for _, choice := range response.Choices {
+					if choice.Delta != nil {
+						text.WriteString(lo.FromPtr(choice.Delta.Content.Content))
+					}
+				}
+			}
+			require.Equal(t, "literal }{ text", text.String())
+		})
+	}
+}
+
+func TestOutboundStreamRejectsMalformedConcatenatedJSON(t *testing.T) {
+	completed := `{"type":"response.completed","response":{"id":"resp_bad","status":"completed","output":[]}}`
+	for _, suffix := range []string{`{`, `garbage`, `[DONE]`, `null`, `[]`, `42`, `{"type":3}`} {
+		t.Run(suffix, func(t *testing.T) {
+			stream := newResponsesOutboundStream(streams.SliceStream([]*httpclient.StreamEvent{{Data: []byte(completed + suffix)}}))
+			responses, err := streams.All(stream)
+			require.Error(t, err)
+			require.False(t, stream.responseCompleted)
+			require.NotContains(t, responses, llm.DoneResponse)
+		})
+	}
+}
+
 func TestOutboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
 	require.NoError(t, err)

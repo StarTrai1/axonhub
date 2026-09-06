@@ -24,14 +24,16 @@ func DefaultModels() []string {
 		"gpt-5.6-terra",
 		"gpt-5.6-luna",
 		"gpt-6-astra",
+		"gpt-reserve",
 	}
 }
 
 const (
 	defaultImageMainModel = "gpt-5.4-mini"
 
-	AxonHubOriginator = "axonhub"
-	AuthorizeURL      = "https://auth.openai.com/oauth/authorize"
+	AxonHubOriginator   = "axonhub"
+	CodexCLIOriginator  = "codex_cli_rs"
+	AuthorizeURL       = "https://auth.openai.com/oauth/authorize"
 	//nolint:gosec // false alert.
 	TokenURL    = "https://auth.openai.com/oauth/token"
 	ClientID    = "app_EMoamEEZ73f0CkXaXp7hrann"

@@ -1053,13 +1053,6 @@ const CHANNEL_QUERY_FULL_NODE_SELECTION = `
             capacity
             queueSize
           }
-          providerQuotaStatus {
-            status
-            nextResetAt
-            ready
-            quotaData
-            providerType
-          }
 `;
 
 const CHANNEL_QUERY_LIST_NODE_BASE_SELECTION = `
@@ -1071,6 +1064,9 @@ const CHANNEL_QUERY_LIST_NODE_BASE_SELECTION = `
           name
           status
           defaultTestModel
+          policies {
+            routingTier
+          }
           errorMessage
           disabledAPIKeys {
             key
@@ -1106,6 +1102,9 @@ const CHANNEL_QUERY_ORDERING_WEIGHT_SELECTION = `
 `;
 
 const CHANNEL_QUERY_HEALTH_SELECTION = `
+          credentials {
+            apiKey
+          }
           liveLimiterStats {
             inFlight
             waiting
@@ -1141,7 +1140,9 @@ export function buildQueryChannelsQuery(
         isChannelColumnVisible(columnVisibility, 'proxy') ? CHANNEL_QUERY_PROXY_SELECTION : '',
         isChannelColumnVisible(columnVisibility, 'orderingWeight') ? CHANNEL_QUERY_ORDERING_WEIGHT_SELECTION : '',
         isChannelColumnVisible(columnVisibility, 'health') ? CHANNEL_QUERY_HEALTH_SELECTION : '',
-        isChannelColumnVisible(columnVisibility, 'quota') ? CHANNEL_QUERY_QUOTA_SELECTION : '',
+        isChannelColumnVisible(columnVisibility, 'quota') || isChannelColumnVisible(columnVisibility, 'health')
+          ? CHANNEL_QUERY_QUOTA_SELECTION
+          : '',
       ].join('');
 
   return `

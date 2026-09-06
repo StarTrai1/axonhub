@@ -558,6 +558,10 @@ func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateCh
 	}
 
 	if input.Settings != nil {
+		if err := NormalizeHTTPTransportSettings(input.Settings); err != nil {
+			return nil, err
+		}
+
 		// A new channel may intentionally be created before its model list is
 		// populated (for example by a bulk configuration flow). An empty list is
 		// therefore not evidence that every submitted override is stale. Keep the
@@ -824,11 +828,14 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 	existingIdentity, err := authz.RunWithScopeDecision(ctx, scopes.ScopeWriteChannels, func(queryCtx context.Context) (*ent.Channel, error) {
 		return svc.entFromContext(queryCtx).Channel.Query().
 			Where(channel.IDEQ(id)).
-			Select(channel.FieldType, channel.FieldBaseURL, channel.FieldUpdatedAt).
+			Select(channel.FieldType, channel.FieldBaseURL, channel.FieldUpdatedAt, channel.FieldPolicies).
 			Only(queryCtx)
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to load channel provider identity: %w", err)
+	}
+	if input.Policies != nil {
+		input.Policies.ScheduledHealthChecks = slices.Clone(existingIdentity.Policies.ScheduledHealthChecks)
 	}
 
 	effectiveType := existingIdentity.Type
@@ -928,6 +935,10 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 	}
 
 	if input.Settings != nil {
+		if err := NormalizeHTTPTransportSettings(input.Settings); err != nil {
+			return nil, err
+		}
+
 		// Always normalize and validate override settings.
 		if input.Settings.BodyOverrideOperations != nil {
 			if err := ValidateBodyOverrideOperations(input.Settings.BodyOverrideOperations); err != nil {
@@ -1162,6 +1173,28 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 	return updated, nil
 }
 
+// UpdateChannelScheduledHealthChecks updates only the scheduler-owned policy
+// field, preserving every user-editable channel policy.
+func (svc *ChannelService) UpdateChannelScheduledHealthChecks(ctx context.Context, id int, schedules []string) (*ent.Channel, error) {
+	existing, err := svc.entFromContext(ctx).Channel.Get(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load channel: %w", err)
+	}
+
+	policies := existing.Policies
+	policies.ScheduledHealthChecks = slices.Clone(schedules)
+	updated, err := svc.entFromContext(ctx).Channel.UpdateOneID(id).
+		SetPolicies(policies).
+		Save(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update channel health check schedules: %w", err)
+	}
+
+	svc.reloadChannelsAfterCommit(ctx)
+
+	return updated, nil
+}
+
 func isZenmuxChannelType(channelType channel.Type) bool {
 	switch channelType {
 	case channel.TypeZenmux, channel.TypeZenmuxResponses, channel.TypeZenmuxAnthropic, channel.TypeZenmuxGemini:
@@ -1202,11 +1235,23 @@ func (svc *ChannelService) asyncReloadChannels() {
 }
 
 // reloadChannelsAfterCommit waits for a caller-owned Ent transaction, including
-// the GraphQL Transactioner, before publishing the channel cache refresh.
+// the GraphQL Transactioner, before refreshing the local cache. The synchronous
+// local refresh makes a successful channel edit immediately visible to routing;
+// the notification then refreshes other instances asynchronously.
 func (svc *ChannelService) reloadChannelsAfterCommit(ctx context.Context) {
 	runAfterCommit(ctx, func(context.Context) {
-		svc.asyncReloadChannels()
+		svc.reloadChannelsNow()
 	})
+}
+
+func (svc *ChannelService) reloadChannelsNow() {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := svc.enabledChannelsCache.Load(ctx, true); err != nil {
+		log.Warn(ctx, "synchronous channel cache refresh failed", log.Cause(err))
+	}
+	svc.asyncReloadChannels()
 }
 
 // SaveChannelEndpoints updates the endpoints field for a channel.

@@ -17,6 +17,7 @@ var SupportedAPIFormats = map[string]struct{}{
 	llm.APIFormatOpenAICompletion.String():      {},
 	llm.APIFormatOpenAIResponse.String():        {},
 	llm.APIFormatOpenAIResponseCompact.String(): {},
+	llm.APIFormatOpenAISearch.String():          {},
 	llm.APIFormatOpenAIEmbedding.String():       {},
 	llm.APIFormatOpenAIImageGeneration.String(): {},
 	llm.APIFormatOpenAIImageEdit.String():       {},
@@ -222,11 +223,14 @@ var openAIChatOnlyDefaultEndpoints = []objects.ChannelEndpoint{
 // and are not modeled here.
 var defaultEndpointsForChannelType = map[channel.Type][]objects.ChannelEndpoint{
 	channel.TypeOpenai: openAIFullDefaultEndpoints,
+	channel.TypeOpenaiResponses: {
+		{APIFormat: llm.APIFormatOpenAIResponse.String()},
+		{APIFormat: llm.APIFormatOpenAISearch.String()},
+	},
 	channel.TypeZenmux: append(
 		append([]objects.ChannelEndpoint{}, openAIFullDefaultEndpoints...),
 		objects.ChannelEndpoint{APIFormat: llm.APIFormatZenmuxVideo.String()},
 	),
-	channel.TypeOpenaiResponses: {{APIFormat: llm.APIFormatOpenAIResponse.String()}},
 	channel.TypeZenmuxResponses: {{APIFormat: llm.APIFormatOpenAIResponse.String()}},
 	channel.TypeAtlascloud:      openAICompatibleDefaultEndpoints,
 	channel.TypeQiniu:           {{APIFormat: llm.APIFormatOpenAIChatCompletion.String()}},
@@ -234,6 +238,7 @@ var defaultEndpointsForChannelType = map[channel.Type][]objects.ChannelEndpoint{
 	channel.TypeCline:           openAIChatOnlyDefaultEndpoints,
 	channel.TypeCodex: {
 		{APIFormat: llm.APIFormatOpenAIResponse.String()},
+		{APIFormat: llm.APIFormatOpenAISearch.String()},
 		{APIFormat: llm.APIFormatOpenAIAlphaSearch.String()},
 		{APIFormat: llm.APIFormatOpenAIImageGeneration.String()},
 		{APIFormat: llm.APIFormatOpenAIImageEdit.String()},

@@ -39,7 +39,8 @@ export async function checkProviderQuotas() {
   return graphqlRequest(CHECK_PROVIDER_QUOTAS_QUERY);
 }
 
-export async function resetChannelQuotaNow(channelID: string, creditID?: string) {
+export async function resetChannelQuotaNow(channelID: string, creditID: string) {
+  if (!creditID.trim()) throw new Error('A reset credit must be selected');
   return graphqlRequest(RESET_CHANNEL_QUOTA_NOW_MUTATION, { channelID, creditID });
 }
 

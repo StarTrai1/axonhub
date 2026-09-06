@@ -116,11 +116,23 @@ func getProxyConfig(channelSettings *objects.ChannelSettings) *httpclient.ProxyC
 // getHttpClient returns the injected default HTTP client when no custom proxy is configured,
 // or creates a new one with proxy support (inheriting TLS settings from the default client).
 func (svc *ChannelService) getHttpClient(channelSettings *objects.ChannelSettings) *httpclient.HttpClient {
-	if channelSettings == nil || channelSettings.Proxy == nil {
-		return svc.httpClient
+	client := svc.httpClient
+	if channelSettings == nil {
+		return client
 	}
 
-	return svc.httpClient.WithProxy(channelSettings.Proxy)
+	if channelSettings.Proxy != nil {
+		client = client.WithProxy(channelSettings.Proxy)
+	}
+
+	if channelSettings.HTTPProtocol == string(httpclient.HTTPProtocolHTTP1) || channelSettings.HTTP2ConnectionShards > 1 {
+		client = client.WithHTTPTransport(
+			httpclient.HTTPProtocol(channelSettings.HTTPProtocol),
+			channelSettings.HTTP2ConnectionShards,
+		)
+	}
+
+	return client
 }
 
 // buildChannel creates a Channel with precomputed caches (transformer is set separately).
@@ -222,18 +234,17 @@ func (svc *ChannelService) buildChannelWithOutbounds(c *ent.Channel, apiKeyOverr
 			continue
 		}
 
-		if c.Type == channel.TypeZenmux && ep.APIFormat == llm.APIFormatZenmuxVideo.String() {
-			out, err := svc.buildNonDefaultEndpointOutbound(c, ch, ep)
-			if err != nil {
-				return nil, fmt.Errorf("failed to build default outbound for api_format %q on channel %s: %w", ep.APIFormat, c.Name, err)
-			}
-			outbounds[ep.APIFormat] = out
-			continue
-		}
-
-		if c.Type != channel.TypeXai || ep.APIFormat == ch.Outbound.APIFormat().String() {
+		needsDedicatedOutbound := ep.APIFormat == llm.APIFormatOpenAISearch.String() ||
+			(c.Type == channel.TypeZenmux && ep.APIFormat == llm.APIFormatZenmuxVideo.String()) ||
+			(c.Type == channel.TypeXai && ep.APIFormat != ch.Outbound.APIFormat().String())
+		if !needsDedicatedOutbound {
 			outbounds[ep.APIFormat] = ch.Outbound
 			continue
+		}
+		if ep.APIFormat == llm.APIFormatOpenAISearch.String() && ep.Transport == "" {
+			// Standalone search is always HTTP, even when the channel's primary
+			// Responses endpoint uses a ws(s) base URL.
+			ep.Transport = objects.ChannelEndpointTransportHTTP
 		}
 
 		out, err := svc.buildNonDefaultEndpointOutbound(c, ch, ep)
@@ -449,6 +460,30 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 			EndpointPath:   ep.Path,
 			Transport:      transport,
 		})
+	case llm.APIFormatOpenAISearch.String():
+		responsesBaseURL, responsesEndpointPath := searchFallbackResponsesEndpoint(c, ch)
+		if c.Type == channel.TypeCodex {
+			primary, ok := ch.Outbound.(*codex.OutboundTransformer)
+			if !ok || primary.TokenProvider() == nil {
+				return nil, fmt.Errorf("codex channel %s has no token provider", c.Name)
+			}
+
+			return codex.NewSearchOutboundTransformer(codex.SearchParams{
+				TokenProvider:         primary.TokenProvider(),
+				BaseURL:               baseURL,
+				EndpointPath:          ep.Path,
+				ResponsesBaseURL:      responsesBaseURL,
+				ResponsesEndpointPath: responsesEndpointPath,
+			})
+		}
+
+		return responses.NewSearchOutboundTransformerWithConfig(&responses.SearchConfig{
+			BaseURL:               baseURL,
+			APIKeyProvider:        apiKeyProvider(),
+			EndpointPath:          ep.Path,
+			ResponsesBaseURL:      responsesBaseURL,
+			ResponsesEndpointPath: responsesEndpointPath,
+		})
 	case llm.APIFormatOpenAIAlphaSearch.String():
 		if c.Type == channel.TypeCodex {
 			return svc.buildCodexOutbound(c, ch, baseURL, endpointTransport(ep), ep.Path, ch.HTTPClient)
@@ -537,6 +572,22 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 	default:
 		return nil, fmt.Errorf("unsupported api_format %q", ep.APIFormat)
 	}
+}
+
+func searchFallbackResponsesEndpoint(c *ent.Channel, ch *Channel) (string, string) {
+	baseURL := c.BaseURL
+	for _, endpoint := range ch.ResolveEndpoints() {
+		if endpoint.APIFormat != llm.APIFormatOpenAIResponse.String() {
+			continue
+		}
+		if endpoint.BaseURL != "" {
+			baseURL = endpoint.BaseURL
+		}
+
+		return baseURL, endpoint.Path
+	}
+
+	return baseURL, ""
 }
 
 func newProviderChatOutbound(

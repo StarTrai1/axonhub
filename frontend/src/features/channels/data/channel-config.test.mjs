@@ -14,6 +14,24 @@ function parseLocale(locale) {
   return JSON.parse(read(`locales/${locale}/channels.json`));
 }
 
+test('channel policy controls keep hidden radio focus inside the visible option', () => {
+  const source = read('features/channels/components/channels-action-dialog.tsx');
+  const controls = source.slice(source.indexOf('function CompactPolicyRadioGroup'), source.indexOf('function PolicyFieldHeader'));
+  assert.match(controls, /className=\{`relative flex min-h-11/);
+  assert.match(controls, /className='sr-only top-1\/2 left-1\/2'/);
+  assert.match(controls, /max-w-64 text-wrap leading-relaxed/);
+  assert.match(source, /max-w-72 text-wrap leading-relaxed/);
+});
+
+test('lazy channel lists retain routing tiers and official Codex usage data', () => {
+  const source = read('features/channels/data/channels.ts');
+  const base = source.slice(source.indexOf('const CHANNEL_QUERY_LIST_NODE_BASE_SELECTION'), source.indexOf('const CHANNEL_QUERY_SUPPORTED_MODELS_SELECTION'));
+  assert.match(base, /policies\s*\{\s*routingTier/);
+  const health = source.slice(source.indexOf('const CHANNEL_QUERY_HEALTH_SELECTION'), source.indexOf('const CHANNEL_QUERY_QUOTA_SELECTION'));
+  assert.match(health, /credentials\s*\{\s*apiKey/);
+  assert.match(source, /isChannelColumnVisible\(columnVisibility, 'quota'\) \|\| isChannelColumnVisible\(columnVisibility, 'health'\)/);
+});
+
 test('Cline is available as a channel type in frontend schemas and configs', () => {
   const schema = read('features/channels/data/schema.ts');
   const channelsConfig = read('features/channels/data/config_channels.ts');

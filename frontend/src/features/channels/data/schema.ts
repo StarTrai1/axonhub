@@ -175,10 +175,39 @@ export const apiKeyAutoDisableRuleFormSchema = apiKeyAutoDisableRuleSchema
     path: ['disableUntilCron'],
   });
 
-export const channelPoliciesSchema = z.object({
-  stream: capabilityPolicySchema.optional(),
-  apiKeyAutoDisableRules: z.array(apiKeyAutoDisableRuleSchema).optional().nullable(),
-});
+export const routingTierSchema = z.enum(['preferred', 'standard', 'fallback']);
+export type RoutingTier = z.infer<typeof routingTierSchema>;
+
+export const webSearchPolicySchema = z.enum(['auto', 'native', 'mcp_only']);
+export type WebSearchPolicy = z.infer<typeof webSearchPolicySchema>;
+
+export const remoteCompactionPolicySchema = z.enum(['auto', 'native', 'local_bridge']);
+export type RemoteCompactionPolicy = z.infer<typeof remoteCompactionPolicySchema>;
+
+export const codexIdentityPolicySchema = z.enum(['off', 'device', 'session', 'full']);
+export type CodexIdentityPolicy = z.infer<typeof codexIdentityPolicySchema>;
+
+export const channelPoliciesSchema = z
+  .object({
+    routingTier: routingTierSchema.nullish(),
+    stream: capabilityPolicySchema.optional(),
+    remoteCompaction: remoteCompactionPolicySchema.nullish(),
+    supportsRemoteCompaction: z.boolean().optional().default(false),
+    webSearch: webSearchPolicySchema.nullish(),
+    supportsWebSearch: z
+      .boolean()
+      .nullish()
+      .transform((value) => value ?? true),
+    codexIdentity: codexIdentityPolicySchema.nullish(),
+    apiKeyAutoDisableRules: z.array(apiKeyAutoDisableRuleSchema).optional().nullable(),
+  })
+  .transform((value) => ({
+    ...value,
+    routingTier: value.routingTier ?? 'standard',
+    remoteCompaction: value.remoteCompaction ?? (value.supportsRemoteCompaction ? 'native' : 'auto'),
+    webSearch: value.webSearch ?? (value.supportsWebSearch ? 'native' : 'auto'),
+    codexIdentity: value.codexIdentity ?? 'off',
+  }));
 export type ChannelPolicies = z.infer<typeof channelPoliciesSchema>;
 
 // Model Mapping
@@ -324,6 +353,8 @@ export const channelSettingsSchema = z.object({
   bodyOverrideOperations: z.array(overrideOperationSchema).optional(),
   headerOverrideOperations: z.array(overrideOperationSchema).optional(),
   proxy: proxyConfigSchema.optional().nullable(),
+  httpProtocol: z.enum(['auto', 'http1', '']).optional().nullable(),
+  http2ConnectionShards: z.number().int().min(0).max(8).optional().nullable(),
   transformOptions: transformOptionsSchema.optional(),
   passThroughUserAgent: z.boolean().optional().nullable(),
   passThroughBody: z.boolean().optional().nullable(),
@@ -376,10 +407,12 @@ export type ChannelCredentials = z.infer<typeof channelCredentialsSchema>;
 
 export const providerQuotaStatusSchema = z.object({
   status: z.enum(['available', 'warning', 'exhausted', 'unknown']),
-  nextResetAt: z.string().optional().nullable(),
-  ready: z.boolean(),
-  quotaData: z.record(z.string(), z.unknown()),
   providerType: z.string(),
+  quotaData: z.record(z.string(), z.unknown()),
+  nextResetAt: z.string().optional().nullable(),
+  nextCheckAt: z.string().optional(),
+  ready: z.boolean(),
+  updatedAt: z.string().optional(),
 });
 export type ProviderQuotaStatus = z.infer<typeof providerQuotaStatusSchema>;
 

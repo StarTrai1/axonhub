@@ -471,8 +471,8 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
   const batteryLevel = getBatteryLevel(percentage, status);
   const BatteryIcon = getBatteryIcon(batteryLevel);
 
-  const handleResetCodexQuota = async (creditID?: string) => {
-    if (channel.type !== 'codex') return;
+  const handleResetCodexQuota = async (creditID: string) => {
+    if (channel.type !== 'codex' || !creditID) return;
 
     setIsResetting(true);
     try {
@@ -853,8 +853,8 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
             const availableResetCount =
               qd._resets?.availableCount ?? qd.rate_limit_reset_credits?.available_count ?? availableResets.length;
             const hasResetInfo = qd._resets?.supported === true && !qd._resets.error;
-            const canAttemptReset =
-              qd._resets?.supported === true && (Boolean(qd._resets.error) || availableResetCount > 0);
+            const canAttemptReset = qd._resets?.supported === true && availableResets.length > 0;
+            const hasSelectedReset = availableResets.some((reset) => reset.id === selectedResetID);
             return (
               <>
                 {qd.rate_limit?.primary_window && (
@@ -979,27 +979,28 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
                     </span>
                   </div>
                   {availableResets.length > 0 && (
-                    <div className='bg-muted/35 divide-border/60 divide-y rounded-md border px-2.5'>
+                    <RadioGroup value={selectedResetID} onValueChange={setSelectedResetID} className='bg-muted/35 divide-border/60 gap-0 divide-y rounded-md border px-2.5'>
                       {availableResets.map((reset, index) => (
-                        <div key={reset.id} className='flex items-center justify-between gap-3 py-2 text-xs'>
+                        <label key={reset.id} className='flex cursor-pointer items-center gap-3 py-2 text-xs'>
+                          <RadioGroupItem value={reset.id} aria-label={t('quota.codex.resetCreditLabel', { index: index + 1 })} />
                           <span className='text-muted-foreground min-w-0 truncate'>
-                            {reset.title || t('quota.codex.resetCreditLabel', { index: index + 1 })}
+                            {t('quota.codex.resetCreditLabel', { index: index + 1 })}
                           </span>
-                          <span className='text-foreground shrink-0 font-medium tabular-nums'>
+                          <span className='text-foreground ml-auto shrink-0 font-medium tabular-nums'>
                             {reset.expiresAt
                               ? formatQuotaResetTime(reset.expiresAt)
                               : t('quota.codex.noExpiry')}
                           </span>
-                        </div>
+                        </label>
                       ))}
-                    </div>
+                    </RadioGroup>
                   )}
                   <AlertDialog
                     open={resetDialogOpen}
                     onOpenChange={(open) => {
                       setResetDialogOpen(open);
                       if (open && !availableResets.some((reset) => reset.id === selectedResetID)) {
-                        setSelectedResetID(availableResets[0]?.id ?? '');
+                        setSelectedResetID('');
                       }
                     }}
                   >
@@ -1031,7 +1032,7 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
                             <RadioGroupItem value={reset.id} className='mt-0.5 shrink-0' />
                             <span className='min-w-0 flex-1 space-y-1'>
                               <span className='text-foreground block text-sm font-medium'>
-                                {reset.title || t('quota.codex.resetCreditLabel', { index: index + 1 })}
+                                {t('quota.codex.resetCreditLabel', { index: index + 1 })}
                               </span>
                               {reset.description && (
                                 <span className='text-muted-foreground block text-xs'>{reset.description}</span>
@@ -1064,7 +1065,7 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
                       <AlertDialogFooter>
                         <AlertDialogCancel disabled={isResetting}>{t('quota.codex.resetCancel')}</AlertDialogCancel>
                         <AlertDialogAction
-                          disabled={isResetting || (availableResets.length > 0 && !selectedResetID)}
+                          disabled={isResetting || !hasSelectedReset}
                           onClick={(event) => {
                             event.preventDefault();
                             void handleResetCodexQuota(selectedResetID);

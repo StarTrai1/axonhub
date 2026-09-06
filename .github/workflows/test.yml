@@ -5,6 +5,7 @@ on:
   workflow_dispatch:
   push:
     branches:
+      - "dev"
       - "unstable"
       - "release/**"
   pull_request:
