@@ -10,6 +10,7 @@ export const apiFormatSchema = z.enum([
   'openai/image_variation',
   'openai/embeddings',
   'openai/video',
+  'zenmux/video',
   'openai/moderations',
   'openai/alpha_search',
   'openai/audio_speech',
@@ -34,6 +35,7 @@ export const configurableChannelEndpointApiFormats = [
   'openai/image_edit',
   'openai/image_variation',
   'openai/embeddings',
+  'zenmux/video',
   'openai/moderations',
   'openai/alpha_search',
   'openai/audio_speech',
@@ -128,6 +130,8 @@ export const channelTypeSchema = z.enum([
   'zenmux_responses',
   'zenmux_anthropic',
   'zenmux_gemini',
+  'commandcode',
+  'commandcode_anthropic',
 ]);
 export type ChannelType = z.infer<typeof channelTypeSchema>;
 
@@ -171,39 +175,10 @@ export const apiKeyAutoDisableRuleFormSchema = apiKeyAutoDisableRuleSchema
     path: ['disableUntilCron'],
   });
 
-export const routingTierSchema = z.enum(['preferred', 'standard', 'fallback']);
-export type RoutingTier = z.infer<typeof routingTierSchema>;
-
-export const webSearchPolicySchema = z.enum(['auto', 'native', 'mcp_only']);
-export type WebSearchPolicy = z.infer<typeof webSearchPolicySchema>;
-
-export const remoteCompactionPolicySchema = z.enum(['auto', 'native', 'local_bridge']);
-export type RemoteCompactionPolicy = z.infer<typeof remoteCompactionPolicySchema>;
-
-export const codexIdentityPolicySchema = z.enum(['off', 'device', 'session', 'full']);
-export type CodexIdentityPolicy = z.infer<typeof codexIdentityPolicySchema>;
-
-export const channelPoliciesSchema = z
-  .object({
-    routingTier: routingTierSchema.nullish(),
-    stream: capabilityPolicySchema.optional(),
-    remoteCompaction: remoteCompactionPolicySchema.nullish(),
-    supportsRemoteCompaction: z.boolean().optional().default(false),
-    webSearch: webSearchPolicySchema.nullish(),
-    supportsWebSearch: z
-      .boolean()
-      .nullish()
-      .transform((value) => value ?? true),
-    codexIdentity: codexIdentityPolicySchema.nullish(),
-    apiKeyAutoDisableRules: z.array(apiKeyAutoDisableRuleSchema).optional().nullable(),
-  })
-  .transform((value) => ({
-    ...value,
-    routingTier: value.routingTier ?? 'standard',
-    remoteCompaction: value.remoteCompaction ?? (value.supportsRemoteCompaction ? 'native' : 'auto'),
-    webSearch: value.webSearch ?? (value.supportsWebSearch ? 'native' : 'auto'),
-    codexIdentity: value.codexIdentity ?? 'off',
-  }));
+export const channelPoliciesSchema = z.object({
+  stream: capabilityPolicySchema.optional(),
+  apiKeyAutoDisableRules: z.array(apiKeyAutoDisableRuleSchema).optional().nullable(),
+});
 export type ChannelPolicies = z.infer<typeof channelPoliciesSchema>;
 
 // Model Mapping
@@ -324,6 +299,20 @@ export const modelProtocolSchema = z.object({
 });
 export type ModelProtocol = z.infer<typeof modelProtocolSchema>;
 
+// Provider quota collection settings stored inside channel settings. Mirrors the
+// GraphQL `CommandCodeQuotaSettings` / `ChannelProviderQuotaSettings` types; it
+// is used for the Command Code billing-quota cookie, kept separate from API
+// credentials.
+export const commandCodeQuotaSettingsSchema = z.object({
+  authCookie: z.string().optional().nullable(),
+});
+export type CommandCodeQuotaSettings = z.infer<typeof commandCodeQuotaSettingsSchema>;
+
+export const channelProviderQuotaSettingsSchema = z.object({
+  commandCode: commandCodeQuotaSettingsSchema.optional().nullable(),
+});
+export type ChannelProviderQuotaSettings = z.infer<typeof channelProviderQuotaSettingsSchema>;
+
 // Channel Settings
 export const channelSettingsSchema = z.object({
   extraModelPrefix: z.string().optional(),
@@ -335,8 +324,6 @@ export const channelSettingsSchema = z.object({
   bodyOverrideOperations: z.array(overrideOperationSchema).optional(),
   headerOverrideOperations: z.array(overrideOperationSchema).optional(),
   proxy: proxyConfigSchema.optional().nullable(),
-  httpProtocol: z.enum(['auto', 'http1', '']).optional().nullable(),
-  http2ConnectionShards: z.number().int().min(0).max(8).optional().nullable(),
   transformOptions: transformOptionsSchema.optional(),
   passThroughUserAgent: z.boolean().optional().nullable(),
   passThroughBody: z.boolean().optional().nullable(),
@@ -344,6 +331,7 @@ export const channelSettingsSchema = z.object({
   retryableStatusCodes: z.array(z.number().int().min(400).max(599)).optional().nullable(),
   retryableErrorPatterns: z.array(retryableErrorPatternSchema).optional().nullable(),
   modelProtocols: z.array(modelProtocolSchema).optional().nullable(),
+  providerQuota: channelProviderQuotaSettingsSchema.optional().nullable(),
 });
 
 export type ChannelSettings = z.infer<typeof channelSettingsSchema>;
@@ -388,12 +376,10 @@ export type ChannelCredentials = z.infer<typeof channelCredentialsSchema>;
 
 export const providerQuotaStatusSchema = z.object({
   status: z.enum(['available', 'warning', 'exhausted', 'unknown']),
-  providerType: z.string(),
-  quotaData: z.unknown(),
   nextResetAt: z.string().optional().nullable(),
-  nextCheckAt: z.string(),
   ready: z.boolean(),
-  updatedAt: z.string(),
+  quotaData: z.record(z.string(), z.unknown()),
+  providerType: z.string(),
 });
 export type ProviderQuotaStatus = z.infer<typeof providerQuotaStatusSchema>;
 
@@ -425,7 +411,7 @@ export const channelSchema = z.object({
   credentials: channelCredentialsSchema.optional().nullable(),
   providerQuotaStatus: providerQuotaStatusSchema.optional().nullable(),
   disabledAPIKeys: z.array(disabledAPIKeySchema).optional().nullable(),
-  supportedModels: z.array(z.string()),
+  supportedModels: z.array(z.string()).default([]),
   autoSyncSupportedModels: z.boolean().default(false),
   autoSyncModelPattern: z.string().optional().default(''),
   manualModels: z.array(z.string()).optional().default([]).nullable(),

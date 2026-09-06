@@ -185,6 +185,16 @@ func TestDefaultEndpointsForChannelType_UseLLMAPIFormatValues(t *testing.T) {
 				llm.APIFormatSeedanceVideo.String(),
 			},
 		},
+		{
+			name:     "commandcode defaults to openai chat completions",
+			typ:      channel.TypeCommandcode,
+			expected: []string{llm.APIFormatOpenAIChatCompletion.String()},
+		},
+		{
+			name:     "commandcode anthropic defaults to anthropic messages",
+			typ:      channel.TypeCommandcodeAnthropic,
+			expected: []string{llm.APIFormatAnthropicMessage.String()},
+		},
 	}
 
 	for _, tt := range tests {
@@ -277,6 +287,14 @@ func TestValidateEndpoints(t *testing.T) {
 			{APIFormat: llm.APIFormatGeminiContents.String(), Path: "/custom/gemini"},
 		})
 		require.NoError(t, err)
+	})
+
+	t.Run("Zenmux video endpoint is supported", func(t *testing.T) {
+		format := llm.APIFormatZenmuxVideo.String()
+
+		_, supported := SupportedAPIFormats[format]
+		require.True(t, supported)
+		require.NoError(t, ValidateEndpoints([]objects.ChannelEndpoint{{APIFormat: format}}))
 	})
 
 	t.Run("empty endpoints list passes validation", func(t *testing.T) {

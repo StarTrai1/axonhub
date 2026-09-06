@@ -46,6 +46,7 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/xai"
 	xaisubscription "github.com/looplj/axonhub/llm/transformer/xai/subscription"
 	"github.com/looplj/axonhub/llm/transformer/zai"
+	zenmuxtransformer "github.com/looplj/axonhub/llm/transformer/zenmux"
 )
 
 const (
@@ -115,23 +116,11 @@ func getProxyConfig(channelSettings *objects.ChannelSettings) *httpclient.ProxyC
 // getHttpClient returns the injected default HTTP client when no custom proxy is configured,
 // or creates a new one with proxy support (inheriting TLS settings from the default client).
 func (svc *ChannelService) getHttpClient(channelSettings *objects.ChannelSettings) *httpclient.HttpClient {
-	client := svc.httpClient
-	if channelSettings == nil {
-		return client
+	if channelSettings == nil || channelSettings.Proxy == nil {
+		return svc.httpClient
 	}
 
-	if channelSettings.Proxy != nil {
-		client = client.WithProxy(channelSettings.Proxy)
-	}
-
-	if channelSettings.HTTPProtocol == string(httpclient.HTTPProtocolHTTP1) || channelSettings.HTTP2ConnectionShards > 1 {
-		client = client.WithHTTPTransport(
-			httpclient.HTTPProtocol(channelSettings.HTTPProtocol),
-			channelSettings.HTTP2ConnectionShards,
-		)
-	}
-
-	return client
+	return svc.httpClient.WithProxy(channelSettings.Proxy)
 }
 
 // buildChannel creates a Channel with precomputed caches (transformer is set separately).
@@ -233,16 +222,18 @@ func (svc *ChannelService) buildChannelWithOutbounds(c *ent.Channel, apiKeyOverr
 			continue
 		}
 
-		needsDedicatedOutbound := ep.APIFormat == llm.APIFormatOpenAISearch.String() ||
-			(c.Type == channel.TypeXai && ep.APIFormat != ch.Outbound.APIFormat().String())
-		if !needsDedicatedOutbound {
-			outbounds[ep.APIFormat] = ch.Outbound
+		if c.Type == channel.TypeZenmux && ep.APIFormat == llm.APIFormatZenmuxVideo.String() {
+			out, err := svc.buildNonDefaultEndpointOutbound(c, ch, ep)
+			if err != nil {
+				return nil, fmt.Errorf("failed to build default outbound for api_format %q on channel %s: %w", ep.APIFormat, c.Name, err)
+			}
+			outbounds[ep.APIFormat] = out
 			continue
 		}
-		if ep.APIFormat == llm.APIFormatOpenAISearch.String() && ep.Transport == "" {
-			// Standalone search is always HTTP, even when the channel's primary
-			// Responses endpoint uses a ws(s) base URL.
-			ep.Transport = objects.ChannelEndpointTransportHTTP
+
+		if c.Type != channel.TypeXai || ep.APIFormat == ch.Outbound.APIFormat().String() {
+			outbounds[ep.APIFormat] = ch.Outbound
+			continue
 		}
 
 		out, err := svc.buildNonDefaultEndpointOutbound(c, ch, ep)
@@ -259,6 +250,9 @@ func (svc *ChannelService) buildChannelWithOutbounds(c *ent.Channel, apiKeyOverr
 		out, err := svc.buildNonDefaultEndpointOutbound(c, ch, ep)
 		if err != nil {
 			return nil, fmt.Errorf("failed to build outbound for api_format %q on channel %s: %w", ep.APIFormat, c.Name, err)
+		}
+		if c.Type == channel.TypeOpencodeGo || c.Type == channel.TypeOpencodeGoAnthropic {
+			out = opencode.WithSessionHeader(out)
 		}
 		outbounds[ep.APIFormat] = out
 	}
@@ -399,10 +393,14 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 	} else {
 		ep.BaseURL = baseURL
 	}
+	if isCommandCodeChannelType(c.Type) {
+		if err := validateCommandCodeBaseURL(baseURL); err != nil {
+			return nil, err
+		}
+	}
 	if endpointTransport(ep) == objects.ChannelEndpointTransportWebSocket && !supportsWebSocketTransport(ep.APIFormat) {
 		return nil, fmt.Errorf("websocket transport only supports api_format %q", llm.APIFormatOpenAIResponse.String())
 	}
-
 	switch ep.APIFormat {
 	case llm.APIFormatOpenAIChatCompletion.String():
 		if c.Type == channel.TypeCline {
@@ -451,30 +449,6 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 			EndpointPath:   ep.Path,
 			Transport:      transport,
 		})
-	case llm.APIFormatOpenAISearch.String():
-		responsesBaseURL, responsesEndpointPath := searchFallbackResponsesEndpoint(c, ch)
-		if c.Type == channel.TypeCodex {
-			primary, ok := ch.Outbound.(*codex.OutboundTransformer)
-			if !ok || primary.TokenProvider() == nil {
-				return nil, fmt.Errorf("codex channel %s has no token provider", c.Name)
-			}
-
-			return codex.NewSearchOutboundTransformer(codex.SearchParams{
-				TokenProvider:         primary.TokenProvider(),
-				BaseURL:               baseURL,
-				EndpointPath:          ep.Path,
-				ResponsesBaseURL:      responsesBaseURL,
-				ResponsesEndpointPath: responsesEndpointPath,
-			})
-		}
-
-		return responses.NewSearchOutboundTransformerWithConfig(&responses.SearchConfig{
-			BaseURL:               baseURL,
-			APIKeyProvider:        apiKeyProvider(),
-			EndpointPath:          ep.Path,
-			ResponsesBaseURL:      responsesBaseURL,
-			ResponsesEndpointPath: responsesEndpointPath,
-		})
 	case llm.APIFormatOpenAIAlphaSearch.String():
 		if c.Type == channel.TypeCodex {
 			return svc.buildCodexOutbound(c, ch, baseURL, endpointTransport(ep), ep.Path, ch.HTTPClient)
@@ -509,7 +483,31 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 			APIKeyProvider: apiKeyProvider(),
 			EndpointPath:   ep.Path,
 		})
+	case llm.APIFormatZenmuxVideo.String():
+		if c.Type != channel.TypeZenmux {
+			return nil, fmt.Errorf("api_format %q is only supported by channel type %q", ep.APIFormat, channel.TypeZenmux)
+		}
+
+		return zenmuxtransformer.NewOutboundTransformerWithConfig(&zenmuxtransformer.Config{
+			BaseURL:        baseURL,
+			EndpointPath:   ep.Path,
+			APIKeyProvider: apiKeyProvider(),
+		})
 	case llm.APIFormatAnthropicMessage.String():
+		// Command Code only accepts Authorization: Bearer, for both the
+		// Anthropic-format channel type and the chat-completions channel type
+		// opting into a custom Anthropic endpoint; ordinary Anthropic direct
+		// channels keep X-API-Key.
+		switch c.Type {
+		case channel.TypeCommandcode, channel.TypeCommandcodeAnthropic:
+			return anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
+				Type:           anthropic.PlatformCommandCode,
+				BaseURL:        baseURL,
+				APIKeyProvider: apiKeyProvider(),
+				EndpointPath:   ep.Path,
+			})
+		}
+
 		return anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
 			Type:           anthropic.PlatformDirect,
 			BaseURL:        baseURL,
@@ -539,22 +537,6 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 	default:
 		return nil, fmt.Errorf("unsupported api_format %q", ep.APIFormat)
 	}
-}
-
-func searchFallbackResponsesEndpoint(c *ent.Channel, ch *Channel) (string, string) {
-	baseURL := c.BaseURL
-	for _, endpoint := range ch.ResolveEndpoints() {
-		if endpoint.APIFormat != llm.APIFormatOpenAIResponse.String() {
-			continue
-		}
-		if endpoint.BaseURL != "" {
-			baseURL = endpoint.BaseURL
-		}
-
-		return baseURL, endpoint.Path
-	}
-
-	return baseURL, ""
 }
 
 func newProviderChatOutbound(
@@ -624,12 +606,25 @@ func urlPathContainsSegment(rawURL, segment string) bool {
 	return slices.Contains(strings.Split(strings.Trim(parsed.Path, "/"), "/"), segment)
 }
 
+func validateCommandCodeBaseURL(rawURL string) error {
+	parsed, err := url.Parse(strings.TrimSpace(rawURL))
+	if err != nil || parsed.Scheme != "https" || parsed.Host == "" {
+		return fmt.Errorf("Command Code base URL must use HTTPS")
+	}
+
+	return nil
+}
+
 //nolint:maintidx // Checked.
 func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel, apiKeyOverride ...string) (*Channel, error) {
 	// Validate credentials early so we can fail fast without constructing HTTP clients/transformers.
 	//
 	// NOTE: "enabled" keys excludes keys that were explicitly disabled for this channel.
 	enabledKeys := c.Credentials.GetEnabledAPIKeys(c.DisabledAPIKeys)
+	overrideAPIKey := ""
+	if len(apiKeyOverride) > 0 {
+		overrideAPIKey = strings.TrimSpace(apiKeyOverride[0])
+	}
 
 	//nolint:exhaustive // Checked.
 	switch c.Type {
@@ -654,6 +649,12 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel, apiKeyOve
 		// Ollama is often run locally without an API key. An apiKeyOverride
 		// (channel key test flow) may also supply a key when none are stored,
 		// so skip the stored-key check here.
+	case channel.TypeCommandcode, channel.TypeCommandcodeAnthropic:
+		// Command Code inference always authenticates with a Bearer API key;
+		// the quota collection cookie is never an inference credential.
+		if len(enabledKeys) == 0 && overrideAPIKey == "" {
+			return nil, fmt.Errorf("missing api key for channel %s", c.Name)
+		}
 	default:
 		if len(enabledKeys) == 0 {
 			return nil, fmt.Errorf("missing api key for channel %s", c.Name)
@@ -673,9 +674,15 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel, apiKeyOve
 	}
 
 	httpClient := svc.getHttpClient(c.Settings)
+	if isCommandCodeChannelType(c.Type) {
+		if err := validateCommandCodeBaseURL(c.BaseURL); err != nil {
+			return nil, err
+		}
+		httpClient = httpClient.WithRejectHTTPSDowngrade()
+	}
 	ch := buildChannel(c, httpClient)
-	if len(apiKeyOverride) > 0 {
-		ch.apiKeyOverride = apiKeyOverride[0]
+	if overrideAPIKey != "" {
+		ch.apiKeyOverride = overrideAPIKey
 	}
 
 	switch c.Type {
@@ -860,6 +867,19 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel, apiKeyOve
 	case channel.TypeAnthropic, channel.TypeQiniuAnthropic, channel.TypeMinimaxAnthropic, channel.TypeZenmuxAnthropic, channel.TypeVolcengineAnthropic, channel.TypeAihubmixAnthropic, channel.TypeXiaomiAnthropic, channel.TypeEvolinkAnthropic:
 		transformer, err := anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
 			Type:           anthropic.PlatformDirect,
+			BaseURL:        c.BaseURL,
+			APIKeyProvider: getAPIKeyProvider(ch),
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
+		}
+
+		ch.Outbound = transformer
+
+		return ch, nil
+	case channel.TypeCommandcodeAnthropic:
+		transformer, err := anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
+			Type:           anthropic.PlatformCommandCode,
 			BaseURL:        c.BaseURL,
 			APIKeyProvider: getAPIKeyProvider(ch),
 		})
@@ -1118,6 +1138,19 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel, apiKeyOve
 		return ch, nil
 	case channel.TypeOpencodeGo:
 		transformer, err := opencode.NewOutboundTransformerWithConfig(&opencode.Config{
+			BaseURL:        c.BaseURL,
+			APIKeyProvider: getAPIKeyProvider(ch),
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
+		}
+
+		ch.Outbound = transformer
+
+		return ch, nil
+	case channel.TypeCommandcode:
+		transformer, err := openai.NewOutboundTransformerWithConfig(&openai.Config{
+			PlatformType:   openai.PlatformOpenAI,
 			BaseURL:        c.BaseURL,
 			APIKeyProvider: getAPIKeyProvider(ch),
 		})
