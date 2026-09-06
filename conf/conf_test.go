@@ -60,18 +60,29 @@ server:
 	}
 }
 
-func TestSSEKeepAliveDefaultsToDisabled(t *testing.T) {
+func TestSSEKeepAliveDefaultsToEnabled(t *testing.T) {
 	configFile := writeTestConfig(t, "")
 
 	cfg, _, err := loadConfig(configFile)
 	if err != nil {
 		t.Fatalf("loadConfig() error = %v", err)
 	}
-	if cfg.APIServer.SSEKeepAlive.Enabled {
-		t.Fatal("SSE keep-alive should default to disabled")
+	if !cfg.APIServer.SSEKeepAlive.Enabled {
+		t.Fatal("SSE keep-alive should default to enabled")
 	}
 	if cfg.APIServer.SSEKeepAlive.Interval != 15*time.Second {
 		t.Fatalf("SSE keep-alive interval = %s, want 15s", cfg.APIServer.SSEKeepAlive.Interval)
+	}
+}
+
+func TestSSEKeepAliveCanBeExplicitlyDisabled(t *testing.T) {
+	configFile := writeTestConfig(t, "server:\n  sse_keep_alive:\n    enabled: false\n")
+	cfg, _, err := loadConfig(configFile)
+	if err != nil {
+		t.Fatalf("loadConfig() error = %v", err)
+	}
+	if cfg.APIServer.SSEKeepAlive.Enabled {
+		t.Fatal("explicitly disabled SSE keep-alive must remain disabled")
 	}
 }
 

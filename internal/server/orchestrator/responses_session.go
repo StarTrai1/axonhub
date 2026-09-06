@@ -231,7 +231,10 @@ func (s *responsesSessionStore) lookup(ctx context.Context, responseID string) *
 
 func (s *responsesSessionStore) evictExpiredLocked(now time.Time) {
 	for oldest := s.order.Front(); oldest != nil; oldest = s.order.Front() {
-		key := oldest.Value.(responsesSessionKey)
+		key, ok := oldest.Value.(responsesSessionKey)
+		if !ok {
+			return
+		}
 		record := s.byResponse[key]
 		if record != nil && now.Sub(record.updatedAt) <= responsesSessionTTL {
 			return
@@ -245,7 +248,11 @@ func (s *responsesSessionStore) evictOldestLocked() bool {
 	if oldest == nil {
 		return false
 	}
-	s.removeLocked(oldest.Value.(responsesSessionKey))
+	key, ok := oldest.Value.(responsesSessionKey)
+	if !ok {
+		return false
+	}
+	s.removeLocked(key)
 	return true
 }
 

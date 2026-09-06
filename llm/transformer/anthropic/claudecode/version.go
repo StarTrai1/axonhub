@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -25,6 +26,9 @@ var claudeCodeVersionCache struct {
 }
 
 func currentClaudeCodeUserAgent() string {
+	if version := configuredClaudeCodeVersion(); version != "" {
+		return claudeCodeUserAgent(version)
+	}
 	version := claudeCodeVersionFromUserAgent(UserAgent)
 	if cached := claudeCodeVersionCache.value.Load(); cached != nil {
 		version = *cached
@@ -67,6 +71,14 @@ func currentClaudeCodeUserAgent() string {
 	}()
 
 	return claudeCodeUserAgent(version)
+}
+
+func configuredClaudeCodeVersion() string {
+	version := strings.TrimSpace(os.Getenv("AXONHUB_CLAUDE_CODE_VERSION"))
+	if _, valid := parseStableClaudeCodeVersion(version); valid {
+		return version
+	}
+	return ""
 }
 
 func claudeCodeUserAgent(version string) string {

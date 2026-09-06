@@ -8,6 +8,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestClaudeCodeVersionOverrideIsValidated(t *testing.T) {
+	t.Setenv("AXONHUB_CLAUDE_CODE_VERSION", " 2.1.263 ")
+	require.Equal(t, "claude-cli/2.1.263 (external, cli)", currentClaudeCodeUserAgent())
+	t.Setenv("AXONHUB_CLAUDE_CODE_VERSION", "2.1.263\r\nAuthorization: injected")
+	require.Empty(t, configuredClaudeCodeVersion())
+}
+
 func TestFetchLatestClaudeCodeVersion(t *testing.T) {
 	t.Parallel()
 

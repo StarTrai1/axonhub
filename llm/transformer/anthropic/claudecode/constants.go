@@ -22,7 +22,7 @@ const (
 	RedirectURI = "http://localhost:54545/callback"
 	Scopes      = "org:create_api_key user:profile user:inference"
 	// UserAgent is the offline fallback identity for Claude Code requests.
-	claudeCodeDefaultVersion = "2.1.231"
+	claudeCodeDefaultVersion = "2.1.263"
 	UserAgent                = "claude-cli/" + claudeCodeDefaultVersion + " (external, cli)"
 
 	// ClaudeCodeBetaHeader contains the beta feature identifiers for Claude Code API.
