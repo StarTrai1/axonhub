@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"testing"
 	"time"
@@ -10,11 +11,79 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/ent"
+	entchannel "github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
 )
+
+func TestCodexUsageLimitResetCooldown(t *testing.T) {
+	now := time.Unix(1800000000, 0)
+	for _, testCase := range []struct {
+		name string
+		body string
+		want time.Duration
+	}{
+		{"nested seconds", `{"error":{"type":"usage_limit_reached","resets_in_seconds":18000}}`, 5 * time.Hour},
+		{"flat string seconds", `{"type":"USAGE_LIMIT_REACHED","resets_in_seconds":"604800"}`, 7 * 24 * time.Hour},
+		{"timestamp wins", `{"error":{"type":"usage_limit_reached","resets_at":"1800018000","resets_in_seconds":10}}`, 5 * time.Hour},
+		{"past timestamp falls back", `{"type":"usage_limit_reached","resets_at":1799999999,"resets_in_seconds":30}`, 30 * time.Second},
+		{"wrong error", `{"error":{"type":"rate_limit_exceeded","resets_in_seconds":18000}}`, 0},
+		{"missing type", `{"resets_in_seconds":18000}`, 0},
+		{"negative", `{"type":"usage_limit_reached","resets_in_seconds":-1}`, 0},
+		{"overflow", `{"type":"usage_limit_reached","resets_in_seconds":9223372036854775807}`, 0},
+		{"fraction", `{"type":"usage_limit_reached","resets_in_seconds":1.5}`, 0},
+		{"malformed", `{"error":`, 0},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			err := fmt.Errorf("wrapped: %w", &httpclient.Error{StatusCode: http.StatusTooManyRequests, Body: []byte(testCase.body)})
+			cooldown, ok := codexUsageLimitResetCooldown(err, now)
+			require.Equal(t, testCase.want > 0, ok)
+			require.Equal(t, testCase.want, cooldown)
+		})
+	}
+	_, ok := codexUsageLimitResetCooldown(&httpclient.Error{StatusCode: 400, Body: []byte(`{"type":"usage_limit_reached","resets_in_seconds":10}`)}, now)
+	require.False(t, ok)
+}
+
+func TestCodexUsageLimitCooldownDoesNotDisableOtherCredentials(t *testing.T) {
+	for _, testCase := range []struct {
+		name        string
+		channelType entchannel.Type
+		keys        []string
+		want        bool
+	}{
+		{"single Codex credential", entchannel.TypeCodex, []string{"test-key-one"}, true},
+		{"multiple Codex credentials", entchannel.TypeCodex, []string{"test-key-one", "test-key-two"}, false},
+		{"other provider", entchannel.TypeOpenai, []string{"test-key-one"}, false},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			tracker := NewChannelRequestTracker()
+			current := &biz.Channel{Channel: &ent.Channel{
+				ID: 1, Type: testCase.channelType,
+				Credentials: objects.ChannelCredentials{APIKeys: testCase.keys},
+			}}
+			middleware := &rateLimitTracking{
+				outbound: &PersistentOutboundTransformer{state: &PersistenceState{
+					CurrentCandidate: &ChannelModelsCandidate{Channel: current},
+				}},
+				tracker: tracker,
+			}
+			before := time.Now()
+			middleware.OnOutboundRawError(context.Background(), &httpclient.Error{
+				StatusCode: http.StatusTooManyRequests,
+				Body:       []byte(`{"error":{"type":"usage_limit_reached","resets_in_seconds":18000}}`),
+			})
+			until, ok := tracker.GetCooldownUntil(1)
+			require.Equal(t, testCase.want, ok)
+			if ok {
+				require.WithinDuration(t, before.Add(5*time.Hour), until, time.Second)
+			}
+		})
+	}
+}
 
 func TestRateLimitTracking_OnOutboundLlmResponse(t *testing.T) {
 	tracker := NewChannelRequestTracker()

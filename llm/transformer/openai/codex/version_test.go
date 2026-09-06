@@ -48,3 +48,18 @@ func TestCodexVersionFromUserAgent(t *testing.T) {
 	_, ok = codexVersionFromUserAgent("axonhub/1.0")
 	require.False(t, ok)
 }
+
+func TestCodexVersionFromDesktopUserAgent(t *testing.T) {
+	for _, userAgent := range []string{
+		"Codex Desktop/0.153.3 (Mac OS 26.4.0; arm64) dumb (codex_exec; 0.153.3)",
+		" codex desktop/0.153.4 (Windows 11; x86_64)",
+	} {
+		version, ok := codexVersionFromUserAgent(userAgent)
+		require.True(t, ok)
+		require.Contains(t, userAgent, "/"+version)
+	}
+	for _, userAgent := range []string{"Codex Desktop/invalid", "Codex Desktop/0.153.4-alpha.1"} {
+		_, ok := codexVersionFromUserAgent(userAgent)
+		require.False(t, ok)
+	}
+}

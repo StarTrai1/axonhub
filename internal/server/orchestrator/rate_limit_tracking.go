@@ -2,12 +2,15 @@ package orchestrator
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -86,19 +89,33 @@ func (m *rateLimitTracking) OnOutboundRawError(ctx context.Context, err error) {
 		return
 	}
 
-	channel := m.outbound.GetCurrentChannel()
-	if channel == nil {
+	currentChannel := m.outbound.GetCurrentChannel()
+	if currentChannel == nil {
 		return
+	}
+	if currentChannel.Type == channel.TypeCodex &&
+		len(currentChannel.Credentials.GetAllCredentialRefs()) == 1 {
+		if cooldown, ok := codexUsageLimitResetCooldown(err, time.Now()); ok {
+			if headerCooldown, explicit := codexQuotaResetCooldown(err); explicit {
+				cooldown = max(cooldown, headerCooldown)
+			}
+			m.tracker.SetCooldown(currentChannel.ID, time.Now().Add(cooldown))
+			log.Warn(ctx, "Codex credential cooling down until usage limit resets",
+				log.Int("channel_id", currentChannel.ID),
+				log.Duration("cooldown", cooldown),
+			)
+			return
+		}
 	}
 
 	// Codex exposes the exhausted quota window and its reset delay separately
 	// from Retry-After. Honor that explicit signal without the generic five
 	// minute cap so an exhausted 5-hour/weekly channel is not retried repeatedly.
 	if cooldown, ok := codexQuotaResetCooldown(err); ok {
-		m.tracker.SetCooldown(channel.ID, time.Now().Add(cooldown))
+		m.tracker.SetCooldown(currentChannel.ID, time.Now().Add(cooldown))
 		log.Warn(ctx, "channel cooling down until Codex quota reset",
-			log.Int("channel_id", channel.ID),
-			log.String("channel_name", channel.Name),
+			log.Int("channel_id", currentChannel.ID),
+			log.String("channel_name", currentChannel.Name),
 			log.Duration("cooldown", cooldown),
 		)
 
@@ -117,13 +134,51 @@ func (m *rateLimitTracking) OnOutboundRawError(ctx context.Context, err error) {
 	}
 
 	// Set cooldown for this channel
-	m.tracker.SetCooldown(channel.ID, time.Now().Add(cooldown))
+	m.tracker.SetCooldown(currentChannel.ID, time.Now().Add(cooldown))
 
 	log.Warn(ctx, "channel cooling down due to 429",
-		log.Int("channel_id", channel.ID),
-		log.String("channel_name", channel.Name),
+		log.Int("channel_id", currentChannel.ID),
+		log.String("channel_name", currentChannel.Name),
 		log.Duration("cooldown", cooldown),
 	)
+}
+
+func codexUsageLimitResetCooldown(err error, now time.Time) (time.Duration, bool) {
+	var httpErr *httpclient.Error
+	if !errors.As(err, &httpErr) || httpErr.StatusCode != http.StatusTooManyRequests {
+		return 0, false
+	}
+	type quotaError struct {
+		Type            string          `json:"type"`
+		ResetsAt        json.RawMessage `json:"resets_at"`
+		ResetsInSeconds json.RawMessage `json:"resets_in_seconds"`
+	}
+	var envelope struct {
+		quotaError
+		Error *quotaError `json:"error"`
+	}
+	if json.Unmarshal(httpErr.Body, &envelope) != nil {
+		return 0, false
+	}
+	for _, quota := range []*quotaError{envelope.Error, &envelope.quotaError} {
+		if quota == nil || !strings.EqualFold(strings.TrimSpace(quota.Type), "usage_limit_reached") {
+			continue
+		}
+		var resetAt, resetIn int64
+		if value, parseErr := strconv.ParseInt(strings.Trim(string(quota.ResetsAt), `"`), 10, 64); parseErr == nil {
+			resetAt = value
+		}
+		if value, parseErr := strconv.ParseInt(strings.Trim(string(quota.ResetsInSeconds), `"`), 10, 64); parseErr == nil {
+			resetIn = value
+		}
+		if resetAt > now.Unix() && resetAt-now.Unix() <= math.MaxInt64/int64(time.Second) {
+			return time.Unix(resetAt, 0).Sub(now), true
+		}
+		if resetIn > 0 && resetIn <= math.MaxInt64/int64(time.Second) {
+			return time.Duration(resetIn) * time.Second, true
+		}
+	}
+	return 0, false
 }
 
 func codexQuotaResetCooldown(err error) (time.Duration, bool) {
@@ -137,7 +192,7 @@ func codexQuotaResetCooldown(err error) (time.Duration, bool) {
 		prefix := "x-codex-" + window + "-"
 		used, parseUsedErr := strconv.ParseFloat(strings.TrimSpace(httpErr.Headers.Get(prefix+"used-percent")), 64)
 		resetSeconds, parseResetErr := strconv.ParseInt(strings.TrimSpace(httpErr.Headers.Get(prefix+"reset-after-seconds")), 10, 64)
-		if parseUsedErr != nil || parseResetErr != nil || used < 100 || resetSeconds <= 0 {
+		if parseUsedErr != nil || parseResetErr != nil || math.IsNaN(used) || math.IsInf(used, 0) || used < 100 || resetSeconds <= 0 || resetSeconds > math.MaxInt64/int64(time.Second) {
 			continue
 		}
 

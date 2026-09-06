@@ -83,6 +83,10 @@ func CurrentUserAgent() string {
 }
 
 func codexVersionFromUserAgent(userAgent string) (string, bool) {
+	userAgent = strings.TrimSpace(userAgent)
+	if strings.HasPrefix(strings.ToLower(userAgent), "codex desktop/") {
+		userAgent = "codex_desktop/" + userAgent[len("codex desktop/"):]
+	}
 	product := strings.Fields(userAgent)
 	if len(product) == 0 {
 		return "", false

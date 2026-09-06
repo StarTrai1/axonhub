@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"sync"
 	"testing"
 	"time"
 
@@ -15,6 +16,32 @@ import (
 	openairesponses "github.com/looplj/axonhub/llm/transformer/openai/responses"
 	"github.com/looplj/axonhub/llm/transformer/shared"
 )
+
+func TestResponsesSessionSnapshotsRemainIsolatedDuringConcurrentReplacement(t *testing.T) {
+	store := newResponsesSessionStore()
+	ctx := shared.WithSessionScope(context.Background(), "api-key:1")
+	request := []byte(`{"model":"gpt-6-astra","input":[{"role":"user","content":"original"}]}`)
+	response := []byte(`{"id":"resp_snapshot","status":"completed","output":[{"type":"message","role":"assistant","content":"answer"}]}`)
+	store.record(ctx, request, response)
+	snapshot := store.lookup(ctx, "resp_snapshot")
+	require.NotNil(t, snapshot)
+	snapshot.input[0][0] = 'x'
+	require.Equal(t, byte('{'), store.lookup(ctx, "resp_snapshot").input[0][0])
+	var workers sync.WaitGroup
+	for worker := 0; worker < 8; worker++ {
+		workers.Go(func() {
+			for iteration := 0; iteration < 50; iteration++ {
+				store.record(ctx, request, response)
+				snapshotCopy := store.lookup(ctx, "resp_snapshot")
+				if snapshotCopy != nil {
+					snapshotCopy.output[0][0] = 'x'
+				}
+			}
+		})
+	}
+	workers.Wait()
+	require.Equal(t, byte('{'), store.lookup(ctx, "resp_snapshot").output[0][0])
+}
 
 func TestResponsesSessionStoreExpandsPreviousResponseForAnyUpstreamTransport(t *testing.T) {
 	store := newResponsesSessionStore()

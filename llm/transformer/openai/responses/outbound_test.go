@@ -360,6 +360,8 @@ func TestOutboundTransformer_TransformRequest_PreservesGPT6AsyncToolsAndConfigur
 	inbound := NewInboundTransformer()
 	inboundReq := &httpclient.Request{Body: []byte(`{
 		"model":"gpt-6-astra",
+		"reasoning":{"effort":"low"},
+		"service_tier":"ultrafast",
 		"input":[
 			{"type":"configuration_update","reasoning":{"effort":"high"}},
 			{"type":"function_call","call_id":"call_lookup","name":"lookup","arguments":"{}","async":true},
@@ -388,6 +390,8 @@ func TestOutboundTransformer_TransformRequest_PreservesGPT6AsyncToolsAndConfigur
 	input := payload["input"].([]any)
 	require.Equal(t, "configuration_update", input[0].(map[string]any)["type"])
 	require.Equal(t, "high", input[0].(map[string]any)["reasoning"].(map[string]any)["effort"])
+	require.Equal(t, "low", payload["reasoning"].(map[string]any)["effort"])
+	require.Equal(t, "ultrafast", payload["service_tier"])
 	require.Equal(t, "function_call", input[1].(map[string]any)["type"])
 	require.Equal(t, true, input[1].(map[string]any)["async"])
 	require.Equal(t, "function_call_output", input[2].(map[string]any)["type"])

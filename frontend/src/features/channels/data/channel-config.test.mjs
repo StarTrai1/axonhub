@@ -27,9 +27,14 @@ test('lazy channel lists retain routing tiers and official Codex usage data', ()
   const source = read('features/channels/data/channels.ts');
   const base = source.slice(source.indexOf('const CHANNEL_QUERY_LIST_NODE_BASE_SELECTION'), source.indexOf('const CHANNEL_QUERY_SUPPORTED_MODELS_SELECTION'));
   assert.match(base, /policies\s*\{\s*routingTier/);
-  const health = source.slice(source.indexOf('const CHANNEL_QUERY_HEALTH_SELECTION'), source.indexOf('const CHANNEL_QUERY_QUOTA_SELECTION'));
+  const health = source.slice(source.indexOf('const CHANNEL_QUERY_HEALTH_SELECTION'), source.indexOf('function isChannelColumnVisible'));
   assert.match(health, /credentials\s*\{\s*apiKey/);
-  assert.match(source, /isChannelColumnVisible\(columnVisibility, 'quota'\) \|\| isChannelColumnVisible\(columnVisibility, 'health'\)/);
+  assert.match(health, /providerQuotaStatus/);
+  assert.doesNotMatch(source, /isChannelColumnVisible\(columnVisibility, 'quota'\)/);
+  const columns = read('features/channels/components/channels-columns.tsx');
+  assert.doesNotMatch(columns, /id: 'quota'|QuotaCell|getQuotaLimits/);
+  assert.match(columns, /id: 'health'/);
+  assert.match(columns, /<CodexUsageCell channel=\{row.original\}/);
 });
 
 test('Cline is available as a channel type in frontend schemas and configs', () => {

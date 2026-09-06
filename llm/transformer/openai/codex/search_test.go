@@ -72,3 +72,32 @@ func TestCodexSearchOutboundSupportsPlainAPIKeyProvider(t *testing.T) {
 	_, customized := any(outbound).(pipeline.ChannelCustomizedExecutor)
 	require.True(t, customized)
 }
+
+func TestCodexSearchPreservesDesktopIdentityAndVersion(t *testing.T) {
+	outbound, err := NewSearchOutboundTransformer(SearchParams{
+		TokenProvider: staticTokenGetter{creds: &oauth.OAuthCredentials{AccessToken: testAccessTokenWithAccountID(t)}},
+		BaseURL:       "https://chatgpt.com/backend-api/codex",
+	})
+	require.NoError(t, err)
+	userAgent := "Codex Desktop/0.153.3 (Mac OS 26.4.0; arm64) dumb (codex_exec; 0.153.3)"
+	for _, version := range []string{"", "0.153.2"} {
+		req, err := outbound.TransformRequest(t.Context(), &llm.Request{
+			Model:       "gpt-6-astra",
+			RequestType: llm.RequestTypeSearch,
+			APIFormat:   llm.APIFormatOpenAISearch,
+			RawRequest: &httpclient.Request{Headers: http.Header{
+				"Originator": []string{"Codex Desktop"},
+				"User-Agent": []string{userAgent},
+				"Version":    []string{version},
+			}},
+			Search: &llm.SearchRequest{Raw: []byte(`{"model":"gpt-6-astra","query":"test"}`)},
+		})
+		require.NoError(t, err)
+		require.Equal(t, userAgent, req.Headers.Get("User-Agent"))
+		require.Equal(t, "Codex Desktop", req.Headers.Get("Originator"))
+		if version == "" {
+			version = "0.153.3"
+		}
+		require.Equal(t, version, req.Headers.Get("Version"))
+	}
+}

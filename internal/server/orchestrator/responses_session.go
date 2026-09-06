@@ -177,6 +177,13 @@ func (s *responsesSessionStore) record(ctx context.Context, requestBody, respons
 	}
 	sessionID, _ := shared.GetSessionID(ctx)
 	key := responsesSessionKey{scope: scope, responseID: response.ID}
+	record := &responsesSessionRecord{
+		input:     input,
+		output:    output,
+		sessionID: sessionID,
+		updatedAt: now,
+		size:      size,
+	}
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -184,13 +191,7 @@ func (s *responsesSessionStore) record(ctx context.Context, requestBody, respons
 	if previous := s.byResponse[key]; previous != nil {
 		s.totalBytes -= previous.size
 	}
-	s.byResponse[key] = &responsesSessionRecord{
-		input:     cloneResponseSessionValues(input),
-		output:    output,
-		sessionID: sessionID,
-		updatedAt: now,
-		size:      size,
-	}
+	s.byResponse[key] = record
 	s.totalBytes += size
 	for len(s.byResponse) > responsesSessionMaxRecords || s.totalBytes > responsesSessionMaxBytes {
 		if !s.evictOldestLocked() {
@@ -209,9 +210,9 @@ func (s *responsesSessionStore) lookup(ctx context.Context, responseID string) *
 	key := responsesSessionKey{scope: scope, responseID: responseID}
 
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	s.evictExpiredLocked(now)
 	record := s.byResponse[key]
+	s.mu.Unlock()
 	if record == nil {
 		return nil
 	}
