@@ -210,9 +210,9 @@ func (s *responsesSessionStore) lookup(ctx context.Context, responseID string) *
 	key := responsesSessionKey{scope: scope, responseID: responseID}
 
 	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.evictExpiredLocked(now)
 	record := s.byResponse[key]
-	s.mu.Unlock()
 	if record == nil {
 		return nil
 	}
