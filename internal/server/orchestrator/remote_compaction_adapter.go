@@ -1181,8 +1181,14 @@ func decodeResponsesInput(body []byte) (map[string]json.RawMessage, []json.RawMe
 		return nil, nil, fmt.Errorf("decode Responses request: %w", err)
 	}
 	var input []json.RawMessage
-	if err := json.Unmarshal(envelope["input"], &input); err != nil {
-		return nil, nil, fmt.Errorf("decode Responses input: %w", err)
+	if raw := envelope["input"]; len(raw) > 0 {
+		if err := json.Unmarshal(raw, &input); err != nil {
+			var text string
+			if json.Unmarshal(raw, &text) != nil {
+				return nil, nil, fmt.Errorf("decode Responses input: %w", err)
+			}
+			input = responseSessionInputItems(raw)
+		}
 	}
 
 	return envelope, input, nil

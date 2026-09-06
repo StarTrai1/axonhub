@@ -28,9 +28,9 @@ func TestResponsesSessionSnapshotsRemainIsolatedDuringConcurrentReplacement(t *t
 	snapshot.input[0][0] = 'x'
 	require.Equal(t, byte('{'), store.lookup(ctx, "resp_snapshot").input[0][0])
 	var workers sync.WaitGroup
-	for worker := 0; worker < 8; worker++ {
+	for range 8 {
 		workers.Go(func() {
-			for iteration := 0; iteration < 50; iteration++ {
+			for range 50 {
 				store.record(ctx, request, response)
 				snapshotCopy := store.lookup(ctx, "resp_snapshot")
 				if snapshotCopy != nil {

@@ -17,6 +17,28 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
 
+func TestRemoteCompactionInspectionAcceptsResponsesStringInput(t *testing.T) {
+	for _, body := range []string{
+		`{"model":"gpt-6-astra","input":"hello"}`,
+		`{"model":"gpt-6-astra","input":[]}`,
+		`{"model":"gpt-6-astra","input":null}`,
+		`{"model":"gpt-6-astra","previous_response_id":"resp_previous"}`,
+	} {
+		ref, _, model, err := parseRemoteCompactionRequest([]byte(body))
+		require.NoError(t, err)
+		require.Nil(t, ref)
+		require.Equal(t, "gpt-6-astra", model)
+	}
+	_, input, err := decodeResponsesInput([]byte(`{"input":"hello"}`))
+	require.NoError(t, err)
+	require.Len(t, input, 1)
+	require.JSONEq(t, `{"type":"message","role":"user","content":"hello"}`, string(input[0]))
+	for _, body := range []string{`{"input":42}`, `{"input":{}}`, `{"input":true}`} {
+		_, _, err := decodeResponsesInput([]byte(body))
+		require.Error(t, err)
+	}
+}
+
 func TestBuildLocalCompactionRequest(t *testing.T) {
 	body := []byte(`{
 		"model":"gpt-5.6-sol",

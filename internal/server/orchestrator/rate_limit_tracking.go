@@ -155,6 +155,7 @@ func codexUsageLimitResetCooldown(err error, now time.Time) (time.Duration, bool
 	}
 	var envelope struct {
 		quotaError
+
 		Error *quotaError `json:"error"`
 	}
 	if json.Unmarshal(httpErr.Body, &envelope) != nil {
