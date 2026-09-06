@@ -286,6 +286,25 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 	})
 }
 
+func TestClaudeCodeTransformerPreservesInboundHeadersAcrossRetries(t *testing.T) {
+	t.Setenv("AXONHUB_CLAUDE_CODE_VERSION", "2.1.263")
+	transformer, err := NewOutboundTransformer(Params{TokenProvider: newMockTokenProvider("test-api-key")})
+	require.NoError(t, err)
+	headers := http.Header{"User-Agent": {"third-party-client/1.0"}, "Anthropic-Beta": {"custom-beta"}}
+	request := &llm.Request{
+		Model: "claude-sonnet-4-5",
+		Messages: []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hello")}}},
+		RawRequest: &httpclient.Request{Headers: headers},
+	}
+	for range 2 {
+		outgoing, transformErr := transformer.TransformRequest(t.Context(), request)
+		require.NoError(t, transformErr)
+		require.Equal(t, "claude-cli/2.1.263 (external, cli)", outgoing.Headers.Get("User-Agent"))
+		require.Equal(t, "third-party-client/1.0", request.RawRequest.Headers.Get("User-Agent"))
+		require.Equal(t, "custom-beta", request.RawRequest.Headers.Get("Anthropic-Beta"))
+	}
+}
+
 func TestRemoveBillingSystemMessages(t *testing.T) {
 	billing := "  X-Anthropic-Billing-Header: cc_version=2.1.42;"
 	keep := "keep"

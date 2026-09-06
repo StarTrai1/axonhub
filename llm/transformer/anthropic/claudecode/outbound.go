@@ -102,24 +102,27 @@ func (t *ClaudeCodeTransformer) TransformRequest(
 	if llmReq == nil {
 		return nil, fmt.Errorf("request is nil")
 	}
+	reqCopy := *llmReq
+	if llmReq.RawRequest != nil {
+		rawCopy := *llmReq.RawRequest
+		rawCopy.Headers = llmReq.RawRequest.Headers.Clone()
+		reqCopy.RawRequest = &rawCopy
+	}
 
 	rawUA := ""
 	keepClientUA := false
 
 	var rawHeaders http.Header
 
-	if llmReq.RawRequest != nil && llmReq.RawRequest.Headers != nil {
-		rawHeaders = llmReq.RawRequest.Headers
+	if reqCopy.RawRequest != nil && reqCopy.RawRequest.Headers != nil {
+		rawHeaders = reqCopy.RawRequest.Headers
 		rawUA = rawHeaders.Get("User-Agent")
 		keepClientUA = isClaudeCLIUserAgent(rawUA)
 
 		if !keepClientUA {
-			llmReq.RawRequest.Headers.Del("User-Agent")
+			rawHeaders.Del("User-Agent")
 		}
 	}
-
-	// Clone the request to avoid mutating the original
-	reqCopy := *llmReq
 
 	// Get OAuth token early - needed for determining tool prefix logic
 	creds, err := t.tokens.Get(ctx)

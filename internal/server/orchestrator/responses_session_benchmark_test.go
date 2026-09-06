@@ -79,14 +79,38 @@ func BenchmarkResponsesSessionLookup(b *testing.B) {
 					input: []json.RawMessage{[]byte(`{"content":"request"}`)}, updatedAt: time.Now(), size: 21,
 				})
 			}
-			b.ReportAllocs()
-			b.RunParallel(func(worker *testing.PB) {
-				for worker.Next() {
-					if store.lookup(ctx, "0") == nil {
-						b.Error("missing snapshot")
-					}
-				}
-			})
+			for _, variant := range []string{"scan_locked_baseline", "ordered_snapshot"} {
+				b.Run(variant, func(b *testing.B) {
+					b.ReportAllocs()
+					b.RunParallel(func(worker *testing.PB) {
+						for worker.Next() {
+							var snapshot *responsesSessionRecord
+							if variant == "scan_locked_baseline" {
+								store.mu.Lock()
+								now := time.Now()
+								for key, record := range store.byResponse {
+									if now.Sub(record.updatedAt) > responsesSessionTTL {
+										store.removeLocked(key)
+									}
+								}
+								record := store.byResponse[responsesSessionKey{scope: "scope", responseID: "0"}]
+								if record != nil {
+									snapshot = &responsesSessionRecord{
+										input: cloneResponseSessionValues(record.input), output: cloneResponseSessionValues(record.output),
+										sessionID: record.sessionID, updatedAt: record.updatedAt, size: record.size,
+									}
+								}
+								store.mu.Unlock()
+							} else {
+								snapshot = store.lookup(ctx, "0")
+							}
+							if snapshot == nil {
+								b.Error("missing snapshot")
+							}
+						}
+					})
+				})
+			}
 		})
 	}
 }
