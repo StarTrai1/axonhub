@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -68,6 +69,84 @@ func (o *retryTestOutbound) PrepareForRetry(context.Context) error {
 type retryTestExecutor struct {
 	attempts *int
 	streams  [][]*httpclient.StreamEvent
+}
+
+type rateLimitRetryTestOutbound struct {
+	*retryTestOutbound
+	cancel context.CancelFunc
+}
+
+func (*rateLimitRetryTestOutbound) CanRetry(err error) bool {
+	var responseErr *llm.ResponseError
+	return errors.As(err, &responseErr) && responseErr.StatusCode == 429
+}
+
+func (outbound *rateLimitRetryTestOutbound) SameChannelRetryDelay(error, int) time.Duration {
+	if outbound.cancel != nil {
+		outbound.cancel()
+		return time.Minute
+	}
+	return time.Millisecond
+}
+
+func TestResponsesRateLimitRetriesOnlyBeforeOutputAndWithinBudget(t *testing.T) {
+	created := &httpclient.StreamEvent{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_limited","object":"response","status":"in_progress","output":[]}}`)}
+	limited := &httpclient.StreamEvent{Type: "error", Data: []byte(`{"type":"error","code":"rate_limit_exceeded","message":"eastus rate limit"}`)}
+	text := &httpclient.StreamEvent{Type: "response.output_text.delta", Data: []byte(`{"type":"response.output_text.delta","item_id":"msg_ok","output_index":0,"content_index":0,"delta":"ok"}`)}
+	completed := &httpclient.StreamEvent{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":{"id":"resp_ok","object":"response","status":"completed","output":[]}}`)}
+	for _, testcase := range []struct {
+		name       string
+		streams    [][]*httpclient.StreamEvent
+		attempts   int
+		processErr bool
+		streamErr  bool
+		cancel     bool
+	}{
+		{name: "recover", streams: [][]*httpclient.StreamEvent{{created, limited}, {text, completed}}, attempts: 2},
+		{name: "exhausted", streams: [][]*httpclient.StreamEvent{{created, limited}, {created, limited}}, attempts: 2, processErr: true},
+		{name: "committed", streams: [][]*httpclient.StreamEvent{{text, limited}}, attempts: 1, streamErr: true},
+		{name: "cancel_backoff", streams: [][]*httpclient.StreamEvent{{created, limited}}, attempts: 1, processErr: true, cancel: true},
+	} {
+		t.Run(testcase.name, func(t *testing.T) {
+			realResponses, err := openairesponses.NewOutboundTransformer("https://api.openai.com", "test-api-key")
+			require.NoError(t, err)
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			attempts, prepareCalls := 0, 0
+			outbound := &rateLimitRetryTestOutbound{retryTestOutbound: &retryTestOutbound{real: realResponses, prepareCalls: &prepareCalls}}
+			if testcase.cancel {
+				outbound.cancel = cancel
+			}
+			executor := &retryTestExecutor{attempts: &attempts, streams: testcase.streams}
+			processor := llmpipeline.NewFactory(executor).Pipeline(&retryTestInbound{}, outbound, llmpipeline.WithRetry(0, 1, 0))
+			result, err := processor.Process(ctx, &httpclient.Request{})
+			require.Equal(t, testcase.attempts, attempts)
+			if testcase.processErr {
+				require.Error(t, err)
+				if testcase.cancel {
+					require.ErrorIs(t, err, context.Canceled)
+				} else {
+					var responseErr *llm.ResponseError
+					require.ErrorAs(t, err, &responseErr)
+					require.Equal(t, 429, responseErr.StatusCode)
+				}
+				return
+			}
+			require.NoError(t, err)
+			events, err := streams.All(result.EventStream)
+			if testcase.streamErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+			var payloads []string
+			for _, event := range events {
+				payloads = append(payloads, string(event.Data))
+			}
+			require.NotContains(t, payloads, "resp_limited")
+			require.Equal(t, 1, countPayload(payloads, "ok"))
+		})
+	}
 }
 
 func (*retryTestExecutor) Do(context.Context, *httpclient.Request) (*httpclient.Response, error) {

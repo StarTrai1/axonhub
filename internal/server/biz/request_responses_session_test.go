@@ -12,6 +12,8 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/ent/project"
+	"github.com/looplj/axonhub/internal/ent/request"
+	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/llm"
@@ -41,7 +43,7 @@ func TestRequestServiceLoadCompletedResponsesSessionScopesByAPIKeyAndProject(t *
 		Save(ctx)
 	require.NoError(t, err)
 
-	_, err = client.DataStorage.Create().
+	primaryStorage, err := client.DataStorage.Create().
 		SetName("primary").
 		SetDescription("primary database storage").
 		SetPrimary(true).
@@ -105,6 +107,39 @@ func TestRequestServiceLoadCompletedResponsesSessionScopesByAPIKeyAndProject(t *
 	require.False(t, found)
 
 	_, _, found, err = service.LoadCompletedResponsesSession(ctx, "resp_shared")
+	require.NoError(t, err)
+	require.False(t, found)
+
+	parent, err := client.Request.Query().Where(request.ExternalIDEQ("resp_websocket")).Only(ctx)
+	require.NoError(t, err)
+	_, err = parent.Update().SetRequestBody([]byte(`{"previous_response_id":"resp_ancestor","input":[{"type":"function_call_output","call_id":"call_old","output":"ok"}]}`)).Save(ctx)
+	require.NoError(t, err)
+	nativeRequest := []byte(`{"model":"gpt-5","input":[{"role":"user","content":"full history"},{"type":"function_call","id":"fc_old","call_id":"call_old","name":"exec","arguments":"{}"},{"type":"function_call_output","call_id":"call_old","output":"ok"}]}`)
+	nativeResponse := []byte(`{"id":"resp_websocket","status":"completed","output":[{"type":"function_call","id":"fc_native","call_id":"call_native","name":"exec","arguments":"{}"}]}`)
+	for _, status := range []requestexecution.Status{requestexecution.StatusCompleted, requestexecution.StatusFailed} {
+		body := nativeResponse
+		if status == requestexecution.StatusFailed {
+			body = []byte(`{"error":{"code":"rate_limit_exceeded"}}`)
+		}
+		_, err = client.RequestExecution.Create().
+			SetProjectID(projectEntity.ID).
+			SetRequestID(parent.ID).
+			SetModelID("gpt-5").
+			SetFormat(string(llm.APIFormatOpenAIResponse)).
+			SetRequestBody(nativeRequest).
+			SetResponseBody(body).
+			SetDataStorageID(primaryStorage.ID).
+			SetStatus(status).
+			SetStream(true).
+			Save(ctx)
+		require.NoError(t, err)
+	}
+	requestBody, responseBody, found, err = service.LoadCompletedResponsesSession(ownerCtx, "resp_websocket")
+	require.NoError(t, err)
+	require.True(t, found)
+	require.JSONEq(t, string(nativeRequest), string(requestBody))
+	require.JSONEq(t, string(nativeResponse), string(responseBody))
+	_, _, found, err = service.LoadCompletedResponsesSession(otherCtx, "resp_websocket")
 	require.NoError(t, err)
 	require.False(t, found)
 }

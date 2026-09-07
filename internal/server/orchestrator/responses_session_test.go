@@ -3,8 +3,10 @@ package orchestrator
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -16,6 +18,45 @@ import (
 	openairesponses "github.com/looplj/axonhub/llm/transformer/openai/responses"
 	"github.com/looplj/axonhub/llm/transformer/shared"
 )
+
+func TestResponsesSessionReplayRemovesOnlyGatewayGeneratedIDs(t *testing.T) {
+	input := json.RawMessage(`[{"type":"message","id":"item_local","role":"assistant","content":"answer"},{"type":"function_call","id":"call_local","call_id":"call_local","name":"exec","arguments":"{}"},{"type":"message","id":"msg_native","status":"completed","role":"assistant","content":"native"},{"type":"function_call","id":"fc_native","call_id":"call_native","name":"exec","arguments":"{}"},{"type":"reasoning","id":"rs_native","encrypted_content":"opaque"}]`)
+	normalized, changed := normalizeResponseSessionInput(input)
+	require.True(t, changed)
+	require.JSONEq(t, `[{"type":"message","role":"assistant","content":"answer"},{"type":"function_call","call_id":"call_local","name":"exec","arguments":"{}"},{"type":"message","id":"msg_native","role":"assistant","content":"native"},{"type":"function_call","id":"fc_native","call_id":"call_native","name":"exec","arguments":"{}"},{"type":"reasoning","id":"rs_native","encrypted_content":"opaque"}]`, string(normalized))
+}
+
+func TestResponsesSessionRestoresHistoryLargerThanHotCacheLimit(t *testing.T) {
+	ctx := shared.WithSessionScope(context.Background(), "api-key:large")
+	request := []byte(`{"input":[{"role":"user","content":"` + strings.Repeat("x", responsesSessionMaxResponse+1) + `"}]}`)
+	response := []byte(`{"id":"resp_large","status":"completed","output":[{"type":"function_call","id":"fc_native","call_id":"call_native","name":"exec","arguments":"{}"}]}`)
+	store := newResponsesSessionStore(func(context.Context, string) ([]byte, []byte, bool, error) {
+		return request, response, true, nil
+	})
+	prepared, _ := store.prepare(ctx, []byte(`{"previous_response_id":"resp_large","input":[{"type":"function_call_output","call_id":"call_native","output":"ok"}]}`))
+	var payload struct {
+		Previous string            `json:"previous_response_id"`
+		Input    []json.RawMessage `json:"input"`
+	}
+	require.NoError(t, json.Unmarshal(prepared, &payload))
+	require.Empty(t, payload.Previous)
+	require.Len(t, payload.Input, 3)
+	require.Greater(t, len(payload.Input[0]), responsesSessionMaxResponse)
+	require.Contains(t, string(payload.Input[1]), "fc_native")
+	require.Nil(t, store.lookup(ctx, "resp_large"))
+}
+
+func TestResponsesSessionDoesNotReplayUnresolvedStoredDelta(t *testing.T) {
+	ctx := shared.WithSessionScope(context.Background(), "api-key:delta")
+	store := newResponsesSessionStore(func(context.Context, string) ([]byte, []byte, bool, error) {
+		return []byte(`{"previous_response_id":"resp_ancestor","input":[]}`),
+			[]byte(`{"id":"resp_delta","status":"completed","output":[]}`), true, nil
+	})
+	request := []byte(`{"previous_response_id":"resp_delta","input":"continue"}`)
+	prepared, _ := store.prepare(ctx, request)
+	require.JSONEq(t, string(request), string(prepared))
+	require.Nil(t, store.lookup(ctx, "resp_delta"))
+}
 
 func TestResponsesSessionSnapshotsRemainIsolatedDuringConcurrentReplacement(t *testing.T) {
 	store := newResponsesSessionStore()

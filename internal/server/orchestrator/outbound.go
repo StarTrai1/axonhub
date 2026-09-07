@@ -449,7 +449,11 @@ func (p *PersistentOutboundTransformer) APIFormat() llm.APIFormat {
 }
 
 func (p *PersistentOutboundTransformer) TransformError(ctx context.Context, rawErr *httpclient.Error) *llm.ResponseError {
-	return p.wrapped.TransformError(ctx, rawErr)
+	responseErr := p.wrapped.TransformError(ctx, rawErr)
+	if responseErr != nil && responseErr.Cause == nil {
+		responseErr.Cause = rawErr
+	}
+	return responseErr
 }
 
 func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, llmRequest *llm.Request) (*httpclient.Request, error) {
@@ -759,6 +763,11 @@ func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
 		return true
 	}
 
+	if ExtractStatusCodeFromError(err) == 429 {
+		return !isChannelQueueError(err) && !isLocalRPMExhaustedError(err) &&
+			!p.HasAlternativeChannel() && canRetryTransientRateLimit(err)
+	}
+
 	// Trace/thread sticky candidates are intentionally one-shot. A failed
 	// sticky attempt must proceed to the normal fallback candidates instead of
 	// retrying the same channel or another mapped model on that channel.
@@ -786,21 +795,6 @@ func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
 		)
 
 		return true
-	}
-
-	// 429 Too Many Requests: always skip same-channel retry.
-	// The upstream is explicitly rate-limiting this channel, so retrying the same
-	// channel would just burn a retry attempt without any chance of success.
-	// Instead, force a channel switch so the next candidate (e.g. a backup channel)
-	// is tried immediately. The load balancer (e.g. ErrorAware strategy) will
-	// deprioritize this channel for subsequent requests and it will naturally
-	// recover as the rate-limit window resets.
-	if httpclient.IsRateLimitErr(err) {
-		log.Debug(context.Background(), "429 rate limit, skipping same-channel retry to switch to next channel",
-			log.Int("channel_id", p.state.CurrentCandidate.Channel.ID),
-		)
-
-		return false
 	}
 
 	// if there are more models available in the current candidate, try the next model.

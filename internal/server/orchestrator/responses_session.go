@@ -23,6 +23,7 @@ const (
 	responsesSessionMaxRecords  = 2048
 	responsesSessionMaxBytes    = 64 << 20
 	responsesSessionMaxResponse = 1 << 20
+	responsesSessionMaxReplay   = 16 << 20
 )
 
 type responsesSessionStore struct {
@@ -128,8 +129,16 @@ func (s *responsesSessionStore) lookupOrLoad(ctx context.Context, responseID str
 		return nil
 	}
 
+	var payload map[string]json.RawMessage
+	if json.Unmarshal(requestBody, &payload) != nil || responseSessionString(payload["previous_response_id"]) != "" {
+		return nil
+	}
+	record := decodeResponsesSessionRecord(requestBody, responseBody)
+	if record == nil {
+		return nil
+	}
 	s.record(ctx, requestBody, responseBody)
-	return s.lookup(ctx, responseID)
+	return record
 }
 
 func encodePreparedResponsesBody(original []byte, payload map[string]json.RawMessage, changed bool) []byte {
@@ -144,14 +153,14 @@ func encodePreparedResponsesBody(original []byte, payload map[string]json.RawMes
 	return encoded
 }
 
-func (s *responsesSessionStore) record(ctx context.Context, requestBody, responseBody []byte) {
-	if len(responseBody) == 0 || len(responseBody) > responsesSessionMaxResponse {
-		return
+func decodeResponsesSessionRecord(requestBody, responseBody []byte) *responsesSessionRecord {
+	if len(responseBody) == 0 || len(responseBody) > responsesSessionMaxReplay || len(requestBody) > responsesSessionMaxReplay {
+		return nil
 	}
 
 	var requestPayload map[string]json.RawMessage
 	if json.Unmarshal(requestBody, &requestPayload) != nil || requestPayload == nil {
-		return
+		return nil
 	}
 
 	var response struct {
@@ -160,21 +169,34 @@ func (s *responsesSessionStore) record(ctx context.Context, requestBody, respons
 		Output []json.RawMessage `json:"output"`
 	}
 	if json.Unmarshal(responseBody, &response) != nil || response.ID == "" {
-		return
+		return nil
 	}
 	// Both spellings have appeared in Responses-compatible implementations.
 	//nolint:misspell
 	if response.Status == "failed" || response.Status == "cancelled" || response.Status == "canceled" {
-		return
+		return nil
 	}
 
 	input := responseSessionInputItems(requestPayload["input"])
 	output := response.Output
 	size := rawResponseSessionValuesSize(input) + rawResponseSessionValuesSize(output)
-	if size > responsesSessionMaxResponse {
+	if size > responsesSessionMaxReplay {
+		return nil
+	}
+	return &responsesSessionRecord{input: input, output: output, size: size}
+}
+
+func (s *responsesSessionStore) record(ctx context.Context, requestBody, responseBody []byte) {
+	record := decodeResponsesSessionRecord(requestBody, responseBody)
+	if record == nil || record.size > responsesSessionMaxResponse {
 		return
 	}
-
+	var response struct {
+		ID string `json:"id"`
+	}
+	if json.Unmarshal(responseBody, &response) != nil {
+		return
+	}
 	now := time.Now()
 	scope, ok := shared.GetSessionScope(ctx)
 	if !ok || strings.TrimSpace(scope) == "" {
@@ -182,13 +204,8 @@ func (s *responsesSessionStore) record(ctx context.Context, requestBody, respons
 	}
 	sessionID, _ := shared.GetSessionID(ctx)
 	key := responsesSessionKey{scope: scope, responseID: response.ID}
-	record := &responsesSessionRecord{
-		input:     input,
-		output:    output,
-		sessionID: sessionID,
-		updatedAt: now,
-		size:      size,
-	}
+	record.sessionID = sessionID
+	record.updatedAt = now
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -456,12 +473,20 @@ func normalizeResponseSessionItems(items []json.RawMessage) ([]json.RawMessage, 
 			normalized = append(normalized, cloneResponseSessionValue(item))
 			continue
 		}
-		if _, ok := object["status"]; !ok {
+		_, hasStatus := object["status"]
+		itemType := responseSessionString(object["type"])
+		itemID := responseSessionString(object["id"])
+		localID := (itemType == "message" && strings.HasPrefix(itemID, "item_")) ||
+			(itemType == "function_call" && itemID != "" && itemID == responseSessionString(object["call_id"]))
+		if !hasStatus && !localID {
 			normalized = append(normalized, cloneResponseSessionValue(item))
 			continue
 		}
 
 		delete(object, "status")
+		if localID {
+			delete(object, "id")
+		}
 		encoded, err := json.Marshal(object)
 		if err != nil {
 			normalized = append(normalized, cloneResponseSessionValue(item))

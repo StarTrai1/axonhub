@@ -316,6 +316,18 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		// The request execution middleware must be the final middleware
 		// to ensure that the request execution is created with the correct request bodys.
 		persistRequestExecution(outbound),
+		pipeline.OnRawStream("cache-native-responses-session", func(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*httpclient.StreamEvent], error) {
+			if preparedResponsesBody != nil && state.RawProviderRequest != nil && state.RawProviderRequest.APIFormat == string(llm.APIFormatOpenAIResponse) {
+				return processor.responsesSessions.wrapStream(ctx, state.RawProviderRequest.Body, stream), nil
+			}
+			return stream, nil
+		}),
+		pipeline.OnRawResponse("cache-native-responses-session", func(ctx context.Context, response *httpclient.Response) (*httpclient.Response, error) {
+			if preparedResponsesBody != nil && response != nil && state.RawProviderRequest != nil && state.RawProviderRequest.APIFormat == string(llm.APIFormatOpenAIResponse) {
+				processor.responsesSessions.record(ctx, state.RawProviderRequest.Body, response.Body)
+			}
+			return response, nil
+		}),
 
 		// Forward the events to the live streaming.
 		withLivePreview(state, processor.SystemService, processor.LiveStreamRegistry),
@@ -382,7 +394,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 
 	// Return result based on stream type
 	if result.Stream {
-		if preparedResponsesBody != nil {
+		if preparedResponsesBody != nil && (state.RawProviderRequest == nil || state.RawProviderRequest.APIFormat != string(llm.APIFormatOpenAIResponse)) {
 			result.EventStream = processor.responsesSessions.wrapStream(ctx, preparedResponsesBody, result.EventStream)
 		}
 		return ChatCompletionResult{
@@ -391,7 +403,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 			ResponseHeaders:      result.ResponseHeaders,
 		}, nil
 	}
-	if preparedResponsesBody != nil && result.Response != nil {
+	if preparedResponsesBody != nil && result.Response != nil && (state.RawProviderRequest == nil || state.RawProviderRequest.APIFormat != string(llm.APIFormatOpenAIResponse)) {
 		processor.responsesSessions.record(ctx, preparedResponsesBody, result.Response.Body)
 	}
 

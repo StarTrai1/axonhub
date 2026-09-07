@@ -43,6 +43,10 @@ type ChannelCustomizedExecutor interface {
 	CustomizeExecutor(Executor) Executor
 }
 
+type SameChannelRetryDelayer interface {
+	SameChannelRetryDelay(err error, attempt int) time.Duration
+}
+
 // Option defines a pipeline configuration option.
 type Option func(*pipeline)
 
@@ -362,6 +366,7 @@ func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*R
 
 		// Determine retry strategy
 		canRetry := false
+		retryDelay := p.retryDelay
 		timeoutRetry := isResponseTimeoutError(lastErr)
 
 		// 1. Try same-channel retry first if supported
@@ -370,6 +375,9 @@ func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*R
 				if sameChannelRetries < p.getMaxSameChannelRetries() && channelRetryable.CanRetry(lastErr) {
 					if err := channelRetryable.PrepareForRetry(ctx); err == nil {
 						sameChannelRetries++
+						if delayer, ok := p.Outbound.(SameChannelRetryDelayer); ok {
+							retryDelay = max(retryDelay, delayer.SameChannelRetryDelay(lastErr, sameChannelRetries))
+						}
 						canRetry = true
 
 						slog.DebugContext(ctx, "retrying same channel",
@@ -409,8 +417,14 @@ func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*R
 		}
 
 		// Add retry delay if configured
-		if p.retryDelay > 0 {
-			time.Sleep(p.retryDelay)
+		if retryDelay > 0 {
+			timer := time.NewTimer(retryDelay)
+			select {
+			case <-ctx.Done():
+				timer.Stop()
+				return nil, ctx.Err()
+			case <-timer.C:
+			}
 		}
 
 		slog.WarnContext(ctx, "request process failed, retrying...",

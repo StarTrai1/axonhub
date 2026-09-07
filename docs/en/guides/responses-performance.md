@@ -43,14 +43,43 @@ metadata. Generic HTTP 400 errors never activate this behavior.
 
 ## Replay cache
 
-Replay snapshots retain the existing two-hour TTL, 2,048-record/64-MiB aggregate
-limits and one-MiB record limit. Ordered eviction avoids scanning all records on
+Native Responses snapshots now capture the actual outbound input and upstream
+output before downstream conversion. Recovery after an in-memory miss prefers
+the authenticated request's completed execution snapshot, not its original
+WebSocket delta. This preserves full history and native `msg_`/`fc_` IDs.
+Known gateway-generated message IDs and function-call IDs equal to `call_id`
+are omitted during replay; call linkage, native IDs and encrypted reasoning
+remain intact. An unresolved stored delta is never treated as complete history.
+
+Hot replay snapshots retain the existing two-hour TTL, 2,048-record/64-MiB aggregate
+limits and one-MiB record limit. Persisted complete histories up to 16 MiB can be
+replayed without admitting them to the hot cache; exceeding the hot-cache limit
+alone no longer drops continuation history. Ordered eviction avoids scanning all records on
 each lookup. Immutable stored snapshots allow copying outside the shared lock;
 bulk byte copies reduce per-item allocations without sharing writable capacity
 between items. These are gateway overhead improvements, not promises of a given
 provider TTFT or prompt-cache hit rate.
 
 Hosted Test CI runs focused race tests and publishes `responses-cache-benchmarks`.
+
+## Transient upstream rate limits
+
+HTTP 429 and Responses SSE rate-limit errors before meaningful output use the
+same retry policy. Another physical channel is preferred when available. On the
+last channel, transient limits can use the configured same-channel retry budget,
+including a trace-sticky candidate. With five retries and the default one-second
+base delay, backoff is 2, 4, 8, 16 and 32 seconds plus up to 500 ms of jitter.
+Longer configured delays and supported `Retry-After` (seconds or HTTP date),
+`retry-after-ms`, and `x-ms-retry-after-ms` values take precedence.
+
+Explicit quota exhaustion, local admission limits and provider waits over one
+minute do not activate same-channel rate-limit retries. Cancellation interrupts
+backoff. No retry is started after text, reasoning or tool output has been
+committed, preventing duplicate output or tool execution. The existing retry
+count is a hard bound; persistent upstream throttling still returns an error.
+No automatic changes are made to system retry settings. Client/proxy deadlines
+must accommodate the additional wait; streaming heartbeats do not cover this
+pre-output retry phase.
 
 ## Claude Code identity version
 

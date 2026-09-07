@@ -1421,6 +1421,31 @@ func (s *RequestService) LoadCompletedResponsesSession(
 	if err != nil {
 		return nil, nil, false, fmt.Errorf("failed to load Responses response body: %w", err)
 	}
+	execution, executionErr := s.entFromContext(ctx).RequestExecution.Query().Where(
+		requestexecution.RequestIDEQ(req.ID),
+		requestexecution.StatusEQ(requestexecution.StatusCompleted),
+		requestexecution.FormatEQ(string(llm.APIFormatOpenAIResponse)),
+	).Order(ent.Desc(requestexecution.FieldID)).First(ctx)
+	if executionErr != nil && !ent.IsNotFound(executionErr) {
+		return nil, nil, false, fmt.Errorf("failed to find Responses execution snapshot: %w", executionErr)
+	}
+	if executionErr == nil {
+		executionRequest, loadErr := s.LoadRequestExecutionRequestBody(ctx, execution)
+		if loadErr != nil {
+			return nil, nil, false, loadErr
+		}
+		executionResponse, loadErr := s.LoadRequestExecutionResponseBody(ctx, execution)
+		if loadErr != nil {
+			return nil, nil, false, loadErr
+		}
+		var snapshot struct {
+			ID string `json:"id"`
+		}
+		if json.Unmarshal(executionResponse, &snapshot) == nil && snapshot.ID == responseID &&
+			json.Valid(executionRequest) && !bytes.Equal(executionRequest, xjson.EmptyJSONRawMessage) {
+			storedRequest, storedResponse = executionRequest, executionResponse
+		}
+	}
 	if bytes.Equal(storedRequest, xjson.EmptyJSONRawMessage) ||
 		bytes.Equal(storedResponse, xjson.EmptyJSONRawMessage) ||
 		!json.Valid(storedRequest) ||
