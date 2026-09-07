@@ -537,8 +537,8 @@ const SupportedModelsCell = memo(({ row }: { row: Row<Channel> }) => {
   }, [channel, setCurrentRow, setOpen]);
 
   return (
-    <div className='flex items-center justify-center gap-2'>
-      <div className='flex flex-wrap justify-center gap-1 overflow-hidden'>
+    <div className='flex min-w-0 items-center justify-center gap-2'>
+      <div className='flex min-w-0 flex-wrap justify-center gap-1 overflow-hidden'>
         {models.slice(0, 5).map((model) => (
           <Badge key={model} variant='secondary' className='block max-w-48 truncate text-left text-xs'>
             {model}
@@ -712,7 +712,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
               </div>
             ),
             meta: {
-              className: 'text-center',
+              className: 'w-10 text-center',
             },
             enableSorting: false,
             enableHiding: false,
@@ -724,7 +724,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.name')} className='justify-center' />,
       cell: NameCell,
       meta: {
-        className: 'md:table-cell min-w-48 text-center',
+        className: 'w-[18%] min-w-0 text-center',
       },
       enableHiding: false,
       enableSorting: true,
@@ -759,7 +759,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.tags')} className='justify-center' />,
       cell: TagsCell,
       meta: {
-        className: 'text-center',
+        className: 'hidden min-w-0 xl:table-cell text-center',
       },
       filterFn: (row, id, value) => {
         const tags = (row.getValue(id) as string[]) || [];
@@ -787,7 +787,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       ),
       cell: SupportedModelsCell,
       meta: {
-        className: 'max-w-64 text-center',
+        className: 'w-[22%] min-w-0 max-w-none text-center',
       },
       enableSorting: false,
     },
@@ -797,7 +797,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.proxy')} className='justify-center' />,
       cell: ProxyCell,
       meta: {
-        className: 'w-32 min-w-32 text-center',
+        className: 'hidden min-w-0 2xl:table-cell text-center',
       },
       enableSorting: false,
       enableHiding: true,
@@ -837,7 +837,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       ),
       cell: OrderingWeightCell,
       meta: {
-        className: 'w-20 min-w-20 text-center',
+        className: 'w-16 min-w-0 text-center',
       },
       sortingFn: 'alphanumeric',
       enableSorting: true,
@@ -848,7 +848,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.createdAt')} className='justify-center' />,
       cell: CreatedAtCell,
       meta: {
-        className: 'text-center',
+        className: 'hidden min-w-0 xl:table-cell text-center',
       },
       enableSorting: true,
       enableHiding: false,
@@ -862,7 +862,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
             ),
             cell: ActionCell,
             meta: {
-              className: 'text-center',
+              className: 'w-44 min-w-44 text-center',
             },
             enableSorting: false,
             enableHiding: false,

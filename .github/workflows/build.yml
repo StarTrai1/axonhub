@@ -81,3 +81,7 @@ jobs:
       - name: Build frontend
         working-directory: frontend
         run: pnpm build
+
+      - name: Channel quota regression
+        working-directory: frontend
+        run: node --test src/features/channels/components/channel-quota.test.mjs
