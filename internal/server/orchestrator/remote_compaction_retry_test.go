@@ -78,8 +78,9 @@ func TestResponsesRejectedMetadataLocalCompactionHonorsCancellation(t *testing.T
 }
 
 type localCompactionRetryExecutor struct {
-	bodies  [][]byte
-	failure error
+	bodies   [][]byte
+	failure  error
+	failures []error
 }
 
 func (executor *localCompactionRetryExecutor) Do(context.Context, *httpclient.Request) (*httpclient.Response, error) {
@@ -88,8 +89,58 @@ func (executor *localCompactionRetryExecutor) Do(context.Context, *httpclient.Re
 
 func (executor *localCompactionRetryExecutor) DoStream(_ context.Context, request *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
 	executor.bodies = append(executor.bodies, append([]byte(nil), request.Body...))
-	if len(executor.bodies) == 1 {
+	if len(executor.bodies) <= len(executor.failures) {
+		return nil, executor.failures[len(executor.bodies)-1]
+	}
+	if len(executor.failures) == 0 && len(executor.bodies) == 1 {
 		return nil, executor.failure
 	}
 	return streams.SliceStream([]*httpclient.StreamEvent{}), nil
+}
+
+func TestResponsesRejectedReasoningLocalCompactionSharesRetryBudget(test *testing.T) {
+	for index, scenario := range []struct {
+		name       string
+		enabled    bool
+		maxRetries int
+		wantCalls  int
+	}{
+		{"metadata then reasoning recovery", true, 2, 3},
+		{"one shared retry budget", true, 1, 2},
+		{"zero retry budget", true, 0, 1},
+		{"disabled retries", false, 2, 1},
+	} {
+		test.Run(scenario.name, func(test *testing.T) {
+			outbound := newCodexResponsesPassThroughOutbound()
+			outbound.state.CurrentCandidate.Channel.ID = 94000 + index
+			outbound.state.RetryPolicyProvider = &mockRetryPolicyProvider{policy: &biz.RetryPolicy{
+				Enabled: scenario.enabled, MaxSingleChannelRetries: scenario.maxRetries,
+			}}
+			providerRequest := outbound.state.RawProviderRequest
+			providerRequest.Body = []byte(responsesRejectedReasoningFixture)
+			executor := &localCompactionRetryExecutor{failures: []error{
+				&httpclient.Error{StatusCode: http.StatusBadRequest, Body: []byte(`{"error":{"code":"unknown_parameter","param":"input[0].internal_chat_message_metadata_passthrough.content_item_kinds"}}`)},
+				&httpclient.Error{StatusCode: http.StatusBadRequest, Body: []byte(`{"error":{"code":"invalid_encrypted_content"}}`)},
+			}}
+			adapter := newRemoteCompactionAdapter(nil, nil, nil)
+			stream, execution, err := adapter.startLocalCompactionStream(test.Context(), outbound, providerRequest, executor, applyResponsesRejectedStatusCompatibility(outbound))
+			require.Nil(test, execution)
+			require.Len(test, executor.bodies, scenario.wantCalls)
+			if scenario.wantCalls < 3 {
+				require.ErrorIs(test, err, executor.failures[scenario.wantCalls-1])
+				require.Nil(test, stream)
+				return
+			}
+			require.NoError(test, err)
+			require.NoError(test, stream.Close())
+			require.True(test, gjson.GetBytes(executor.bodies[0], "input.0.internal_chat_message_metadata_passthrough").Exists())
+			require.False(test, gjson.GetBytes(executor.bodies[1], "input.0.internal_chat_message_metadata_passthrough").Exists())
+			require.Equal(test, "rejected-with-summary", gjson.GetBytes(executor.bodies[1], "input.1.encrypted_content").String())
+			require.Equal(test, "visible summary\n\nvisible rationale", gjson.GetBytes(executor.bodies[2], "input.1.content.0.text").String())
+			require.Equal(test, "fc_native", gjson.GetBytes(executor.bodies[2], "input.2.id").String())
+			require.Equal(test, "keep function output", gjson.GetBytes(executor.bodies[2], "input.3.output").String())
+			require.Equal(test, "ctc_native", gjson.GetBytes(executor.bodies[2], "input.4.id").String())
+			require.Empty(test, gjson.GetBytes(executor.bodies[2], "input.#(encrypted_content)#").Array())
+		})
+	}
 }

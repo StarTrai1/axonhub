@@ -823,7 +823,7 @@ func (p *PersistentOutboundTransformer) PrepareForRetry(ctx context.Context) err
 	if candidate != nil && candidate.Channel != nil &&
 		hasResponsesRejectedStatusCompatibilityRetry(p.state, candidate.Channel.ID) {
 		p.state.responsesRejectedStatusRetryChannel = 0
-		log.Info(ctx, "prepared same-channel retry without rejected Responses status fields",
+		log.Info(ctx, "prepared same-channel retry with compatible Responses input state",
 			log.Int("channel_id", candidate.Channel.ID),
 			log.String("channel", candidate.Channel.Name))
 

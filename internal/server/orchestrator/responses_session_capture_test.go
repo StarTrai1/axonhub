@@ -32,7 +32,9 @@ func TestResponsesSessionPublishesNativeHistoryBeforePassThroughTerminal(t *test
 			outbound.state.RawProviderRequest.Body = []byte(`{"model":"gpt-6-astra","input":[{"role":"user","content":"original history"}]}`)
 			events := []*httpclient.StreamEvent{
 				{Type: "response.created", Data: json.RawMessage(`{"type":"response.created","response":{"id":"resp_native","model":"gpt-6-astra","status":"in_progress","output":[]}}`)},
+				{Type: "response.output_item.added", Data: json.RawMessage(`{"type":"response.output_item.added","output_index":0,"item":{"type":"reasoning","id":"rs_native","summary":[]}}`)},
 				{Type: "response.output_item.done", Data: json.RawMessage(`{"type":"response.output_item.done","output_index":0,"item":{"type":"reasoning","id":"rs_native","summary":[],"encrypted_content":"preserve-ciphertext"}}`)},
+				{Type: "response.output_item.added", Data: json.RawMessage(`{"type":"response.output_item.added","output_index":1,"item":{"type":"function_call","id":"fc_native","call_id":"call_native","name":"exec","arguments":"","status":"in_progress"}}`)},
 				{Type: "response.output_item.done", Data: json.RawMessage(`{"type":"response.output_item.done","output_index":1,"item":{"type":"function_call","id":"fc_native","call_id":"call_native","name":"exec","arguments":"{}","status":"completed"}}`)},
 			}
 			var source streams.Stream[*httpclient.StreamEvent]

@@ -311,7 +311,7 @@ func cacheNativeResponsesSessionStream(
 	state *PersistenceState,
 	stream streams.Stream[*httpclient.StreamEvent],
 ) streams.Stream[*httpclient.StreamEvent] {
-	if state.responsesSessions == nil || state.RawProviderRequest == nil ||
+	if state == nil || state.responsesSessions == nil || state.RawProviderRequest == nil ||
 		state.RawProviderRequest.APIFormat != string(llm.APIFormatOpenAIResponse) {
 		return stream
 	}
@@ -367,8 +367,6 @@ func (s *responsesSessionStream) Current() *httpclient.StreamEvent { return s.cu
 func (s *responsesSessionStream) Err() error { return s.inner.Err() }
 
 func (s *responsesSessionStream) Close() error {
-	s.recordCompleted()
-
 	return s.inner.Close()
 }
 

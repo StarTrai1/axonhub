@@ -41,6 +41,26 @@ by channel, endpoint, model and hashed credential. Subsequent requests avoid the
 known-failing round trip. Other endpoints and credentials retain their native
 metadata. Generic HTTP 400 errors never activate this behavior.
 
+## Rejected encrypted reasoning
+
+Encrypted reasoning is preserved by default, following the
+[official stateless handoff guidance](https://developers.openai.com/api/docs/guides/deployment-checklist#use-reasoningencrypted_content).
+If a Codex channel explicitly returns HTTP 400 with
+`error.code: invalid_encrypted_content`, a same-channel retry can instead rebuild
+reasoning from retained explicit history. This is a degraded recovery, not
+decryption or lossless recovery of hidden reasoning.
+
+Recovery requires user history and correctly paired function/custom-tool results.
+It refuses unresolved `previous_response_id`, compaction or item references,
+encrypted agent messages/arguments, and unknown input types. Only encrypted
+reasoning items are replaced: visible summaries and reasoning text become
+assistant text, while messages, tool inputs/results, native tool IDs and cache
+keys remain intact. Unsupported summary/content types fail closed.
+
+The rule is scoped to the current request and channel; it does not disable
+encrypted reasoning for later requests. Generic validation errors do not trigger
+it, and it consumes the existing same-channel retry budget.
+
 ## Replay cache
 
 Native Responses snapshots now capture the actual outbound input and upstream
@@ -50,6 +70,13 @@ WebSocket delta. This preserves full history and native `msg_`/`fc_` IDs.
 Known gateway-generated message IDs and function-call IDs equal to `call_id`
 are omitted during replay; call linkage, native IDs and encrypted reasoning
 remain intact. An unresolved stored delta is never treated as complete history.
+
+For cacheable streams, the native snapshot is published by the upstream stream
+producer before a terminal event is fanned out to the pass-through client. An
+immediate tool-result continuation therefore does not wait for the separate
+pipeline consumer or database completion. This also covers synthesized Codex
+terminal events. Cache admission limits still apply; oversized histories retain
+the completed-database fallback rather than an unbounded in-flight cache.
 
 Hot replay snapshots retain the existing two-hour TTL, 2,048-record/64-MiB aggregate
 limits and one-MiB record limit. Persisted complete histories up to 16 MiB can be
@@ -61,6 +88,24 @@ between items. These are gateway overhead improvements, not promises of a given
 provider TTFT or prompt-cache hit rate.
 
 Hosted Test CI runs focused race tests and publishes `responses-cache-benchmarks`.
+
+## Switching existing compacted conversations to local bridge
+
+With a channel's remote-compaction policy set to `local_bridge`, previously
+remote-compacted conversations can be reconstructed from retained source
+requests. If a source already contains an older compaction, AxonHub first
+generates or reuses that older summary, substitutes it into the source, and then
+generates the next summary. It does not simply remove opaque compaction items;
+those items carry conversation state in the
+[official compaction protocol](https://developers.openai.com/api/docs/guides/compaction).
+
+Recovery stops on missing retained sources, cycles, or more than 16 generations.
+Summary generation is deduplicated without waiting on nested generations inside
+the same single-flight operation. Internal summary requests use the same explicit
+metadata/reasoning rejection recovery and configured retry budget. Recovering both
+rejections in one summary request needs two same-channel retries; no retry
+settings are changed automatically. Each actual upstream attempt is recorded
+separately when request persistence is enabled.
 
 ## Transient upstream rate limits
 

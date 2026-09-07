@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -17,6 +18,7 @@ import (
 
 	lru "github.com/hashicorp/golang-lru/v2"
 
+	entchannel "github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -34,6 +36,7 @@ type responsesRejectedStatusRule struct {
 	itemType string
 	index    int
 	field    string
+	dropItem bool
 }
 
 type responsesMetadataCapabilityKey struct {
@@ -111,7 +114,7 @@ func (m *responsesRejectedStatusCompatibilityMiddleware) OnOutboundRawRequest(
 	}
 
 	request.Body = body
-	log.Debug(ctx, "removed upstream-rejected Responses metadata fields",
+	log.Debug(ctx, "adapted upstream-rejected Responses input state",
 		log.Int("channel_id", channel.ID),
 		log.String("channel", channel.Name))
 
@@ -131,7 +134,7 @@ func (m *responsesRejectedStatusCompatibilityMiddleware) OnOutboundRawError(ctx 
 	}
 
 	rule, ok := responsesRejectedStatusRuleFromError(err, state.RawProviderRequest.Body)
-	if !ok || !rememberResponsesRejectedStatusRule(state, channel.ID, rule) {
+	if !ok || (rule.dropItem && channel.Type != entchannel.TypeCodex) || !rememberResponsesRejectedStatusRule(state, channel.ID, rule) {
 		return
 	}
 
@@ -139,7 +142,7 @@ func (m *responsesRejectedStatusCompatibilityMiddleware) OnOutboundRawError(ctx 
 	if rule.fieldName() == "internal_chat_message_metadata_passthrough" && state.RawProviderRequest.URL != "" {
 		rejectedResponsesMetadata.Add(responsesMetadataKey(channel.ID, state.RawProviderRequest), time.Now().Add(30*time.Minute))
 	}
-	log.Info(ctx, "Responses input metadata rejected; scheduling compatible same-channel retry",
+	log.Info(ctx, "Responses input state rejected; scheduling compatible same-channel retry",
 		log.Int("channel_id", channel.ID),
 		log.String("channel", channel.Name),
 		log.String("item_type", rule.itemType),
@@ -156,6 +159,9 @@ func responsesRejectedStatusRuleFromError(err error, requestBody []byte) (respon
 	code := strings.ToLower(strings.TrimSpace(gjson.GetBytes(httpErr.Body, "error.code").String()))
 	message := strings.TrimSpace(gjson.GetBytes(httpErr.Body, "error.message").String())
 	param := strings.ToLower(strings.TrimSpace(gjson.GetBytes(httpErr.Body, "error.param").String()))
+	if code == "invalid_encrypted_content" {
+		return responsesRejectedReasoningRule(requestBody, param)
+	}
 	messageParam := responsesRejectedStatusParamFromMessage(message)
 	if param != "" && messageParam != "" && param != messageParam {
 		return responsesRejectedStatusRule{}, false
@@ -226,31 +232,64 @@ func stripResponsesRejectedStatus(body []byte, rules []responsesRejectedStatusRu
 	if !input.IsArray() || len(rules) == 0 {
 		return body, false, nil
 	}
-
-	rewritten := body
+	items := input.Array()
+	retained := make([]json.RawMessage, 0, len(items))
 	changed := false
-	for index, item := range input.Array() {
+	recoveryValidated := false
+	for index, item := range items {
 		if !item.IsObject() {
+			retained = append(retained, json.RawMessage(item.Raw))
 			continue
 		}
+		updated := []byte(item.Raw)
 		for _, rule := range rules {
 			if !responsesRejectedStatusRuleMatches([]responsesRejectedStatusRule{rule}, index, strings.TrimSpace(item.Get("type").String())) {
 				continue
 			}
-			path := fmt.Sprintf("input.%d.%s", index, rule.fieldName())
-			if !gjson.GetBytes(rewritten, path).Exists() {
+			if rule.dropItem {
+				if item.Get("encrypted_content").String() == "" {
+					continue
+				}
+				if !recoveryValidated {
+					if _, safe := responsesRejectedReasoningRule(body, ""); !safe {
+						return nil, false, errors.New("cannot rebuild rejected reasoning without complete explicit Responses history")
+					}
+					recoveryValidated = true
+				}
+				var err error
+				updated, err = recoverResponsesReasoningSummary(updated)
+				if err != nil {
+					return nil, false, err
+				}
+				changed = true
+				break
+			}
+			if !gjson.GetBytes(updated, rule.fieldName()).Exists() {
 				continue
 			}
-			next, err := sjson.DeleteBytes(rewritten, path)
+			next, err := sjson.DeleteBytes(updated, rule.fieldName())
 			if err != nil {
 				return nil, false, fmt.Errorf("delete rejected Responses metadata at input[%d]: %w", index, err)
 			}
-			rewritten = next
+			updated = next
 			changed = true
 		}
+		if len(updated) > 0 {
+			retained = append(retained, updated)
+		}
 	}
-
-	return rewritten, changed, nil
+	if !changed {
+		return body, false, nil
+	}
+	encoded, err := json.Marshal(retained)
+	if err != nil {
+		return nil, false, fmt.Errorf("encode compatible Responses input: %w", err)
+	}
+	rewritten, err := sjson.SetRawBytes(body, "input", encoded)
+	if err != nil {
+		return nil, false, fmt.Errorf("replace compatible Responses input: %w", err)
+	}
+	return rewritten, true, nil
 }
 
 func responsesRejectedStatusRuleMatches(rules []responsesRejectedStatusRule, index int, itemType string) bool {

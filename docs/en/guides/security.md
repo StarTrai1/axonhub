@@ -2,6 +2,26 @@
 
 AxonHub provides multiple layers of IP-based access control to secure your AI gateway.
 
+## Trusted Reverse Proxies
+
+Forwarded client-IP headers are ignored by default. If AxonHub runs behind a
+reverse proxy, configure only that proxy's actual IP addresses or networks:
+
+```yaml
+server:
+  trusted_proxies:
+    - "127.0.0.1/32"
+    - "::1/128"
+```
+
+This example is for a local proxy; use the real proxy ranges for your deployment.
+Only connections from trusted proxies may supply `X-Forwarded-For` or
+`X-Real-IP`. Other connections use their TCP peer address, preventing forged
+headers from bypassing IP restrictions. Do not trust all networks as a shortcut.
+After upgrading, review reverse-proxy configuration before relying on client-IP
+allowlists, blocklists or per-key restrictions. No production configuration is
+changed automatically.
+
 ## IP Access Control (Global Allowlist)
 
 IP Access Control is a global middleware that restricts access to the entire AxonHub instance. When enabled, only requests from IP addresses or CIDR ranges in the allowlist are accepted; all others are denied.
@@ -26,7 +46,7 @@ ip_access_control:
 
 - When **disabled** (default): all requests are allowed through.
 - When **enabled**: requests from IPs matching any entry in `allowed_ips` are allowed; all others receive a 404 (or 302 redirect if `redirect_url` is set).
-- The client IP is determined from the TCP connection's remote address.
+- The client IP uses the trusted-proxy validation above, falling back to the TCP peer address.
 
 ## IP Blocklist (System-Wide Denylist)
 
@@ -58,13 +78,10 @@ When an API key has `allowed_ips` configured, AxonHub checks the source IP of ev
 
 ### Source IP Detection
 
-AxonHub checks the source IP from multiple headers, in order of priority:
-
-1. **X-Forwarded-For**: The first IP in the X-Forwarded-For header
-2. **X-Real-IP**: The value of the X-Real-IP header
-3. **Client IP**: The direct TCP connection IP
-
-This ensures correct IP detection when AxonHub is behind a reverse proxy (e.g., Nginx, Cloudflare, AWS ALB).
+API-key restrictions use the same trusted-proxy client-IP resolution as the
+global controls. Forwarded headers are not trusted merely because they exist.
+Configure `server.trusted_proxies` for the actual reverse proxy (such as Nginx,
+Cloudflare or AWS ALB); otherwise the TCP peer address is used.
 
 ### Configuration
 
