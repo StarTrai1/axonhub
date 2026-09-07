@@ -67,7 +67,10 @@ type StreamEvent struct {
 	Type           StreamEventType `json:"type"`
 	SequenceNumber int             `json:"sequence_number"`
 	Status         int             `json:"status,omitempty"`
+	StatusCode     int             `json:"status_code,omitempty"`
 	Error          *Error          `json:"error,omitempty"`
+
+	Headers map[string]json.RawMessage `json:"headers,omitempty"`
 
 	// For response.* events
 	Response *Response `json:"response,omitempty"`

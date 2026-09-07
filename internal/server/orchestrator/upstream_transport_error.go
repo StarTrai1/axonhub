@@ -55,7 +55,7 @@ func IsUpstreamTransportError(err error) bool {
 
 	var netErr net.Error
 
-	return errors.As(err, &netErr) && (netErr.Timeout() || netErr.Temporary())
+	return errors.As(err, &netErr) && (netErr.Timeout() || netErr.Temporary()) || isRetryableTransportError(err)
 }
 
 // ClassifyUpstreamTransportError converts a transport-level upstream failure into a

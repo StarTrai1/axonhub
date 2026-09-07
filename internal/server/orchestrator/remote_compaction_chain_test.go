@@ -8,15 +8,18 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
+
+	"github.com/looplj/axonhub/internal/ent"
 )
 
 func TestStoredCompactionSourceRestoresEarlierGeneration(t *testing.T) {
 	adapter := newRemoteCompactionAdapter(nil, nil, nil)
 	ref := &remoteCompactionReference{ID: "cmp_earlier", EncryptedContent: "opaque-earlier"}
-	adapter.summaries.SetDefault(remoteCompactionCacheKey(ref), "earlier history and decisions")
+	state := &PersistenceState{APIKey: &ent.APIKey{ID: 1, ProjectID: 1}}
+	adapter.summaries.SetDefault(remoteCompactionOwnerCacheKey(state, remoteCompactionCacheKey(ref)), "earlier history and decisions")
 	body := []byte(`{"model":"gpt-6-astra","client_metadata":{"thread_id":"thread-1"},"input":[{"type":"message","role":"user","content":"keep user history"},{"type":"compaction","id":"cmp_earlier","encrypted_content":"opaque-earlier"},{"type":"reasoning","id":"rs_native","encrypted_content":"keep-reasoning"},{"type":"function_call","id":"fc_native","call_id":"call_native","name":"exec","arguments":"{}"},{"type":"function_call_output","call_id":"call_native","output":"keep output"},{"type":"compaction_trigger"}]}`)
 	source := &remoteCompactionSource{body: body, headers: http.Header{"Thread-Id": []string{"thread-1"}}}
-	adapted, err := adapter.adaptStoredCompactionSource(context.Background(), source, nil, nil, map[string]struct{}{"current-generation": {}})
+	adapted, err := adapter.adaptStoredCompactionSource(context.Background(), source, state, nil, map[string]struct{}{"current-generation": {}})
 	require.NoError(t, err)
 	require.NotSame(t, source, adapted)
 	require.Equal(t, body, source.body)

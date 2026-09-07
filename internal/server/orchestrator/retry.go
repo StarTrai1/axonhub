@@ -1,6 +1,7 @@
 package orchestrator
 
 import (
+	"context"
 	"errors"
 	"io"
 	"net"
@@ -15,8 +16,10 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
+var retryableHTTP2StreamError = regexp.MustCompile(`^stream error: stream ID [1-9][0-9]*; (INTERNAL_ERROR|REFUSED_STREAM); received from peer$`)
+
 func isRetryableError(err error) bool {
-	if err == nil {
+	if err == nil || errors.Is(err, context.Canceled) {
 		return false
 	}
 
@@ -50,7 +53,7 @@ func isRetryableErrorForChannel(err error, ch *biz.Channel) bool {
 // invokes retry selection before response content is committed, so retrying
 // these transport failures cannot duplicate already-delivered output.
 func isRetryableTransportError(err error) bool {
-	if err == nil {
+	if err == nil || errors.Is(err, context.Canceled) {
 		return false
 	}
 
@@ -61,8 +64,18 @@ func isRetryableTransportError(err error) bool {
 	}
 
 	var netErr net.Error
-
-	return errors.As(err, &netErr) && (netErr.Timeout() || netErr.Temporary())
+	if errors.As(err, &netErr) && (netErr.Timeout() || netErr.Temporary()) {
+		return true
+	}
+	if ExtractStatusCodeFromError(err) != 0 {
+		return false
+	}
+	for cause := err; cause != nil; cause = errors.Unwrap(cause) {
+		if retryableHTTP2StreamError.MatchString(cause.Error()) {
+			return true
+		}
+	}
+	return false
 }
 
 func matchesRetryableErrorPattern(err error, patterns []objects.RetryableErrorPattern) bool {

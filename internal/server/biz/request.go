@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqljson"
 	"github.com/eko/gocache/lib/v4/store"
 	"github.com/tidwall/gjson"
 
@@ -1842,7 +1844,9 @@ func (s *RequestService) FindRecentCompletedRequestMetadata(
 	if modelID != "" {
 		query = query.Where(request.ModelIDEQ(modelID))
 	}
-	if format != "" {
+	if format == llm.APIFormatOpenAIResponse || format == llm.APIFormatOpenAIResponseWebSocket {
+		query = query.Where(request.FormatIn(llm.APIFormatOpenAIResponse.String(), llm.APIFormatOpenAIResponseWebSocket.String()))
+	} else if format != "" {
 		query = query.Where(request.FormatEQ(format.String()))
 	}
 
@@ -1857,6 +1861,33 @@ func (s *RequestService) FindRecentCompletedRequestMetadata(
 	}
 
 	return requests, nil
+}
+
+func (s *RequestService) FindCompletedResponsesRequestByCompactionKey(
+	ctx context.Context,
+	apiKeyID int,
+	projectID int,
+	cacheKey string,
+) (*ent.Request, error) {
+	if apiKeyID <= 0 || projectID <= 0 || cacheKey == "" {
+		return nil, nil
+	}
+	stored, err := s.entFromContext(ctx).Request.Query().Where(
+		request.APIKeyIDEQ(apiKeyID),
+		request.ProjectIDEQ(projectID),
+		request.StatusEQ(request.StatusCompleted),
+		request.FormatIn(llm.APIFormatOpenAIResponse.String(), llm.APIFormatOpenAIResponseWebSocket.String()),
+		func(selector *sql.Selector) {
+			selector.Where(sqljson.ValueContains(request.FieldRequestHeaders, cacheKey, sqljson.Path("X-Axonhub-Remote-Compaction-Cache")))
+		},
+	).Order(ent.Desc(request.FieldID)).First(ctx)
+	if ent.IsNotFound(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to find completed compaction snapshot: %w", err)
+	}
+	return stored, nil
 }
 
 // GetRequestByID loads a complete request after a lightweight metadata lookup

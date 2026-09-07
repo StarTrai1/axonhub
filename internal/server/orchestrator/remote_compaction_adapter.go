@@ -19,6 +19,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
@@ -71,6 +72,7 @@ type remoteCompactionSource struct {
 type localCompactionGeneration struct {
 	ref          *remoteCompactionReference
 	cacheKey     string
+	ownerKey     string
 	model        string
 	instructions string
 	standalone   bool
@@ -114,7 +116,12 @@ func (m *remoteCompactionMiddleware) Name() string {
 	return "adapt-remote-compaction"
 }
 
-func (m *remoteCompactionMiddleware) OnInboundLlmRequest(ctx context.Context, req *llm.Request) (*llm.Request, error) {
+func (m *remoteCompactionMiddleware) OnInboundLlmRequest(ctx context.Context, req *llm.Request) (adapted *llm.Request, err error) {
+	defer func() {
+		if err != nil {
+			err = &remoteCompactionPreparationError{cause: err}
+		}
+	}()
 	if m.adapter == nil || m.inbound == nil || req == nil || m.executor == nil {
 		return req, nil
 	}
@@ -256,6 +263,7 @@ func (m *remoteCompactionMiddleware) adaptLocalCompactionGeneration(ctx context.
 	m.generation = &localCompactionGeneration{
 		ref:          ref,
 		cacheKey:     cacheKey,
+		ownerKey:     remoteCompactionOwnerCacheKey(m.inbound.state, cacheKey),
 		model:        req.Model,
 		instructions: instructions,
 		standalone:   standalone,
@@ -308,7 +316,9 @@ func (m *remoteCompactionMiddleware) OnOutboundLlmResponse(ctx context.Context, 
 	if summary == "" {
 		return nil, errors.New("local compaction provider returned no assistant summary")
 	}
-	m.adapter.summaries.SetDefault(m.generation.cacheKey, summary)
+	if m.generation.ownerKey != "" {
+		m.adapter.summaries.SetDefault(m.generation.ownerKey, summary)
+	}
 
 	return localStandaloneCompactionResponse(response, m.generation), nil
 }
@@ -541,7 +551,9 @@ func (s *localCompactionBridgeStream) finishSource() bool {
 
 		return false
 	}
-	s.adapter.summaries.SetDefault(s.generation.cacheKey, summary)
+	if s.generation.ownerKey != "" {
+		s.adapter.summaries.SetDefault(s.generation.ownerKey, summary)
+	}
 
 	createdAt := s.response.Created
 	if createdAt == 0 {
@@ -664,7 +676,11 @@ func (a *remoteCompactionAdapter) summaryForCompactionChain(
 	if len(ancestors) >= remoteCompactionMaxSourceDepth {
 		return "", fmt.Errorf("remote compaction history exceeds %d generations", remoteCompactionMaxSourceDepth)
 	}
-	if cached, ok := a.summaries.Get(cacheKey); ok {
+	ownerKey := remoteCompactionOwnerCacheKey(state, cacheKey)
+	if ownerKey == "" {
+		return "", errors.New("request history is unavailable without an authenticated API key and project")
+	}
+	if cached, ok := a.summaries.Get(ownerKey); ok {
 		if summary, valid := cached.(string); valid && summary != "" {
 			return summary, nil
 		}
@@ -679,7 +695,15 @@ func (a *remoteCompactionAdapter) summaryForCompactionChain(
 	}
 	if summary == "" {
 		if source == nil {
-			return "", fmt.Errorf("original request for compaction %q was not retained", ref.ID)
+			return "", &llm.ResponseError{
+				StatusCode: http.StatusBadRequest,
+				Detail: llm.ErrorDetail{
+					Code:    "compaction_history_unavailable",
+					Type:    "invalid_request_error",
+					Param:   "input",
+					Message: fmt.Sprintf("Retained history for compaction %q is unavailable; restore its source history or start a new conversation with an explicit summary", ref.ID),
+				},
+			}
 		}
 		source, err = a.adaptStoredCompactionSource(ctx, source, state, executor, ancestors)
 		if err != nil {
@@ -687,8 +711,8 @@ func (a *remoteCompactionAdapter) summaryForCompactionChain(
 		}
 	}
 
-	value, err, _ := a.summaryGenerator.Do(cacheKey, func() (any, error) {
-		if cached, ok := a.summaries.Get(cacheKey); ok {
+	value, err, _ := a.summaryGenerator.Do(ownerKey, func() (any, error) {
+		if cached, ok := a.summaries.Get(ownerKey); ok {
 			if summary, valid := cached.(string); valid && summary != "" {
 				return summary, nil
 			}
@@ -701,7 +725,7 @@ func (a *remoteCompactionAdapter) summaryForCompactionChain(
 			}
 		}
 
-		a.summaries.SetDefault(cacheKey, summary)
+		a.summaries.SetDefault(ownerKey, summary)
 		return summary, nil
 	})
 	if err != nil {
@@ -714,6 +738,13 @@ func (a *remoteCompactionAdapter) summaryForCompactionChain(
 	}
 
 	return summary, nil
+}
+
+func remoteCompactionOwnerCacheKey(state *PersistenceState, cacheKey string) string {
+	if state == nil || state.APIKey == nil {
+		return ""
+	}
+	return fmt.Sprintf("v2:%d:%d:%s", state.APIKey.ProjectID, state.APIKey.ID, cacheKey)
 }
 
 func (a *remoteCompactionAdapter) adaptStoredCompactionSource(
@@ -752,6 +783,16 @@ func (a *remoteCompactionAdapter) findStoredSummaryOrSource(
 	if a.requestService == nil || state == nil || state.APIKey == nil {
 		return "", nil, errors.New("request history is unavailable")
 	}
+	stored, err := a.requestService.FindCompletedResponsesRequestByCompactionKey(ctx, state.APIKey.ID, state.APIKey.ProjectID, cacheKey)
+	if err != nil {
+		return "", nil, err
+	}
+	if stored != nil {
+		summary, loadErr := a.loadStoredCompactionSummary(ctx, stored)
+		if loadErr != nil || summary != "" {
+			return summary, nil, loadErr
+		}
+	}
 
 	recent, err := a.requestService.FindRecentCompletedRequestMetadata(
 		ctx,
@@ -787,26 +828,9 @@ func (a *remoteCompactionAdapter) findStoredSummaryOrSource(
 
 		var executions []*ent.RequestExecution
 		if storedCacheKey == cacheKey {
-			responseBody, loadErr := a.requestService.LoadResponseBody(ctx, prior)
-			if loadErr != nil {
-				return "", nil, loadErr
-			}
-			if summary := extractAssistantOutputText(responseBody); summary != "" {
-				return summary, nil, nil
-			}
-
-			executions, loadErr = prior.QueryExecutions().All(ctx)
-			if loadErr != nil {
-				return "", nil, fmt.Errorf("query local compaction bridge executions: %w", loadErr)
-			}
-			for _, execution := range executions {
-				executionBody, responseErr := a.requestService.LoadRequestExecutionResponseBody(ctx, execution)
-				if responseErr != nil {
-					return "", nil, responseErr
-				}
-				if summary := extractAssistantOutputText(executionBody); summary != "" {
-					return summary, nil, nil
-				}
+			summary, summaryErr := a.loadStoredCompactionSummary(ctx, prior)
+			if summaryErr != nil || summary != "" {
+				return summary, nil, summaryErr
 			}
 		}
 
@@ -844,6 +868,30 @@ func (a *remoteCompactionAdapter) findStoredSummaryOrSource(
 	}
 
 	return "", source, nil
+}
+
+func (a *remoteCompactionAdapter) loadStoredCompactionSummary(ctx context.Context, prior *ent.Request) (string, error) {
+	responseBody, err := a.requestService.LoadResponseBody(ctx, prior)
+	if err != nil {
+		return "", err
+	}
+	if summary := extractAssistantOutputText(responseBody); summary != "" {
+		return summary, nil
+	}
+	executions, err := prior.QueryExecutions().Where(requestexecution.StatusEQ(requestexecution.StatusCompleted)).Order(ent.Desc(requestexecution.FieldID)).All(ctx)
+	if err != nil {
+		return "", fmt.Errorf("query local compaction bridge executions: %w", err)
+	}
+	for _, execution := range executions {
+		executionBody, responseErr := a.requestService.LoadRequestExecutionResponseBody(ctx, execution)
+		if responseErr != nil {
+			return "", responseErr
+		}
+		if summary := extractAssistantOutputText(executionBody); summary != "" {
+			return summary, nil
+		}
+	}
+	return "", nil
 }
 
 func (a *remoteCompactionAdapter) generateLocalSummary(

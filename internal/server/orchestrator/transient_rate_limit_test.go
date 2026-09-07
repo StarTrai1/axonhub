@@ -12,6 +12,7 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
 
@@ -67,6 +68,10 @@ func TestTransientRateLimitWaitHonorsProviderAndRejectsLongQuotaWindows(t *testi
 		{name: "long_reset", headers: http.Header{"Retry-After": {"3600"}}},
 		{name: "overflow", headers: http.Header{"Retry-After": {"1e100"}}},
 		{name: "quota", body: `{"error":{"type":"usage_limit_reached"}}`},
+		{name: "credit balance", body: `{"error":{"code":"credit_balance_exhausted"}}`},
+		{name: "organization spend", body: `{"error":{"code":"organization_spend_limit_exceeded"}}`},
+		{name: "project spend", body: `{"error":{"code":"project_spend_limit_exceeded"}}`},
+		{name: "organization usage", body: `{"error":{"code":"organization_usage_limit_exceeded"}}`},
 	} {
 		t.Run(testcase.name, func(t *testing.T) {
 			providerErr := &httpclient.Error{StatusCode: 429, Headers: testcase.headers, Body: []byte(testcase.body)}
@@ -78,5 +83,40 @@ func TestTransientRateLimitWaitHonorsProviderAndRejectsLongQuotaWindows(t *testi
 				require.LessOrEqual(t, delay, testcase.minimum+500*time.Millisecond)
 			}
 		})
+	}
+}
+
+func TestTransientOverloadHonorsProviderDelay(t *testing.T) {
+	candidate := &ChannelModelsCandidate{Channel: &biz.Channel{Channel: &ent.Channel{ID: 29}}, TraceSticky: true}
+	outbound := &PersistentOutboundTransformer{state: &PersistenceState{CurrentCandidate: candidate, ChannelModelsCandidates: []*ChannelModelsCandidate{candidate}}}
+	failure := &httpclient.Error{StatusCode: http.StatusServiceUnavailable, Headers: http.Header{"Retry-After": {"15"}}, Body: []byte(`{"error":{"code":"server_is_overloaded"}}`)}
+	require.True(t, outbound.CanRetry(failure))
+	delay := outbound.SameChannelRetryDelay(failure, 1)
+	require.GreaterOrEqual(t, delay, 15*time.Second)
+	require.LessOrEqual(t, delay, 15*time.Second+500*time.Millisecond)
+	failure.Headers.Set("Retry-After", "120")
+	require.False(t, outbound.CanRetry(failure))
+}
+
+func TestWebSocketOverloadHeadersReachPersistentRetryPolicy(t *testing.T) {
+	for _, event := range []string{
+		`{"type":"error","status_code":429,"error":{"code":"slow_down","message":"temporarily busy"},"headers":{"retry-after":12}}`,
+		`{"type":"error","status_code":503,"error":{"code":"server_is_overloaded","message":"temporarily busy"},"headers":{"retry-after":"12"}}`,
+	} {
+		wrapped, err := responses.NewOutboundTransformer("https://api.openai.com", "test-key")
+		require.NoError(t, err)
+		stream, err := wrapped.TransformStream(t.Context(), &httpclient.Request{}, streams.SliceStream([]*httpclient.StreamEvent{{Type: "error", Data: []byte(event)}}))
+		require.NoError(t, err)
+		_, streamErr := streams.All(stream)
+		require.Error(t, streamErr)
+		candidate := &ChannelModelsCandidate{Channel: &biz.Channel{Channel: &ent.Channel{ID: 29}}, TraceSticky: true}
+		outbound := &PersistentOutboundTransformer{state: &PersistenceState{CurrentCandidate: candidate, ChannelModelsCandidates: []*ChannelModelsCandidate{candidate}}}
+		require.True(t, outbound.CanRetry(streamErr))
+		delay := outbound.SameChannelRetryDelay(streamErr, 1)
+		require.GreaterOrEqual(t, delay, 12*time.Second)
+		require.LessOrEqual(t, delay, 12*time.Second+500*time.Millisecond)
+		outbound.state.ChannelModelsCandidates = append(outbound.state.ChannelModelsCandidates, &ChannelModelsCandidate{Channel: &biz.Channel{Channel: &ent.Channel{ID: 30}}})
+		require.False(t, outbound.CanRetry(streamErr))
+		require.NoError(t, stream.Close())
 	}
 }

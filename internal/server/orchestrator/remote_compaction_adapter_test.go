@@ -283,6 +283,7 @@ func TestLocalCompactionBridgeStreamReturnsOneCompactionItem(t *testing.T) {
 	generation := &localCompactionGeneration{
 		ref:      ref,
 		cacheKey: remoteCompactionCacheKey(ref),
+		ownerKey: "v2:1:1:" + remoteCompactionCacheKey(ref),
 		model:    "gpt-5.6-sol",
 	}
 	source := streams.SliceStream([]*llm.Response{
@@ -315,7 +316,7 @@ func TestLocalCompactionBridgeStreamReturnsOneCompactionItem(t *testing.T) {
 	require.Equal(t, remoteCompactionItemType, parts[0].Type)
 	require.Equal(t, ref.ID, parts[0].Compact.ID)
 	require.Same(t, llm.DoneResponse, events[2])
-	cached, ok := adapter.summaries.Get(generation.cacheKey)
+	cached, ok := adapter.summaries.Get(generation.ownerKey)
 	require.True(t, ok)
 	require.Equal(t, text, cached)
 }
@@ -327,6 +328,7 @@ func TestLocalCompactionBridgeStreamProducesCodexCompletionContract(t *testing.T
 	generation := &localCompactionGeneration{
 		ref:      ref,
 		cacheKey: remoteCompactionCacheKey(ref),
+		ownerKey: "v2:1:1:" + remoteCompactionCacheKey(ref),
 		model:    "gpt-5.6-sol",
 	}
 	source := streams.SliceStream([]*llm.Response{

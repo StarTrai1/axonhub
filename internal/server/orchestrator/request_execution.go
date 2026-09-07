@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/tidwall/gjson"
@@ -272,7 +273,7 @@ func ExtractErrorMessage(err error) string {
 		// Prefer the structured message over ResponseError.Error(), which also
 		// concatenates the status text, code and type.
 		if respErr, ok := xerrors.As[*llm.ResponseError](err); ok && respErr.Detail.Message != "" {
-			return respErr.Detail.Message
+			return enrichGenericProviderError(respErr.Detail.Message, respErr.Detail.Code, respErr.Detail.Param)
 		}
 
 		return err.Error()
@@ -281,7 +282,7 @@ func ExtractErrorMessage(err error) string {
 	// Anthropic && OpenAI error format.
 	message := gjson.GetBytes(httpErr.Body, "error.message")
 	if message.Exists() && message.Type == gjson.String {
-		return message.String()
+		return enrichGenericProviderError(message.String(), gjson.GetBytes(httpErr.Body, "error.code").String(), gjson.GetBytes(httpErr.Body, "error.param").String())
 	}
 
 	// Other compatible error format.
@@ -298,4 +299,17 @@ func ExtractErrorMessage(err error) string {
 	}
 
 	return httpErr.Error()
+}
+
+func enrichGenericProviderError(message, code, param string) string {
+	if !strings.HasPrefix(strings.ToLower(message), "bad response status code") {
+		return message
+	}
+	if code != "" {
+		message += " [code=" + code + "]"
+	}
+	if param != "" {
+		message += " [param=" + param + "]"
+	}
+	return message
 }

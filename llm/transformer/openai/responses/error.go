@@ -1,6 +1,14 @@
 package responses
 
-import "github.com/looplj/axonhub/llm"
+import (
+	"encoding/json"
+	"net/http"
+	"strconv"
+	"strings"
+
+	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/httpclient"
+)
 
 func responseErrorFromResponse(response *Response) *llm.ResponseError {
 	if response == nil {
@@ -16,6 +24,10 @@ func responseErrorFromResponse(response *Response) *llm.ResponseError {
 		detail.Code = response.Error.Code
 		detail.Message = response.Error.Message
 		detail.Type = response.Error.Type
+		detail.Param = response.Error.Param
+		if detail.RequestID == "" {
+			detail.RequestID = response.Error.RequestID
+		}
 	}
 	if detail.Message == "" {
 		detail.Message = "response failed"
@@ -66,11 +78,47 @@ func responseErrorFromStreamEvent(event *StreamEvent) *llm.ResponseError {
 		detail.Type = "stream_error"
 	}
 
-	if event.Status >= 400 && event.Status <= 599 {
-		return &llm.ResponseError{StatusCode: event.Status, Detail: detail}
+	result := newProtocolResponseError(detail)
+	status := event.Status
+	if status == 0 {
+		status = event.StatusCode
 	}
+	if status >= 400 && status <= 599 {
+		result.StatusCode = status
+	}
+	if headers := responseErrorHeaders(event.Headers); len(headers) > 0 {
+		body, _ := json.Marshal(struct {
+			Error llm.ErrorDetail `json:"error"`
+		}{Error: detail})
+		result.Cause = &httpclient.Error{StatusCode: result.StatusCode, Headers: headers, Body: body}
+	}
+	return result
+}
 
-	return newProtocolResponseError(detail)
+func responseErrorHeaders(values map[string]json.RawMessage) http.Header {
+	headers := make(http.Header)
+	for name, raw := range values {
+		if name == "" || len(name) > 128 || len(raw) > 4096 || strings.ContainsAny(name, "\r\n:\t ") || strings.TrimSpace(string(raw)) == "null" {
+			continue
+		}
+		var value string
+		if json.Unmarshal(raw, &value) != nil {
+			var number json.Number
+			if json.Unmarshal(raw, &number) != nil {
+				var boolean bool
+				if json.Unmarshal(raw, &boolean) != nil {
+					continue
+				}
+				value = strconv.FormatBool(boolean)
+			} else {
+				value = number.String()
+			}
+		}
+		if !strings.ContainsAny(value, "\r\n") {
+			headers.Set(name, value)
+		}
+	}
+	return headers
 }
 
 func newProtocolResponseError(detail llm.ErrorDetail) *llm.ResponseError {

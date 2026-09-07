@@ -71,6 +71,9 @@ func TestResponsesRejectedReasoningRecoveryGuards(test *testing.T) {
 		{name: "unresolved item reference", path: "input.9", value: map[string]any{"type": "item_reference", "id": "rs_missing"}},
 		{name: "encrypted agent message", path: "input.9", value: map[string]any{"type": "agent_message", "content": []any{map[string]any{"type": "encrypted_content", "encrypted_content": "opaque"}}}},
 		{name: "plaintext agent message", path: "input.9", value: map[string]any{"type": "agent_message", "content": []any{map[string]any{"type": "output_text", "text": "visible"}}}, want: true},
+		{name: "named standalone delegation", path: "input.9", value: map[string]any{"type": "function_call_output", "name": "delegate", "namespace": "agents", "output": "delegated task"}, want: true},
+		{name: "named result with missing call", path: "input.9", value: map[string]any{"type": "function_call_output", "call_id": "call_missing", "name": "delegate", "output": "result"}},
+		{name: "unnamed standalone result", path: "input.9", value: map[string]any{"type": "function_call_output", "output": "result"}},
 	} {
 		test.Run(scenario.name, func(test *testing.T) {
 			body := []byte(responsesRejectedReasoningFixture)

@@ -160,7 +160,8 @@ func decodeResponsesSessionRecord(requestBody, responseBody []byte) *responsesSe
 	}
 
 	var requestPayload map[string]json.RawMessage
-	if json.Unmarshal(requestBody, &requestPayload) != nil || requestPayload == nil {
+	if json.Unmarshal(requestBody, &requestPayload) != nil || requestPayload == nil ||
+		responseSessionString(requestPayload["previous_response_id"]) != "" {
 		return nil
 	}
 
@@ -168,8 +169,12 @@ func decodeResponsesSessionRecord(requestBody, responseBody []byte) *responsesSe
 		ID     string            `json:"id"`
 		Status string            `json:"status"`
 		Output []json.RawMessage `json:"output"`
+		Error  json.RawMessage   `json:"error"`
 	}
 	if json.Unmarshal(responseBody, &response) != nil || response.ID == "" {
+		return nil
+	}
+	if len(response.Error) > 0 && !bytes.Equal(bytes.TrimSpace(response.Error), []byte("null")) {
 		return nil
 	}
 	// Both spellings have appeared in Responses-compatible implementations.
@@ -189,7 +194,7 @@ func decodeResponsesSessionRecord(requestBody, responseBody []byte) *responsesSe
 
 func (s *responsesSessionStore) record(ctx context.Context, requestBody, responseBody []byte) {
 	record := decodeResponsesSessionRecord(requestBody, responseBody)
-	if record == nil || record.size > responsesSessionMaxResponse {
+	if record == nil {
 		return
 	}
 	var response struct {
@@ -329,6 +334,9 @@ type responsesSessionStream struct {
 	terminal    bool
 	recorded    bool
 	overflow    bool
+	completed   map[int]json.RawMessage
+	outputBytes int
+	outputLimit bool
 }
 
 func (s *responsesSessionStream) Next() bool {
@@ -339,6 +347,7 @@ func (s *responsesSessionStream) Next() bool {
 
 	s.current = s.inner.Current()
 	if s.current != nil {
+		s.captureCompletedItem()
 		if !s.overflow {
 			s.chunksBytes += len(s.current.Type) + len(s.current.LastEventID) + len(s.current.Data)
 			if s.chunksBytes > responsesSessionMaxResponse {
@@ -371,7 +380,20 @@ func (s *responsesSessionStream) Close() error {
 }
 
 func (s *responsesSessionStream) recordCompleted() {
-	if s.recorded || s.overflow || !s.terminal {
+	if s.recorded || !s.terminal {
+		return
+	}
+
+	if body, rejected := s.terminalSnapshot(); rejected || len(body) > 0 {
+		if !rejected {
+			s.store.record(s.ctx, s.requestBody, body)
+		}
+		s.recorded = true
+		s.chunks = nil
+		s.completed = nil
+		return
+	}
+	if s.overflow {
 		return
 	}
 
@@ -382,6 +404,92 @@ func (s *responsesSessionStream) recordCompleted() {
 
 	s.store.record(s.ctx, s.requestBody, body)
 	s.recorded = true
+}
+
+func (s *responsesSessionStream) captureCompletedItem() {
+	if s.outputLimit ||
+		(s.current.Type != "response.output_item.done" && !bytes.Contains(s.current.Data, []byte(`"response.output_item.done"`))) {
+		return
+	}
+	if len(s.current.Data) > responsesSessionMaxReplay {
+		s.completed = nil
+		s.outputLimit = true
+		return
+	}
+	var event struct {
+		Type        string          `json:"type"`
+		OutputIndex int             `json:"output_index"`
+		Item        json.RawMessage `json:"item"`
+	}
+	if json.Unmarshal(s.current.Data, &event) != nil || event.Type != "response.output_item.done" ||
+		event.OutputIndex < 0 || len(event.Item) == 0 || bytes.Equal(event.Item, []byte("null")) {
+		return
+	}
+	if s.completed == nil {
+		s.completed = make(map[int]json.RawMessage)
+	}
+	if previous := s.completed[event.OutputIndex]; previous != nil && !bytes.Equal(previous, event.Item) {
+		s.completed = nil
+		s.outputLimit = true
+		return
+	}
+	s.outputBytes += len(event.Item) - len(s.completed[event.OutputIndex])
+	if s.outputBytes > responsesSessionMaxReplay || (len(s.completed) >= responsesSessionMaxRecords && s.completed[event.OutputIndex] == nil) {
+		s.completed = nil
+		s.outputLimit = true
+		return
+	}
+	s.completed[event.OutputIndex] = event.Item
+}
+
+func (s *responsesSessionStream) terminalSnapshot() ([]byte, bool) {
+	if s.current == nil || len(s.current.Data) > responsesSessionMaxReplay {
+		return nil, false
+	}
+	var event struct {
+		Type     string          `json:"type"`
+		Response json.RawMessage `json:"response"`
+	}
+	if json.Unmarshal(s.current.Data, &event) != nil || event.Type != "response.completed" {
+		return nil, false
+	}
+	var snapshot struct {
+		ID     string            `json:"id"`
+		Status string            `json:"status"`
+		Output []json.RawMessage `json:"output"`
+		Error  json.RawMessage   `json:"error,omitempty"`
+	}
+	if json.Unmarshal(event.Response, &snapshot) != nil {
+		return nil, false
+	}
+	if len(snapshot.Error) > 0 && !bytes.Equal(bytes.TrimSpace(snapshot.Error), []byte("null")) {
+		return nil, true
+	}
+	if snapshot.Status != "" && snapshot.Status != "completed" {
+		return nil, true
+	}
+	if snapshot.ID == "" || snapshot.Status != "completed" {
+		return nil, false
+	}
+	if len(snapshot.Output) > 0 && (s.outputLimit || len(snapshot.Output) >= len(s.completed)) {
+		return event.Response, false
+	}
+	if s.outputLimit || len(s.completed) == 0 {
+		return nil, false
+	}
+	snapshot.Output = make([]json.RawMessage, 0, len(s.completed))
+	for index := range len(s.completed) {
+		item, ok := s.completed[index]
+		if !ok {
+			return nil, false
+		}
+		snapshot.Output = append(snapshot.Output, item)
+	}
+	body, err := json.Marshal(snapshot)
+	if err != nil {
+		return nil, false
+	}
+	return body, false
 }
 
 func cloneResponseSessionPayload(payload map[string]json.RawMessage) map[string]json.RawMessage {

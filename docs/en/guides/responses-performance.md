@@ -31,12 +31,12 @@ server:
 
 Some Responses relays reject newer Codex
 `internal_chat_message_metadata_passthrough` fields. AxonHub only removes this
-internal metadata after an upstream HTTP 400 explicitly identifies it as an
+internal metadata after an upstream HTTP or pre-output streaming 400 explicitly identifies it as an
 unknown or unsupported parameter. Message content, tools, encrypted compaction
 history and the prompt cache key remain unchanged. The normal retry budget still
 applies; enable at least one same-channel retry to recover the first rejection.
 
-Learned rejection is kept in a bounded, process-local cache for 30 minutes, scoped
+Learned rejection is kept in a bounded, process-local cache for six hours, scoped
 by channel, endpoint, model and hashed credential. Subsequent requests avoid the
 known-failing round trip. Other endpoints and credentials retain their native
 metadata. Generic HTTP 400 errors never activate this behavior.
@@ -45,12 +45,14 @@ metadata. Generic HTTP 400 errors never activate this behavior.
 
 Encrypted reasoning is preserved by default, following the
 [official stateless handoff guidance](https://developers.openai.com/api/docs/guides/deployment-checklist#use-reasoningencrypted_content).
-If a Codex channel explicitly returns HTTP 400 with
+If a Codex channel explicitly returns HTTP or pre-output streaming 400 with
 `error.code: invalid_encrypted_content`, a same-channel retry can instead rebuild
 reasoning from retained explicit history. This is a degraded recovery, not
 decryption or lossless recovery of hidden reasoning.
 
 Recovery requires user history and correctly paired function/custom-tool results.
+Named standalone function results without a `call_id` remain valid; an unmatched
+nonempty `call_id` still fails closed.
 It refuses unresolved `previous_response_id`, compaction or item references,
 encrypted agent messages/arguments, and unknown input types. Only encrypted
 reasoning items are replaced: visible summaries and reasoning text become
@@ -71,17 +73,22 @@ Known gateway-generated message IDs and function-call IDs equal to `call_id`
 are omitted during replay; call linkage, native IDs and encrypted reasoning
 remain intact. An unresolved stored delta is never treated as complete history.
 
-For cacheable streams, the native snapshot is published by the upstream stream
+For streams within the replay limit, the native snapshot is published by the upstream stream
 producer before a terminal event is fanned out to the pass-through client. An
 immediate tool-result continuation therefore does not wait for the separate
 pipeline consumer or database completion. This also covers synthesized Codex
-terminal events. Cache admission limits still apply; oversized histories retain
-the completed-database fallback rather than an unbounded in-flight cache.
+terminal events. Terminal snapshots and completed native items remain recoverable
+even when the auxiliary one-MiB wire-event buffer overflows. Wire events are not
+retained without a bound.
 
-Hot replay snapshots retain the existing two-hour TTL, 2,048-record/64-MiB aggregate
-limits and one-MiB record limit. Persisted complete histories up to 16 MiB can be
-replayed without admitting them to the hot cache; exceeding the hot-cache limit
-alone no longer drops continuation history. Ordered eviction avoids scanning all records on
+Hot replay snapshots retain the two-hour TTL and 2,048-record/64-MiB aggregate
+limits. A complete record can now reach the same 16-MiB limit as persisted replay,
+so an immediate continuation of a large history does not race database completion.
+If history cannot be restored, Codex HTTP fallback returns
+`previous_response_not_found` instead of silently removing the reference and
+sending an isolated tool result. Clients must replay full input, as described in
+the [official WebSocket guide](https://developers.openai.com/api/docs/guides/websocket-mode#fork-a-conversation-onto-a-new-stream).
+Ordered eviction avoids scanning all records on
 each lookup. Immutable stored snapshots allow copying outside the shared lock;
 bulk byte copies reduce per-item allocations without sharing writable capacity
 between items. These are gateway overhead improvements, not promises of a given
@@ -107,9 +114,15 @@ rejections in one summary request needs two same-channel retries; no retry
 settings are changed automatically. Each actual upstream attempt is recorded
 separately when request persistence is enabled.
 
+After a restart, local summaries are found by their exact retained compaction key
+across HTTP and WebSocket request formats, independent of model changes and the
+recent-history scan limit. Memory entries and duplicate-generation locks are
+isolated by authenticated API key and project. Missing source history produces a
+recorded `compaction_history_unavailable` 400, not an unrecorded generic 500.
+
 ## Transient upstream rate limits
 
-HTTP 429 and Responses SSE rate-limit errors before meaningful output use the
+HTTP/Responses streaming 429 and 503 overload errors before meaningful output use the
 same retry policy. Another physical channel is preferred when available. On the
 last channel, transient limits can use the configured same-channel retry budget,
 including a trace-sticky candidate. With five retries and the default one-second
@@ -125,6 +138,26 @@ count is a hard bound; persistent upstream throttling still returns an error.
 No automatic changes are made to system retry settings. Client/proxy deadlines
 must accommodate the additional wait; streaming heartbeats do not cover this
 pre-output retry phase.
+
+Peer-originated HTTP/2 `INTERNAL_ERROR` and `REFUSED_STREAM` resets are also
+retryable before output commitment, including the last sticky channel. Local
+cancellation and protocol errors are not classified as these transient resets.
+WebSocket error `status_code` aliases and scalar header values are accepted, so
+`Retry-After` survives both streaming and synchronous error conversion. New
+credit/spend/usage exhaustion codes map to 429 but do not trigger futile
+same-channel retries.
+
+## GPT-6 Astra stream compatibility
+
+Async function/custom-tool identity, steering, configuration updates and prompt
+cache controls retain their existing contracts. A custom tool whose input arrives
+only in `response.custom_tool_call_input.done` now emits the missing suffix once;
+duplicate or empty done events cannot erase or repeat an already delivered input.
+Conflicting final input fails explicitly instead of executing a changed command.
+
+Generic relay error messages now retain structured `code` and `param` in execution
+logs. A successful final attempt does not erase earlier attempt failures, and a
+bare historical `bad response status code` is not proof of remote-compaction failure.
 
 ## Claude Code identity version
 

@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/samber/lo"
+	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/log"
@@ -763,9 +765,13 @@ func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
 		return true
 	}
 
-	if ExtractStatusCodeFromError(err) == 429 {
+	status := ExtractStatusCodeFromError(err)
+	if status == http.StatusTooManyRequests || status == http.StatusServiceUnavailable {
 		return !isChannelQueueError(err) && !isLocalRPMExhaustedError(err) &&
 			!p.HasAlternativeChannel() && canRetryTransientRateLimit(err)
+	}
+	if isRetryableTransportError(err) && p.state.CurrentCandidate.TraceSticky {
+		return !p.HasAlternativeChannel()
 	}
 
 	// Trace/thread sticky candidates are intentionally one-shot. A failed
@@ -927,6 +933,26 @@ func finalizeTransportRequest(p *PersistentOutboundTransformer) pipeline.Middlew
 			return request, nil
 		}
 
-		return finalizer.FinalizeTransportRequest(request), nil
+		previousResponseID := ""
+		if request != nil {
+			previousResponseID = gjson.GetBytes(request.Body, "previous_response_id").String()
+		}
+		finalized := finalizer.FinalizeTransportRequest(request)
+		if finalized != nil && previousResponseID != "" &&
+			gjson.GetBytes(finalized.Body, "previous_response_id").String() == "" {
+			return nil, &llm.ResponseError{
+				StatusCode: http.StatusBadRequest,
+				Detail: llm.ErrorDetail{
+					Code:    "previous_response_not_found",
+					Type:    "invalid_request_error",
+					Param:   "previous_response_id",
+					Message: "The previous response could not be restored for this transport; retry with full input context and previous_response_id set to null",
+				},
+			}
+		}
+		if p.state != nil {
+			p.state.RawProviderRequest = finalized
+		}
+		return finalized, nil
 	})
 }

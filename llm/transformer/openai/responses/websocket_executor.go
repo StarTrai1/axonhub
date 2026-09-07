@@ -161,6 +161,9 @@ func TopLevelWebSocketError(chunks []*httpclient.StreamEvent) error {
 		if err := json.Unmarshal(chunk.Data, &event); err != nil {
 			return fmt.Errorf("websocket error event")
 		}
+		if event.Status == 0 {
+			event.Status = event.StatusCode
+		}
 		if event.Status >= http.StatusBadRequest && event.Status <= 599 {
 			detail := map[string]any{}
 			if event.Message != "" {
@@ -204,6 +207,7 @@ func TopLevelWebSocketError(chunks []*httpclient.StreamEvent) error {
 				StatusCode: event.Status,
 				Status:     http.StatusText(event.Status),
 				Body:       body,
+				Headers:    responseErrorHeaders(event.Headers),
 			}
 		}
 		responseErr := responseErrorFromStreamEvent(&event)

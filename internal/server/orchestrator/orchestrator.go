@@ -190,6 +190,9 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		var sessionID string
 		preparedResponsesBody, sessionID = processor.responsesSessions.prepare(ctx, request.Body)
 		request.Body = preparedResponsesBody
+		if len(request.JSONBody) > 0 {
+			request.JSONBody = preparedResponsesBody
+		}
 		ctx = shared.WithSessionID(ctx, sessionID)
 	}
 
@@ -358,6 +361,9 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		unregisterRequestSwitch(state)
 		persistCtx, cancel := xcontext.DetachWithTimeout(ctx, time.Second*10)
 		defer cancel()
+		if persistErr := persistRemoteCompactionPreparationFailure(persistCtx, inbound, err); persistErr != nil {
+			log.Warn(persistCtx, "Failed to record compaction preparation failure", log.Cause(persistErr))
+		}
 
 		// Update the last request execution status based on error if it exists
 		// This ensures that when retry fails completely, the last execution is properly marked

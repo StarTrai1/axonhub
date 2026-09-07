@@ -68,6 +68,10 @@ func responsesRejectedReasoningRule(body []byte, param string) (responsesRejecte
 				toolCalls[callID] = itemType
 			}
 		case "function_call_output", "custom_tool_call_output":
+			if itemType == "function_call_output" && item.Get("call_id").String() == "" &&
+				strings.TrimSpace(item.Get("name").String()) != "" && item.Get("output").Exists() {
+				continue
+			}
 			if toolCalls[item.Get("call_id").String()] != strings.TrimSuffix(itemType, "_output") {
 				return responsesRejectedStatusRule{}, false
 			}

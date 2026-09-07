@@ -539,19 +539,37 @@ func (s *responsesOutboundStream) transformStreamEvent(event *httpclient.StreamE
 		}
 
 	case StreamEventTypeCustomToolCallInputDone:
-		// Custom tool call input completed - update state but don't emit an event
-		if streamEvent.ItemID != nil {
-			callID, ok := s.state.itemToCallID[*streamEvent.ItemID]
-			if !ok {
+		callID := streamEvent.CallID
+		if callID == "" && streamEvent.ItemID != nil {
+			callID = s.state.itemToCallID[*streamEvent.ItemID]
+			if callID == "" {
 				callID = *streamEvent.ItemID
 			}
-
-			if tc, ok := s.state.toolCalls[callID]; ok {
-				tc.ResponseCustomToolCall.Input = streamEvent.Input
-			}
 		}
-
-		return nil // Intentionally skip this event
+		toolCall, ok := s.state.toolCalls[callID]
+		if !ok || toolCall.ResponseCustomToolCall == nil || streamEvent.Input == "" {
+			return nil
+		}
+		forwarded := toolCall.ResponseCustomToolCall.Input
+		if streamEvent.Input == forwarded {
+			return nil
+		}
+		if !strings.HasPrefix(streamEvent.Input, forwarded) {
+			s.err = fmt.Errorf("custom tool call %q input changed after streaming began", callID)
+			return nil
+		}
+		missing := streamEvent.Input[len(forwarded):]
+		toolCall.ResponseCustomToolCall.Input = streamEvent.Input
+		resp.Choices = []llm.Choice{{Index: 0, Delta: &llm.Message{ToolCalls: []llm.ToolCall{{
+			Index: s.state.toolCallIndex[callID],
+			Type:  llm.ToolTypeResponsesCustomTool,
+			Async: toolCall.Async,
+			ResponseCustomToolCall: &llm.ResponseCustomToolCall{
+				CallID: callID,
+				Name:   toolCall.ResponseCustomToolCall.Name,
+				Input:  missing,
+			},
+		}}}}}
 
 	case StreamEventTypeContentPartAdded:
 		// Content part added - skip, no meaningful content to emit

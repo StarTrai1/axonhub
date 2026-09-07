@@ -43,7 +43,7 @@ func TestResponsesSessionRestoresHistoryLargerThanHotCacheLimit(t *testing.T) {
 	require.Len(t, payload.Input, 3)
 	require.Greater(t, len(payload.Input[0]), responsesSessionMaxResponse)
 	require.Contains(t, string(payload.Input[1]), "fc_native")
-	require.Nil(t, store.lookup(ctx, "resp_large"))
+	require.NotNil(t, store.lookup(ctx, "resp_large"))
 }
 
 func TestResponsesSessionDoesNotReplayUnresolvedStoredDelta(t *testing.T) {

@@ -611,11 +611,13 @@ func TestFinalizeTransportRequestUsesSwitchedCandidate(t *testing.T) {
 	first, err := middleware.OnOutboundRawRequest(context.Background(), request)
 	require.NoError(t, err)
 	require.Equal(t, "websocket", first.Headers.Get("X-Test-Transport"))
+	require.Same(t, first, state.RawProviderRequest)
 
 	require.NoError(t, processor.NextChannel(context.Background()))
 	second, err := middleware.OnOutboundRawRequest(context.Background(), request)
 	require.NoError(t, err)
 	require.Equal(t, "http", second.Headers.Get("X-Test-Transport"))
+	require.Same(t, second, state.RawProviderRequest)
 }
 
 func TestSelectOutboundForCandidate(t *testing.T) {

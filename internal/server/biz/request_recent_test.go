@@ -46,7 +46,7 @@ func TestRequestService_FindRecentCompletedRequestMetadata(t *testing.T) {
 		SetProjectID(proj.ID).
 		SetAPIKeyID(apiKey.ID).
 		SetModelID("gpt-5.6-sol").
-		SetFormat(llm.APIFormatOpenAIResponse.String()).
+		SetFormat(llm.APIFormatOpenAIResponseWebSocket.String()).
 		SetRequestHeaders(objects.JSONRawMessage(`{"Thread-Id":["thread-2"]}`)).
 		SetRequestBody(objects.JSONRawMessage(`{"input":[{"type":"message"},{"type":"compaction_trigger"}]}`)).
 		SetStatus(request.StatusCompleted).
@@ -72,4 +72,10 @@ func TestRequestService_FindRecentCompletedRequestMetadata(t *testing.T) {
 	loaded, err := svc.GetRequestByID(ctx, metadata[0].ID)
 	require.NoError(t, err)
 	require.JSONEq(t, `{"input":[{"type":"message"},{"type":"compaction_trigger"}]}`, string(loaded.RequestBody))
+
+	metadata, err = svc.FindRecentCompletedRequestMetadata(ctx, apiKey.ID, proj.ID, "gpt-5.6-sol", llm.APIFormatOpenAIResponseWebSocket, 10)
+	require.NoError(t, err)
+	require.Len(t, metadata, 2)
+	require.Equal(t, newer.ID, metadata[0].ID)
+	require.Equal(t, older.ID, metadata[1].ID)
 }

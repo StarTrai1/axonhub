@@ -48,6 +48,8 @@ type responsesMetadataCapabilityKey struct {
 
 var rejectedResponsesMetadata = lo.Must(lru.New[responsesMetadataCapabilityKey, time.Time](1024))
 
+const responsesMetadataCapabilityTTL = 6 * time.Hour
+
 func responsesMetadataKey(channelID int, request *httpclient.Request) responsesMetadataCapabilityKey {
 	credential := request.Headers.Get("Authorization")
 	if request.Auth != nil {
@@ -140,7 +142,7 @@ func (m *responsesRejectedStatusCompatibilityMiddleware) OnOutboundRawError(ctx 
 
 	state.responsesRejectedStatusRetryChannel = channel.ID
 	if rule.fieldName() == "internal_chat_message_metadata_passthrough" && state.RawProviderRequest.URL != "" {
-		rejectedResponsesMetadata.Add(responsesMetadataKey(channel.ID, state.RawProviderRequest), time.Now().Add(30*time.Minute))
+		rejectedResponsesMetadata.Add(responsesMetadataKey(channel.ID, state.RawProviderRequest), time.Now().Add(responsesMetadataCapabilityTTL))
 	}
 	log.Info(ctx, "Responses input state rejected; scheduling compatible same-channel retry",
 		log.Int("channel_id", channel.ID),
@@ -152,13 +154,22 @@ func (m *responsesRejectedStatusCompatibilityMiddleware) OnOutboundRawError(ctx 
 
 func responsesRejectedStatusRuleFromError(err error, requestBody []byte) (responsesRejectedStatusRule, bool) {
 	var httpErr *httpclient.Error
-	if !errors.As(err, &httpErr) || httpErr.StatusCode != http.StatusBadRequest || len(httpErr.Body) == 0 {
+	var responseErr *llm.ResponseError
+	var code, message, param string
+	switch {
+	case errors.As(err, &httpErr) && httpErr.StatusCode == http.StatusBadRequest && len(httpErr.Body) > 0:
+		code = gjson.GetBytes(httpErr.Body, "error.code").String()
+		message = gjson.GetBytes(httpErr.Body, "error.message").String()
+		param = gjson.GetBytes(httpErr.Body, "error.param").String()
+	case errors.As(err, &responseErr) && responseErr.StatusCode == http.StatusBadRequest:
+		code, message, param = responseErr.Detail.Code, responseErr.Detail.Message, responseErr.Detail.Param
+	default:
 		return responsesRejectedStatusRule{}, false
 	}
 
-	code := strings.ToLower(strings.TrimSpace(gjson.GetBytes(httpErr.Body, "error.code").String()))
-	message := strings.TrimSpace(gjson.GetBytes(httpErr.Body, "error.message").String())
-	param := strings.ToLower(strings.TrimSpace(gjson.GetBytes(httpErr.Body, "error.param").String()))
+	code = strings.ToLower(strings.TrimSpace(code))
+	message = strings.TrimSpace(message)
+	param = strings.ToLower(strings.TrimSpace(param))
 	if code == "invalid_encrypted_content" {
 		return responsesRejectedReasoningRule(requestBody, param)
 	}

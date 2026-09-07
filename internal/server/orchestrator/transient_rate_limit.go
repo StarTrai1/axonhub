@@ -15,19 +15,17 @@ import (
 const maxTransientRateLimitWait = time.Minute
 
 func canRetryTransientRateLimit(err error) bool {
-	message := strings.ToLower(err.Error())
-	for _, marker := range []string{"insufficient_quota", "usage_limit_reached", "billing_hard_limit", "quota exhausted", "insufficient quota"} {
-		if strings.Contains(message, marker) {
-			return false
-		}
+	if err == nil {
+		return false
 	}
+	message := strings.ToLower(err.Error())
 	var raw *httpclient.Error
 	if errors.As(err, &raw) {
-		body := strings.ToLower(string(raw.Body))
-		for _, marker := range []string{"insufficient_quota", "usage_limit_reached", "billing_hard_limit", "quota exhausted", "insufficient quota"} {
-			if strings.Contains(body, marker) {
-				return false
-			}
+		message += " " + strings.ToLower(string(raw.Body))
+	}
+	for _, marker := range []string{"insufficient_quota", "usage_limit_reached", "billing_hard_limit", "quota exhausted", "insufficient quota", "credit_balance_exhausted", "organization_spend_limit_exceeded", "project_spend_limit_exceeded", "organization_usage_limit_exceeded"} {
+		if strings.Contains(message, marker) {
+			return false
 		}
 	}
 	if cooldown, ok := codexQuotaResetCooldown(err); ok && cooldown > maxTransientRateLimitWait {
@@ -39,7 +37,7 @@ func canRetryTransientRateLimit(err error) bool {
 
 func transientRateLimitRetryAfter(err error, now time.Time) (time.Duration, bool) {
 	var raw *httpclient.Error
-	if !errors.As(err, &raw) || raw.StatusCode != http.StatusTooManyRequests {
+	if !errors.As(err, &raw) || (raw.StatusCode != http.StatusTooManyRequests && raw.StatusCode != http.StatusServiceUnavailable) {
 		return 0, false
 	}
 	for _, header := range []string{"Retry-After", "Retry-After-Ms", "X-Ms-Retry-After-Ms"} {
@@ -69,7 +67,8 @@ func transientRateLimitRetryAfter(err error, now time.Time) (time.Duration, bool
 }
 
 func (p *PersistentOutboundTransformer) SameChannelRetryDelay(err error, attempt int) time.Duration {
-	if ExtractStatusCodeFromError(err) != http.StatusTooManyRequests {
+	status := ExtractStatusCodeFromError(err)
+	if status != http.StatusTooManyRequests && status != http.StatusServiceUnavailable {
 		return 0
 	}
 	delay := time.Second * time.Duration(1<<min(max(attempt, 1), 5))

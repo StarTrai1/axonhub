@@ -71,6 +71,89 @@ type retryTestExecutor struct {
 	streams  [][]*httpclient.StreamEvent
 }
 
+type transportRetryTestOutbound struct {
+	*retryTestOutbound
+	failure error
+}
+
+func (outbound *transportRetryTestOutbound) CanRetry(err error) bool {
+	return errors.Is(err, outbound.failure)
+}
+
+type transportRetryTestExecutor struct {
+	*retryTestExecutor
+	failure     error
+	beforeStart bool
+}
+
+func (executor *transportRetryTestExecutor) DoStream(ctx context.Context, request *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
+	first := *executor.attempts == 0
+	if first && executor.beforeStart {
+		*executor.attempts++
+		return nil, executor.failure
+	}
+	stream, err := executor.retryTestExecutor.DoStream(ctx, request)
+	if first {
+		return &transportFailureStream{Stream: stream, failure: executor.failure}, err
+	}
+	return stream, err
+}
+
+type transportFailureStream struct {
+	streams.Stream[*httpclient.StreamEvent]
+	failure error
+}
+
+func (stream *transportFailureStream) Err() error { return stream.failure }
+
+func TestResponsesTransportResetRespectsOutputCommitBoundary(t *testing.T) {
+	created := &httpclient.StreamEvent{Data: []byte(`{"type":"response.created","response":{"id":"resp_failed","status":"in_progress","output":[]}}`)}
+	text := &httpclient.StreamEvent{Data: []byte(`{"type":"response.output_text.delta","item_id":"msg_output","output_index":0,"content_index":0,"delta":"ok"}`)}
+	completed := &httpclient.StreamEvent{Data: []byte(`{"type":"response.completed","response":{"id":"resp_ok","status":"completed","output":[]}}`)}
+	for _, scenario := range []struct {
+		name        string
+		beforeStart bool
+		content     bool
+	}{
+		{name: "before headers", beforeStart: true},
+		{name: "metadata only"},
+		{name: "after output", content: true},
+	} {
+		t.Run(scenario.name, func(t *testing.T) {
+			realResponses, err := openairesponses.NewOutboundTransformer("https://api.openai.com", "test-key")
+			require.NoError(t, err)
+			attempts, prepareCalls := 0, 0
+			failure := errors.New("stream error: stream ID 65; INTERNAL_ERROR; received from peer")
+			firstEvents := []*httpclient.StreamEvent{created}
+			if scenario.content {
+				firstEvents = append(firstEvents, text)
+			}
+			executor := &transportRetryTestExecutor{retryTestExecutor: &retryTestExecutor{attempts: &attempts, streams: [][]*httpclient.StreamEvent{firstEvents, {text, completed}}}, failure: failure, beforeStart: scenario.beforeStart}
+			outbound := &transportRetryTestOutbound{retryTestOutbound: &retryTestOutbound{real: realResponses, prepareCalls: &prepareCalls}, failure: failure}
+			processor := llmpipeline.NewFactory(executor).Pipeline(&retryTestInbound{}, outbound, llmpipeline.WithRetry(0, 1, 0))
+			result, err := processor.Process(t.Context(), &httpclient.Request{})
+			require.NoError(t, err)
+			events, err := streams.All(result.EventStream)
+			if scenario.content {
+				require.ErrorIs(t, err, failure)
+				require.Equal(t, 1, attempts)
+				require.Zero(t, prepareCalls)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, 2, attempts)
+				require.Equal(t, 1, prepareCalls)
+			}
+			count := 0
+			for _, event := range events {
+				if string(event.Data) == "ok" {
+					count++
+				}
+			}
+			require.Equal(t, 1, count)
+		})
+	}
+}
+
 type rateLimitRetryTestOutbound struct {
 	*retryTestOutbound
 	cancel context.CancelFunc
