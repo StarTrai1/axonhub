@@ -53,14 +53,19 @@ func TestRequestServiceLoadCompletedResponsesSessionScopesByAPIKeyAndProject(t *
 		Save(ctx)
 	require.NoError(t, err)
 
+	websocketDelta := []byte(`{"previous_response_id":"resp_ancestor","input":[{"type":"function_call_output","call_id":"call_old","output":"ok"}]}`)
 	createSessionRequest := func(apiKeyID int, format, responseID, marker string) {
 		t.Helper()
+		body := []byte(`{"model":"gpt-5","input":"` + marker + `"}`)
+		if format == string(llm.APIFormatOpenAIResponseWebSocket) {
+			body = websocketDelta
+		}
 		_, createErr := client.Request.Create().
 			SetAPIKeyID(apiKeyID).
 			SetProjectID(projectEntity.ID).
 			SetModelID("gpt-5").
 			SetFormat(format).
-			SetRequestBody([]byte(`{"model":"gpt-5","input":"` + marker + `"}`)).
+			SetRequestBody(body).
 			SetResponseBody([]byte(`{"id":"` + responseID + `","status":"completed","output":[{"type":"message","role":"assistant","content":"` + marker + `"}]}`)).
 			SetExternalID(responseID).
 			SetStatus("completed").
@@ -96,7 +101,7 @@ func TestRequestServiceLoadCompletedResponsesSessionScopesByAPIKeyAndProject(t *
 	requestBody, responseBody, found, err = service.LoadCompletedResponsesSession(ownerCtx, "resp_websocket")
 	require.NoError(t, err)
 	require.True(t, found)
-	require.JSONEq(t, `{"model":"gpt-5","input":"websocket"}`, string(requestBody))
+	require.JSONEq(t, string(websocketDelta), string(requestBody))
 	require.JSONEq(t, `{"id":"resp_websocket","status":"completed","output":[{"type":"message","role":"assistant","content":"websocket"}]}`, string(responseBody))
 
 	_, _, found, err = service.LoadCompletedResponsesSession(otherCtx, "resp_websocket")
@@ -111,8 +116,6 @@ func TestRequestServiceLoadCompletedResponsesSessionScopesByAPIKeyAndProject(t *
 	require.False(t, found)
 
 	parent, err := client.Request.Query().Where(request.ExternalIDEQ("resp_websocket")).Only(ctx)
-	require.NoError(t, err)
-	_, err = parent.Update().SetRequestBody([]byte(`{"previous_response_id":"resp_ancestor","input":[{"type":"function_call_output","call_id":"call_old","output":"ok"}]}`)).Save(ctx)
 	require.NoError(t, err)
 	nativeRequest := []byte(`{"model":"gpt-5","input":[{"role":"user","content":"full history"},{"type":"function_call","id":"fc_old","call_id":"call_old","name":"exec","arguments":"{}"},{"type":"function_call_output","call_id":"call_old","output":"ok"}]}`)
 	nativeResponse := []byte(`{"id":"resp_websocket","status":"completed","output":[{"type":"function_call","id":"fc_native","call_id":"call_native","name":"exec","arguments":"{}"}]}`)
