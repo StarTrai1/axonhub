@@ -30,6 +30,7 @@ import (
 
 const (
 	remoteCompactionHistoryLookupLimit = 1024
+	remoteCompactionMaxSourceDepth     = 16
 	remoteCompactionCacheHeader        = "X-Axonhub-Remote-Compaction-Cache"
 	remoteCompactionCacheExpiration    = 24 * time.Hour
 	remoteCompactionCacheCleanup       = time.Hour
@@ -641,9 +642,48 @@ func (a *remoteCompactionAdapter) summaryForCompaction(
 	state *PersistenceState,
 	executor pipeline.Executor,
 ) (string, error) {
+	return a.summaryForCompactionChain(ctx, cacheKey, ref, threadID, model, state, executor, make(map[string]struct{}))
+}
+
+func (a *remoteCompactionAdapter) summaryForCompactionChain(
+	ctx context.Context,
+	cacheKey string,
+	ref *remoteCompactionReference,
+	threadID string,
+	model string,
+	state *PersistenceState,
+	executor pipeline.Executor,
+	ancestors map[string]struct{},
+) (string, error) {
+	if ref == nil || ref.ID == "" || threadID == "" {
+		return "", errors.New("remote compaction local fallback requires a compaction id and Codex thread id")
+	}
+	if _, seen := ancestors[cacheKey]; seen {
+		return "", fmt.Errorf("remote compaction history contains a cycle at %q", ref.ID)
+	}
+	if len(ancestors) >= remoteCompactionMaxSourceDepth {
+		return "", fmt.Errorf("remote compaction history exceeds %d generations", remoteCompactionMaxSourceDepth)
+	}
 	if cached, ok := a.summaries.Get(cacheKey); ok {
 		if summary, valid := cached.(string); valid && summary != "" {
 			return summary, nil
+		}
+	}
+
+	ancestors[cacheKey] = struct{}{}
+	defer delete(ancestors, cacheKey)
+
+	summary, source, err := a.findStoredSummaryOrSource(ctx, cacheKey, ref.ID, threadID, model, state)
+	if err != nil {
+		return "", err
+	}
+	if summary == "" {
+		if source == nil {
+			return "", fmt.Errorf("original request for compaction %q was not retained", ref.ID)
+		}
+		source, err = a.adaptStoredCompactionSource(ctx, source, state, executor, ancestors)
+		if err != nil {
+			return "", err
 		}
 	}
 
@@ -654,14 +694,7 @@ func (a *remoteCompactionAdapter) summaryForCompaction(
 			}
 		}
 
-		summary, source, err := a.findStoredSummaryOrSource(ctx, cacheKey, ref.ID, threadID, model, state)
-		if err != nil {
-			return "", err
-		}
 		if summary == "" {
-			if source == nil {
-				return "", fmt.Errorf("original request for compaction %q was not retained", ref.ID)
-			}
 			summary, err = a.generateLocalSummary(ctx, cacheKey, source, state, executor)
 			if err != nil {
 				return "", err
@@ -681,6 +714,31 @@ func (a *remoteCompactionAdapter) summaryForCompaction(
 	}
 
 	return summary, nil
+}
+
+func (a *remoteCompactionAdapter) adaptStoredCompactionSource(
+	ctx context.Context,
+	source *remoteCompactionSource,
+	state *PersistenceState,
+	executor pipeline.Executor,
+	ancestors map[string]struct{},
+) (*remoteCompactionSource, error) {
+	ref, threadID, model, err := parseRemoteCompactionRequest(source.body)
+	if err != nil {
+		return nil, err
+	}
+	if ref == nil {
+		return source, nil
+	}
+	summary, err := a.summaryForCompactionChain(ctx, remoteCompactionCacheKey(ref), ref, threadID, model, state, executor, ancestors)
+	if err != nil {
+		return nil, fmt.Errorf("restore earlier compaction %q: %w", ref.ID, err)
+	}
+	body, err := replaceRemoteCompactionWithLocalSummary(source.body, summary)
+	if err != nil {
+		return nil, err
+	}
+	return &remoteCompactionSource{body: body, headers: source.headers}, nil
 }
 
 func (a *remoteCompactionAdapter) findStoredSummaryOrSource(
@@ -893,6 +951,7 @@ func (a *remoteCompactionAdapter) generateLocalSummaryWithCandidate(
 		RequestService:          a.requestService,
 		UsageLogService:         a.usageLogService,
 		ChannelService:          parentState.ChannelService,
+		RetryPolicyProvider:     parentState.RetryPolicyProvider,
 		Proxy:                   parentState.Proxy,
 		OriginalModel:           bridgeRequest.Model,
 		RawRequest:              rawRequest,
@@ -912,12 +971,15 @@ func (a *remoteCompactionAdapter) generateLocalSummaryWithCandidate(
 		return "", fmt.Errorf("finalize local compaction bridge authentication: %w", err)
 	}
 
+	compatibility := applyResponsesRejectedStatusCompatibility(outbound)
 	requestMiddlewares := []pipeline.Middleware{
 		applyPassThroughRequestBody(outbound, a.systemService),
 		applyOverrideRequestBody(outbound),
+		compatibility,
 		applyUserAgentPassThrough(outbound, a.systemService),
 		applyOverrideRequestHeaders(outbound),
 		applyCodexIdentityPolicy(outbound),
+		finalizeTransportRequest(outbound),
 	}
 	for _, middleware := range requestMiddlewares {
 		providerRequest, err = middleware.OnOutboundRawRequest(ctx, providerRequest)
@@ -927,24 +989,6 @@ func (a *remoteCompactionAdapter) generateLocalSummaryWithCandidate(
 	}
 	providerRequest.Headers.Del(remoteCompactionCacheHeader)
 
-	var executionRecord *ent.RequestExecution
-	if bridgeRecord != nil && a.requestService != nil {
-		entry := candidate.Models[0]
-		executionRecord, err = a.requestService.CreateRequestExecution(
-			ctx,
-			candidate.Channel,
-			entry.ActualModel,
-			bridgeRecord,
-			*providerRequest,
-			llm.APIFormatOpenAIResponse,
-			attemptState.PassThroughApplied,
-		)
-		if err != nil {
-			return "", err
-		}
-		attemptState.RequestExec = executionRecord
-	}
-
 	customizedExecutor := outbound.CustomizeExecutor(executor)
 	perf := &biz.PerformanceRecord{
 		ChannelID: candidate.Channel.ID,
@@ -952,9 +996,8 @@ func (a *remoteCompactionAdapter) generateLocalSummaryWithCandidate(
 		Stream:    true,
 	}
 	attemptState.Perf = perf
-	stream, err := customizedExecutor.DoStream(ctx, providerRequest)
+	stream, executionRecord, err := a.startLocalCompactionStream(ctx, outbound, providerRequest, customizedExecutor, compatibility)
 	if err != nil {
-		a.markBridgeExecutionFailed(ctx, executionRecord, err)
 		return "", err
 	}
 	stream = maybeRepairDelayedCodexResponsesTerminal(

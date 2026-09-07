@@ -233,6 +233,9 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		CurrentCandidateIndex: 0,
 		ManualSwitchControl:   pipeline.NewManualSwitchControl(),
 	}
+	if preparedResponsesBody != nil {
+		state.responsesSessions = processor.responsesSessions
+	}
 
 	var pipelineOpts []pipeline.Option
 	pipelineOpts = append(pipelineOpts, pipeline.WithManualSwitchControl(state.ManualSwitchControl))
@@ -317,12 +320,6 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		// The request execution middleware must be the final middleware
 		// to ensure that the request execution is created with the correct request bodys.
 		persistRequestExecution(outbound),
-		pipeline.OnRawStream("cache-native-responses-session", func(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*httpclient.StreamEvent], error) {
-			if preparedResponsesBody != nil && state.RawProviderRequest != nil && state.RawProviderRequest.APIFormat == string(llm.APIFormatOpenAIResponse) {
-				return processor.responsesSessions.wrapStream(ctx, state.RawProviderRequest.Body, stream), nil
-			}
-			return stream, nil
-		}),
 		pipeline.OnRawResponse("cache-native-responses-session", func(ctx context.Context, response *httpclient.Response) (*httpclient.Response, error) {
 			if preparedResponsesBody != nil && response != nil && state.RawProviderRequest != nil && state.RawProviderRequest.APIFormat == string(llm.APIFormatOpenAIResponse) {
 				processor.responsesSessions.record(ctx, state.RawProviderRequest.Body, response.Body)

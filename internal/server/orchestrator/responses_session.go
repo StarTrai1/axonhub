@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
@@ -303,6 +304,18 @@ func (s *responsesSessionStore) wrapStream(
 	wrapped.inner = stream
 
 	return wrapped
+}
+
+func cacheNativeResponsesSessionStream(
+	ctx context.Context,
+	state *PersistenceState,
+	stream streams.Stream[*httpclient.StreamEvent],
+) streams.Stream[*httpclient.StreamEvent] {
+	if state.responsesSessions == nil || state.RawProviderRequest == nil ||
+		state.RawProviderRequest.APIFormat != string(llm.APIFormatOpenAIResponse) {
+		return stream
+	}
+	return state.responsesSessions.wrapStream(ctx, state.RawProviderRequest.Body, stream)
 }
 
 type responsesSessionStream struct {

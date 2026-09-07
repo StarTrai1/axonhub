@@ -555,18 +555,18 @@ func captureRawProviderStreamWithTerminalGrace(
 ) pipeline.Middleware {
 	return pipeline.OnRawStream("capture-raw-provider-stream", func(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*httpclient.StreamEvent], error) {
 		if !outbound.isResponsePassThroughEnabled(ctx, systemService) {
-			if !shouldRepairDelayedCodexResponsesTerminal(outbound) {
-				return stream, nil
+			if shouldRepairDelayedCodexResponsesTerminal(outbound) {
+				channel := outbound.GetCurrentChannel()
+				stream = maybeRepairDelayedCodexResponsesTerminal(
+					ctx,
+					outbound,
+					stream,
+					terminalGracePeriod,
+					newDelayedCodexResponsesUsageRecorder(ctx, outbound.state, channel.Name),
+				)
 			}
 
-			channel := outbound.GetCurrentChannel()
-			return maybeRepairDelayedCodexResponsesTerminal(
-				ctx,
-				outbound,
-				stream,
-				terminalGracePeriod,
-				newDelayedCodexResponsesUsageRecorder(ctx, outbound.state, channel.Name),
-			), nil
+			return cacheNativeResponsesSessionStream(ctx, outbound.state, stream), nil
 		}
 
 		channel := outbound.GetCurrentChannel()
@@ -593,6 +593,7 @@ func captureRawProviderStreamWithTerminalGrace(
 			terminalGracePeriod,
 			newDelayedCodexResponsesUsageRecorder(ctx, outbound.state, channel.Name),
 		)
+		stream = cacheNativeResponsesSessionStream(attemptCtx, outbound.state, stream)
 
 		var closeStreamOnce sync.Once
 		closeStream := func() {
