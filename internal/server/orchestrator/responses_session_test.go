@@ -218,7 +218,7 @@ func TestResponsesSessionStoreRecordsCompletedStream(t *testing.T) {
 
 	prepared, _ := store.prepare(ctx, []byte(`{"model":"gpt-5","previous_response_id":"resp_stream","input":"three"}`))
 	require.JSONEq(t,
-		`{"model":"gpt-5","input":[{"type":"message","role":"user","content":"one"},{"id":"msg_1","type":"message","role":"assistant","content":[{"type":"output_text","text":"two"}]},{"type":"message","role":"user","content":"three"}]}`,
+		`{"model":"gpt-5","input":[{"type":"message","role":"user","content":"one"},{"id":"msg_1","type":"message","role":"assistant","content":[{"type":"output_text","text":"two","annotations":[]}]},{"type":"message","role":"user","content":"three"}]}`,
 		string(prepared),
 	)
 }

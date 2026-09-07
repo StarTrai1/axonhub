@@ -28,7 +28,7 @@ func TestRemoteCompactionRestoresWebSocketSnapshotAfterRestartAndModelSwitch(t *
 	client := enttest.NewEntClient(t, "sqlite3", "file:compaction-restart?mode=memory&_fk=0")
 	t.Cleanup(func() { client.Close() })
 	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
-	_, err := client.DataStorage.Create().SetName("primary").SetPrimary(true).SetType("database").SetSettings(new(objects.DataStorageSettings)).Save(ctx)
+	_, err := client.DataStorage.Create().SetName("primary").SetDescription("test storage").SetPrimary(true).SetType("database").SetSettings(new(objects.DataStorageSettings)).Save(ctx)
 	require.NoError(t, err)
 	apiKey := &ent.APIKey{ID: 71, ProjectID: 72}
 	ctx = contexts.WithProjectID(contexts.WithAPIKey(ctx, apiKey), apiKey.ProjectID)
@@ -88,7 +88,7 @@ func TestRemoteCompactionPreparationFailureIsPersistedWithoutUpstreamExecution(t
 	client := enttest.NewEntClient(t, "sqlite3", "file:compaction-failure?mode=memory&_fk=0")
 	t.Cleanup(func() { client.Close() })
 	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
-	_, err := client.DataStorage.Create().SetName("primary").SetPrimary(true).SetType("database").SetSettings(new(objects.DataStorageSettings)).Save(ctx)
+	_, err := client.DataStorage.Create().SetName("primary").SetDescription("test storage").SetPrimary(true).SetType("database").SetSettings(new(objects.DataStorageSettings)).Save(ctx)
 	require.NoError(t, err)
 	apiKey := &ent.APIKey{ID: 81, ProjectID: 82}
 	ctx = shared.WithResponsesWebSocket(contexts.WithProjectID(contexts.WithAPIKey(ctx, apiKey), apiKey.ProjectID))

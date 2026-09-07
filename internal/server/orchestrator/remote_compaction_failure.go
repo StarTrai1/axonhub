@@ -17,8 +17,7 @@ func (err *remoteCompactionPreparationError) Error() string { return err.cause.E
 func (err *remoteCompactionPreparationError) Unwrap() error { return err.cause }
 
 func persistRemoteCompactionPreparationFailure(ctx context.Context, inbound *PersistentInboundTransformer, failure error) error {
-	var preparationError *remoteCompactionPreparationError
-	if !errors.As(failure, &preparationError) {
+	if _, matched := errors.AsType[*remoteCompactionPreparationError](failure); !matched {
 		return nil
 	}
 	state := inbound.state
