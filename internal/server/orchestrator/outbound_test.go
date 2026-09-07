@@ -792,7 +792,7 @@ func TestPersistentOutboundTransformer_CanRetry(t *testing.T) {
 		require.False(t, outbound.CanRetry(errSkipCandidateByCircuitBreaker))
 	})
 
-	t.Run("sticky candidate should not trigger same-channel retry", func(t *testing.T) {
+	t.Run("sticky candidate retries only transient rate limits on the last channel", func(t *testing.T) {
 		outbound := &PersistentOutboundTransformer{
 			wrapped: &mockTransformer{},
 			state: &PersistenceState{
@@ -807,7 +807,8 @@ func TestPersistentOutboundTransformer_CanRetry(t *testing.T) {
 			},
 		}
 
-		require.False(t, outbound.CanRetry(retryableErr))
+		require.True(t, outbound.CanRetry(retryableErr))
+		require.False(t, outbound.CanRetry(&httpclient.Error{StatusCode: http.StatusInternalServerError}))
 	})
 
 	t.Run("auto-aggregate empty errors are retryable", func(t *testing.T) {
