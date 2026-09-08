@@ -1381,7 +1381,8 @@ func TestConvertAnthropicToolToLLM(t *testing.T) {
 			expected: llm.Tool{
 				Type: "function",
 				Function: llm.Function{
-					Name: WebSearchFunctionName,
+					Name:       WebSearchFunctionName,
+					Parameters: json.RawMessage(`{"type":"object","properties":{}}`),
 				},
 			},
 			expectedBool: true,
