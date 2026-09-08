@@ -244,6 +244,9 @@ func (s *responsesInboundStream) Next() bool {
 	if chunk.Usage != nil {
 		s.usage = chunk.Usage
 	}
+	if s.aggregator == nil {
+		s.aggregator = newStreamAggregator()
+	}
 	if chunk.ServiceTier != "" {
 		s.aggregator.serviceTier = lo.ToPtr(chunk.ServiceTier)
 	}

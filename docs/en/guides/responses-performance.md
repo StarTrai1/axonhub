@@ -149,6 +149,12 @@ same-channel retries.
 
 ## GPT-6 Astra stream compatibility
 
+`response.steer.accepted` only acknowledges queued input. Even if the initial
+response completes first, the gateway waits for its automatic successor or an
+explicit pending/failure event. Native pass-through and converted streams share
+this terminal boundary. Delayed-terminal repair does not synthesize completion
+after steering has been accepted.
+
 Async function/custom-tool identity, steering, configuration updates and prompt
 cache controls retain their existing contracts. A custom tool whose input arrives
 only in `response.custom_tool_call_input.done` now emits the missing suffix once;
@@ -158,6 +164,29 @@ Conflicting final input fails explicitly instead of executing a changed command.
 Generic relay error messages now retain structured `code` and `param` in execution
 logs. A successful final attempt does not erase earlier attempt failures, and a
 bare historical `bad response status code` is not proof of remote-compaction failure.
+
+## Cross-channel history IDs
+
+When replaying full history to official OpenAI Responses/Codex endpoints, generic
+`item_...` IDs emitted by compatible relays can fail type-specific validation.
+Final request preparation removes only those generic IDs from known message,
+reasoning, function/custom-tool call and result items, including HTTP, WebSocket,
+and raw pass-through requests. It preserves the original history, content,
+summaries, encrypted fields, extension metadata, and `call_id` values. It does not
+fabricate server-side `rs_` or `fc_` references by replacing prefixes.
+
+Native IDs, item references, unknown item types, and third-party destinations are
+unchanged. This fixes generic-ID compatibility; it does not decrypt foreign
+provider state or guarantee cross-account portability of encrypted content.
+
+## Cross-protocol tools and accounting
+
+Chat Completions function tools with omitted `strict` become explicitly
+`strict:false` when converted to Responses, preserving the source API default.
+Explicit values and native Responses defaults are unchanged. Response conversion
+and stream aggregation preserve the actual upstream `service_tier`; a terminal
+value supersedes an earlier value. Cache-read and cache-write token counts remain
+separate, and the requested service tier is not substituted for actual accounting.
 
 ## Claude Code identity version
 

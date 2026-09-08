@@ -63,6 +63,20 @@ func TestResponsesServiceTierAndCacheWriteRoundTrip(t *testing.T) {
 	require.Equal(t, int64(1000), converted.Usage.InputTokenDetails.CacheWriteTokens)
 }
 
+func TestAstraPreservesAllowedToolsAndIndependentReasoningMode(t *testing.T) {
+	body := []byte(`{"model":"gpt-6-astra","input":[{"type":"configuration_update","reasoning":{"effort":"high"}},{"role":"user","content":"hello"}],"reasoning":{"effort":"low","mode":"pro"},"tools":[{"type":"function","name":"lookup","parameters":{"type":"object","properties":{}}}],"tool_choice":{"type":"allowed_tools","mode":"required","tools":[{"type":"function","name":"lookup"}]}}`)
+	request, err := NewInboundTransformer().TransformRequest(t.Context(), &httpclient.Request{Body: body})
+	require.NoError(t, err)
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-key")
+	require.NoError(t, err)
+	result, err := outbound.TransformRequest(t.Context(), request)
+	require.NoError(t, err)
+	require.JSONEq(t, gjson.GetBytes(body, "tool_choice").Raw, gjson.GetBytes(result.Body, "tool_choice").Raw)
+	require.Equal(t, "pro", gjson.GetBytes(result.Body, "reasoning.mode").String())
+	require.Equal(t, "low", gjson.GetBytes(result.Body, "reasoning.effort").String())
+	require.Equal(t, "high", gjson.GetBytes(result.Body, "input.0.reasoning.effort").String())
+}
+
 func TestResponsesStreamServiceTierUsesActualTerminalValue(t *testing.T) {
 	events := []*httpclient.StreamEvent{
 		{Data: []byte(`{"type":"response.created","response":{"id":"resp_tier","model":"gpt-6-astra","service_tier":"default","output":[]}}`)},

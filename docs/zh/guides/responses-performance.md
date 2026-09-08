@@ -105,12 +105,35 @@ server:
 
 ## GPT-6 Astra 流式兼容
 
+Steering 的 `response.steer.accepted` 只表示更新已排队。原响应即使先发出
+`response.completed`，网关仍会等待自动后继响应，或等待明确的 pending/failed 事件；
+不会把原响应的完成误当成整个 steering 请求结束。原生透传与转换路径遵守同一终止边界，
+接收 steering 后也不会用延迟完成修复提前合成终止事件。
+
 继续保留异步函数/自定义工具身份、steering、配置更新及缓存控制。
 自定义工具输入只在 `response.custom_tool_call_input.done` 中提供时，补发缺失后缀且仅发一次；
 重复或空 done 事件不会清空或重复已发输入。最终输入与已发前缀冲突时明确报错，不执行被改变的命令。
 
 执行日志中的泛化中转错误补充结构化 `code` 和 `param`。最终尝试成功不会删除前面的失败记录；
 历史记录只有 `bad response status code` 时，不能据此判断为远程压缩故障。
+
+## 跨渠道历史 ID
+
+向 OpenAI 官方 Responses/Codex 端点发送完整历史时，部分中转生成的 `item_...` ID
+会被官方按项目类型校验拒绝。最终请求准备阶段只移除已知消息、推理、函数/自定义工具
+调用及结果上的这种通用 `id`，兼容 HTTP、WebSocket 与原生透传。
+原始历史不变；正文、summary、加密字段、扩展元数据和 `call_id` 均保留。
+不会把 `item_` 改写成虚构的 `rs_`/`fc_` 服务端引用。
+
+有效原生 ID、`item_reference`、未知项目类型以及第三方目标保持不变。
+这只能解决通用 ID 的兼容性，不会解密跨提供商的加密状态，也不保证该状态能跨账户使用。
+
+## 跨协议工具与计量
+
+Chat Completions 转 Responses 时，未指定 `strict` 的函数工具显式使用 `strict:false`，
+保持原 API 的非严格默认语义；显式设置及原生 Responses 默认值不变。
+转换和流式聚合保留上游实际返回的 `service_tier`，终止事件的实际值优先于早期值。
+缓存读取与写入 token 继续分别保留，不从请求的服务层级推测实际计量。
 
 ## Claude Code 身份版本
 
