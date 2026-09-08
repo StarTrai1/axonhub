@@ -20,6 +20,7 @@ import (
 
 	entchannel "github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
@@ -33,10 +34,11 @@ var (
 )
 
 type responsesRejectedStatusRule struct {
-	itemType string
-	index    int
-	field    string
-	dropItem bool
+	itemType      string
+	index         int
+	field         string
+	dropItem      bool
+	metadataScope *responsesMetadataCapabilityKey
 }
 
 type responsesMetadataCapabilityKey struct {
@@ -48,7 +50,7 @@ type responsesMetadataCapabilityKey struct {
 
 var rejectedResponsesMetadata = lo.Must(lru.New[responsesMetadataCapabilityKey, time.Time](1024))
 
-const responsesMetadataCapabilityTTL = 6 * time.Hour
+const responsesMetadataCapabilityTTL = biz.ResponsesMetadataCapabilityTTL
 
 func responsesMetadataKey(channelID int, request *httpclient.Request) responsesMetadataCapabilityKey {
 	credential := request.Headers.Get("Authorization")
@@ -99,15 +101,20 @@ func (m *responsesRejectedStatusCompatibilityMiddleware) OnOutboundRawRequest(
 	if channel == nil {
 		return request, nil
 	}
+	var metadataKey responsesMetadataCapabilityKey
 	if request.URL != "" && request.APIFormat == string(llm.APIFormatOpenAIResponse) {
-		if expires, ok := rejectedResponsesMetadata.Get(responsesMetadataKey(channel.ID, request)); ok && time.Now().Before(expires) {
+		metadataKey = responsesMetadataKey(channel.ID, request)
+		if m.hasMetadataRejection(ctx, metadataKey, request.Body) {
 			rememberResponsesRejectedStatusRule(m.outbound.state, channel.ID, responsesRejectedStatusRule{
-				itemType: "message", field: "internal_chat_message_metadata_passthrough",
+				itemType: "message", field: "internal_chat_message_metadata_passthrough", metadataScope: lo.ToPtr(metadataKey),
 			})
 		}
 	}
 
-	body, changed, err := stripResponsesRejectedStatus(request.Body, m.outbound.state.responsesRejectedStatusRules[channel.ID])
+	rules := lo.Filter(m.outbound.state.responsesRejectedStatusRules[channel.ID], func(rule responsesRejectedStatusRule, _ int) bool {
+		return rule.metadataScope == nil || *rule.metadataScope == metadataKey
+	})
+	body, changed, err := stripResponsesRejectedStatus(request.Body, rules)
 	if err != nil {
 		return nil, err
 	}
@@ -136,13 +143,19 @@ func (m *responsesRejectedStatusCompatibilityMiddleware) OnOutboundRawError(ctx 
 	}
 
 	rule, ok := responsesRejectedStatusRuleFromError(err, state.RawProviderRequest.Body)
-	if !ok || (rule.dropItem && channel.Type != entchannel.TypeCodex) || !rememberResponsesRejectedStatusRule(state, channel.ID, rule) {
+	if !ok || (rule.dropItem && channel.Type != entchannel.TypeCodex) {
+		return
+	}
+	if rule.fieldName() == "internal_chat_message_metadata_passthrough" && state.RawProviderRequest.URL != "" {
+		rule.metadataScope = lo.ToPtr(responsesMetadataKey(channel.ID, state.RawProviderRequest))
+	}
+	if !rememberResponsesRejectedStatusRule(state, channel.ID, rule) {
 		return
 	}
 
 	state.responsesRejectedStatusRetryChannel = channel.ID
-	if rule.fieldName() == "internal_chat_message_metadata_passthrough" && state.RawProviderRequest.URL != "" {
-		rejectedResponsesMetadata.Add(responsesMetadataKey(channel.ID, state.RawProviderRequest), time.Now().Add(responsesMetadataCapabilityTTL))
+	if rule.metadataScope != nil {
+		m.persistMetadataRejection(ctx, *rule.metadataScope)
 	}
 	log.Info(ctx, "Responses input state rejected; scheduling compatible same-channel retry",
 		log.Int("channel_id", channel.ID),
@@ -225,6 +238,11 @@ func rememberResponsesRejectedStatusRule(state *PersistenceState, channelID int,
 		if existing.fieldName() != rule.fieldName() {
 			continue
 		}
+		if existing.metadataScope != nil || rule.metadataScope != nil {
+			if existing.metadataScope == nil || rule.metadataScope == nil || *existing.metadataScope != *rule.metadataScope {
+				continue
+			}
+		}
 		if rule.itemType != "" && existing.itemType == rule.itemType {
 			return false
 		}
@@ -239,8 +257,11 @@ func rememberResponsesRejectedStatusRule(state *PersistenceState, channelID int,
 }
 
 func stripResponsesRejectedStatus(body []byte, rules []responsesRejectedStatusRule) ([]byte, bool, error) {
+	if len(rules) == 0 {
+		return body, false, nil
+	}
 	input := gjson.GetBytes(body, "input")
-	if !input.IsArray() || len(rules) == 0 {
+	if !input.IsArray() {
 		return body, false, nil
 	}
 	items := input.Array()

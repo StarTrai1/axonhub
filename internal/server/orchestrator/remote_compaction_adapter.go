@@ -998,6 +998,7 @@ func (a *remoteCompactionAdapter) generateLocalSummaryWithCandidate(
 	attemptState := &PersistenceState{
 		RequestService:          a.requestService,
 		UsageLogService:         a.usageLogService,
+		SystemService:           a.systemService,
 		ChannelService:          parentState.ChannelService,
 		RetryPolicyProvider:     parentState.RetryPolicyProvider,
 		Proxy:                   parentState.Proxy,
@@ -1023,10 +1024,10 @@ func (a *remoteCompactionAdapter) generateLocalSummaryWithCandidate(
 	requestMiddlewares := []pipeline.Middleware{
 		applyPassThroughRequestBody(outbound, a.systemService),
 		applyOverrideRequestBody(outbound),
-		compatibility,
 		applyUserAgentPassThrough(outbound, a.systemService),
 		applyOverrideRequestHeaders(outbound),
 		applyCodexIdentityPolicy(outbound),
+		compatibility,
 		finalizeTransportRequest(outbound),
 	}
 	for _, middleware := range requestMiddlewares {

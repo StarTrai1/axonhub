@@ -36,10 +36,26 @@ unknown or unsupported parameter. Message content, tools, encrypted compaction
 history and the prompt cache key remain unchanged. The normal retry budget still
 applies; enable at least one same-channel retry to recover the first rejection.
 
-Learned rejection is kept in a bounded, process-local cache for six hours, scoped
-by channel, endpoint, model and hashed credential. Subsequent requests avoid the
-known-failing round trip. Other endpoints and credentials retain their native
-metadata. Generic HTTP 400 errors never activate this behavior.
+Explicitly learned rejection is kept in both a bounded process-local cache and
+a versioned database record for six hours, scoped by the final channel, endpoint,
+model and hashed credential. The database stores only scope digests and expiry
+times, never credentials or request contents, with at most 1,024 capabilities.
+Expired entries are ignored on reads and pruned on subsequent learning; the
+earliest-expiring entries are evicted when the limit is reached. After a restart
+or upgrade against the same database, the first request can restore an unexpired
+capability without extending its original expiry. The first installation of this
+feature, expiry or a new scope may still require one explicit rejection to learn;
+old execution logs are not used to guess credential capabilities.
+
+Subsequent requests avoid the known-failing round trip. Other endpoints and
+credentials retain native metadata. Database read failures or malformed records
+leave the original request intact, allowing the existing explicit-rejection retry;
+write failures do not block in-memory recovery. Storage operations are bounded to
+two seconds, with a one-minute lookup-miss/error cache. Conditional updates merge
+concurrent learning without overwriting other scopes. Channel settings, retry
+budgets and failed-attempt audit records are unchanged. Generic HTTP 400 and
+encrypted-reasoning errors never become persistent global capabilities; the latter
+retain the per-request guarded recovery described below.
 
 ## Rejected encrypted reasoning
 
