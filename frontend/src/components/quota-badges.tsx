@@ -258,53 +258,6 @@ function getApertisPercentage(qd: ProviderApertisQuotaData | undefined): number 
   return 0;
 }
 
-function ProgressBar({
-  percentage,
-  type = 'usage',
-  durationPercentage,
-}: {
-  percentage: number;
-  type?: 'usage' | 'duration';
-  durationPercentage?: number;
-}) {
-  const clamped = Math.min(Math.max(percentage || 0, 0), 100);
-
-  let bgStyle = {};
-  if (type === 'duration') {
-    bgStyle = { backgroundColor: '#71717a' }; // zinc-500
-  } else {
-    const u = clamped / 100;
-    let severity = u;
-    if (durationPercentage !== undefined && durationPercentage > 0) {
-      const d = Math.max(durationPercentage / 100, 0.01);
-      severity = u * (u / d);
-    }
-    severity = Math.min(1, Math.max(0, severity));
-
-    // Tailwind 500 colors approximation for a modern, theme-friendly gradient:
-    // Green (142, 71%, 45%), Yellow (45, 93%, 47%), Red (0, 84%, 60%)
-    let h, s, l;
-    if (severity < 0.5) {
-      const n = severity * 2; // 0 to 1
-      h = 142 - n * (142 - 45);
-      s = 71 + n * (93 - 71);
-      l = 45 + n * (47 - 45);
-    } else {
-      const n = (severity - 0.5) * 2; // 0 to 1
-      h = 45 - n * 45;
-      s = 93 - n * (93 - 84);
-      l = 47 + n * (60 - 47);
-    }
-    bgStyle = { backgroundColor: `hsl(${Math.round(h)}, ${Math.round(s)}%, ${Math.round(l)}%)` };
-  }
-
-  return (
-    <div className='bg-muted/60 h-1.5 w-full overflow-hidden rounded-full'>
-      <div className='h-full transition-all duration-500' style={{ width: `${clamped}%`, ...bgStyle }} />
-    </div>
-  );
-}
-
 function CodexAdditionalLimit({ limit }: { limit: ProviderCodexAdditionalRateLimit }) {
   const { t } = useTranslation();
   const title = limit.limit_name || limit.metered_feature || t('quota.codex.additionalLimit');
@@ -341,7 +294,7 @@ function CodexAdditionalLimit({ limit }: { limit: ProviderCodexAdditionalRateLim
               <span className='text-muted-foreground'>{windowLabel}</span>
               <span className='text-foreground font-medium tabular-nums'>{Math.round(usedPercent)}%</span>
             </div>
-            <ProgressBar percentage={usedPercent} />
+            <UsageTimeBar usagePercent={usedPercent} tooltip={`${windowLabel}: ${Math.round(usedPercent)}%`} />
             {value.reset_at && (
               <div className='text-muted-foreground text-right text-[10px]'>
                 {formatTimeToReset(value.reset_after_seconds)} ({formatDate(value.reset_at)})

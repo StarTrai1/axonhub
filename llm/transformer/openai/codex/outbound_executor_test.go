@@ -468,6 +468,19 @@ func TestCodexOutbound_HTTPTransportStripsWebSocketOnlyFields(t *testing.T) {
 	}
 }
 
+func TestCodexOutbound_FinalizerRepairsGenericReplayIDs(t *testing.T) {
+	for _, transport := range []string{responses.TransportHTTP, responses.TransportWebSocket} {
+		t.Run(transport, func(t *testing.T) {
+			outbound := &OutboundTransformer{transport: transport}
+			request := &httpclient.Request{URL: "https://chatgpt.com/backend-api/codex/responses", Body: []byte(`{"input":[{"type":"reasoning","id":"item_legacy","summary":[{"type":"summary_text","text":"preserved"}]}]}`)}
+			result := outbound.FinalizeTransportRequest(request)
+			require.False(t, gjson.GetBytes(result.Body, "input.0.id").Exists())
+			require.Equal(t, "preserved", gjson.GetBytes(result.Body, "input.0.summary.0.text").String())
+			require.Equal(t, "item_legacy", gjson.GetBytes(request.Body, "input.0.id").String())
+		})
+	}
+}
+
 func TestCodexOutbound_WebSocketTransportKeepsContinuationFields(t *testing.T) {
 	outbound, err := NewOutboundTransformer(Params{
 		BaseURL:   "https://chatgpt.com/backend-api/codex#",

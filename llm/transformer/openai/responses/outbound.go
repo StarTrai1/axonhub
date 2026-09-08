@@ -125,6 +125,7 @@ func (t *OutboundTransformer) CustomizeExecutor(executor pipeline.Executor) pipe
 }
 
 func (t *OutboundTransformer) FinalizeTransportRequest(request *httpclient.Request) *httpclient.Request {
+	request = PrepareReplayItemIDs(request)
 	if t == nil || t.config == nil || t.config.Transport == TransportWebSocket {
 		return request
 	}
@@ -256,6 +257,9 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 			tools = append(tools, tool)
 		case "function":
 			tool := convertFunctionToTool(item)
+			if llmReq.APIFormat == llm.APIFormatOpenAIChatCompletion && tool.Strict == nil {
+				tool.Strict = lo.ToPtr(false)
+			}
 			tools = append(tools, tool)
 		default:
 			// Skip unsupported tool types
@@ -474,6 +478,7 @@ func (t *OutboundTransformer) transformStandardResponse(
 		Object:              "chat.completion",
 		ID:                  resp.ID,
 		Model:               resp.Model,
+		ServiceTier:         lo.FromPtr(resp.ServiceTier),
 		Created:             resp.CreatedAt,
 		PreviousResponseID:  resp.PreviousResponseID,
 		Choices:             make([]llm.Choice, 0),

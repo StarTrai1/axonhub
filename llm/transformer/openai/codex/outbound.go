@@ -726,6 +726,7 @@ func (e *codexExecutor) requestForTransport(request *httpclient.Request) *httpcl
 }
 
 func (t *OutboundTransformer) FinalizeTransportRequest(request *httpclient.Request) *httpclient.Request {
+	request = responses.PrepareReplayItemIDs(request)
 	if t == nil || t.transport == responses.TransportWebSocket {
 		return request
 	}

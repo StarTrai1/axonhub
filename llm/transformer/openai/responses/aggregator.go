@@ -24,6 +24,7 @@ type streamAggregator struct {
 	createdAt          int64
 	status             string
 	previousResponseID *string
+	serviceTier        *string
 
 	// Output items - keyed by output_index.
 	// Some streams may (unexpectedly) reuse output_index for multiple items, so we store a slice.
@@ -243,6 +244,10 @@ func AggregateStreamChunks(_ context.Context, chunks []*httpclient.StreamEvent) 
 
 //nolint:gocognit,maintidx // Event processing is inherently complex.
 func (a *streamAggregator) processEvent(ev *StreamEvent) {
+	if ev.Response != nil && lo.FromPtr(ev.Response.ServiceTier) != "" {
+		a.serviceTier = ev.Response.ServiceTier
+	}
+
 	//nolint:exhaustive //Only process events we care about.
 	switch ev.Type {
 	case StreamEventTypeResponseCreated, StreamEventTypeResponseInProgress:
@@ -823,6 +828,7 @@ func (a *streamAggregator) buildResponse() *Response {
 		Output:             output,
 		Usage:              a.usage,
 		PreviousResponseID: a.previousResponseID,
+		ServiceTier:        a.serviceTier,
 		Error:              a.responseError,
 		IncompleteDetails:  a.incompleteDetails,
 	}

@@ -244,6 +244,9 @@ func (s *responsesInboundStream) Next() bool {
 	if chunk.Usage != nil {
 		s.usage = chunk.Usage
 	}
+	if chunk.ServiceTier != "" {
+		s.aggregator.serviceTier = lo.ToPtr(chunk.ServiceTier)
+	}
 
 	if len(chunk.TransformerMetadata) > 0 {
 		s.mergeTransformerMetadata(chunk.TransformerMetadata)
@@ -254,12 +257,13 @@ func (s *responsesInboundStream) Next() bool {
 		s.hasResponseCreated = true
 
 		response := &Response{
-			Object:    "response",
-			ID:        s.responseID,
-			Model:     s.model,
-			CreatedAt: s.createdAt,
-			Status:    lo.ToPtr("in_progress"),
-			Output:    []Item{},
+			Object:      "response",
+			ID:          s.responseID,
+			Model:       s.model,
+			ServiceTier: s.aggregator.serviceTier,
+			CreatedAt:   s.createdAt,
+			Status:      lo.ToPtr("in_progress"),
+			Output:      []Item{},
 		}
 
 		if s.usage != nil {
