@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -49,6 +50,24 @@ func TestSystemServiceResponsesMetadataPersistsAcrossInstances(test *testing.T) 
 	require.NotContains(test, record.Value, "private-channel-endpoint-model-credential")
 	require.NoError(test, service.SaveResponsesMetadataRejection(test.Context(), scope, expiresAt.Add(-time.Minute)))
 	restored, err = restarted.LoadResponsesMetadataRejection(test.Context(), scope)
+	require.NoError(test, err)
+	require.True(test, expiresAt.Equal(restored))
+}
+
+func TestSystemServiceResponsesMetadataSurvivesDatabaseReopen(test *testing.T) {
+	databaseURL := "file:" + filepath.ToSlash(filepath.Join(test.TempDir(), "capabilities.db")) + "?_fk=1"
+	firstClient := enttest.NewEntClient(test, "sqlite3", databaseURL)
+	test.Cleanup(func() { require.NoError(test, firstClient.Close()) })
+	first := NewSystemService(SystemServiceParams{Ent: firstClient})
+	scope := sha256.Sum256([]byte("durable-scope"))
+	expiresAt := time.Now().Add(time.Hour).UTC()
+	require.NoError(test, first.SaveResponsesMetadataRejection(test.Context(), scope, expiresAt))
+	require.NoError(test, firstClient.Close())
+
+	reopenedClient := enttest.NewEntClient(test, "sqlite3", databaseURL)
+	test.Cleanup(func() { require.NoError(test, reopenedClient.Close()) })
+	restarted := NewSystemService(SystemServiceParams{Ent: reopenedClient})
+	restored, err := restarted.LoadResponsesMetadataRejection(test.Context(), scope)
 	require.NoError(test, err)
 	require.True(test, expiresAt.Equal(restored))
 }
@@ -116,10 +135,11 @@ func TestSystemServiceResponsesMetadataBoundsPersistedEntries(test *testing.T) {
 	require.NoError(test, service.SaveResponsesMetadataRejection(test.Context(), scope, expiresAt))
 	record, err := client.System.Query().Where(system.KeyEQ(responsesMetadataCapabilitiesKey)).Only(ctx)
 	require.NoError(test, err)
-	require.NoError(test, json.Unmarshal([]byte(record.Value), &capabilities))
-	require.Len(test, capabilities.Rejections, responsesMetadataCapabilitiesLimit)
-	require.True(test, expiresAt.Equal(capabilities.Rejections[hex.EncodeToString(scope[:])]))
-	_, retained := capabilities.Rejections[hex.EncodeToString(oldestScope[:])]
+	var persisted responsesMetadataCapabilities
+	require.NoError(test, json.Unmarshal([]byte(record.Value), &persisted))
+	require.Len(test, persisted.Rejections, responsesMetadataCapabilitiesLimit)
+	require.True(test, expiresAt.Equal(persisted.Rejections[hex.EncodeToString(scope[:])]))
+	_, retained := persisted.Rejections[hex.EncodeToString(oldestScope[:])]
 	require.False(test, retained)
 	unrelated, err := client.System.Query().Where(system.KeyEQ("unrelated-setting")).Only(ctx)
 	require.NoError(test, err)

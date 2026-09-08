@@ -9,10 +9,9 @@ import (
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 
-	entchannel "github.com/looplj/axonhub/internal/ent/channel"
-
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
+	entchannel "github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
@@ -269,6 +268,7 @@ func TestResponsesRejectedMetadataDoesNotPersistGenericOrEncryptedRejections(tes
 }
 
 func TestResponsesRejectedMetadataConcurrentColdRestore(test *testing.T) {
+	test.Parallel()
 	client, request, outbound := responsesMetadataPersistenceFixture(test)
 	learnResponsesMetadataForTest(test, outbound)
 	clearResponsesMetadataTestCache(responsesMetadataKey(1729, request))
