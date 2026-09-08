@@ -623,6 +623,7 @@ func captureRawProviderStreamWithTerminalGrace(
 			// whether it finished naturally or was canceled by a retry.
 			defer closeStream()
 
+			steering := newResponsesSteeringState()
 			for {
 				select {
 				case <-attemptCtx.Done():
@@ -660,7 +661,7 @@ func captureRawProviderStreamWithTerminalGrace(
 					return
 				}
 
-				if IsTerminalStreamEvent(event) {
+				if steering.isFinalTerminal(event) {
 					return
 				}
 			}
@@ -760,6 +761,7 @@ type delayedCodexResponsesTerminalStream struct {
 	done             bool
 	synthesized      bool
 	terminalObserved bool
+	steeringObserved bool
 	response         *responses.Response
 	lastSequence     int
 	activeOutputs    map[int]struct{}
@@ -990,6 +992,9 @@ func (s *delayedCodexResponsesTerminalStream) observe(event *httpclient.StreamEv
 	}
 
 	switch responseEvent.Type {
+	case "response.steer.accepted":
+		s.steeringObserved = true
+
 	case responses.StreamEventTypeResponseCreated, responses.StreamEventTypeResponseInProgress:
 		if len(responseEvent.Response) > 0 {
 			var responseSnapshot *responses.Response
@@ -1041,6 +1046,7 @@ func (s *delayedCodexResponsesTerminalStream) observe(event *httpclient.StreamEv
 
 func (s *delayedCodexResponsesTerminalStream) canSynthesizeCompleted() bool {
 	return !s.terminalObserved &&
+		!s.steeringObserved &&
 		s.response != nil &&
 		s.response.ID != "" &&
 		s.hasTurnOutput() &&

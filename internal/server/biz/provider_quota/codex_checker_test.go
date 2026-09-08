@@ -115,6 +115,7 @@ func buildCodexQuotaTestJWT(t *testing.T, accountID string) string {
 
 func TestCodexQuotaChecker_ListResets_ReturnsAvailableResets(t *testing.T) {
 	accessToken := buildCodexQuotaTestJWT(t, "acct_reset")
+	expiresAt := time.Now().Add(24 * time.Hour).UTC().Truncate(time.Second).Format(time.RFC3339)
 
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
 		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
@@ -128,7 +129,7 @@ func TestCodexQuotaChecker_ListResets_ReturnsAvailableResets(t *testing.T) {
 				Header:     make(http.Header),
 				Body: io.NopCloser(strings.NewReader(`{
 					"credits": [
-						{"id": "cred_1", "status": "available", "reset_type": "codex_rate_limits", "granted_at": "2026-09-01T00:00:00Z", "expires_at": "2026-09-08T00:00:00Z", "title": "Full reset", "description": "Ready to redeem"},
+						{"id": "cred_1", "status": "available", "reset_type": "codex_rate_limits", "granted_at": "2026-09-01T00:00:00Z", "expires_at": "` + expiresAt + `", "title": "Full reset", "description": "Ready to redeem"},
 						{"id": "cred_2", "status": "redeemed"}
 					],
 					"available_count": 1
@@ -152,7 +153,7 @@ func TestCodexQuotaChecker_ListResets_ReturnsAvailableResets(t *testing.T) {
 	require.Equal(t, "available", resets.Resets[0].Status)
 	require.Equal(t, "codex_rate_limits", resets.Resets[0].Type)
 	require.Equal(t, "2026-09-01T00:00:00Z", resets.Resets[0].GrantedAt.Format(time.RFC3339))
-	require.Equal(t, "2026-09-08T00:00:00Z", resets.Resets[0].ExpiresAt.Format(time.RFC3339))
+	require.Equal(t, expiresAt, resets.Resets[0].ExpiresAt.Format(time.RFC3339))
 	require.Equal(t, "Full reset", resets.Resets[0].Title)
 	require.Equal(t, "Ready to redeem", resets.Resets[0].Description)
 }

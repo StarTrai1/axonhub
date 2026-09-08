@@ -609,6 +609,47 @@ func TestCaptureRawProviderStream_StopsAtTerminalEvent(t *testing.T) {
 	require.True(t, src.closed)
 }
 
+func TestCaptureRawProviderStreamPreservesSteeringContinuation(t *testing.T) {
+	for _, initialTerminal := range []string{
+		`{"type":"response.completed","response":{"id":"resp_initial","status":"completed"}}`,
+		`{"type":"response.incomplete","response":{"id":"resp_initial","status":"incomplete","incomplete_details":{"reason":"steered"}}}`,
+	} {
+		t.Run(initialTerminal, func(t *testing.T) {
+			outbound := newCodexResponsesPassThroughOutbound()
+			outbound.state.RawProviderRequest.Headers.Del(responsestransformer.ResponsesLiteHeader)
+			events := []*httpclient.StreamEvent{
+				{Data: []byte(`{"type":"response.created","response":{"id":"resp_initial"}}`)},
+				{Data: []byte(`{"type":"response.steer.accepted","steer":{"id":"steer_1","previous_response_id":"resp_initial"}}`)},
+				{Data: []byte(initialTerminal)},
+				{Data: []byte(`{"type":"response.created","response":{"id":"resp_successor","previous_response_id":"resp_initial"}}`)},
+				{Data: []byte(`{"type":"response.output_text.delta","delta":"STEERING_OK"}`)},
+				{Data: []byte(`{"type":"response.completed","response":{"id":"resp_successor","status":"completed"}}`)},
+			}
+			result, err := captureRawProviderStream(outbound, nil).OnOutboundRawStream(t.Context(), testHTTPStream(events))
+			require.NoError(t, err)
+			pipelineEvents, err := streams.All(result)
+			require.NoError(t, err)
+			var rawEvents []*httpclient.StreamEvent
+			for event := range outbound.state.RawStreamCh {
+				rawEvents = append(rawEvents, event)
+			}
+			require.Equal(t, events, pipelineEvents)
+			require.Equal(t, events, rawEvents)
+		})
+	}
+}
+
+func TestDelayedCodexTerminalDoesNotSynthesizeAfterSteering(t *testing.T) {
+	stream := &delayedCodexResponsesTerminalStream{
+		response:         &responsestransformer.Response{ID: "resp_initial"},
+		activeOutputs:    make(map[int]struct{}),
+		completedOutputs: map[int]responsestransformer.Item{0: {Type: "message"}},
+	}
+	require.True(t, stream.canSynthesizeCompleted())
+	stream.observe(&httpclient.StreamEvent{Data: []byte(`{"type":"response.steer.accepted","steer":{"id":"steer_1","previous_response_id":"resp_initial"}}`)})
+	require.False(t, stream.canSynthesizeCompleted())
+}
+
 func TestCaptureRawProviderStream_RepairsDelayedCodexResponsesTerminal(t *testing.T) {
 	ctx := context.Background()
 	outbound := newCodexResponsesPassThroughOutbound()
