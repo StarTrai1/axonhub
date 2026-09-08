@@ -1197,7 +1197,7 @@ func (svc *ChannelService) UpdateChannelScheduledHealthChecks(ctx context.Contex
 
 func isZenmuxChannelType(channelType channel.Type) bool {
 	switch channelType {
-	case channel.TypeZenmux, channel.TypeZenmuxResponses, channel.TypeZenmuxAnthropic, channel.TypeZenmuxGemini:
+	case channel.TypeZenmux, channel.TypeZenmuxResponses, channel.TypeZenmuxAnthropic, channel.TypeZenmuxGemini, channel.TypeZenmuxVideo:
 		return true
 	default:
 		return false

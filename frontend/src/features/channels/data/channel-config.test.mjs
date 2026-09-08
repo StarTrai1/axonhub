@@ -127,6 +127,41 @@ test('channel table keeps official Codex usage in health without a duplicate quo
   assert.doesNotMatch(columns, /id: 'quota'|QUOTA_VISIBLE_LIMIT|OAUTH_CHANNEL_TYPES/);
 });
 
+test('filter-only model column stays hidden while model filtering remains configured', () => {
+  const channelsData = read('features/channels/data/channels.ts');
+  const channelColumns = read('features/channels/components/channels-columns.tsx');
+  const channelsConfig = read('features/channels/data/config_channels.ts');
+
+  assert.match(channelsData, /DEFAULT_CHANNEL_COLUMN_VISIBILITY[\s\S]*model:\s*false/);
+  assert.match(channelsData, /\.\.\.parsed\.data,\s*model:\s*false/);
+  assert.match(
+    channelColumns,
+    /id:\s*'model'[\s\S]*?accessorFn:\s*\(\)\s*=>\s*''[\s\S]*?header:\s*\(\)\s*=>\s*null[\s\S]*?cell:\s*\(\)\s*=>\s*null[\s\S]*?filterFn:\s*\(\)\s*=>\s*true[\s\S]*?enableColumnFilter:\s*false[\s\S]*?enableGlobalFilter:\s*false/,
+    'the virtual model column must render nothing while keeping its server-side filtering hooks'
+  );
+  assert.match(channelsConfig, /zenmux_gemini:\s*\{[\s\S]*icon:\s*ZenMux/);
+});
+
+test('ZenMux quota schema accepts all channel variants without row grouping', () => {
+  const schema = read('features/channels/data/schema.ts');
+  const channelsData = read('features/channels/data/channels.ts');
+
+  for (const type of ['zenmux', 'zenmux_responses', 'zenmux_anthropic', 'zenmux_gemini', 'zenmux_video']) {
+    assert.match(schema, new RegExp(`'${type}'`), `channel schema should accept ${type}`);
+  }
+  assert.match(schema, /providerQuotaStatusSchema[\s\S]*quotaData:\s*z\.record\(z\.string\(\),\s*z\.unknown\(\)\)/);
+  assert.doesNotMatch(channelsData, /accountKey[\s\S]*(?:group|dedup|unique)/i, 'channel query must not deduplicate shared quota accounts');
+});
+
+test('fetched models still allow custom input inside the channel dialog', () => {
+  const source = read('features/channels/components/channels-action-dialog.tsx');
+  const autocomplete = read('components/auto-complete.tsx');
+  assert.match(source, /<DialogContent\s+ref=\{setDialogContent\}/);
+  assert.match(source, /<AutoComplete[\s\S]*searchValue=\{newModel\}[\s\S]*onSearchValueChange=\{setNewModel\}/);
+  assert.match(source, /<AutoComplete[\s\S]*onKeyDown=\{handleKeyDown\}[\s\S]*portalContainer=\{dialogContent\}/);
+  assert.match(autocomplete, /onKeyDown\?\.\(e\)/);
+});
+
 test('channel proxy connection reuse setting is submitted, echoed, and localized', () => {
   const schema = read('features/channels/data/schema.ts');
   const channelsData = read('features/channels/data/channels.ts');

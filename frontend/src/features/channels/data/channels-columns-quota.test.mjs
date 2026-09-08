@@ -161,6 +161,7 @@ test('channel schemas preserve normalized quota for every supported provider', (
     'zenmux_responses',
     'zenmux_anthropic',
     'zenmux_gemini',
+    'zenmux_video',
     'cline',
     'nanogpt',
     'minimax',

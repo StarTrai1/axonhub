@@ -235,7 +235,6 @@ func (svc *ChannelService) buildChannelWithOutbounds(c *ent.Channel, apiKeyOverr
 		}
 
 		needsDedicatedOutbound := ep.APIFormat == llm.APIFormatOpenAISearch.String() ||
-			(c.Type == channel.TypeZenmux && ep.APIFormat == llm.APIFormatZenmuxVideo.String()) ||
 			(c.Type == channel.TypeXai && ep.APIFormat != ch.Outbound.APIFormat().String())
 		if !needsDedicatedOutbound {
 			outbounds[ep.APIFormat] = ch.Outbound
@@ -519,8 +518,8 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 			EndpointPath:   ep.Path,
 		})
 	case llm.APIFormatZenmuxVideo.String():
-		if c.Type != channel.TypeZenmux {
-			return nil, fmt.Errorf("api_format %q is only supported by channel type %q", ep.APIFormat, channel.TypeZenmux)
+		if !isZenmuxChannelType(c.Type) {
+			return nil, fmt.Errorf("api_format %q is only supported by ZenMux channel types", ep.APIFormat)
 		}
 
 		return zenmuxtransformer.NewOutboundTransformerWithConfig(&zenmuxtransformer.Config{
@@ -714,7 +713,7 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel, apiKeyOve
 
 	if c.BaseURL == "" {
 		switch c.Type { //nolint:exhaustive // Only ZenMux types have defaults applied here.
-		case channel.TypeZenmux, channel.TypeZenmuxResponses:
+		case channel.TypeZenmux, channel.TypeZenmuxResponses, channel.TypeZenmuxVideo:
 			c.BaseURL = zenmuxOpenAIBaseURL
 		case channel.TypeZenmuxAnthropic:
 			c.BaseURL = zenmuxAnthropicBaseURL
@@ -1296,6 +1295,16 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel, apiKeyOve
 
 		ch.Outbound = transformer
 
+		return ch, nil
+	case channel.TypeZenmuxVideo:
+		transformer, err := zenmuxtransformer.NewOutboundTransformerWithConfig(&zenmuxtransformer.Config{
+			BaseURL:        c.BaseURL,
+			APIKeyProvider: getAPIKeyProvider(ch),
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create ZenMux video outbound transformer: %w", err)
+		}
+		ch.Outbound = transformer
 		return ch, nil
 	case channel.TypeOpenaiResponses:
 		transformer, err := responses.NewOutboundTransformerWithConfig(&responses.Config{

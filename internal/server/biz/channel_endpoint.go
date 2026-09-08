@@ -227,10 +227,7 @@ var defaultEndpointsForChannelType = map[channel.Type][]objects.ChannelEndpoint{
 		{APIFormat: llm.APIFormatOpenAIResponse.String()},
 		{APIFormat: llm.APIFormatOpenAISearch.String()},
 	},
-	channel.TypeZenmux: append(
-		append([]objects.ChannelEndpoint{}, openAIFullDefaultEndpoints...),
-		objects.ChannelEndpoint{APIFormat: llm.APIFormatZenmuxVideo.String()},
-	),
+	channel.TypeZenmux:          openAIFullDefaultEndpoints,
 	channel.TypeZenmuxResponses: {{APIFormat: llm.APIFormatOpenAIResponse.String()}},
 	channel.TypeAtlascloud:      openAICompatibleDefaultEndpoints,
 	channel.TypeQiniu:           {{APIFormat: llm.APIFormatOpenAIChatCompletion.String()}},
@@ -260,6 +257,7 @@ var defaultEndpointsForChannelType = map[channel.Type][]objects.ChannelEndpoint{
 		{APIFormat: llm.APIFormatGeminiContents.String()},
 		{APIFormat: llm.APIFormatGeminiEmbedding.String()},
 	},
+	channel.TypeZenmuxVideo: {{APIFormat: llm.APIFormatZenmuxVideo.String()}},
 	channel.TypeGeminiVertex: {
 		{APIFormat: llm.APIFormatGeminiContents.String()},
 		{APIFormat: llm.APIFormatGeminiEmbedding.String()},
@@ -341,13 +339,13 @@ func validateEndpointsForChannelType(channelType channel.Type, endpoints []objec
 		return err
 	}
 
-	if channelType == channel.TypeZenmux {
+	if isZenmuxChannelType(channelType) {
 		return nil
 	}
 
 	for _, endpoint := range endpoints {
 		if endpoint.APIFormat == llm.APIFormatZenmuxVideo.String() {
-			return fmt.Errorf("api_format %q is only supported by channel type %q", endpoint.APIFormat, channel.TypeZenmux)
+			return fmt.Errorf("api_format %q is only supported by ZenMux channel types", endpoint.APIFormat)
 		}
 	}
 
