@@ -11,6 +11,8 @@ type Usage struct {
 	// The number of output tokens which were used.
 	OutputTokens int64 `json:"output_tokens"`
 
+	OutputTokensDetails *OutputTokensDetails `json:"output_tokens_details,omitempty"`
+
 	// The number of input tokens used to create the cache entry.
 	CacheCreationInputTokens int64 `json:"cache_creation_input_tokens"`
 
@@ -33,6 +35,10 @@ type Usage struct {
 type CacheCreation struct {
 	Ephemeral5mInputTokens int64 `json:"ephemeral_5m_input_tokens"`
 	Ephemeral1hInputTokens int64 `json:"ephemeral_1h_input_tokens"`
+}
+
+type OutputTokensDetails struct {
+	ThinkingTokens int64 `json:"thinking_tokens"`
 }
 
 // https://docs.claude.com/en/api/messages#response-usage
@@ -78,6 +84,10 @@ func convertToLlmUsage(usage *Usage, platformType PlatformType) *llm.Usage {
 		TotalTokens:             promptTokens + usage.OutputTokens,
 	}
 
+	if usage.OutputTokensDetails != nil {
+		u.CompletionTokensDetails.ReasoningTokens = min(max(usage.OutputTokensDetails.ThinkingTokens, 0), max(usage.OutputTokens, 0))
+	}
+
 	if usage.CacheReadInputTokens > 0 || usage.CacheCreationInputTokens > 0 ||
 		usage.CacheCreation.Ephemeral5mInputTokens > 0 || usage.CacheCreation.Ephemeral1hInputTokens > 0 {
 		u.PromptTokensDetails = &llm.PromptTokensDetails{
@@ -109,11 +119,10 @@ func convertToAnthropicUsage(llmUsage *llm.Usage) *Usage {
 		usage.InputTokens -= (usage.CacheReadInputTokens + usage.CacheCreationInputTokens)
 	}
 
-	// Note: Anthropic doesn't have a direct equivalent for reasoning tokens in their current API
-	// but we can store it in cache_creation_input_tokens as a workaround if needed
-	if llmUsage.CompletionTokensDetails != nil {
-		// For now, we don't map reasoning tokens as Anthropic doesn't have a direct field
-		// This could be extended in the future if Anthropic adds support
+	if llmUsage.CompletionTokensDetails != nil && llmUsage.CompletionTokensDetails.ReasoningTokens > 0 && llmUsage.CompletionTokens > 0 {
+		usage.OutputTokensDetails = &OutputTokensDetails{
+			ThinkingTokens: min(llmUsage.CompletionTokensDetails.ReasoningTokens, llmUsage.CompletionTokens),
+		}
 	}
 
 	return usage

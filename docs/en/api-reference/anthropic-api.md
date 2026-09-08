@@ -149,6 +149,14 @@ if err := stream.Err(); err != nil {
 fmt.Println("\nComplete response:", content)
 ```
 
+### Cross-provider tool streaming and usage
+
+When an upstream interleaves arguments from parallel function calls, AxonHub converts them into sequential Anthropic content blocks without mixing call IDs or argument fragments. The ordinary first-tool path continues streaming immediately. Only a detected interleaved tail is buffered, through its finish event or clean EOF, with limits of 4096 chunks and 8 MiB including the active argument prefix. Text and reasoning in that tail retain their relative order. Invalid arguments, transport failures, and buffer overflow fail the stream instead of repairing JSON or manufacturing a successful completion. Native Responses passthrough is unchanged.
+
+Function tools whose `input_schema` is absent or null receive an empty object schema during conversion. Existing schemas, including dialect identifiers and union branches, are not stripped by this fallback.
+
+Positive reasoning usage is exposed as `usage.output_tokens_details.thinking_tokens`, including on the final streaming `message_delta`. Native Anthropic thinking usage is also retained in the unified reasoning-token count. Counts are bounded to the non-negative output total; absent, zero, or invalid outgoing counts do not add an optional breakdown. `output_tokens` remains the inclusive billing total: thinking is neither added again nor treated as cache creation. See the [Anthropic streaming contract](https://platform.claude.com/docs/en/build-with-claude/streaming) and [usage definition](https://github.com/anthropics/anthropic-sdk-python/blob/62de60b27d04f0927a0ccf0f2610597fafcfab6a/src/anthropic/types/output_tokens_details.py).
+
 ## Error Handling
 
 Anthropic format error responses:

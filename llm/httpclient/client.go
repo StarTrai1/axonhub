@@ -629,8 +629,8 @@ func (s *detachedContextStream) Next() bool {
 
 func (s *detachedContextStream) Close() error {
 	s.closeOnce.Do(func() {
-		s.closeErr = s.Stream.Close()
 		s.cancel()
+		s.closeErr = s.Stream.Close()
 	})
 
 	return s.closeErr

@@ -149,6 +149,14 @@ if err := stream.Err(); err != nil {
 fmt.Println("\n完整响应:", content)
 ```
 
+### 跨提供商工具流与用量
+
+当上游交错发送多个并行函数调用的参数时，AxonHub 将其转换为顺序排列的 Anthropic 内容块，避免混淆调用 ID 或参数片段。普通首个工具的流式输出不等待完整响应；仅在发现交错后缓冲该段后续内容，直到结束事件或正常 EOF，最多 4096 个块、8 MiB（包含当前工具已有的参数前缀）。该段文本与思考内容之间的相对顺序保持不变。参数不完整、传输失败或缓冲超限时终止流，不猜测修补 JSON，也不伪造成功完成。原生 Responses 透传不受影响。
+
+函数工具的 `input_schema` 缺失或为 null 时，转换阶段补为空对象 schema。此兜底不剥离已有 schema 的方言标识或 union 分支。
+
+正数思考用量通过 `usage.output_tokens_details.thinking_tokens` 返回，流式响应在最终 `message_delta` 中携带；原生 Anthropic 思考用量也保留到统一的 reasoning token 计数。计数限制在非负的输出总量内；缺失、零或无效的出站计数不新增可选明细。`output_tokens` 仍是包含思考的计费总量，不重复累加思考，也不把它当作缓存创建。参见 [Anthropic 流协议](https://platform.claude.com/docs/en/build-with-claude/streaming)与[用量定义](https://github.com/anthropics/anthropic-sdk-python/blob/62de60b27d04f0927a0ccf0f2610597fafcfab6a/src/anthropic/types/output_tokens_details.py)。
+
 ## 错误处理
 
 Anthropic 格式错误响应：

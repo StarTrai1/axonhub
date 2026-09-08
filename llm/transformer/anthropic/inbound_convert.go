@@ -1,6 +1,7 @@
 package anthropic
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 
@@ -775,6 +776,12 @@ func convertToolToLLM(tool Tool) (llm.Tool, bool) {
 			},
 		}, true
 	case "", "custom":
+		inputSchema := tool.InputSchema
+		trimmedSchema := bytes.TrimSpace(inputSchema)
+		if len(trimmedSchema) == 0 || bytes.Equal(trimmedSchema, []byte("null")) {
+			inputSchema = normalizeAnthropicToolInputSchema(nil)
+		}
+
 		return llm.Tool{
 			Type:           llm.ToolTypeFunction,
 			AllowedCallers: append([]string(nil), tool.AllowedCallers...),
@@ -783,7 +790,7 @@ func convertToolToLLM(tool Tool) (llm.Tool, bool) {
 			Function: llm.Function{
 				Name:        tool.Name,
 				Description: tool.Description,
-				Parameters:  tool.InputSchema,
+				Parameters:  inputSchema,
 				Strict:      tool.Strict,
 			},
 			CacheControl: convertToLLMCacheControl(tool.CacheControl),

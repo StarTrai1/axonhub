@@ -56,6 +56,8 @@ type anthropicInboundStream struct {
 
 	lastEventType string
 
+	serializedToolTail bool
+
 	// Buffered signature: when signature arrives before thinking starts,
 	// we hold it until thinking finishes.
 	pendingSignature       *string
@@ -567,6 +569,15 @@ func (s *anthropicInboundStream) Next() bool {
 	}
 
 	chunk := s.source.Current()
+	if s.needsToolCallSerialization(chunk) {
+		if err := s.serializeInterleavedToolCalls(chunk); err != nil {
+			s.err = err
+			return false
+		}
+
+		return s.Next()
+	}
+
 	if chunk != nil && chunk.Usage != nil {
 		s.pendingUsage = convertToAnthropicUsage(chunk.Usage)
 	}
@@ -885,12 +896,10 @@ func (s *anthropicInboundStream) Next() bool {
 				// Initialize tool call if it doesn't exist
 				if _, ok := s.toolCalls[toolCallIndex]; !ok {
 					// Start a new tool use block, we should stop the previous tool use block
-					if toolCallIndex > 0 {
-						if s.hasToolContentStarted {
-							if err := s.closeToolBlock(); err != nil {
-								s.err = fmt.Errorf("failed to close previous tool block: %w", err)
-								return false
-							}
+					if s.hasToolContentStarted {
+						if err := s.closeToolBlock(); err != nil {
+							s.err = fmt.Errorf("failed to close previous tool block: %w", err)
+							return false
 						}
 					}
 
