@@ -33,7 +33,7 @@ jobs:
 
       - name: Responses concurrency regression
         run: |
-          go test -race ./internal/server/orchestrator -run 'TestResponsesSession|TestResponsesRejected' -count=1
+          go test -race ./internal/server/orchestrator -run 'TestResponsesSession|TestResponsesRejected|TestScheduledHealth' -count=1
           go test -race ./internal/server/biz -run '^TestSystemServiceResponsesMetadata' -count=1
           cd llm
           go test -race ./pipeline -run 'TestFirstOutput' -count=1

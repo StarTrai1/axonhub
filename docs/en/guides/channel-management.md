@@ -296,6 +296,16 @@ Enter all keys in the API Keys field, one per line. The system will automaticall
 
 Go to channel details, find the key in the **Disabled List**, and click **Restore**.
 
+## Scheduled Health Checks
+
+The channel action menu accepts daily server-local `HH:MM:SS` schedules. The server must be running and the host awake at the scheduled time; closing the browser does not stop the scheduler. The dialog shows the next run, latest scheduler scan, planned time, actual start, default test model, and last outcome. Displayed dates use the browser timezone.
+
+Each run sends one lightweight real model request through the channel's existing connection and proxy settings, with a two-minute deadline. This consumes provider usage, but it does not reset quota or guarantee the start of a five-hour window. An already active provider window is not restarted by a health check. Do not increase token consumption merely because a rounded usage percentage remains zero.
+
+The scheduler checkpoints progress at most once per minute while idle and records each attempt before contacting the provider. After a restart or wake, it checks only the latest missed slot per channel, rather than replaying every missed day or slot. A recorded but unfinished attempt is shown as **Interrupted; outcome unconfirmed** and is not automatically repeated, avoiding duplicate usage after a crash. The first start without a checkpoint begins tracking from the current time and does not invent historical attempts. Checkpoint write failures stop new probes until progress can be recorded.
+
+The last 100 completed results and each channel's latest attempt survive restarts, including failures before a normal request record exists. Normal test request and usage records remain available in request history. This checkpoint coordinates restarts of one scheduler instance; it is not a distributed lease for multiple servers sharing one database.
+
 ## Related Documentation
 
 - [Model Management Guide](model-management.md) - Configure model-channel associations

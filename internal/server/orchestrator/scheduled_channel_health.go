@@ -20,12 +20,14 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/scheduler"
+	"github.com/looplj/axonhub/llm/httpclient"
 )
 
 const (
 	scheduledChannelTestResultLimit  = 100
 	scheduledChannelDispatchInterval = time.Second
 	scheduledChannelDispatcherName   = "scheduled-channel-health-check-dispatcher"
+	scheduledChannelTestTimeout      = 2 * time.Minute
 )
 
 type scheduledChannelCheck struct {
@@ -35,14 +37,18 @@ type scheduledChannelCheck struct {
 }
 
 type ScheduledChannelTestResult struct {
-	ID          int64     `json:"id"`
-	ChannelID   int       `json:"channelID"`
-	ChannelName string    `json:"channelName"`
-	ScheduledAt string    `json:"scheduledAt"`
-	CompletedAt time.Time `json:"completedAt"`
-	Latency     float64   `json:"latency"`
-	Success     bool      `json:"success"`
-	Error       string    `json:"error,omitempty"`
+	ID           int64     `json:"id"`
+	ChannelID    int       `json:"channelID"`
+	ChannelName  string    `json:"channelName"`
+	ScheduledAt  string    `json:"scheduledAt"`
+	ScheduledFor time.Time `json:"scheduledFor"`
+	StartedAt    time.Time `json:"startedAt"`
+	ModelID      string    `json:"modelID"`
+	Status       string    `json:"status"`
+	CompletedAt  time.Time `json:"completedAt"`
+	Latency      float64   `json:"latency"`
+	Success      bool      `json:"success"`
+	Error        string    `json:"error,omitempty"`
 }
 
 type ScheduledChannelTestServiceParams struct {
@@ -55,19 +61,29 @@ type ScheduledChannelTestServiceParams struct {
 }
 
 // ScheduledChannelTestService owns the persisted daily schedules and their
-// runtime dispatch. Results stay in a small in-memory ring for UI toasts;
-// the normal test request and usage records remain the durable history.
+// runtime dispatch.
 type ScheduledChannelTestService struct {
 	ent            *ent.Client
 	channelService *biz.ChannelService
-	tester         *TestChannelOrchestrator
+	tester         scheduledChannelTester
 	scheduler      *scheduler.Scheduler
+	now            func() time.Time
+	dispatchMu     sync.Mutex
+	persistMu      sync.Mutex
 
-	mu          sync.Mutex
-	registered  map[int][]string
-	lastSweepAt time.Time
-	results     []ScheduledChannelTestResult
-	nextID      int64
+	mu              sync.Mutex
+	registered      map[int][]string
+	lastSweepAt     time.Time
+	lastPersistAt   time.Time
+	startedAt       time.Time
+	lastRuns        map[int]ScheduledChannelTestResult
+	checkpointError string
+	results         []ScheduledChannelTestResult
+	nextID          int64
+}
+
+type scheduledChannelTester interface {
+	TestChannel(context.Context, objects.GUID, *string, *httpclient.ProxyConfig, *string) (*TestChannelResult, error)
 }
 
 func NewScheduledChannelTestService(params ScheduledChannelTestServiceParams) *ScheduledChannelTestService {
@@ -76,7 +92,9 @@ func NewScheduledChannelTestService(params ScheduledChannelTestServiceParams) *S
 		channelService: params.ChannelService,
 		tester:         params.Tester,
 		scheduler:      params.Scheduler,
+		now:            time.Now,
 		registered:     make(map[int][]string),
+		lastRuns:       make(map[int]ScheduledChannelTestResult),
 		nextID:         time.Now().UnixMilli() * 1000,
 	}
 }
@@ -102,8 +120,17 @@ func (svc *ScheduledChannelTestService) Start(ctx context.Context) error {
 	}
 
 	svc.mu.Lock()
-	svc.lastSweepAt = time.Now()
+	svc.startedAt = svc.now()
 	svc.mu.Unlock()
+	if err := svc.restoreRuntimeState(ctx); err != nil {
+		log.Warn(ctx, "failed to restore scheduled health check progress", log.Cause(err))
+		svc.mu.Lock()
+		svc.lastSweepAt = svc.startedAt
+		svc.mu.Unlock()
+	}
+	if err := svc.persistRuntimeState(ctx); err != nil {
+		log.Warn(ctx, "failed to persist scheduled health check progress", log.Cause(err))
+	}
 
 	if err := svc.scheduler.Register(ctx, scheduler.TaskSpec{
 		Name:        scheduledChannelDispatcherName,
@@ -184,16 +211,33 @@ func (svc *ScheduledChannelTestService) replaceRuntimeSchedules(channelID int, t
 }
 
 func (svc *ScheduledChannelTestService) dispatchScheduledTests(ctx context.Context) {
-	now := time.Now()
+	if !svc.dispatchMu.TryLock() {
+		return
+	}
+	defer svc.dispatchMu.Unlock()
+	ctx = authz.WithSystemBypass(ctx, "scheduled-channel-health-check-dispatch")
+	now := svc.now()
 
 	svc.mu.Lock()
 	lastSweepAt := svc.lastSweepAt
-	svc.lastSweepAt = now
 	due := scheduledChannelChecksDueBetween(svc.registered, lastSweepAt, now)
 	svc.mu.Unlock()
 
 	for _, check := range due {
-		svc.runScheduledTest(ctx, check.channelID, check.scheduledAt)
+		if err := svc.runScheduledTest(ctx, check); err != nil {
+			log.Warn(ctx, "scheduled health check dispatch could not be recorded", log.Cause(err))
+			return
+		}
+	}
+
+	svc.mu.Lock()
+	svc.lastSweepAt = now
+	persist := len(due) > 0 || now.Sub(svc.lastPersistAt) >= time.Minute || now.Before(svc.lastPersistAt)
+	svc.mu.Unlock()
+	if persist {
+		if err := svc.persistRuntimeState(ctx); err != nil {
+			log.Warn(ctx, "failed to checkpoint scheduled health checks", log.Cause(err))
+		}
 	}
 }
 
@@ -202,7 +246,7 @@ func scheduledChannelChecksDueBetween(registered map[int][]string, lastSweepAt, 
 		return nil
 	}
 
-	due := make([]scheduledChannelCheck, 0)
+	latest := make(map[int]scheduledChannelCheck)
 	for channelID, times := range registered {
 		for _, value := range times {
 			parsed, err := time.Parse("15:04:05", value)
@@ -215,15 +259,22 @@ func scheduledChannelChecksDueBetween(registered map[int][]string, lastSweepAt, 
 				occursAt = occursAt.AddDate(0, 0, -1)
 			}
 			if occursAt.After(lastSweepAt) {
-				due = append(due, scheduledChannelCheck{
+				if previous, ok := latest[channelID]; ok && !occursAt.After(previous.occursAt) {
+					continue
+				}
+				latest[channelID] = scheduledChannelCheck{
 					channelID:   channelID,
 					scheduledAt: value,
 					occursAt:    occursAt,
-				})
+				}
 			}
 		}
 	}
 
+	due := make([]scheduledChannelCheck, 0, len(latest))
+	for _, check := range latest {
+		due = append(due, check)
+	}
 	sort.Slice(due, func(i, j int) bool {
 		if !due[i].occursAt.Equal(due[j].occursAt) {
 			return due[i].occursAt.Before(due[j].occursAt)
@@ -237,27 +288,39 @@ func scheduledChannelChecksDueBetween(registered map[int][]string, lastSweepAt, 
 	return due
 }
 
-func (svc *ScheduledChannelTestService) runScheduledTest(ctx context.Context, channelID int, scheduledAt string) {
+func (svc *ScheduledChannelTestService) runScheduledTest(ctx context.Context, check scheduledChannelCheck) error {
 	ctx = authz.WithSystemBypass(ctx, "scheduled-channel-health-check-run")
+	channelID, scheduledAt := check.channelID, check.scheduledAt
 	ch, err := svc.ent.Channel.Get(ctx, channelID)
 	if err != nil {
-		if !ent.IsNotFound(err) {
-			log.Warn(ctx, "failed to load channel for scheduled health check", log.Int("channel_id", channelID), log.Cause(err))
+		if ent.IsNotFound(err) {
+			return nil
 		}
-		return
+		return fmt.Errorf("load channel %d for scheduled health check: %w", channelID, err)
 	}
 	if ch.Status == channel.StatusArchived || !slices.Contains(ch.Policies.ScheduledHealthChecks, scheduledAt) {
-		return
+		return nil
 	}
 
-	ctx = contexts.WithSource(ctx, request.SourceTest)
-	result, testErr := svc.tester.TestChannel(ctx, objects.GUID{Type: ent.TypeChannel, ID: channelID}, nil, nil, nil)
 	completed := ScheduledChannelTestResult{
-		ChannelID:   channelID,
-		ChannelName: ch.Name,
-		ScheduledAt: scheduledAt,
-		CompletedAt: time.Now(),
+		ChannelID:    channelID,
+		ChannelName:  ch.Name,
+		ScheduledAt:  scheduledAt,
+		ScheduledFor: check.occursAt,
+		StartedAt:    svc.now(),
+		ModelID:      ch.DefaultTestModel,
+		Status:       "running",
 	}
+	claimed, err := svc.claimScheduledTest(ctx, completed)
+	if err != nil || !claimed {
+		return err
+	}
+
+	probeCtx, cancel := context.WithTimeout(contexts.WithSource(ctx, request.SourceTest), scheduledChannelTestTimeout)
+	defer cancel()
+	result, testErr := svc.tester.TestChannel(probeCtx, objects.GUID{Type: ent.TypeChannel, ID: channelID}, &completed.ModelID, nil, nil)
+	completed.CompletedAt = svc.now()
+	completed.Status = "failed"
 	if testErr != nil {
 		completed.Error = testErr.Error()
 	} else {
@@ -267,19 +330,31 @@ func (svc *ScheduledChannelTestService) runScheduledTest(ctx context.Context, ch
 			completed.Error = *result.Error
 		}
 	}
+	if completed.Success {
+		completed.Status = "succeeded"
+	}
 
 	svc.recordResult(completed)
+	if err := svc.persistRuntimeState(ctx); err != nil {
+		return err
+	}
 	if completed.Success {
 		log.Info(ctx, "scheduled channel health check succeeded",
 			log.Int("channel_id", channelID),
+			log.String("scheduled_at", scheduledAt),
+			log.Time("scheduled_for", check.occursAt),
+			log.String("model", ch.DefaultTestModel),
 			log.Float64("latency_seconds", completed.Latency),
 		)
-		return
+		return nil
 	}
 	log.Warn(ctx, "scheduled channel health check failed",
 		log.Int("channel_id", channelID),
+		log.String("scheduled_at", scheduledAt),
+		log.Time("scheduled_for", check.occursAt),
 		log.String("error", completed.Error),
 	)
+	return nil
 }
 
 func (svc *ScheduledChannelTestService) recordResult(result ScheduledChannelTestResult) {
@@ -288,6 +363,7 @@ func (svc *ScheduledChannelTestService) recordResult(result ScheduledChannelTest
 
 	svc.nextID++
 	result.ID = svc.nextID
+	svc.lastRuns[result.ChannelID] = result
 	svc.results = append(svc.results, result)
 	if len(svc.results) > scheduledChannelTestResultLimit {
 		svc.results = slices.Clone(svc.results[len(svc.results)-scheduledChannelTestResultLimit:])

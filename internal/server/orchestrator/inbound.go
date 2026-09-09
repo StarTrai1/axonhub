@@ -216,8 +216,8 @@ func (s *responsesSteeringState) isFinalTerminal(event *httpclient.StreamEvent) 
 	}
 }
 
-func (s *responsesSteeringState) classifyFinalTerminal(event *httpclient.StreamEvent) streamTerminalState {
-	if !s.isFinalTerminal(event) {
+func (steering *responsesSteeringState) classifyFinalTerminal(event *httpclient.StreamEvent) streamTerminalState {
+	if !steering.isFinalTerminal(event) {
 		return streamTerminalNone
 	}
 	terminal := classifyStreamTerminalEvent(event)

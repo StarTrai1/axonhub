@@ -2321,6 +2321,13 @@ export function useDeleteDisabledChannelAPIKeys() {
 export interface ChannelHealthCheckScheduleConfig {
   times: string[];
   timezone: string;
+  runtime?: {
+    startedAt: string;
+    lastDispatchAt: string;
+    nextRunAt: string | null;
+    lastRun: ScheduledChannelHealthCheckResult | null;
+    checkpointError?: string;
+  };
 }
 
 export interface ScheduledChannelHealthCheckResult {
@@ -2328,6 +2335,10 @@ export interface ScheduledChannelHealthCheckResult {
   channelID: number;
   channelName: string;
   scheduledAt: string;
+  scheduledFor: string;
+  startedAt: string;
+  modelID: string;
+  status: 'running' | 'succeeded' | 'failed' | 'interrupted';
   completedAt: string;
   latency: number;
   success: boolean;
@@ -2342,6 +2353,7 @@ interface ScheduledChannelHealthCheckResults {
 export function useChannelHealthCheckSchedules(channelID: string, enabled: boolean) {
   return useQuery({
     enabled: enabled && !!channelID,
+    refetchInterval: enabled ? 5000 : false,
     queryKey: ['channelHealthCheckSchedules', channelID],
     queryFn: () =>
       apiRequest<ChannelHealthCheckScheduleConfig>(

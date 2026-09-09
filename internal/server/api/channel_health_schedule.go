@@ -64,6 +64,7 @@ func (h *ChannelHealthScheduleHandlers) GetSchedules(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"times":    times,
 		"timezone": serverTimezoneLabel(),
+		"runtime":  h.Service.RuntimeStatus(uri.ChannelID),
 	})
 }
 
@@ -98,6 +99,7 @@ func (h *ChannelHealthScheduleHandlers) UpdateSchedules(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"times":    times,
 		"timezone": serverTimezoneLabel(),
+		"runtime":  h.Service.RuntimeStatus(uri.ChannelID),
 	})
 }
 

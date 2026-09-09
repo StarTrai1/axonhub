@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { format } from 'date-fns';
 import { IconCalendarClock, IconPlus, IconTrash } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -18,17 +19,26 @@ interface Props {
 
 const timePattern = /^(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d$/;
 
+function formatScheduleTimestamp(value?: string | null) {
+  if (!value || value.startsWith('0001-')) return '—';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '—' : format(date, 'yyyy-MM-dd HH:mm:ss');
+}
+
 export function ChannelsScheduledHealthCheckDialog({ open, onOpenChange, currentRow }: Props) {
   const { t } = useTranslation();
   const { data, isLoading } = useChannelHealthCheckSchedules(currentRow.id, open);
   const updateSchedules = useUpdateChannelHealthCheckSchedules();
   const [times, setTimes] = useState<string[]>([]);
+  const savedTimes = data ? JSON.stringify(data.times) : undefined;
+  const runtime = data?.runtime;
+  const lastRun = runtime?.lastRun;
 
   useEffect(() => {
-    if (open && data) {
-      setTimes(data.times);
+    if (open && savedTimes) {
+      setTimes(JSON.parse(savedTimes));
     }
-  }, [data, open]);
+  }, [savedTimes, open]);
 
   const hasInvalidTime = useMemo(() => times.some((value) => !timePattern.test(value)), [times]);
   const hasDuplicateTime = useMemo(() => new Set(times).size !== times.length, [times]);
@@ -60,7 +70,7 @@ export function ChannelsScheduledHealthCheckDialog({ open, onOpenChange, current
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className='sm:max-w-[560px]'>
+      <DialogContent className='max-h-[85vh] overflow-y-auto sm:max-w-[560px]'>
         <DialogHeader className='text-left'>
           <DialogTitle className='flex items-center gap-2'>
             <IconCalendarClock className='h-5 w-5' />
@@ -85,6 +95,31 @@ export function ChannelsScheduledHealthCheckDialog({ open, onOpenChange, current
           </div>
 
           <Separator />
+
+          <div className='space-y-2 rounded-lg border px-4 py-3'>
+            <p className='text-sm font-medium'>{t('channels.dialogs.scheduledHealthCheck.executionStatus')}</p>
+            <dl className='grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-xs'>
+              <dt className='text-muted-foreground'>{t('channels.dialogs.scheduledHealthCheck.nextRun')}</dt>
+              <dd className='min-w-0 break-words tabular-nums'>{formatScheduleTimestamp(runtime?.nextRunAt)}</dd>
+              <dt className='text-muted-foreground'>{t('channels.dialogs.scheduledHealthCheck.lastDispatch')}</dt>
+              <dd className='min-w-0 break-words tabular-nums'>{formatScheduleTimestamp(runtime?.lastDispatchAt)}</dd>
+              <dt className='text-muted-foreground'>{t('channels.dialogs.scheduledHealthCheck.scheduledFor')}</dt>
+              <dd className='min-w-0 break-words tabular-nums'>{formatScheduleTimestamp(lastRun?.scheduledFor)}</dd>
+              <dt className='text-muted-foreground'>{t('channels.dialogs.scheduledHealthCheck.actualStart')}</dt>
+              <dd className='min-w-0 break-words tabular-nums'>{formatScheduleTimestamp(lastRun?.startedAt)}</dd>
+              <dt className='text-muted-foreground'>{t('channels.dialogs.scheduledHealthCheck.result')}</dt>
+              <dd className='min-w-0 break-words'>
+                {t(`channels.dialogs.scheduledHealthCheck.states.${lastRun?.status || 'never'}`)}
+                {lastRun?.modelID && ` · ${lastRun.modelID}`}
+              </dd>
+            </dl>
+            {(lastRun?.error || runtime?.checkpointError) && (
+              <p className='text-destructive break-words text-xs'>{runtime?.checkpointError || lastRun?.error}</p>
+            )}
+            <p className='text-muted-foreground text-xs leading-relaxed'>
+              {t('channels.dialogs.scheduledHealthCheck.executionHint')}
+            </p>
+          </div>
 
           <div className='flex items-center justify-between gap-3'>
             <div>
