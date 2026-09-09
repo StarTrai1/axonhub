@@ -25,6 +25,9 @@ func TestResponsesChatToolsPreserveNonStrictDefault(t *testing.T) {
 		{name: "chat default", format: llm.APIFormatOpenAIChatCompletion, expected: lo.ToPtr(false)},
 		{name: "chat explicit strict", format: llm.APIFormatOpenAIChatCompletion, strict: lo.ToPtr(true), expected: lo.ToPtr(true)},
 		{name: "chat explicit nonstrict", format: llm.APIFormatOpenAIChatCompletion, strict: lo.ToPtr(false), expected: lo.ToPtr(false)},
+		{name: "anthropic default", format: llm.APIFormatAnthropicMessage, expected: lo.ToPtr(false)},
+		{name: "anthropic explicit strict", format: llm.APIFormatAnthropicMessage, strict: lo.ToPtr(true), expected: lo.ToPtr(true)},
+		{name: "anthropic explicit nonstrict", format: llm.APIFormatAnthropicMessage, strict: lo.ToPtr(false), expected: lo.ToPtr(false)},
 		{name: "responses default", format: llm.APIFormatOpenAIResponse},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {

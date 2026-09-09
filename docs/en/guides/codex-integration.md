@@ -80,6 +80,14 @@ AxonHub model profiles remap incoming model names to provider-specific equivalen
 - Request `gpt-4` → mapped to `deepseek-reasoner` for getting more accurate responses.
 - Request `gpt-3.5-turbo` → mapped to `deepseek-chat` for reducing costs.
 
+### Responses Lite continuation compatibility
+
+Responses Lite `additional_tools` definitions and GPT-6 `configuration_update` items remain in their original positions during a bounded retry after an explicit encrypted-reasoning rejection. Recovery still requires complete visible history and matched tool calls; opaque compaction items, unresolved references, and encrypted function arguments are not discarded. Local compaction bridging and recovery of later encrypted reasoning are separate stages.
+
+An explicit upstream rejection of `internal_chat_message_metadata_passthrough` can establish compatibility for all metadata-bearing Codex input item types, including `cell_id` nested in the metadata of `custom_tool_call_output`. Only that optional metadata property is removed; IDs, tool outputs, arguments, ciphertext, and other request fields remain unchanged. The existing channel/endpoint/model/credential scope and six-hour persistence limit still apply.
+
+Codex 5-hour, 7-day, and reported GPT-Reserve windows display absolute reset timestamps in the browser's local time zone (`yyyy-MM-dd HH:mm`). Missing provider reset times are not synthesized. Main-window hover details retain the relative countdown.
+
 ### Troubleshooting
 - **Codex reports authentication errors**: ensure `AXONHUB_API_KEY` is exported in the same shell session that launches Codex.
 - **Unexpected model responses**: review active profile mappings in the AxonHub console; disable or adjust rules if necessary.

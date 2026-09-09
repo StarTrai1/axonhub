@@ -258,6 +258,22 @@ function getApertisPercentage(qd: ProviderApertisQuotaData | undefined): number 
   return 0;
 }
 
+function QuotaResetTime({ resetAt }: { resetAt?: string | number | null }) {
+  const { t: translate } = useTranslation();
+  if (!resetAt) return null;
+  const date = new Date(typeof resetAt === 'number' ? resetAt * 1000 : resetAt);
+  if (Number.isNaN(date.getTime())) return null;
+
+  return (
+    <div className='text-muted-foreground flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[11px]'>
+      <span>{translate('quota.label.resets_at')}</span>
+      <time dateTime={date.toISOString()} className='whitespace-nowrap tabular-nums'>
+        {format(date, 'yyyy-MM-dd HH:mm')}
+      </time>
+    </div>
+  );
+}
+
 function CodexAdditionalLimit({ limit }: { limit: ProviderCodexAdditionalRateLimit }) {
   const { t } = useTranslation();
   const title = limit.limit_name || limit.metered_feature || t('quota.codex.additionalLimit');
@@ -295,11 +311,7 @@ function CodexAdditionalLimit({ limit }: { limit: ProviderCodexAdditionalRateLim
               <span className='text-foreground font-medium tabular-nums'>{Math.round(usedPercent)}%</span>
             </div>
             <UsageTimeBar usagePercent={usedPercent} tooltip={`${windowLabel}: ${Math.round(usedPercent)}%`} />
-            {value.reset_at && (
-              <div className='text-muted-foreground text-right text-[10px]'>
-                {formatTimeToReset(value.reset_after_seconds)} ({formatDate(value.reset_at)})
-              </div>
-            )}
+            <QuotaResetTime resetAt={value.reset_at} />
           </div>
         );
       })}
@@ -893,6 +905,7 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
                               </div>
                             }
                           />
+                          <QuotaResetTime resetAt={limit.nextResetAt} />
                         </div>
                       </div>
                     );

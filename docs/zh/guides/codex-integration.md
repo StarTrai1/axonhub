@@ -80,6 +80,14 @@ AxonHub 的模型配置文件支持将请求模型映射到具体提供商模型
 - 请求 `gpt-4` → 映射到 `deepseek-reasoner` 以获取更准确的回复。
 - 请求 `gpt-3.5-turbo` → 映射到 `deepseek-chat` 以降低成本。
 
+### Responses Lite 续接兼容
+
+上游明确拒绝加密思考后，有界重试会原位保留 Responses Lite 的 `additional_tools` 定义和 GPT-6 的 `configuration_update`。恢复仍要求可见历史完整、工具调用与结果匹配；不会丢弃不透明压缩项、未解析引用或加密函数参数。本地压缩桥接与后续加密思考恢复是两个独立阶段。
+
+上游明确拒绝 `internal_chat_message_metadata_passthrough` 时，可为 Codex 所有携带该元数据的输入项建立兼容规则，包括 `custom_tool_call_output` 上的 `cell_id` 元数据。仅移除该可选元数据属性，保留 ID、工具输出、参数、密文及其他请求字段；继续按渠道、端点、模型、凭据隔离，并遵守六小时持久化有效期。
+
+Codex 的 5 小时、7 天及上游已报告的 GPT-Reserve 窗口显示浏览器本地时区的绝对重置时间（`yyyy-MM-dd HH:mm`）。上游未返回的时间不推测补造；主窗口悬停详情仍保留相对倒计时。
+
 ### 常见问题
 - **Codex 认证失败**：确保在启动 Codex 的同一 shell 会话中设置了 `AXONHUB_API_KEY`。
 - **模型结果异常**：检查 AxonHub 控制台中当前启用的配置文件映射，必要时禁用或调整规则。

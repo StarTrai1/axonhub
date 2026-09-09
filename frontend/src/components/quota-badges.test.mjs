@@ -97,6 +97,26 @@ test('Codex reset requires an explicitly selected available credit', () => {
   assert.match(codexBlock, /<RadioGroup value=\{selectedResetID\} onValueChange=\{setSelectedResetID\}/);
 });
 
+test('Codex quota windows and GPT-Reserve expose absolute reset timestamps', () => {
+  const source = read('components/quota-badges.tsx');
+  const codexBlock = isolateCodexBlock(source);
+  const additionalBlock = source.slice(source.indexOf('function CodexAdditionalLimit('), source.indexOf('function UsageTimeBar('));
+  const resetBlock = source.slice(source.indexOf('function QuotaResetTime('), source.indexOf('function CodexAdditionalLimit('));
+
+  assert.match(codexBlock, /<QuotaResetTime resetAt=\{limit\.nextResetAt\}/);
+  assert.match(additionalBlock, /<QuotaResetTime resetAt=\{value\.reset_at\}/);
+  assert.doesNotMatch(additionalBlock, /formatTimeToReset\(|formatDate\(/);
+  assert.match(resetBlock, /typeof resetAt === 'number' \? resetAt \* 1000 : resetAt/);
+  assert.match(resetBlock, /Number\.isNaN\(date\.getTime\(\)\)/);
+  assert.match(resetBlock, /dateTime=\{date\.toISOString\(\)\}/);
+  assert.match(resetBlock, /format\(date, 'yyyy-MM-dd HH:mm'\)/);
+
+  for (const locale of ['en', 'zh-CN']) {
+    const translations = JSON.parse(read(`locales/${locale}/system.json`));
+    assert.ok(translations['quota.label.resets_at']);
+  }
+});
+
 test('Ollama badge derives percentage from the heavier of the 5h/weekly windows', () => {
   const source = read('components/quota-badges.tsx');
   const start = source.indexOf('} else if (isOllamaType(channel.type)) {');

@@ -385,6 +385,7 @@
   "quota.status.bypassed": "Bypassed",
   "quota.label.resets_in": "Resets in",
   "quota.label.resets_in_time": "Resets in {{time}}",
+  "quota.label.resets_at": "Resets at",
   "quota.label.regenerates_in_time": "Regenerates in {{time}}",
   "quota.label.regenerates_pct_in_time": "Regenerates {{percent}}% in {{time}}",
   "quota.label.regenerating_now": "Regenerating now",

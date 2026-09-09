@@ -97,7 +97,7 @@ func (middleware *responsesRejectedStatusCompatibilityMiddleware) persistMetadat
 func hasResponsesInternalMetadata(body []byte) bool {
 	found := false
 	gjson.GetBytes(body, "input").ForEach(func(_, item gjson.Result) bool {
-		if item.Get("type").String() == "message" && item.Get("internal_chat_message_metadata_passthrough").Exists() {
+		if responsesInputSupportsInternalMetadata(item.Get("type").String()) && item.Get("internal_chat_message_metadata_passthrough").Exists() {
 			found = true
 			return false
 		}

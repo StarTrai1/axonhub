@@ -72,6 +72,17 @@ func (r responsesRejectedStatusRule) fieldName() string {
 	return "status"
 }
 
+func responsesInputSupportsInternalMetadata(itemType string) bool {
+	switch itemType {
+	case "message", "agent_message", "reasoning", "local_shell_call", "function_call", "function_call_output",
+		"custom_tool_call", "custom_tool_call_output", "tool_search_call", "tool_search_output", "web_search_call",
+		"image_generation_call", "compaction", "context_compaction":
+		return true
+	default:
+		return false
+	}
+}
+
 func applyResponsesRejectedStatusCompatibility(outbound *PersistentOutboundTransformer) pipeline.Middleware {
 	return &responsesRejectedStatusCompatibilityMiddleware{
 		DummyMiddleware: pipeline.DummyMiddleware{},
@@ -106,7 +117,7 @@ func (m *responsesRejectedStatusCompatibilityMiddleware) OnOutboundRawRequest(
 		metadataKey = responsesMetadataKey(channel.ID, request)
 		if m.hasMetadataRejection(ctx, metadataKey, request.Body) {
 			rememberResponsesRejectedStatusRule(m.outbound.state, channel.ID, responsesRejectedStatusRule{
-				itemType: "message", field: "internal_chat_message_metadata_passthrough", metadataScope: lo.ToPtr(metadataKey),
+				index: -1, field: "internal_chat_message_metadata_passthrough", metadataScope: lo.ToPtr(metadataKey),
 			})
 		}
 	}
@@ -210,8 +221,11 @@ func responsesRejectedStatusRuleFromError(err error, requestBody []byte) (respon
 	field := match[2]
 	if !item.IsObject() || !item.Get(field).Exists() ||
 		(field == "status" && !strings.HasSuffix(param, ".status")) ||
-		(field == "internal_chat_message_metadata_passthrough" && item.Get("type").String() != "message") {
+		(field == "internal_chat_message_metadata_passthrough" && !responsesInputSupportsInternalMetadata(item.Get("type").String())) {
 		return responsesRejectedStatusRule{}, false
+	}
+	if field == "internal_chat_message_metadata_passthrough" {
+		return responsesRejectedStatusRule{index: -1, field: field}, true
 	}
 
 	return responsesRejectedStatusRule{
@@ -326,6 +340,12 @@ func stripResponsesRejectedStatus(body []byte, rules []responsesRejectedStatusRu
 
 func responsesRejectedStatusRuleMatches(rules []responsesRejectedStatusRule, index int, itemType string) bool {
 	for _, rule := range rules {
+		if rule.fieldName() == "internal_chat_message_metadata_passthrough" {
+			if responsesInputSupportsInternalMetadata(itemType) {
+				return true
+			}
+			continue
+		}
 		if rule.itemType != "" && rule.itemType == itemType {
 			return true
 		}

@@ -155,6 +155,8 @@ When an upstream interleaves arguments from parallel function calls, AxonHub con
 
 Function tools whose `input_schema` is absent or null receive an empty object schema during conversion. Existing schemas, including dialect identifiers and union branches, are not stripped by this fallback.
 
+When Anthropic function tools are converted to Responses, an omitted `strict` becomes explicit `false`, retaining best-effort tool input semantics rather than opting into Responses schema normalization. Explicit `true` and `false` are preserved. Native Responses requests retain their own defaults. See [OpenAI strict mode](https://developers.openai.com/api/docs/guides/function-calling#strict-mode) and [Anthropic strict tool use](https://platform.claude.com/docs/en/build-with-claude/structured-outputs).
+
 Positive reasoning usage is exposed as `usage.output_tokens_details.thinking_tokens`, including on the final streaming `message_delta`. Native Anthropic thinking usage is also retained in the unified reasoning-token count. Counts are bounded to the non-negative output total; absent, zero, or invalid outgoing counts do not add an optional breakdown. `output_tokens` remains the inclusive billing total: thinking is neither added again nor treated as cache creation. See the [Anthropic streaming contract](https://platform.claude.com/docs/en/build-with-claude/streaming) and [usage definition](https://github.com/anthropics/anthropic-sdk-python/blob/62de60b27d04f0927a0ccf0f2610597fafcfab6a/src/anthropic/types/output_tokens_details.py).
 
 ## Error Handling

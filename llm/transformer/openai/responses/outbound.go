@@ -257,7 +257,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 			tools = append(tools, tool)
 		case "function":
 			tool := convertFunctionToTool(item)
-			if llmReq.APIFormat == llm.APIFormatOpenAIChatCompletion && tool.Strict == nil {
+			if (llmReq.APIFormat == llm.APIFormatOpenAIChatCompletion || llmReq.APIFormat == llm.APIFormatAnthropicMessage) && tool.Strict == nil {
 				tool.Strict = lo.ToPtr(false)
 			}
 			tools = append(tools, tool)

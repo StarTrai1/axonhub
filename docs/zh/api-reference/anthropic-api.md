@@ -155,6 +155,8 @@ fmt.Println("\n完整响应:", content)
 
 函数工具的 `input_schema` 缺失或为 null 时，转换阶段补为空对象 schema。此兜底不剥离已有 schema 的方言标识或 union 分支。
 
+将 Anthropic 函数工具转换为 Responses 时，未指定的 `strict` 显式设为 `false`，保留非严格工具输入语义，避免无意启用 Responses 的 schema 规范化。显式 `true`、`false` 均保留；原生 Responses 请求仍遵循自身默认值。参见 [OpenAI strict mode](https://developers.openai.com/api/docs/guides/function-calling#strict-mode)和 [Anthropic strict tool use](https://platform.claude.com/docs/en/build-with-claude/structured-outputs)。
+
 正数思考用量通过 `usage.output_tokens_details.thinking_tokens` 返回，流式响应在最终 `message_delta` 中携带；原生 Anthropic 思考用量也保留到统一的 reasoning token 计数。计数限制在非负的输出总量内；缺失、零或无效的出站计数不新增可选明细。`output_tokens` 仍是包含思考的计费总量，不重复累加思考，也不把它当作缓存创建。参见 [Anthropic 流协议](https://platform.claude.com/docs/en/build-with-claude/streaming)与[用量定义](https://github.com/anthropics/anthropic-sdk-python/blob/62de60b27d04f0927a0ccf0f2610597fafcfab6a/src/anthropic/types/output_tokens_details.py)。
 
 ## 错误处理

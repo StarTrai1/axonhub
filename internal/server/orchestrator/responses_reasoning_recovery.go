@@ -51,6 +51,11 @@ func responsesRejectedReasoningRule(body []byte, param string) (responsesRejecte
 			return responsesRejectedStatusRule{}, false
 		}
 		switch itemType {
+		case "additional_tools":
+			if !item.Get("tools").IsArray() {
+				return responsesRejectedStatusRule{}, false
+			}
+		case "configuration_update":
 		case "message", "":
 			content := item.Get("content")
 			if item.Get("role").String() == "user" &&
