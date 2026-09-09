@@ -150,7 +150,7 @@ func TestScheduledHealthRecordsFailuresBeforeARequestExists(testingT *testing.T)
 
 func TestScheduledHealthDoesNotProbeWithoutADurableClaim(testingT *testing.T) {
 	fixture := newScheduledHealthFixture(testingT)
-	fixture.client.System.Use(func(next ent.Mutator) ent.Mutator {
+	fixture.client.System.Use(func(_ ent.Mutator) ent.Mutator {
 		return ent.MutateFunc(func(context.Context, ent.Mutation) (ent.Value, error) {
 			return nil, errors.New("checkpoint unavailable")
 		})

@@ -181,8 +181,8 @@ func TestRequestExternalIDAcceptsRelayResponseID(t *testing.T) {
 	require.NoError(t, err)
 
 	externalID := "resp_" + strings.Repeat("x", 1104)
-	require.NoError(t, svc.UpdateRequestExecutionCompleted(ctx, execution.ID, externalID, []byte(`{"id":"ok"}`), nil))
-	require.NoError(t, svc.UpdateRequestCompleted(ctx, parent.ID, externalID, []byte(`{"id":"ok"}`), nil))
+	require.NoError(t, svc.UpdateRequestExecutionFinalized(ctx, execution.ID, requestexecution.StatusCompleted, "", externalID, []byte(`{"id":"ok"}`), nil))
+	require.NoError(t, svc.UpdateRequestFinalized(ctx, parent.ID, request.StatusCompleted, externalID, []byte(`{"id":"ok"}`), nil))
 
 	updatedExecution, err := client.RequestExecution.Get(ctx, execution.ID)
 	require.NoError(t, err)
