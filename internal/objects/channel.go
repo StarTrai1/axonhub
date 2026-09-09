@@ -254,6 +254,8 @@ type ChannelSettings struct {
 	// options. Fields are sensitive (e.g. auth cookies) and only exposed to
 	// operators holding channel write permission.
 	ProviderQuota *ChannelProviderQuotaSettings `json:"providerQuota,omitempty"`
+
+	QuotaRoutingMode QuotaRoutingMode `json:"quotaRoutingMode,omitempty"`
 }
 
 // ChannelProviderQuotaSettings groups per-provider quota collection settings.

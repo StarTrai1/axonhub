@@ -225,12 +225,14 @@ test('unknown usage: limits with missing usage fail closed without rendering exh
   }
 });
 
-test('hidden health selection removes quota fields from the real query', () => {
+test('hidden health selection retains routing state without reset details', () => {
   const visibleQuery = buildQueryChannelsQuery({ health: true, tags: false });
   const hiddenQuery = buildQueryChannelsQuery({ health: false, tags: false });
 
   assert.match(visibleQuery, /providerQuotaStatus/);
-  assert.doesNotMatch(hiddenQuery, /providerQuotaStatus/);
+  assert.match(hiddenQuery, /providerQuotaStatus/);
+  assert.match(hiddenQuery, /status/);
+  assert.doesNotMatch(hiddenQuery, /nextResetAt/);
   assert.match(hiddenQuery, /supportedModels/);
   assert.match(visibleQuery, /liveLimiterStats/);
 });

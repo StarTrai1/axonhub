@@ -19,7 +19,6 @@ import (
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
-	"github.com/looplj/axonhub/internal/server/biz/provider_quota"
 	"github.com/looplj/axonhub/llm"
 )
 
@@ -667,6 +666,7 @@ type LoadBalancedSelector struct {
 	retainManualSwitchCandidate bool
 	apiKey                      *ent.APIKey
 	effectiveRoutingPolicy      *EffectiveRoutingPolicy
+	quotaGate                   *QuotaRoutingGate
 }
 
 // WithManualSwitchCandidate retains one extra distinct-channel candidate for
@@ -713,6 +713,7 @@ func WithRoutingPolicyLoadBalancedSelector(
 	previousChannelProvider PreviousChannelProvider,
 	apiKey *ent.APIKey,
 	effectiveRoutingPolicy *EffectiveRoutingPolicy,
+	quotaGate *QuotaRoutingGate,
 ) *LoadBalancedSelector {
 	return &LoadBalancedSelector{
 		wrapped:                 wrapped,
@@ -721,6 +722,7 @@ func WithRoutingPolicyLoadBalancedSelector(
 		previousChannelProvider: previousChannelProvider,
 		apiKey:                  apiKey,
 		effectiveRoutingPolicy:  effectiveRoutingPolicy,
+		quotaGate:               quotaGate,
 	}
 }
 
@@ -759,13 +761,16 @@ func (s *LoadBalancedSelector) Select(ctx context.Context, req *llm.Request) ([]
 		requiredCount = 1 + retryPolicy.MaxChannelRetries
 	}
 
+	stickyID, stickyOK := 0, false
 	if traceStickyMode == biz.TraceStickyPreferPreviousChannel {
-		// Sticky routing remains available within the highest active routing tier,
-		// but must never let a standard or fallback channel jump ahead of an
-		// explicitly preferred channel.
-		stickyCandidates := highestRoutingTierCandidates(candidates)
-		if stickyCandidate, _ := s.selectTraceStickyCandidate(ctx, stickyCandidates); stickyCandidate != nil {
-			stickyCandidate, remainingCandidates := extractStickyCandidate(candidates, stickyCandidate.Channel.ID)
+		stickyID, stickyOK = s.resolveStickyChannelID(ctx, req, candidates)
+	}
+	if s.quotaGate != nil {
+		candidates = s.quotaGate.Filter(ctx, candidates, req, stickyID)
+	}
+
+	if stickyOK {
+		if stickyCandidate, remainingCandidates := s.pinStickyCandidate(candidates, stickyID); stickyCandidate != nil {
 			stickyCandidate.TraceSticky = true
 
 			fallbackCount := max(requiredCount-1, 0)
@@ -861,23 +866,39 @@ func candidatesContainDistinctChannels(candidates []*ChannelModelsCandidate) boo
 	return false
 }
 
-// selectTraceStickyCandidate selects the previous trace channel first, then
-// the previous thread channel. A sticky channel must already be a
-// valid candidate after every request-level filter has run.
-func (s *LoadBalancedSelector) selectTraceStickyCandidate(
+// resolveStickyChannelID selects the previous trace channel first, then the
+// previous thread channel. When candidates are supplied, it preserves the
+// old behavior of falling through to the thread when the trace channel is not
+// among the candidates.
+func (s *LoadBalancedSelector) resolveStickyChannelID(
 	ctx context.Context,
-	candidates []*ChannelModelsCandidate,
-) (*ChannelModelsCandidate, []*ChannelModelsCandidate) {
-	if s.previousChannelProvider == nil || len(candidates) == 0 {
-		return nil, candidates
+	req *llm.Request,
+	candidateSets ...[]*ChannelModelsCandidate,
+) (int, bool) {
+	if s.previousChannelProvider == nil {
+		return 0, false
+	}
+	if len(candidateSets) > 0 && len(candidateSets[0]) == 0 {
+		return 0, false
+	}
+	hasCandidate := func(channelID int) bool {
+		if len(candidateSets) == 0 {
+			return channelID != 0
+		}
+		for _, candidate := range candidateSets[0] {
+			if candidate != nil && candidate.Channel != nil && candidate.Channel.ID == channelID {
+				return true
+			}
+		}
+		return false
 	}
 
 	if trace, ok := contexts.GetTrace(ctx); ok && trace != nil {
 		channelID, err := s.previousChannelProvider.GetPreviousChannelID(ctx, trace.ID)
 		if err != nil {
 			log.Warn(ctx, "failed to get previous trace channel", log.Int("trace_id", trace.ID), log.Cause(err))
-		} else if stickyCandidate, remainingCandidates := extractStickyCandidate(candidates, channelID); stickyCandidate != nil {
-			return stickyCandidate, remainingCandidates
+		} else if hasCandidate(channelID) {
+			return channelID, true
 		}
 	}
 
@@ -889,15 +910,29 @@ func (s *LoadBalancedSelector) selectTraceStickyCandidate(
 	}
 
 	if threadID == 0 {
-		return nil, candidates
+		return 0, false
 	}
 
 	channelID, err := s.previousChannelProvider.GetPreviousChannelIDByThread(ctx, threadID)
 	if err != nil {
 		log.Warn(ctx, "failed to get previous thread channel", log.Int("thread_id", threadID), log.Cause(err))
-		return nil, candidates
+		return 0, false
 	}
 
+	if !hasCandidate(channelID) {
+		return 0, false
+	}
+
+	return channelID, true
+}
+
+func (s *LoadBalancedSelector) pinStickyCandidate(
+	candidates []*ChannelModelsCandidate,
+	channelID int,
+) (*ChannelModelsCandidate, []*ChannelModelsCandidate) {
+	if candidate, _ := extractStickyCandidate(highestRoutingTierCandidates(candidates), channelID); candidate == nil {
+		return nil, candidates
+	}
 	return extractStickyCandidate(candidates, channelID)
 }
 
@@ -989,7 +1024,6 @@ groups:
 
 		// Apply load balancing to sort candidates within this priority group.
 		useStream := req.Stream != nil && *req.Stream
-		ctx = contextWithQuotaLimitType(ctx, string(provider_quota.RequestModality(req.Image != nil)))
 		// Defer selection tracking until every tier has been assembled. Tracking
 		// each group here would incorrectly count standard and fallback channels
 		// that were only added to the retry plan and never selected.

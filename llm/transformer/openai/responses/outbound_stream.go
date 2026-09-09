@@ -110,38 +110,22 @@ func (s *responsesOutboundStream) Next() bool {
 	s.eventQueue = nil
 	s.queueIndex = 0
 
-	// A Responses terminal event ends the protocol stream even when a compatible
-	// provider keeps the HTTP connection open. Its derived events are drained now.
+	// The terminal event contains the final outcome and any usage. Once its
+	// queued chunks are drained, finish without reading a later transport error.
 	if s.responseCompleted {
-		// Some decoders publish a terminal source error before the caller asks
-		// for another item. Preserve that error instead of masking it with Done.
-		if streamErr := s.stream.Err(); streamErr != nil {
-			s.err = streamErr
-
-			return false
-		}
 		_ = s.stream.Close()
-
 		if !s.doneEmitted {
 			s.doneEmitted = true
 			s.enqueue(llm.DoneResponse)
-
 			return true
 		}
-
 		return false
 	}
 
 	// Try to get the next chunk from source
 	if !s.stream.Next() {
 		if s.err == nil && s.stream.Err() == nil {
-			if !s.responseCompleted {
-				s.err = ErrStreamIncomplete
-			} else if !s.doneEmitted {
-				s.doneEmitted = true
-				s.enqueue(llm.DoneResponse)
-				return true
-			}
+			s.err = ErrStreamIncomplete
 		}
 		return false
 	}
@@ -738,11 +722,8 @@ func (s *responsesOutboundStream) transformStreamEvent(event *httpclient.StreamE
 			s.state.transformerMetadataEmitted = true
 		}
 
-		// The Responses API signals abnormal completion via response.completed
-		// with a status other than "completed" (incomplete/failed/cancelled) - it
-		// does not emit separate events for those cases. Map the status onto the
-		// Chat Completions finish_reason; fall back to the tool_calls/stop
-		// inference only when the status is absent or plain "completed".
+		// Some compatible providers report abnormal outcomes in response.completed
+		// instead of a separate terminal event. Preserve those statuses too.
 		finishReason := ""
 		if failedResponse {
 			finishReason = "error"
@@ -783,26 +764,6 @@ func (s *responsesOutboundStream) transformStreamEvent(event *httpclient.StreamE
 				Delta:        &llm.Message{},
 				FinishReason: &finishReason,
 			},
-		}
-
-		// Second event: usage (if available)
-		if streamEvent.Response != nil && streamEvent.Response.Usage != nil {
-			s.state.usage = streamEvent.Response.Usage.ToUsage()
-			usageResp := &llm.Response{
-				Object:             "chat.completion.chunk",
-				ID:                 s.state.responseID,
-				Model:              s.state.responseModel,
-				ServiceTier:        s.state.serviceTier,
-				Created:            s.state.created,
-				PreviousResponseID: s.state.previousResponseID,
-				Choices:            []llm.Choice{},
-				Usage:              s.state.usage,
-			}
-
-			s.enqueue(resp)
-			s.enqueue(usageResp)
-
-			return nil
 		}
 
 	case StreamEventTypeResponseFailed:
@@ -853,6 +814,10 @@ func (s *responsesOutboundStream) transformStreamEvent(event *httpclient.StreamE
 		// Response incomplete (e.g., max tokens)
 		s.responseCompleted = true
 		finishReason := "length"
+		if streamEvent.Response != nil && streamEvent.Response.IncompleteDetails != nil &&
+			streamEvent.Response.IncompleteDetails.Reason == "content_filter" {
+			finishReason = "content_filter"
+		}
 		resp.Choices = []llm.Choice{
 			{
 				Index:        0,
@@ -915,7 +880,33 @@ func (s *responsesOutboundStream) transformStreamEvent(event *httpclient.StreamE
 		return nil // Intentionally skip this event
 	}
 
+	if s.responseCompleted && streamEvent.Response != nil &&
+		(streamEvent.Response.Error != nil || streamEvent.Response.IncompleteDetails != nil) {
+		if resp.TransformerMetadata == nil {
+			resp.TransformerMetadata = make(map[string]any)
+		}
+		resp.TransformerMetadata[responsesTerminalDetailsTransformerMetadataKey] = responsesTerminalDetails{
+			Error:             streamEvent.Response.Error,
+			IncompleteDetails: streamEvent.Response.IncompleteDetails,
+		}
+	}
+
 	s.enqueue(resp)
+
+	// Preserve usage on every terminal outcome, after its finish_reason chunk.
+	if s.responseCompleted && streamEvent.Response != nil && streamEvent.Response.Usage != nil {
+		s.state.usage = streamEvent.Response.Usage.ToUsage()
+		s.enqueue(&llm.Response{
+			Object:             "chat.completion.chunk",
+			ID:                 s.state.responseID,
+			Model:              s.state.responseModel,
+			ServiceTier:        s.state.serviceTier,
+			Created:            s.state.created,
+			PreviousResponseID: s.state.previousResponseID,
+			Choices:            []llm.Choice{},
+			Usage:              s.state.usage,
+		})
+	}
 
 	return nil
 }
@@ -1025,6 +1016,10 @@ func (s *responsesOutboundStream) Current() *llm.Response {
 func (s *responsesOutboundStream) Err() error {
 	if s.err != nil {
 		return s.err
+	}
+
+	if s.responseCompleted {
+		return nil
 	}
 
 	return s.stream.Err()

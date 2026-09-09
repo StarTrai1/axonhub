@@ -45,7 +45,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { AutoComplete } from '@/components/auto-complete';
 import { SelectDropdown } from '@/components/select-dropdown';
-import { useProxyPresets, useSaveProxyPreset } from '@/features/system/data/system';
+import {
+  usePassThroughSettings,
+  useProxyPresets,
+  useQuotaRoutingSettings,
+  useSaveProxyPreset,
+  useUserAgentPassThroughSettings,
+} from '@/features/system/data/system';
 import { usePermissions } from '@/hooks/usePermissions';
 import { antigravityOAuthExchange, antigravityOAuthStart } from '../data/antigravity';
 import {
@@ -82,6 +88,7 @@ import { getInitialApiFormatForChannel, getModelProtocolsForApiFormat } from '..
 import {
   Channel,
   ChannelSettings,
+  ChannelQuotaRoutingMode,
   ChannelType,
   ApiFormat,
   RetryableErrorPattern,
@@ -254,6 +261,19 @@ function getResponsesTransportBaseURLError(transport: ResponsesTransport): strin
   return transport === 'websocket'
     ? 'channels.dialogs.fields.baseURL.errors.websocketScheme'
     : 'channels.dialogs.fields.baseURL.errors.httpScheme';
+}
+
+// Dialog-init recall for the per-channel quota routing mode: an absent
+// settings field displays as INHERIT (the backend stores "" for inherit).
+export function recallQuotaRoutingMode(settings: ChannelSettings | null | undefined): ChannelQuotaRoutingMode {
+  return settings?.quotaRoutingMode ?? 'INHERIT';
+}
+
+// Single dialog-state -> GraphQL-input mapping: every wire value passes
+// through unchanged. Explicit INHERIT is required to override the merge
+// whitelist's stored-value fallback; the backend maps INHERIT to empty storage.
+export function quotaRoutingModeSettingsPatch(mode: ChannelQuotaRoutingMode): Partial<ChannelSettings> {
+  return mode === 'INHERIT' ? { quotaRoutingMode: 'INHERIT' } : { quotaRoutingMode: mode };
 }
 
 function formatRetryableStatusCodes(codes: number[] | null | undefined): string {
@@ -482,6 +502,10 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const { data: proxyPresets = [] } = useProxyPresets();
   const saveProxyPreset = useSaveProxyPreset();
   const { hasSystemScope } = usePermissions();
+  const { data: quotaRoutingSettings } = useQuotaRoutingSettings();
+  const canReadSystemSettings = hasSystemScope('read_settings');
+  const { data: userAgentPassThroughSettings } = useUserAgentPassThroughSettings({ enabled: canReadSystemSettings });
+  const { data: passThroughSettings } = usePassThroughSettings({ enabled: canReadSystemSettings });
   const [supportedModels, setSupportedModels] = useState<string[]>(() => initialRow?.supportedModels || []);
   const [manualModels, setManualModels] = useState<string[]>(() => initialRow?.manualModels || []);
   const [newModel, setNewModel] = useState('');
@@ -549,12 +573,27 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     const shards = initialRow?.settings?.http2ConnectionShards ?? 0;
     return shards >= 1 && shards <= 8 ? shards : 1;
   });
+  const [quotaRoutingMode, setQuotaRoutingMode] = useState<ChannelQuotaRoutingMode>(() => recallQuotaRoutingMode(initialRow?.settings));
   const [retryableStatusCodesText, setRetryableStatusCodesText] = useState(() =>
     formatRetryableStatusCodes(initialRow?.settings?.retryableStatusCodes)
   );
   const [retryableErrorPatternsText, setRetryableErrorPatternsText] = useState(() =>
     formatRetryableErrorPatterns(initialRow?.settings?.retryableErrorPatterns)
   );
+  const userAgentInheritLabel = userAgentPassThroughSettings
+    ? t('channels.dialogs.userAgentPassThrough.inheritWithValue', {
+        value: t(
+          userAgentPassThroughSettings.enabled
+            ? 'channels.dialogs.userAgentPassThrough.enabled'
+            : 'channels.dialogs.userAgentPassThrough.disabled'
+        ),
+      })
+    : t('channels.dialogs.userAgentPassThrough.inherit');
+  const passThroughInheritLabel = passThroughSettings
+    ? t('channels.dialogs.bodyPassThrough.inheritWithValue', {
+        value: t(passThroughSettings.enabled ? 'channels.dialogs.bodyPassThrough.enabled' : 'channels.dialogs.bodyPassThrough.disabled'),
+      })
+    : t('channels.dialogs.bodyPassThrough.inherit');
 
   // Memoized proxy config for OAuth exchange
   const proxyConfig: ProxyConfig | undefined = useMemo(() => {
@@ -761,13 +800,6 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       setShowApiKeysPanel(false);
     }
   }, [open, showModelsPanel, initialRow]);
-
-  // Sync manualModels when dialog opens with new initialRow
-  useEffect(() => {
-    if (open && initialRow) {
-      setManualModels(initialRow.manualModels || []);
-    }
-  }, [open, initialRow]);
 
   // Get available providers (excluding fake types)
   const availableProviders = useMemo(
@@ -1560,6 +1592,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           // the settings patch; mergeChannelSettingsForUpdate preserves the
           // field when the patch omits it and carries the null clear through.
           providerQuota: settingsForSubmit?.providerQuota,
+          ...quotaRoutingModeSettingsPatch(quotaRoutingMode),
           ...(shouldUpdateModelProtocols
             ? { modelProtocols: getModelProtocolsForApiFormat(selectedApiFormat, supportedModels, existingModelProtocols) }
             : {}),
@@ -1624,6 +1657,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           http2ConnectionShards: httpProtocol === 'http1' || http2ConnectionShards === 1 ? 0 : http2ConnectionShards,
           retryableStatusCodes,
           retryableErrorPatterns,
+          ...quotaRoutingModeSettingsPatch(quotaRoutingMode),
           ...(selectedApiFormat === 'zenmux/video' ||
           settingsForSubmit?.modelProtocols?.some((protocol) => protocol.apiFormats.includes('zenmux/video'))
             ? {
@@ -1830,7 +1864,10 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       pattern: formPattern.trim() ? formPattern : undefined,
     });
 
+    // Sync is authoritative for both lists; refreshing only supportedModels
+    // leaves manualModels stale and makes the header count drift from the badges.
     setSupportedModels(result.supportedModels || []);
+    setManualModels(result.manualModels || []);
     return result.supportedModels || [];
   }, [currentRow, form, patternError, syncChannelModels]);
 
@@ -2067,6 +2104,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             setHTTPProtocol(initialRow?.settings?.httpProtocol === 'http1' ? 'http1' : 'auto');
             const initialShards = initialRow?.settings?.http2ConnectionShards ?? 0;
             setHTTP2ConnectionShards(initialShards >= 1 && initialShards <= 8 ? initialShards : 1);
+            setQuotaRoutingMode(recallQuotaRoutingMode(initialRow?.settings));
             setRetryableStatusCodesText(formatRetryableStatusCodes(initialRow?.settings?.retryableStatusCodes));
             setRetryableErrorPatternsText(formatRetryableErrorPatterns(initialRow?.settings?.retryableErrorPatterns));
             // Reset provider and API format state
@@ -2845,6 +2883,36 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                         />
                       )}
 
+                      <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                        <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
+                          {t('channels.dialogs.fields.quotaRoutingMode.label')}
+                        </FormLabel>
+                        <div className='space-y-1 md:col-span-6'>
+                          <Select
+                            value={quotaRoutingMode}
+                            onValueChange={(value) => setQuotaRoutingMode(value as ChannelQuotaRoutingMode)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder={t('channels.dialogs.fields.quotaRoutingMode.options.INHERIT')} />
+                            </SelectTrigger>
+                            <SelectContent>
+                               <SelectItem value='INHERIT'>
+                                 {quotaRoutingSettings?.defaultMode
+                                   ? t('channels.dialogs.fields.quotaRoutingMode.options.INHERIT_WITH_MODE', {
+                                       mode: t(`channels.dialogs.fields.quotaRoutingMode.options.${quotaRoutingSettings.defaultMode}`),
+                                     })
+                                   : t('channels.dialogs.fields.quotaRoutingMode.options.INHERIT')}
+                               </SelectItem>
+                              <SelectItem value='IGNORE_QUOTA'>{t('channels.dialogs.fields.quotaRoutingMode.options.IGNORE_QUOTA')}</SelectItem>
+                              <SelectItem value='REMOVE_ON_EXHAUSTED'>{t('channels.dialogs.fields.quotaRoutingMode.options.REMOVE_ON_EXHAUSTED')}</SelectItem>
+                              <SelectItem value='BACKPRESSURE'>{t('channels.dialogs.fields.quotaRoutingMode.options.BACKPRESSURE')}</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormDescription className='text-xs'>
+                            {t(`channels.dialogs.fields.quotaRoutingMode.descriptions.${quotaRoutingMode}`)}
+                          </FormDescription>
+                        </div>
+                      </FormItem>
 
                       <FormField
                         control={form.control}
@@ -3214,7 +3282,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                 <SelectValue placeholder={t('channels.dialogs.userAgentPassThrough.inherit')} />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value='inherit'>{t('channels.dialogs.userAgentPassThrough.inherit')}</SelectItem>
+                                <SelectItem value='inherit'>{userAgentInheritLabel}</SelectItem>
                                 <SelectItem value='enabled'>{t('channels.dialogs.userAgentPassThrough.enabled')}</SelectItem>
                                 <SelectItem value='disabled'>{t('channels.dialogs.userAgentPassThrough.disabled')}</SelectItem>
                               </SelectContent>
@@ -3233,7 +3301,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                 <SelectValue placeholder={t('channels.dialogs.bodyPassThrough.inherit')} />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value='inherit'>{t('channels.dialogs.bodyPassThrough.inherit')}</SelectItem>
+                                <SelectItem value='inherit'>{passThroughInheritLabel}</SelectItem>
                                 <SelectItem value='enabled'>{t('channels.dialogs.bodyPassThrough.enabled')}</SelectItem>
                                 <SelectItem value='disabled'>{t('channels.dialogs.bodyPassThrough.disabled')}</SelectItem>
                               </SelectContent>
