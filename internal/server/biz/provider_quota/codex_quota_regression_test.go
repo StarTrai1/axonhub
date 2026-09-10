@@ -22,6 +22,8 @@ func TestCodexQuotaChecker_ExhaustionPreservesIndependentWindowUsage(t *testing.
 			primaryStatus, secondaryStatus = "available", "exhausted"
 		}
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
 			body, err := json.Marshal(map[string]any{
 				"rate_limit": map[string]any{
 					"allowed":       false,

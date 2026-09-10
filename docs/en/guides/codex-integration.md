@@ -88,6 +88,20 @@ An explicit upstream rejection of `internal_chat_message_metadata_passthrough` c
 
 Codex 5-hour, 7-day, and reported GPT-Reserve windows display absolute reset timestamps in the browser's local time zone (`yyyy-MM-dd HH:mm`). Missing provider reset times are not synthesized. Main-window hover details retain the relative countdown.
 
+Each window retains its reported usage percentage. Account-wide exhaustion does not turn a partially used weekly window into 100% usage; the channel still follows its configured quota routing policy when ordinary usage is exhausted.
+
+### Local compaction checkpoints
+
+New local bridge results carry an authenticated, encrypted summary in their `axonhub-local-v2` reference. They can be restored after a restart or request-log cleanup without generating another summary. References are bound to their item ID, API key, project, and installation secret. Preserve the installation secret when restoring a database backup; replacing it invalidates previously sealed references.
+
+For older `axonhub-local-v1` references, AxonHub first uses an existing checkpoint or the original compaction record. If that record has expired, recovery can use a completed continuation only when its thread, compaction window, full retained input prefix, and tool identities match. Client-only execution metadata and absent/null reasoning content do not prevent this comparison. The exact recovered summary is encrypted and saved separately from request logs. Missing or divergent history returns an explicit error; it is not replaced with a guessed summary.
+
+### Codex 0.154.0 compatibility
+
+The gateway preserves `configuration_update` items without inventing message IDs and retains supplied `client_metadata.parent_response_id` and `guardian_credits_requested`. The default client version for requests without a Codex identity is 0.154.0; an explicit client identity remains authoritative.
+
+Additional quota data retains the reported `normal_model_slug` as metadata, without remapping requests. The passive quota checker does not advertise `x-openai-codex-luna-reserve: 1`: that capability is for clients able to apply a Reserve selection, as specified in the [Codex 0.154.0 usage client](https://github.com/openai/codex/blob/rust-v0.154.0/codex-rs/backend-client/src/client/rate_limit_resets.rs).
+
 ### Troubleshooting
 - **Codex reports authentication errors**: ensure `AXONHUB_API_KEY` is exported in the same shell session that launches Codex.
 - **Unexpected model responses**: review active profile mappings in the AxonHub console; disable or adjust rules if necessary.

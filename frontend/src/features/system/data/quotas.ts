@@ -102,6 +102,7 @@ export type ProviderCodexRateLimit = {
 export type ProviderCodexAdditionalRateLimit = {
   limit_name?: string;
   metered_feature?: string;
+  normal_model_slug?: string;
   rate_limit?: ProviderCodexRateLimit;
 };
 

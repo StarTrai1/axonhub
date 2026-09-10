@@ -209,14 +209,15 @@ func TestReplaceRemoteCompactionWithLocalSummary(t *testing.T) {
 }
 
 func TestParseRemoteCompactionRequestUsesLatestItem(t *testing.T) {
-	ref, threadID, model, err := parseRemoteCompactionRequest([]byte(`{
+	body := []byte(`{
 		"model":"gpt-5.6-sol",
 		"input":[
 			{"id":"cmp_old","type":"compaction","encrypted_content":"old"},
 			{"id":"cmp_new","type":"compaction_summary","encrypted_content":"new"}
 		],
 		"client_metadata":{"thread_id":"thread-1"}
-	}`))
+	}`)
+	ref, threadID, model, err := parseRemoteCompactionRequest(body)
 
 	require.NoError(t, err)
 	require.Equal(t, "thread-1", threadID)
@@ -225,6 +226,7 @@ func TestParseRemoteCompactionRequestUsesLatestItem(t *testing.T) {
 		ID:               "cmp_new",
 		EncryptedContent: "new",
 		Index:            1,
+		requestBody:      body,
 	}, ref)
 	require.NotEmpty(t, remoteCompactionCacheKey(ref))
 }

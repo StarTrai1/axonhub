@@ -27,9 +27,10 @@ type CodexUsageResponse struct {
 }
 
 type CodexAdditionalRateLimit struct {
-	LimitName      string             `json:"limit_name,omitempty"`
-	MeteredFeature string             `json:"metered_feature,omitempty"`
-	RateLimit      *CodeRateLimitInfo `json:"rate_limit,omitempty"`
+	LimitName       string             `json:"limit_name,omitempty"`
+	MeteredFeature  string             `json:"metered_feature,omitempty"`
+	NormalModelSlug string             `json:"normal_model_slug,omitempty"`
+	RateLimit       *CodeRateLimitInfo `json:"rate_limit,omitempty"`
 }
 
 type CodeRateLimitInfo struct {
@@ -335,6 +336,9 @@ func (c *CodexQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 			entry := map[string]any{
 				"limit_name":      additional.LimitName,
 				"metered_feature": additional.MeteredFeature,
+			}
+			if additional.NormalModelSlug != "" {
+				entry["normal_model_slug"] = additional.NormalModelSlug
 			}
 			if additional.RateLimit != nil {
 				entry["rate_limit"] = convertRateLimitToMap(additional.RateLimit)

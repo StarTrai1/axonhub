@@ -44,6 +44,7 @@ func TestCodexQuotaChecker_ParseResponsePreservesAdditionalRateLimits(t *testing
 		"additional_rate_limits":[{
 			"limit_name":"GPT-Reserve",
 			"metered_feature":"base_model_inference",
+			"normal_model_slug":"gpt-5.6-luna",
 			"rate_limit":{
 				"allowed":true,
 				"limit_reached":false,
@@ -63,6 +64,7 @@ func TestCodexQuotaChecker_ParseResponsePreservesAdditionalRateLimits(t *testing
 	require.Len(t, additional, 1)
 	require.Equal(t, "GPT-Reserve", additional[0]["limit_name"])
 	require.Equal(t, "base_model_inference", additional[0]["metered_feature"])
+	require.Equal(t, "gpt-5.6-luna", additional[0]["normal_model_slug"])
 	rateLimit, ok := additional[0]["rate_limit"].(map[string]any)
 	require.True(t, ok)
 	primary, ok := rateLimit["primary_window"].(map[string]any)

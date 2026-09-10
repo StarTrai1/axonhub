@@ -88,6 +88,20 @@ AxonHub 的模型配置文件支持将请求模型映射到具体提供商模型
 
 Codex 的 5 小时、7 天及上游已报告的 GPT-Reserve 窗口显示浏览器本地时区的绝对重置时间（`yyyy-MM-dd HH:mm`）。上游未返回的时间不推测补造；主窗口悬停详情仍保留相对倒计时。
 
+各窗口保留上游报告的实际使用比例。账户整体耗尽不会把尚有余量的周窗口改成已用 100%；普通额度耗尽时，渠道仍按配置的配额路由策略处理。
+
+### 本地压缩检查点
+
+新的本地桥接结果通过 `axonhub-local-v2` 引用携带经过认证加密的摘要。服务重启或请求日志清理后，可以直接恢复，不需要重新生成摘要。引用绑定压缩项 ID、API key、项目和安装实例密钥。恢复数据库备份时应一并保留安装实例密钥；更换该密钥会使此前的加密引用失效。
+
+对于旧的 `axonhub-local-v1` 引用，AxonHub 先使用已有检查点或原压缩记录。原记录过期后，仅在线程、压缩窗口、完整的已有输入前缀及工具身份均匹配时，才从已完成的后续请求恢复。客户端内部执行元数据，以及 reasoning content 缺省与 null 的区别，不阻断该比较。恢复的原始摘要会加密保存，并与普通请求日志分开保留。历史缺失或分支不匹配时明确报错，不推测生成替代摘要。
+
+### Codex 0.154.0 兼容
+
+网关原位保留 `configuration_update`，不为其补造消息 ID，并保留客户端传入的 `client_metadata.parent_response_id` 和 `guardian_credits_requested`。没有 Codex 身份信息的请求默认使用 0.154.0；客户端明确传入的身份信息仍优先。
+
+附加配额数据保留上游报告的 `normal_model_slug` 元数据，不据此重映射请求模型。被动配额查询不声明 `x-openai-codex-luna-reserve: 1`；该能力头适用于能执行 Reserve 选择的客户端，见 [Codex 0.154.0 配额客户端](https://github.com/openai/codex/blob/rust-v0.154.0/codex-rs/backend-client/src/client/rate_limit_resets.rs)。
+
 ### 常见问题
 - **Codex 认证失败**：确保在启动 Codex 的同一 shell 会话中设置了 `AXONHUB_API_KEY`。
 - **模型结果异常**：检查 AxonHub 控制台中当前启用的配置文件映射，必要时禁用或调整规则。
