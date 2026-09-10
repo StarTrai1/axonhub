@@ -2146,7 +2146,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           <div className='flex min-h-0 flex-1 overflow-hidden md:gap-4'>
             {/* Main Form Section */}
             <div
-              className={`flex min-h-0 flex-1 flex-col overflow-hidden py-1 transition-all duration-300 ${showFetchedModelsPanel || showSupportedModelsPanel || showApiKeysPanel ? 'pr-2' : 'pr-0'}`}
+              className={`flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden py-1 transition-all duration-300 ${showFetchedModelsPanel || showSupportedModelsPanel || showApiKeysPanel ? 'pr-2' : 'pr-0'}`}
             >
               <Form {...form}>
                 <form id='channel-form' onSubmit={form.handleSubmit(onSubmit)} className='flex min-h-0 flex-1 flex-col space-y-6 p-0.5'>
@@ -2205,7 +2205,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                     </div>
 
                     {/* Right Side - Form Fields */}
-                    <div className='min-w-0 flex-1 space-y-6 overflow-y-auto pb-2 md:pr-4'>
+                    <div className='@container/channel-fields min-w-0 flex-1 space-y-6 overflow-y-auto pb-2 md:pr-4 [&_[data-slot=select-trigger]]:min-w-0 [&_[data-slot=select-trigger]]:w-full [&_[data-slot=select-value]]:min-w-0 [&_[data-slot=select-value]]:truncate'>
                       <div className='flex items-start gap-2'>
                         <SlidersHorizontal className='text-muted-foreground mt-0.5 h-4 w-4 shrink-0' />
                         <div className='min-w-0'>
@@ -3247,7 +3247,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                           </div>
                         </div>
 
-                        <div className='grid grid-cols-1 items-start gap-x-4 gap-y-4 sm:grid-cols-2'>
+                        <div className='grid grid-cols-1 items-start gap-x-4 gap-y-4 @xl/channel-fields:grid-cols-2'>
                           <FormField
                             control={form.control}
                             name='defaultTestModel'
@@ -3384,7 +3384,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                           </div>
                         </div>
 
-                        <div className='grid grid-cols-1 items-start gap-x-4 gap-y-4 sm:grid-cols-2'>
+                        <div className='grid grid-cols-1 items-start gap-x-4 gap-y-4 @xl/channel-fields:grid-cols-2'>
                           <FormItem className='min-w-0 space-y-1.5'>
                             <div className='flex min-h-5 items-center gap-1.5'>
                               <FormLabel className='text-sm font-medium'>{t('channels.dialogs.retryableStatusCodes.label')}</FormLabel>

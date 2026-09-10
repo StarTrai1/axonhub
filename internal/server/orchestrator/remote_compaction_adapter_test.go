@@ -286,6 +286,7 @@ func TestLocalCompactionBridgeStreamReturnsOneCompactionItem(t *testing.T) {
 		ownerKey: "v2:1:1:" + remoteCompactionCacheKey(ref),
 		model:    "gpt-5.6-sol",
 	}
+	initializeTestCompactionCipher(t, generation)
 	source := streams.SliceStream([]*llm.Response{
 		{
 			ID:    "resp_summary",
@@ -331,6 +332,7 @@ func TestLocalCompactionBridgeStreamProducesCodexCompletionContract(t *testing.T
 		ownerKey: "v2:1:1:" + remoteCompactionCacheKey(ref),
 		model:    "gpt-5.6-sol",
 	}
+	initializeTestCompactionCipher(t, generation)
 	source := streams.SliceStream([]*llm.Response{
 		{
 			ID:    "resp_summary",

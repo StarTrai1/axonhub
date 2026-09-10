@@ -892,7 +892,7 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
                   .map((limit, index) => {
                     const labelKey = limit.window === '5h' || limit.window === '7d' ? WINDOW_LABEL_KEYS[limit.window] : undefined;
                     const label = labelKey ? t(labelKey) : t('quota.label.token_usage');
-                    const usedPercent = limit.status === 'exhausted' ? 100 : limit.usageRatio * 100;
+                    const usedPercent = Math.max(0, Math.min(100, limit.usageRatio * 100));
                     const durationPercent = getLimitDurationPercent(limit);
 
                     return (

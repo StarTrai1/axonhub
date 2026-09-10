@@ -33,6 +33,8 @@ func TestRemoteCompactionRestoresWebSocketSnapshotAfterRestartAndModelSwitch(t *
 	apiKey := &ent.APIKey{ID: 71, ProjectID: 72}
 	ctx = contexts.WithProjectID(contexts.WithAPIKey(ctx, apiKey), apiKey.ProjectID)
 	service := createTestRequestService(t, client)
+	systemService := biz.NewSystemService(biz.SystemServiceParams{Ent: client})
+	require.NoError(t, systemService.SetSecretKey(ctx, "test-compaction-installation-secret"))
 	ref := &remoteCompactionReference{ID: "cmp_axonhub_retained", EncryptedContent: "axonhub-local-v1.retained"}
 	cacheKey := remoteCompactionCacheKey(ref)
 	stored, err := client.Request.Create().
@@ -65,13 +67,13 @@ func TestRemoteCompactionRestoresWebSocketSnapshotAfterRestartAndModelSwitch(t *
 			Save(ctx)
 		require.NoError(t, err)
 	}
-	adapter := newRemoteCompactionAdapter(service, nil, nil)
+	adapter := newRemoteCompactionAdapter(service, nil, systemService)
 	for range 2 {
 		summary, loadErr := adapter.summaryForCompaction(ctx, cacheKey, ref, "thread-after-resume", "gpt-6-astra", &PersistenceState{APIKey: apiKey}, nil)
 		require.NoError(t, loadErr)
 		require.Equal(t, "retained summary without regeneration", summary)
 	}
-	restarted := newRemoteCompactionAdapter(service, nil, nil)
+	restarted := newRemoteCompactionAdapter(service, nil, systemService)
 	summary, loadErr := restarted.summaryForCompaction(ctx, cacheKey, ref, "thread-after-resume", "gpt-6-astra", &PersistenceState{APIKey: apiKey}, nil)
 	require.NoError(t, loadErr)
 	require.Equal(t, "retained summary without regeneration", summary)

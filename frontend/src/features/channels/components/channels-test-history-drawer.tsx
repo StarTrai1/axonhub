@@ -169,7 +169,7 @@ export function ChannelsTestHistoryDrawer({ open, onOpenChange, channel }: Props
           </div>
 
           <div className='flex min-w-0 flex-1 flex-col'>
-            <SheetHeader className='flex-shrink-0 border-b px-6 py-4 text-left'>
+            <SheetHeader className='flex-shrink-0 border-b py-4 pl-6 pr-14 text-left'>
               <div className='flex items-center justify-between gap-3'>
                 <SheetTitle className='flex items-center gap-2 text-base'>
                   <FileText className='h-4 w-4' />
@@ -180,7 +180,7 @@ export function ChannelsTestHistoryDrawer({ open, onOpenChange, channel }: Props
                   )}
                 </SheetTitle>
                 {selectedRequestId && (
-                  <Button variant='outline' size='sm' onClick={handleViewDetail} className='h-8 text-xs'>
+                  <Button variant='outline' size='sm' onClick={handleViewDetail} className='h-8 shrink-0 text-xs'>
                     <ExternalLink className='mr-1 h-3.5 w-3.5' />
                     {t('requests.drawer.viewDetail')}
                   </Button>

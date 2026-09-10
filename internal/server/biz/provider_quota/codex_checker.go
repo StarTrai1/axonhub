@@ -403,7 +403,9 @@ func buildCodexQuotaLimit(name string, window *CodeUsageWindow, rateLimitExhaust
 		}
 	}
 
-	if rateLimitExhausted {
+	// Account-level exhaustion can be caused by just one window. Preserve each
+	// measured percentage; use the account flag only when usage was omitted.
+	if rateLimitExhausted && window.UsedPercent == nil {
 		status = "exhausted"
 		usageRatio = 1
 	}

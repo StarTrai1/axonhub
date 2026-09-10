@@ -2,9 +2,9 @@ package orchestrator
 
 import (
 	"context"
+	"crypto/cipher"
 	"crypto/rand"
 	"crypto/sha256"
-	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -63,6 +63,7 @@ type remoteCompactionReference struct {
 	ID               string
 	EncryptedContent string
 	Index            int
+	requestBody      []byte
 }
 
 type remoteCompactionSource struct {
@@ -71,12 +72,14 @@ type remoteCompactionSource struct {
 }
 
 type localCompactionGeneration struct {
-	ref          *remoteCompactionReference
-	cacheKey     string
-	ownerKey     string
-	model        string
-	instructions string
-	standalone   bool
+	ref            *remoteCompactionReference
+	cacheKey       string
+	ownerKey       string
+	model          string
+	instructions   string
+	standalone     bool
+	summaryCipher  cipher.AEAD
+	associatedData []byte
 }
 
 type remoteCompactionMiddleware struct {
@@ -161,7 +164,7 @@ func (m *remoteCompactionMiddleware) adaptRemoteCompactionHistory(
 	threadID string,
 	rawModel string,
 ) (*llm.Request, error) {
-	if ref == nil || ref.ID == "" || threadID == "" {
+	if ref == nil || ref.ID == "" || threadID == "" && !isSealedLocalCompactionReference(ref) {
 		return nil, errors.New("remote compaction local fallback requires a compaction id and Codex thread id")
 	}
 
@@ -226,6 +229,14 @@ func (m *remoteCompactionMiddleware) adaptLocalCompactionGeneration(ctx context.
 	if err != nil {
 		return nil, fmt.Errorf("create local compaction reference: %w", err)
 	}
+	summaryCipher, err := m.adapter.localCompactionCipher(ctx)
+	if err != nil {
+		return nil, err
+	}
+	associatedData, err := localCompactionAssociatedData(ref, m.inbound.state)
+	if err != nil {
+		return nil, err
+	}
 	body, err := buildLocalCompactionGenerationRequest(rawRequestPayload(req.RawRequest), req.RequestType)
 	if err != nil {
 		return nil, err
@@ -262,12 +273,14 @@ func (m *remoteCompactionMiddleware) adaptLocalCompactionGeneration(ctx context.
 		useResponsesEndpointForLocalCompaction(m.inbound.state.ChannelModelsCandidates)
 	}
 	m.generation = &localCompactionGeneration{
-		ref:          ref,
-		cacheKey:     cacheKey,
-		ownerKey:     remoteCompactionOwnerCacheKey(m.inbound.state, cacheKey),
-		model:        req.Model,
-		instructions: instructions,
-		standalone:   standalone,
+		ref:            ref,
+		cacheKey:       cacheKey,
+		ownerKey:       remoteCompactionOwnerCacheKey(m.inbound.state, cacheKey),
+		model:          req.Model,
+		instructions:   instructions,
+		standalone:     standalone,
+		summaryCipher:  summaryCipher,
+		associatedData: associatedData,
 	}
 
 	m.inbound.state.RawRequest = adaptedRawRequest
@@ -317,6 +330,9 @@ func (m *remoteCompactionMiddleware) OnOutboundLlmResponse(ctx context.Context, 
 	if summary == "" {
 		return nil, errors.New("local compaction provider returned no assistant summary")
 	}
+	if err := m.generation.sealSummary(summary); err != nil {
+		return nil, err
+	}
 	if m.generation.ownerKey != "" {
 		m.adapter.summaries.SetDefault(m.generation.ownerKey, summary)
 	}
@@ -355,7 +371,7 @@ func newLocalCompactionReference() (*remoteCompactionReference, error) {
 
 	return &remoteCompactionReference{
 		ID:               "cmp_axonhub_" + hex.EncodeToString(random[:12]),
-		EncryptedContent: localCompactionReferencePrefix + base64.RawURLEncoding.EncodeToString(random),
+		EncryptedContent: localCompactionSealedReferencePrefix,
 	}, nil
 }
 
@@ -389,7 +405,7 @@ func shouldAdaptRemoteCompactionReference(
 }
 
 func isLocalCompactionReference(ref *remoteCompactionReference) bool {
-	return ref != nil && (strings.HasPrefix(ref.EncryptedContent, localCompactionReferencePrefix) ||
+	return ref != nil && (isLegacyLocalCompactionReference(ref) || isSealedLocalCompactionReference(ref) ||
 		strings.HasPrefix(ref.ID, "cmp_axonhub_"))
 }
 
@@ -552,6 +568,10 @@ func (s *localCompactionBridgeStream) finishSource() bool {
 
 		return false
 	}
+	if err := s.generation.sealSummary(summary); err != nil {
+		s.err = err
+		return false
+	}
 	if s.generation.ownerKey != "" {
 		s.adapter.summaries.SetDefault(s.generation.ownerKey, summary)
 	}
@@ -668,8 +688,13 @@ func (a *remoteCompactionAdapter) summaryForCompactionChain(
 	executor pipeline.Executor,
 	ancestors map[string]struct{},
 ) (string, error) {
-	if ref == nil || ref.ID == "" || threadID == "" {
+	if ref == nil || ref.ID == "" || threadID == "" && !isSealedLocalCompactionReference(ref) {
 		return "", errors.New("remote compaction local fallback requires a compaction id and Codex thread id")
+	}
+	if isSealedLocalCompactionReference(ref) {
+		// Authenticate every capsule before consulting caches. The client carries
+		// everything needed to resume after a restart or request-log cleanup.
+		return a.openCompactionCheckpoint(ctx, ref, state, ref.EncryptedContent)
 	}
 	if _, seen := ancestors[cacheKey]; seen {
 		return "", fmt.Errorf("remote compaction history contains a cycle at %q", ref.ID)
@@ -686,11 +711,25 @@ func (a *remoteCompactionAdapter) summaryForCompactionChain(
 			return summary, nil
 		}
 	}
+	if isLegacyLocalCompactionReference(ref) {
+		sealed, err := a.systemService.LoadLocalCompactionCheckpoint(ctx, state.APIKey.ProjectID, state.APIKey.ID, cacheKey)
+		if err != nil {
+			return "", err
+		}
+		if sealed != "" {
+			summary, err := a.openCompactionCheckpoint(ctx, ref, state, sealed)
+			if err != nil {
+				return "", err
+			}
+			a.summaries.SetDefault(ownerKey, summary)
+			return summary, nil
+		}
+	}
 
 	ancestors[cacheKey] = struct{}{}
 	defer delete(ancestors, cacheKey)
 
-	summary, source, err := a.findStoredSummaryOrSource(ctx, cacheKey, ref.ID, threadID, model, state)
+	summary, source, err := a.findStoredSummaryOrSource(ctx, cacheKey, ref, threadID, state)
 	if err != nil {
 		return "", err
 	}
@@ -723,6 +762,11 @@ func (a *remoteCompactionAdapter) summaryForCompactionChain(
 			summary, err = a.generateLocalSummary(ctx, cacheKey, source, state, executor)
 			if err != nil {
 				return "", err
+			}
+		}
+		if isLegacyLocalCompactionReference(ref) {
+			if err := a.retainLegacyCompactionSummary(ctx, cacheKey, ref, state, summary); err != nil {
+				return "", fmt.Errorf("retain local compaction checkpoint: %w", err)
 			}
 		}
 
@@ -776,9 +820,8 @@ func (a *remoteCompactionAdapter) adaptStoredCompactionSource(
 func (a *remoteCompactionAdapter) findStoredSummaryOrSource(
 	ctx context.Context,
 	cacheKey string,
-	compactionID string,
+	ref *remoteCompactionReference,
 	threadID string,
-	model string,
 	state *PersistenceState,
 ) (string, *remoteCompactionSource, error) {
 	if a.requestService == nil || state == nil || state.APIKey == nil {
@@ -799,7 +842,7 @@ func (a *remoteCompactionAdapter) findStoredSummaryOrSource(
 		ctx,
 		state.APIKey.ID,
 		state.APIKey.ProjectID,
-		model,
+		"",
 		llm.APIFormatOpenAIResponse,
 		remoteCompactionHistoryLookupLimit,
 	)
@@ -808,6 +851,7 @@ func (a *remoteCompactionAdapter) findStoredSummaryOrSource(
 	}
 
 	var source *remoteCompactionSource
+	replay := newLocalCompactionReplay(ref)
 	for _, metadata := range recent {
 		storedCacheKey := storedRemoteCompactionCacheKey(metadata.RequestHeaders)
 		if source != nil && storedCacheKey != cacheKey {
@@ -843,6 +887,9 @@ func (a *remoteCompactionAdapter) findStoredSummaryOrSource(
 		if loadErr != nil {
 			return "", nil, loadErr
 		}
+		if summary := replay.summaryFromBody(body); summary != "" {
+			return summary, nil, nil
+		}
 		if !isMatchingCompactionSource(body, threadID) {
 			continue
 		}
@@ -858,7 +905,7 @@ func (a *remoteCompactionAdapter) findStoredSummaryOrSource(
 			if loadErr != nil {
 				return "", nil, loadErr
 			}
-			if responseContainsCompactionID(responseBody, compactionID) {
+			if responseContainsCompactionID(responseBody, ref.ID) {
 				source = &remoteCompactionSource{
 					body:    append([]byte(nil), body...),
 					headers: decodeStoredHeaders(prior.RequestHeaders),
@@ -1176,6 +1223,7 @@ func parseRemoteCompactionRequest(body []byte) (*remoteCompactionReference, stri
 				ID:               item.ID,
 				EncryptedContent: item.EncryptedContent,
 				Index:            index,
+				requestBody:      body,
 			}
 		}
 	}
@@ -1457,7 +1505,13 @@ func extractAssistantOutputText(body []byte) string {
 }
 
 func remoteCompactionCacheKey(ref *remoteCompactionReference) string {
-	hash := sha256.Sum256([]byte(ref.ID + "\x00" + ref.EncryptedContent))
+	content := ref.EncryptedContent
+	if isSealedLocalCompactionReference(ref) {
+		// The generation's persisted identity is allocated before its summary is
+		// available. V2 contents are authenticated separately on every restore.
+		content = localCompactionSealedReferencePrefix
+	}
+	hash := sha256.Sum256([]byte(ref.ID + "\x00" + content))
 
 	return hex.EncodeToString(hash[:])
 }

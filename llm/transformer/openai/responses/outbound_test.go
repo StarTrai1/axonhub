@@ -325,6 +325,7 @@ func TestOutboundTransformer_TransformRequest_ReplaysClientMetadata(t *testing.T
 			"client_metadata": {
 				"session_id": "session-1",
 				"thread_id": "thread-1",
+				"parent_response_id": "resp_parent",
 				"nested": {"source": "codex"}
 			}
 		}`),
@@ -338,6 +339,7 @@ func TestOutboundTransformer_TransformRequest_ReplaysClientMetadata(t *testing.T
 	require.JSONEq(t, `{
 		"session_id":"session-1",
 		"thread_id":"thread-1",
+		"parent_response_id":"resp_parent",
 		"nested":{"source":"codex"}
 	}`, string(llmReq.ProviderExtensions.OpenAIResponses.Request.RawFields["client_metadata"]))
 
@@ -352,6 +354,7 @@ func TestOutboundTransformer_TransformRequest_ReplaysClientMetadata(t *testing.T
 	require.JSONEq(t, `{
 		"session_id":"session-1",
 		"thread_id":"thread-1",
+		"parent_response_id":"resp_parent",
 		"nested":{"source":"codex"}
 	}`, string(payload["client_metadata"]))
 }
@@ -362,6 +365,7 @@ func TestOutboundTransformer_TransformRequest_PreservesGPT6AsyncToolsAndConfigur
 		"model":"gpt-6-astra",
 		"reasoning":{"effort":"low"},
 		"service_tier":"ultrafast",
+		"client_metadata":{"guardian_credits_requested":"true"},
 		"input":[
 			{"type":"configuration_update","reasoning":{"effort":"high"}},
 			{"type":"function_call","call_id":"call_lookup","name":"lookup","arguments":"{}","async":true},
@@ -390,6 +394,8 @@ func TestOutboundTransformer_TransformRequest_PreservesGPT6AsyncToolsAndConfigur
 	input := payload["input"].([]any)
 	require.Equal(t, "configuration_update", input[0].(map[string]any)["type"])
 	require.Equal(t, "high", input[0].(map[string]any)["reasoning"].(map[string]any)["effort"])
+	require.Equal(t, map[string]any{"type": "configuration_update", "reasoning": map[string]any{"effort": "high"}}, input[0])
+	require.Equal(t, map[string]any{"guardian_credits_requested": "true"}, payload["client_metadata"])
 	require.Equal(t, "low", payload["reasoning"].(map[string]any)["effort"])
 	require.Equal(t, "ultrafast", payload["service_tier"])
 	require.Equal(t, "function_call", input[1].(map[string]any)["type"])
