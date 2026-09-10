@@ -267,6 +267,9 @@ func (processor *TestChannelOrchestrator) TestChannel(
 			Error:   new("No message in response"),
 		}, nil
 	}
+	if message := channelTestTerminalError(response.Choices); message != "" {
+		return &TestChannelResult{Latency: latency, Success: false, Error: lo.ToPtr(message)}, nil
+	}
 	return &TestChannelResult{
 		Latency: latency,
 		Success: true,
@@ -387,6 +390,7 @@ func (processor *TestChannelOrchestrator) handleStreamResponse(
 
 	// Accumulate stream chunks
 	var accumulatedContent string
+	var terminalError string
 
 	for stream.Next() {
 		select {
@@ -418,6 +422,9 @@ func (processor *TestChannelOrchestrator) handleStreamResponse(
 		}
 
 		// Accumulate content from the first choice
+		if message := channelTestTerminalError(chunk.Choices); message != "" {
+			terminalError = message
+		}
 		if len(chunk.Choices) > 0 && chunk.Choices[0].Delta != nil && chunk.Choices[0].Delta.Content.Content != nil {
 			accumulatedContent += *chunk.Choices[0].Delta.Content.Content
 		}
@@ -444,6 +451,15 @@ func (processor *TestChannelOrchestrator) handleStreamResponse(
 		}, nil
 	}
 
+	if terminalError != "" {
+		return &TestChannelResult{
+			Latency: latency,
+			Success: false,
+			Message: lo.ToPtr(accumulatedContent),
+			Error:   lo.ToPtr(terminalError),
+		}, nil
+	}
+
 	if accumulatedContent == "" {
 		return &TestChannelResult{
 			Latency: latency,
@@ -459,6 +475,19 @@ func (processor *TestChannelOrchestrator) handleStreamResponse(
 		Message: lo.ToPtr(accumulatedContent),
 		Error:   nil,
 	}, nil
+}
+
+func channelTestTerminalError(choices []llm.Choice) string {
+	for _, choice := range choices {
+		if choice.FinishReason == nil {
+			continue
+		}
+		switch *choice.FinishReason {
+		case "error", "cancelled", "canceled":
+			return "Upstream ended the health check with finish_reason=" + *choice.FinishReason
+		}
+	}
+	return ""
 }
 
 // TestAPIKeyResult represents the result of testing a single API key.

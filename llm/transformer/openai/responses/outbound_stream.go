@@ -75,6 +75,7 @@ type outboundStreamState struct {
 
 	// Reasoning signature tracking
 	pendingReasoningEncryptedContent map[string]*string
+	reasoningOutputEmitted           bool
 
 	// Transformer metadata tracking
 	transformerMetadata        map[string]any
@@ -640,6 +641,7 @@ func (s *responsesOutboundStream) transformStreamEvent(event *httpclient.StreamE
 			if encryptedContent == nil || *encryptedContent == "" {
 				return nil // Intentionally skip this event
 			}
+			s.state.reasoningOutputEmitted = true
 
 			resp.TransformerMetadata = map[string]any{
 				responsesReasoningItemTransformerMetadataKey: map[string]any{
@@ -704,10 +706,7 @@ func (s *responsesOutboundStream) transformStreamEvent(event *httpclient.StreamE
 		}
 		// Response completed - emit two events: one with finish_reason, one with usage
 		s.responseCompleted = true
-		emptyCompletion := len(s.state.toolCalls) == 0 &&
-			s.state.textContent.Len() == 0 &&
-			s.state.reasoningContent.Len() == 0 &&
-			len(s.state.pendingReasoningEncryptedContent) == 0
+		emptyCompletion := !s.hasGeneratedOutput()
 		if streamEvent.Response != nil {
 			s.state.previousResponseID = streamEvent.Response.PreviousResponseID
 			resp.PreviousResponseID = s.state.previousResponseID
@@ -790,21 +789,6 @@ func (s *responsesOutboundStream) transformStreamEvent(event *httpclient.StreamE
 		if streamEvent.Response != nil {
 			s.state.previousResponseID = streamEvent.Response.PreviousResponseID
 			resp.PreviousResponseID = s.state.previousResponseID
-			if streamEvent.Response.Usage != nil {
-				s.state.usage = streamEvent.Response.Usage.ToUsage()
-				s.enqueue(resp)
-				s.enqueue(&llm.Response{
-					Object:             "chat.completion.chunk",
-					ID:                 s.state.responseID,
-					Model:              s.state.responseModel,
-					ServiceTier:        s.state.serviceTier,
-					Created:            s.state.created,
-					PreviousResponseID: s.state.previousResponseID,
-					Choices:            []llm.Choice{},
-					Usage:              s.state.usage,
-				})
-				return nil
-			}
 		}
 
 	case StreamEventTypeResponseIncomplete:
@@ -963,7 +947,7 @@ func (s *responsesOutboundStream) steeringEventEndsTurn(event StreamEvent) bool 
 }
 
 func (s *responsesOutboundStream) hasGeneratedOutput() bool {
-	return len(s.state.toolCalls) > 0 ||
+	return s.state.reasoningOutputEmitted || len(s.state.toolCalls) > 0 ||
 		s.state.textContent.Len() > 0 ||
 		s.state.reasoningContent.Len() > 0 ||
 		len(s.state.pendingReasoningEncryptedContent) > 0

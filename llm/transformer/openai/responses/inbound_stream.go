@@ -1400,6 +1400,13 @@ func (s *responsesInboundStream) emitStreamErrorEvent(err error) error {
 func classifyStreamError(err error) (code, message string) {
 	code = "stream_error"
 	message = err.Error()
+	var responseErr *llm.ResponseError
+	if errors.As(err, &responseErr) && responseErr.Detail.Message != "" {
+		if responseErr.Detail.Code != "" {
+			code = responseErr.Detail.Code
+		}
+		return code, responseErr.Detail.Message
+	}
 
 	if errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, io.EOF) {
 		code = "upstream_eof"

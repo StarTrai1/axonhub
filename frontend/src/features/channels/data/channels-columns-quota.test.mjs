@@ -194,7 +194,9 @@ test('channel schemas preserve normalized quota for every supported provider', (
 test('legacy quota visibility cannot duplicate health quota selection', () => {
   const query = buildQueryChannelsQuery({ quota: true, health: true });
   assert.equal((query.match(/providerQuotaStatus/g) ?? []).length, 1);
-  assert.doesNotMatch(buildQueryChannelsQuery({ quota: true, health: false }), /providerQuotaStatus/);
+  const hiddenHealthQuery = buildQueryChannelsQuery({ quota: true, health: false });
+  assert.equal((hiddenHealthQuery.match(/providerQuotaStatus/g) ?? []).length, 1);
+  assert.doesNotMatch(hiddenHealthQuery, /nextResetAt|liveLimiterStats/);
 });
 
 test('no provider fallback: raw-only provider payloads without _limits yield unavailable, not special parsing', () => {

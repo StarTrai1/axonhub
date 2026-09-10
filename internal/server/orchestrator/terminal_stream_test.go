@@ -92,7 +92,11 @@ func TestPersistentStreams_ResponsesTerminalSurvivesProtocolConversion(t *testin
 				for stream.Next() {
 					lastEvent = stream.Current()
 				}
-				require.NoError(t, stream.Err())
+				if tt.status == "failed" && inbound.name != "responses" {
+					require.ErrorContains(t, stream.Err(), "provider failed")
+				} else {
+					require.NoError(t, stream.Err())
+				}
 				if inbound.name == "responses" && (tt.status == "failed" || tt.status == "incomplete") {
 					require.NotNil(t, lastEvent)
 					require.Equal(t, "response."+tt.status, lastEvent.Type)
