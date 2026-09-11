@@ -64,6 +64,8 @@ func TestCodexOutboundPreservesBodyThreadIdentity(t *testing.T) {
 			raw := &httpclient.Request{Body: body, Headers: testCase.headers.Clone()}
 			request, err := responses.NewInboundTransformer().TransformRequest(t.Context(), raw)
 			require.NoError(t, err)
+			// The pipeline attaches the raw request after inbound conversion.
+			request.RawRequest = raw
 			outbound, err := NewOutboundTransformer(Params{
 				BaseURL: "https://relay.example/v1",
 				TokenProvider: staticTokenGetter{creds: &oauth.OAuthCredentials{
