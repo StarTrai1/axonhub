@@ -35,8 +35,10 @@ jobs:
         run: |
           go test -race ./internal/server/orchestrator -run 'TestResponsesSession|TestResponsesRejected|TestScheduledHealth|TestSealedLocalCompaction|TestLegacyLocalCompaction' -count=1
           go test -race ./internal/server/biz -run '^TestSystemServiceResponsesMetadata' -count=1
+          go test -race ./internal/server/api -run '^TestResponsesWebSocketWarmup' -count=1
           cd llm
           go test -race ./pipeline -run 'TestFirstOutput' -count=1
+          go test -race ./transformer/openai/responses -run 'TestWebSocketExecutorSeparatesCodexExecutionScopes|TestCodexExecutionPoolIdentity' -count=1
 
       - name: Responses cache benchmarks
         run: go test ./internal/server/orchestrator -run '^$' -bench '^BenchmarkResponsesSession' -benchmem -count=3 | tee responses-cache-benchmarks.txt

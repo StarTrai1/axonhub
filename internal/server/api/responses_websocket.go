@@ -424,6 +424,8 @@ func (d *responsesWebSocketDispatcher) processMessage(lane *responsesWebSocketLa
 
 	return writeResponsesWebSocketResult(requestCtx, d.writer, result, d.transformError, streamID, func(id string) {
 		d.registerResponseID(id, lane)
+	}, func() {
+		lane.session.completeRequest(message)
 	})
 }
 
@@ -556,8 +558,6 @@ func (s *responsesWebSocketSession) prepareRequest(
 		if err != nil {
 			return nil, nil, invalidResponsesWebSocketRequest(err.Error(), "input")
 		}
-		s.warmupID = ""
-		s.warmupPayload = nil
 	}
 
 	if !generate {
@@ -610,6 +610,21 @@ func (s *responsesWebSocketSession) prepareRequest(
 	genericRequest.JSONBody = displayBody
 
 	return genericRequest, nil, nil
+}
+
+// A warm-up acknowledged input that never reached an upstream. Retain it until
+// a continuation using its ID completes, including retries on this connection.
+func (s *responsesWebSocketSession) completeRequest(message []byte) {
+	if s.warmupID == "" {
+		return
+	}
+	var request struct {
+		PreviousResponseID string `json:"previous_response_id"`
+	}
+	if json.Unmarshal(message, &request) == nil && request.PreviousResponseID == s.warmupID {
+		s.warmupID = ""
+		s.warmupPayload = nil
+	}
 }
 
 func mergeResponsesWebSocketWarmup(
@@ -760,6 +775,7 @@ func writeResponsesWebSocketResult(
 	transformError responsesWebSocketErrorFunc,
 	streamID string,
 	registerResponseID func(string),
+	responseCompleted func(),
 ) error {
 	if result.ChatCompletionStream != nil {
 		stream := result.ChatCompletionStream
@@ -785,6 +801,9 @@ func writeResponsesWebSocketResult(
 			if err := writeResponsesWebSocketMessage(writer, websocket.TextMessage, data); err != nil {
 				return err
 			}
+			if event.Type == "response.completed" && responseCompleted != nil {
+				responseCompleted()
+			}
 		}
 
 		if err := stream.Err(); err != nil && !terminalSeen {
@@ -804,11 +823,17 @@ func writeResponsesWebSocketResult(
 		if registerResponseID != nil {
 			registerResponseID(responseIDFromResponseBody(response))
 		}
-		return writeResponsesWebSocketJSON(writer, responsesWebSocketEvent(streamID, gin.H{
+		if err := writeResponsesWebSocketJSON(writer, responsesWebSocketEvent(streamID, gin.H{
 			"type":            "response.completed",
 			"sequence_number": 0,
 			"response":        response,
-		}))
+		})); err != nil {
+			return err
+		}
+		if responseCompleted != nil {
+			responseCompleted()
+		}
+		return nil
 	}
 
 	return writeResponsesWebSocketError(writer, invalidResponsesWebSocketRequest("Responses request returned no result", ""), streamID)

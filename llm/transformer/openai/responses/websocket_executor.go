@@ -354,17 +354,18 @@ func (e *WebSocketExecutor) Close() error {
 }
 
 type webSocketPoolKey struct {
-	URL        string
-	SessionID  string
-	Scope      string
-	Auth       string
-	AccountID  string
-	Originator string
-	UserAgent  string
-	Org        string
-	Project    string
-	BetaHeader string
-	Headers    string
+	URL            string
+	SessionID      string
+	ExecutionScope string
+	Scope          string
+	Auth           string
+	AccountID      string
+	Originator     string
+	UserAgent      string
+	Org            string
+	Project        string
+	BetaHeader     string
+	Headers        string
 }
 
 type pooledWebSocketConn struct {
@@ -598,17 +599,18 @@ func (e *WebSocketExecutor) poolKey(ctx context.Context, request *httpclient.Req
 	}
 
 	return webSocketPoolKey{
-		URL:        wsURL,
-		SessionID:  sessionID,
-		Scope:      strings.TrimSpace(scope),
-		Auth:       authPoolIdentity(request.Auth, headers),
-		AccountID:  strings.TrimSpace(headers.Get(webSocketAccountIDHeader)),
-		Originator: strings.TrimSpace(headers.Get(webSocketOriginatorHeader)),
-		UserAgent:  strings.TrimSpace(headers.Get(webSocketUserAgentHeader)),
-		Org:        strings.TrimSpace(headers.Get(webSocketOrgHeader)),
-		Project:    strings.TrimSpace(headers.Get(webSocketProjectHeader)),
-		BetaHeader: strings.TrimSpace(headers.Get("OpenAI-Beta")),
-		Headers:    headerPoolIdentity(headers),
+		URL:            wsURL,
+		SessionID:      sessionID,
+		ExecutionScope: codexExecutionPoolIdentity(shared.ReadCodexRequestMetadata(headers, request.Body)),
+		Scope:          strings.TrimSpace(scope),
+		Auth:           authPoolIdentity(request.Auth, headers),
+		AccountID:      strings.TrimSpace(headers.Get(webSocketAccountIDHeader)),
+		Originator:     strings.TrimSpace(headers.Get(webSocketOriginatorHeader)),
+		UserAgent:      strings.TrimSpace(headers.Get(webSocketUserAgentHeader)),
+		Org:            strings.TrimSpace(headers.Get(webSocketOrgHeader)),
+		Project:        strings.TrimSpace(headers.Get(webSocketProjectHeader)),
+		BetaHeader:     strings.TrimSpace(headers.Get("OpenAI-Beta")),
+		Headers:        headerPoolIdentity(headers),
 	}, true
 }
 

@@ -15,6 +15,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/samber/lo"
 	"github.com/tidwall/gjson"
+	"golang.org/x/net/http/httpguts"
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/auth"
@@ -194,8 +195,12 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	rawVersion := ""
 	rawTurnMetadata := ""
 	responsesLite := false
+	var requestMetadata shared.CodexRequestMetadata
 
 	var rawHeaders http.Header
+	if llmReq.RawRequest != nil {
+		requestMetadata = shared.ReadCodexRequestMetadata(llmReq.RawRequest.Headers, llmReq.RawRequest.Body)
+	}
 
 	if llmReq.RawRequest != nil && llmReq.RawRequest.Headers != nil {
 		rawHeaders = llmReq.RawRequest.Headers
@@ -222,10 +227,13 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 			"true",
 		)
 	}
+	if rawTurnMetadata == "" {
+		rawTurnMetadata = requestMetadata.RawTurnMetadata
+	}
 
 	requestSessionID := rawSessionID
 	if requestSessionID == "" {
-		requestSessionID = ExtractSessionIDFromTurnMetadata(rawTurnMetadata)
+		requestSessionID = requestMetadata.SessionID
 	}
 	if requestSessionID == "" {
 		requestSessionID, _ = shared.GetSessionID(ctx)
@@ -233,9 +241,14 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	if requestSessionID == "" {
 		requestSessionID = uuid.NewString()
 	}
-	requestThreadID := strings.TrimSpace(rawHeaders.Get(ThreadIDHeader))
+	requestThreadID := requestMetadata.ThreadID
 	if requestThreadID == "" {
 		requestThreadID = requestSessionID
+	}
+	for _, value := range []string{requestSessionID, requestThreadID, requestMetadata.WindowID, rawTurnMetadata} {
+		if !httpguts.ValidHeaderFieldValue(value) {
+			return nil, fmt.Errorf("%w: invalid Codex request identity header", transformer.ErrInvalidRequest)
+		}
 	}
 
 	creds, err := t.tokens.Get(ctx)
@@ -398,15 +411,20 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	// Fabricate the remaining Codex identity headers for non-Codex inbound
 	// clients so the upstream always sees a complete Codex session shape.
 	sessionID := hreq.Headers.Get(SessionHeaderHyphen)
-	windowID := sessionID + ":0"
+	windowID := requestMetadata.WindowID
+	if windowID == "" {
+		windowID = requestThreadID + ":0"
+	}
 	if hreq.Headers.Get(ThreadIDHeader) == "" {
-		// Codex clients send Thread-Id equal to Session-Id (both identify the
-		// conversation/thread); keep thread-scoped upstream behavior (e.g.
-		// prompt caching) consistent for non-Codex clients too.
-		hreq.Headers.Set(ThreadIDHeader, sessionID)
+		// Child threads share the root Session-Id. Keep their explicit thread
+		// identity even when the client only supplied it in client_metadata.
+		hreq.Headers.Set(ThreadIDHeader, requestThreadID)
 	}
 	if hreq.Headers.Get(WindowIDHeader) == "" {
 		hreq.Headers.Set(WindowIDHeader, windowID)
+	}
+	if hreq.Headers.Get(TurnMetadataHeader) == "" && rawTurnMetadata != "" {
+		hreq.Headers.Set(TurnMetadataHeader, rawTurnMetadata)
 	}
 	if hreq.Headers.Get(TurnMetadataHeader) == "" {
 		installationID := ""
@@ -418,7 +436,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		turnMetadata, _ := json.Marshal(TurnMetadata{
 			InstallationID:      installationID,
 			SessionID:           sessionID,
-			ThreadID:            sessionID,
+			ThreadID:            requestThreadID,
 			TurnID:              uuid.NewString(),
 			WindowID:            windowID,
 			RequestKind:         "turn",

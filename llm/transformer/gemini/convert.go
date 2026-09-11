@@ -118,7 +118,7 @@ func convertGeminiFinishReasonToLLM(reason string, hasToolCall bool) *string {
 }
 
 func convertLLMFinishReasonToGemini(reason *string) string {
-	if reason == nil {
+	if reason == nil || *reason == "" {
 		return ""
 	}
 
