@@ -9,6 +9,7 @@ import (
 	"io"
 	"mime"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 
@@ -81,7 +82,8 @@ type Params struct {
 // backend. Everything else is treated as a compatible relay that may return a
 // completed JSON response instead of SSE.
 func isOfficialCodexBaseURL(baseURL string) bool {
-	return strings.Contains(strings.ToLower(baseURL), "chatgpt.com")
+	parsed, err := url.Parse(baseURL)
+	return err == nil && strings.EqualFold(parsed.Hostname(), "chatgpt.com")
 }
 
 // isOfficialCodex reports whether the transformer targets the official Codex backend.
@@ -354,6 +356,12 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	hreq, err := t.responsesOutbound.TransformRequest(ctx, &reqCopy)
 	if err != nil {
 		return nil, err
+	}
+	if !t.isOfficialCodex() {
+		// Memgen marks OpenAI's internal memory workload. Do not let the
+		// generic header merge forward it to a compatible Responses relay.
+		hreq.Headers.Del(MemgenRequestHeader)
+		hreq.SkipInboundHeaders = append(hreq.SkipInboundHeaders, MemgenRequestHeader)
 	}
 
 	if isImageRequest {

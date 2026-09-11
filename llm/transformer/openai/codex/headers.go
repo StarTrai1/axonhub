@@ -20,6 +20,7 @@ const (
 	BetaFeaturesHeader    = "X-Codex-Beta-Features"
 	RoutingHintHeader     = "X-Codex-Routing-Hint"
 	ThreadIDHeader        = "Thread-Id"
+	MemgenRequestHeader   = "X-Openai-Memgen-Request"
 	// ResponsesLiteHeader uses the canonical spelling ("Openai"): Go's
 	// http.Header canonicalizes keys, so lookups match regardless of case, and
 	// the wire name is case-insensitive per RFC 9110.
