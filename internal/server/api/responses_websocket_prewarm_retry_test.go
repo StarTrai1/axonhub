@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync/atomic"
 	"testing"
 
@@ -31,7 +32,7 @@ func TestResponsesWebSocketWarmupRetainsInputAfterFailedContinuation(t *testing.
 					if failure == "preflight" {
 						return orchestrator.ChatCompletionResult{}, &httpclient.Error{StatusCode: http.StatusBadGateway}
 					}
-					event := fmt.Sprintf(`{"type":%q,"response":{"id":"resp_failed","status":"failed"}}`, failure)
+					event := fmt.Sprintf(`{"type":%q,"response":{"id":"resp_failed","status":%q}}`, failure, strings.TrimPrefix(failure, "response."))
 					return orchestrator.ChatCompletionResult{
 						ChatCompletionStream: streams.SliceStream([]*httpclient.StreamEvent{{Type: failure, Data: []byte(event)}}),
 					}, nil
