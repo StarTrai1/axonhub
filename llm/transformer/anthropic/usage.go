@@ -50,6 +50,8 @@ func convertToLlmUsage(usage *Usage, platformType PlatformType) *llm.Usage {
 	if usage == nil {
 		return nil
 	}
+	snapshot := *usage
+	usage = &snapshot
 
 	// Handle moonshot's cached_tokens field
 	if usage.CachedTokens > 0 && usage.CacheCreationInputTokens == 0 {

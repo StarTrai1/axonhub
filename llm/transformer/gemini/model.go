@@ -315,6 +315,9 @@ type SafetySetting struct {
 
 // GenerateContentResponse represents the Gemini API generateContent response format.
 type GenerateContentResponse struct {
+	// Error is an in-band failure carried by some successful HTTP/SSE responses.
+	Error *ErrorDetail `json:"error,omitempty"`
+
 	// Candidates is the list of candidate responses from the model.
 	Candidates []*Candidate `json:"candidates,omitempty"`
 

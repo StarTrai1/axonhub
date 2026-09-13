@@ -57,12 +57,12 @@ func RequestFromLLM(ctx context.Context, r *llm.Request, reasoningField Reasonin
 		return MessageFromLLMWithConfig(m, reasoningField)
 	})
 
-	// Chat Completions accepts a single system message; strict OpenAI-compatible
-	// upstreams (notably domestic model gateways) reject the multiples that
-	// Claude Code produces when it sends the system prompt as an array. Merge
-	// them, mirroring the Responses outbound which folds system messages into a
-	// single `instructions` string.
+	// Some OpenAI-compatible upstreams reject multiple system messages. Retain
+	// the existing Chat compatibility policy for Claude Code's system arrays.
 	req.Messages = mergeSystemMessages(req.Messages)
+	if r.APIFormat != llm.APIFormatOpenAIChatCompletion {
+		req.Messages = relayToolResultImages(req.Messages)
+	}
 
 	// Convert Stop
 	if r.Stop != nil {
@@ -117,9 +117,8 @@ func RequestFromLLM(ctx context.Context, r *llm.Request, reasoningField Reasonin
 }
 
 // mergeSystemMessages collapses all system-role messages into one at the
-// position of the first, dropping the rest. The Chat Completions spec allows
-// a single system message, and strict OpenAI-compatible upstreams reject
-// extras with "System message must be at the beginning".
+// beginning, dropping the rest. Some OpenAI-compatible upstreams reject
+// additional or later system messages with "System message must be at the beginning".
 func mergeSystemMessages(msgs []Message) []Message {
 	var (
 		systemCount int

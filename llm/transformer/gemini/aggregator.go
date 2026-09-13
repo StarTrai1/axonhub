@@ -49,6 +49,9 @@ func AggregateStreamChunks(
 		if err := json.Unmarshal(chunk.Data, &geminiResp); err != nil {
 			continue // Skip invalid chunks
 		}
+		if err := geminiInBandError(geminiResp.Error); err != nil {
+			return nil, llm.ResponseMeta{}, err
+		}
 
 		// Capture response ID and model version
 		if responseID == "" && geminiResp.ResponseID != "" {

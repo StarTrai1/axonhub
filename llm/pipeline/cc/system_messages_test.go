@@ -15,8 +15,6 @@ import (
 func TestSystemCacheCompatibilityAffectedFormats(t *testing.T) {
 	formats := []llm.APIFormat{
 		llm.APIFormatOpenAIChatCompletion,
-		llm.APIFormatOpenAIResponse,
-		llm.APIFormatOpenAIResponseCompact,
 		llm.APIFormatAnthropicMessage,
 	}
 
@@ -51,6 +49,23 @@ func TestSystemCacheCompatibilityNoOpConditions(t *testing.T) {
 		request *llm.Request
 		format  llm.APIFormat
 	}{
+		{
+			name: "Responses preserves mid-conversation instruction roles",
+			request: newClaudeCodeRequest([]llm.Message{
+				{Role: "system"},
+				{Role: "user"},
+				{Role: "system"},
+			}),
+			format: llm.APIFormatOpenAIResponse,
+		},
+		{
+			name: "compact preserves mid-conversation instruction roles",
+			request: newClaudeCodeRequest([]llm.Message{
+				{Role: "user"},
+				{Role: "system"},
+			}),
+			format: llm.APIFormatOpenAIResponseCompact,
+		},
 		{
 			name: "non Claude Code client",
 			request: requestWithUserAgent("codex_cli_rs/1.0", []llm.Message{

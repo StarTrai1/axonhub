@@ -46,9 +46,9 @@ func convertToTextOptions(chatReq *llm.Request) *TextOptions {
 	return result
 }
 
-// extractPromptFromMessages tries to extract a concise prompt string from the
-// request messages, preferring the last user message. If multiple text parts
-// exist, they are concatenated with newlines.
+// convertInstructionsFromMessages folds only the leading system block into
+// instructions. Later system messages stay in input so they cannot rewrite the
+// cached prefix or apply retroactively to earlier turns.
 func convertInstructionsFromMessages(msgs []llm.Message) string {
 	if len(msgs) == 0 {
 		return ""
@@ -56,13 +56,12 @@ func convertInstructionsFromMessages(msgs []llm.Message) string {
 
 	var instructions []string
 
-	// find the last user message
 	for _, msg := range msgs {
 		if msg.Role != "system" {
-			continue
+			break
 		}
-		// Collect text from either the simple string content or parts
-		if msg.Content.Content != nil {
+		// Match the content union's precedence without duplicating scalar text.
+		if len(msg.Content.MultipleContent) == 0 && msg.Content.Content != nil {
 			instructions = append(instructions, *msg.Content.Content)
 		}
 
@@ -99,7 +98,7 @@ func convertInputFromMessages(msgs []llm.Message, transformOptions llm.Transform
 
 	wasArrayFormat := transformOptions.ArrayInputs != nil && *transformOptions.ArrayInputs
 
-	if len(msgs) == 1 && msgs[0].Content.Content != nil && !wasArrayFormat {
+	if len(msgs) == 1 && msgs[0].Role == "user" && msgs[0].Content.Content != nil && !wasArrayFormat {
 		return Input{Text: msgs[0].Content.Content}
 	}
 
@@ -109,9 +108,13 @@ func convertInputFromMessages(msgs []llm.Message, transformOptions llm.Transform
 	// callID -> item type (function_call_output or custom_tool_call_output)
 	toolResultItemTypeByCallID := map[string]string{}
 
-	for _, msg := range msgs {
+	leadingSystemEnd := 0
+	for leadingSystemEnd < len(msgs) && msgs[leadingSystemEnd].Role == "system" {
+		leadingSystemEnd++
+	}
+	for _, msg := range msgs[leadingSystemEnd:] {
 		switch msg.Role {
-		case "user", "developer":
+		case "user", "developer", "system":
 			items = append(items, convertUserMessage(msg))
 		case "assistant":
 			assistantItems := convertAssistantMessage(msg)

@@ -896,7 +896,7 @@ func TestConvertInstructionsFromMessages(t *testing.T) {
 					},
 				},
 			},
-			expected: "system 1\nsystem 2",
+			expected: "system 1",
 		},
 	}
 

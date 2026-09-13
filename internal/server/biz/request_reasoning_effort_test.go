@@ -52,6 +52,36 @@ func TestExtractOutboundReasoningEffort(t *testing.T) {
 			want:   lo.ToPtr("max"),
 		},
 		{
+			name:   "GPT-6 latest configuration update overrides the cache prefix effort",
+			format: llm.APIFormatOpenAIResponse,
+			body:   `{"model":"gpt-6-astra","reasoning":{"effort":"low"},"input":[{"type":"configuration_update","reasoning":{"effort":"high"}},{"role":"user","content":"first turn"},{"type":"configuration_update","reasoning":{"effort":"max"}},{"role":"user","content":"next turn"}]}`,
+			want:   lo.ToPtr("max"),
+		},
+		{
+			name:   "WebSocket continuation with no top-level effort",
+			format: llm.APIFormatOpenAIResponse,
+			body:   `{"type":"response.create","model":"gpt-6-astra","previous_response_id":"resp_previous","input":[{"type":"configuration_update","reasoning":{"effort":"high"}},{"role":"user","content":"continue"}]}`,
+			want:   lo.ToPtr("high"),
+		},
+		{
+			name:   "empty and non-string updates do not replace a known effort",
+			format: llm.APIFormatOpenAIResponse,
+			body:   `{"reasoning":{"effort":"low"},"input":[{"type":"configuration_update","reasoning":{"effort":"high"}},{"type":"configuration_update","reasoning":{"effort":" "}},{"type":"configuration_update","reasoning":{"effort":0}}]}`,
+			want:   lo.ToPtr("high"),
+		},
+		{
+			name:   "tool output and unrelated input do not configure effort",
+			format: llm.APIFormatOpenAIResponse,
+			body:   `{"reasoning":{"effort":"low"},"input":[{"type":"function_call_output","call_id":"call_1","output":[{"type":"configuration_update","reasoning":{"effort":"max"}}]},{"role":"user","reasoning":{"effort":"high"}}]}`,
+			want:   lo.ToPtr("low"),
+		},
+		{
+			name:   "compact does not apply unsupported configuration updates",
+			format: llm.APIFormatOpenAIResponseCompact,
+			body:   `{"reasoning":{"effort":"low"},"input":[{"type":"configuration_update","reasoning":{"effort":"max"}}]}`,
+			want:   lo.ToPtr("low"),
+		},
+		{
 			name:   "anthropic output config effort",
 			format: llm.APIFormatAnthropicMessage,
 			body:   `{"model":"deepseek-v4-flash","output_config":{"effort":"max"}}`,
@@ -88,8 +118,10 @@ func TestExtractOutboundReasoningEffort(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got := extractOutboundReasoningEffort(httpclient.Request{Body: []byte(tt.body)}, tt.format)
+			body := []byte(tt.body)
+			got := extractOutboundReasoningEffort(httpclient.Request{Body: body}, tt.format)
 			require.Equal(t, tt.want, got)
+			require.Equal(t, tt.body, string(body), "usage reporting must not rewrite the request or its cache prefix")
 		})
 	}
 }
@@ -168,6 +200,23 @@ func TestRequestService_CreateRequestExecutionPersistsReasoningEffort(t *testing
 	require.NoError(t, err)
 	require.NotNil(t, responsesExecution.ReasoningEffort)
 	require.Equal(t, "high", *responsesExecution.ReasoningEffort)
+
+	astraBody := []byte(`{"model":"gpt-6-astra","reasoning":{"effort":"low"},"input":[{"type":"configuration_update","reasoning":{"effort":"high"}},{"role":"user","content":"continue"}]}`)
+	astraExecution, err := requestService.CreateRequestExecution(
+		ctx,
+		&Channel{Channel: channelEntity},
+		"gpt-6-astra",
+		requestEntity,
+		httpclient.Request{Body: astraBody, APIFormat: string(llm.APIFormatOpenAIResponse)},
+		llm.APIFormatOpenAIResponse,
+		false,
+	)
+	require.NoError(t, err)
+	require.NotNil(t, astraExecution.ReasoningEffort)
+	require.Equal(t, "high", *astraExecution.ReasoningEffort)
+	storedExecution, err := client.RequestExecution.Get(ctx, astraExecution.ID)
+	require.NoError(t, err)
+	require.Equal(t, astraExecution.ReasoningEffort, storedExecution.ReasoningEffort)
 
 	anthropicExecution, err := requestService.CreateRequestExecution(
 		ctx,

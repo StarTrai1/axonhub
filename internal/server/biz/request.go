@@ -14,6 +14,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqljson"
 	"github.com/eko/gocache/lib/v4/store"
+	"github.com/samber/lo"
 	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/internal/authz"
@@ -446,7 +447,28 @@ func extractOutboundReasoningEffort(channelRequest httpclient.Request, format ll
 	switch format {
 	case llm.APIFormatOpenAIChatCompletion:
 		path = "reasoning_effort"
-	case llm.APIFormatOpenAIResponse, llm.APIFormatOpenAIResponseCompact:
+	case llm.APIFormatOpenAIResponse:
+		// GPT-6 can change effort in the ordered history while leaving the
+		// request-level setting unchanged for prompt caching. Only inspect
+		// actual top-level input items; nested tool output is not configuration.
+		var updatedEffort *string
+		input := gjson.GetBytes(channelRequest.Body, "input")
+		if input.IsArray() {
+			input.ForEach(func(_, item gjson.Result) bool {
+				if item.Get("type").String() == "configuration_update" {
+					effort := item.Get("reasoning.effort")
+					if effort.Type == gjson.String && strings.TrimSpace(effort.String()) != "" {
+						updatedEffort = lo.ToPtr(effort.String())
+					}
+				}
+				return true
+			})
+		}
+		if updatedEffort != nil {
+			return updatedEffort
+		}
+		path = "reasoning.effort"
+	case llm.APIFormatOpenAIResponseCompact:
 		path = "reasoning.effort"
 	case llm.APIFormatAnthropicMessage:
 		path = "output_config.effort"

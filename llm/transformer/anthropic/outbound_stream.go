@@ -50,10 +50,11 @@ func filterStreamEvent(event *httpclient.StreamEvent) bool {
 
 // streamState holds the state for a streaming session.
 type streamState struct {
-	streamID     string
-	streamModel  string
-	streamUsage  *llm.Usage
-	platformType PlatformType
+	streamID      string
+	streamModel   string
+	streamUsage   *llm.Usage
+	providerUsage *Usage
+	platformType  PlatformType
 	// Tool call tracking
 	toolIndex int
 	toolCalls map[int]*llm.ToolCall // index -> tool call
@@ -147,7 +148,8 @@ func (s *outboundStream) transformStreamChunk(event *httpclient.StreamEvent) (*l
 			resp.Model = state.streamModel
 
 			if streamEvent.Message.Usage != nil {
-				state.streamUsage = convertToLlmUsage(streamEvent.Message.Usage, state.platformType)
+				state.providerUsage = mergeAnthropicUsage(nil, streamEvent.Message.Usage, gjson.GetBytes(event.Data, "message.usage"))
+				state.streamUsage = convertToLlmUsage(state.providerUsage, state.platformType)
 				resp.ServiceTier = streamEvent.Message.Usage.ServiceTier
 				resp.Usage = state.streamUsage
 			}
@@ -305,20 +307,8 @@ func (s *outboundStream) transformStreamChunk(event *httpclient.StreamEvent) (*l
 	case "message_delta":
 		// Update stored usage if available (final usage information)
 		if streamEvent.Usage != nil {
-			usage := convertToLlmUsage(streamEvent.Usage, state.platformType)
-			if state.streamUsage != nil {
-				if usage.PromptTokens == 0 && state.streamUsage.PromptTokens > 0 {
-					usage.PromptTokens = state.streamUsage.PromptTokens
-				}
-
-				if usage.PromptTokensDetails == nil && state.streamUsage.PromptTokensDetails != nil {
-					usage.PromptTokensDetails = state.streamUsage.PromptTokensDetails
-				}
-			}
-			// Recalculate total tokens after merging prompt/completion usage.
-			usage.TotalTokens = usage.PromptTokens + usage.CompletionTokens
-
-			state.streamUsage = usage
+			state.providerUsage = mergeAnthropicUsage(state.providerUsage, streamEvent.Usage, gjson.GetBytes(event.Data, "usage"))
+			state.streamUsage = convertToLlmUsage(state.providerUsage, state.platformType)
 		}
 
 		if streamEvent.Delta != nil && streamEvent.Delta.StopReason != nil {

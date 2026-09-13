@@ -63,11 +63,11 @@ func IsClaudeCodeRequest(request *llm.Request) bool {
 func supportsSystemCacheCompatibility(format llm.APIFormat) bool {
 	//nolint:exhaustive // Only text protocols known to hoist system messages are relevant.
 	switch format {
-	case llm.APIFormatOpenAIChatCompletion,
-		llm.APIFormatOpenAIResponse,
-		llm.APIFormatOpenAIResponseCompact,
-		llm.APIFormatAnthropicMessage:
+	case llm.APIFormatOpenAIChatCompletion, llm.APIFormatAnthropicMessage:
 		return true
+	case llm.APIFormatOpenAIResponse, llm.APIFormatOpenAIResponseCompact:
+		// Responses preserves later system messages in their original positions.
+		return false
 	default:
 		return false
 	}

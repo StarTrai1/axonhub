@@ -10,6 +10,10 @@ import (
 type PromptTokensDetails struct {
 	AudioTokens  int64 `json:"audio_tokens"`
 	CachedTokens int64 `json:"cached_tokens"`
+
+	// Optional subsets of cached_tokens, preserved without changing totals.
+	CachedTokensDetails *llm.CachedTokensDetails `json:"cached_tokens_details,omitempty"`
+
 	// WriteCachedTokens is the number of prompt tokens written to the cache.
 	WriteCachedTokens int64 `json:"cache_write_tokens,omitempty"`
 }
@@ -18,12 +22,13 @@ type PromptTokensDetails struct {
 // emitted by older or third-party OpenAI-compatible gateways.
 func (d *PromptTokensDetails) UnmarshalJSON(data []byte) error {
 	var wire struct {
-		AudioTokens          int64  `json:"audio_tokens"`
-		CachedTokens         int64  `json:"cached_tokens"`
-		CacheWriteTokens     *int64 `json:"cache_write_tokens"`
-		WriteCachedTokens    *int64 `json:"write_cached_tokens"`
-		CacheCreationTokens  *int64 `json:"cache_creation_tokens"`
-		CachedCreationTokens *int64 `json:"cached_creation_tokens"`
+		AudioTokens          int64                    `json:"audio_tokens"`
+		CachedTokens         int64                    `json:"cached_tokens"`
+		CachedTokensDetails  *llm.CachedTokensDetails `json:"cached_tokens_details"`
+		CacheWriteTokens     *int64                   `json:"cache_write_tokens"`
+		WriteCachedTokens    *int64                   `json:"write_cached_tokens"`
+		CacheCreationTokens  *int64                   `json:"cache_creation_tokens"`
+		CachedCreationTokens *int64                   `json:"cached_creation_tokens"`
 	}
 	if err := json.Unmarshal(data, &wire); err != nil {
 		return err
@@ -31,6 +36,7 @@ func (d *PromptTokensDetails) UnmarshalJSON(data []byte) error {
 
 	d.AudioTokens = wire.AudioTokens
 	d.CachedTokens = wire.CachedTokens
+	d.CachedTokensDetails = wire.CachedTokensDetails
 	d.WriteCachedTokens = 0
 	for _, value := range []*int64{
 		wire.CacheWriteTokens,
@@ -129,9 +135,10 @@ func (u *Usage) ToLLMUsage() *llm.Usage {
 
 	if u.PromptTokensDetails != (PromptTokensDetails{}) {
 		usage.PromptTokensDetails = &llm.PromptTokensDetails{
-			AudioTokens:       u.PromptTokensDetails.AudioTokens,
-			CachedTokens:      u.PromptTokensDetails.CachedTokens,
-			WriteCachedTokens: u.PromptTokensDetails.WriteCachedTokens,
+			AudioTokens:         u.PromptTokensDetails.AudioTokens,
+			CachedTokens:        u.PromptTokensDetails.CachedTokens,
+			CachedTokensDetails: u.PromptTokensDetails.CachedTokensDetails.Clone(),
+			WriteCachedTokens:   u.PromptTokensDetails.WriteCachedTokens,
 		}
 	}
 
@@ -180,9 +187,10 @@ func UsageFromLLM(u *llm.Usage) *Usage {
 
 	if u.PromptTokensDetails != nil {
 		usage.PromptTokensDetails = PromptTokensDetails{
-			AudioTokens:       u.PromptTokensDetails.AudioTokens,
-			CachedTokens:      u.PromptTokensDetails.CachedTokens,
-			WriteCachedTokens: u.PromptTokensDetails.WriteCachedTokens,
+			AudioTokens:         u.PromptTokensDetails.AudioTokens,
+			CachedTokens:        u.PromptTokensDetails.CachedTokens,
+			CachedTokensDetails: u.PromptTokensDetails.CachedTokensDetails.Clone(),
+			WriteCachedTokens:   u.PromptTokensDetails.WriteCachedTokens,
 		}
 	}
 

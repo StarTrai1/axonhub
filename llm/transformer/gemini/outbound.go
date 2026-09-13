@@ -255,6 +255,9 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *h
 	if err := json.Unmarshal(httpResp.Body, &geminiResp); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal gemini response: %w", err)
 	}
+	if err := geminiInBandError(geminiResp.Error); err != nil {
+		return nil, err
+	}
 
 	// Convert to unified response (non-streaming)
 	return convertGeminiToLLMResponse(&geminiResp, false), nil

@@ -63,6 +63,9 @@ func (t *OutboundTransformer) transformStreamChunkWithState(
 	if err := json.Unmarshal(event.Data, &resp); err != nil {
 		return nil, err
 	}
+	if err := geminiInBandError(resp.Error); err != nil {
+		return nil, err
+	}
 
 	// Gemini does not guarantee responseId in every streaming chunk. Keep one
 	// stable ID for the whole stream so downstream clients can correlate chunks.

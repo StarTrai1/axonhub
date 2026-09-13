@@ -912,6 +912,9 @@ type PromptTokensDetails struct {
 	AudioTokens  int64 `json:"audio_tokens"`
 	CachedTokens int64 `json:"cached_tokens"`
 
+	// CachedTokensDetails describes subsets of CachedTokens, not extra tokens.
+	CachedTokensDetails *CachedTokensDetails `json:"cached_tokens_details,omitempty"`
+
 	// WriteCachedTokens is the number of total tokens cached write for the current request.
 	// If WriteCached5MinTokens or WriteCached1HourTokens present, the WriteCachedTokens is the sum of WriteCached5MinTokens and WriteCached1HourTokens.
 	WriteCachedTokens int64 `json:"write_cached_tokens,omitempty"`

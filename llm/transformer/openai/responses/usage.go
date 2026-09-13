@@ -11,6 +11,9 @@ type Usage struct {
 		CacheWriteTokens int64 `json:"cache_write_tokens"`
 		// CachedTokens is the number of input tokens retrieved from the prompt cache.
 		CachedTokens int64 `json:"cached_tokens"`
+
+		// CachedTokensDetails contains optional subsets, not additional usage.
+		CachedTokensDetails *llm.CachedTokensDetails `json:"cached_tokens_details,omitempty"`
 	} `json:"input_tokens_details"`
 	OutputTokens       int64 `json:"output_tokens"`
 	OutputTokenDetails struct {
@@ -26,8 +29,9 @@ func (u *Usage) ToUsage() *llm.Usage {
 		CompletionTokens: u.OutputTokens,
 		TotalTokens:      u.TotalTokens,
 		PromptTokensDetails: &llm.PromptTokensDetails{
-			CachedTokens:      u.InputTokenDetails.CachedTokens,
-			WriteCachedTokens: u.InputTokenDetails.CacheWriteTokens,
+			CachedTokens:        u.InputTokenDetails.CachedTokens,
+			CachedTokensDetails: u.InputTokenDetails.CachedTokensDetails.Clone(),
+			WriteCachedTokens:   u.InputTokenDetails.CacheWriteTokens,
 		},
 		CompletionTokensDetails: &llm.CompletionTokensDetails{
 			ReasoningTokens: u.OutputTokenDetails.ReasoningTokens,
@@ -50,6 +54,7 @@ func ConvertLLMUsageToResponsesUsage(usage *llm.Usage) *Usage {
 
 	if usage.PromptTokensDetails != nil {
 		result.InputTokenDetails.CachedTokens = usage.PromptTokensDetails.CachedTokens
+		result.InputTokenDetails.CachedTokensDetails = usage.PromptTokensDetails.CachedTokensDetails.Clone()
 		result.InputTokenDetails.CacheWriteTokens = usage.PromptTokensDetails.WriteCachedTokens
 	}
 
