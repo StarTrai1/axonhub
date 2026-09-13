@@ -21,7 +21,7 @@ func TestConvertedToolImagesFollowAllToolReplies(t *testing.T) {
 			}},
 			{Role: "tool", ToolCallID: lo.ToPtr("call_image"), Content: llm.MessageContent{MultipleContent: []llm.MessageContentPart{
 				{Type: "text", Text: lo.ToPtr("capture result")},
-				{Type: "image_url", ImageURL: &llm.ImageURL{URL: "data:image/png;base64,aW1hZ2U=", Detail: "high"}},
+				{Type: "image_url", ImageURL: &llm.ImageURL{URL: "data:image/png;base64,aW1hZ2U=", Detail: lo.ToPtr("high")}},
 			}}},
 			{Role: "tool", ToolCallID: lo.ToPtr("call_text"), Content: llm.MessageContent{Content: lo.ToPtr("inspection result")}},
 			{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("continue")}},
@@ -41,7 +41,8 @@ func TestConvertedToolImagesFollowAllToolReplies(t *testing.T) {
 	require.Len(t, images, 2)
 	require.Contains(t, *images[0].Text, "call_image")
 	require.Equal(t, "data:image/png;base64,aW1hZ2U=", images[1].ImageURL.URL)
-	require.Equal(t, "high", images[1].ImageURL.Detail)
+	require.NotNil(t, images[1].ImageURL.Detail)
+	require.Equal(t, "high", *images[1].ImageURL.Detail)
 	require.Equal(t, "continue", *sent.Messages[4].Content.Content)
 	after, err := json.Marshal(request.Messages)
 	require.NoError(t, err)

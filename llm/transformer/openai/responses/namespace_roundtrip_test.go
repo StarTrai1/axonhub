@@ -115,7 +115,14 @@ func TestNamespaceReview_RawNamespaceAndCatalogChange(t *testing.T) {
 	var original, body map[string]json.RawMessage
 	require.NoError(t, json.Unmarshal(data, &original))
 	require.NoError(t, json.Unmarshal(wire.Body, &body))
-	require.JSONEq(t, string(original["tools"]), string(body["tools"]))
+	// Top-level no-arg tools retain the existing schema normalization, while
+	// namespace fragments keep their complete original definitions.
+	var expectedTools []json.RawMessage
+	require.NoError(t, json.Unmarshal(original["tools"], &expectedTools))
+	expectedTools[0] = json.RawMessage(`{"type":"function","name":"plain","parameters":{"type":"object","properties":{}}}`)
+	expected, err := json.Marshal(expectedTools)
+	require.NoError(t, err)
+	require.JSONEq(t, string(expected), string(body["tools"]))
 	// Catalog changes must produce a fresh namespace definition, not stale raw tools.
 	req.Tools[1].Function.Name = "docs__read"
 	wire, err = native.TransformRequest(t.Context(), req)
