@@ -818,13 +818,6 @@ func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
 		return !p.HasAlternativeChannel()
 	}
 
-	// Trace/thread sticky candidates are intentionally one-shot. A failed
-	// sticky attempt must proceed to the normal fallback candidates instead of
-	// retrying the same channel or another mapped model on that channel.
-	if p.state.CurrentCandidate.TraceSticky {
-		return false
-	}
-
 	if errors.Is(err, errSkipCandidateByCircuitBreaker) {
 		return false
 	}
