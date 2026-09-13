@@ -166,13 +166,28 @@ func TestPersistentOutboundTransformer_TransformRequest_AppliesSystemCompatibili
 		expectedRoles []string
 	}{
 		{
-			name:          "supported then unsupported",
+			name:          "Chat compatibility then Gemini instruction preservation",
 			formats:       []llm.APIFormat{llm.APIFormatOpenAIChatCompletion, llm.APIFormatGeminiContents},
 			expectedRoles: []string{"user", "system"},
 		},
 		{
-			name:          "unsupported then supported",
+			name:          "Gemini then Responses preserve instruction roles",
 			formats:       []llm.APIFormat{llm.APIFormatGeminiContents, llm.APIFormatOpenAIResponse},
+			expectedRoles: []string{"system", "system"},
+		},
+		{
+			name:          "Chat compatibility then Responses instruction preservation",
+			formats:       []llm.APIFormat{llm.APIFormatOpenAIChatCompletion, llm.APIFormatOpenAIResponse},
+			expectedRoles: []string{"user", "system"},
+		},
+		{
+			name:          "Responses instruction preservation then Chat compatibility",
+			formats:       []llm.APIFormat{llm.APIFormatOpenAIResponse, llm.APIFormatOpenAIChatCompletion},
+			expectedRoles: []string{"system", "user"},
+		},
+		{
+			name:          "compact instruction preservation then Anthropic compatibility",
+			formats:       []llm.APIFormat{llm.APIFormatOpenAIResponseCompact, llm.APIFormatAnthropicMessage},
 			expectedRoles: []string{"system", "user"},
 		},
 	}
