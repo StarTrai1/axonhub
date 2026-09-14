@@ -578,9 +578,9 @@ func captureRawProviderStreamWithTerminalGrace(
 		// Per-attempt local error storage: each attempt writes to its own variable so
 		// concurrent defers from an abandoned goroutine and the new attempt's goroutine
 		// never touch the same memory location, eliminating the data race on retries.
-		var rawStreamErr error
+		rawStreamErr := new(passThroughStreamError)
 
-		outbound.state.RawStreamErrRef = &rawStreamErr
+		outbound.state.RawStreamErrRef = rawStreamErr
 
 		// Per-attempt cancelable context: PrepareForRetry / NextChannel call this cancel
 		// to unblock the goroutine's channel sends and release the upstream HTTP connection
@@ -611,9 +611,9 @@ func captureRawProviderStreamWithTerminalGrace(
 						log.Any("panic", r),
 						log.String("channel", channel.Name),
 					)
-					rawStreamErr = fmt.Errorf("passthrough stream panic: %v", r)
+					rawStreamErr.store(fmt.Errorf("passthrough stream panic: %v", r))
 				} else {
-					rawStreamErr = stream.Err()
+					rawStreamErr.store(stream.Err())
 				}
 
 				close(pipelineCh)
@@ -667,7 +667,7 @@ func captureRawProviderStreamWithTerminalGrace(
 			}
 		}()
 
-		return &passThroughChannelStream{ctx: ctx, ch: pipelineCh, errRef: &rawStreamErr, cancel: closeStream}, nil
+		return &passThroughChannelStream{ctx: ctx, ch: pipelineCh, errRef: rawStreamErr, cancel: closeStream}, nil
 	})
 }
 
@@ -1178,6 +1178,28 @@ func applyPassThroughStream(outbound *PersistentOutboundTransformer, systemServi
 	})
 }
 
+// passThroughStreamError keeps the final error scoped to one attempt. Terminal
+// handling may read it before the capture goroutine has closed its channels.
+type passThroughStreamError struct {
+	mu  sync.RWMutex
+	err error
+}
+
+func (e *passThroughStreamError) store(err error) {
+	e.mu.Lock()
+	e.err = err
+	e.mu.Unlock()
+}
+
+func (e *passThroughStreamError) load() error {
+	if e == nil {
+		return nil
+	}
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return e.err
+}
+
 // passThroughChannelStream wraps a channel as a Stream.
 //
 //nolint:containedctx // Required so Next() can observe request cancellation.
@@ -1185,7 +1207,7 @@ type passThroughChannelStream struct {
 	ctx     context.Context
 	ch      <-chan *httpclient.StreamEvent
 	current *httpclient.StreamEvent
-	errRef  *error
+	errRef  *passThroughStreamError
 	cancel  context.CancelFunc
 	once    sync.Once
 	ctxDone bool
@@ -1255,11 +1277,7 @@ func (s *passThroughChannelStream) nextBuffered() bool {
 func (s *passThroughChannelStream) Current() *httpclient.StreamEvent { return s.current }
 
 func (s *passThroughChannelStream) Err() error {
-	if s.errRef != nil {
-		return *s.errRef
-	}
-
-	return nil
+	return s.errRef.load()
 }
 
 func (s *passThroughChannelStream) Close() error {

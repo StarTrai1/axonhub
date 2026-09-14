@@ -1002,7 +1002,7 @@ func TestCaptureRawProviderStream_PropagatesError(t *testing.T) {
 	}
 
 	assert.Equal(t, errTest, result.Err())
-	assert.Equal(t, errTest, *state.RawStreamErrRef)
+	assert.Equal(t, errTest, state.RawStreamErrRef.load())
 }
 
 func TestCaptureRawProviderStream_CloseStopsBlockedUpstream(t *testing.T) {
@@ -1890,7 +1890,7 @@ func TestPassThroughStream_ErrorPropagates(t *testing.T) {
 	}
 
 	assert.Equal(t, errTest, result.Err())
-	assert.Equal(t, errTest, *state.RawStreamErrRef)
+	assert.Equal(t, errTest, state.RawStreamErrRef.load())
 }
 
 func TestApplyPassThroughBodyPreservesMappedModel(t *testing.T) {

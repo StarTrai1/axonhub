@@ -97,11 +97,11 @@ type PersistenceState struct {
 	// RawStreamCh receives raw provider stream events for stream response pass-through.
 	RawStreamCh chan *httpclient.StreamEvent
 
-	// RawStreamErrRef points to the current attempt's local error variable used by the
+	// RawStreamErrRef points to the current attempt's synchronized error state used by the
 	// captureRawProviderStream fan-out goroutine. Using a per-attempt pointer (instead of
 	// a single shared field) prevents data races when retries spawn a new goroutine before
 	// the previous one has exited.
-	RawStreamErrRef *error
+	RawStreamErrRef *passThroughStreamError
 
 	// RawStreamCancel cancels the current attempt's fan-out goroutine started by
 	// captureRawProviderStream. Must be called in PrepareForRetry and NextChannel so the
