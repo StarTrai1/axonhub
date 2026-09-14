@@ -80,7 +80,7 @@ func serveResponsesWebSocket(
 
 	pingDone := make(chan struct{})
 	defer close(pingDone)
-	go runResponsesWebSocketPings(ctx, conn, pingDone)
+	go runResponsesWebSocketPings(ctx, conn, pingDone, cancelSession, responsesWebSocketPingInterval)
 
 	dispatcher := newResponsesWebSocketDispatcher(ctx, cancelSession, conn, writer, c.Request, requestTimeout, process, transformError)
 	defer dispatcher.wait()
@@ -437,14 +437,16 @@ func (d *responsesWebSocketDispatcher) wait() {
 	d.mu.Unlock()
 }
 
-func runResponsesWebSocketPings(ctx context.Context, conn *websocket.Conn, done <-chan struct{}) {
+func runResponsesWebSocketPings(ctx context.Context, conn *websocket.Conn, done <-chan struct{}, cancel context.CancelFunc, interval time.Duration) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			log.Error(ctx, "Panic while sending Responses WebSocket pings", log.Any("panic", recovered))
+			cancel()
+			_ = conn.Close()
 		}
 	}()
 
-	ticker := time.NewTicker(responsesWebSocketPingInterval)
+	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
 	for {
@@ -452,6 +454,11 @@ func runResponsesWebSocketPings(ctx context.Context, conn *websocket.Conn, done 
 		case <-ticker.C:
 			deadline := time.Now().Add(responsesWebSocketPingWriteTimeout)
 			if err := conn.WriteControl(websocket.PingMessage, nil, deadline); err != nil {
+				log.Debug(ctx, "Responses WebSocket heartbeat failed", log.Cause(err))
+				// Closing also releases the read loop; cancellation stops every
+				// active turn while the downstream connection is unavailable.
+				cancel()
+				_ = conn.Close()
 				return
 			}
 		case <-done:

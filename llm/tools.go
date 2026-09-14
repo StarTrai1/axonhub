@@ -114,7 +114,8 @@ type ToolCall struct {
 
 // ToolFunction references a function by name.
 type ToolFunction struct {
-	Name string `json:"name"`
+	Name      string `json:"name"`
+	Namespace string `json:"namespace,omitempty"`
 }
 
 // ToolOption represents a specific tool within a multi-tool choice.

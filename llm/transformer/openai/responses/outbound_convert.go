@@ -578,6 +578,9 @@ func convertToolChoice(src *llm.ToolChoice) *ToolChoice {
 			name := src.NamedToolChoice.Function.Name
 			result.Name = &name
 		}
+		if src.NamedToolChoice.Function.Namespace != "" {
+			result.Namespace = lo.ToPtr(src.NamedToolChoice.Function.Namespace)
+		}
 	}
 
 	for _, opt := range src.Tools {

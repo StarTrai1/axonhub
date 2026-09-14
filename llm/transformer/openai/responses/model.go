@@ -204,6 +204,8 @@ type ToolChoice struct {
 	Type *string `json:"type,omitempty"`
 	// Name of the function for function tool choice.
 	Name *string `json:"name,omitempty"`
+	// Namespace preserves explicit selection hints supplied by compatible clients.
+	Namespace *string `json:"namespace,omitempty"`
 
 	// Allow multiple tools to be selected.
 	Tools []ToolOption `json:"tools,omitempty"`
@@ -219,7 +221,7 @@ type ToolChoiceAlias ToolChoice
 func (t *ToolChoice) UnmarshalJSON(data []byte) error {
 	mode, err := xjson.To[string](data)
 	if err == nil {
-		t.Mode = &mode
+		*t = ToolChoice{Mode: &mode}
 		return nil
 	}
 
@@ -233,7 +235,7 @@ func (t *ToolChoice) UnmarshalJSON(data []byte) error {
 }
 
 func (t *ToolChoice) MarshalJSON() ([]byte, error) {
-	if t.Mode != nil && t.Type == nil && t.Name == nil && len(t.Tools) == 0 {
+	if t.Mode != nil && t.Type == nil && t.Name == nil && t.Namespace == nil && len(t.Tools) == 0 {
 		return json.Marshal(*t.Mode)
 	}
 

@@ -101,6 +101,7 @@ func (t *OutboundTransformer) TransformRequest(
 	}
 
 	oaiReq := openai.RequestFromLLM(ctx, llmReq, openai.ReasoningFieldContent)
+	normalizeDeveloperMessages(oaiReq.Messages)
 
 	if oaiReq.ResponseFormat != nil && oaiReq.ResponseFormat.Type == "json_schema" {
 		oaiReq.ResponseFormat.Type = "json_object"
@@ -157,6 +158,34 @@ func (t *OutboundTransformer) TransformRequest(
 		Auth:      auth,
 		APIFormat: string(llm.APIFormatOpenAIChatCompletion),
 	}, nil
+}
+
+// DeepSeek accepts system instructions but has no developer message role.
+// Translate text instructions in place without changing the shared request or
+// dropping content that cannot be represented by a system string.
+func normalizeDeveloperMessages(messages []openai.Message) {
+	for i := range messages {
+		message := &messages[i]
+		if message.Role != "developer" {
+			continue
+		}
+		if len(message.Content.MultipleContent) > 0 {
+			parts := make([]string, 0, len(message.Content.MultipleContent))
+			for _, part := range message.Content.MultipleContent {
+				if part.Type != "text" {
+					break
+				}
+				parts = append(parts, part.Text)
+			}
+			if len(parts) != len(message.Content.MultipleContent) {
+				continue
+			}
+			message.Content = openai.MessageContent{Content: lo.ToPtr(strings.Join(parts, "\n"))}
+		} else if message.Content.Content == nil {
+			continue
+		}
+		message.Role = "system"
+	}
 }
 
 func (t *OutboundTransformer) TransformStream(ctx context.Context, req *httpclient.Request, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {

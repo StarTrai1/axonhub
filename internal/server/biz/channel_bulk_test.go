@@ -700,12 +700,12 @@ func TestChannelService_BulkUpdateChannelAutoDisable_WriteRulesKeepsStream(t *te
 		Action:      objects.APIKeyAutoDisableActionPermanent,
 	}
 	ch1 := createBulkAutoDisableTestChannel(t, ctx, client, "AutoDisable Stream 1", objects.ChannelPolicies{
-		RoutingTier:           objects.RoutingTierPreferred,
+		RoutingTier:            objects.RoutingTierPreferred,
 		Stream:                 objects.CapabilityPolicyUnlimited,
-		RemoteCompaction:      objects.RemoteCompactionPolicyLocalBridge,
-		WebSearch:             objects.WebSearchPolicyMCPOnly,
-		CodexIdentity:         objects.CodexIdentityPolicySession,
-		ScheduledHealthChecks: []string{"09:30:00"},
+		RemoteCompaction:       objects.RemoteCompactionPolicyLocalBridge,
+		WebSearch:              objects.WebSearchPolicyMCPOnly,
+		CodexIdentity:          objects.CodexIdentityPolicySession,
+		ScheduledHealthChecks:  []string{"09:30:00"},
 		APIKeyAutoDisableMode:  objects.APIKeyAutoDisableModeCustom,
 		APIKeyAutoDisableRules: []objects.APIKeyAutoDisableRule{existingRule},
 	})

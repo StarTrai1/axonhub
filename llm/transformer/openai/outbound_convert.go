@@ -95,7 +95,7 @@ func RequestFromLLM(ctx context.Context, r *llm.Request, reasoningField Reasonin
 			req.ToolChoice.NamedToolChoice = &NamedToolChoice{
 				Type: r.ToolChoice.NamedToolChoice.Type,
 				Function: ToolFunction{
-					Name: r.ToolChoice.NamedToolChoice.Function.Name,
+					Name: chatNamedToolChoiceName(r),
 				},
 			}
 		}

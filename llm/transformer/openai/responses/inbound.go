@@ -330,8 +330,11 @@ func convertToolChoiceToLLM(src *ToolChoice) *llm.ToolChoice {
 	result := &llm.ToolChoice{ToolChoice: src.Mode}
 	if src.Type != nil {
 		result.NamedToolChoice = &llm.NamedToolChoice{
-			Type:     *src.Type,
-			Function: llm.ToolFunction{Name: lo.FromPtr(src.Name)},
+			Type: *src.Type,
+			Function: llm.ToolFunction{
+				Name:      lo.FromPtr(src.Name),
+				Namespace: lo.FromPtr(src.Namespace),
+			},
 		}
 	}
 	for _, opt := range src.Tools {

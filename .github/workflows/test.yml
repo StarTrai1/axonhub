@@ -35,7 +35,7 @@ jobs:
         run: |
           go test -race ./internal/server/orchestrator -run 'TestResponsesSession|TestResponsesRejected|TestScheduledHealth|TestSealedLocalCompaction|TestLegacyLocalCompaction' -count=1
           go test -race ./internal/server/biz -run '^TestSystemServiceResponsesMetadata' -count=1
-          go test -race ./internal/server/api -run '^TestResponsesWebSocketWarmup' -count=1
+          go test -race ./internal/server/api -run '^TestResponsesWebSocket(Warmup|Heartbeat)' -count=1
           cd llm
           go test -race ./pipeline -run 'TestFirstOutput' -count=1
           go test -race ./transformer/openai/responses -run 'TestWebSocketExecutorSeparatesCodexExecutionScopes|TestCodexExecutionPoolIdentity' -count=1

@@ -518,6 +518,10 @@ func toolChoiceSignature(choice *ToolChoice) string {
 	}
 
 	if choice.Type != nil && choice.Name != nil {
+		if choice.Namespace != nil {
+			encoded, _ := json.Marshal([]string{*choice.Type, *choice.Namespace, *choice.Name})
+			return "named:" + string(encoded)
+		}
 		return "named:" + *choice.Type + ":" + *choice.Name
 	}
 
