@@ -169,11 +169,16 @@ func TestResponsesRejectedReasoningConfirmsOnlySuccessfulTerminal(t *testing.T) 
 			}
 			stream, err := middleware.OnOutboundRawStream(ctx, streams.SliceStream(events))
 			require.NoError(t, err)
+			var forwarded []string
 			for stream.Next() {
-				_ = stream.Current()
+				event := stream.Current()
+				require.NotNil(t, event)
+				require.Same(t, event, stream.Current(), "observing an event must not consume another source item")
+				forwarded = append(forwarded, string(event.Data))
 			}
 			require.NoError(t, stream.Err())
 			require.NoError(t, stream.Close())
+			require.Equal(t, tt.events, forwarded)
 			_, found := rememberedResponsesReasoningRule(scope, original.Body)
 			require.Equal(t, tt.want, found)
 		})

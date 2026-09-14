@@ -211,15 +211,20 @@ type responsesReasoningRecoveryStream struct {
 	streams.Stream[*httpclient.StreamEvent]
 
 	recovery  *responsesReasoningRecovery
+	current   *httpclient.StreamEvent
 	confirmed bool
 	failed    bool
 }
 
 func (s *responsesReasoningRecoveryStream) Next() bool {
 	if !s.Stream.Next() {
+		s.current = nil
 		return false
 	}
 	event := s.Stream.Current()
+	// Some source streams advance when Current is called. Read once, then
+	// expose the same event to downstream transformers without consuming more.
+	s.current = event
 	if event == nil {
 		return true
 	}
@@ -236,4 +241,8 @@ func (s *responsesReasoningRecoveryStream) Next() bool {
 		s.confirmed = true
 	}
 	return true
+}
+
+func (s *responsesReasoningRecoveryStream) Current() *httpclient.StreamEvent {
+	return s.current
 }

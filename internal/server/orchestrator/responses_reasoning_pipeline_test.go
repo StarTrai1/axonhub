@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"testing"
 	"time"
@@ -294,7 +295,12 @@ func (e *responsesReasoningPipelineExecutor) Do(_ context.Context, request *http
 	if err := e.capture(request); err != nil {
 		return nil, err
 	}
-	return e.response, nil
+	if e.response == nil {
+		return nil, errors.New("unexpected non-streaming request")
+	}
+	response := *e.response
+	response.Request = request
+	return &response, nil
 }
 
 func (e *responsesReasoningPipelineExecutor) DoStream(_ context.Context, request *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
