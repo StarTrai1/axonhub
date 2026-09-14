@@ -12,6 +12,41 @@ import (
 
 var responsesRejectedReasoningParamPattern = regexp.MustCompile(`^input\[(\d+)\]\.encrypted_content$`)
 
+// Some compatible relays wrap the upstream error without preserving its code.
+// Require the complete rejection and an exact item in this request, rather than
+// treating arbitrary mentions of encryption as permission to rebuild history.
+var responsesRejectedReasoningMessagePattern = regexp.MustCompile(
+	`^(?:OpenAI Responses bad request: )?The encrypted content for item (rs_[A-Za-z0-9_-]+) could not be verified\. Reason: Encrypted content could not be decrypted or parsed\.(?: \[trace_id=[A-Za-z0-9_-]+\])?$`,
+)
+
+func responsesRejectedReasoningMessageRule(body []byte, code, message, param string) (responsesRejectedStatusRule, bool) {
+	if code != "" && code != "bad_request" && code != "invalid_request_error" {
+		return responsesRejectedStatusRule{}, false
+	}
+	match := responsesRejectedReasoningMessagePattern.FindStringSubmatch(message)
+	if len(match) != 2 {
+		return responsesRejectedStatusRule{}, false
+	}
+	index := -1
+	for i, item := range gjson.GetBytes(body, "input").Array() {
+		if item.Get("id").String() != match[1] {
+			continue
+		}
+		if index >= 0 || item.Get("type").String() != "reasoning" {
+			return responsesRejectedStatusRule{}, false
+		}
+		index = i
+	}
+	if index < 0 {
+		return responsesRejectedStatusRule{}, false
+	}
+	itemParam := fmt.Sprintf("input[%d].encrypted_content", index)
+	if param != "" && param != itemParam {
+		return responsesRejectedStatusRule{}, false
+	}
+	return responsesRejectedReasoningRule(body, itemParam)
+}
+
 func responsesRejectedReasoningRule(body []byte, param string) (responsesRejectedStatusRule, bool) {
 	if !gjson.ValidBytes(body) || gjson.GetBytes(body, "previous_response_id").String() != "" {
 		return responsesRejectedStatusRule{}, false
@@ -56,6 +91,12 @@ func responsesRejectedReasoningRule(body []byte, param string) (responsesRejecte
 				return responsesRejectedStatusRule{}, false
 			}
 		case "configuration_update":
+		case "compaction_trigger":
+			// Codex appends this empty control to an explicit history to ask the
+			// backend for a new compaction. It carries no opaque prior state.
+			if len(item.Map()) != 1 {
+				return responsesRejectedStatusRule{}, false
+			}
 		case "message", "":
 			content := item.Get("content")
 			if item.Get("role").String() == "user" &&

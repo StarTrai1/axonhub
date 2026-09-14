@@ -81,6 +81,7 @@ type localCompactionRetryExecutor struct {
 	bodies   [][]byte
 	failure  error
 	failures []error
+	events   []*httpclient.StreamEvent
 }
 
 func (executor *localCompactionRetryExecutor) Do(context.Context, *httpclient.Request) (*httpclient.Response, error) {
@@ -95,7 +96,35 @@ func (executor *localCompactionRetryExecutor) DoStream(_ context.Context, reques
 	if len(executor.failures) == 0 && len(executor.bodies) == 1 {
 		return nil, executor.failure
 	}
-	return streams.SliceStream([]*httpclient.StreamEvent{}), nil
+	return streams.SliceStream(executor.events), nil
+}
+
+func TestResponsesRejectedReasoningLocalCompactionRemembersSuccessfulRecovery(t *testing.T) {
+	ctx, outbound, middleware, scope := responsesReasoningRecoveryFixture(t)
+	original := *outbound.state.RawProviderRequest
+	outbound.state.RetryPolicyProvider = &mockRetryPolicyProvider{policy: &biz.RetryPolicy{
+		Enabled: true, MaxSingleChannelRetries: 1,
+	}}
+	executor := &localCompactionRetryExecutor{
+		failure: &httpclient.Error{StatusCode: http.StatusBadRequest, Body: []byte(`{"error":{"code":"invalid_encrypted_content"}}`)},
+		events: []*httpclient.StreamEvent{{
+			Type: "response.completed",
+			Data: []byte(`{"type":"response.completed","response":{"status":"completed","output":[{"type":"message","role":"assistant","content":[{"type":"output_text","text":"summary"}]}]}}`),
+		}},
+	}
+	adapter := newRemoteCompactionAdapter(nil, nil, nil)
+	stream, _, err := adapter.startLocalCompactionStream(ctx, outbound, outbound.state.RawProviderRequest, executor, middleware)
+	require.NoError(t, err)
+	require.Len(t, executor.bodies, 2)
+	_, found := rememberedResponsesReasoningRule(scope, original.Body)
+	require.False(t, found, "opening the stream alone must not confirm a recovery")
+	for stream.Next() {
+		_ = stream.Current()
+	}
+	require.NoError(t, stream.Err())
+	require.NoError(t, stream.Close())
+	_, found = rememberedResponsesReasoningRule(scope, original.Body)
+	require.True(t, found)
 }
 
 func TestResponsesRejectedReasoningLocalCompactionSharesRetryBudget(test *testing.T) {

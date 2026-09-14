@@ -69,6 +69,8 @@ func TestResponsesRejectedReasoningRecoveryGuards(test *testing.T) {
 		{name: "malformed Lite tool definitions", path: "input.9", value: map[string]any{"type": "additional_tools", "tools": "opaque"}},
 		{name: "encrypted Lite tool definitions", path: "input.9", value: map[string]any{"type": "additional_tools", "tools": []any{}, "encrypted_content": "opaque"}},
 		{name: "GPT-6 configuration update", path: "input.9", value: map[string]any{"type": "configuration_update", "reasoning": map[string]any{"effort": "high"}}, want: true},
+		{name: "explicit compaction trigger", path: "input.9", value: map[string]any{"type": "compaction_trigger"}, want: true},
+		{name: "compaction trigger with unknown state", path: "input.9", value: map[string]any{"type": "compaction_trigger", "content": "opaque"}},
 		{name: "native compaction", path: "input.9", value: map[string]any{"type": "compaction", "encrypted_content": "opaque"}},
 		{name: "compaction summary", path: "input.9", value: map[string]any{"type": "compaction_summary"}},
 		{name: "context compaction", path: "input.9", value: map[string]any{"type": "context_compaction"}},
@@ -169,6 +171,7 @@ func TestResponsesRejectedReasoningCompatibilityRequiresExplicitCodexRejection(t
 	}{
 		{"explicit Codex rejection", entchannel.TypeCodex, 400, llm.APIFormatOpenAIResponse, `{"error":{"code":"invalid_encrypted_content"}}`, true},
 		{"indexed Codex rejection", entchannel.TypeCodex, 400, llm.APIFormatOpenAIResponse, `{"error":{"code":"invalid_encrypted_content","param":"input[1].encrypted_content"}}`, true},
+		{"standalone compact rejection", entchannel.TypeCodex, 400, llm.APIFormatOpenAIResponseCompact, `{"error":{"code":"invalid_encrypted_content"}}`, true},
 		{"generic validation failure", entchannel.TypeCodex, 400, llm.APIFormatOpenAIResponse, `{"error":{"code":"invalid_responses_request","message":"invalid codex request"}}`, false},
 		{"message without explicit code", entchannel.TypeCodex, 400, llm.APIFormatOpenAIResponse, `{"error":{"message":"invalid_encrypted_content"}}`, false},
 		{"upstream server error", entchannel.TypeCodex, 500, llm.APIFormatOpenAIResponse, `{"error":{"code":"invalid_encrypted_content"}}`, false},

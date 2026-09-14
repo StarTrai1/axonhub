@@ -52,7 +52,13 @@ func (a *remoteCompactionAdapter) startLocalCompactionStream(
 		}
 		stream, err := executor.DoStream(ctx, providerRequest)
 		if err == nil {
-			return stream, execution, nil
+			observed, observeErr := compatibility.OnOutboundRawStream(ctx, stream)
+			if observeErr != nil {
+				_ = stream.Close()
+				a.markBridgeExecutionFailed(ctx, execution, observeErr)
+				return nil, execution, observeErr
+			}
+			return observed, execution, nil
 		}
 		a.markBridgeExecutionFailed(ctx, execution, err)
 		compatibility.OnOutboundRawError(ctx, err)

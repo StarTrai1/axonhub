@@ -34,11 +34,13 @@ var (
 )
 
 type responsesRejectedStatusRule struct {
-	itemType      string
-	index         int
-	field         string
-	dropItem      bool
-	metadataScope *responsesMetadataCapabilityKey
+	itemType        string
+	index           int
+	field           string
+	dropItem        bool
+	metadataScope   *responsesMetadataCapabilityKey
+	reasoningScope  *responsesReasoningRecoveryScope
+	reasoningHashes map[[sha256.Size]byte]struct{}
 }
 
 type responsesMetadataCapabilityKey struct {
@@ -93,7 +95,8 @@ func applyResponsesRejectedStatusCompatibility(outbound *PersistentOutboundTrans
 type responsesRejectedStatusCompatibilityMiddleware struct {
 	pipeline.DummyMiddleware
 
-	outbound *PersistentOutboundTransformer
+	outbound           *PersistentOutboundTransformer
+	recoveredReasoning *responsesReasoningRecovery
 }
 
 func (m *responsesRejectedStatusCompatibilityMiddleware) Name() string {
@@ -105,6 +108,10 @@ func (m *responsesRejectedStatusCompatibilityMiddleware) OnOutboundRawRequest(
 	request *httpclient.Request,
 ) (*httpclient.Request, error) {
 	if m.outbound == nil || m.outbound.state == nil || request == nil {
+		return request, nil
+	}
+	m.recoveredReasoning = nil
+	if request.APIFormat != "" && !isResponsesReasoningRecoveryFormat(request.APIFormat) {
 		return request, nil
 	}
 
@@ -122,9 +129,16 @@ func (m *responsesRejectedStatusCompatibilityMiddleware) OnOutboundRawRequest(
 		}
 	}
 
+	reasoningScope, hasReasoningScope := responsesReasoningScope(ctx, channel, request)
 	rules := lo.Filter(m.outbound.state.responsesRejectedStatusRules[channel.ID], func(rule responsesRejectedStatusRule, _ int) bool {
-		return rule.metadataScope == nil || *rule.metadataScope == metadataKey
+		return (rule.metadataScope == nil || *rule.metadataScope == metadataKey) &&
+			(rule.reasoningScope == nil || hasReasoningScope && *rule.reasoningScope == reasoningScope)
 	})
+	if hasReasoningScope {
+		if rule, found := rememberedResponsesReasoningRule(reasoningScope, request.Body); found {
+			rules = append(rules, rule)
+		}
+	}
 	body, changed, err := stripResponsesRejectedStatus(request.Body, rules)
 	if err != nil {
 		return nil, err
@@ -133,6 +147,9 @@ func (m *responsesRejectedStatusCompatibilityMiddleware) OnOutboundRawRequest(
 		return request, nil
 	}
 
+	if hasReasoningScope {
+		m.recoveredReasoning = newResponsesReasoningRecovery(reasoningScope, request.Body, body)
+	}
 	request.Body = body
 	log.Debug(ctx, "adapted upstream-rejected Responses input state",
 		log.Int("channel_id", channel.ID),
@@ -142,19 +159,26 @@ func (m *responsesRejectedStatusCompatibilityMiddleware) OnOutboundRawRequest(
 }
 
 func (m *responsesRejectedStatusCompatibilityMiddleware) OnOutboundRawError(ctx context.Context, err error) {
+	m.recoveredReasoning = nil
 	if m.outbound == nil || m.outbound.state == nil {
 		return
 	}
 
 	state := m.outbound.state
 	channel := m.outbound.GetCurrentChannel()
-	if channel == nil || state.RawProviderRequest == nil ||
-		state.RawProviderRequest.APIFormat != string(llm.APIFormatOpenAIResponse) {
+	if channel == nil || state.RawProviderRequest == nil || !isResponsesReasoningRecoveryFormat(state.RawProviderRequest.APIFormat) {
 		return
 	}
 
 	rule, ok := responsesRejectedStatusRuleFromError(err, state.RawProviderRequest.Body)
 	if !ok || (rule.dropItem && channel.Type != entchannel.TypeCodex) {
+		return
+	}
+	if rule.dropItem {
+		if scope, scoped := responsesReasoningScope(ctx, channel, state.RawProviderRequest); scoped {
+			rule.reasoningScope = &scope
+		}
+	} else if state.RawProviderRequest.APIFormat != string(llm.APIFormatOpenAIResponse) {
 		return
 	}
 	if rule.fieldName() == "internal_chat_message_metadata_passthrough" && state.RawProviderRequest.URL != "" {
@@ -185,6 +209,9 @@ func responsesRejectedStatusRuleFromError(err error, requestBody []byte) (respon
 		code = gjson.GetBytes(httpErr.Body, "error.code").String()
 		message = gjson.GetBytes(httpErr.Body, "error.message").String()
 		param = gjson.GetBytes(httpErr.Body, "error.param").String()
+		if !gjson.ValidBytes(httpErr.Body) {
+			message = string(httpErr.Body)
+		}
 	case errors.As(err, &responseErr) && responseErr.StatusCode == http.StatusBadRequest:
 		code, message, param = responseErr.Detail.Code, responseErr.Detail.Message, responseErr.Detail.Param
 	default:
@@ -196,6 +223,9 @@ func responsesRejectedStatusRuleFromError(err error, requestBody []byte) (respon
 	param = strings.ToLower(strings.TrimSpace(param))
 	if code == "invalid_encrypted_content" {
 		return responsesRejectedReasoningRule(requestBody, param)
+	}
+	if rule, accepted := responsesRejectedReasoningMessageRule(requestBody, code, message, param); accepted {
+		return rule, true
 	}
 	messageParam := responsesRejectedStatusParamFromMessage(message)
 	if param != "" && messageParam != "" && param != messageParam {
@@ -252,6 +282,11 @@ func rememberResponsesRejectedStatusRule(state *PersistenceState, channelID int,
 		if existing.fieldName() != rule.fieldName() {
 			continue
 		}
+		if existing.reasoningScope != nil || rule.reasoningScope != nil {
+			if existing.reasoningScope == nil || rule.reasoningScope == nil || *existing.reasoningScope != *rule.reasoningScope {
+				continue
+			}
+		}
 		if existing.metadataScope != nil || rule.metadataScope != nil {
 			if existing.metadataScope == nil || rule.metadataScope == nil || *existing.metadataScope != *rule.metadataScope {
 				continue
@@ -295,6 +330,11 @@ func stripResponsesRejectedStatus(body []byte, rules []responsesRejectedStatusRu
 			if rule.dropItem {
 				if item.Get("encrypted_content").String() == "" {
 					continue
+				}
+				if rule.reasoningHashes != nil {
+					if _, matched := rule.reasoningHashes[responsesReasoningItemHash(item)]; !matched {
+						continue
+					}
 				}
 				if !recoveryValidated {
 					if _, safe := responsesRejectedReasoningRule(body, ""); !safe {
