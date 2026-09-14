@@ -18,6 +18,7 @@ import (
 	"github.com/gorilla/websocket"
 
 	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/server/middleware"
 	"github.com/looplj/axonhub/internal/server/orchestrator"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer/shared"
@@ -113,6 +114,12 @@ func serveResponsesWebSocket(
 			continue
 		}
 		if eventType == responseSteerWebSocketEventType {
+			if _, authErr := middleware.RefreshAPIKeyContext(ctx); authErr != nil {
+				if err := writeResponsesWebSocketError(writer, authErr, ""); err != nil {
+					return
+				}
+				continue
+			}
 			if steerErr := dispatcher.routeSteer(message); steerErr != nil {
 				if err := writeResponsesWebSocketError(writer, steerErr, ""); err != nil {
 					return
@@ -385,7 +392,17 @@ func (d *responsesWebSocketDispatcher) dispatch(lane *responsesWebSocketLane, st
 }
 
 func (d *responsesWebSocketDispatcher) processMessage(lane *responsesWebSocketLane, streamID string, message []byte) error {
-	request, warmup, requestErr := lane.session.prepareRequest(d.rawRequest, message)
+	requestCtx := d.ctx
+	cancel := func() {}
+	if d.requestTimeout > 0 {
+		requestCtx, cancel = context.WithTimeout(requestCtx, d.requestTimeout)
+	}
+	defer cancel()
+	requestCtx, authErr := middleware.RefreshAPIKeyContext(requestCtx)
+	if authErr != nil {
+		return writeResponsesWebSocketError(d.writer, authErr, streamID)
+	}
+	request, warmup, requestErr := lane.session.prepareRequest(d.rawRequest.WithContext(requestCtx), message)
 	if requestErr != nil {
 		return writeResponsesWebSocketError(d.writer, requestErr, streamID)
 	}
@@ -403,15 +420,9 @@ func (d *responsesWebSocketDispatcher) processMessage(lane *responsesWebSocketLa
 		d.unregisterLane(lane)
 	}()
 
-	requestCtx := d.ctx
-	cancel := func() {}
-	if d.requestTimeout > 0 {
-		requestCtx, cancel = context.WithTimeout(d.ctx, d.requestTimeout)
-	}
 	if astra {
 		requestCtx = shared.WithResponsesWebSocketSteer(requestCtx, steers)
 	}
-	defer cancel()
 	if request.RawRequest != nil {
 		request.RawRequest = request.RawRequest.WithContext(requestCtx)
 	}

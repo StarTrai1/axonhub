@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
@@ -71,6 +72,9 @@ func WithAPIKeyConfig(auth *biz.AuthService, config *APIKeyConfig) gin.HandlerFu
 		if err != nil {
 			AbortWithError(c, http.StatusUnauthorized, errors.New("Invalid authentication context"))
 			return
+		}
+		if websocket.IsWebSocketUpgrade(c.Request) {
+			ctx = withAPIKeyRefresh(ctx, auth, apiKey, clientIPCandidates(c))
 		}
 
 		c.Request = c.Request.WithContext(ctx)

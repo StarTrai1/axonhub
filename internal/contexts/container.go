@@ -2,6 +2,7 @@ package contexts
 
 import (
 	"context"
+	"slices"
 	"sync"
 
 	"github.com/looplj/axonhub/internal/ent"
@@ -45,4 +46,27 @@ func withContainer(ctx context.Context, container *contextContainer) context.Con
 	}
 
 	return ctx
+}
+
+// CloneRequestContext gives a request on a persistent connection its own mutable
+// container. Entity pointers remain read-only snapshots; replacing them or adding
+// request errors/channel credentials must not affect another concurrent request.
+func CloneRequestContext(ctx context.Context) context.Context {
+	source := getContainer(ctx)
+	source.mu.RLock()
+	cloned := &contextContainer{
+		ProjectID:     source.ProjectID,
+		TraceID:       source.TraceID,
+		RequestID:     source.RequestID,
+		OperationName: source.OperationName,
+		APIKey:        source.APIKey,
+		User:          source.User,
+		Source:        source.Source,
+		Thread:        source.Thread,
+		Trace:         source.Trace,
+		Errors:        slices.Clone(source.Errors),
+		ChannelAPIKey: source.ChannelAPIKey,
+	}
+	source.mu.RUnlock()
+	return context.WithValue(ctx, containerContextKey, cloned)
 }
