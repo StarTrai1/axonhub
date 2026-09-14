@@ -2,7 +2,6 @@ package orchestrator
 
 import (
 	"encoding/json"
-	"net/http"
 	"strings"
 	"testing"
 
