@@ -172,10 +172,10 @@ func normalizeDeveloperMessages(messages []openai.Message) {
 		if len(message.Content.MultipleContent) > 0 {
 			parts := make([]string, 0, len(message.Content.MultipleContent))
 			for _, part := range message.Content.MultipleContent {
-				if part.Type != "text" {
+				if part.Type != "text" || part.Text == nil {
 					break
 				}
-				parts = append(parts, part.Text)
+				parts = append(parts, *part.Text)
 			}
 			if len(parts) != len(message.Content.MultipleContent) {
 				continue

@@ -20,14 +20,14 @@ func TestDeveloperInstructionsKeepTheirHistoryPosition(t *testing.T) {
 		{"string", llm.MessageContent{Content: lo.ToPtr("new instruction")}, "system", "new instruction"},
 		{
 			"text parts",
-			llm.MessageContent{MultipleContent: []llm.MessageContentPart{{Type: "text", Text: "first"}, {Type: "text", Text: "second"}}},
+			llm.MessageContent{MultipleContent: []llm.MessageContentPart{{Type: "text", Text: lo.ToPtr("first")}, {Type: "text", Text: lo.ToPtr("second")}}},
 			"system",
 			"first\nsecond",
 		},
 		{
 			"mixed content stays intact",
 			llm.MessageContent{MultipleContent: []llm.MessageContentPart{
-				{Type: "text", Text: "keep the image"},
+				{Type: "text", Text: lo.ToPtr("keep the image")},
 				{Type: "image_url", ImageURL: &llm.ImageURL{URL: "https://example.com/image.png"}},
 			}},
 			"developer",
