@@ -82,7 +82,9 @@ func TestToolChoiceStringDecodeClearsPreviousNamedSelection(t *testing.T) {
 	require.Nil(t, choice.Type)
 	require.Nil(t, choice.Name)
 	require.Nil(t, choice.Namespace)
-	encoded, err := json.Marshal(choice)
+	require.NotNil(t, choice.Mode)
+	require.Equal(t, "auto", *choice.Mode)
+	encoded, err := json.Marshal(&choice)
 	require.NoError(t, err)
 	require.JSONEq(t, `"auto"`, string(encoded))
 }

@@ -547,6 +547,10 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 		}
 		llmRequest = transformedRequest
 	}
+	llmRequest, err := applyAllowedToolsForOutbound(llmRequest, outboundFormat)
+	if err != nil {
+		return nil, err
+	}
 	llmRequest = filterResponseCustomToolMessagesForNonResponsesOutbound(llmRequest, outboundFormat)
 
 	if !p.state.DisableStreamForcing && shouldForceStreamingForCandidate(candidate, llmRequest) {
