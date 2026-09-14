@@ -3,6 +3,8 @@ package objects
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"strconv"
 	"strings"
 	"time"
 
@@ -568,6 +570,38 @@ const (
 	CodexIdentityPolicyFull CodexIdentityPolicy = "full"
 )
 
+type APIKeyAutoDisableMode string
+
+const (
+	APIKeyAutoDisableModeInherit APIKeyAutoDisableMode = "inherit"
+	APIKeyAutoDisableModeCustom  APIKeyAutoDisableMode = "custom"
+	APIKeyAutoDisableModeOff     APIKeyAutoDisableMode = "off"
+)
+
+// MarshalGQL writes a GraphQL enum value. The zero value is unset and must be
+// null; an empty string is not a valid APIKeyAutoDisableMode.
+func (e APIKeyAutoDisableMode) MarshalGQL(w io.Writer) {
+	if e == "" {
+		_, _ = io.WriteString(w, "null")
+		return
+	}
+	_, _ = io.WriteString(w, strconv.Quote(string(e)))
+}
+
+// UnmarshalGQL reads a GraphQL enum or null. Null stays the unset zero value.
+func (e *APIKeyAutoDisableMode) UnmarshalGQL(v any) error {
+	if v == nil {
+		*e = ""
+		return nil
+	}
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("APIKeyAutoDisableMode must be a string")
+	}
+	*e = APIKeyAutoDisableMode(str)
+	return nil
+}
+
 type ChannelPolicies struct {
 	RoutingTier      RoutingTier            `json:"routingTier,omitempty"`
 	Stream           CapabilityPolicy       `json:"stream,omitempty"`
@@ -583,9 +617,14 @@ type ChannelPolicies struct {
 	// fields. Empty and unknown values preserve historical pass-through behavior.
 	CodexIdentity CodexIdentityPolicy `json:"codexIdentity,omitempty"`
 
+	// APIKeyAutoDisableMode selects how this channel combines with the global
+	// auto-disable rules: inherit (global only), custom (channel first, then
+	// global), or off (neither layer). Empty is inferred from whether rules exist.
+	APIKeyAutoDisableMode APIKeyAutoDisableMode `json:"apiKeyAutoDisableMode,omitempty"`
+
 	// APIKeyAutoDisableRules are the channel's own auto-disable rules. They are
-	// evaluated before the global retry policy and, when one matches, own the
-	// failure outright. Channels without rules fall back to the global policy.
+	// evaluated before the global retry policy when the mode is custom, and the
+	// first match owns the failure. Unmatched custom failures fall back to global.
 	APIKeyAutoDisableRules []APIKeyAutoDisableRule `json:"apiKeyAutoDisableRules,omitempty"`
 
 	// ScheduledHealthChecks contains daily server-local times in HH:MM:SS form.
@@ -662,6 +701,26 @@ func (p ChannelPolicies) AllowsNativeWebSearchFallback() bool {
 
 func (p ChannelPolicies) UsesMCPOnlyWebSearch() bool {
 	return p.EffectiveWebSearchPolicy() == WebSearchPolicyMCPOnly
+}
+
+// EffectiveAutoDisableMode returns the mode used at evaluation time.
+func (p ChannelPolicies) EffectiveAutoDisableMode() APIKeyAutoDisableMode {
+	switch p.APIKeyAutoDisableMode {
+	case APIKeyAutoDisableModeOff:
+		return APIKeyAutoDisableModeOff
+	case APIKeyAutoDisableModeCustom:
+		if len(p.APIKeyAutoDisableRules) == 0 {
+			return APIKeyAutoDisableModeInherit
+		}
+		return APIKeyAutoDisableModeCustom
+	case APIKeyAutoDisableModeInherit:
+		return APIKeyAutoDisableModeInherit
+	default:
+		if len(p.APIKeyAutoDisableRules) > 0 {
+			return APIKeyAutoDisableModeCustom
+		}
+		return APIKeyAutoDisableModeInherit
+	}
 }
 
 type APIKeyAutoDisableAction string

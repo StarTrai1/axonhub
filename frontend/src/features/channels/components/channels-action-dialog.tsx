@@ -884,6 +884,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             baseURL: currentRow.baseURL,
             name: currentRow.name,
             policies: {
+              ...currentRow.policies,
               routingTier: currentRow.policies?.routingTier ?? 'standard',
               stream: currentRow.policies?.stream ?? 'unlimited',
               remoteCompaction:
@@ -920,6 +921,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               baseURL: duplicateFromRow.baseURL,
               name: duplicateFromRow.name,
               policies: {
+                ...duplicateFromRow.policies,
                 routingTier: duplicateFromRow.policies?.routingTier ?? 'standard',
                 stream: duplicateFromRow.policies?.stream ?? 'unlimited',
                 remoteCompaction:
