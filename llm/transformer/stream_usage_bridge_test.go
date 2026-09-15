@@ -2,6 +2,7 @@ package transformer_test
 
 import (
 	"encoding/json"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -42,7 +43,11 @@ func TestCrossProtocolChatStreamUsage(t *testing.T) {
 			{name: "deepseek", factory: deepseek.NewOutboundTransformer},
 		} {
 			t.Run(tc.name+"/"+provider.name, func(t *testing.T) {
-				request, err := tc.inbound.TransformRequest(t.Context(), &httpclient.Request{Path: tc.path, Body: []byte(tc.body)})
+				request, err := tc.inbound.TransformRequest(t.Context(), &httpclient.Request{
+					Path:    tc.path,
+					Headers: http.Header{"Content-Type": []string{"application/json"}},
+					Body:    []byte(tc.body),
+				})
 				require.NoError(t, err)
 				require.Nil(t, request.StreamOptions)
 				before, err := json.Marshal(request)

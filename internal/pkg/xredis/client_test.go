@@ -284,12 +284,12 @@ func TestParseUniversalURL(t *testing.T) {
 	t.Run("parse the empty URL", func(t *testing.T) {
 		opts, err := ParseUniversalURL("")
 		assert.NoError(t, err)
-		assert.Equal(t, redis.UniversalOptions{}, *opts)
+		assert.Equal(t, redis.UniversalOptions{ContextTimeoutEnabled: true}, *opts)
 	})
 	t.Run("parse the short URL", func(t *testing.T) {
 		opts, err := ParseUniversalURL("redis://")
 		assert.NoError(t, err)
-		assert.Equal(t, redis.UniversalOptions{}, *opts)
+		assert.Equal(t, redis.UniversalOptions{ContextTimeoutEnabled: true}, *opts)
 	})
 	t.Run("parse the full URL", func(t *testing.T) {
 		opts, err := ParseUniversalURL(

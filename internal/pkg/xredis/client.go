@@ -100,7 +100,9 @@ func newUniversalOptions(cfg Config) (*redis.UniversalOptions, error) {
 }
 
 func ParseUniversalURL(redisURL string) (*redis.UniversalOptions, error) {
-	opts := &redis.UniversalOptions{}
+	// Cache and authentication callers bound their work with context deadlines.
+	// Without this option, go-redis replaces that context during socket I/O.
+	opts := &redis.UniversalOptions{ContextTimeoutEnabled: true}
 
 	if redisURL == "" {
 		return opts, nil
@@ -163,7 +165,9 @@ func ParseUniversalURL(redisURL string) (*redis.UniversalOptions, error) {
 	opts.DialTimeout = q.duration("dial_timeout")
 	opts.ReadTimeout = q.duration("read_timeout")
 	opts.WriteTimeout = q.duration("write_timeout")
-	opts.ContextTimeoutEnabled = q.bool("context_timeout_enabled")
+	if q.has("context_timeout_enabled") {
+		opts.ContextTimeoutEnabled = q.bool("context_timeout_enabled")
+	}
 	opts.ReadBufferSize = q.int("read_buffer_size")
 	opts.WriteBufferSize = q.int("write_buffer_size")
 	opts.PoolFIFO = q.bool("pool_fifo")
