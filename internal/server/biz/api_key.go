@@ -609,12 +609,7 @@ func (s *APIKeyService) updatePersonalAPIKeyStatusByUser(
 	}
 
 	keys := lo.Map(apiKeys, func(apiKey *ent.APIKey, _ int) string { return apiKey.Key })
-	runAfterCommit(ctx, func(ctx context.Context) {
-		for _, key := range keys {
-			s.APIKeyCache.Invalidate(buildAPIKeyCacheKey(key))
-		}
-		s.invalidateAPIKeyCaches(ctx, keys...)
-	})
+	s.invalidateAPIKeyCaches(ctx, keys...)
 
 	return nil
 }
@@ -1042,9 +1037,16 @@ func (s *APIKeyService) invalidateAPIKeyCaches(ctx context.Context, keys ...stri
 	}
 
 	cacheKeys := buildAPIKeyCacheKeys(keys)
-	if err := s.apiKeyNotifier.Notify(ctx, live.NewInvalidateKeysEvent(cacheKeys...)); err != nil {
-		log.Warn(ctx, "api key cache watcher notify failed", log.Cause(err))
-	}
+	runAfterCommit(ctx, func(ctx context.Context) {
+		// Watcher delivery is asynchronous and best effort. Local authentication
+		// must observe committed revocations even before that event is processed.
+		for _, key := range cacheKeys {
+			s.APIKeyCache.Invalidate(key)
+		}
+		if err := s.apiKeyNotifier.Notify(ctx, live.NewInvalidateKeysEvent(cacheKeys...)); err != nil {
+			log.Warn(ctx, "api key cache watcher notify failed", log.Cause(err))
+		}
+	})
 }
 
 func (s *APIKeyService) bulkUpdateAPIKeyStatus(ctx context.Context, ids []int, status apikey.Status, action string) error {
