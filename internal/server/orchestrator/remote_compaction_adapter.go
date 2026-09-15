@@ -22,6 +22,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -1001,6 +1002,9 @@ func (a *remoteCompactionAdapter) generateLocalSummary(
 			return summary, nil
 		}
 		attemptErrors = append(attemptErrors, attemptErr)
+		if ctx.Err() != nil {
+			break
+		}
 	}
 
 	err = errors.Join(attemptErrors...)
@@ -1008,7 +1012,16 @@ func (a *remoteCompactionAdapter) generateLocalSummary(
 		err = errors.New("no unsupported Codex candidate was available for local compaction")
 	}
 	if bridgeRecord != nil {
-		_ = a.requestService.UpdateRequestStatusFromError(context.WithoutCancel(ctx), bridgeRecord.ID, err)
+		status := request.StatusFailed
+		if errors.Is(err, context.Canceled) || errors.Is(ctx.Err(), context.Canceled) {
+			status = request.StatusCanceled
+		}
+		failure := responses.NewInboundTransformer().TransformError(ctx, err)
+		if updateErr := a.requestService.UpdateRequestStatusExternalIDAndResponseBody(
+			context.WithoutCancel(ctx), bridgeRecord.ID, status, "", objects.JSONRawMessage(failure.Body), nil,
+		); updateErr != nil {
+			log.Warn(ctx, "failed to persist local compaction bridge request error", log.Cause(updateErr))
+		}
 	}
 
 	return "", err
@@ -1110,12 +1123,14 @@ func (a *remoteCompactionAdapter) generateLocalSummaryWithCandidate(
 
 	chunks, err := collectLocalCompactionBridgeStream(stream, perf)
 	if err != nil {
+		err = normalizeLocalCompactionError(ctx, outbound, err)
 		a.markBridgeExecutionFailed(ctx, executionRecord, err)
 		return "", err
 	}
 
 	responseBody, meta, err := outbound.AggregateStreamChunks(ctx, providerRequest, chunks)
 	if err != nil {
+		err = normalizeLocalCompactionError(ctx, outbound, err)
 		a.markBridgeExecutionFailed(ctx, executionRecord, err)
 		return "", err
 	}
@@ -1197,7 +1212,7 @@ func (a *remoteCompactionAdapter) markBridgeExecutionFailed(ctx context.Context,
 	if execution == nil || a.requestService == nil || err == nil {
 		return
 	}
-	if updateErr := a.requestService.UpdateRequestExecutionStatusFromError(context.WithoutCancel(ctx), execution.ID, err); updateErr != nil {
+	if updateErr := persistRequestExecutionFailure(context.WithoutCancel(ctx), a.requestService, execution.ID, err, nil); updateErr != nil {
 		log.Warn(ctx, "failed to persist local compaction bridge error", log.Cause(updateErr))
 	}
 }

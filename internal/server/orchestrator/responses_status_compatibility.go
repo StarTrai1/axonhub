@@ -39,6 +39,7 @@ type responsesRejectedStatusRule struct {
 	field           string
 	dropItem        bool
 	metadataScope   *responsesMetadataCapabilityKey
+	resourceScope   *responsesMetadataCapabilityKey
 	reasoningScope  *responsesReasoningRecoveryScope
 	reasoningHashes map[[sha256.Size]byte]struct{}
 }
@@ -130,8 +131,10 @@ func (m *responsesRejectedStatusCompatibilityMiddleware) OnOutboundRawRequest(
 	}
 
 	reasoningScope, hasReasoningScope := responsesReasoningScope(ctx, channel, request)
+	resourceKey := responsesMetadataKey(channel.ID, request)
 	rules := lo.Filter(m.outbound.state.responsesRejectedStatusRules[channel.ID], func(rule responsesRejectedStatusRule, _ int) bool {
 		return (rule.metadataScope == nil || *rule.metadataScope == metadataKey) &&
+			(rule.resourceScope == nil || *rule.resourceScope == resourceKey) &&
 			(rule.reasoningScope == nil || hasReasoningScope && *rule.reasoningScope == reasoningScope)
 	})
 	if hasReasoningScope {
@@ -171,13 +174,17 @@ func (m *responsesRejectedStatusCompatibilityMiddleware) OnOutboundRawError(ctx 
 	}
 
 	rule, ok := responsesRejectedStatusRuleFromError(err, state.RawProviderRequest.Body)
-	if !ok || (rule.dropItem && channel.Type != entchannel.TypeCodex) {
+	if !ok || ((rule.dropItem || rule.fieldName() == "id") && channel.Type != entchannel.TypeCodex) {
 		return
 	}
 	if rule.dropItem {
 		if scope, scoped := responsesReasoningScope(ctx, channel, state.RawProviderRequest); scoped {
 			rule.reasoningScope = &scope
 		}
+	} else if rule.fieldName() == "id" {
+		// Keep this correction within the current request and exact destination.
+		// A resource mismatch is not a global channel capability declaration.
+		rule.resourceScope = lo.ToPtr(responsesMetadataKey(channel.ID, state.RawProviderRequest))
 	} else if state.RawProviderRequest.APIFormat != string(llm.APIFormatOpenAIResponse) {
 		return
 	}
@@ -225,6 +232,9 @@ func responsesRejectedStatusRuleFromError(err error, requestBody []byte) (respon
 		return responsesRejectedReasoningRule(requestBody, param)
 	}
 	if rule, accepted := responsesRejectedReasoningMessageRule(requestBody, code, message, param); accepted {
+		return rule, true
+	}
+	if rule, accepted := responsesRejectedResourceRule(requestBody, code, message, param); accepted {
 		return rule, true
 	}
 	messageParam := responsesRejectedStatusParamFromMessage(message)
@@ -292,6 +302,11 @@ func rememberResponsesRejectedStatusRule(state *PersistenceState, channelID int,
 				continue
 			}
 		}
+		if existing.resourceScope != nil || rule.resourceScope != nil {
+			if existing.resourceScope == nil || rule.resourceScope == nil || *existing.resourceScope != *rule.resourceScope {
+				continue
+			}
+		}
 		if rule.itemType != "" && existing.itemType == rule.itemType {
 			return false
 		}
@@ -317,6 +332,7 @@ func stripResponsesRejectedStatus(body []byte, rules []responsesRejectedStatusRu
 	retained := make([]json.RawMessage, 0, len(items))
 	changed := false
 	recoveryValidated := false
+	resourceRecoveryValidated := false
 	for index, item := range items {
 		if !item.IsObject() {
 			retained = append(retained, json.RawMessage(item.Raw))
@@ -353,6 +369,12 @@ func stripResponsesRejectedStatus(body []byte, rules []responsesRejectedStatusRu
 			if !gjson.GetBytes(updated, rule.fieldName()).Exists() {
 				continue
 			}
+			if rule.fieldName() == "id" && !resourceRecoveryValidated {
+				if _, safe := responsesResourceHistorySupportsRecovery(body); !safe {
+					return nil, false, errors.New("cannot detach Responses item IDs without complete explicit history")
+				}
+				resourceRecoveryValidated = true
+			}
 			next, err := sjson.DeleteBytes(updated, rule.fieldName())
 			if err != nil {
 				return nil, false, fmt.Errorf("delete rejected Responses metadata at input[%d]: %w", index, err)
@@ -380,6 +402,12 @@ func stripResponsesRejectedStatus(body []byte, rules []responsesRejectedStatusRu
 
 func responsesRejectedStatusRuleMatches(rules []responsesRejectedStatusRule, index int, itemType string) bool {
 	for _, rule := range rules {
+		if rule.fieldName() == "id" {
+			if responsesInputSupportsPortableID(itemType) {
+				return true
+			}
+			continue
+		}
 		if rule.fieldName() == "internal_chat_message_metadata_passthrough" {
 			if responsesInputSupportsInternalMetadata(itemType) {
 				return true

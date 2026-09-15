@@ -3,8 +3,10 @@ package orchestrator
 import (
 	"context"
 	"errors"
+	"io"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
@@ -13,6 +15,7 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
+	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
 
 func TestResponsesRejectedMetadataLocalCompactionRetry(t *testing.T) {
@@ -78,10 +81,12 @@ func TestResponsesRejectedMetadataLocalCompactionHonorsCancellation(t *testing.T
 }
 
 type localCompactionRetryExecutor struct {
-	bodies   [][]byte
-	failure  error
-	failures []error
-	events   []*httpclient.StreamEvent
+	bodies    [][]byte
+	failure   error
+	failures  []error
+	events    []*httpclient.StreamEvent
+	stream    streams.Stream[*httpclient.StreamEvent]
+	onRequest func()
 }
 
 func (executor *localCompactionRetryExecutor) Do(context.Context, *httpclient.Request) (*httpclient.Response, error) {
@@ -90,13 +95,137 @@ func (executor *localCompactionRetryExecutor) Do(context.Context, *httpclient.Re
 
 func (executor *localCompactionRetryExecutor) DoStream(_ context.Context, request *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
 	executor.bodies = append(executor.bodies, append([]byte(nil), request.Body...))
+	if executor.onRequest != nil {
+		executor.onRequest()
+	}
 	if len(executor.bodies) <= len(executor.failures) {
 		return nil, executor.failures[len(executor.bodies)-1]
 	}
-	if len(executor.failures) == 0 && len(executor.bodies) == 1 {
+	if len(executor.failures) == 0 && len(executor.bodies) == 1 && executor.failure != nil {
 		return nil, executor.failure
 	}
+	if executor.stream != nil {
+		return executor.stream, nil
+	}
 	return streams.SliceStream(executor.events), nil
+}
+
+func TestResponsesRejectedLocalCompactionRetriesTransientOpeningFailures(t *testing.T) {
+	for _, scenario := range []struct {
+		name       string
+		failure    error
+		failures   int
+		retries    int
+		disabled   bool
+		wantCalls  int
+		wantResult bool
+	}{
+		{"load error then success", bridgeOverloadError(), 1, 2, false, 2, true},
+		{"load error exhausted", bridgeOverloadError(), 3, 2, false, 3, false},
+		{"zero retry budget", bridgeOverloadError(), 1, 0, false, 1, false},
+		{"disabled retries", bridgeOverloadError(), 1, 2, true, 1, false},
+		{"opening EOF", io.ErrUnexpectedEOF, 1, 2, false, 2, true},
+		{"ordinary validation", &httpclient.Error{StatusCode: 400, Body: []byte(`{"error":{"message":"invalid input"}}`)}, 1, 2, false, 1, false},
+		{"authorization rejection", &httpclient.Error{StatusCode: 401}, 1, 2, false, 1, false},
+		{"budget exhausted", &httpclient.Error{StatusCode: 402, Body: []byte(`{"error":{"message":"Budget pool quota has been exhausted"}}`)}, 1, 2, false, 1, false},
+		{"permanent rate limit", &httpclient.Error{StatusCode: 429, Body: []byte(`{"error":{"code":"insufficient_quota","message":"quota exhausted"}}`)}, 1, 2, false, 1, false},
+		{"long rate limit cooldown", &httpclient.Error{StatusCode: 503, Headers: http.Header{"Retry-After": {"120"}}}, 1, 2, false, 1, false},
+	} {
+		t.Run(scenario.name, func(t *testing.T) {
+			outbound := newCodexResponsesPassThroughOutbound()
+			outbound.wrapped = new(responses.OutboundTransformer)
+			outbound.state.RetryPolicyProvider = &mockRetryPolicyProvider{policy: &biz.RetryPolicy{
+				Enabled: !scenario.disabled, MaxSingleChannelRetries: scenario.retries,
+			}}
+			providerRequest := outbound.state.RawProviderRequest
+			providerRequest.Body = []byte(responsesResourceHistoryFixture)
+			executor := new(localCompactionRetryExecutor)
+			for range scenario.failures {
+				executor.failures = append(executor.failures, scenario.failure)
+			}
+			adapter := newRemoteCompactionAdapter(nil, nil, nil)
+			stream, _, err := adapter.startLocalCompactionStream(t.Context(), outbound, providerRequest, executor, applyResponsesRejectedStatusCompatibility(outbound))
+			require.Len(t, executor.bodies, scenario.wantCalls)
+			for _, body := range executor.bodies {
+				require.Equal(t, []byte(responsesResourceHistoryFixture), body, "transient failures must not change conversation history")
+			}
+			if scenario.wantResult {
+				require.NoError(t, err)
+				require.NotNil(t, stream)
+				require.NoError(t, stream.Close())
+			} else {
+				require.ErrorIs(t, err, scenario.failure)
+				require.Nil(t, stream)
+				if ExtractStatusCodeFromError(scenario.failure) == 500 {
+					var responseErr *llm.ResponseError
+					require.ErrorAs(t, err, &responseErr)
+					require.Equal(t, "model capacity reached", responseErr.Detail.Message)
+					require.Equal(t, http.StatusInternalServerError, responseErr.StatusCode)
+				}
+			}
+		})
+	}
+}
+
+func TestResponsesRejectedLocalCompactionTransientAndCompatibilityShareBudget(t *testing.T) {
+	outbound := newCodexResponsesPassThroughOutbound()
+	outbound.state.CurrentCandidate.Channel.ID = 94050
+	outbound.state.RetryPolicyProvider = &mockRetryPolicyProvider{policy: &biz.RetryPolicy{
+		Enabled: true, MaxSingleChannelRetries: 2,
+	}}
+	providerRequest := outbound.state.RawProviderRequest
+	providerRequest.Body = []byte(responsesResourceHistoryFixture)
+	executor := &localCompactionRetryExecutor{failures: []error{bridgeOverloadError(), resourceMismatchHTTPError()}}
+	adapter := newRemoteCompactionAdapter(nil, nil, nil)
+	stream, _, err := adapter.startLocalCompactionStream(t.Context(), outbound, providerRequest, executor, applyResponsesRejectedStatusCompatibility(outbound))
+	require.NoError(t, err)
+	require.NoError(t, stream.Close())
+	require.Len(t, executor.bodies, 3)
+	require.Equal(t, executor.bodies[0], executor.bodies[1])
+	assertPortableIDsOnlyRemoved(t, executor.bodies[1], executor.bodies[2])
+}
+
+func TestResponsesRejectedLocalCompactionRetryWaitCanBeCanceled(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	outbound := newCodexResponsesPassThroughOutbound()
+	outbound.state.RetryPolicyProvider = &mockRetryPolicyProvider{policy: &biz.RetryPolicy{
+		Enabled: true, MaxSingleChannelRetries: 2, RetryDelayMs: 300000,
+	}}
+	executor := &localCompactionRetryExecutor{failure: bridgeOverloadError()}
+	var timer *time.Timer
+	executor.onRequest = func() { timer = time.AfterFunc(10*time.Millisecond, cancel) }
+	t.Cleanup(func() {
+		if timer != nil {
+			timer.Stop()
+		}
+	})
+	adapter := newRemoteCompactionAdapter(nil, nil, nil)
+	stream, _, err := adapter.startLocalCompactionStream(ctx, outbound, outbound.state.RawProviderRequest, executor, applyResponsesRejectedStatusCompatibility(outbound))
+	require.ErrorIs(t, err, context.Canceled)
+	require.Nil(t, stream)
+	require.Len(t, executor.bodies, 1)
+}
+
+func TestResponsesRejectedLocalCompactionDoesNotRetryPartialStream(t *testing.T) {
+	outbound := newCodexResponsesPassThroughOutbound()
+	outbound.state.RetryPolicyProvider = &mockRetryPolicyProvider{policy: &biz.RetryPolicy{Enabled: true, MaxSingleChannelRetries: 2}}
+	executor := &localCompactionRetryExecutor{stream: &mockStream{
+		events: []*httpclient.StreamEvent{{Type: "response.output_text.delta", Data: []byte(`{"type":"response.output_text.delta","delta":"partial summary"}`)}},
+		err:    io.ErrUnexpectedEOF,
+	}}
+	adapter := newRemoteCompactionAdapter(nil, nil, nil)
+	stream, _, err := adapter.startLocalCompactionStream(t.Context(), outbound, outbound.state.RawProviderRequest, executor, applyResponsesRejectedStatusCompatibility(outbound))
+	require.NoError(t, err)
+	chunks, err := collectLocalCompactionBridgeStream(stream, nil)
+	require.ErrorIs(t, err, io.ErrUnexpectedEOF)
+	require.Nil(t, chunks)
+	require.NoError(t, stream.Close())
+	require.Len(t, executor.bodies, 1)
+}
+
+func bridgeOverloadError() *httpclient.Error {
+	return &httpclient.Error{StatusCode: http.StatusInternalServerError, Body: []byte(`{"error":{"type":"server_error","code":"model_overloaded","message":"model capacity reached"}}`)}
 }
 
 func TestResponsesRejectedReasoningLocalCompactionRemembersSuccessfulRecovery(t *testing.T) {

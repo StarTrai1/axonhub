@@ -48,11 +48,8 @@ func responsesRejectedReasoningMessageRule(body []byte, code, message, param str
 }
 
 func responsesRejectedReasoningRule(body []byte, param string) (responsesRejectedStatusRule, bool) {
-	if !gjson.ValidBytes(body) || gjson.GetBytes(body, "previous_response_id").String() != "" {
-		return responsesRejectedStatusRule{}, false
-	}
-	input := gjson.GetBytes(body, "input")
-	if !input.IsArray() {
+	hasEncryptedReasoning, complete := responsesExplicitHistorySupportsRecovery(body)
+	if !complete || !hasEncryptedReasoning {
 		return responsesRejectedStatusRule{}, false
 	}
 	if param != "" {
@@ -70,32 +67,43 @@ func responsesRejectedReasoningRule(body []byte, param string) (responsesRejecte
 			return responsesRejectedStatusRule{}, false
 		}
 	}
+	return responsesRejectedStatusRule{itemType: "reasoning", index: -1, field: "encrypted_content", dropItem: true}, true
+}
+
+func responsesExplicitHistorySupportsRecovery(body []byte) (hasEncryptedReasoning, complete bool) {
+	if !gjson.ValidBytes(body) || gjson.GetBytes(body, "previous_response_id").String() != "" ||
+		gjson.GetBytes(body, "conversation").String() != "" {
+		return false, false
+	}
+	input := gjson.GetBytes(body, "input")
+	if !input.IsArray() {
+		return false, false
+	}
 
 	hasUserHistory := false
-	hasEncryptedReasoning := false
 	toolCalls := make(map[string]string)
 	for _, item := range input.Array() {
 		if !item.IsObject() {
-			return responsesRejectedStatusRule{}, false
+			return false, false
 		}
 		itemType := item.Get("type").String()
 		if itemType != "reasoning" && item.Get("encrypted_content").String() != "" {
-			return responsesRejectedStatusRule{}, false
+			return false, false
 		}
 		if item.Get("encrypted_function_args").Exists() {
-			return responsesRejectedStatusRule{}, false
+			return false, false
 		}
 		switch itemType {
 		case "additional_tools":
 			if !item.Get("tools").IsArray() {
-				return responsesRejectedStatusRule{}, false
+				return false, false
 			}
 		case "configuration_update":
 		case "compaction_trigger":
 			// Codex appends this empty control to an explicit history to ask the
 			// backend for a new compaction. It carries no opaque prior state.
 			if len(item.Map()) != 1 {
-				return responsesRejectedStatusRule{}, false
+				return false, false
 			}
 		case "message", "":
 			content := item.Get("content")
@@ -106,7 +114,7 @@ func responsesRejectedReasoningRule(body []byte, param string) (responsesRejecte
 		case "reasoning":
 			encrypted := item.Get("encrypted_content")
 			if encrypted.Exists() && encrypted.Type != gjson.String && encrypted.Type != gjson.Null {
-				return responsesRejectedStatusRule{}, false
+				return false, false
 			}
 			hasEncryptedReasoning = hasEncryptedReasoning || encrypted.String() != ""
 		case "function_call", "custom_tool_call":
@@ -119,24 +127,21 @@ func responsesRejectedReasoningRule(body []byte, param string) (responsesRejecte
 				continue
 			}
 			if toolCalls[item.Get("call_id").String()] != strings.TrimSuffix(itemType, "_output") {
-				return responsesRejectedStatusRule{}, false
+				return false, false
 			}
 		case "agent_message":
 			for _, content := range item.Get("content").Array() {
 				if content.Get("type").String() == "encrypted_content" {
-					return responsesRejectedStatusRule{}, false
+					return false, false
 				}
 			}
 		case "compaction", "compaction_summary", "context_compaction", "item_reference":
-			return responsesRejectedStatusRule{}, false
+			return false, false
 		default:
-			return responsesRejectedStatusRule{}, false
+			return false, false
 		}
 	}
-	if !hasUserHistory || !hasEncryptedReasoning {
-		return responsesRejectedStatusRule{}, false
-	}
-	return responsesRejectedStatusRule{itemType: "reasoning", index: -1, field: "encrypted_content", dropItem: true}, true
+	return hasEncryptedReasoning, hasUserHistory
 }
 
 func recoverResponsesReasoningSummary(item []byte) ([]byte, error) {
