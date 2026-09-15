@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/samber/lo"
+	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -114,6 +115,7 @@ func (t *OutboundTransformer) transformCompactResponse(
 			Object:       "response.compaction",
 			Instructions: compactResp.Instructions,
 			Output:       outputMessages,
+			RawOutput:    json.RawMessage(gjson.GetBytes(httpResp.Body, "output").Raw),
 		},
 	}
 

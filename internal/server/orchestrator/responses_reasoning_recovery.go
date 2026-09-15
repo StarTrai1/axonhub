@@ -94,7 +94,7 @@ func responsesHistorySupportsRecovery(body []byte, preserveCompaction bool) (has
 		}
 		itemType := item.Get("type").String()
 		compaction := itemType == remoteCompactionItemType || itemType == legacyRemoteCompactionSummaryType
-		if itemType != "reasoning" && !(preserveCompaction && compaction) && item.Get("encrypted_content").String() != "" {
+		if itemType != "reasoning" && (!preserveCompaction || !compaction) && item.Get("encrypted_content").String() != "" {
 			return false, false
 		}
 		if item.Get("encrypted_function_args").Exists() {

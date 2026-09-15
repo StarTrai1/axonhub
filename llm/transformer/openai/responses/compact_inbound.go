@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	"github.com/samber/lo"
+	"github.com/tidwall/gjson"
+	"github.com/tidwall/sjson"
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -124,6 +126,15 @@ func (t *CompactInboundTransformer) TransformResponse(ctx context.Context, llmRe
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal compact response: %w", err)
+	}
+	if len(llmResp.Compact.RawOutput) > 0 {
+		if !json.Valid(llmResp.Compact.RawOutput) || !gjson.ParseBytes(llmResp.Compact.RawOutput).IsArray() {
+			return nil, fmt.Errorf("native compact output is not an array")
+		}
+		body, err = sjson.SetRawBytes(body, "output", llmResp.Compact.RawOutput)
+		if err != nil {
+			return nil, fmt.Errorf("preserve canonical compact output: %w", err)
+		}
 	}
 
 	return &httpclient.Response{

@@ -1,5 +1,7 @@
 package llm
 
+import "encoding/json"
+
 // CompactRequest represents the unified compact request model.
 // Used by the Responses API /responses/compact endpoint.
 // Note: Common fields like Stream and StreamOptions are in the parent Request struct, not here.
@@ -34,4 +36,9 @@ type CompactResponse struct {
 
 	// Output is the ordered compacted output messages.
 	Output []Message `json:"output"`
+
+	// RawOutput preserves a native Responses canonical window through the
+	// in-process transform path. It is not a cache or persistence field.
+	// A transformer replacing Output must also clear RawOutput.
+	RawOutput json.RawMessage `json:"-"`
 }

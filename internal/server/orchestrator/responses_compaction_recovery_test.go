@@ -228,10 +228,23 @@ func TestResponsesRejectedCompactionDoesNotRetryPartialStream(t *testing.T) {
 		})
 	require.NoError(t, err)
 	require.NotNil(t, result)
+	sawOutput := false
+	sawError := false
 	for result.EventStream.Next() {
-		_ = result.EventStream.Current()
+		event := result.EventStream.Current()
+		if gjson.GetBytes(event.Data, "type").String() == "response.output_text.delta" {
+			sawOutput = gjson.GetBytes(event.Data, "delta").String() == "visible output"
+		}
+		if gjson.GetBytes(event.Data, "type").String() == "error" {
+			require.True(t, sawOutput)
+			require.Equal(t, responsesResourceMismatchMessage, gjson.GetBytes(event.Data, "error.message").String())
+			require.Equal(t, int64(400), gjson.GetBytes(event.Data, "status_code").Int())
+			sawError = true
+		}
 	}
-	require.Error(t, result.EventStream.Err())
+	require.True(t, sawOutput)
+	require.True(t, sawError, "the upstream protocol error must reach the client after its partial output")
+	require.NoError(t, result.EventStream.Err())
 	_ = result.EventStream.Close()
 	require.Len(t, executor.requests, 1, "a returned partial response must never restart through compaction recovery")
 }
