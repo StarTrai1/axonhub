@@ -66,10 +66,12 @@ func TestResponsesRejectedLocalCompactionPersistsRetriesAndProviderErrors(t *tes
 			}
 			executor := &localCompactionRetryExecutor{
 				failures: []error{bridgeOverloadError()},
-				events: []*httpclient.StreamEvent{{
-					Type: "response.completed",
-					Data: []byte(`{"type":"response.completed","response":{"id":"resp_bridge","object":"response","status":"completed","model":"gpt-6-astra","output":[{"type":"message","id":"msg_bridge","role":"assistant","content":[{"type":"output_text","text":"complete bridge summary"}]}]}}`),
-				}},
+				events: []*httpclient.StreamEvent{
+					{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_bridge","object":"response","status":"in_progress","model":"gpt-6-astra","output":[]}}`)},
+					{Type: "response.output_item.added", Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"type":"message","id":"msg_bridge","role":"assistant","status":"in_progress","content":[]}}`)},
+					{Type: "response.output_item.done", Data: []byte(`{"type":"response.output_item.done","output_index":0,"item":{"type":"message","id":"msg_bridge","role":"assistant","status":"completed","content":[{"type":"output_text","text":"complete bridge summary"}]}}`)},
+					{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":{"id":"resp_bridge","object":"response","status":"completed","model":"gpt-6-astra","output":[{"type":"message","id":"msg_bridge","role":"assistant","content":[{"type":"output_text","text":"complete bridge summary"}]}]}}`)},
+				},
 			}
 			if exhausted {
 				executor.failures = append(executor.failures, bridgeOverloadError())
