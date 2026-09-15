@@ -51,10 +51,14 @@ func TestResponsesRejectedLocalCompactionPersistsRetriesAndProviderErrors(t *tes
 			require.NoError(t, err)
 			candidate := &ChannelModelsCandidate{
 				Channel: &biz.Channel{
-					Channel: &ent.Channel{ID: 94060, Name: "bridge-test", Type: entchannel.TypeCodex, Settings: &objects.ChannelSettings{PassThroughBody: lo.ToPtr(true)}},
+					Channel: &ent.Channel{
+						ID: 94060, Name: "bridge-test", Type: entchannel.TypeCodex,
+						Settings: &objects.ChannelSettings{PassThroughBody: lo.ToPtr(true)},
+					},
 					Outbound: provider,
 				},
-				Models: []biz.ChannelModelEntry{{RequestModel: "gpt-6-astra", ActualModel: "gpt-6-astra", Source: "direct"}}, APIFormat: llm.APIFormatOpenAIResponse.String(),
+				Models:    []biz.ChannelModelEntry{{RequestModel: "gpt-6-astra", ActualModel: "gpt-6-astra", Source: "direct"}},
+				APIFormat: llm.APIFormatOpenAIResponse.String(),
 			}
 			state := &PersistenceState{
 				APIKey: apiKey, ChannelModelsCandidates: []*ChannelModelsCandidate{candidate},
@@ -72,10 +76,10 @@ func TestResponsesRejectedLocalCompactionPersistsRetriesAndProviderErrors(t *tes
 			}
 			adapter := newRemoteCompactionAdapter(service, nil, system)
 			summary, err := adapter.generateLocalSummary(ctx, "synthetic-compaction-cache-key", &remoteCompactionSource{
-				body:    []byte(`{"model":"gpt-6-astra","input":[{"type":"message","role":"user","content":"complete original history"}]}`),
+				body:    []byte(`{"model":"gpt-6-astra","input":[{"type":"message","role":"user","content":[{"type":"input_text","text":"complete original history"}]},{"type":"compaction_trigger"}]}`),
 				headers: http.Header{"Thread-Id": {"synthetic-bridge-thread"}},
 			}, state, executor)
-			require.Len(t, executor.bodies, 2)
+			require.Len(t, executor.bodies, 2, "summary execution returned: %v", err)
 			require.Equal(t, executor.bodies[0], executor.bodies[1])
 			stored, loadErr := client.Request.Query().Only(ctx)
 			require.NoError(t, loadErr)
@@ -116,7 +120,7 @@ func TestResponsesRejectedLocalCompactionPersistsClassifiedFailures(t *testing.T
 	client := enttest.NewEntClient(t, "sqlite3", "file:compaction-failure-status?mode=memory&_fk=0")
 	t.Cleanup(func() { client.Close() })
 	ctx := authz.WithTestBypass(ent.NewContext(t.Context(), client))
-	stored, err := client.Request.Create().SetProjectID(1).SetModelID("gpt-6-astra").SetFormat(llm.APIFormatOpenAIResponse.String()).SetStatus(request.StatusProcessing).SetStream(true).Save(ctx)
+	stored, err := client.Request.Create().SetProjectID(1).SetModelID("gpt-6-astra").SetFormat(llm.APIFormatOpenAIResponse.String()).SetRequestBody(objects.JSONRawMessage(`{}`)).SetStatus(request.StatusProcessing).SetStream(true).Save(ctx)
 	require.NoError(t, err)
 	adapter := newRemoteCompactionAdapter(createTestRequestService(t, client), nil, nil)
 	for _, scenario := range []struct {
@@ -130,7 +134,7 @@ func TestResponsesRejectedLocalCompactionPersistsClassifiedFailures(t *testing.T
 		{"canceled request", context.Canceled, requestexecution.StatusCanceled, 0},
 	} {
 		t.Run(scenario.name, func(t *testing.T) {
-			execution, err := client.RequestExecution.Create().SetRequestID(stored.ID).SetProjectID(1).SetModelID("gpt-6-astra").SetFormat(llm.APIFormatOpenAIResponse.String()).SetStatus(requestexecution.StatusProcessing).SetStream(true).Save(ctx)
+			execution, err := client.RequestExecution.Create().SetRequestID(stored.ID).SetProjectID(1).SetModelID("gpt-6-astra").SetFormat(llm.APIFormatOpenAIResponse.String()).SetRequestBody(objects.JSONRawMessage(`{}`)).SetStatus(requestexecution.StatusProcessing).SetStream(true).Save(ctx)
 			require.NoError(t, err)
 			adapter.markBridgeExecutionFailed(ctx, execution, scenario.err)
 			updated, err := client.RequestExecution.Get(ctx, execution.ID)
