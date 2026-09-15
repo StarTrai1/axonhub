@@ -228,7 +228,8 @@ function buildRequestExecutionsQuery(permissions: { canViewChannels: boolean }) 
                   name
                   type
                   baseURL
-              }`
+              }
+              channelAPIKeySuffix`
     : '';
 
   return `
