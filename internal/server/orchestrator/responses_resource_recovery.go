@@ -19,10 +19,7 @@ var (
 // fully materialized message or tool call can still carry a stored item ID.
 // Detach only those optional IDs first, preserving call_id and opaque reasoning.
 func responsesRejectedResourceRule(body []byte, code, message, param string) (responsesRejectedStatusRule, bool) {
-	if code != "" && code != "bad_request" && code != "invalid_request_error" {
-		return responsesRejectedStatusRule{}, false
-	}
-	if !responsesResourceMismatchMessagePattern.MatchString(message) {
+	if !responsesResourceMismatch(code, message) {
 		return responsesRejectedStatusRule{}, false
 	}
 	hasIDs, safe := responsesResourceHistorySupportsRecovery(body)
@@ -52,6 +49,11 @@ func responsesRejectedResourceRule(body []byte, code, message, param string) (re
 	return responsesRejectedReasoningRule(body, "")
 }
 
+func responsesResourceMismatch(code, message string) bool {
+	return (code == "" || code == "bad_request" || code == "invalid_request_error") &&
+		responsesResourceMismatchMessagePattern.MatchString(message)
+}
+
 func responsesInputSupportsPortableID(itemType string) bool {
 	switch itemType {
 	case "", "message", "additional_tools", "function_call", "function_call_output", "custom_tool_call", "custom_tool_call_output":
@@ -62,7 +64,7 @@ func responsesInputSupportsPortableID(itemType string) bool {
 }
 
 func responsesResourceHistorySupportsRecovery(body []byte) (hasIDs, safe bool) {
-	if _, complete := responsesExplicitHistorySupportsRecovery(body); !complete {
+	if _, complete := responsesHistorySupportsRecovery(body, true); !complete {
 		return false, false
 	}
 	for _, item := range gjson.GetBytes(body, "input").Array() {
@@ -85,7 +87,7 @@ func responsesResourceHistorySupportsRecovery(body []byte) (hasIDs, safe bool) {
 			if !item.Get("output").Exists() || item.Get("output").Type == gjson.Null {
 				return false, false
 			}
-		case "additional_tools", "reasoning", "configuration_update", "compaction_trigger":
+		case "additional_tools", "reasoning", "configuration_update", "compaction_trigger", "compaction", "compaction_summary":
 		default:
 			return false, false
 		}

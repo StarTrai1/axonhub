@@ -807,6 +807,10 @@ func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
 	if p.state.CurrentCandidate == nil {
 		return false
 	}
+	if _, preparationFailed := errors.AsType[*remoteCompactionPreparationError](err); preparationFailed {
+		// The bridge already used its own bounded opening-stream retry budget.
+		return false
+	}
 	if p.state.CurrentCandidate.Channel != nil &&
 		(hasResponsesLiteWebSearchCompatibilityRetry(p.state, p.state.CurrentCandidate.Channel.ID) ||
 			hasResponsesRejectedStatusCompatibilityRetry(p.state, p.state.CurrentCandidate.Channel.ID)) {

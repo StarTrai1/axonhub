@@ -71,6 +71,12 @@ func responsesRejectedReasoningRule(body []byte, param string) (responsesRejecte
 }
 
 func responsesExplicitHistorySupportsRecovery(body []byte) (hasEncryptedReasoning, complete bool) {
+	return responsesHistorySupportsRecovery(body, false)
+}
+
+// ID detachment can preserve an opaque checkpoint verbatim. Reasoning recovery
+// must still require the full explicit history and cannot use that exception.
+func responsesHistorySupportsRecovery(body []byte, preserveCompaction bool) (hasEncryptedReasoning, complete bool) {
 	if !gjson.ValidBytes(body) || gjson.GetBytes(body, "previous_response_id").String() != "" ||
 		gjson.GetBytes(body, "conversation").String() != "" {
 		return false, false
@@ -87,7 +93,8 @@ func responsesExplicitHistorySupportsRecovery(body []byte) (hasEncryptedReasonin
 			return false, false
 		}
 		itemType := item.Get("type").String()
-		if itemType != "reasoning" && item.Get("encrypted_content").String() != "" {
+		compaction := itemType == remoteCompactionItemType || itemType == legacyRemoteCompactionSummaryType
+		if itemType != "reasoning" && !(preserveCompaction && compaction) && item.Get("encrypted_content").String() != "" {
 			return false, false
 		}
 		if item.Get("encrypted_function_args").Exists() {
@@ -135,7 +142,11 @@ func responsesExplicitHistorySupportsRecovery(body []byte) (hasEncryptedReasonin
 					return false, false
 				}
 			}
-		case "compaction", "compaction_summary", "context_compaction", "item_reference":
+		case "compaction", "compaction_summary":
+			if !preserveCompaction || item.Get("encrypted_content").Type != gjson.String || item.Get("encrypted_content").String() == "" {
+				return false, false
+			}
+		case "context_compaction", "item_reference":
 			return false, false
 		default:
 			return false, false

@@ -902,11 +902,14 @@ func (a *remoteCompactionAdapter) findStoredSummaryOrSource(
 			}
 		}
 		for _, execution := range executions {
+			if execution.Status != requestexecution.StatusCompleted {
+				continue
+			}
 			responseBody, loadErr := a.requestService.LoadRequestExecutionResponseBody(ctx, execution)
 			if loadErr != nil {
 				return "", nil, loadErr
 			}
-			if responseContainsCompactionID(responseBody, ref.ID) {
+			if responseContainsCompactionReference(responseBody, ref) {
 				source = &remoteCompactionSource{
 					body:    append([]byte(nil), body...),
 					headers: decodeStoredHeaders(prior.RequestHeaders),
@@ -1468,21 +1471,23 @@ func isMatchingCompactionSource(body []byte, threadID string) bool {
 	return false
 }
 
-func responseContainsCompactionID(body []byte, compactionID string) bool {
-	if compactionID == "" || len(body) == 0 {
+func responseContainsCompactionReference(body []byte, ref *remoteCompactionReference) bool {
+	if ref == nil || ref.ID == "" || ref.EncryptedContent == "" || len(body) == 0 {
 		return false
 	}
 	var envelope struct {
 		Output []struct {
-			Type string `json:"type"`
-			ID   string `json:"id"`
+			Type             string `json:"type"`
+			ID               string `json:"id"`
+			EncryptedContent string `json:"encrypted_content"`
 		} `json:"output"`
 	}
 	if json.Unmarshal(body, &envelope) != nil {
 		return false
 	}
 	for _, item := range envelope.Output {
-		if (item.Type == remoteCompactionItemType || item.Type == legacyRemoteCompactionSummaryType) && item.ID == compactionID {
+		if (item.Type == remoteCompactionItemType || item.Type == legacyRemoteCompactionSummaryType) &&
+			item.ID == ref.ID && item.EncryptedContent == ref.EncryptedContent {
 			return true
 		}
 	}

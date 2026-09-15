@@ -242,8 +242,9 @@ func TestCompactionResponseAndSummaryExtraction(t *testing.T) {
 		]
 	}`)
 
-	require.True(t, responseContainsCompactionID(response, "cmp_123"))
-	require.False(t, responseContainsCompactionID(response, "cmp_other"))
+	require.True(t, responseContainsCompactionReference(response, &remoteCompactionReference{ID: "cmp_123", EncryptedContent: "opaque"}))
+	require.False(t, responseContainsCompactionReference(response, &remoteCompactionReference{ID: "cmp_other", EncryptedContent: "opaque"}))
+	require.False(t, responseContainsCompactionReference(response, &remoteCompactionReference{ID: "cmp_123", EncryptedContent: "tampered"}))
 	require.Equal(t, "part one\npart two", extractAssistantOutputText(response))
 }
 

@@ -208,9 +208,16 @@ func (m *responsesRejectedStatusCompatibilityMiddleware) OnOutboundRawError(ctx 
 }
 
 func responsesRejectedStatusRuleFromError(err error, requestBody []byte) (responsesRejectedStatusRule, bool) {
+	code, message, param, ok := responsesBadRequestDetails(err)
+	if !ok {
+		return responsesRejectedStatusRule{}, false
+	}
+	return responsesRejectedStatusRuleForDetails(requestBody, code, message, param)
+}
+
+func responsesBadRequestDetails(err error) (code, message, param string, ok bool) {
 	var httpErr *httpclient.Error
 	var responseErr *llm.ResponseError
-	var code, message, param string
 	switch {
 	case errors.As(err, &httpErr) && httpErr.StatusCode == http.StatusBadRequest && len(httpErr.Body) > 0:
 		code = gjson.GetBytes(httpErr.Body, "error.code").String()
@@ -222,12 +229,16 @@ func responsesRejectedStatusRuleFromError(err error, requestBody []byte) (respon
 	case errors.As(err, &responseErr) && responseErr.StatusCode == http.StatusBadRequest:
 		code, message, param = responseErr.Detail.Code, responseErr.Detail.Message, responseErr.Detail.Param
 	default:
-		return responsesRejectedStatusRule{}, false
+		return "", "", "", false
 	}
 
 	code = strings.ToLower(strings.TrimSpace(code))
 	message = strings.TrimSpace(message)
 	param = strings.ToLower(strings.TrimSpace(param))
+	return code, message, param, true
+}
+
+func responsesRejectedStatusRuleForDetails(requestBody []byte, code, message, param string) (responsesRejectedStatusRule, bool) {
 	if code == "invalid_encrypted_content" {
 		return responsesRejectedReasoningRule(requestBody, param)
 	}
@@ -371,7 +382,7 @@ func stripResponsesRejectedStatus(body []byte, rules []responsesRejectedStatusRu
 			}
 			if rule.fieldName() == "id" && !resourceRecoveryValidated {
 				if _, safe := responsesResourceHistorySupportsRecovery(body); !safe {
-					return nil, false, errors.New("cannot detach Responses item IDs without complete explicit history")
+					return nil, false, errors.New("cannot detach Responses item IDs without materialized items and preserved checkpoints")
 				}
 				resourceRecoveryValidated = true
 			}

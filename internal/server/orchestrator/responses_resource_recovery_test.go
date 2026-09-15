@@ -83,7 +83,7 @@ func TestResponsesRejectedResourceHistoryGuards(t *testing.T) {
 		{name: "conversation reference", path: "conversation", value: map[string]string{"id": "conv_other"}},
 		{name: "no user history", path: "input.1.role", value: "assistant"},
 		{name: "item reference", path: "input.8", value: map[string]string{"type": "item_reference", "id": "msg_other"}},
-		{name: "native compaction", path: "input.8", value: map[string]string{"type": "compaction", "id": "cmp_other", "encrypted_content": "keep-native-compaction"}},
+		{name: "incomplete native compaction", path: "input.8", value: map[string]string{"type": "compaction", "id": "cmp_other"}},
 		{name: "unknown state", path: "input.8", value: map[string]string{"type": "future_state", "id": "future_other"}},
 		{name: "ID-only message", path: "input.3.content", remove: true},
 		{name: "ID-only call", path: "input.4.arguments", remove: true},
@@ -270,7 +270,8 @@ func assertPortableIDsOnlyRemoved(t *testing.T, before, after []byte) {
 	require.NoError(t, json.Unmarshal(before, &expected))
 	for _, value := range expected["input"].([]any) {
 		item := value.(map[string]any)
-		if item["type"] != "reasoning" {
+		switch item["type"] {
+		case nil, "message", "additional_tools", "function_call", "function_call_output", "custom_tool_call", "custom_tool_call_output":
 			delete(item, "id")
 		}
 	}

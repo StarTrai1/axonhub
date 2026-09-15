@@ -201,10 +201,11 @@ func runRejectedReasoningPipeline(
 	t *testing.T,
 	ctx context.Context,
 	request *httpclient.Request,
-	executor *responsesReasoningPipelineExecutor,
+	executor pipeline.Executor,
 	credential string,
 	responsePassThrough bool,
 	maxRetries int,
+	extraMiddlewares ...func(*PersistenceState, *PersistentOutboundTransformer) pipeline.Middleware,
 ) (*PersistenceState, *pipeline.Result, error) {
 	t.Helper()
 	provider, err := codex.NewOutboundTransformer(codex.Params{
@@ -233,19 +234,25 @@ func runRejectedReasoningPipeline(
 		wrapped = responses.NewCompactInboundTransformer()
 	}
 	inbound, outbound := NewPersistentTransformers(state, wrapped)
+	middlewares := []pipeline.Middleware{
+		applyPassThroughResponse(outbound, nil),
+		applyPassThroughStream(outbound, nil),
+		applyPassThroughRequestBody(outbound, nil),
+		applyPassThroughRequestHeaders(outbound),
+	}
+	for _, buildMiddleware := range extraMiddlewares {
+		middlewares = append(middlewares, buildMiddleware(state, outbound))
+	}
+	middlewares = append(middlewares,
+		applyResponsesRejectedStatusCompatibility(outbound),
+		finalizeTransportRequest(outbound),
+		captureRawProviderResponse(outbound, nil),
+		captureRawProviderStream(outbound, nil),
+	)
 	pipe := pipeline.NewFactory(executor).Pipeline(
 		inbound, outbound,
 		pipeline.WithRetry(0, maxRetries, 0),
-		pipeline.WithMiddlewares(
-			applyPassThroughResponse(outbound, nil),
-			applyPassThroughStream(outbound, nil),
-			applyPassThroughRequestBody(outbound, nil),
-			applyPassThroughRequestHeaders(outbound),
-			applyResponsesRejectedStatusCompatibility(outbound),
-			finalizeTransportRequest(outbound),
-			captureRawProviderResponse(outbound, nil),
-			captureRawProviderStream(outbound, nil),
-		),
+		pipeline.WithMiddlewares(middlewares...),
 	)
 	result, err := pipe.Process(ctx, request)
 	return state, result, err

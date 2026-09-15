@@ -307,6 +307,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		applyCodexIdentityPolicy(outbound),
 		// Compatibility rewrites must run after explicit body overrides so a
 		// retry cannot reintroduce the precise field the upstream rejected.
+		recoverRejectedRemoteCompaction(outbound, processor.remoteCompactionAdapter, processor.PipelineFactory.Executor),
 		applyResponsesRejectedStatusCompatibility(outbound),
 		// Remove transport-incompatible fields after pass-through and overrides,
 		// so persistence and execution observe the same provider request.
