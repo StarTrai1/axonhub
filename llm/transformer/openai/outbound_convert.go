@@ -77,6 +77,16 @@ func RequestFromLLM(ctx context.Context, r *llm.Request, reasoningField Reasonin
 		req.StreamOptions = &StreamOptions{
 			IncludeUsage: r.StreamOptions.IncludeUsage,
 		}
+	} else if lo.FromPtr(r.Stream) {
+		// These protocols report usage without Chat's stream_options. Ask for
+		// it on the converted request, without changing the shared input or an
+		// explicitly supplied option.
+		//nolint:exhaustive // Only conversions from protocols with their own usage shape.
+		switch r.APIFormat {
+		case llm.APIFormatAnthropicMessage, llm.APIFormatGeminiContents,
+			llm.APIFormatOpenAIResponse, llm.APIFormatOpenAIResponseWebSocket, llm.APIFormatOllamaChat:
+			req.StreamOptions = &StreamOptions{IncludeUsage: true}
+		}
 	}
 
 	// Convert Tools – only include function tools; other types

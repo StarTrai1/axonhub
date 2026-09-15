@@ -66,7 +66,8 @@ type outboundStreamState struct {
 	created            int64
 
 	// Content accumulation
-	textContent         strings.Builder
+	textParts           map[outboundTextPart]*outboundTextState
+	textDelivered       bool
 	reasoningContent    strings.Builder
 	currentMessagePhase *string
 
@@ -88,6 +89,7 @@ func newResponsesOutboundStream(stream streams.Stream[*httpclient.StreamEvent]) 
 	return &responsesOutboundStream{
 		stream: stream,
 		state: &outboundStreamState{
+			textParts:                        make(map[outboundTextPart]*outboundTextState),
 			toolCalls:                        make(map[string]*llm.ToolCall),
 			itemToCallID:                     make(map[string]string),
 			toolCallIndex:                    make(map[string]int),
@@ -565,24 +567,13 @@ func (s *responsesOutboundStream) transformStreamEvent(event *httpclient.StreamE
 		}}}}}
 
 	case StreamEventTypeContentPartAdded:
-		// Content part added - skip, no meaningful content to emit
+		if streamEvent.Part != nil && streamEvent.Part.Type == "output_text" {
+			s.textPart(streamEvent)
+		}
 		return nil // Intentionally skip this event
 
 	case StreamEventTypeOutputTextDelta:
-		// Text content delta
-		s.state.textContent.WriteString(streamEvent.Delta)
-
-		resp.Choices = []llm.Choice{
-			{
-				Index: 0,
-				Delta: &llm.Message{
-					Phase: s.state.currentMessagePhase,
-					Content: llm.MessageContent{
-						Content: &streamEvent.Delta,
-					},
-				},
-			},
-		}
+		resp.Choices = []llm.Choice{{Index: 0, Delta: s.textDelta(streamEvent, streamEvent.Delta)}}
 
 	case StreamEventTypeReasoningSummaryTextDelta, StreamEventTypeReasoningTextDelta:
 		// Reasoning content delta
@@ -608,8 +599,11 @@ func (s *responsesOutboundStream) transformStreamEvent(event *httpclient.StreamE
 		}
 
 	case StreamEventTypeOutputTextDone:
-		// Text content completed - skip, content was already streamed via deltas
-		return nil // Intentionally skip this event
+		delta := s.recoverTextDone(streamEvent)
+		if delta == nil {
+			return nil
+		}
+		resp.Choices = []llm.Choice{{Index: 0, Delta: delta}}
 
 	case StreamEventTypeReasoningSummaryTextDone, StreamEventTypeReasoningTextDone:
 		// Reasoning content completed - skip, content was already streamed via deltas
@@ -706,6 +700,7 @@ func (s *responsesOutboundStream) transformStreamEvent(event *httpclient.StreamE
 			}
 			return responseErr
 		}
+		s.recoverTerminalText(resp, streamEvent.Response)
 		// Response completed - emit two events: one with finish_reason, one with usage
 		s.responseCompleted = true
 		emptyCompletion := !s.hasGeneratedOutput()
@@ -797,6 +792,7 @@ func (s *responsesOutboundStream) transformStreamEvent(event *httpclient.StreamE
 		if s.responseCompleted {
 			return nil
 		}
+		s.recoverTerminalText(resp, streamEvent.Response)
 		// Response incomplete (e.g., max tokens)
 		s.responseCompleted = true
 		finishReason := "length"
@@ -950,7 +946,7 @@ func (s *responsesOutboundStream) steeringEventEndsTurn(event StreamEvent) bool 
 
 func (s *responsesOutboundStream) hasGeneratedOutput() bool {
 	return s.state.reasoningOutputEmitted || len(s.state.toolCalls) > 0 ||
-		s.state.textContent.Len() > 0 ||
+		s.state.textDelivered ||
 		s.state.reasoningContent.Len() > 0 ||
 		len(s.state.pendingReasoningEncryptedContent) > 0
 }
