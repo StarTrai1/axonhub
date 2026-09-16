@@ -305,6 +305,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		// Keep all Codex OAuth identity carriers coherent after body/header
 		// pass-through and explicit overrides have settled.
 		applyCodexIdentityPolicy(outbound),
+		applyResponsesHistoryPortability(outbound),
 		// Compatibility rewrites must run after explicit body overrides so a
 		// retry cannot reintroduce the precise field the upstream rejected.
 		recoverRejectedRemoteCompaction(outbound, processor.remoteCompactionAdapter, processor.PipelineFactory.Executor),
