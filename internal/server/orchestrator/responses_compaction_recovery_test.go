@@ -298,6 +298,7 @@ func rejectedCompactionStorage(t *testing.T) (context.Context, *ent.Client, *ent
 	require.NoError(t, err)
 	service := createTestRequestService(t, client)
 	system := biz.NewSystemService(biz.SystemServiceParams{Ent: client})
+	require.NoError(t, system.SetSecretKey(ctx, "test-compaction-installation-secret"))
 	return ctx, client, apiKey, newRemoteCompactionAdapter(service, nil, system)
 }
 

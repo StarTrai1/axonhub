@@ -341,10 +341,11 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		// Rate limit tracking middleware for TPM and provider cooldown signals.
 		withRateLimitTracking(outbound, processor.rateLimitTracker),
 
-		// Response pass-through capture middlewares must be last in the outbound list
-		// so they run first in reverse order (before any other OnOutboundRawResponse/OnOutboundRawStream handlers).
+		// Raw response/stream handlers run in reverse order. Retain native sources
+		// before capture can publish checkpoints through the pass-through stream.
 		captureRawProviderResponse(outbound, processor.SystemService),
 		captureRawProviderStream(outbound, processor.SystemService),
+		retainNativeCompactionSources(outbound, processor.remoteCompactionAdapter),
 	)
 
 	pipelineOpts = append(pipelineOpts, pipeline.WithMiddlewares(middlewares...))

@@ -712,7 +712,7 @@ func (a *remoteCompactionAdapter) summaryForCompactionChain(
 			return summary, nil
 		}
 	}
-	if isLegacyLocalCompactionReference(ref) {
+	if a.systemService != nil {
 		sealed, err := a.systemService.LoadLocalCompactionCheckpoint(ctx, state.APIKey.ProjectID, state.APIKey.ID, cacheKey)
 		if err != nil {
 			return "", err
@@ -765,10 +765,8 @@ func (a *remoteCompactionAdapter) summaryForCompactionChain(
 				return "", err
 			}
 		}
-		if isLegacyLocalCompactionReference(ref) {
-			if err := a.retainLegacyCompactionSummary(ctx, cacheKey, ref, state, summary); err != nil {
-				return "", fmt.Errorf("retain local compaction checkpoint: %w", err)
-			}
+		if err := a.retainCompactionSummary(ctx, cacheKey, ref, state, summary); err != nil {
+			return "", fmt.Errorf("retain compaction checkpoint: %w", err)
 		}
 
 		a.summaries.SetDefault(ownerKey, summary)
@@ -825,6 +823,9 @@ func (a *remoteCompactionAdapter) findStoredSummaryOrSource(
 	threadID string,
 	state *PersistenceState,
 ) (string, *remoteCompactionSource, error) {
+	if source, err := a.loadNativeCompactionSource(ctx, ref, state); err != nil || source != nil {
+		return "", source, err
+	}
 	if a.requestService == nil || state == nil || state.APIKey == nil {
 		return "", nil, errors.New("request history is unavailable")
 	}
@@ -919,6 +920,11 @@ func (a *remoteCompactionAdapter) findStoredSummaryOrSource(
 		}
 	}
 
+	if source != nil && a.systemService != nil && !isLocalCompactionReference(ref) {
+		if err := a.retainNativeCompactionSource(ctx, ref, state, source); err != nil {
+			return "", nil, fmt.Errorf("retain recovered native compaction source: %w", err)
+		}
+	}
 	return "", source, nil
 }
 
