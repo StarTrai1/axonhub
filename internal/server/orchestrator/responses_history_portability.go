@@ -158,14 +158,10 @@ func loadResponsesHistoryPolicy(ctx context.Context, key responsesHistoryPolicyK
 	lookupCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 	now := time.Now()
-	since := now.Add(-responsesReasoningRecoveryTTL)
-	if key.updatedAt.After(since) {
-		since = key.updatedAt
-	}
 	policy := responsesHistoryPolicy{expiresAt: now.Add(time.Minute)}
 	executions, err := key.service.FindResponsesHistoryEvidence(lookupCtx, biz.ResponsesHistoryEvidenceScope{
 		ChannelID: key.provider.channelID, APIKeyID: key.apiKeyID, ProjectID: key.projectID,
-		Model: key.provider.model, URL: key.provider.url, CredentialSuffix: suffix, Since: since,
+		Model: key.provider.model, URL: key.provider.url, CredentialSuffix: suffix, Since: key.updatedAt,
 	})
 	if err != nil {
 		return policy, err

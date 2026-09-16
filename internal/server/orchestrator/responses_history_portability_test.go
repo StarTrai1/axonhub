@@ -38,20 +38,24 @@ const (
 {"type":"custom_tool_call_output","call_id":"call_one","output":"exact result"}]}`
 )
 
-func seedPortableHistoryPair(t *testing.T, ctx context.Context, client *ent.Client, apiKey *ent.APIKey, before, after, message string) {
+func seedPortableHistoryPair(t *testing.T, ctx context.Context, client *ent.Client, apiKey *ent.APIKey, before, after, message string, at ...time.Time) {
 	t.Helper()
+	createdAt := time.Now()
+	if len(at) > 0 {
+		createdAt = at[0]
+	}
 	parent, err := client.Request.Create().SetProjectID(apiKey.ProjectID).SetAPIKeyID(apiKey.ID).
 		SetModelID("gpt-6-astra").SetFormat(string(llm.APIFormatOpenAIResponse)).SetStatus(entrequest.StatusCompleted).
-		SetRequestBody([]byte(before)).Save(ctx)
+		SetCreatedAt(createdAt).SetRequestBody([]byte(before)).Save(ctx)
 	require.NoError(t, err)
 	_, err = client.RequestExecution.Create().SetRequestID(parent.ID).SetProjectID(apiKey.ProjectID).SetChannelID(98001).
 		SetModelID("gpt-6-astra").SetFormat(string(llm.APIFormatOpenAIResponse)).SetStatus(requestexecution.StatusFailed).
 		SetRequestURL(portableHistoryURL).SetChannelAPIKeySuffix("1234").SetResponseStatusCode(400).
-		SetErrorMessage(message).SetRequestBody([]byte(before)).Save(ctx)
+		SetCreatedAt(createdAt).SetErrorMessage(message).SetRequestBody([]byte(before)).Save(ctx)
 	require.NoError(t, err)
 	_, err = client.RequestExecution.Create().SetRequestID(parent.ID).SetProjectID(apiKey.ProjectID).SetChannelID(98001).
 		SetModelID("gpt-6-astra").SetFormat(string(llm.APIFormatOpenAIResponse)).SetStatus(requestexecution.StatusCompleted).
-		SetRequestURL(portableHistoryURL).SetChannelAPIKeySuffix("1234").SetRequestBody([]byte(after)).Save(ctx)
+		SetRequestURL(portableHistoryURL).SetChannelAPIKeySuffix("1234").SetCreatedAt(createdAt).SetRequestBody([]byte(after)).Save(ctx)
 	require.NoError(t, err)
 }
 
@@ -238,4 +242,17 @@ func TestResponsesRejectedHistoryPortabilityRejectsNumericOptionChanges(t *testi
 	policy := confirmedResponsesHistoryCorrection(before, after, responsesResourceMismatchMessage)
 	require.False(t, policy.detachIDs)
 	require.False(t, policy.dropReasoning)
+}
+
+func TestResponsesRejectedHistoryPortabilityUsesRetainedEvidenceAfterCacheExpiry(t *testing.T) {
+	ctx, client, apiKey, adapter := rejectedCompactionStorage(t)
+	for range 2 {
+		seedPortableHistoryPair(t, ctx, client, apiKey, portableHistoryBefore, portableHistoryAfter, responsesResourceMismatchMessage, time.Now().Add(-12*time.Hour))
+	}
+	ctx = contexts.WithChannelAPIKey(ctx, portableHistoryCredential)
+	outbound, request := portableHistoryOutbound(apiKey, adapter.requestService)
+	outbound.GetCurrentChannel().UpdatedAt = time.Now().Add(-24 * time.Hour)
+	result, err := applyResponsesHistoryPortability(outbound).OnOutboundRawRequest(ctx, request)
+	require.NoError(t, err)
+	require.JSONEq(t, portableHistoryAfter, string(result.Body), "cache expiry must not require new failing requests")
 }
