@@ -8,8 +8,9 @@ import (
 	"strings"
 	"time"
 
-	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/samber/lo"
+
+	lru "github.com/hashicorp/golang-lru/v2"
 
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
@@ -47,6 +48,7 @@ func applyResponsesHistoryPortability(outbound *PersistentOutboundTransformer) p
 
 type responsesHistoryPortabilityMiddleware struct {
 	pipeline.DummyMiddleware
+
 	outbound *PersistentOutboundTransformer
 }
 

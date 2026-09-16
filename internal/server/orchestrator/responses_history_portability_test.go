@@ -23,18 +23,20 @@ import (
 	"github.com/looplj/axonhub/llm/pipeline"
 )
 
-const portableHistoryURL = "https://portable-history.example/v1/responses"
-const portableHistoryCredential = "synthetic-portable-key-1234"
-const portableHistoryBefore = `{"model":"gpt-6-astra","stream":true,"store":false,"input":[
+const (
+	portableHistoryURL        = "https://portable-history.example/v1/responses"
+	portableHistoryCredential = "synthetic-portable-key-1234"
+	portableHistoryBefore     = `{"model":"gpt-6-astra","stream":true,"store":false,"input":[
 {"type":"message","id":"msg_old","role":"user","content":"complete task"},
 {"type":"reasoning","id":"rs_old","encrypted_content":"old-ciphertext","summary":[{"type":"summary_text","text":"visible summary"}]},
 {"type":"custom_tool_call","id":"ctc_old","call_id":"call_one","name":"exec","input":"exact command"},
 {"type":"custom_tool_call_output","id":"ctco_old","call_id":"call_one","output":"exact result"}]}`
-const portableHistoryAfter = `{"model":"gpt-6-astra","stream":true,"store":false,"input":[
+	portableHistoryAfter = `{"model":"gpt-6-astra","stream":true,"store":false,"input":[
 {"type":"message","role":"user","content":"complete task"},
 {"type":"message","role":"assistant","content":[{"type":"output_text","text":"visible summary"}]},
 {"type":"custom_tool_call","call_id":"call_one","name":"exec","input":"exact command"},
 {"type":"custom_tool_call_output","call_id":"call_one","output":"exact result"}]}`
+)
 
 func seedPortableHistoryPair(t *testing.T, ctx context.Context, client *ent.Client, apiKey *ent.APIKey, before, after, message string) {
 	t.Helper()
@@ -209,4 +211,31 @@ func TestResponsesRejectedHistoryPortabilityPreservesOpaqueHistory(t *testing.T)
 	require.Equal(t, "call_one", gjson.GetBytes(result, "input.2.call_id").String())
 	require.Equal(t, "call_one", gjson.GetBytes(result, "input.3.call_id").String())
 	require.JSONEq(t, portableHistoryAfter, string(result))
+}
+
+func TestResponsesRejectedHistoryPortabilityLearnsFieldsIndependently(t *testing.T) {
+	ctx, client, apiKey, adapter := rejectedCompactionStorage(t)
+	idsOnly := `{"model":"gpt-6-astra","stream":true,"store":false,"input":[
+{"type":"message","role":"user","content":"complete task"},
+{"type":"reasoning","id":"rs_old","encrypted_content":"old-ciphertext","summary":[{"type":"summary_text","text":"visible summary"}]},
+{"type":"custom_tool_call","call_id":"call_one","name":"exec","input":"exact command"},
+{"type":"custom_tool_call_output","call_id":"call_one","output":"exact result"}]}`
+	for range 2 {
+		seedPortableHistoryPair(t, ctx, client, apiKey, portableHistoryBefore, idsOnly, responsesResourceMismatchMessage)
+	}
+	ctx = contexts.WithChannelAPIKey(ctx, portableHistoryCredential)
+	outbound, request := portableHistoryOutbound(apiKey, adapter.requestService)
+	result, err := applyResponsesHistoryPortability(outbound).OnOutboundRawRequest(ctx, request)
+	require.NoError(t, err)
+	require.JSONEq(t, idsOnly, string(result.Body), "ID-only evidence must retain native reasoning")
+}
+
+func TestResponsesRejectedHistoryPortabilityRejectsNumericOptionChanges(t *testing.T) {
+	before, err := sjson.SetRawBytes([]byte(portableHistoryBefore), "custom_option", []byte("9007199254740992"))
+	require.NoError(t, err)
+	after, err := sjson.SetRawBytes([]byte(portableHistoryAfter), "custom_option", []byte("9007199254740993"))
+	require.NoError(t, err)
+	policy := confirmedResponsesHistoryCorrection(before, after, responsesResourceMismatchMessage)
+	require.False(t, policy.detachIDs)
+	require.False(t, policy.dropReasoning)
 }
