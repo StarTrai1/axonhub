@@ -22,8 +22,8 @@ func compactionCheckpointSystemKey(projectID, apiKeyID int, cacheKey string) (st
 	return fmt.Sprintf("local_compaction_checkpoint_v1:%d:%d:%s", projectID, apiKeyID, cacheKey), nil
 }
 
-// Native source checkpoints contain encrypted, compressed context, separate
-// from the request/response logs and from local summary checkpoints.
+// LoadNativeCompactionSource reads encrypted, compressed context independently
+// of request/response logs and local summary checkpoints.
 func (s *SystemService) LoadNativeCompactionSource(ctx context.Context, projectID, apiKeyID int, cacheKey string) (string, error) {
 	key, err := compactionCheckpointSystemKey(projectID, apiKeyID, cacheKey)
 	if err != nil {

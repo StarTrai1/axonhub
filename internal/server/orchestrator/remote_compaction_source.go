@@ -197,6 +197,7 @@ type nativeCompactionSourceStream struct {
 	source     *remoteCompactionSource
 	state      *PersistenceState
 	saved      map[string]bool
+	current    *httpclient.StreamEvent
 	err        error
 }
 
@@ -205,14 +206,16 @@ func (s *nativeCompactionSourceStream) Next() bool {
 		return false
 	}
 	event := s.Stream.Current()
+	s.current = event
 	if event == nil {
 		return true
 	}
 	kind := gjson.GetBytes(event.Data, "type").String()
 	var items []gjson.Result
-	if kind == "response.output_item.done" {
+	switch kind {
+	case "response.output_item.done":
 		items = append(items, gjson.GetBytes(event.Data, "item"))
-	} else if kind == "response.completed" {
+	case "response.completed":
 		items = gjson.GetBytes(event.Data, "response.output").Array()
 	}
 	for _, item := range items {
@@ -231,6 +234,10 @@ func (s *nativeCompactionSourceStream) Next() bool {
 		s.saved[key] = true
 	}
 	return true
+}
+
+func (s *nativeCompactionSourceStream) Current() *httpclient.StreamEvent {
+	return s.current
 }
 
 func (s *nativeCompactionSourceStream) Err() error {
