@@ -249,6 +249,25 @@ func (t *Transformer) TransformRequest(ctx context.Context, llmReq *llm.Request)
 }
 
 func (t *Transformer) patchGeminiRequest(ctx context.Context, req *gemini.GenerateContentRequest, llmReq *llm.Request) error {
+	// Claude attribution is client metadata, not a Google system instruction.
+	// Remove it before adding our own instructions, and only on this provider.
+	if req.SystemInstruction != nil {
+		parts := make([]*gemini.Part, 0, len(req.SystemInstruction.Parts))
+		for _, part := range req.SystemInstruction.Parts {
+			if part != nil {
+				text := stripClaudeAttribution(part.Text)
+				if text != part.Text && strings.TrimSpace(text) == "" && part.InlineData == nil &&
+					part.FileData == nil && part.FunctionCall == nil && part.FunctionResponse == nil &&
+					!part.Thought && part.ThoughtSignature == "" {
+					continue
+				}
+				part.Text = text
+			}
+			parts = append(parts, part)
+		}
+		req.SystemInstruction.Parts = parts
+	}
+
 	// A. Schema Sanitization
 	// Priority: ResponseJsonSchema first (set by Gemini transformer), then ResponseSchema
 	if req.GenerationConfig != nil {

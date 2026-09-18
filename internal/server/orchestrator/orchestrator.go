@@ -292,6 +292,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		applyPassThroughRequestHeaders(outbound),
 		applyResponsesLiteWebSearchFallback(outbound),
 		applyOverrideRequestBody(outbound),
+		applyStrictChatRoles(outbound),
 		repairInvalidOpenAIToolSchemas(),
 		stripUnsupportedCodexPromptCacheOptions(outbound),
 		// applyUserAgentPassThrough runs before header overrides to set the initial
