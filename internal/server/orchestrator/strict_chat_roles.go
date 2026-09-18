@@ -43,7 +43,7 @@ func applyStrictChatRoles(outbound *PersistentOutboundTransformer) pipeline.Midd
 			// parts and large JSON numbers, including native pass-through payloads.
 			updated, err := sjson.SetBytes(body, "messages."+strconv.Itoa(index)+".role", "system")
 			if err != nil {
-				return nil, fmt.Errorf("%w: normalize Chat instruction role: %v", transformer.ErrInvalidRequest, err)
+				return nil, fmt.Errorf("%w: normalize Chat instruction role: %w", transformer.ErrInvalidRequest, err)
 			}
 			body = updated
 		}
