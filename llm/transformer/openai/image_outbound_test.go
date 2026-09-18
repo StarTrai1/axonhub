@@ -799,6 +799,53 @@ func TestTransformRequest_ImageGeneration_Integration(t *testing.T) {
 	assert.Equal(t, string(llm.APIFormatOpenAIImageGeneration), httpReq.APIFormat)
 }
 
+func TestImageResponseRoundTrip_PreservesPerImageGenerationIDs(t *testing.T) {
+	outbound, err := NewOutboundTransformer("https://api.openai.com/v1", "test-key")
+	require.NoError(t, err)
+
+	body := []byte(`{
+		"created": 1730000000,
+		"data": [
+			{"b64_json":"AAA", "generation_id":"gen_first", "revised_prompt":"first image"},
+			{"url":"https://example.com/second.png", "generation_id":"gen_second"},
+			{"b64_json":"CCC"}
+		]
+	}`)
+
+	for _, format := range []llm.APIFormat{llm.APIFormatOpenAIImageGeneration, llm.APIFormatOpenAIImageEdit} {
+		t.Run(string(format), func(t *testing.T) {
+			upstream := &httpclient.Response{
+				StatusCode: http.StatusOK,
+				Body:       body,
+				Request: &httpclient.Request{
+					APIFormat: string(format),
+				},
+			}
+
+			unified, err := outbound.TransformResponse(context.Background(), upstream)
+			require.NoError(t, err)
+			require.NotNil(t, unified.Image)
+			require.Len(t, unified.Image.Data, 3)
+			assert.Equal(t, "gen_first", unified.Image.Data[0].GenerationID)
+			assert.Equal(t, "gen_second", unified.Image.Data[1].GenerationID)
+			assert.Empty(t, unified.Image.Data[2].GenerationID)
+
+			// Exercise the unified JSON boundary as well as both HTTP transformers.
+			stored, err := json.Marshal(unified)
+			require.NoError(t, err)
+
+			var restored llm.Response
+			require.NoError(t, json.Unmarshal(stored, &restored))
+
+			inbound := NewImageGenerationInboundTransformer()
+			response, err := inbound.TransformResponse(context.Background(), &restored)
+			require.NoError(t, err)
+			assert.JSONEq(t, string(body), string(response.Body))
+			assert.Equal(t, body, upstream.Body)
+		})
+	}
+}
+
 func TestTransformResponse_ImageGeneration_Integration(t *testing.T) {
 	tr, err := NewOutboundTransformer("https://api.openai.com/v1", "test-key")
 	require.NoError(t, err)

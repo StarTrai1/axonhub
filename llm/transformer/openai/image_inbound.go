@@ -169,6 +169,7 @@ func (t *ImageInboundTransformer) TransformResponse(ctx context.Context, llmResp
 			B64JSON:       data.B64JSON,
 			URL:           data.URL,
 			RevisedPrompt: data.RevisedPrompt,
+			GenerationID:  data.GenerationID,
 		})
 	}
 

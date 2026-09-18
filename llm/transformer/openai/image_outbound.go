@@ -627,6 +627,7 @@ func transformImageGenerationResponse(httpResp *httpclient.Response) (*llm.Respo
 			B64JSON:       img.B64JSON,
 			URL:           img.URL,
 			RevisedPrompt: img.RevisedPrompt,
+			GenerationID:  img.GenerationID,
 		})
 	}
 
@@ -651,6 +652,7 @@ type ImageData struct {
 	B64JSON       string `json:"b64_json,omitempty"`
 	URL           string `json:"url,omitempty"`
 	RevisedPrompt string `json:"revised_prompt,omitempty"`
+	GenerationID  string `json:"generation_id,omitempty"`
 }
 
 // ImagesResponseUsage represents usage information for image generation.
