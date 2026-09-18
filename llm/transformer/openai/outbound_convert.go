@@ -62,6 +62,24 @@ func RequestFromLLM(ctx context.Context, r *llm.Request, reasoningField Reasonin
 	req.Messages = mergeSystemMessages(req.Messages)
 	if r.APIFormat != llm.APIFormatOpenAIChatCompletion {
 		req.Messages = relayToolResultImages(req.Messages)
+		// Anthropic and Responses identify results by call ID. Keep the matching
+		// tool name for Chat providers that also require it on result messages.
+		names := make(map[string]string)
+		for i := range req.Messages {
+			message := &req.Messages[i]
+			if message.Role == "assistant" {
+				for _, call := range message.ToolCalls {
+					if call.ID != "" && call.Function.Name != "" {
+						names[call.ID] = call.Function.Name
+					}
+				}
+			}
+			if message.Role == "tool" && message.Name == nil && message.ToolCallID != nil {
+				if name := names[*message.ToolCallID]; name != "" {
+					message.Name = lo.ToPtr(name)
+				}
+			}
+		}
 	}
 
 	// Convert Stop
@@ -121,6 +139,27 @@ func RequestFromLLM(ctx context.Context, r *llm.Request, reasoningField Reasonin
 
 	if len(req.Tools) == 0 {
 		req.ParallelToolCalls = nil
+	}
+	if r.APIFormat == llm.APIFormatOpenAIResponse || r.APIFormat == llm.APIFormatOpenAIResponseWebSocket {
+		mapName := func(name string) string {
+			return shared.MappedChatToolName(r.TransformerMetadata, shared.ChatToolAliasesMetadataKey, name)
+		}
+		for i := range req.Tools {
+			req.Tools[i].Function.Name = mapName(req.Tools[i].Function.Name)
+		}
+		for i := range req.Messages {
+			if req.Messages[i].Role == "tool" && req.Messages[i].Name != nil {
+				req.Messages[i].Name = lo.ToPtr(mapName(*req.Messages[i].Name))
+			}
+			for j := range req.Messages[i].ToolCalls {
+				call := &req.Messages[i].ToolCalls[j]
+				call.Function.Name = mapName(call.Function.Name)
+			}
+		}
+		if req.ToolChoice != nil && req.ToolChoice.NamedToolChoice != nil {
+			choice := req.ToolChoice.NamedToolChoice
+			choice.Function.Name = mapName(choice.Function.Name)
+		}
 	}
 
 	return req

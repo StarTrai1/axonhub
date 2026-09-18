@@ -8,6 +8,7 @@ import (
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/transformer"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // Names are encoded only when entering the unified model from native data.
@@ -115,11 +116,24 @@ func namespaceMetadata(src *llm.Request) map[string]any {
 	}
 	metadata := maps.Clone(src.TransformerMetadata)
 	delete(metadata, namespaceMappingMetadataKey)
+	delete(metadata, shared.ChatToolAliasesMetadataKey)
+	delete(metadata, shared.ChatToolOriginalsMetadataKey)
 	if len(mapping) > 0 {
 		if metadata == nil {
 			metadata = make(map[string]any)
 		}
 		metadata[namespaceMappingMetadataKey] = mapping
+	}
+	if aliases := shared.ResponsesChatToolAliases(src); len(aliases) > 0 {
+		if metadata == nil {
+			metadata = make(map[string]any)
+		}
+		originals := make(map[string]string, len(aliases))
+		for original, alias := range aliases {
+			originals[alias] = original
+		}
+		metadata[shared.ChatToolAliasesMetadataKey] = aliases
+		metadata[shared.ChatToolOriginalsMetadataKey] = originals
 	}
 	return metadata
 }
@@ -158,6 +172,7 @@ func mapResponseFunctionNames(src *llm.Response, nativeToUnified bool) *llm.Resp
 				function.Name = flatFunctionName(function.Namespace, function.Name)
 			} else {
 				if function.Namespace == "" {
+					function.Name = shared.MappedChatToolName(metadata, shared.ChatToolOriginalsMetadataKey, function.Name)
 					function.Namespace = namespaceForName(metadata, function.Name)
 				}
 				function.Name = localFunctionName(function.Namespace, function.Name)

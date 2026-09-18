@@ -64,7 +64,8 @@ var unsupportedKeywords = []string{
 	"default", "examples",
 	// Other unsupported keywords
 	"$schema", "$defs", "definitions", "const", "$ref", "additionalProperties",
-	"propertyNames", "title", "$id", "$comment",
+	"propertyNames", "title", "$id", "$comment", "id",
+	"$anchor", "$vocabulary", "$dynamicRef", "$dynamicAnchor",
 }
 
 // emptySchemaPlaceholderName is the name of the placeholder field.
