@@ -14,7 +14,7 @@ import (
 
 func TestAnthropicToolResultsKeepMatchingChatNames(t *testing.T) {
 	input := []byte(`{"model":"test","max_tokens":100,"messages":[{"role":"assistant","content":[{"type":"tool_use","id":"call_a","name":"lookup","input":{"id":1}},{"type":"tool_use","id":"call_b","name":"read","input":{"id":2}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"call_b","content":"second result"},{"type":"tool_result","tool_use_id":"call_a","content":"first result"}]}]}`)
-	req, err := anthropic.NewInboundTransformer().TransformRequest(t.Context(), &httpclient.Request{Body: input})
+	req, err := anthropic.NewInboundTransformer().TransformRequest(t.Context(), &httpclient.Request{Body: input, ContentType: "application/json"})
 	require.NoError(t, err)
 	before, err := json.Marshal(req)
 	require.NoError(t, err)
