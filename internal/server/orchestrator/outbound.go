@@ -540,6 +540,7 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 	llmRequest = applyTransformOptions(llmRequest, candidate.Channel.Settings)
 	llmRequest = applyReasoningEffortMapping(llmRequest, candidate.Channel.Settings)
 	llmRequest = applyWebSearchPolicy(llmRequest, candidate.Channel)
+	llmRequest = applyModelDefaultMaxTokens(llmRequest, candidate, outboundFormat)
 	for _, middleware := range p.outboundLlmRequestMiddlewares {
 		transformedRequest, err := middleware.OnOutboundLlmRequest(ctx, llmRequest, outboundFormat)
 		if err != nil {
