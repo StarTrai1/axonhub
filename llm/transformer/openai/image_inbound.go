@@ -160,6 +160,8 @@ func (t *ImageInboundTransformer) TransformResponse(ctx context.Context, llmResp
 		if llmResp.Usage.CompletionTokensDetails != nil {
 			oaiResp.Usage.OutputTokensDetails = &ImagesResponseUsageOutputTokensDetails{
 				ReasoningTokens: llmResp.Usage.CompletionTokensDetails.ReasoningTokens,
+				ImageTokens:     llmResp.Usage.CompletionTokensDetails.ImageTokens,
+				TextTokens:      llmResp.Usage.CompletionTokensDetails.TextTokens,
 			}
 		}
 	}

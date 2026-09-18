@@ -905,6 +905,11 @@ type CompletionTokensDetails struct {
 	ReasoningTokens          int64 `json:"reasoning_tokens"`
 	AcceptedPredictionTokens int64 `json:"accepted_prediction_tokens"`
 	RejectedPredictionTokens int64 `json:"rejected_prediction_tokens"`
+
+	// ImageTokens and TextTokens are reported subsets of CompletionTokens.
+	// Keep absent modality counts distinct from explicitly reported zero.
+	ImageTokens *int64 `json:"image_tokens,omitempty"`
+	TextTokens  *int64 `json:"text_tokens,omitempty"`
 }
 
 // PromptTokensDetails Breakdown of tokens used in the prompt.

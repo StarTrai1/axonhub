@@ -617,6 +617,8 @@ func transformImageGenerationResponse(httpResp *httpclient.Response) (*llm.Respo
 		if imgResp.Usage.OutputTokensDetails != nil {
 			resp.Usage.CompletionTokensDetails = &llm.CompletionTokensDetails{
 				ReasoningTokens: imgResp.Usage.OutputTokensDetails.ReasoningTokens,
+				ImageTokens:     imgResp.Usage.OutputTokensDetails.ImageTokens,
+				TextTokens:      imgResp.Usage.OutputTokensDetails.TextTokens,
 			}
 		}
 	}
@@ -674,7 +676,9 @@ type ImagesResponseUsageInputTokensDetails struct {
 
 // ImagesResponseUsageOutputTokensDetails represents detailed output token information.
 type ImagesResponseUsageOutputTokensDetails struct {
-	ReasoningTokens int64 `json:"reasoning_tokens,omitempty"`
+	ReasoningTokens int64  `json:"reasoning_tokens,omitempty"`
+	ImageTokens     *int64 `json:"image_tokens,omitempty"`
+	TextTokens      *int64 `json:"text_tokens,omitempty"`
 }
 
 // extractFile extracts base64 image data and returns FormFile.
