@@ -17,11 +17,13 @@ import shutil
 import signal
 import time
 from dataclasses import dataclass, field
-from urllib.parse import urlsplit
+from urllib.parse import quote, quote_plus, urlsplit
 import uuid
 
 HERE = Path(__file__).resolve().parent
 HIGH_DEMAND = "We're currently experiencing high demand, which may cause temporary errors"
+MODEL_CAPACITY = re.compile(r"当前模型\s+[^\s，,]{1,200}\s+负载已经达到上限[，,]\s*请稍后重试")
+ERROR_LIMIT = 2048
 JOB_NAME = re.compile(r"attempt-[0-9a-f]{32}\Z")
 RNG = random.SystemRandom()
 
@@ -242,14 +244,80 @@ class Outcome:
     thread_id: str | None = None
     usage: dict = field(default_factory=dict)
     returncode: int | None = None
+    error: str | None = None
+    error_source: str | None = None
+
+
+def is_high_demand(message: str) -> bool:
+    # Capacity is an explicit provider message, not every 500/429 or quota error.
+    # Never retry a denied request even if it also quotes an older capacity error.
+    if re.search(r"status(?: code)?\s*[:=]?\s*(?:401|403)\b|\b(?:unauthorized|forbidden|invalid[_ ]api[_ ]key|insufficient_quota|banned|suspended|account_deactivated)\b|封禁", message, re.I):
+        return False
+    return HIGH_DEMAND.casefold() in message.casefold() or MODEL_CAPACITY.search(message) is not None
+
+
+def redact_error(message: str, key: str) -> str:
+    # Redact before truncation: a key crossing the output boundary must not leak.
+    if key:
+        for secret in sorted({key, quote(key, safe=""), quote_plus(key), json.dumps(key)[1:-1]}, key=len, reverse=True):
+            message = message.replace(secret, "[REDACTED]")
+    message = re.sub(r"(?im)\b(?:authorization|proxy-authorization|cookie|set-cookie)\b[\"']?\s*[:=]\s*[^\r\n]+", "[REDACTED HEADER]", message)
+    message = re.sub(
+        r'''(?i)(\b(?:api[_-]?key|access[_-]?token|refresh[_-]?token|id[_-]?token|token|password|client[_-]?secret|secret|key)\b["']?\s*[:=]\s*)(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|[^\s,;&}\]]+)''',
+        r"\1[REDACTED]", message)
+    message = re.sub(r'''(?i)\bBearer\s+[^\s"',;}\]]+''', "Bearer [REDACTED]", message)
+    message = re.sub(r"(https?://)[^\s/@]+:[^\s/@]+@", r"\1[REDACTED]@", message)
+    # Keep JSON log entries single-line and strip terminal control sequences.
+    message = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", message)
+    message = " ".join(message.split())
+    message = re.sub(r"[\x00-\x1f\x7f]", "", message)
+    return message if len(message) <= ERROR_LIMIT else message[:ERROR_LIMIT - 3] + "..."
+
+
+class StderrErrors:
+    """Keep only the latest explicit CLI error line, never raw stderr history."""
+
+    def __init__(self, key: str):
+        self.key = key
+        self.pending = b""
+        self.dropping = False
+        self.last_error = ""
+
+    def feed(self, chunk: bytes) -> None:
+        for part in chunk.splitlines(keepends=True):
+            ended = part.endswith((b"\n", b"\r"))
+            if not self.dropping:
+                self.pending += part
+                if len(self.pending) > 16384:
+                    # Drop whole oversized lines, not a potentially secret suffix.
+                    self.pending = b""
+                    self.dropping = True
+                elif ended:
+                    self._line()
+            if ended:
+                self.pending = b""
+                self.dropping = False
+
+    def _line(self) -> None:
+        line = self.pending.decode(errors="replace").strip()
+        if re.match(r"(?i)^error\s*:", line):
+            self.last_error = redact_error(line, self.key)
+
+    def finish(self) -> None:
+        if not self.dropping:
+            self._line()
+        self.pending = b""
 
 
 class Events:
-    def __init__(self):
+    def __init__(self, key: str = ""):
+        self.key = key
         self.thread_id: str | None = None
         self.completed = False
         self.failed = False
         self.last_error = ""
+        self.retryable = False
+        self.error_source: str | None = None
         self.usage: dict = {}
 
     def feed(self, line: bytes) -> None:
@@ -270,19 +338,27 @@ class Events:
         elif kind == "turn.failed":
             self.failed = True
             error = event.get("error", {})
-            self.last_error = str(error.get("message", "")) if isinstance(error, dict) else ""
-        elif kind == "error":
-            self.last_error = str(event.get("message", ""))
+            self._error(error.get("message", "") if isinstance(error, dict) else "", kind)
+        elif kind == "error" and not self.failed:
+            self._error(event.get("message", ""), kind)
+
+    def _error(self, message: object, source: str) -> None:
+        message = message if isinstance(message, str) else ""
+        self.retryable = is_high_demand(message)
+        self.last_error = redact_error(message, self.key)
+        self.error_source = source
 
     def outcome(self, returncode: int) -> Outcome:
         # Agent text can quote errors. Only structured error events count.
         if returncode == 0 and self.completed and not self.failed:
             status = "success"
-        elif HIGH_DEMAND.casefold() in self.last_error.casefold():
+        elif self.retryable:
             status = "high_demand"
         else:
             status = "error"
-        return Outcome(status, self.thread_id, self.usage, returncode)
+        return Outcome(status, self.thread_id, self.usage, returncode,
+                       self.last_error if status != "success" else None,
+                       self.error_source if status != "success" else None)
 
 
 def config_text(args: argparse.Namespace, effort: str) -> str:
@@ -366,7 +442,8 @@ class Runner:
         job, marker = self.state.create_job()
         proc = None
         readers = []
-        events = Events()
+        events = Events(self.key)
+        stderr_errors = StderrErrors(self.key)
         outcome = Outcome("error")
         try:
             (job / "codex-home/config.toml").write_text(config_text(self.args, effort), encoding="utf-8")
@@ -399,20 +476,27 @@ class Runner:
                     events.feed(line)
 
             async def stderr() -> None:
-                # Drain but never persist raw CLI logs, headers, prompts or credentials.
-                while await proc.stderr.read(8192):
-                    pass
+                while chunk := await proc.stderr.read(8192):
+                    stderr_errors.feed(chunk)
+                stderr_errors.finish()
 
             readers = [asyncio.create_task(stdout()), asyncio.create_task(stderr())]
             prompt = question["prompt"] + "\n简短回答即可；不要调用工具、联网、读写文件或创建子代理。"
-            proc.stdin.write(prompt.encode())
-            await proc.stdin.drain()
-            proc.stdin.close()
+            try:
+                proc.stdin.write(prompt.encode())
+                await proc.stdin.drain()
+            except (BrokenPipeError, ConnectionResetError):
+                pass  # Early CLI failures still need their error streams collected.
+            finally:
+                proc.stdin.close()
             try:
                 await asyncio.wait_for(asyncio.gather(proc.wait(), *readers), self.args.timeout)
                 outcome = events.outcome(proc.returncode)
+                if outcome.status != "success" and not outcome.error:
+                    outcome.error = stderr_errors.last_error or f"Codex exited with code {proc.returncode} without a successful turn or an error message"
+                    outcome.error_source = "stderr" if stderr_errors.last_error else "process"
             except asyncio.TimeoutError:
-                outcome = Outcome("timeout", events.thread_id)
+                outcome = Outcome("timeout", events.thread_id, error=f"Codex exceeded the {self.args.timeout:g}s attempt timeout", error_source="process")
             self.reported_tokens += outcome.usage.get("input_tokens", 0) + outcome.usage.get("output_tokens", 0)
         finally:
             async def cleanup() -> None:
@@ -445,7 +529,7 @@ class Runner:
                 raise
         emit("attempt_result", status=outcome.status, question_id=question["id"], thread_id=outcome.thread_id,
              attempts=self.attempts, usage=outcome.usage, reported_tokens=self.reported_tokens,
-             returncode=outcome.returncode)
+             returncode=outcome.returncode, error=outcome.error, error_source=outcome.error_source)
         return outcome
 
 

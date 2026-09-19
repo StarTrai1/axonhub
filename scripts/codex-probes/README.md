@@ -24,22 +24,25 @@ python3 scripts/codex-probes/keepalive.py \
 ```bash
 python3 scripts/codex-probes/keepalive.py \
   --url https://gateway.example/v1 --model YOUR_MODEL \
-  --concurrency 2 --effort low --reasoning-effort high \
-  --retry-min 10 --retry-max 120 \
-  --interval-min 30 --interval-max 60 \
+  --concurrency 2 --stagger 5 --effort low --reasoning-effort medium \
+  --retry-min 30 --retry-max 180 \
+  --interval-min 60 --interval-max 120 --timeout 600 \
   --state-dir /home/probe/.local/state/axonhub-probes/any
 ```
 
-- 第一阶段：从简单题库随机无放回抽题，以配置的并发数运行独立新会话。启动错开，收到**最终结构化错误** `We're currently experiencing high demand, which may cause temporary errors` 后删除本次本地会话，再按指数退避与随机抖动重试。默认并发 2，可配置 1–32。
+- 第一阶段：从简单题库随机无放回抽题，以配置的并发数运行独立新会话。启动错开，收到**最终结构化错误** `We're currently experiencing high demand, which may cause temporary errors` 或已确认的 `当前模型 <模型名> 负载已经达到上限，请稍后重试` 后删除本次本地会话，再按指数退避与随机抖动重试。默认并发 2，可配置 1–32。不会仅凭 HTTP 500/429 就归类为容量不足。
 - CLI 的 `request_max_retries`、`stream_max_retries` 设为 0，不叠加客户端重试；AxonHub 内部重试完成后 CLI 才会返回最终结果。脚本不修改网关重试。不能从错误文本证明上游物理执行次数。
 - 任一会话以 `turn.completed` 且进程退出码 0 完成，停止补充第一阶段任务，取消并等待其他私有子进程退出、清理全部本地 attempt 后进入第二阶段。已发送的上游请求可能仍在网关/提供方结束中；本地取消不是上游零用量保证。
 - 第二阶段：仅一个会话，从独立逻辑题库抽题，完成并清理后随机等待再创建下一会话。在这次第二阶段内**累计** 10 次目标 high-demand 错误回到第一阶段；中途成功不清零。phase/counter 落盘，重启后恢复。
-- 401/403、封禁提示、其他错误、超时、缺少完成事件均停止并清理，退出码 1，不被当作 high-demand 无限重试。原始 CLI stderr 不持久化，日志只给分类、题目 ID、线程 ID、用量和版本。
+- 401/403、封禁提示、其他错误、超时、缺少完成事件均停止并清理，退出码 1，不被当作 high-demand 无限重试。`turn.failed` 优先于中间或迟到的 `error`，模型正文及 stderr 都不参与容量错误识别。
+- `attempt_result` 日志提供 `error` 和 `error_source`。优先记录结构化错误；没有结构化错误原因时，才记录 stderr 最后一条明确以 `Error:` 开头的错误行，或进程退出/超时说明。诊断先脱敏当前 key、常见凭据字段及认证头，再限制为 2048 字符；不保存原始 stderr、请求头或完整日志。成功时这两个字段为 `null`。
 - `--max-attempts N` / `--max-tokens N` 提供每次脚本启动的停止条件，0 为不限。token 预算按 CLI 已报告的 input+output 累计，reasoning 是 output 的子集，不再相加。并发在途请求和失败未报告用量可能超出预算；它不是硬计费上限。若要成本硬限制，请同时配置网关/API key 配额。
 
 题库：`questions-simple.json` 为 1,600 道重新编写的知识和日常问题；`questions-reasoning.json` 为 172 道原创有限数学/逻辑题。第二阶段要求认真核验并简短作答，不要求展示思维链或无意义空转。**短答案不代表低推理 token；无法保证思考时间或保持渠道容量。** 可通过 `--simple-bank` / `--reasoning-bank` 替换同结构 JSON，不会物理移动第一阶段题目。
 
 随机抖动只用于平滑流量/退避，不模拟人类身份、不尝试绕过封禁、速率限制或容量控制。
+
+上面的参数是一组较温和的起点：第一阶段每个 worker 失败后等待约 30–45、60–90、120–180 秒，后续最多 180 秒；第二阶段完成后等待 60–120 秒再开始下一次，使用 `medium` 推理强度。脚本的默认值未改变，请显式传入示例参数。任何请求本身的执行时间另计；AxonHub 内部多次重试的用量也需要单独考虑。
 
 ### 手动暂停与恢复
 
@@ -77,6 +80,8 @@ python3 scripts/codex-probes/scheduled_probe.py \
 python3 scripts/codex-probes/scheduled_probe.py \
   --url https://gateway.example/v1 --model YOUR_MODEL \
   --watch-windows --first-time 08:00:00 --timezone Asia/Shanghai \
+  --quota-poll 30 --quota-max-age 3600 --catch-up-grace 900 \
+  --effort low --timeout 600 \
   --state-dir /home/probe/.local/state/axonhub-probes/key-windows
 ```
 

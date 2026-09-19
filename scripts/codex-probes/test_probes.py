@@ -14,11 +14,14 @@ import unittest
 from unittest.mock import patch
 
 import keepalive
-from probe_common import Events, HIGH_DEMAND, Outcome, OwnedState, Questions, Runner, atomic_json, load_bank, process_identity
+from probe_common import ERROR_LIMIT, Events, HIGH_DEMAND, Outcome, OwnedState, Questions, Runner, StderrErrors, atomic_json, load_bank, process_identity, redact_error
 from scheduled_probe import choose_slot
 from quota_schedule import daily_slots, weekly_reset
 from zoneinfo import ZoneInfo
 from pause_control import PauseControl
+
+
+CHINESE_CAPACITY = "当前模型 gpt-6-astra 负载已经达到上限，请稍后重试 (request id: synthetic-request-id)"
 
 
 FAKE = '''#!/usr/bin/env python3
@@ -27,7 +30,6 @@ if '--version' in sys.argv:
     print('codex-cli 0.155.1')
     sys.exit(0)
 assert sys.argv[1] == 'exec' and '--json' in sys.argv and '--ephemeral' in sys.argv
-assert sys.stdin.read()
 home = pathlib.Path(os.environ['CODEX_HOME'])
 assert home.name == 'codex-home' and home.parent.name.startswith('attempt-')
 assert os.environ['AXONHUB_ISOLATED_PROBE_KEY'] == 'synthetic-test-key'
@@ -40,6 +42,13 @@ mode = os.environ.get('FAKE_MODE')
 if os.environ.get('FAKE_SEQUENCE'):
     index = len(pathlib.Path(os.environ['FAKE_COUNT']).read_text().splitlines()) - 1
     mode = os.environ['FAKE_SEQUENCE'].split(',')[index]
+if mode == 'startup-error':
+    print('Error: invalid config; api_key=synthetic-test-key', file=sys.stderr, flush=True)
+    sys.exit(1)
+if mode == 'stderr-demand':
+    print("Error: We're currently experiencing high demand, which may cause temporary errors", file=sys.stderr, flush=True)
+    sys.exit(1)
+assert sys.stdin.read()
 print(json.dumps({'type':'thread.started','thread_id':'owned-fake-thread'}), flush=True)
 if os.environ.get('FAKE_READY'):
     pathlib.Path(os.environ['FAKE_READY']).write_text(str(os.getpid()))
@@ -48,6 +57,16 @@ if mode == 'sleep':
     time.sleep(600)
 if mode == 'demand':
     print(json.dumps({'type':'turn.failed','error':{'message':"We're currently experiencing high demand, which may cause temporary errors"}}), flush=True)
+    sys.exit(1)
+if mode == 'demand-cn':
+    body = json.dumps({'error': {'message': '当前模型 gpt-6-astra 负载已经达到上限，请稍后重试 (request id: synthetic-request-id)'}}, ensure_ascii=False)
+    message = 'unexpected status 500 Internal Server Error: ' + body
+    print(json.dumps({'type':'error','message':message}), flush=True)
+    print(json.dumps({'type':'turn.failed','error':{'message':message}}), flush=True)
+    sys.exit(1)
+if mode == 'private-error':
+    print(json.dumps({'type':'turn.failed','error':{'message':'invalid API key: synthetic-test-key; api_key=other-private-key; Authorization: Bearer header-private-key'}}), flush=True)
+    print('Error: later stderr must not replace the terminal error', file=sys.stderr, flush=True)
     sys.exit(1)
 print(json.dumps({'type':'turn.completed','usage':{'input_tokens':12,'output_tokens':3,'reasoning_output_tokens':2}}), flush=True)
 '''
@@ -70,9 +89,11 @@ class EventsTest(unittest.TestCase):
         self.assertEqual(events.outcome(0).status, "success")
 
     def test_agent_quoted_error_and_partial_exit_are_not_success(self):
-        events = Events()
-        self.feed(events, "item.completed", item={"type": "agent_message", "text": HIGH_DEMAND})
-        self.assertEqual(events.outcome(0).status, "error")
+        for message in (HIGH_DEMAND, CHINESE_CAPACITY):
+            with self.subTest(message=message):
+                events = Events()
+                self.feed(events, "item.completed", item={"type": "agent_message", "text": message})
+                self.assertEqual(events.outcome(0).status, "error")
 
     def test_only_last_structured_error_controls_retry(self):
         events = Events()
@@ -81,6 +102,67 @@ class EventsTest(unittest.TestCase):
         self.assertEqual(events.outcome(1).status, "error")
         self.feed(events, "turn.failed", error={"message": HIGH_DEMAND})
         self.assertEqual(events.outcome(1).status, "high_demand")
+
+    def test_observed_capacity_in_http_error_envelope(self):
+        events = Events()
+        message = "unexpected status 500 Internal Server Error: " + json.dumps({"error": {"message": CHINESE_CAPACITY}}, ensure_ascii=False)
+        self.feed(events, "turn.failed", error={"message": message})
+        result = events.outcome(1)
+        self.assertEqual(result.status, "high_demand")
+        self.assertIn(CHINESE_CAPACITY, result.error)
+        self.assertEqual(result.error_source, "turn.failed")
+
+    def test_terminal_failure_has_priority_over_late_error(self):
+        for terminal, late, expected in (("invalid API key", CHINESE_CAPACITY, "error"),
+                                         (CHINESE_CAPACITY, "stream disconnected", "high_demand"),
+                                         (None, HIGH_DEMAND, "error")):
+            with self.subTest(terminal=terminal):
+                events = Events()
+                self.feed(events, "error", message=HIGH_DEMAND)
+                self.feed(events, "turn.failed", error={"message": terminal})
+                self.feed(events, "error", message=late)
+                self.assertEqual(events.outcome(1).status, expected)
+
+    def test_other_http_and_quota_errors_are_not_capacity(self):
+        for message in ("unexpected status 500 Internal Server Error", "unexpected status 429 Too Many Requests",
+                        "insufficient_quota", "模型不存在", "account banned: " + HIGH_DEMAND, "账号封禁 " + CHINESE_CAPACITY,
+                        "unexpected status 401 Unauthorized: previous error was " + HIGH_DEMAND,
+                        "unexpected status 403: " + CHINESE_CAPACITY):
+            with self.subTest(message=message):
+                events = Events()
+                self.feed(events, "turn.failed", error={"message": message})
+                self.assertEqual(events.outcome(1).status, "error")
+
+    def test_error_diagnostics_redact_before_truncation(self):
+        secret = "synthetic/test+key"
+        messages = (
+            f"Error: key was {secret}; token=private-token; api_key=private-api-key",
+            'Error: {"access_token":"private-access-token","password":"private-password"}',
+            "Error: Authorization: Bearer private-header-key; Cookie: private-cookie",
+            "Error: https://private-user:private-password@example.test/v1?key=private-query-key",
+            "Error: synthetic%2Ftest%2Bkey",
+            "x" * (ERROR_LIMIT - 5) + secret,
+        )
+        for message in messages:
+            with self.subTest(message=message[:60]):
+                result = redact_error(message, secret)
+                self.assertLessEqual(len(result), ERROR_LIMIT)
+                self.assertNotIn("private-", result)
+                self.assertNotIn(secret, result)
+                self.assertNotIn("synthetic%2Ftest%2Bkey", result)
+                self.assertTrue("[REDACTED" in result or result.endswith("..."))
+
+    def test_stderr_errors_are_bounded_and_handle_chunked_keys(self):
+        errors = StderrErrors("synthetic-test-key")
+        errors.feed(b"prompt or warning must not be logged\nError: config synthetic-")
+        errors.feed(b"test-key\n")
+        self.assertEqual(errors.last_error, "Error: config [REDACTED]")
+        errors.feed(b"Error: " + b"x" * 17000)
+        self.assertEqual(errors.pending, b"")
+        errors.feed(b"secret suffix must not be logged\n")
+        errors.feed(b"Error: token=private-token")
+        errors.finish()
+        self.assertEqual(errors.last_error, "Error: token=[REDACTED]")
 
     def test_banks_are_valid(self):
         here = Path(__file__).parent
@@ -193,6 +275,27 @@ class ProcessTest(unittest.IsolatedAsyncioTestCase):
                 self.assertIsNone(process_identity(pid))
                 self.assertFalse(list(state.root.glob("attempt-*")))
 
+    async def test_failure_logs_are_useful_redacted_and_cleaned(self):
+        for mode, status, source, fragment in (
+            ("demand-cn", "high_demand", "turn.failed", "负载已经达到上限"),
+            ("private-error", "error", "turn.failed", "invalid API key"),
+            ("startup-error", "error", "stderr", "invalid config"),
+            ("stderr-demand", "error", "stderr", "high demand"),
+        ):
+            with self.subTest(mode=mode), patch.dict(os.environ, {"FAKE_MODE": mode}):
+                with OwnedState(self.args.state_dir) as state, patch("probe_common.emit") as log:
+                    result = await Runner(self.args, state, "synthetic-test-key").run({"id": "q", "prompt": "q" * 16000}, "low")
+                    self.assertEqual(result.status, status)
+                    self.assertEqual(result.error_source, source)
+                    self.assertIn(fragment, result.error)
+                    self.assertFalse(list(state.root.glob("attempt-*")))
+                    record = log.call_args.kwargs
+                    self.assertEqual(log.call_args.args[0], "attempt_result")
+                    self.assertEqual(record["error"], result.error)
+                    rendered = json.dumps(record)
+                    for secret in ("synthetic-test-key", "other-private-key", "header-private-key"):
+                        self.assertNotIn(secret, rendered)
+
     async def test_timeout_cleans(self):
         self.args.timeout = 0.3
         with patch.dict(os.environ, {"FAKE_MODE": "sleep"}):
@@ -259,18 +362,22 @@ class ScheduleTest(unittest.TestCase):
             fake.write_text(FAKE)
             fake.chmod(0o700)
             count = root / "calls"
-            sequence = ["success"] + ["demand", "success"] * 9 + ["demand", "success"]
+            sequence = ["demand-cn", "success"] + ["demand", "success", "demand-cn", "success"] * 4 + ["demand", "success", "demand-cn", "success"]
             env = dict(os.environ, FAKE_COUNT=str(count), FAKE_SEQUENCE=','.join(sequence),
                        AXONHUB_PROBE_API_KEY="synthetic-test-key")
             command = [sys.executable, str(Path(__file__).with_name("keepalive.py")),
                 "--url", "http://127.0.0.1:1/v1", "--model", "fake-model", "--codex", str(fake),
                 "--state-dir", str(root / "state"), "--concurrency", "1", "--max-attempts", str(len(sequence)),
-                "--stagger", "0.001", "--interval-min", "0.001", "--interval-max", "0.002"]
+                "--stagger", "0.001", "--retry-min", "0.001", "--retry-max", "0.002",
+                "--interval-min", "0.001", "--interval-max", "0.002"]
             result = subprocess.run(command, env=env, capture_output=True, text=True, timeout=20)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             events = [json.loads(line) for line in result.stdout.splitlines()]
             phases = [e['phase'] for e in events if e['event'] == 'phase']
             self.assertEqual(phases.count(1), 2)
+            attempts = [e for e in events if e['event'] == 'attempt_result']
+            self.assertEqual(attempts[0]['status'], 'high_demand')
+            self.assertIn('负载已经达到上限', attempts[0]['error'])
             progress = json.loads((root / 'state/progress.json').read_text())
             self.assertEqual((progress['phase'], progress['high_demand']), (2, 0))
             self.assertEqual(len(count.read_text().splitlines()), len(sequence))
