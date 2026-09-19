@@ -1203,28 +1203,6 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 	return updated, nil
 }
 
-// UpdateChannelScheduledHealthChecks updates only the scheduler-owned policy
-// field, preserving every user-editable channel policy.
-func (svc *ChannelService) UpdateChannelScheduledHealthChecks(ctx context.Context, id int, schedules []string) (*ent.Channel, error) {
-	existing, err := svc.entFromContext(ctx).Channel.Get(ctx, id)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load channel: %w", err)
-	}
-
-	policies := existing.Policies
-	policies.ScheduledHealthChecks = slices.Clone(schedules)
-	updated, err := svc.entFromContext(ctx).Channel.UpdateOneID(id).
-		SetPolicies(policies).
-		Save(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to update channel health check schedules: %w", err)
-	}
-
-	svc.reloadChannelsAfterCommit(ctx)
-
-	return updated, nil
-}
-
 func isZenmuxChannelType(channelType channel.Type) bool {
 	switch channelType {
 	case channel.TypeZenmux, channel.TypeZenmuxResponses, channel.TypeZenmuxAnthropic, channel.TypeZenmuxGemini, channel.TypeZenmuxVideo:

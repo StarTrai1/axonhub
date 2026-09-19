@@ -30,8 +30,6 @@ import { ChannelsSystemSettingsDialog } from './channels-system-settings-dialog'
 import { ChannelsTestDialog } from './channels-test-dialog';
 import { ChannelsTestHistoryDrawer } from './channels-test-history-drawer';
 import { ChannelsTransformOptionsDialog } from './channels-transform-options-dialog';
-import { ChannelsScheduledHealthCheckDialog } from './channels-scheduled-health-check-dialog';
-import { ScheduledHealthCheckNotifier } from './scheduled-health-check-notifier';
 
 export function ChannelsDialogs() {
   const { open, setOpen, currentRow: partialCurrentRow, setCurrentRow, selectedChannels } = useChannels();
@@ -54,7 +52,6 @@ export function ChannelsDialogs() {
       : null;
   return (
     <>
-      <ScheduledHealthCheckNotifier />
       <ChannelsSystemSettingsDialog />
 
       <ChannelsActionDialog key='channel-add' open={open === 'add'} onOpenChange={(isOpen) => setOpen(isOpen ? 'add' : null)} />
@@ -258,20 +255,6 @@ export function ChannelsDialogs() {
               }
             }}
             channel={currentRow}
-          />
-
-          <ChannelsScheduledHealthCheckDialog
-            key={`channel-scheduled-health-check-${currentRow.id}`}
-            open={open === 'scheduledHealthCheck'}
-            onOpenChange={(isOpen) => {
-              if (!isOpen) {
-                setOpen(null);
-                setTimeout(() => {
-                  setCurrentRow(null);
-                }, 500);
-              }
-            }}
-            currentRow={currentRow}
           />
 
           <ChannelsTestHistoryDrawer

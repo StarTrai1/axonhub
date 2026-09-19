@@ -15,6 +15,19 @@ on:
 env:
   GO111MODULE: on
 jobs:
+  test-codex-probe-scripts:
+    name: Test Codex probe scripts (offline)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Verify isolated lifecycle and scheduling with a fake CLI
+        run: python -m unittest discover -s scripts/codex-probes -p 'test_*.py' -v
+
   test:
     runs-on: ubuntu-latest
     steps:
@@ -33,7 +46,7 @@ jobs:
 
       - name: Responses concurrency regression
         run: |
-          go test -race ./internal/server/orchestrator -run 'TestResponsesSession|TestResponsesRejected|TestScheduledHealth|TestSealedLocalCompaction|TestLegacyLocalCompaction' -count=1
+          go test -race ./internal/server/orchestrator -run 'TestResponsesSession|TestResponsesRejected|TestChannelRejectsFailedStreamEvenAfterText|TestSealedLocalCompaction|TestLegacyLocalCompaction' -count=1
           go test -race ./internal/server/biz -run '^TestSystemServiceResponsesMetadata' -count=1
           go test -race ./internal/server/api -run '^TestResponsesWebSocket(Warmup|Heartbeat|Auth)' -count=1
           cd llm

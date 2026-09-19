@@ -18,28 +18,28 @@ import (
 type Handlers struct {
 	fx.In
 
-	Graphql               *gql.GraphqlHandler
-	OpenAPIGraphql        *openapi.GraphqlHandler
-	OpenAI                *api.OpenAIHandlers
-	Doubao                *api.DoubaoHandlers
-	Anthropic             *api.AnthropicHandlers
-	Gemini                *api.GeminiHandlers
-	AiSDK                 *api.AiSDKHandlers
-	Playground            *api.PlaygroundHandlers
-	System                *api.SystemHandlers
-	Auth                  *api.AuthHandlers
-	Invitation            *api.InvitationHandlers
-	Jina                  *api.JinaHandlers
-	Codex                 *api.CodexHandlers
-	XAI                   *api.XAIHandlers
-	ClaudeCode            *api.ClaudeCodeHandlers
-	Antigravity           *api.AntigravityHandlers
-	Copilot               *api.CopilotHandlers
-	RequestContent        *api.RequestContentHandlers
-	OIDC                  *api.OIDCHandlers
-	RequestPreview        *api.RequestPreviewHandlers
-	RequestSwitch         *api.RequestSwitchHandlers
-	ChannelHealthSchedule *api.ChannelHealthScheduleHandlers
+	Graphql       *gql.GraphqlHandler
+	OpenAPIGraphql *openapi.GraphqlHandler
+	OpenAI         *api.OpenAIHandlers
+	Doubao         *api.DoubaoHandlers
+	Anthropic      *api.AnthropicHandlers
+	Gemini         *api.GeminiHandlers
+	AiSDK          *api.AiSDKHandlers
+	Playground     *api.PlaygroundHandlers
+	System         *api.SystemHandlers
+	Auth           *api.AuthHandlers
+	Invitation     *api.InvitationHandlers
+	Jina           *api.JinaHandlers
+	Codex          *api.CodexHandlers
+	XAI            *api.XAIHandlers
+	ClaudeCode     *api.ClaudeCodeHandlers
+	Antigravity    *api.AntigravityHandlers
+	Copilot        *api.CopilotHandlers
+	RequestContent *api.RequestContentHandlers
+	OIDC           *api.OIDCHandlers
+	RequestPreview *api.RequestPreviewHandlers
+	RequestSwitch  *api.RequestSwitchHandlers
+	ProbeQuota     *api.ProbeQuotaHandlers
 }
 
 type Services struct {
@@ -158,9 +158,6 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 			middleware.WithTimeout(server.Config.RequestTimeout),
 			handlers.RequestSwitch.SwitchChannel,
 		)
-		adminGroup.GET("/channels/:channel_id/health-check-schedules", handlers.ChannelHealthSchedule.GetSchedules)
-		adminGroup.PUT("/channels/:channel_id/health-check-schedules", handlers.ChannelHealthSchedule.UpdateSchedules)
-		adminGroup.GET("/scheduled-channel-health-check-results", handlers.ChannelHealthSchedule.GetResults)
 	}
 
 	openAPIGroup := server.Group(
@@ -179,6 +176,11 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 
 		openAPIGroup.POST("/webhook/echo", handlers.System.WebhookEcho)
 	}
+
+	// Read-only snapshots must not create conversation/thread records.
+	probeQuotaGroup := server.Group("/v1/axonhub", middleware.WithTimeout(server.Config.RequestTimeout),
+		middleware.WithIPBlocklist(services.SystemService), middleware.WithAPIKeyAuth(services.AuthService))
+	probeQuotaGroup.GET("/quota-windows", handlers.ProbeQuota.Get)
 
 	apiMiddlewares := []gin.HandlerFunc{
 		middleware.WithIPBlocklist(services.SystemService),

@@ -1,0 +1,8009 @@
+{
+  "description": "原创简短知识与日常问题，题目包含不同主题和任务；科普风格参考 NASA Space Place 与 USGS Water Science School，不复制书籍。无反检测保证。",
+  "sources": [
+    "https://spaceplace.nasa.gov/blue-sky/",
+    "https://www.usgs.gov/water-science-school/water-cycle"
+  ],
+  "questions": [
+    {
+      "id": "everyday-020-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以6再加33等于183，这个数是多少？"
+    },
+    {
+      "id": "knowledge-0887",
+      "category": "生活",
+      "prompt": "如果要用一个简单的类比介绍拉链闭合，你会怎么说？"
+    },
+    {
+      "id": "everyday-037-0",
+      "category": "日常计算",
+      "prompt": "小林有50张卡片，又收到6张，随后送出3张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0200",
+      "category": "物理",
+      "prompt": "日常生活里，哪里能观察到或用到并联电路？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0881",
+      "category": "生活",
+      "prompt": "如果要用一个简单的类比介绍雨伞挡雨，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0812",
+      "category": "生活",
+      "prompt": "日常生活里，哪里能观察到或用到海绵吸水？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0832",
+      "category": "生活",
+      "prompt": "关于橡胶弹性，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0875",
+      "category": "生活",
+      "prompt": "如果要用一个简单的类比介绍轮胎花纹，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0192",
+      "category": "物理",
+      "prompt": "关于绝缘体，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "everyday-077-2",
+      "category": "日常计算",
+      "prompt": "长方形长90厘米、宽12厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "everyday-004-3",
+      "category": "日常计算",
+      "prompt": "把119个苹果平均装进7个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0254",
+      "category": "自然",
+      "prompt": "日常生活里，哪里能观察到或用到降雪？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0888",
+      "category": "生活",
+      "prompt": "关于拉链闭合，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0455",
+      "category": "自然",
+      "prompt": "如果要用一个简单的类比介绍恒星，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0567",
+      "category": "生物",
+      "prompt": "学习分解者时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0632",
+      "category": "生物",
+      "prompt": "日常生活里，哪里能观察到或用到蝴蝶变态？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-1087",
+      "category": "计算与数学",
+      "prompt": "给小学生解释一下变量，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0768",
+      "category": "生活",
+      "prompt": "关于油水分层，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-1197",
+      "category": "计算与数学",
+      "prompt": "学习时间戳时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0232",
+      "category": "物理",
+      "prompt": "关于密度，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0539",
+      "category": "生物",
+      "prompt": "如果要用一个简单的类比介绍休眠，你会怎么说？"
+    },
+    {
+      "id": "everyday-051-0",
+      "category": "日常计算",
+      "prompt": "小林有64张卡片，又收到3张，随后送出1张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0809",
+      "category": "生活",
+      "prompt": "如果要用一个简单的类比介绍纸张吸水，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0922",
+      "category": "生活",
+      "prompt": "关于麦克风拾音，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-1062",
+      "category": "计算与数学",
+      "prompt": "关于周长，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-1029",
+      "category": "计算与数学",
+      "prompt": "学习众数时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0118",
+      "category": "物理",
+      "prompt": "关于影子，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0293",
+      "category": "自然",
+      "prompt": "如果要用一个简单的类比介绍风，你会怎么说？"
+    },
+    {
+      "id": "everyday-019-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以5再加32等于152，这个数是多少？"
+    },
+    {
+      "id": "knowledge-0304",
+      "category": "自然",
+      "prompt": "关于海陆风，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "everyday-014-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以17再加27等于350，这个数是多少？"
+    },
+    {
+      "id": "knowledge-0651",
+      "category": "生物",
+      "prompt": "学习骆驼驼峰时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-039-3",
+      "category": "日常计算",
+      "prompt": "把416个苹果平均装进8个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0518",
+      "category": "生物",
+      "prompt": "日常生活里，哪里能观察到或用到植物向光性？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0289",
+      "category": "自然",
+      "prompt": "给小学生解释一下风，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-1111",
+      "category": "计算与数学",
+      "prompt": "给小学生解释一下搜索，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0037",
+      "category": "物理",
+      "prompt": "给小学生解释一下热胀冷缩，核心意思是什么？"
+    },
+    {
+      "id": "everyday-032-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以18再加45等于711，这个数是多少？"
+    },
+    {
+      "id": "knowledge-0765",
+      "category": "生活",
+      "prompt": "学习油水分层时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0562",
+      "category": "生物",
+      "prompt": "关于生物多样性，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0795",
+      "category": "生活",
+      "prompt": "学习铁生锈时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0067",
+      "category": "物理",
+      "prompt": "给小学生解释一下沸腾，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0781",
+      "category": "生活",
+      "prompt": "给小学生解释一下沉淀，核心意思是什么？"
+    },
+    {
+      "id": "everyday-003-1",
+      "category": "日常计算",
+      "prompt": "16分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-1147",
+      "category": "计算与数学",
+      "prompt": "给小学生解释一下浏览器，核心意思是什么？"
+    },
+    {
+      "id": "everyday-027-3",
+      "category": "日常计算",
+      "prompt": "把520个苹果平均装进13个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0986",
+      "category": "计算与数学",
+      "prompt": "日常生活里，哪里能观察到或用到公因数？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0523",
+      "category": "生物",
+      "prompt": "给小学生解释一下落叶，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0233",
+      "category": "物理",
+      "prompt": "如果要用一个简单的类比介绍密度，你会怎么说？"
+    },
+    {
+      "id": "everyday-075-2",
+      "category": "日常计算",
+      "prompt": "长方形长88厘米、宽10厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "everyday-011-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以14再加24等于248，这个数是多少？"
+    },
+    {
+      "id": "knowledge-0629",
+      "category": "生物",
+      "prompt": "如果要用一个简单的类比介绍蜘蛛结网，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0002",
+      "category": "物理",
+      "prompt": "日常生活里，哪里能观察到或用到惯性？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0390",
+      "category": "自然",
+      "prompt": "关于板块运动，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "everyday-073-0",
+      "category": "日常计算",
+      "prompt": "小林有86张卡片，又收到8张，随后送出4张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0237",
+      "category": "物理",
+      "prompt": "学习表面张力时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0815",
+      "category": "生活",
+      "prompt": "如果要用一个简单的类比介绍海绵吸水，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0502",
+      "category": "生物",
+      "prompt": "关于花粉传播，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "everyday-024-0",
+      "category": "日常计算",
+      "prompt": "小林有37张卡片，又收到10张，随后送出5张。现在有多少张？"
+    },
+    {
+      "id": "everyday-067-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以19再加80等于1448，这个数是多少？"
+    },
+    {
+      "id": "knowledge-0923",
+      "category": "生活",
+      "prompt": "如果要用一个简单的类比介绍麦克风拾音，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0288",
+      "category": "自然",
+      "prompt": "关于云，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "everyday-028-3",
+      "category": "日常计算",
+      "prompt": "把574个苹果平均装进14个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0709",
+      "category": "生物",
+      "prompt": "给小学生解释一下遗传，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-1115",
+      "category": "计算与数学",
+      "prompt": "如果要用一个简单的类比介绍搜索，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0427",
+      "category": "自然",
+      "prompt": "给小学生解释一下四季变化，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0461",
+      "category": "自然",
+      "prompt": "如果要用一个简单的类比介绍行星，你会怎么说？"
+    },
+    {
+      "id": "everyday-021-3",
+      "category": "日常计算",
+      "prompt": "把238个苹果平均装进7个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0205",
+      "category": "物理",
+      "prompt": "给小学生解释一下电磁感应，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0080",
+      "category": "物理",
+      "prompt": "日常生活里，哪里能观察到或用到熔化？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0863",
+      "category": "生活",
+      "prompt": "如果要用一个简单的类比介绍自行车变速，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0462",
+      "category": "自然",
+      "prompt": "关于行星，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0046",
+      "category": "物理",
+      "prompt": "关于热传导，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "everyday-026-2",
+      "category": "日常计算",
+      "prompt": "长方形长39厘米、宽12厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "knowledge-1032",
+      "category": "计算与数学",
+      "prompt": "关于众数，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-1088",
+      "category": "计算与数学",
+      "prompt": "日常生活里，哪里能观察到或用到变量？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0710",
+      "category": "生物",
+      "prompt": "日常生活里，哪里能观察到或用到遗传？举一个具体例子。"
+    },
+    {
+      "id": "everyday-076-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以11再加89等于980，这个数是多少？"
+    },
+    {
+      "id": "knowledge-0699",
+      "category": "生物",
+      "prompt": "学习真菌时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0172",
+      "category": "物理",
+      "prompt": "关于电流，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0012",
+      "category": "物理",
+      "prompt": "关于摩擦力，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "everyday-056-1",
+      "category": "日常计算",
+      "prompt": "69分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-0914",
+      "category": "生活",
+      "prompt": "日常生活里，哪里能观察到或用到扬声器发声？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-1010",
+      "category": "计算与数学",
+      "prompt": "日常生活里，哪里能观察到或用到百分数？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0329",
+      "category": "自然",
+      "prompt": "如果要用一个简单的类比介绍温室效应，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0837",
+      "category": "生活",
+      "prompt": "学习陶瓷隔热时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0862",
+      "category": "生活",
+      "prompt": "关于自行车变速，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0677",
+      "category": "生物",
+      "prompt": "如果要用一个简单的类比介绍细胞核，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0088",
+      "category": "物理",
+      "prompt": "关于液化，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0299",
+      "category": "自然",
+      "prompt": "如果要用一个简单的类比介绍季风，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0262",
+      "category": "自然",
+      "prompt": "关于冰雹，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0336",
+      "category": "自然",
+      "prompt": "关于海洋潮汐，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-1187",
+      "category": "计算与数学",
+      "prompt": "如果要用一个简单的类比介绍校验和，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0184",
+      "category": "物理",
+      "prompt": "关于导体，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0320",
+      "category": "自然",
+      "prompt": "日常生活里，哪里能观察到或用到气压？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0038",
+      "category": "物理",
+      "prompt": "日常生活里，哪里能观察到或用到热胀冷缩？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-1165",
+      "category": "计算与数学",
+      "prompt": "给小学生解释一下IP 地址，核心意思是什么？"
+    },
+    {
+      "id": "everyday-048-3",
+      "category": "日常计算",
+      "prompt": "把1037个苹果平均装进17个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0654",
+      "category": "生物",
+      "prompt": "关于骆驼驼峰，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-1071",
+      "category": "计算与数学",
+      "prompt": "学习体积时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0458",
+      "category": "自然",
+      "prompt": "日常生活里，哪里能观察到或用到行星？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0332",
+      "category": "自然",
+      "prompt": "日常生活里，哪里能观察到或用到海洋潮汐？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0194",
+      "category": "物理",
+      "prompt": "日常生活里，哪里能观察到或用到串联电路？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0218",
+      "category": "物理",
+      "prompt": "日常生活里，哪里能观察到或用到势能？举一个具体例子。"
+    },
+    {
+      "id": "everyday-076-2",
+      "category": "日常计算",
+      "prompt": "长方形长89厘米、宽11厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "knowledge-0876",
+      "category": "生活",
+      "prompt": "关于轮胎花纹，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0854",
+      "category": "生活",
+      "prompt": "日常生活里，哪里能观察到或用到指南针指向？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0457",
+      "category": "自然",
+      "prompt": "给小学生解释一下行星，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0306",
+      "category": "自然",
+      "prompt": "关于海陆风，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0059",
+      "category": "物理",
+      "prompt": "如果要用一个简单的类比介绍热辐射，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0061",
+      "category": "物理",
+      "prompt": "给小学生解释一下蒸发，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0675",
+      "category": "生物",
+      "prompt": "学习细胞核时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-1195",
+      "category": "计算与数学",
+      "prompt": "给小学生解释一下时间戳，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-1030",
+      "category": "计算与数学",
+      "prompt": "关于众数，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0405",
+      "category": "自然",
+      "prompt": "学习腐殖质时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0842",
+      "category": "生活",
+      "prompt": "日常生活里，哪里能观察到或用到玻璃透光？举一个具体例子。"
+    },
+    {
+      "id": "everyday-076-1",
+      "category": "日常计算",
+      "prompt": "89分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-0700",
+      "category": "生物",
+      "prompt": "关于真菌，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0726",
+      "category": "生活",
+      "prompt": "关于冰箱制冷，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0741",
+      "category": "生活",
+      "prompt": "学习衣服晾干时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0353",
+      "category": "自然",
+      "prompt": "如果要用一个简单的类比介绍河流侵蚀，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0359",
+      "category": "自然",
+      "prompt": "如果要用一个简单的类比介绍三角洲，你会怎么说？"
+    },
+    {
+      "id": "everyday-050-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以19再加63等于1108，这个数是多少？"
+    },
+    {
+      "id": "everyday-072-3",
+      "category": "日常计算",
+      "prompt": "把595个苹果平均装进7个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0691",
+      "category": "生物",
+      "prompt": "给小学生解释一下细菌，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-1156",
+      "category": "计算与数学",
+      "prompt": "关于操作系统，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0156",
+      "category": "物理",
+      "prompt": "关于弹性，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "everyday-006-3",
+      "category": "日常计算",
+      "prompt": "把171个苹果平均装进9个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0660",
+      "category": "生物",
+      "prompt": "关于仙人掌储水，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0302",
+      "category": "自然",
+      "prompt": "日常生活里，哪里能观察到或用到海陆风？举一个具体例子。"
+    },
+    {
+      "id": "everyday-033-0",
+      "category": "日常计算",
+      "prompt": "小林有46张卡片，又收到19张，随后送出9张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0597",
+      "category": "生物",
+      "prompt": "学习动物迁徙时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0121",
+      "category": "物理",
+      "prompt": "给小学生解释一下回声，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-1179",
+      "category": "计算与数学",
+      "prompt": "学习数据包时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-1117",
+      "category": "计算与数学",
+      "prompt": "给小学生解释一下文件压缩，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0527",
+      "category": "生物",
+      "prompt": "如果要用一个简单的类比介绍落叶，你会怎么说？"
+    },
+    {
+      "id": "knowledge-1193",
+      "category": "计算与数学",
+      "prompt": "如果要用一个简单的类比介绍备份，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0082",
+      "category": "物理",
+      "prompt": "关于熔化，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0802",
+      "category": "生活",
+      "prompt": "关于不锈钢防锈，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0383",
+      "category": "自然",
+      "prompt": "如果要用一个简单的类比介绍地震，你会怎么说？"
+    },
+    {
+      "id": "knowledge-1014",
+      "category": "计算与数学",
+      "prompt": "关于百分数，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "everyday-048-2",
+      "category": "日常计算",
+      "prompt": "长方形长61厘米、宽17厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "knowledge-0682",
+      "category": "生物",
+      "prompt": "关于叶绿体，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-1045",
+      "category": "计算与数学",
+      "prompt": "给小学生解释一下组合，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0239",
+      "category": "物理",
+      "prompt": "如果要用一个简单的类比介绍表面张力，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0141",
+      "category": "物理",
+      "prompt": "学习杠杆时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0831",
+      "category": "生活",
+      "prompt": "学习橡胶弹性时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-049-3",
+      "category": "日常计算",
+      "prompt": "把1116个苹果平均装进18个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0980",
+      "category": "计算与数学",
+      "prompt": "日常生活里，哪里能观察到或用到合数？举一个具体例子。"
+    },
+    {
+      "id": "everyday-023-2",
+      "category": "日常计算",
+      "prompt": "长方形长36厘米、宽9厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "everyday-032-0",
+      "category": "日常计算",
+      "prompt": "小林有45张卡片，又收到18张，随后送出9张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-1026",
+      "category": "计算与数学",
+      "prompt": "关于中位数，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0271",
+      "category": "自然",
+      "prompt": "给小学生解释一下霜，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0495",
+      "category": "生物",
+      "prompt": "学习种子萌发时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-032-3",
+      "category": "日常计算",
+      "prompt": "把810个苹果平均装进18个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0889",
+      "category": "生活",
+      "prompt": "给小学生解释一下螺丝固定，核心意思是什么？"
+    },
+    {
+      "id": "everyday-007-0",
+      "category": "日常计算",
+      "prompt": "小林有20张卡片，又收到10张，随后送出5张。现在有多少张？"
+    },
+    {
+      "id": "everyday-026-1",
+      "category": "日常计算",
+      "prompt": "39分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-0415",
+      "category": "自然",
+      "prompt": "给小学生解释一下化石，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0676",
+      "category": "生物",
+      "prompt": "关于细胞核，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0356",
+      "category": "自然",
+      "prompt": "日常生活里，哪里能观察到或用到三角洲？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0844",
+      "category": "生活",
+      "prompt": "关于玻璃透光，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0013",
+      "category": "物理",
+      "prompt": "给小学生解释一下重力，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0281",
+      "category": "自然",
+      "prompt": "如果要用一个简单的类比介绍雾，你会怎么说？"
+    },
+    {
+      "id": "knowledge-1131",
+      "category": "计算与数学",
+      "prompt": "学习像素时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0250",
+      "category": "自然",
+      "prompt": "关于降雨，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "everyday-005-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以8再加18等于98，这个数是多少？"
+    },
+    {
+      "id": "knowledge-0105",
+      "category": "物理",
+      "prompt": "学习光的折射时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-044-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以13再加57等于694，这个数是多少？"
+    },
+    {
+      "id": "knowledge-0983",
+      "category": "计算与数学",
+      "prompt": "如果要用一个简单的类比介绍合数，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0216",
+      "category": "物理",
+      "prompt": "关于动能，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-1139",
+      "category": "计算与数学",
+      "prompt": "如果要用一个简单的类比介绍分辨率，你会怎么说？"
+    },
+    {
+      "id": "knowledge-1157",
+      "category": "计算与数学",
+      "prompt": "如果要用一个简单的类比介绍操作系统，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0413",
+      "category": "自然",
+      "prompt": "如果要用一个简单的类比介绍冰川，你会怎么说？"
+    },
+    {
+      "id": "everyday-068-1",
+      "category": "日常计算",
+      "prompt": "81分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-0990",
+      "category": "计算与数学",
+      "prompt": "关于公因数，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "everyday-065-2",
+      "category": "日常计算",
+      "prompt": "长方形长78厘米、宽17厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "everyday-029-1",
+      "category": "日常计算",
+      "prompt": "42分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-0515",
+      "category": "生物",
+      "prompt": "如果要用一个简单的类比介绍叶片蒸腾，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0882",
+      "category": "生活",
+      "prompt": "关于雨伞挡雨，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0031",
+      "category": "物理",
+      "prompt": "给小学生解释一下大气压，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0063",
+      "category": "物理",
+      "prompt": "学习蒸发时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-053-2",
+      "category": "日常计算",
+      "prompt": "长方形长66厘米、宽5厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "knowledge-1151",
+      "category": "计算与数学",
+      "prompt": "如果要用一个简单的类比介绍浏览器，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0744",
+      "category": "生活",
+      "prompt": "关于衣服晾干，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0060",
+      "category": "物理",
+      "prompt": "关于热辐射，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "everyday-030-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以16再加43等于603，这个数是多少？"
+    },
+    {
+      "id": "knowledge-0941",
+      "category": "生活",
+      "prompt": "如果要用一个简单的类比介绍充电器变压，你会怎么说？"
+    },
+    {
+      "id": "everyday-017-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以3再加30等于96，这个数是多少？"
+    },
+    {
+      "id": "everyday-004-2",
+      "category": "日常计算",
+      "prompt": "长方形长17厘米、宽7厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "everyday-010-1",
+      "category": "日常计算",
+      "prompt": "23分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-1135",
+      "category": "计算与数学",
+      "prompt": "给小学生解释一下分辨率，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-1092",
+      "category": "计算与数学",
+      "prompt": "关于变量，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-1133",
+      "category": "计算与数学",
+      "prompt": "如果要用一个简单的类比介绍像素，你会怎么说？"
+    },
+    {
+      "id": "knowledge-1038",
+      "category": "计算与数学",
+      "prompt": "关于概率，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0545",
+      "category": "生物",
+      "prompt": "如果要用一个简单的类比介绍食物链，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0779",
+      "category": "生活",
+      "prompt": "如果要用一个简单的类比介绍过滤，你会怎么说？"
+    },
+    {
+      "id": "everyday-045-1",
+      "category": "日常计算",
+      "prompt": "58分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-1198",
+      "category": "计算与数学",
+      "prompt": "关于时间戳，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "everyday-059-1",
+      "category": "日常计算",
+      "prompt": "72分钟相当于多少秒？"
+    },
+    {
+      "id": "everyday-038-0",
+      "category": "日常计算",
+      "prompt": "小林有51张卡片，又收到7张，随后送出3张。现在有多少张？"
+    },
+    {
+      "id": "everyday-010-0",
+      "category": "日常计算",
+      "prompt": "小林有23张卡片，又收到13张，随后送出6张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0804",
+      "category": "生活",
+      "prompt": "关于不锈钢防锈，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-1188",
+      "category": "计算与数学",
+      "prompt": "关于校验和，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0787",
+      "category": "生活",
+      "prompt": "给小学生解释一下蒸馏，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0811",
+      "category": "生活",
+      "prompt": "给小学生解释一下海绵吸水，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0154",
+      "category": "物理",
+      "prompt": "关于弹性，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0730",
+      "category": "生活",
+      "prompt": "关于保温杯保温，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0211",
+      "category": "物理",
+      "prompt": "给小学生解释一下动能，核心意思是什么？"
+    },
+    {
+      "id": "everyday-037-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以6再加50等于302，这个数是多少？"
+    },
+    {
+      "id": "knowledge-0016",
+      "category": "物理",
+      "prompt": "关于重力，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0762",
+      "category": "生活",
+      "prompt": "关于糖的溶解，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0799",
+      "category": "生活",
+      "prompt": "给小学生解释一下不锈钢防锈，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-1118",
+      "category": "计算与数学",
+      "prompt": "日常生活里，哪里能观察到或用到文件压缩？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0497",
+      "category": "生物",
+      "prompt": "如果要用一个简单的类比介绍种子萌发，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0891",
+      "category": "生活",
+      "prompt": "学习螺丝固定时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0641",
+      "category": "生物",
+      "prompt": "如果要用一个简单的类比介绍青蛙变态，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0513",
+      "category": "生物",
+      "prompt": "学习叶片蒸腾时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0633",
+      "category": "生物",
+      "prompt": "学习蝴蝶变态时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0370",
+      "category": "自然",
+      "prompt": "关于岩石风化，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0068",
+      "category": "物理",
+      "prompt": "日常生活里，哪里能观察到或用到沸腾？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0238",
+      "category": "物理",
+      "prompt": "关于表面张力，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0767",
+      "category": "生活",
+      "prompt": "如果要用一个简单的类比介绍油水分层，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0007",
+      "category": "物理",
+      "prompt": "给小学生解释一下摩擦力，核心意思是什么？"
+    },
+    {
+      "id": "everyday-026-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以12再加39等于411，这个数是多少？"
+    },
+    {
+      "id": "everyday-009-1",
+      "category": "日常计算",
+      "prompt": "22分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-0107",
+      "category": "物理",
+      "prompt": "如果要用一个简单的类比介绍光的折射，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0590",
+      "category": "生物",
+      "prompt": "日常生活里，哪里能观察到或用到警戒色？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0985",
+      "category": "计算与数学",
+      "prompt": "给小学生解释一下公因数，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-1113",
+      "category": "计算与数学",
+      "prompt": "学习搜索时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0443",
+      "category": "自然",
+      "prompt": "如果要用一个简单的类比介绍日食，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0932",
+      "category": "生活",
+      "prompt": "日常生活里，哪里能观察到或用到电池储能？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0529",
+      "category": "生物",
+      "prompt": "给小学生解释一下年轮，核心意思是什么？"
+    },
+    {
+      "id": "everyday-047-3",
+      "category": "日常计算",
+      "prompt": "把960个苹果平均装进16个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-1170",
+      "category": "计算与数学",
+      "prompt": "关于IP 地址，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-1070",
+      "category": "计算与数学",
+      "prompt": "日常生活里，哪里能观察到或用到体积？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-1059",
+      "category": "计算与数学",
+      "prompt": "学习周长时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-036-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以5再加49等于254，这个数是多少？"
+    },
+    {
+      "id": "knowledge-0323",
+      "category": "自然",
+      "prompt": "如果要用一个简单的类比介绍气压，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0536",
+      "category": "生物",
+      "prompt": "日常生活里，哪里能观察到或用到休眠？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-1080",
+      "category": "计算与数学",
+      "prompt": "关于坐标，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "everyday-072-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以7再加85等于624，这个数是多少？"
+    },
+    {
+      "id": "everyday-064-2",
+      "category": "日常计算",
+      "prompt": "长方形长77厘米、宽16厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "knowledge-0479",
+      "category": "自然",
+      "prompt": "如果要用一个简单的类比介绍流星，你会怎么说？"
+    },
+    {
+      "id": "knowledge-1016",
+      "category": "计算与数学",
+      "prompt": "日常生活里，哪里能观察到或用到平均数？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0429",
+      "category": "自然",
+      "prompt": "学习四季变化时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-006-0",
+      "category": "日常计算",
+      "prompt": "小林有19张卡片，又收到9张，随后送出4张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-1150",
+      "category": "计算与数学",
+      "prompt": "关于浏览器，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-1127",
+      "category": "计算与数学",
+      "prompt": "如果要用一个简单的类比介绍字符编码，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0938",
+      "category": "生活",
+      "prompt": "日常生活里，哪里能观察到或用到充电器变压？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0679",
+      "category": "生物",
+      "prompt": "给小学生解释一下叶绿体，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0251",
+      "category": "自然",
+      "prompt": "如果要用一个简单的类比介绍降雨，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0098",
+      "category": "物理",
+      "prompt": "日常生活里，哪里能观察到或用到光的反射？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0343",
+      "category": "自然",
+      "prompt": "给小学生解释一下海浪，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0805",
+      "category": "生活",
+      "prompt": "给小学生解释一下纸张吸水，核心意思是什么？"
+    },
+    {
+      "id": "everyday-034-2",
+      "category": "日常计算",
+      "prompt": "长方形长47厘米、宽3厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "knowledge-1192",
+      "category": "计算与数学",
+      "prompt": "关于备份，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0169",
+      "category": "物理",
+      "prompt": "给小学生解释一下电流，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0585",
+      "category": "生物",
+      "prompt": "学习伪装色时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0307",
+      "category": "自然",
+      "prompt": "给小学生解释一下彩虹，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-1047",
+      "category": "计算与数学",
+      "prompt": "学习组合时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0596",
+      "category": "生物",
+      "prompt": "日常生活里，哪里能观察到或用到动物迁徙？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-1011",
+      "category": "计算与数学",
+      "prompt": "学习百分数时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0401",
+      "category": "自然",
+      "prompt": "如果要用一个简单的类比介绍土壤，你会怎么说？"
+    },
+    {
+      "id": "knowledge-1183",
+      "category": "计算与数学",
+      "prompt": "给小学生解释一下校验和，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0996",
+      "category": "计算与数学",
+      "prompt": "关于公倍数，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0687",
+      "category": "生物",
+      "prompt": "学习微生物时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0861",
+      "category": "生活",
+      "prompt": "学习自行车变速时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0974",
+      "category": "计算与数学",
+      "prompt": "日常生活里，哪里能观察到或用到质数？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0598",
+      "category": "生物",
+      "prompt": "关于动物迁徙，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-1018",
+      "category": "计算与数学",
+      "prompt": "关于平均数，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "everyday-036-2",
+      "category": "日常计算",
+      "prompt": "长方形长49厘米、宽5厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "knowledge-0498",
+      "category": "生物",
+      "prompt": "关于种子萌发，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0391",
+      "category": "自然",
+      "prompt": "给小学生解释一下地下水，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-1021",
+      "category": "计算与数学",
+      "prompt": "给小学生解释一下中位数，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0214",
+      "category": "物理",
+      "prompt": "关于动能，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0827",
+      "category": "生活",
+      "prompt": "如果要用一个简单的类比介绍铅笔书写，你会怎么说？"
+    },
+    {
+      "id": "knowledge-1136",
+      "category": "计算与数学",
+      "prompt": "日常生活里，哪里能观察到或用到分辨率？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0794",
+      "category": "生活",
+      "prompt": "日常生活里，哪里能观察到或用到铁生锈？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-1124",
+      "category": "计算与数学",
+      "prompt": "日常生活里，哪里能观察到或用到字符编码？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0903",
+      "category": "生活",
+      "prompt": "学习电灯发光时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0970",
+      "category": "计算与数学",
+      "prompt": "关于十进制，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "everyday-046-0",
+      "category": "日常计算",
+      "prompt": "小林有59张卡片，又收到15张，随后送出7张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0128",
+      "category": "物理",
+      "prompt": "日常生活里，哪里能观察到或用到声波？举一个具体例子。"
+    },
+    {
+      "id": "everyday-022-2",
+      "category": "日常计算",
+      "prompt": "长方形长35厘米、宽8厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "knowledge-0546",
+      "category": "生物",
+      "prompt": "关于食物链，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "everyday-068-2",
+      "category": "日常计算",
+      "prompt": "长方形长81厘米、宽3厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "knowledge-0855",
+      "category": "生活",
+      "prompt": "学习指南针指向时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0123",
+      "category": "物理",
+      "prompt": "学习回声时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-1123",
+      "category": "计算与数学",
+      "prompt": "给小学生解释一下字符编码，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-1122",
+      "category": "计算与数学",
+      "prompt": "关于文件压缩，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0858",
+      "category": "生活",
+      "prompt": "关于指南针指向，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "everyday-033-1",
+      "category": "日常计算",
+      "prompt": "46分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-0940",
+      "category": "生活",
+      "prompt": "关于充电器变压，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "everyday-073-3",
+      "category": "日常计算",
+      "prompt": "把688个苹果平均装进8个袋子，每袋装几个？"
+    },
+    {
+      "id": "everyday-066-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以18再加79等于1357，这个数是多少？"
+    },
+    {
+      "id": "knowledge-0680",
+      "category": "生物",
+      "prompt": "日常生活里，哪里能观察到或用到叶绿体？举一个具体例子。"
+    },
+    {
+      "id": "everyday-078-0",
+      "category": "日常计算",
+      "prompt": "小林有91张卡片，又收到13张，随后送出6张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0771",
+      "category": "生活",
+      "prompt": "学习肥皂去污时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-035-3",
+      "category": "日常计算",
+      "prompt": "把192个苹果平均装进4个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0174",
+      "category": "物理",
+      "prompt": "关于电流，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-1037",
+      "category": "计算与数学",
+      "prompt": "如果要用一个简单的类比介绍概率，你会怎么说？"
+    },
+    {
+      "id": "everyday-043-2",
+      "category": "日常计算",
+      "prompt": "长方形长56厘米、宽12厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "everyday-060-3",
+      "category": "日常计算",
+      "prompt": "把876个苹果平均装进12个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0909",
+      "category": "生活",
+      "prompt": "学习LED 发光时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0182",
+      "category": "物理",
+      "prompt": "日常生活里，哪里能观察到或用到导体？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0073",
+      "category": "物理",
+      "prompt": "给小学生解释一下凝固，核心意思是什么？"
+    },
+    {
+      "id": "everyday-021-1",
+      "category": "日常计算",
+      "prompt": "34分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-0913",
+      "category": "生活",
+      "prompt": "给小学生解释一下扬声器发声，核心意思是什么？"
+    },
+    {
+      "id": "everyday-012-1",
+      "category": "日常计算",
+      "prompt": "25分钟相当于多少秒？"
+    },
+    {
+      "id": "everyday-039-0",
+      "category": "日常计算",
+      "prompt": "小林有52张卡片，又收到8张，随后送出4张。现在有多少张？"
+    },
+    {
+      "id": "everyday-059-2",
+      "category": "日常计算",
+      "prompt": "长方形长72厘米、宽11厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "knowledge-0718",
+      "category": "生物",
+      "prompt": "关于自然选择，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "everyday-074-2",
+      "category": "日常计算",
+      "prompt": "长方形长87厘米、宽9厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "knowledge-0742",
+      "category": "生活",
+      "prompt": "关于衣服晾干，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "everyday-068-3",
+      "category": "日常计算",
+      "prompt": "把243个苹果平均装进3个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0297",
+      "category": "自然",
+      "prompt": "学习季风时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-039-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以8再加52等于404，这个数是多少？"
+    },
+    {
+      "id": "knowledge-0789",
+      "category": "生活",
+      "prompt": "学习蒸馏时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0796",
+      "category": "生活",
+      "prompt": "关于铁生锈，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "everyday-023-3",
+      "category": "日常计算",
+      "prompt": "把324个苹果平均装进9个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0841",
+      "category": "生活",
+      "prompt": "给小学生解释一下玻璃透光，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0924",
+      "category": "生活",
+      "prompt": "关于麦克风拾音，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0550",
+      "category": "生物",
+      "prompt": "关于食物网，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0972",
+      "category": "计算与数学",
+      "prompt": "关于十进制，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0936",
+      "category": "生活",
+      "prompt": "关于电池储能，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-1112",
+      "category": "计算与数学",
+      "prompt": "日常生活里，哪里能观察到或用到搜索？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0528",
+      "category": "生物",
+      "prompt": "关于落叶，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "everyday-014-1",
+      "category": "日常计算",
+      "prompt": "27分钟相当于多少秒？"
+    },
+    {
+      "id": "everyday-038-3",
+      "category": "日常计算",
+      "prompt": "把357个苹果平均装进7个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0593",
+      "category": "生物",
+      "prompt": "如果要用一个简单的类比介绍警戒色，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0435",
+      "category": "自然",
+      "prompt": "学习月相时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0773",
+      "category": "生活",
+      "prompt": "如果要用一个简单的类比介绍肥皂去污，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0504",
+      "category": "生物",
+      "prompt": "关于花粉传播，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-1039",
+      "category": "计算与数学",
+      "prompt": "给小学生解释一下排列，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0496",
+      "category": "生物",
+      "prompt": "关于种子萌发，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0090",
+      "category": "物理",
+      "prompt": "关于液化，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0372",
+      "category": "自然",
+      "prompt": "关于岩石风化，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "everyday-024-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以10再加37等于327，这个数是多少？"
+    },
+    {
+      "id": "everyday-076-0",
+      "category": "日常计算",
+      "prompt": "小林有89张卡片，又收到11张，随后送出5张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0752",
+      "category": "生活",
+      "prompt": "日常生活里，哪里能观察到或用到食盐溶解？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0638",
+      "category": "生物",
+      "prompt": "日常生活里，哪里能观察到或用到青蛙变态？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0338",
+      "category": "自然",
+      "prompt": "日常生活里，哪里能观察到或用到洋流？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0785",
+      "category": "生活",
+      "prompt": "如果要用一个简单的类比介绍沉淀，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0746",
+      "category": "生活",
+      "prompt": "日常生活里，哪里能观察到或用到眼镜起雾？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-1181",
+      "category": "计算与数学",
+      "prompt": "如果要用一个简单的类比介绍数据包，你会怎么说？"
+    },
+    {
+      "id": "knowledge-1040",
+      "category": "计算与数学",
+      "prompt": "日常生活里，哪里能观察到或用到排列？举一个具体例子。"
+    },
+    {
+      "id": "everyday-018-2",
+      "category": "日常计算",
+      "prompt": "长方形长31厘米、宽4厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "everyday-056-2",
+      "category": "日常计算",
+      "prompt": "长方形长69厘米、宽8厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "everyday-007-2",
+      "category": "日常计算",
+      "prompt": "长方形长20厘米、宽10厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "knowledge-0673",
+      "category": "生物",
+      "prompt": "给小学生解释一下细胞核，核心意思是什么？"
+    },
+    {
+      "id": "everyday-020-1",
+      "category": "日常计算",
+      "prompt": "33分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-0054",
+      "category": "物理",
+      "prompt": "关于对流，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-1076",
+      "category": "计算与数学",
+      "prompt": "日常生活里，哪里能观察到或用到坐标？举一个具体例子。"
+    },
+    {
+      "id": "everyday-041-2",
+      "category": "日常计算",
+      "prompt": "长方形长54厘米、宽10厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "knowledge-0027",
+      "category": "物理",
+      "prompt": "学习压强时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0935",
+      "category": "生活",
+      "prompt": "如果要用一个简单的类比介绍电池储能，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0367",
+      "category": "自然",
+      "prompt": "给小学生解释一下岩石风化，核心意思是什么？"
+    },
+    {
+      "id": "everyday-070-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以5再加83等于458，这个数是多少？"
+    },
+    {
+      "id": "knowledge-0955",
+      "category": "生活",
+      "prompt": "给小学生解释一下二维码，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0276",
+      "category": "自然",
+      "prompt": "关于霜，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0788",
+      "category": "生活",
+      "prompt": "日常生活里，哪里能观察到或用到蒸馏？举一个具体例子。"
+    },
+    {
+      "id": "everyday-005-2",
+      "category": "日常计算",
+      "prompt": "长方形长18厘米、宽8厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "everyday-009-3",
+      "category": "日常计算",
+      "prompt": "把264个苹果平均装进12个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0454",
+      "category": "自然",
+      "prompt": "关于恒星，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "everyday-055-3",
+      "category": "日常计算",
+      "prompt": "把476个苹果平均装进7个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0563",
+      "category": "生物",
+      "prompt": "如果要用一个简单的类比介绍生物多样性，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0017",
+      "category": "物理",
+      "prompt": "如果要用一个简单的类比介绍重力，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0819",
+      "category": "生活",
+      "prompt": "学习橡皮擦字时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0915",
+      "category": "生活",
+      "prompt": "学习扬声器发声时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-030-0",
+      "category": "日常计算",
+      "prompt": "小林有43张卡片，又收到16张，随后送出8张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-1085",
+      "category": "计算与数学",
+      "prompt": "如果要用一个简单的类比介绍算法，你会怎么说？"
+    },
+    {
+      "id": "everyday-033-3",
+      "category": "日常计算",
+      "prompt": "把874个苹果平均装进19个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0822",
+      "category": "生活",
+      "prompt": "关于橡皮擦字，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0481",
+      "category": "生物",
+      "prompt": "给小学生解释一下光合作用，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0466",
+      "category": "自然",
+      "prompt": "关于卫星，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0988",
+      "category": "计算与数学",
+      "prompt": "关于公因数，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-1063",
+      "category": "计算与数学",
+      "prompt": "给小学生解释一下面积，核心意思是什么？"
+    },
+    {
+      "id": "everyday-062-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以14再加75等于1013，这个数是多少？"
+    },
+    {
+      "id": "knowledge-0684",
+      "category": "生物",
+      "prompt": "关于叶绿体，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0452",
+      "category": "自然",
+      "prompt": "日常生活里，哪里能观察到或用到恒星？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0688",
+      "category": "生物",
+      "prompt": "关于微生物，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "everyday-052-3",
+      "category": "日常计算",
+      "prompt": "把260个苹果平均装进4个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0778",
+      "category": "生活",
+      "prompt": "关于过滤，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0263",
+      "category": "自然",
+      "prompt": "如果要用一个简单的类比介绍冰雹，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0135",
+      "category": "物理",
+      "prompt": "学习共振时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0857",
+      "category": "生活",
+      "prompt": "如果要用一个简单的类比介绍指南针指向，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0701",
+      "category": "生物",
+      "prompt": "如果要用一个简单的类比介绍真菌，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0264",
+      "category": "自然",
+      "prompt": "关于冰雹，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0020",
+      "category": "物理",
+      "prompt": "日常生活里，哪里能观察到或用到浮力？举一个具体例子。"
+    },
+    {
+      "id": "everyday-000-2",
+      "category": "日常计算",
+      "prompt": "长方形长13厘米、宽3厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "everyday-040-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以9再加53等于458，这个数是多少？"
+    },
+    {
+      "id": "knowledge-0308",
+      "category": "自然",
+      "prompt": "日常生活里，哪里能观察到或用到彩虹？举一个具体例子。"
+    },
+    {
+      "id": "everyday-050-1",
+      "category": "日常计算",
+      "prompt": "63分钟相当于多少秒？"
+    },
+    {
+      "id": "everyday-005-1",
+      "category": "日常计算",
+      "prompt": "18分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-0937",
+      "category": "生活",
+      "prompt": "给小学生解释一下充电器变压，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0321",
+      "category": "自然",
+      "prompt": "学习气压时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-1116",
+      "category": "计算与数学",
+      "prompt": "关于搜索，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0099",
+      "category": "物理",
+      "prompt": "学习光的反射时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-069-2",
+      "category": "日常计算",
+      "prompt": "长方形长82厘米、宽4厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "knowledge-1145",
+      "category": "计算与数学",
+      "prompt": "如果要用一个简单的类比介绍缓存，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0363",
+      "category": "自然",
+      "prompt": "学习沙丘时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0886",
+      "category": "生活",
+      "prompt": "关于拉链闭合，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "everyday-008-3",
+      "category": "日常计算",
+      "prompt": "把231个苹果平均装进11个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0042",
+      "category": "物理",
+      "prompt": "关于热胀冷缩，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0122",
+      "category": "物理",
+      "prompt": "日常生活里，哪里能观察到或用到回声？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0119",
+      "category": "物理",
+      "prompt": "如果要用一个简单的类比介绍影子，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0094",
+      "category": "物理",
+      "prompt": "关于升华，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-1052",
+      "category": "计算与数学",
+      "prompt": "日常生活里，哪里能观察到或用到对称？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0568",
+      "category": "生物",
+      "prompt": "关于分解者，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "everyday-062-3",
+      "category": "日常计算",
+      "prompt": "把1050个苹果平均装进14个袋子，每袋装几个？"
+    },
+    {
+      "id": "everyday-014-2",
+      "category": "日常计算",
+      "prompt": "长方形长27厘米、宽17厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "knowledge-0689",
+      "category": "生物",
+      "prompt": "如果要用一个简单的类比介绍微生物，你会怎么说？"
+    },
+    {
+      "id": "everyday-053-1",
+      "category": "日常计算",
+      "prompt": "66分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-0275",
+      "category": "自然",
+      "prompt": "如果要用一个简单的类比介绍霜，你会怎么说？"
+    },
+    {
+      "id": "everyday-062-2",
+      "category": "日常计算",
+      "prompt": "长方形长75厘米、宽14厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "everyday-018-1",
+      "category": "日常计算",
+      "prompt": "31分钟相当于多少秒？"
+    },
+    {
+      "id": "everyday-025-0",
+      "category": "日常计算",
+      "prompt": "小林有38张卡片，又收到11张，随后送出5张。现在有多少张？"
+    },
+    {
+      "id": "everyday-000-3",
+      "category": "日常计算",
+      "prompt": "把39个苹果平均装进3个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0615",
+      "category": "生物",
+      "prompt": "学习鱼鳃时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-030-1",
+      "category": "日常计算",
+      "prompt": "43分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-0162",
+      "category": "物理",
+      "prompt": "关于磁场，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "everyday-067-1",
+      "category": "日常计算",
+      "prompt": "80分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-1050",
+      "category": "计算与数学",
+      "prompt": "关于组合，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-1051",
+      "category": "计算与数学",
+      "prompt": "给小学生解释一下对称，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0120",
+      "category": "物理",
+      "prompt": "关于影子，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0085",
+      "category": "物理",
+      "prompt": "给小学生解释一下液化，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0199",
+      "category": "物理",
+      "prompt": "给小学生解释一下并联电路，核心意思是什么？"
+    },
+    {
+      "id": "everyday-026-0",
+      "category": "日常计算",
+      "prompt": "小林有39张卡片，又收到12张，随后送出6张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0851",
+      "category": "生活",
+      "prompt": "如果要用一个简单的类比介绍温度计测温，你会怎么说？"
+    },
+    {
+      "id": "everyday-028-0",
+      "category": "日常计算",
+      "prompt": "小林有41张卡片，又收到14张，随后送出7张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0032",
+      "category": "物理",
+      "prompt": "日常生活里，哪里能观察到或用到大气压？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-1025",
+      "category": "计算与数学",
+      "prompt": "如果要用一个简单的类比介绍中位数，你会怎么说？"
+    },
+    {
+      "id": "everyday-013-0",
+      "category": "日常计算",
+      "prompt": "小林有26张卡片，又收到16张，随后送出8张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0305",
+      "category": "自然",
+      "prompt": "如果要用一个简单的类比介绍海陆风，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0864",
+      "category": "生活",
+      "prompt": "关于自行车变速，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0419",
+      "category": "自然",
+      "prompt": "如果要用一个简单的类比介绍化石，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0609",
+      "category": "生物",
+      "prompt": "学习鸟类羽毛时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-013-3",
+      "category": "日常计算",
+      "prompt": "把416个苹果平均装进16个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0997",
+      "category": "计算与数学",
+      "prompt": "给小学生解释一下分数，核心意思是什么？"
+    },
+    {
+      "id": "everyday-045-2",
+      "category": "日常计算",
+      "prompt": "长方形长58厘米、宽14厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "knowledge-0606",
+      "category": "生物",
+      "prompt": "关于冬眠，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0324",
+      "category": "自然",
+      "prompt": "关于气压，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0823",
+      "category": "生活",
+      "prompt": "给小学生解释一下铅笔书写，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-1031",
+      "category": "计算与数学",
+      "prompt": "如果要用一个简单的类比介绍众数，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0296",
+      "category": "自然",
+      "prompt": "日常生活里，哪里能观察到或用到季风？举一个具体例子。"
+    },
+    {
+      "id": "everyday-077-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以12再加90等于1074，这个数是多少？"
+    },
+    {
+      "id": "knowledge-0928",
+      "category": "生活",
+      "prompt": "关于太阳能电池，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0704",
+      "category": "生物",
+      "prompt": "日常生活里，哪里能观察到或用到酵母发酵？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0220",
+      "category": "物理",
+      "prompt": "关于势能，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0083",
+      "category": "物理",
+      "prompt": "如果要用一个简单的类比介绍熔化，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0706",
+      "category": "生物",
+      "prompt": "关于酵母发酵，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0465",
+      "category": "自然",
+      "prompt": "学习卫星时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0078",
+      "category": "物理",
+      "prompt": "关于凝固，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0586",
+      "category": "生物",
+      "prompt": "关于伪装色，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0693",
+      "category": "生物",
+      "prompt": "学习细菌时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0198",
+      "category": "物理",
+      "prompt": "关于串联电路，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-1066",
+      "category": "计算与数学",
+      "prompt": "关于面积，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0772",
+      "category": "生活",
+      "prompt": "关于肥皂去污，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0133",
+      "category": "物理",
+      "prompt": "给小学生解释一下共振，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0732",
+      "category": "生活",
+      "prompt": "关于保温杯保温，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0621",
+      "category": "生物",
+      "prompt": "学习昆虫外骨骼时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0149",
+      "category": "物理",
+      "prompt": "如果要用一个简单的类比介绍滑轮，你会怎么说？"
+    },
+    {
+      "id": "knowledge-1078",
+      "category": "计算与数学",
+      "prompt": "关于坐标，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "everyday-065-0",
+      "category": "日常计算",
+      "prompt": "小林有78张卡片，又收到17张，随后送出8张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-1082",
+      "category": "计算与数学",
+      "prompt": "日常生活里，哪里能观察到或用到算法？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0647",
+      "category": "生物",
+      "prompt": "如果要用一个简单的类比介绍蜗牛黏液，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0430",
+      "category": "自然",
+      "prompt": "关于四季变化，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0931",
+      "category": "生活",
+      "prompt": "给小学生解释一下电池储能，核心意思是什么？"
+    },
+    {
+      "id": "everyday-026-3",
+      "category": "日常计算",
+      "prompt": "把468个苹果平均装进12个袋子，每袋装几个？"
+    },
+    {
+      "id": "everyday-015-0",
+      "category": "日常计算",
+      "prompt": "小林有28张卡片，又收到18张，随后送出9张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0784",
+      "category": "生活",
+      "prompt": "关于沉淀，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-1186",
+      "category": "计算与数学",
+      "prompt": "关于校验和，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "everyday-067-2",
+      "category": "日常计算",
+      "prompt": "长方形长80厘米、宽19厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "knowledge-0987",
+      "category": "计算与数学",
+      "prompt": "学习公因数时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0348",
+      "category": "自然",
+      "prompt": "关于海浪，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0542",
+      "category": "生物",
+      "prompt": "日常生活里，哪里能观察到或用到食物链？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0927",
+      "category": "生活",
+      "prompt": "学习太阳能电池时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-002-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以5再加15等于50，这个数是多少？"
+    },
+    {
+      "id": "everyday-077-0",
+      "category": "日常计算",
+      "prompt": "小林有90张卡片，又收到12张，随后送出6张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0921",
+      "category": "生活",
+      "prompt": "学习麦克风拾音时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-075-1",
+      "category": "日常计算",
+      "prompt": "88分钟相当于多少秒？"
+    },
+    {
+      "id": "everyday-011-3",
+      "category": "日常计算",
+      "prompt": "把336个苹果平均装进14个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0079",
+      "category": "物理",
+      "prompt": "给小学生解释一下熔化，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0674",
+      "category": "生物",
+      "prompt": "日常生活里，哪里能观察到或用到细胞核？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0871",
+      "category": "生活",
+      "prompt": "给小学生解释一下轮胎花纹，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0705",
+      "category": "生物",
+      "prompt": "学习酵母发酵时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-063-2",
+      "category": "日常计算",
+      "prompt": "长方形长76厘米、宽15厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "everyday-012-3",
+      "category": "日常计算",
+      "prompt": "把375个苹果平均装进15个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0750",
+      "category": "生活",
+      "prompt": "关于眼镜起雾，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0505",
+      "category": "生物",
+      "prompt": "给小学生解释一下根的吸水，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0274",
+      "category": "自然",
+      "prompt": "关于霜，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-1042",
+      "category": "计算与数学",
+      "prompt": "关于排列，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0583",
+      "category": "生物",
+      "prompt": "给小学生解释一下伪装色，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-1129",
+      "category": "计算与数学",
+      "prompt": "给小学生解释一下像素，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0626",
+      "category": "生物",
+      "prompt": "日常生活里，哪里能观察到或用到蜘蛛结网？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0432",
+      "category": "自然",
+      "prompt": "关于四季变化，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0150",
+      "category": "物理",
+      "prompt": "关于滑轮，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0420",
+      "category": "自然",
+      "prompt": "关于化石，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-1169",
+      "category": "计算与数学",
+      "prompt": "如果要用一个简单的类比介绍IP 地址，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0716",
+      "category": "生物",
+      "prompt": "日常生活里，哪里能观察到或用到自然选择？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0992",
+      "category": "计算与数学",
+      "prompt": "日常生活里，哪里能观察到或用到公倍数？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-1149",
+      "category": "计算与数学",
+      "prompt": "学习浏览器时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0355",
+      "category": "自然",
+      "prompt": "给小学生解释一下三角洲，核心意思是什么？"
+    },
+    {
+      "id": "everyday-002-1",
+      "category": "日常计算",
+      "prompt": "15分钟相当于多少秒？"
+    },
+    {
+      "id": "everyday-038-1",
+      "category": "日常计算",
+      "prompt": "51分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-1009",
+      "category": "计算与数学",
+      "prompt": "给小学生解释一下百分数，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-1173",
+      "category": "计算与数学",
+      "prompt": "学习路由器时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-1132",
+      "category": "计算与数学",
+      "prompt": "关于像素，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0252",
+      "category": "自然",
+      "prompt": "关于降雨，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0761",
+      "category": "生活",
+      "prompt": "如果要用一个简单的类比介绍糖的溶解，你会怎么说？"
+    },
+    {
+      "id": "everyday-046-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以15再加59等于824，这个数是多少？"
+    },
+    {
+      "id": "everyday-031-1",
+      "category": "日常计算",
+      "prompt": "44分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-0807",
+      "category": "生活",
+      "prompt": "学习纸张吸水时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0155",
+      "category": "物理",
+      "prompt": "如果要用一个简单的类比介绍弹性，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0136",
+      "category": "物理",
+      "prompt": "关于共振，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-1034",
+      "category": "计算与数学",
+      "prompt": "日常生活里，哪里能观察到或用到概率？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0186",
+      "category": "物理",
+      "prompt": "关于导体，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "everyday-010-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以13再加23等于218，这个数是多少？"
+    },
+    {
+      "id": "knowledge-0745",
+      "category": "生活",
+      "prompt": "给小学生解释一下眼镜起雾，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0978",
+      "category": "计算与数学",
+      "prompt": "关于质数，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "everyday-072-0",
+      "category": "日常计算",
+      "prompt": "小林有85张卡片，又收到7张，随后送出3张。现在有多少张？"
+    },
+    {
+      "id": "everyday-002-0",
+      "category": "日常计算",
+      "prompt": "小林有15张卡片，又收到5张，随后送出2张。现在有多少张？"
+    },
+    {
+      "id": "everyday-047-0",
+      "category": "日常计算",
+      "prompt": "小林有60张卡片，又收到16张，随后送出8张。现在有多少张？"
+    },
+    {
+      "id": "everyday-011-1",
+      "category": "日常计算",
+      "prompt": "24分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-0792",
+      "category": "生活",
+      "prompt": "关于蒸馏，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0589",
+      "category": "生物",
+      "prompt": "给小学生解释一下警戒色，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0416",
+      "category": "自然",
+      "prompt": "日常生活里，哪里能观察到或用到化石？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0357",
+      "category": "自然",
+      "prompt": "学习三角洲时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-073-2",
+      "category": "日常计算",
+      "prompt": "长方形长86厘米、宽8厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "everyday-057-1",
+      "category": "日常计算",
+      "prompt": "70分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-0313",
+      "category": "自然",
+      "prompt": "给小学生解释一下雷电，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0161",
+      "category": "物理",
+      "prompt": "如果要用一个简单的类比介绍磁场，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0737",
+      "category": "生活",
+      "prompt": "如果要用一个简单的类比介绍空气湿度，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0953",
+      "category": "生活",
+      "prompt": "如果要用一个简单的类比介绍条形码，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0444",
+      "category": "自然",
+      "prompt": "关于日食，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-1093",
+      "category": "计算与数学",
+      "prompt": "给小学生解释一下循环，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0197",
+      "category": "物理",
+      "prompt": "如果要用一个简单的类比介绍串联电路，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0560",
+      "category": "生物",
+      "prompt": "日常生活里，哪里能观察到或用到生物多样性？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0640",
+      "category": "生物",
+      "prompt": "关于青蛙变态，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0091",
+      "category": "物理",
+      "prompt": "给小学生解释一下升华，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-1094",
+      "category": "计算与数学",
+      "prompt": "日常生活里，哪里能观察到或用到循环？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0226",
+      "category": "物理",
+      "prompt": "关于能量守恒，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0708",
+      "category": "生物",
+      "prompt": "关于酵母发酵，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "everyday-010-3",
+      "category": "日常计算",
+      "prompt": "把299个苹果平均装进13个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0399",
+      "category": "自然",
+      "prompt": "学习土壤时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0759",
+      "category": "生活",
+      "prompt": "学习糖的溶解时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0926",
+      "category": "生活",
+      "prompt": "日常生活里，哪里能观察到或用到太阳能电池？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0112",
+      "category": "物理",
+      "prompt": "关于色散，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0350",
+      "category": "自然",
+      "prompt": "日常生活里，哪里能观察到或用到河流侵蚀？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0835",
+      "category": "生活",
+      "prompt": "给小学生解释一下陶瓷隔热，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0445",
+      "category": "自然",
+      "prompt": "给小学生解释一下月食，核心意思是什么？"
+    },
+    {
+      "id": "everyday-031-2",
+      "category": "日常计算",
+      "prompt": "长方形长44厘米、宽17厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "knowledge-0569",
+      "category": "生物",
+      "prompt": "如果要用一个简单的类比介绍分解者，你会怎么说？"
+    },
+    {
+      "id": "everyday-063-0",
+      "category": "日常计算",
+      "prompt": "小林有76张卡片，又收到15张，随后送出7张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0108",
+      "category": "物理",
+      "prompt": "关于光的折射，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0873",
+      "category": "生活",
+      "prompt": "学习轮胎花纹时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0322",
+      "category": "自然",
+      "prompt": "关于气压，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-1086",
+      "category": "计算与数学",
+      "prompt": "关于算法，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-1178",
+      "category": "计算与数学",
+      "prompt": "日常生活里，哪里能观察到或用到数据包？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0650",
+      "category": "生物",
+      "prompt": "日常生活里，哪里能观察到或用到骆驼驼峰？举一个具体例子。"
+    },
+    {
+      "id": "everyday-053-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以5再加66等于356，这个数是多少？"
+    },
+    {
+      "id": "everyday-027-1",
+      "category": "日常计算",
+      "prompt": "40分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-0421",
+      "category": "自然",
+      "prompt": "给小学生解释一下昼夜交替，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0967",
+      "category": "计算与数学",
+      "prompt": "给小学生解释一下十进制，核心意思是什么？"
+    },
+    {
+      "id": "everyday-000-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以3再加13等于28，这个数是多少？"
+    },
+    {
+      "id": "knowledge-0554",
+      "category": "生物",
+      "prompt": "日常生活里，哪里能观察到或用到生态系统？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0929",
+      "category": "生活",
+      "prompt": "如果要用一个简单的类比介绍太阳能电池，你会怎么说？"
+    },
+    {
+      "id": "everyday-035-1",
+      "category": "日常计算",
+      "prompt": "48分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-0145",
+      "category": "物理",
+      "prompt": "给小学生解释一下滑轮，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0879",
+      "category": "生活",
+      "prompt": "学习雨伞挡雨时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0165",
+      "category": "物理",
+      "prompt": "学习静电时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0793",
+      "category": "生活",
+      "prompt": "给小学生解释一下铁生锈，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0339",
+      "category": "自然",
+      "prompt": "学习洋流时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0668",
+      "category": "生物",
+      "prompt": "日常生活里，哪里能观察到或用到细胞膜？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0039",
+      "category": "物理",
+      "prompt": "学习热胀冷缩时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-049-1",
+      "category": "日常计算",
+      "prompt": "62分钟相当于多少秒？"
+    },
+    {
+      "id": "everyday-043-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以12再加56等于632，这个数是多少？"
+    },
+    {
+      "id": "knowledge-0813",
+      "category": "生活",
+      "prompt": "学习海绵吸水时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0022",
+      "category": "物理",
+      "prompt": "关于浮力，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0187",
+      "category": "物理",
+      "prompt": "给小学生解释一下绝缘体，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0690",
+      "category": "生物",
+      "prompt": "关于微生物，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "everyday-002-3",
+      "category": "日常计算",
+      "prompt": "把75个苹果平均装进5个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0578",
+      "category": "生物",
+      "prompt": "日常生活里，哪里能观察到或用到消费者？举一个具体例子。"
+    },
+    {
+      "id": "everyday-022-3",
+      "category": "日常计算",
+      "prompt": "把280个苹果平均装进8个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0309",
+      "category": "自然",
+      "prompt": "学习彩虹时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0425",
+      "category": "自然",
+      "prompt": "如果要用一个简单的类比介绍昼夜交替，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0301",
+      "category": "自然",
+      "prompt": "给小学生解释一下海陆风，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0884",
+      "category": "生活",
+      "prompt": "日常生活里，哪里能观察到或用到拉链闭合？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0210",
+      "category": "物理",
+      "prompt": "关于电磁感应，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "everyday-031-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以17再加44等于656，这个数是多少？"
+    },
+    {
+      "id": "everyday-063-1",
+      "category": "日常计算",
+      "prompt": "76分钟相当于多少秒？"
+    },
+    {
+      "id": "everyday-049-2",
+      "category": "日常计算",
+      "prompt": "长方形长62厘米、宽18厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "everyday-020-0",
+      "category": "日常计算",
+      "prompt": "小林有33张卡片，又收到6张，随后送出3张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0942",
+      "category": "生活",
+      "prompt": "关于充电器变压，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0003",
+      "category": "物理",
+      "prompt": "学习惯性时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-008-0",
+      "category": "日常计算",
+      "prompt": "小林有21张卡片，又收到11张，随后送出5张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0999",
+      "category": "计算与数学",
+      "prompt": "学习分数时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0727",
+      "category": "生活",
+      "prompt": "给小学生解释一下保温杯保温，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-1065",
+      "category": "计算与数学",
+      "prompt": "学习面积时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0243",
+      "category": "自然",
+      "prompt": "学习水循环时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0943",
+      "category": "生活",
+      "prompt": "给小学生解释一下无线电传播，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-1074",
+      "category": "计算与数学",
+      "prompt": "关于体积，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0989",
+      "category": "计算与数学",
+      "prompt": "如果要用一个简单的类比介绍公因数，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0659",
+      "category": "生物",
+      "prompt": "如果要用一个简单的类比介绍仙人掌储水，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0503",
+      "category": "生物",
+      "prompt": "如果要用一个简单的类比介绍花粉传播，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0540",
+      "category": "生物",
+      "prompt": "关于休眠，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-1046",
+      "category": "计算与数学",
+      "prompt": "日常生活里，哪里能观察到或用到组合？举一个具体例子。"
+    },
+    {
+      "id": "everyday-003-3",
+      "category": "日常计算",
+      "prompt": "把96个苹果平均装进6个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0748",
+      "category": "生活",
+      "prompt": "关于眼镜起雾，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0830",
+      "category": "生活",
+      "prompt": "日常生活里，哪里能观察到或用到橡胶弹性？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0656",
+      "category": "生物",
+      "prompt": "日常生活里，哪里能观察到或用到仙人掌储水？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0565",
+      "category": "生物",
+      "prompt": "给小学生解释一下分解者，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0634",
+      "category": "生物",
+      "prompt": "关于蝴蝶变态，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0096",
+      "category": "物理",
+      "prompt": "关于升华，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "everyday-079-3",
+      "category": "日常计算",
+      "prompt": "把1288个苹果平均装进14个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0215",
+      "category": "物理",
+      "prompt": "如果要用一个简单的类比介绍动能，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0084",
+      "category": "物理",
+      "prompt": "关于熔化，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0327",
+      "category": "自然",
+      "prompt": "学习温室效应时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-060-2",
+      "category": "日常计算",
+      "prompt": "长方形长73厘米、宽12厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "knowledge-0456",
+      "category": "自然",
+      "prompt": "关于恒星，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "everyday-004-1",
+      "category": "日常计算",
+      "prompt": "17分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-0681",
+      "category": "生物",
+      "prompt": "学习叶绿体时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0358",
+      "category": "自然",
+      "prompt": "关于三角洲，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0551",
+      "category": "生物",
+      "prompt": "如果要用一个简单的类比介绍食物网，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0514",
+      "category": "生物",
+      "prompt": "关于叶片蒸腾，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0522",
+      "category": "生物",
+      "prompt": "关于植物向光性，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0747",
+      "category": "生活",
+      "prompt": "学习眼镜起雾时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0064",
+      "category": "物理",
+      "prompt": "关于蒸发，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0897",
+      "category": "生活",
+      "prompt": "学习安全带作用时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0097",
+      "category": "物理",
+      "prompt": "给小学生解释一下光的反射，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0959",
+      "category": "生活",
+      "prompt": "如果要用一个简单的类比介绍二维码，你会怎么说？"
+    },
+    {
+      "id": "knowledge-1053",
+      "category": "计算与数学",
+      "prompt": "学习对称时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0570",
+      "category": "生物",
+      "prompt": "关于分解者，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0622",
+      "category": "生物",
+      "prompt": "关于昆虫外骨骼，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "everyday-031-3",
+      "category": "日常计算",
+      "prompt": "把748个苹果平均装进17个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0918",
+      "category": "生活",
+      "prompt": "关于扬声器发声，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "everyday-054-0",
+      "category": "日常计算",
+      "prompt": "小林有67张卡片，又收到6张，随后送出3张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0006",
+      "category": "物理",
+      "prompt": "关于惯性，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "everyday-059-0",
+      "category": "日常计算",
+      "prompt": "小林有72张卡片，又收到11张，随后送出5张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0176",
+      "category": "物理",
+      "prompt": "日常生活里，哪里能观察到或用到电阻？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0721",
+      "category": "生活",
+      "prompt": "给小学生解释一下冰箱制冷，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0838",
+      "category": "生活",
+      "prompt": "关于陶瓷隔热，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "everyday-034-0",
+      "category": "日常计算",
+      "prompt": "小林有47张卡片，又收到3张，随后送出1张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-1158",
+      "category": "计算与数学",
+      "prompt": "关于操作系统，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0531",
+      "category": "生物",
+      "prompt": "学习年轮时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0601",
+      "category": "生物",
+      "prompt": "给小学生解释一下冬眠，核心意思是什么？"
+    },
+    {
+      "id": "everyday-077-1",
+      "category": "日常计算",
+      "prompt": "90分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-0575",
+      "category": "生物",
+      "prompt": "如果要用一个简单的类比介绍生产者，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0517",
+      "category": "生物",
+      "prompt": "给小学生解释一下植物向光性，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0115",
+      "category": "物理",
+      "prompt": "给小学生解释一下影子，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0266",
+      "category": "自然",
+      "prompt": "日常生活里，哪里能观察到或用到露水？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0493",
+      "category": "生物",
+      "prompt": "给小学生解释一下种子萌发，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0440",
+      "category": "自然",
+      "prompt": "日常生活里，哪里能观察到或用到日食？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0623",
+      "category": "生物",
+      "prompt": "如果要用一个简单的类比介绍昆虫外骨骼，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0138",
+      "category": "物理",
+      "prompt": "关于共振，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "everyday-015-1",
+      "category": "日常计算",
+      "prompt": "28分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-0400",
+      "category": "自然",
+      "prompt": "关于土壤，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "everyday-053-0",
+      "category": "日常计算",
+      "prompt": "小林有66张卡片，又收到5张，随后送出2张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0104",
+      "category": "物理",
+      "prompt": "日常生活里，哪里能观察到或用到光的折射？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0758",
+      "category": "生活",
+      "prompt": "日常生活里，哪里能观察到或用到糖的溶解？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0644",
+      "category": "生物",
+      "prompt": "日常生活里，哪里能观察到或用到蜗牛黏液？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0365",
+      "category": "自然",
+      "prompt": "如果要用一个简单的类比介绍沙丘，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0408",
+      "category": "自然",
+      "prompt": "关于腐殖质，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0595",
+      "category": "生物",
+      "prompt": "给小学生解释一下动物迁徙，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0828",
+      "category": "生活",
+      "prompt": "关于铅笔书写，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0865",
+      "category": "生活",
+      "prompt": "给小学生解释一下刹车减速，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0387",
+      "category": "自然",
+      "prompt": "学习板块运动时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0576",
+      "category": "生物",
+      "prompt": "关于生产者，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0248",
+      "category": "自然",
+      "prompt": "日常生活里，哪里能观察到或用到降雨？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-1055",
+      "category": "计算与数学",
+      "prompt": "如果要用一个简单的类比介绍对称，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0665",
+      "category": "生物",
+      "prompt": "如果要用一个简单的类比介绍细胞，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0814",
+      "category": "生活",
+      "prompt": "关于海绵吸水，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0898",
+      "category": "生活",
+      "prompt": "关于安全带作用，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0285",
+      "category": "自然",
+      "prompt": "学习云时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-1164",
+      "category": "计算与数学",
+      "prompt": "关于域名，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0510",
+      "category": "生物",
+      "prompt": "关于根的吸水，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0817",
+      "category": "生活",
+      "prompt": "给小学生解释一下橡皮擦字，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0754",
+      "category": "生活",
+      "prompt": "关于食盐溶解，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0072",
+      "category": "物理",
+      "prompt": "关于沸腾，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0025",
+      "category": "物理",
+      "prompt": "给小学生解释一下压强，核心意思是什么？"
+    },
+    {
+      "id": "everyday-036-1",
+      "category": "日常计算",
+      "prompt": "49分钟相当于多少秒？"
+    },
+    {
+      "id": "everyday-038-2",
+      "category": "日常计算",
+      "prompt": "长方形长51厘米、宽7厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "knowledge-0469",
+      "category": "自然",
+      "prompt": "给小学生解释一下彗星，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0592",
+      "category": "生物",
+      "prompt": "关于警戒色，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "everyday-023-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以9再加36等于288，这个数是多少？"
+    },
+    {
+      "id": "everyday-070-3",
+      "category": "日常计算",
+      "prompt": "把415个苹果平均装进5个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0961",
+      "category": "计算与数学",
+      "prompt": "给小学生解释一下二进制，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0111",
+      "category": "物理",
+      "prompt": "学习色散时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-014-3",
+      "category": "日常计算",
+      "prompt": "把459个苹果平均装进17个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-1190",
+      "category": "计算与数学",
+      "prompt": "日常生活里，哪里能观察到或用到备份？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0525",
+      "category": "生物",
+      "prompt": "学习落叶时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-069-1",
+      "category": "日常计算",
+      "prompt": "82分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-1185",
+      "category": "计算与数学",
+      "prompt": "学习校验和时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-078-1",
+      "category": "日常计算",
+      "prompt": "91分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-0618",
+      "category": "生物",
+      "prompt": "关于鱼鳃，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "everyday-056-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以8再加69等于557，这个数是多少？"
+    },
+    {
+      "id": "knowledge-0556",
+      "category": "生物",
+      "prompt": "关于生态系统，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "everyday-016-1",
+      "category": "日常计算",
+      "prompt": "29分钟相当于多少秒？"
+    },
+    {
+      "id": "everyday-020-2",
+      "category": "日常计算",
+      "prompt": "长方形长33厘米、宽6厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "everyday-057-3",
+      "category": "日常计算",
+      "prompt": "把630个苹果平均装进9个袋子，每袋装几个？"
+    },
+    {
+      "id": "everyday-063-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以15再加76等于1096，这个数是多少？"
+    },
+    {
+      "id": "knowledge-0147",
+      "category": "物理",
+      "prompt": "学习滑轮时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0816",
+      "category": "生活",
+      "prompt": "关于海绵吸水，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0724",
+      "category": "生活",
+      "prompt": "关于冰箱制冷，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0486",
+      "category": "生物",
+      "prompt": "关于光合作用，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0535",
+      "category": "生物",
+      "prompt": "给小学生解释一下休眠，核心意思是什么？"
+    },
+    {
+      "id": "everyday-064-0",
+      "category": "日常计算",
+      "prompt": "小林有77张卡片，又收到16张，随后送出8张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0249",
+      "category": "自然",
+      "prompt": "学习降雨时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-027-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以13再加40等于456，这个数是多少？"
+    },
+    {
+      "id": "knowledge-0228",
+      "category": "物理",
+      "prompt": "关于能量守恒，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0334",
+      "category": "自然",
+      "prompt": "关于海洋潮汐，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0678",
+      "category": "生物",
+      "prompt": "关于细胞核，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0490",
+      "category": "生物",
+      "prompt": "关于植物呼吸，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0253",
+      "category": "自然",
+      "prompt": "给小学生解释一下降雪，核心意思是什么？"
+    },
+    {
+      "id": "everyday-035-2",
+      "category": "日常计算",
+      "prompt": "长方形长48厘米、宽4厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "knowledge-0026",
+      "category": "物理",
+      "prompt": "日常生活里，哪里能观察到或用到压强？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0236",
+      "category": "物理",
+      "prompt": "日常生活里，哪里能观察到或用到表面张力？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0442",
+      "category": "自然",
+      "prompt": "关于日食，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "everyday-057-0",
+      "category": "日常计算",
+      "prompt": "小林有70张卡片，又收到9张，随后送出4张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0190",
+      "category": "物理",
+      "prompt": "关于绝缘体，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0116",
+      "category": "物理",
+      "prompt": "日常生活里，哪里能观察到或用到影子？举一个具体例子。"
+    },
+    {
+      "id": "everyday-079-1",
+      "category": "日常计算",
+      "prompt": "92分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-0056",
+      "category": "物理",
+      "prompt": "日常生活里，哪里能观察到或用到热辐射？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0509",
+      "category": "生物",
+      "prompt": "如果要用一个简单的类比介绍根的吸水，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0657",
+      "category": "生物",
+      "prompt": "学习仙人掌储水时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0043",
+      "category": "物理",
+      "prompt": "给小学生解释一下热传导，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0364",
+      "category": "自然",
+      "prompt": "关于沙丘，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "everyday-034-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以3再加47等于164，这个数是多少？"
+    },
+    {
+      "id": "everyday-009-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以12再加22等于190，这个数是多少？"
+    },
+    {
+      "id": "knowledge-0607",
+      "category": "生物",
+      "prompt": "给小学生解释一下鸟类羽毛，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0489",
+      "category": "生物",
+      "prompt": "学习植物呼吸时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0242",
+      "category": "自然",
+      "prompt": "日常生活里，哪里能观察到或用到水循环？举一个具体例子。"
+    },
+    {
+      "id": "everyday-029-2",
+      "category": "日常计算",
+      "prompt": "长方形长42厘米、宽15厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "knowledge-0520",
+      "category": "生物",
+      "prompt": "关于植物向光性，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "everyday-041-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以10再加54等于514，这个数是多少？"
+    },
+    {
+      "id": "knowledge-0506",
+      "category": "生物",
+      "prompt": "日常生活里，哪里能观察到或用到根的吸水？举一个具体例子。"
+    },
+    {
+      "id": "everyday-060-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以12再加73等于853，这个数是多少？"
+    },
+    {
+      "id": "everyday-017-2",
+      "category": "日常计算",
+      "prompt": "长方形长30厘米、宽3厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "knowledge-0580",
+      "category": "生物",
+      "prompt": "关于消费者，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0459",
+      "category": "自然",
+      "prompt": "学习行星时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0101",
+      "category": "物理",
+      "prompt": "如果要用一个简单的类比介绍光的反射，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0672",
+      "category": "生物",
+      "prompt": "关于细胞膜，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-1097",
+      "category": "计算与数学",
+      "prompt": "如果要用一个简单的类比介绍循环，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0151",
+      "category": "物理",
+      "prompt": "给小学生解释一下弹性，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0904",
+      "category": "生活",
+      "prompt": "关于电灯发光，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0446",
+      "category": "自然",
+      "prompt": "日常生活里，哪里能观察到或用到月食？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0874",
+      "category": "生活",
+      "prompt": "关于轮胎花纹，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0470",
+      "category": "自然",
+      "prompt": "日常生活里，哪里能观察到或用到彗星？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0764",
+      "category": "生活",
+      "prompt": "日常生活里，哪里能观察到或用到油水分层？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0867",
+      "category": "生活",
+      "prompt": "学习刹车减速时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0945",
+      "category": "生活",
+      "prompt": "学习无线电传播时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0344",
+      "category": "自然",
+      "prompt": "日常生活里，哪里能观察到或用到海浪？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0160",
+      "category": "物理",
+      "prompt": "关于磁场，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "everyday-044-1",
+      "category": "日常计算",
+      "prompt": "57分钟相当于多少秒？"
+    },
+    {
+      "id": "everyday-001-2",
+      "category": "日常计算",
+      "prompt": "长方形长14厘米、宽4厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "everyday-021-2",
+      "category": "日常计算",
+      "prompt": "长方形长34厘米、宽7厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "knowledge-0757",
+      "category": "生活",
+      "prompt": "给小学生解释一下糖的溶解，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0766",
+      "category": "生活",
+      "prompt": "关于油水分层，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "everyday-074-0",
+      "category": "日常计算",
+      "prompt": "小林有87张卡片，又收到9张，随后送出4张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-1049",
+      "category": "计算与数学",
+      "prompt": "如果要用一个简单的类比介绍组合，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0557",
+      "category": "生物",
+      "prompt": "如果要用一个简单的类比介绍生态系统，你会怎么说？"
+    },
+    {
+      "id": "knowledge-1079",
+      "category": "计算与数学",
+      "prompt": "如果要用一个简单的类比介绍坐标，你会怎么说？"
+    },
+    {
+      "id": "everyday-021-0",
+      "category": "日常计算",
+      "prompt": "小林有34张卡片，又收到7张，随后送出3张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0808",
+      "category": "生活",
+      "prompt": "关于纸张吸水，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0783",
+      "category": "生活",
+      "prompt": "学习沉淀时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0076",
+      "category": "物理",
+      "prompt": "关于凝固，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0484",
+      "category": "生物",
+      "prompt": "关于光合作用，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "everyday-017-1",
+      "category": "日常计算",
+      "prompt": "30分钟相当于多少秒？"
+    },
+    {
+      "id": "everyday-064-1",
+      "category": "日常计算",
+      "prompt": "77分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-0491",
+      "category": "生物",
+      "prompt": "如果要用一个简单的类比介绍植物呼吸，你会怎么说？"
+    },
+    {
+      "id": "everyday-030-2",
+      "category": "日常计算",
+      "prompt": "长方形长43厘米、宽16厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "everyday-045-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以14再加58等于758，这个数是多少？"
+    },
+    {
+      "id": "everyday-013-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以16再加26等于314，这个数是多少？"
+    },
+    {
+      "id": "everyday-055-2",
+      "category": "日常计算",
+      "prompt": "长方形长68厘米、宽7厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "knowledge-0516",
+      "category": "生物",
+      "prompt": "关于叶片蒸腾，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-1089",
+      "category": "计算与数学",
+      "prompt": "学习变量时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0740",
+      "category": "生活",
+      "prompt": "日常生活里，哪里能观察到或用到衣服晾干？举一个具体例子。"
+    },
+    {
+      "id": "everyday-029-0",
+      "category": "日常计算",
+      "prompt": "小林有42张卡片，又收到15张，随后送出7张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0234",
+      "category": "物理",
+      "prompt": "关于密度，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "everyday-062-1",
+      "category": "日常计算",
+      "prompt": "75分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-0547",
+      "category": "生物",
+      "prompt": "给小学生解释一下食物网，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0134",
+      "category": "物理",
+      "prompt": "日常生活里，哪里能观察到或用到共振？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0004",
+      "category": "物理",
+      "prompt": "关于惯性，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0703",
+      "category": "生物",
+      "prompt": "给小学生解释一下酵母发酵，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0392",
+      "category": "自然",
+      "prompt": "日常生活里，哪里能观察到或用到地下水？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0303",
+      "category": "自然",
+      "prompt": "学习海陆风时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0143",
+      "category": "物理",
+      "prompt": "如果要用一个简单的类比介绍杠杆，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0315",
+      "category": "自然",
+      "prompt": "学习雷电时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0300",
+      "category": "自然",
+      "prompt": "关于季风，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0617",
+      "category": "生物",
+      "prompt": "如果要用一个简单的类比介绍鱼鳃，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0655",
+      "category": "生物",
+      "prompt": "给小学生解释一下仙人掌储水，核心意思是什么？"
+    },
+    {
+      "id": "everyday-051-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以3再加64等于232，这个数是多少？"
+    },
+    {
+      "id": "knowledge-0221",
+      "category": "物理",
+      "prompt": "如果要用一个简单的类比介绍势能，你会怎么说？"
+    },
+    {
+      "id": "everyday-052-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以4再加65等于293，这个数是多少？"
+    },
+    {
+      "id": "knowledge-0335",
+      "category": "自然",
+      "prompt": "如果要用一个简单的类比介绍海洋潮汐，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0843",
+      "category": "生活",
+      "prompt": "学习玻璃透光时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-1084",
+      "category": "计算与数学",
+      "prompt": "关于算法，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0222",
+      "category": "物理",
+      "prompt": "关于势能，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0760",
+      "category": "生活",
+      "prompt": "关于糖的溶解，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0189",
+      "category": "物理",
+      "prompt": "学习绝缘体时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0023",
+      "category": "物理",
+      "prompt": "如果要用一个简单的类比介绍浮力，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0485",
+      "category": "生物",
+      "prompt": "如果要用一个简单的类比介绍光合作用，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0628",
+      "category": "生物",
+      "prompt": "关于蜘蛛结网，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0526",
+      "category": "生物",
+      "prompt": "关于落叶，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-1004",
+      "category": "计算与数学",
+      "prompt": "日常生活里，哪里能观察到或用到小数？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0346",
+      "category": "自然",
+      "prompt": "关于海浪，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-1138",
+      "category": "计算与数学",
+      "prompt": "关于分辨率，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0212",
+      "category": "物理",
+      "prompt": "日常生活里，哪里能观察到或用到动能？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0591",
+      "category": "生物",
+      "prompt": "学习警戒色时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-014-0",
+      "category": "日常计算",
+      "prompt": "小林有27张卡片，又收到17张，随后送出8张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-1056",
+      "category": "计算与数学",
+      "prompt": "关于对称，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0910",
+      "category": "生活",
+      "prompt": "关于LED 发光，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-1027",
+      "category": "计算与数学",
+      "prompt": "给小学生解释一下众数，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0880",
+      "category": "生活",
+      "prompt": "关于雨伞挡雨，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "everyday-067-0",
+      "category": "日常计算",
+      "prompt": "小林有80张卡片，又收到19张，随后送出9张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0070",
+      "category": "物理",
+      "prompt": "关于沸腾，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0770",
+      "category": "生活",
+      "prompt": "日常生活里，哪里能观察到或用到肥皂去污？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0573",
+      "category": "生物",
+      "prompt": "学习生产者时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0152",
+      "category": "物理",
+      "prompt": "日常生活里，哪里能观察到或用到弹性？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0051",
+      "category": "物理",
+      "prompt": "学习对流时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0050",
+      "category": "物理",
+      "prompt": "日常生活里，哪里能观察到或用到对流？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0183",
+      "category": "物理",
+      "prompt": "学习导体时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0349",
+      "category": "自然",
+      "prompt": "给小学生解释一下河流侵蚀，核心意思是什么？"
+    },
+    {
+      "id": "everyday-025-3",
+      "category": "日常计算",
+      "prompt": "把418个苹果平均装进11个袋子，每袋装几个？"
+    },
+    {
+      "id": "everyday-030-3",
+      "category": "日常计算",
+      "prompt": "把688个苹果平均装进16个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-1019",
+      "category": "计算与数学",
+      "prompt": "如果要用一个简单的类比介绍平均数，你会怎么说？"
+    },
+    {
+      "id": "knowledge-1091",
+      "category": "计算与数学",
+      "prompt": "如果要用一个简单的类比介绍变量，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0991",
+      "category": "计算与数学",
+      "prompt": "给小学生解释一下公倍数，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0584",
+      "category": "生物",
+      "prompt": "日常生活里，哪里能观察到或用到伪装色？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0240",
+      "category": "物理",
+      "prompt": "关于表面张力，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "everyday-008-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以11再加21等于164，这个数是多少？"
+    },
+    {
+      "id": "knowledge-0092",
+      "category": "物理",
+      "prompt": "日常生活里，哪里能观察到或用到升华？举一个具体例子。"
+    },
+    {
+      "id": "everyday-063-3",
+      "category": "日常计算",
+      "prompt": "把1140个苹果平均装进15个袋子，每袋装几个？"
+    },
+    {
+      "id": "everyday-071-2",
+      "category": "日常计算",
+      "prompt": "长方形长84厘米、宽6厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "everyday-015-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以18再加28等于388，这个数是多少？"
+    },
+    {
+      "id": "everyday-028-2",
+      "category": "日常计算",
+      "prompt": "长方形长41厘米、宽14厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "knowledge-1191",
+      "category": "计算与数学",
+      "prompt": "学习备份时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0868",
+      "category": "生活",
+      "prompt": "关于刹车减速，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "everyday-018-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以4再加31等于123，这个数是多少？"
+    },
+    {
+      "id": "everyday-002-2",
+      "category": "日常计算",
+      "prompt": "长方形长15厘米、宽5厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "everyday-045-0",
+      "category": "日常计算",
+      "prompt": "小林有58张卡片，又收到14张，随后送出7张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0436",
+      "category": "自然",
+      "prompt": "关于月相，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0743",
+      "category": "生活",
+      "prompt": "如果要用一个简单的类比介绍衣服晾干，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0431",
+      "category": "自然",
+      "prompt": "如果要用一个简单的类比介绍四季变化，你会怎么说？"
+    },
+    {
+      "id": "everyday-037-2",
+      "category": "日常计算",
+      "prompt": "长方形长50厘米、宽6厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "knowledge-0544",
+      "category": "生物",
+      "prompt": "关于食物链，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0217",
+      "category": "物理",
+      "prompt": "给小学生解释一下势能，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0883",
+      "category": "生活",
+      "prompt": "给小学生解释一下拉链闭合，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0951",
+      "category": "生活",
+      "prompt": "学习条形码时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-1006",
+      "category": "计算与数学",
+      "prompt": "关于小数，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-1041",
+      "category": "计算与数学",
+      "prompt": "学习排列时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-044-0",
+      "category": "日常计算",
+      "prompt": "小林有57张卡片，又收到13张，随后送出6张。现在有多少张？"
+    },
+    {
+      "id": "everyday-019-3",
+      "category": "日常计算",
+      "prompt": "把160个苹果平均装进5个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0919",
+      "category": "生活",
+      "prompt": "给小学生解释一下麦克风拾音，核心意思是什么？"
+    },
+    {
+      "id": "everyday-020-3",
+      "category": "日常计算",
+      "prompt": "把198个苹果平均装进6个袋子，每袋装几个？"
+    },
+    {
+      "id": "everyday-061-3",
+      "category": "日常计算",
+      "prompt": "把962个苹果平均装进13个袋子，每袋装几个？"
+    },
+    {
+      "id": "everyday-040-1",
+      "category": "日常计算",
+      "prompt": "53分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-0179",
+      "category": "物理",
+      "prompt": "如果要用一个简单的类比介绍电阻，你会怎么说？"
+    },
+    {
+      "id": "everyday-069-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以4再加82等于378，这个数是多少？"
+    },
+    {
+      "id": "knowledge-1072",
+      "category": "计算与数学",
+      "prompt": "关于体积，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-1075",
+      "category": "计算与数学",
+      "prompt": "给小学生解释一下坐标，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0014",
+      "category": "物理",
+      "prompt": "日常生活里，哪里能观察到或用到重力？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0439",
+      "category": "自然",
+      "prompt": "给小学生解释一下日食，核心意思是什么？"
+    },
+    {
+      "id": "everyday-042-0",
+      "category": "日常计算",
+      "prompt": "小林有55张卡片，又收到11张，随后送出5张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0125",
+      "category": "物理",
+      "prompt": "如果要用一个简单的类比介绍回声，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0241",
+      "category": "自然",
+      "prompt": "给小学生解释一下水循环，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0667",
+      "category": "生物",
+      "prompt": "给小学生解释一下细胞膜，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0627",
+      "category": "生物",
+      "prompt": "学习蜘蛛结网时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0725",
+      "category": "生活",
+      "prompt": "如果要用一个简单的类比介绍冰箱制冷，你会怎么说？"
+    },
+    {
+      "id": "everyday-067-3",
+      "category": "日常计算",
+      "prompt": "把1520个苹果平均装进19个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0890",
+      "category": "生活",
+      "prompt": "日常生活里，哪里能观察到或用到螺丝固定？举一个具体例子。"
+    },
+    {
+      "id": "everyday-043-0",
+      "category": "日常计算",
+      "prompt": "小林有56张卡片，又收到12张，随后送出6张。现在有多少张？"
+    },
+    {
+      "id": "everyday-001-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以4再加14等于38，这个数是多少？"
+    },
+    {
+      "id": "knowledge-0820",
+      "category": "生活",
+      "prompt": "关于橡皮擦字，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0127",
+      "category": "物理",
+      "prompt": "给小学生解释一下声波，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0494",
+      "category": "生物",
+      "prompt": "日常生活里，哪里能观察到或用到种子萌发？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0950",
+      "category": "生活",
+      "prompt": "日常生活里，哪里能观察到或用到条形码？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0328",
+      "category": "自然",
+      "prompt": "关于温室效应，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0852",
+      "category": "生活",
+      "prompt": "关于温度计测温，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "everyday-046-2",
+      "category": "日常计算",
+      "prompt": "长方形长59厘米、宽15厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "knowledge-0902",
+      "category": "生活",
+      "prompt": "日常生活里，哪里能观察到或用到电灯发光？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-1064",
+      "category": "计算与数学",
+      "prompt": "日常生活里，哪里能观察到或用到面积？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0600",
+      "category": "生物",
+      "prompt": "关于动物迁徙，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0577",
+      "category": "生物",
+      "prompt": "给小学生解释一下消费者，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0203",
+      "category": "物理",
+      "prompt": "如果要用一个简单的类比介绍并联电路，你会怎么说？"
+    },
+    {
+      "id": "everyday-013-2",
+      "category": "日常计算",
+      "prompt": "长方形长26厘米、宽16厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "knowledge-0645",
+      "category": "生物",
+      "prompt": "学习蜗牛黏液时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0979",
+      "category": "计算与数学",
+      "prompt": "给小学生解释一下合数，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0117",
+      "category": "物理",
+      "prompt": "学习影子时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-1083",
+      "category": "计算与数学",
+      "prompt": "学习算法时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0692",
+      "category": "生物",
+      "prompt": "日常生活里，哪里能观察到或用到细菌？举一个具体例子。"
+    },
+    {
+      "id": "everyday-031-0",
+      "category": "日常计算",
+      "prompt": "小林有44张卡片，又收到17张，随后送出8张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0698",
+      "category": "生物",
+      "prompt": "日常生活里，哪里能观察到或用到真菌？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0872",
+      "category": "生活",
+      "prompt": "日常生活里，哪里能观察到或用到轮胎花纹？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-1162",
+      "category": "计算与数学",
+      "prompt": "关于域名，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0342",
+      "category": "自然",
+      "prompt": "关于洋流，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0582",
+      "category": "生物",
+      "prompt": "关于消费者，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0106",
+      "category": "物理",
+      "prompt": "关于光的折射，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0916",
+      "category": "生活",
+      "prompt": "关于扬声器发声，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "everyday-074-3",
+      "category": "日常计算",
+      "prompt": "把783个苹果平均装进9个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0045",
+      "category": "物理",
+      "prompt": "学习热传导时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0939",
+      "category": "生活",
+      "prompt": "学习充电器变压时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-004-0",
+      "category": "日常计算",
+      "prompt": "小林有17张卡片，又收到7张，随后送出3张。现在有多少张？"
+    },
+    {
+      "id": "everyday-037-3",
+      "category": "日常计算",
+      "prompt": "把300个苹果平均装进6个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0564",
+      "category": "生物",
+      "prompt": "关于生物多样性，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0175",
+      "category": "物理",
+      "prompt": "给小学生解释一下电阻，核心意思是什么？"
+    },
+    {
+      "id": "everyday-022-0",
+      "category": "日常计算",
+      "prompt": "小林有35张卡片，又收到8张，随后送出4张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0159",
+      "category": "物理",
+      "prompt": "学习磁场时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0636",
+      "category": "生物",
+      "prompt": "关于蝴蝶变态，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0057",
+      "category": "物理",
+      "prompt": "学习热辐射时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-071-1",
+      "category": "日常计算",
+      "prompt": "84分钟相当于多少秒？"
+    },
+    {
+      "id": "everyday-025-1",
+      "category": "日常计算",
+      "prompt": "38分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-0247",
+      "category": "自然",
+      "prompt": "给小学生解释一下降雨，核心意思是什么？"
+    },
+    {
+      "id": "everyday-075-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以10再加88等于888，这个数是多少？"
+    },
+    {
+      "id": "knowledge-0424",
+      "category": "自然",
+      "prompt": "关于昼夜交替，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-1196",
+      "category": "计算与数学",
+      "prompt": "日常生活里，哪里能观察到或用到时间戳？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-1134",
+      "category": "计算与数学",
+      "prompt": "关于像素，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0055",
+      "category": "物理",
+      "prompt": "给小学生解释一下热辐射，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-1106",
+      "category": "计算与数学",
+      "prompt": "日常生活里，哪里能观察到或用到排序？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0437",
+      "category": "自然",
+      "prompt": "如果要用一个简单的类比介绍月相，你会怎么说？"
+    },
+    {
+      "id": "everyday-079-2",
+      "category": "日常计算",
+      "prompt": "长方形长92厘米、宽14厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "knowledge-1174",
+      "category": "计算与数学",
+      "prompt": "关于路由器，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "everyday-025-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以11再加38等于368，这个数是多少？"
+    },
+    {
+      "id": "knowledge-0934",
+      "category": "生活",
+      "prompt": "关于电池储能，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0385",
+      "category": "自然",
+      "prompt": "给小学生解释一下板块运动，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0637",
+      "category": "生物",
+      "prompt": "给小学生解释一下青蛙变态，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0312",
+      "category": "自然",
+      "prompt": "关于彩虹，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0040",
+      "category": "物理",
+      "prompt": "关于热胀冷缩，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0856",
+      "category": "生活",
+      "prompt": "关于指南针指向，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0146",
+      "category": "物理",
+      "prompt": "日常生活里，哪里能观察到或用到滑轮？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-1159",
+      "category": "计算与数学",
+      "prompt": "给小学生解释一下域名，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0734",
+      "category": "生活",
+      "prompt": "日常生活里，哪里能观察到或用到空气湿度？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0733",
+      "category": "生活",
+      "prompt": "给小学生解释一下空气湿度，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0846",
+      "category": "生活",
+      "prompt": "关于玻璃透光，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0417",
+      "category": "自然",
+      "prompt": "学习化石时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0477",
+      "category": "自然",
+      "prompt": "学习流星时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-059-3",
+      "category": "日常计算",
+      "prompt": "把792个苹果平均装进11个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0849",
+      "category": "生活",
+      "prompt": "学习温度计测温时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0325",
+      "category": "自然",
+      "prompt": "给小学生解释一下温室效应，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0295",
+      "category": "自然",
+      "prompt": "给小学生解释一下季风，核心意思是什么？"
+    },
+    {
+      "id": "everyday-003-2",
+      "category": "日常计算",
+      "prompt": "长方形长16厘米、宽6厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "knowledge-0798",
+      "category": "生活",
+      "prompt": "关于铁生锈，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-1023",
+      "category": "计算与数学",
+      "prompt": "学习中位数时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0826",
+      "category": "生活",
+      "prompt": "关于铅笔书写，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0893",
+      "category": "生活",
+      "prompt": "如果要用一个简单的类比介绍螺丝固定，你会怎么说？"
+    },
+    {
+      "id": "knowledge-1184",
+      "category": "计算与数学",
+      "prompt": "日常生活里，哪里能观察到或用到校验和？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0954",
+      "category": "生活",
+      "prompt": "关于条形码，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "everyday-071-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以6再加84等于540，这个数是多少？"
+    },
+    {
+      "id": "knowledge-1119",
+      "category": "计算与数学",
+      "prompt": "学习文件压缩时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0273",
+      "category": "自然",
+      "prompt": "学习霜时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0969",
+      "category": "计算与数学",
+      "prompt": "学习十进制时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-058-1",
+      "category": "日常计算",
+      "prompt": "71分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-1121",
+      "category": "计算与数学",
+      "prompt": "如果要用一个简单的类比介绍文件压缩，你会怎么说？"
+    },
+    {
+      "id": "knowledge-1114",
+      "category": "计算与数学",
+      "prompt": "关于搜索，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0553",
+      "category": "生物",
+      "prompt": "给小学生解释一下生态系统，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0960",
+      "category": "生活",
+      "prompt": "关于二维码，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0608",
+      "category": "生物",
+      "prompt": "日常生活里，哪里能观察到或用到鸟类羽毛？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-1160",
+      "category": "计算与数学",
+      "prompt": "日常生活里，哪里能观察到或用到域名？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0374",
+      "category": "自然",
+      "prompt": "日常生活里，哪里能观察到或用到火山？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0341",
+      "category": "自然",
+      "prompt": "如果要用一个简单的类比介绍洋流，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0290",
+      "category": "自然",
+      "prompt": "日常生活里，哪里能观察到或用到风？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0331",
+      "category": "自然",
+      "prompt": "给小学生解释一下海洋潮汐，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0337",
+      "category": "自然",
+      "prompt": "给小学生解释一下洋流，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0602",
+      "category": "生物",
+      "prompt": "日常生活里，哪里能观察到或用到冬眠？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0361",
+      "category": "自然",
+      "prompt": "给小学生解释一下沙丘，核心意思是什么？"
+    },
+    {
+      "id": "everyday-052-2",
+      "category": "日常计算",
+      "prompt": "长方形长65厘米、宽4厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "knowledge-0287",
+      "category": "自然",
+      "prompt": "如果要用一个简单的类比介绍云，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0994",
+      "category": "计算与数学",
+      "prompt": "关于公倍数，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0791",
+      "category": "生活",
+      "prompt": "如果要用一个简单的类比介绍蒸馏，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0368",
+      "category": "自然",
+      "prompt": "日常生活里，哪里能观察到或用到岩石风化？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-1035",
+      "category": "计算与数学",
+      "prompt": "学习概率时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0402",
+      "category": "自然",
+      "prompt": "关于土壤，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "everyday-077-3",
+      "category": "日常计算",
+      "prompt": "把1080个苹果平均装进12个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0658",
+      "category": "生物",
+      "prompt": "关于仙人掌储水，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0833",
+      "category": "生活",
+      "prompt": "如果要用一个简单的类比介绍橡胶弹性，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0231",
+      "category": "物理",
+      "prompt": "学习密度时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0124",
+      "category": "物理",
+      "prompt": "关于回声，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "everyday-042-3",
+      "category": "日常计算",
+      "prompt": "把605个苹果平均装进11个袋子，每袋装几个？"
+    },
+    {
+      "id": "everyday-038-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以7再加51等于352，这个数是多少？"
+    },
+    {
+      "id": "everyday-027-0",
+      "category": "日常计算",
+      "prompt": "小林有40张卡片，又收到13张，随后送出6张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0559",
+      "category": "生物",
+      "prompt": "给小学生解释一下生物多样性，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0333",
+      "category": "自然",
+      "prompt": "学习海洋潮汐时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0448",
+      "category": "自然",
+      "prompt": "关于月食，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-1153",
+      "category": "计算与数学",
+      "prompt": "给小学生解释一下操作系统，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0965",
+      "category": "计算与数学",
+      "prompt": "如果要用一个简单的类比介绍二进制，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0571",
+      "category": "生物",
+      "prompt": "给小学生解释一下生产者，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0860",
+      "category": "生活",
+      "prompt": "日常生活里，哪里能观察到或用到自行车变速？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0246",
+      "category": "自然",
+      "prompt": "关于水循环，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "everyday-048-0",
+      "category": "日常计算",
+      "prompt": "小林有61张卡片，又收到17张，随后送出8张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0572",
+      "category": "生物",
+      "prompt": "日常生活里，哪里能观察到或用到生产者？举一个具体例子。"
+    },
+    {
+      "id": "everyday-065-3",
+      "category": "日常计算",
+      "prompt": "把1326个苹果平均装进17个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0268",
+      "category": "自然",
+      "prompt": "关于露水，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "everyday-025-2",
+      "category": "日常计算",
+      "prompt": "长方形长38厘米、宽11厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "knowledge-0317",
+      "category": "自然",
+      "prompt": "如果要用一个简单的类比介绍雷电，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0384",
+      "category": "自然",
+      "prompt": "关于地震，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-1033",
+      "category": "计算与数学",
+      "prompt": "给小学生解释一下概率，核心意思是什么？"
+    },
+    {
+      "id": "everyday-016-2",
+      "category": "日常计算",
+      "prompt": "长方形长29厘米、宽19厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "knowledge-0707",
+      "category": "生物",
+      "prompt": "如果要用一个简单的类比介绍酵母发酵，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0292",
+      "category": "自然",
+      "prompt": "关于风，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "everyday-066-1",
+      "category": "日常计算",
+      "prompt": "79分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-0362",
+      "category": "自然",
+      "prompt": "日常生活里，哪里能观察到或用到沙丘？举一个具体例子。"
+    },
+    {
+      "id": "everyday-071-0",
+      "category": "日常计算",
+      "prompt": "小林有84张卡片，又收到6张，随后送出3张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0352",
+      "category": "自然",
+      "prompt": "关于河流侵蚀，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0011",
+      "category": "物理",
+      "prompt": "如果要用一个简单的类比介绍摩擦力，你会怎么说？"
+    },
+    {
+      "id": "everyday-017-3",
+      "category": "日常计算",
+      "prompt": "把90个苹果平均装进3个袋子，每袋装几个？"
+    },
+    {
+      "id": "everyday-060-1",
+      "category": "日常计算",
+      "prompt": "73分钟相当于多少秒？"
+    },
+    {
+      "id": "everyday-024-1",
+      "category": "日常计算",
+      "prompt": "37分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-0963",
+      "category": "计算与数学",
+      "prompt": "学习二进制时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-1081",
+      "category": "计算与数学",
+      "prompt": "给小学生解释一下算法，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-1020",
+      "category": "计算与数学",
+      "prompt": "关于平均数，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "everyday-022-1",
+      "category": "日常计算",
+      "prompt": "35分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-0433",
+      "category": "自然",
+      "prompt": "给小学生解释一下月相，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0558",
+      "category": "生物",
+      "prompt": "关于生态系统，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "everyday-042-1",
+      "category": "日常计算",
+      "prompt": "55分钟相当于多少秒？"
+    },
+    {
+      "id": "everyday-009-2",
+      "category": "日常计算",
+      "prompt": "长方形长22厘米、宽12厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "knowledge-1107",
+      "category": "计算与数学",
+      "prompt": "学习排序时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-1000",
+      "category": "计算与数学",
+      "prompt": "关于分数，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0653",
+      "category": "生物",
+      "prompt": "如果要用一个简单的类比介绍骆驼驼峰，你会怎么说？"
+    },
+    {
+      "id": "everyday-042-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以11再加55等于572，这个数是多少？"
+    },
+    {
+      "id": "knowledge-1154",
+      "category": "计算与数学",
+      "prompt": "日常生活里，哪里能观察到或用到操作系统？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-1155",
+      "category": "计算与数学",
+      "prompt": "学习操作系统时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-1143",
+      "category": "计算与数学",
+      "prompt": "学习缓存时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0434",
+      "category": "自然",
+      "prompt": "日常生活里，哪里能观察到或用到月相？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0524",
+      "category": "生物",
+      "prompt": "日常生活里，哪里能观察到或用到落叶？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0605",
+      "category": "生物",
+      "prompt": "如果要用一个简单的类比介绍冬眠，你会怎么说？"
+    },
+    {
+      "id": "everyday-040-2",
+      "category": "日常计算",
+      "prompt": "长方形长53厘米、宽9厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "knowledge-0398",
+      "category": "自然",
+      "prompt": "日常生活里，哪里能观察到或用到土壤？举一个具体例子。"
+    },
+    {
+      "id": "everyday-010-2",
+      "category": "日常计算",
+      "prompt": "长方形长23厘米、宽13厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "everyday-047-2",
+      "category": "日常计算",
+      "prompt": "长方形长60厘米、宽16厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "knowledge-0375",
+      "category": "自然",
+      "prompt": "学习火山时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0451",
+      "category": "自然",
+      "prompt": "给小学生解释一下恒星，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0646",
+      "category": "生物",
+      "prompt": "关于蜗牛黏液，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0717",
+      "category": "生物",
+      "prompt": "学习自然选择时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0403",
+      "category": "自然",
+      "prompt": "给小学生解释一下腐殖质，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0594",
+      "category": "生物",
+      "prompt": "关于警戒色，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0464",
+      "category": "自然",
+      "prompt": "日常生活里，哪里能观察到或用到卫星？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0406",
+      "category": "自然",
+      "prompt": "关于腐殖质，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0686",
+      "category": "生物",
+      "prompt": "日常生活里，哪里能观察到或用到微生物？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0438",
+      "category": "自然",
+      "prompt": "关于月相，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0126",
+      "category": "物理",
+      "prompt": "关于回声，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "everyday-001-0",
+      "category": "日常计算",
+      "prompt": "小林有14张卡片，又收到4张，随后送出2张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0035",
+      "category": "物理",
+      "prompt": "如果要用一个简单的类比介绍大气压，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0728",
+      "category": "生活",
+      "prompt": "日常生活里，哪里能观察到或用到保温杯保温？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-1175",
+      "category": "计算与数学",
+      "prompt": "如果要用一个简单的类比介绍路由器，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0501",
+      "category": "生物",
+      "prompt": "学习花粉传播时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-058-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以10再加71等于701，这个数是多少？"
+    },
+    {
+      "id": "knowledge-0351",
+      "category": "自然",
+      "prompt": "学习河流侵蚀时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-033-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以19再加46等于768，这个数是多少？"
+    },
+    {
+      "id": "knowledge-0900",
+      "category": "生活",
+      "prompt": "关于安全带作用，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0948",
+      "category": "生活",
+      "prompt": "关于无线电传播，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-1108",
+      "category": "计算与数学",
+      "prompt": "关于排序，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0662",
+      "category": "生物",
+      "prompt": "日常生活里，哪里能观察到或用到细胞？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0847",
+      "category": "生活",
+      "prompt": "给小学生解释一下温度计测温，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0071",
+      "category": "物理",
+      "prompt": "如果要用一个简单的类比介绍沸腾，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0834",
+      "category": "生活",
+      "prompt": "关于橡胶弹性，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0269",
+      "category": "自然",
+      "prompt": "如果要用一个简单的类比介绍露水，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0109",
+      "category": "物理",
+      "prompt": "给小学生解释一下色散，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0441",
+      "category": "自然",
+      "prompt": "学习日食时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-027-2",
+      "category": "日常计算",
+      "prompt": "长方形长40厘米、宽13厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "knowledge-0751",
+      "category": "生活",
+      "prompt": "给小学生解释一下食盐溶解，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0769",
+      "category": "生活",
+      "prompt": "给小学生解释一下肥皂去污，核心意思是什么？"
+    },
+    {
+      "id": "everyday-054-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以6再加67等于421，这个数是多少？"
+    },
+    {
+      "id": "everyday-032-2",
+      "category": "日常计算",
+      "prompt": "长方形长45厘米、宽18厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "knowledge-0389",
+      "category": "自然",
+      "prompt": "如果要用一个简单的类比介绍板块运动，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0065",
+      "category": "物理",
+      "prompt": "如果要用一个简单的类比介绍蒸发，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0878",
+      "category": "生活",
+      "prompt": "日常生活里，哪里能观察到或用到雨伞挡雨？举一个具体例子。"
+    },
+    {
+      "id": "everyday-052-1",
+      "category": "日常计算",
+      "prompt": "65分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-0907",
+      "category": "生活",
+      "prompt": "给小学生解释一下LED 发光，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-1058",
+      "category": "计算与数学",
+      "prompt": "日常生活里，哪里能观察到或用到周长？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0738",
+      "category": "生活",
+      "prompt": "关于空气湿度，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0500",
+      "category": "生物",
+      "prompt": "日常生活里，哪里能观察到或用到花粉传播？举一个具体例子。"
+    },
+    {
+      "id": "everyday-078-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以13再加91等于1170，这个数是多少？"
+    },
+    {
+      "id": "everyday-050-3",
+      "category": "日常计算",
+      "prompt": "把1197个苹果平均装进19个袋子，每袋装几个？"
+    },
+    {
+      "id": "everyday-019-1",
+      "category": "日常计算",
+      "prompt": "32分钟相当于多少秒？"
+    },
+    {
+      "id": "everyday-003-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以6再加16等于64，这个数是多少？"
+    },
+    {
+      "id": "everyday-052-0",
+      "category": "日常计算",
+      "prompt": "小林有65张卡片，又收到4张，随后送出2张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0973",
+      "category": "计算与数学",
+      "prompt": "给小学生解释一下质数，核心意思是什么？"
+    },
+    {
+      "id": "everyday-005-0",
+      "category": "日常计算",
+      "prompt": "小林有18张卡片，又收到8张，随后送出4张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0956",
+      "category": "生活",
+      "prompt": "日常生活里，哪里能观察到或用到二维码？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0291",
+      "category": "自然",
+      "prompt": "学习风时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0599",
+      "category": "生物",
+      "prompt": "如果要用一个简单的类比介绍动物迁徙，你会怎么说？"
+    },
+    {
+      "id": "knowledge-1036",
+      "category": "计算与数学",
+      "prompt": "关于概率，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0310",
+      "category": "自然",
+      "prompt": "关于彩虹，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0825",
+      "category": "生活",
+      "prompt": "学习铅笔书写时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-1098",
+      "category": "计算与数学",
+      "prompt": "关于循环，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0669",
+      "category": "生物",
+      "prompt": "学习细胞膜时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-1125",
+      "category": "计算与数学",
+      "prompt": "学习字符编码时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0475",
+      "category": "自然",
+      "prompt": "给小学生解释一下流星，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0298",
+      "category": "自然",
+      "prompt": "关于季风，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0426",
+      "category": "自然",
+      "prompt": "关于昼夜交替，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0259",
+      "category": "自然",
+      "prompt": "给小学生解释一下冰雹，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0029",
+      "category": "物理",
+      "prompt": "如果要用一个简单的类比介绍压强，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0649",
+      "category": "生物",
+      "prompt": "给小学生解释一下骆驼驼峰，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0604",
+      "category": "生物",
+      "prompt": "关于冬眠，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-1060",
+      "category": "计算与数学",
+      "prompt": "关于周长，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0041",
+      "category": "物理",
+      "prompt": "如果要用一个简单的类比介绍热胀冷缩，你会怎么说？"
+    },
+    {
+      "id": "everyday-045-3",
+      "category": "日常计算",
+      "prompt": "把812个苹果平均装进14个袋子，每袋装几个？"
+    },
+    {
+      "id": "everyday-015-3",
+      "category": "日常计算",
+      "prompt": "把504个苹果平均装进18个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0920",
+      "category": "生活",
+      "prompt": "日常生活里，哪里能观察到或用到麦克风拾音？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0272",
+      "category": "自然",
+      "prompt": "日常生活里，哪里能观察到或用到霜？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0685",
+      "category": "生物",
+      "prompt": "给小学生解释一下微生物，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-1182",
+      "category": "计算与数学",
+      "prompt": "关于数据包，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "everyday-061-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以13再加74等于932，这个数是多少？"
+    },
+    {
+      "id": "knowledge-0896",
+      "category": "生活",
+      "prompt": "日常生活里，哪里能观察到或用到安全带作用？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0468",
+      "category": "自然",
+      "prompt": "关于卫星，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-1103",
+      "category": "计算与数学",
+      "prompt": "如果要用一个简单的类比介绍条件判断，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0952",
+      "category": "生活",
+      "prompt": "关于条形码，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "everyday-057-2",
+      "category": "日常计算",
+      "prompt": "长方形长70厘米、宽9厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "knowledge-0480",
+      "category": "自然",
+      "prompt": "关于流星，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0195",
+      "category": "物理",
+      "prompt": "学习串联电路时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0178",
+      "category": "物理",
+      "prompt": "关于电阻，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "everyday-006-2",
+      "category": "日常计算",
+      "prompt": "长方形长19厘米、宽9厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "knowledge-0089",
+      "category": "物理",
+      "prompt": "如果要用一个简单的类比介绍液化，你会怎么说？"
+    },
+    {
+      "id": "knowledge-1166",
+      "category": "计算与数学",
+      "prompt": "日常生活里，哪里能观察到或用到IP 地址？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0227",
+      "category": "物理",
+      "prompt": "如果要用一个简单的类比介绍能量守恒，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0158",
+      "category": "物理",
+      "prompt": "日常生活里，哪里能观察到或用到磁场？举一个具体例子。"
+    },
+    {
+      "id": "everyday-051-3",
+      "category": "日常计算",
+      "prompt": "把192个苹果平均装进3个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0314",
+      "category": "自然",
+      "prompt": "日常生活里，哪里能观察到或用到雷电？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0964",
+      "category": "计算与数学",
+      "prompt": "关于二进制，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "everyday-074-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以9再加87等于798，这个数是多少？"
+    },
+    {
+      "id": "knowledge-0664",
+      "category": "生物",
+      "prompt": "关于细胞，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0624",
+      "category": "生物",
+      "prompt": "关于昆虫外骨骼，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-1048",
+      "category": "计算与数学",
+      "prompt": "关于组合，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0283",
+      "category": "自然",
+      "prompt": "给小学生解释一下云，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0180",
+      "category": "物理",
+      "prompt": "关于电阻，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0643",
+      "category": "生物",
+      "prompt": "给小学生解释一下蜗牛黏液，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-1200",
+      "category": "计算与数学",
+      "prompt": "关于时间戳，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0081",
+      "category": "物理",
+      "prompt": "学习熔化时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-008-1",
+      "category": "日常计算",
+      "prompt": "21分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-0044",
+      "category": "物理",
+      "prompt": "日常生活里，哪里能观察到或用到热传导？举一个具体例子。"
+    },
+    {
+      "id": "everyday-068-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以3再加81等于300，这个数是多少？"
+    },
+    {
+      "id": "knowledge-0148",
+      "category": "物理",
+      "prompt": "关于滑轮，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0763",
+      "category": "生活",
+      "prompt": "给小学生解释一下油水分层，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-1171",
+      "category": "计算与数学",
+      "prompt": "给小学生解释一下路由器，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0499",
+      "category": "生物",
+      "prompt": "给小学生解释一下花粉传播，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-1007",
+      "category": "计算与数学",
+      "prompt": "如果要用一个简单的类比介绍小数，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0001",
+      "category": "物理",
+      "prompt": "给小学生解释一下惯性，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0803",
+      "category": "生活",
+      "prompt": "如果要用一个简单的类比介绍不锈钢防锈，你会怎么说？"
+    },
+    {
+      "id": "everyday-058-2",
+      "category": "日常计算",
+      "prompt": "长方形长71厘米、宽10厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "knowledge-0280",
+      "category": "自然",
+      "prompt": "关于雾，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0261",
+      "category": "自然",
+      "prompt": "学习冰雹时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0409",
+      "category": "自然",
+      "prompt": "给小学生解释一下冰川，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0714",
+      "category": "生物",
+      "prompt": "关于遗传，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0267",
+      "category": "自然",
+      "prompt": "学习露水时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-046-3",
+      "category": "日常计算",
+      "prompt": "把885个苹果平均装进15个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-1189",
+      "category": "计算与数学",
+      "prompt": "给小学生解释一下备份，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0478",
+      "category": "自然",
+      "prompt": "关于流星，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0946",
+      "category": "生活",
+      "prompt": "关于无线电传播，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "everyday-041-3",
+      "category": "日常计算",
+      "prompt": "把540个苹果平均装进10个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0319",
+      "category": "自然",
+      "prompt": "给小学生解释一下气压，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0619",
+      "category": "生物",
+      "prompt": "给小学生解释一下昆虫外骨骼，核心意思是什么？"
+    },
+    {
+      "id": "everyday-023-0",
+      "category": "日常计算",
+      "prompt": "小林有36张卡片，又收到9张，随后送出4张。现在有多少张？"
+    },
+    {
+      "id": "everyday-033-2",
+      "category": "日常计算",
+      "prompt": "长方形长46厘米、宽19厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "everyday-068-0",
+      "category": "日常计算",
+      "prompt": "小林有81张卡片，又收到3张，随后送出1张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0625",
+      "category": "生物",
+      "prompt": "给小学生解释一下蜘蛛结网，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0512",
+      "category": "生物",
+      "prompt": "日常生活里，哪里能观察到或用到叶片蒸腾？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-1105",
+      "category": "计算与数学",
+      "prompt": "给小学生解释一下排序，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0930",
+      "category": "生活",
+      "prompt": "关于太阳能电池，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0982",
+      "category": "计算与数学",
+      "prompt": "关于合数，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "everyday-057-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以9再加70等于628，这个数是多少？"
+    },
+    {
+      "id": "knowledge-0971",
+      "category": "计算与数学",
+      "prompt": "如果要用一个简单的类比介绍十进制，你会怎么说？"
+    },
+    {
+      "id": "knowledge-1002",
+      "category": "计算与数学",
+      "prompt": "关于分数，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "everyday-074-1",
+      "category": "日常计算",
+      "prompt": "87分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-0235",
+      "category": "物理",
+      "prompt": "给小学生解释一下表面张力，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-1068",
+      "category": "计算与数学",
+      "prompt": "关于面积，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0381",
+      "category": "自然",
+      "prompt": "学习地震时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-062-0",
+      "category": "日常计算",
+      "prompt": "小林有75张卡片，又收到14张，随后送出7张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0142",
+      "category": "物理",
+      "prompt": "关于杠杆，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "everyday-035-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以4再加48等于208，这个数是多少？"
+    },
+    {
+      "id": "knowledge-0755",
+      "category": "生活",
+      "prompt": "如果要用一个简单的类比介绍食盐溶解，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0193",
+      "category": "物理",
+      "prompt": "给小学生解释一下串联电路，核心意思是什么？"
+    },
+    {
+      "id": "everyday-016-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以19再加29等于428，这个数是多少？"
+    },
+    {
+      "id": "knowledge-0620",
+      "category": "生物",
+      "prompt": "日常生活里，哪里能观察到或用到昆虫外骨骼？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0201",
+      "category": "物理",
+      "prompt": "学习并联电路时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-056-0",
+      "category": "日常计算",
+      "prompt": "小林有69张卡片，又收到8张，随后送出4张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0993",
+      "category": "计算与数学",
+      "prompt": "学习公倍数时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0670",
+      "category": "生物",
+      "prompt": "关于细胞膜，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0892",
+      "category": "生活",
+      "prompt": "关于螺丝固定，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0282",
+      "category": "自然",
+      "prompt": "关于雾，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "everyday-049-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以18再加62等于1034，这个数是多少？"
+    },
+    {
+      "id": "knowledge-0958",
+      "category": "生活",
+      "prompt": "关于二维码，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0612",
+      "category": "生物",
+      "prompt": "关于鸟类羽毛，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0476",
+      "category": "自然",
+      "prompt": "日常生活里，哪里能观察到或用到流星？举一个具体例子。"
+    },
+    {
+      "id": "everyday-064-3",
+      "category": "日常计算",
+      "prompt": "把1232个苹果平均装进16个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0270",
+      "category": "自然",
+      "prompt": "关于露水，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0579",
+      "category": "生物",
+      "prompt": "学习消费者时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0885",
+      "category": "生活",
+      "prompt": "学习拉链闭合时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0471",
+      "category": "自然",
+      "prompt": "学习彗星时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-034-1",
+      "category": "日常计算",
+      "prompt": "47分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-0977",
+      "category": "计算与数学",
+      "prompt": "如果要用一个简单的类比介绍质数，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0917",
+      "category": "生活",
+      "prompt": "如果要用一个简单的类比介绍扬声器发声，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0720",
+      "category": "生物",
+      "prompt": "关于自然选择，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-1015",
+      "category": "计算与数学",
+      "prompt": "给小学生解释一下平均数，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0034",
+      "category": "物理",
+      "prompt": "关于大气压，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0113",
+      "category": "物理",
+      "prompt": "如果要用一个简单的类比介绍色散，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0968",
+      "category": "计算与数学",
+      "prompt": "日常生活里，哪里能观察到或用到十进制？举一个具体例子。"
+    },
+    {
+      "id": "everyday-007-3",
+      "category": "日常计算",
+      "prompt": "把200个苹果平均装进10个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0206",
+      "category": "物理",
+      "prompt": "日常生活里，哪里能观察到或用到电磁感应？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0859",
+      "category": "生活",
+      "prompt": "给小学生解释一下自行车变速，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0074",
+      "category": "物理",
+      "prompt": "日常生活里，哪里能观察到或用到凝固？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-1005",
+      "category": "计算与数学",
+      "prompt": "学习小数时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0418",
+      "category": "自然",
+      "prompt": "关于化石，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0508",
+      "category": "生物",
+      "prompt": "关于根的吸水，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0423",
+      "category": "自然",
+      "prompt": "学习昼夜交替时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-041-1",
+      "category": "日常计算",
+      "prompt": "54分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-0957",
+      "category": "生活",
+      "prompt": "学习二维码时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0021",
+      "category": "物理",
+      "prompt": "学习浮力时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-040-3",
+      "category": "日常计算",
+      "prompt": "把477个苹果平均装进9个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0519",
+      "category": "生物",
+      "prompt": "学习植物向光性时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-049-0",
+      "category": "日常计算",
+      "prompt": "小林有62张卡片，又收到18张，随后送出9张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0581",
+      "category": "生物",
+      "prompt": "如果要用一个简单的类比介绍消费者，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0223",
+      "category": "物理",
+      "prompt": "给小学生解释一下能量守恒，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0850",
+      "category": "生活",
+      "prompt": "关于温度计测温，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0839",
+      "category": "生活",
+      "prompt": "如果要用一个简单的类比介绍陶瓷隔热，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0397",
+      "category": "自然",
+      "prompt": "给小学生解释一下土壤，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0829",
+      "category": "生活",
+      "prompt": "给小学生解释一下橡胶弹性，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0537",
+      "category": "生物",
+      "prompt": "学习休眠时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0587",
+      "category": "生物",
+      "prompt": "如果要用一个简单的类比介绍伪装色，你会怎么说？"
+    },
+    {
+      "id": "knowledge-1152",
+      "category": "计算与数学",
+      "prompt": "关于浏览器，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0018",
+      "category": "物理",
+      "prompt": "关于重力，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "everyday-018-0",
+      "category": "日常计算",
+      "prompt": "小林有31张卡片，又收到4张，随后送出2张。现在有多少张？"
+    },
+    {
+      "id": "everyday-061-2",
+      "category": "日常计算",
+      "prompt": "长方形长74厘米、宽13厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "everyday-071-3",
+      "category": "日常计算",
+      "prompt": "把504个苹果平均装进6个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0394",
+      "category": "自然",
+      "prompt": "关于地下水，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0695",
+      "category": "生物",
+      "prompt": "如果要用一个简单的类比介绍细菌，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0213",
+      "category": "物理",
+      "prompt": "学习动能时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-1140",
+      "category": "计算与数学",
+      "prompt": "关于分辨率，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0661",
+      "category": "生物",
+      "prompt": "给小学生解释一下细胞，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0895",
+      "category": "生活",
+      "prompt": "给小学生解释一下安全带作用，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0711",
+      "category": "生物",
+      "prompt": "学习遗传时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-1001",
+      "category": "计算与数学",
+      "prompt": "如果要用一个简单的类比介绍分数，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0555",
+      "category": "生物",
+      "prompt": "学习生态系统时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-006-1",
+      "category": "日常计算",
+      "prompt": "19分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-0492",
+      "category": "生物",
+      "prompt": "关于植物呼吸，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-1167",
+      "category": "计算与数学",
+      "prompt": "学习IP 地址时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0561",
+      "category": "生物",
+      "prompt": "学习生物多样性时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-022-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以8再加35等于251，这个数是多少？"
+    },
+    {
+      "id": "everyday-016-0",
+      "category": "日常计算",
+      "prompt": "小林有29张卡片，又收到19张，随后送出9张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0137",
+      "category": "物理",
+      "prompt": "如果要用一个简单的类比介绍共振，你会怎么说？"
+    },
+    {
+      "id": "knowledge-1061",
+      "category": "计算与数学",
+      "prompt": "如果要用一个简单的类比介绍周长，你会怎么说？"
+    },
+    {
+      "id": "everyday-012-2",
+      "category": "日常计算",
+      "prompt": "长方形长25厘米、宽15厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "knowledge-0229",
+      "category": "物理",
+      "prompt": "给小学生解释一下密度，核心意思是什么？"
+    },
+    {
+      "id": "everyday-078-2",
+      "category": "日常计算",
+      "prompt": "长方形长91厘米、宽13厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "everyday-072-2",
+      "category": "日常计算",
+      "prompt": "长方形长85厘米、宽7厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "knowledge-0265",
+      "category": "自然",
+      "prompt": "给小学生解释一下露水，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0278",
+      "category": "自然",
+      "prompt": "日常生活里，哪里能观察到或用到雾？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0062",
+      "category": "物理",
+      "prompt": "日常生活里，哪里能观察到或用到蒸发？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0800",
+      "category": "生活",
+      "prompt": "日常生活里，哪里能观察到或用到不锈钢防锈？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-1137",
+      "category": "计算与数学",
+      "prompt": "学习分辨率时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-061-0",
+      "category": "日常计算",
+      "prompt": "小林有74张卡片，又收到13张，随后送出6张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-1077",
+      "category": "计算与数学",
+      "prompt": "学习坐标时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-1194",
+      "category": "计算与数学",
+      "prompt": "关于备份，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-1054",
+      "category": "计算与数学",
+      "prompt": "关于对称，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0294",
+      "category": "自然",
+      "prompt": "关于风，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0894",
+      "category": "生活",
+      "prompt": "关于螺丝固定，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "everyday-078-3",
+      "category": "日常计算",
+      "prompt": "把1183个苹果平均装进13个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0507",
+      "category": "生物",
+      "prompt": "学习根的吸水时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-008-2",
+      "category": "日常计算",
+      "prompt": "长方形长21厘米、宽11厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "everyday-079-0",
+      "category": "日常计算",
+      "prompt": "小林有92张卡片，又收到14张，随后送出7张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0532",
+      "category": "生物",
+      "prompt": "关于年轮，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0311",
+      "category": "自然",
+      "prompt": "如果要用一个简单的类比介绍彩虹，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0947",
+      "category": "生活",
+      "prompt": "如果要用一个简单的类比介绍无线电传播，你会怎么说？"
+    },
+    {
+      "id": "everyday-005-3",
+      "category": "日常计算",
+      "prompt": "把144个苹果平均装进8个袋子，每袋装几个？"
+    },
+    {
+      "id": "everyday-011-0",
+      "category": "日常计算",
+      "prompt": "小林有24张卡片，又收到14张，随后送出7张。现在有多少张？"
+    },
+    {
+      "id": "everyday-064-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以16再加77等于1181，这个数是多少？"
+    },
+    {
+      "id": "knowledge-1161",
+      "category": "计算与数学",
+      "prompt": "学习域名时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-051-2",
+      "category": "日常计算",
+      "prompt": "长方形长64厘米、宽3厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "knowledge-0005",
+      "category": "物理",
+      "prompt": "如果要用一个简单的类比介绍惯性，你会怎么说？"
+    },
+    {
+      "id": "knowledge-1028",
+      "category": "计算与数学",
+      "prompt": "日常生活里，哪里能观察到或用到众数？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0722",
+      "category": "生活",
+      "prompt": "日常生活里，哪里能观察到或用到冰箱制冷？举一个具体例子。"
+    },
+    {
+      "id": "everyday-058-0",
+      "category": "日常计算",
+      "prompt": "小林有71张卡片，又收到10张，随后送出5张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0549",
+      "category": "生物",
+      "prompt": "学习食物网时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0132",
+      "category": "物理",
+      "prompt": "关于声波，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "everyday-019-0",
+      "category": "日常计算",
+      "prompt": "小林有32张卡片，又收到5张，随后送出2张。现在有多少张？"
+    },
+    {
+      "id": "everyday-044-3",
+      "category": "日常计算",
+      "prompt": "把741个苹果平均装进13个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0277",
+      "category": "自然",
+      "prompt": "给小学生解释一下雾，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-1017",
+      "category": "计算与数学",
+      "prompt": "学习平均数时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-007-1",
+      "category": "日常计算",
+      "prompt": "20分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-0735",
+      "category": "生活",
+      "prompt": "学习空气湿度时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0450",
+      "category": "自然",
+      "prompt": "关于月食，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0840",
+      "category": "生活",
+      "prompt": "关于陶瓷隔热，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0347",
+      "category": "自然",
+      "prompt": "如果要用一个简单的类比介绍海浪，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0173",
+      "category": "物理",
+      "prompt": "如果要用一个简单的类比介绍电流，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0087",
+      "category": "物理",
+      "prompt": "学习液化时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0422",
+      "category": "自然",
+      "prompt": "日常生活里，哪里能观察到或用到昼夜交替？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0153",
+      "category": "物理",
+      "prompt": "学习弹性时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0260",
+      "category": "自然",
+      "prompt": "日常生活里，哪里能观察到或用到冰雹？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0366",
+      "category": "自然",
+      "prompt": "关于沙丘，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0780",
+      "category": "生活",
+      "prompt": "关于过滤，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "everyday-001-3",
+      "category": "日常计算",
+      "prompt": "把56个苹果平均装进4个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0110",
+      "category": "物理",
+      "prompt": "日常生活里，哪里能观察到或用到色散？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0775",
+      "category": "生活",
+      "prompt": "给小学生解释一下过滤，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0279",
+      "category": "自然",
+      "prompt": "学习雾时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0369",
+      "category": "自然",
+      "prompt": "学习岩石风化时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0473",
+      "category": "自然",
+      "prompt": "如果要用一个简单的类比介绍彗星，你会怎么说？"
+    },
+    {
+      "id": "everyday-048-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以17再加61等于962，这个数是多少？"
+    },
+    {
+      "id": "knowledge-0053",
+      "category": "物理",
+      "prompt": "如果要用一个简单的类比介绍对流，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0610",
+      "category": "生物",
+      "prompt": "关于鸟类羽毛，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "everyday-065-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以17再加78等于1268，这个数是多少？"
+    },
+    {
+      "id": "everyday-024-2",
+      "category": "日常计算",
+      "prompt": "长方形长37厘米、宽10厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "knowledge-0100",
+      "category": "物理",
+      "prompt": "关于光的反射，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0345",
+      "category": "自然",
+      "prompt": "学习海浪时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-028-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以14再加41等于503，这个数是多少？"
+    },
+    {
+      "id": "knowledge-0905",
+      "category": "生活",
+      "prompt": "如果要用一个简单的类比介绍电灯发光，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0414",
+      "category": "自然",
+      "prompt": "关于冰川，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-1144",
+      "category": "计算与数学",
+      "prompt": "关于缓存，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0976",
+      "category": "计算与数学",
+      "prompt": "关于质数，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0177",
+      "category": "物理",
+      "prompt": "学习电阻时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-011-2",
+      "category": "日常计算",
+      "prompt": "长方形长24厘米、宽14厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "knowledge-0015",
+      "category": "物理",
+      "prompt": "学习重力时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-055-1",
+      "category": "日常计算",
+      "prompt": "68分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-0230",
+      "category": "物理",
+      "prompt": "日常生活里，哪里能观察到或用到密度？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0566",
+      "category": "生物",
+      "prompt": "日常生活里，哪里能观察到或用到分解者？举一个具体例子。"
+    },
+    {
+      "id": "everyday-076-3",
+      "category": "日常计算",
+      "prompt": "把979个苹果平均装进11个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0393",
+      "category": "自然",
+      "prompt": "学习地下水时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-003-0",
+      "category": "日常计算",
+      "prompt": "小林有16张卡片，又收到6张，随后送出3张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0077",
+      "category": "物理",
+      "prompt": "如果要用一个简单的类比介绍凝固，你会怎么说？"
+    },
+    {
+      "id": "everyday-053-3",
+      "category": "日常计算",
+      "prompt": "把330个苹果平均装进5个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0543",
+      "category": "生物",
+      "prompt": "学习食物链时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-1110",
+      "category": "计算与数学",
+      "prompt": "关于排序，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0962",
+      "category": "计算与数学",
+      "prompt": "日常生活里，哪里能观察到或用到二进制？举一个具体例子。"
+    },
+    {
+      "id": "everyday-066-3",
+      "category": "日常计算",
+      "prompt": "把1422个苹果平均装进18个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0901",
+      "category": "生活",
+      "prompt": "给小学生解释一下电灯发光，核心意思是什么？"
+    },
+    {
+      "id": "everyday-055-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以7再加68等于488，这个数是多少？"
+    },
+    {
+      "id": "knowledge-0702",
+      "category": "生物",
+      "prompt": "关于真菌，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0949",
+      "category": "生活",
+      "prompt": "给小学生解释一下条形码，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0729",
+      "category": "生活",
+      "prompt": "学习保温杯保温时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-1003",
+      "category": "计算与数学",
+      "prompt": "给小学生解释一下小数，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0925",
+      "category": "生活",
+      "prompt": "给小学生解释一下太阳能电池，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0284",
+      "category": "自然",
+      "prompt": "日常生活里，哪里能观察到或用到云？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0058",
+      "category": "物理",
+      "prompt": "关于热辐射，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-1095",
+      "category": "计算与数学",
+      "prompt": "学习循环时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0713",
+      "category": "生物",
+      "prompt": "如果要用一个简单的类比介绍遗传，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0256",
+      "category": "自然",
+      "prompt": "关于降雪，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0984",
+      "category": "计算与数学",
+      "prompt": "关于合数，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0388",
+      "category": "自然",
+      "prompt": "关于板块运动，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0723",
+      "category": "生活",
+      "prompt": "学习冰箱制冷时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0683",
+      "category": "生物",
+      "prompt": "如果要用一个简单的类比介绍叶绿体，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0944",
+      "category": "生活",
+      "prompt": "日常生活里，哪里能观察到或用到无线电传播？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0731",
+      "category": "生活",
+      "prompt": "如果要用一个简单的类比介绍保温杯保温，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0911",
+      "category": "生活",
+      "prompt": "如果要用一个简单的类比介绍LED 发光，你会怎么说？"
+    },
+    {
+      "id": "everyday-070-0",
+      "category": "日常计算",
+      "prompt": "小林有83张卡片，又收到5张，随后送出2张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0488",
+      "category": "生物",
+      "prompt": "日常生活里，哪里能观察到或用到植物呼吸？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0382",
+      "category": "自然",
+      "prompt": "关于地震，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0908",
+      "category": "生活",
+      "prompt": "日常生活里，哪里能观察到或用到LED 发光？举一个具体例子。"
+    },
+    {
+      "id": "everyday-009-0",
+      "category": "日常计算",
+      "prompt": "小林有22张卡片，又收到12张，随后送出6张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0412",
+      "category": "自然",
+      "prompt": "关于冰川，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0181",
+      "category": "物理",
+      "prompt": "给小学生解释一下导体，核心意思是什么？"
+    },
+    {
+      "id": "everyday-039-2",
+      "category": "日常计算",
+      "prompt": "长方形长52厘米、宽8厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "everyday-015-2",
+      "category": "日常计算",
+      "prompt": "长方形长28厘米、宽18厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "everyday-060-0",
+      "category": "日常计算",
+      "prompt": "小林有73张卡片，又收到12张，随后送出6张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0736",
+      "category": "生活",
+      "prompt": "关于空气湿度，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "everyday-061-1",
+      "category": "日常计算",
+      "prompt": "74分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-0167",
+      "category": "物理",
+      "prompt": "如果要用一个简单的类比介绍静电，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0869",
+      "category": "生活",
+      "prompt": "如果要用一个简单的类比介绍刹车减速，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0715",
+      "category": "生物",
+      "prompt": "给小学生解释一下自然选择，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0188",
+      "category": "物理",
+      "prompt": "日常生活里，哪里能观察到或用到绝缘体？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0613",
+      "category": "生物",
+      "prompt": "给小学生解释一下鱼鳃，核心意思是什么？"
+    },
+    {
+      "id": "everyday-018-3",
+      "category": "日常计算",
+      "prompt": "把124个苹果平均装进4个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0552",
+      "category": "生物",
+      "prompt": "关于食物网，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-1043",
+      "category": "计算与数学",
+      "prompt": "如果要用一个简单的类比介绍排列，你会怎么说？"
+    },
+    {
+      "id": "everyday-072-1",
+      "category": "日常计算",
+      "prompt": "85分钟相当于多少秒？"
+    },
+    {
+      "id": "everyday-042-2",
+      "category": "日常计算",
+      "prompt": "长方形长55厘米、宽11厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "everyday-079-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以14再加92等于1268，这个数是多少？"
+    },
+    {
+      "id": "knowledge-0511",
+      "category": "生物",
+      "prompt": "给小学生解释一下叶片蒸腾，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0663",
+      "category": "生物",
+      "prompt": "学习细胞时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0603",
+      "category": "生物",
+      "prompt": "学习冬眠时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0739",
+      "category": "生活",
+      "prompt": "给小学生解释一下衣服晾干，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0010",
+      "category": "物理",
+      "prompt": "关于摩擦力，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0534",
+      "category": "生物",
+      "prompt": "关于年轮，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "everyday-050-0",
+      "category": "日常计算",
+      "prompt": "小林有63张卡片，又收到19张，随后送出9张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0244",
+      "category": "自然",
+      "prompt": "关于水循环，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0066",
+      "category": "物理",
+      "prompt": "关于蒸发，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0821",
+      "category": "生活",
+      "prompt": "如果要用一个简单的类比介绍橡皮擦字，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0048",
+      "category": "物理",
+      "prompt": "关于热传导，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "everyday-050-2",
+      "category": "日常计算",
+      "prompt": "长方形长63厘米、宽19厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "knowledge-0538",
+      "category": "生物",
+      "prompt": "关于休眠，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-1069",
+      "category": "计算与数学",
+      "prompt": "给小学生解释一下体积，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-1099",
+      "category": "计算与数学",
+      "prompt": "给小学生解释一下条件判断，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0258",
+      "category": "自然",
+      "prompt": "关于降雪，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-1177",
+      "category": "计算与数学",
+      "prompt": "给小学生解释一下数据包，核心意思是什么？"
+    },
+    {
+      "id": "everyday-037-1",
+      "category": "日常计算",
+      "prompt": "50分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-0995",
+      "category": "计算与数学",
+      "prompt": "如果要用一个简单的类比介绍公倍数，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0998",
+      "category": "计算与数学",
+      "prompt": "日常生活里，哪里能观察到或用到分数？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0981",
+      "category": "计算与数学",
+      "prompt": "学习合数时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-000-1",
+      "category": "日常计算",
+      "prompt": "13分钟相当于多少秒？"
+    },
+    {
+      "id": "everyday-044-2",
+      "category": "日常计算",
+      "prompt": "长方形长57厘米、宽13厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "knowledge-0635",
+      "category": "生物",
+      "prompt": "如果要用一个简单的类比介绍蝴蝶变态，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0671",
+      "category": "生物",
+      "prompt": "如果要用一个简单的类比介绍细胞膜，你会怎么说？"
+    },
+    {
+      "id": "everyday-070-1",
+      "category": "日常计算",
+      "prompt": "83分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-0379",
+      "category": "自然",
+      "prompt": "给小学生解释一下地震，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0810",
+      "category": "生活",
+      "prompt": "关于纸张吸水，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-1008",
+      "category": "计算与数学",
+      "prompt": "关于小数，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0845",
+      "category": "生活",
+      "prompt": "如果要用一个简单的类比介绍玻璃透光，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0019",
+      "category": "物理",
+      "prompt": "给小学生解释一下浮力，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0144",
+      "category": "物理",
+      "prompt": "关于杠杆，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-1073",
+      "category": "计算与数学",
+      "prompt": "如果要用一个简单的类比介绍体积，你会怎么说？"
+    },
+    {
+      "id": "knowledge-1199",
+      "category": "计算与数学",
+      "prompt": "如果要用一个简单的类比介绍时间戳，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0157",
+      "category": "物理",
+      "prompt": "给小学生解释一下磁场，核心意思是什么？"
+    },
+    {
+      "id": "everyday-021-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以7再加34等于216，这个数是多少？"
+    },
+    {
+      "id": "knowledge-0224",
+      "category": "物理",
+      "prompt": "日常生活里，哪里能观察到或用到能量守恒？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0185",
+      "category": "物理",
+      "prompt": "如果要用一个简单的类比介绍导体，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0467",
+      "category": "自然",
+      "prompt": "如果要用一个简单的类比介绍卫星，你会怎么说？"
+    },
+    {
+      "id": "everyday-075-0",
+      "category": "日常计算",
+      "prompt": "小林有88张卡片，又收到10张，随后送出5张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0386",
+      "category": "自然",
+      "prompt": "日常生活里，哪里能观察到或用到板块运动？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0330",
+      "category": "自然",
+      "prompt": "关于温室效应，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0086",
+      "category": "物理",
+      "prompt": "日常生活里，哪里能观察到或用到液化？举一个具体例子。"
+    },
+    {
+      "id": "everyday-000-0",
+      "category": "日常计算",
+      "prompt": "小林有13张卡片，又收到3张，随后送出1张。现在有多少张？"
+    },
+    {
+      "id": "everyday-069-0",
+      "category": "日常计算",
+      "prompt": "小林有82张卡片，又收到4张，随后送出2张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0712",
+      "category": "生物",
+      "prompt": "关于遗传，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-1141",
+      "category": "计算与数学",
+      "prompt": "给小学生解释一下缓存，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0207",
+      "category": "物理",
+      "prompt": "学习电磁感应时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0219",
+      "category": "物理",
+      "prompt": "学习势能时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0482",
+      "category": "生物",
+      "prompt": "日常生活里，哪里能观察到或用到光合作用？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0801",
+      "category": "生活",
+      "prompt": "学习不锈钢防锈时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-013-1",
+      "category": "日常计算",
+      "prompt": "26分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-1176",
+      "category": "计算与数学",
+      "prompt": "关于路由器，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0225",
+      "category": "物理",
+      "prompt": "学习能量守恒时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-048-1",
+      "category": "日常计算",
+      "prompt": "61分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-0139",
+      "category": "物理",
+      "prompt": "给小学生解释一下杠杆，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-1013",
+      "category": "计算与数学",
+      "prompt": "如果要用一个简单的类比介绍百分数，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0360",
+      "category": "自然",
+      "prompt": "关于三角洲，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0354",
+      "category": "自然",
+      "prompt": "关于河流侵蚀，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0614",
+      "category": "生物",
+      "prompt": "日常生活里，哪里能观察到或用到鱼鳃？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0410",
+      "category": "自然",
+      "prompt": "日常生活里，哪里能观察到或用到冰川？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-1067",
+      "category": "计算与数学",
+      "prompt": "如果要用一个简单的类比介绍面积，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0611",
+      "category": "生物",
+      "prompt": "如果要用一个简单的类比介绍鸟类羽毛，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0447",
+      "category": "自然",
+      "prompt": "学习月食时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0326",
+      "category": "自然",
+      "prompt": "日常生活里，哪里能观察到或用到温室效应？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0255",
+      "category": "自然",
+      "prompt": "学习降雪时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0797",
+      "category": "生活",
+      "prompt": "如果要用一个简单的类比介绍铁生锈，你会怎么说？"
+    },
+    {
+      "id": "knowledge-1120",
+      "category": "计算与数学",
+      "prompt": "关于文件压缩，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0648",
+      "category": "生物",
+      "prompt": "关于蜗牛黏液，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0052",
+      "category": "物理",
+      "prompt": "关于对流，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0533",
+      "category": "生物",
+      "prompt": "如果要用一个简单的类比介绍年轮，你会怎么说？"
+    },
+    {
+      "id": "everyday-023-1",
+      "category": "日常计算",
+      "prompt": "36分钟相当于多少秒？"
+    },
+    {
+      "id": "everyday-070-2",
+      "category": "日常计算",
+      "prompt": "长方形长83厘米、宽5厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "everyday-034-3",
+      "category": "日常计算",
+      "prompt": "把141个苹果平均装进3个袋子，每袋装几个？"
+    },
+    {
+      "id": "everyday-051-1",
+      "category": "日常计算",
+      "prompt": "64分钟相当于多少秒？"
+    },
+    {
+      "id": "everyday-035-0",
+      "category": "日常计算",
+      "prompt": "小林有48张卡片，又收到4张，随后送出2张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0483",
+      "category": "生物",
+      "prompt": "学习光合作用时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0790",
+      "category": "生活",
+      "prompt": "关于蒸馏，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0377",
+      "category": "自然",
+      "prompt": "如果要用一个简单的类比介绍火山，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0777",
+      "category": "生活",
+      "prompt": "学习过滤时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0103",
+      "category": "物理",
+      "prompt": "给小学生解释一下光的折射，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0472",
+      "category": "自然",
+      "prompt": "关于彗星，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0487",
+      "category": "生物",
+      "prompt": "给小学生解释一下植物呼吸，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0776",
+      "category": "生活",
+      "prompt": "日常生活里，哪里能观察到或用到过滤？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0753",
+      "category": "生活",
+      "prompt": "学习食盐溶解时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-054-1",
+      "category": "日常计算",
+      "prompt": "67分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-0130",
+      "category": "物理",
+      "prompt": "关于声波，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0095",
+      "category": "物理",
+      "prompt": "如果要用一个简单的类比介绍升华，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0642",
+      "category": "生物",
+      "prompt": "关于青蛙变态，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0696",
+      "category": "生物",
+      "prompt": "关于细菌，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0848",
+      "category": "生活",
+      "prompt": "日常生活里，哪里能观察到或用到温度计测温？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-1109",
+      "category": "计算与数学",
+      "prompt": "如果要用一个简单的类比介绍排序，你会怎么说？"
+    },
+    {
+      "id": "everyday-017-0",
+      "category": "日常计算",
+      "prompt": "小林有30张卡片，又收到3张，随后送出1张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0033",
+      "category": "物理",
+      "prompt": "学习大气压时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0030",
+      "category": "物理",
+      "prompt": "关于压强，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0912",
+      "category": "生活",
+      "prompt": "关于LED 发光，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "everyday-006-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以9再加19等于118，这个数是多少？"
+    },
+    {
+      "id": "knowledge-0036",
+      "category": "物理",
+      "prompt": "关于大气压，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-1130",
+      "category": "计算与数学",
+      "prompt": "日常生活里，哪里能观察到或用到像素？举一个具体例子。"
+    },
+    {
+      "id": "everyday-047-1",
+      "category": "日常计算",
+      "prompt": "60分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-0774",
+      "category": "生活",
+      "prompt": "关于肥皂去污，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0163",
+      "category": "物理",
+      "prompt": "给小学生解释一下静电，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0541",
+      "category": "生物",
+      "prompt": "给小学生解释一下食物链，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0933",
+      "category": "生活",
+      "prompt": "学习电池储能时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0806",
+      "category": "生活",
+      "prompt": "日常生活里，哪里能观察到或用到纸张吸水？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0782",
+      "category": "生活",
+      "prompt": "日常生活里，哪里能观察到或用到沉淀？举一个具体例子。"
+    },
+    {
+      "id": "everyday-043-1",
+      "category": "日常计算",
+      "prompt": "56分钟相当于多少秒？"
+    },
+    {
+      "id": "everyday-032-1",
+      "category": "日常计算",
+      "prompt": "45分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-0588",
+      "category": "生物",
+      "prompt": "关于伪装色，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0395",
+      "category": "自然",
+      "prompt": "如果要用一个简单的类比介绍地下水，你会怎么说？"
+    },
+    {
+      "id": "everyday-036-3",
+      "category": "日常计算",
+      "prompt": "把245个苹果平均装进5个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0463",
+      "category": "自然",
+      "prompt": "给小学生解释一下卫星，核心意思是什么？"
+    },
+    {
+      "id": "everyday-043-3",
+      "category": "日常计算",
+      "prompt": "把672个苹果平均装进12个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0631",
+      "category": "生物",
+      "prompt": "给小学生解释一下蝴蝶变态，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-1057",
+      "category": "计算与数学",
+      "prompt": "给小学生解释一下周长，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0630",
+      "category": "生物",
+      "prompt": "关于蜘蛛结网，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0407",
+      "category": "自然",
+      "prompt": "如果要用一个简单的类比介绍腐殖质，你会怎么说？"
+    },
+    {
+      "id": "everyday-024-3",
+      "category": "日常计算",
+      "prompt": "把370个苹果平均装进10个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0196",
+      "category": "物理",
+      "prompt": "关于串联电路，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0697",
+      "category": "生物",
+      "prompt": "给小学生解释一下真菌，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-1126",
+      "category": "计算与数学",
+      "prompt": "关于字符编码，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "everyday-059-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以11再加72等于776，这个数是多少？"
+    },
+    {
+      "id": "knowledge-0396",
+      "category": "自然",
+      "prompt": "关于地下水，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0411",
+      "category": "自然",
+      "prompt": "学习冰川时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-1022",
+      "category": "计算与数学",
+      "prompt": "日常生活里，哪里能观察到或用到中位数？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0818",
+      "category": "生活",
+      "prompt": "日常生活里，哪里能观察到或用到橡皮擦字？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-1146",
+      "category": "计算与数学",
+      "prompt": "关于缓存，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "everyday-054-3",
+      "category": "日常计算",
+      "prompt": "把402个苹果平均装进6个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0616",
+      "category": "生物",
+      "prompt": "关于鱼鳃，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0316",
+      "category": "自然",
+      "prompt": "关于雷电，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0836",
+      "category": "生活",
+      "prompt": "日常生活里，哪里能观察到或用到陶瓷隔热？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0376",
+      "category": "自然",
+      "prompt": "关于火山，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0131",
+      "category": "物理",
+      "prompt": "如果要用一个简单的类比介绍声波，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0756",
+      "category": "生活",
+      "prompt": "关于食盐溶解，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0164",
+      "category": "物理",
+      "prompt": "日常生活里，哪里能观察到或用到静电？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-1100",
+      "category": "计算与数学",
+      "prompt": "日常生活里，哪里能观察到或用到条件判断？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-1090",
+      "category": "计算与数学",
+      "prompt": "关于变量，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "everyday-069-3",
+      "category": "日常计算",
+      "prompt": "把328个苹果平均装进4个袋子，每袋装几个？"
+    },
+    {
+      "id": "everyday-007-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以10再加20等于140，这个数是多少？"
+    },
+    {
+      "id": "knowledge-1168",
+      "category": "计算与数学",
+      "prompt": "关于IP 地址，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "everyday-029-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以15再加42等于552，这个数是多少？"
+    },
+    {
+      "id": "knowledge-0168",
+      "category": "物理",
+      "prompt": "关于静电，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0245",
+      "category": "自然",
+      "prompt": "如果要用一个简单的类比介绍水循环，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0404",
+      "category": "自然",
+      "prompt": "日常生活里，哪里能观察到或用到腐殖质？举一个具体例子。"
+    },
+    {
+      "id": "everyday-054-2",
+      "category": "日常计算",
+      "prompt": "长方形长67厘米、宽6厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "everyday-004-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以7再加17等于80，这个数是多少？"
+    },
+    {
+      "id": "knowledge-0069",
+      "category": "物理",
+      "prompt": "学习沸腾时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0899",
+      "category": "生活",
+      "prompt": "如果要用一个简单的类比介绍安全带作用，你会怎么说？"
+    },
+    {
+      "id": "everyday-065-1",
+      "category": "日常计算",
+      "prompt": "78分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-0371",
+      "category": "自然",
+      "prompt": "如果要用一个简单的类比介绍岩石风化，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0639",
+      "category": "生物",
+      "prompt": "学习青蛙变态时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-1180",
+      "category": "计算与数学",
+      "prompt": "关于数据包，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-1104",
+      "category": "计算与数学",
+      "prompt": "关于条件判断，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0102",
+      "category": "物理",
+      "prompt": "关于光的反射，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "everyday-073-1",
+      "category": "日常计算",
+      "prompt": "86分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-0373",
+      "category": "自然",
+      "prompt": "给小学生解释一下火山，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0853",
+      "category": "生活",
+      "prompt": "给小学生解释一下指南针指向，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0975",
+      "category": "计算与数学",
+      "prompt": "学习质数时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "everyday-058-3",
+      "category": "日常计算",
+      "prompt": "把710个苹果平均装进10个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-1172",
+      "category": "计算与数学",
+      "prompt": "日常生活里，哪里能观察到或用到路由器？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-1142",
+      "category": "计算与数学",
+      "prompt": "日常生活里，哪里能观察到或用到缓存？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0380",
+      "category": "自然",
+      "prompt": "日常生活里，哪里能观察到或用到地震？举一个具体例子。"
+    },
+    {
+      "id": "everyday-039-1",
+      "category": "日常计算",
+      "prompt": "52分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-0449",
+      "category": "自然",
+      "prompt": "如果要用一个简单的类比介绍月食，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0906",
+      "category": "生活",
+      "prompt": "关于电灯发光，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0093",
+      "category": "物理",
+      "prompt": "学习升华时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0378",
+      "category": "自然",
+      "prompt": "关于火山，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0453",
+      "category": "自然",
+      "prompt": "学习恒星时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0170",
+      "category": "物理",
+      "prompt": "日常生活里，哪里能观察到或用到电流？举一个具体例子。"
+    },
+    {
+      "id": "everyday-012-0",
+      "category": "日常计算",
+      "prompt": "小林有25张卡片，又收到15张，随后送出7张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0140",
+      "category": "物理",
+      "prompt": "日常生活里，哪里能观察到或用到杠杆？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0209",
+      "category": "物理",
+      "prompt": "如果要用一个简单的类比介绍电磁感应，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0460",
+      "category": "自然",
+      "prompt": "关于行星，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "everyday-046-1",
+      "category": "日常计算",
+      "prompt": "59分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-1044",
+      "category": "计算与数学",
+      "prompt": "关于排列，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-1163",
+      "category": "计算与数学",
+      "prompt": "如果要用一个简单的类比介绍域名，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0870",
+      "category": "生活",
+      "prompt": "关于刹车减速，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "everyday-016-3",
+      "category": "日常计算",
+      "prompt": "把551个苹果平均装进19个袋子，每袋装几个？"
+    },
+    {
+      "id": "everyday-040-0",
+      "category": "日常计算",
+      "prompt": "小林有53张卡片，又收到9张，随后送出4张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0866",
+      "category": "生活",
+      "prompt": "日常生活里，哪里能观察到或用到刹车减速？举一个具体例子。"
+    },
+    {
+      "id": "everyday-066-0",
+      "category": "日常计算",
+      "prompt": "小林有79张卡片，又收到18张，随后送出9张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0024",
+      "category": "物理",
+      "prompt": "关于浮力，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0521",
+      "category": "生物",
+      "prompt": "如果要用一个简单的类比介绍植物向光性，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0749",
+      "category": "生活",
+      "prompt": "如果要用一个简单的类比介绍眼镜起雾，你会怎么说？"
+    },
+    {
+      "id": "knowledge-1012",
+      "category": "计算与数学",
+      "prompt": "关于百分数，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "everyday-056-3",
+      "category": "日常计算",
+      "prompt": "把552个苹果平均装进8个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-0166",
+      "category": "物理",
+      "prompt": "关于静电，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0318",
+      "category": "自然",
+      "prompt": "关于雷电，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0530",
+      "category": "生物",
+      "prompt": "日常生活里，哪里能观察到或用到年轮？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0428",
+      "category": "自然",
+      "prompt": "日常生活里，哪里能观察到或用到四季变化？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0028",
+      "category": "物理",
+      "prompt": "关于压强，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0009",
+      "category": "物理",
+      "prompt": "学习摩擦力时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0171",
+      "category": "物理",
+      "prompt": "学习电流时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0208",
+      "category": "物理",
+      "prompt": "关于电磁感应，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0204",
+      "category": "物理",
+      "prompt": "关于并联电路，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0966",
+      "category": "计算与数学",
+      "prompt": "关于二进制，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0666",
+      "category": "生物",
+      "prompt": "关于细胞，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0257",
+      "category": "自然",
+      "prompt": "如果要用一个简单的类比介绍降雪，你会怎么说？"
+    },
+    {
+      "id": "everyday-047-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以16再加60等于892，这个数是多少？"
+    },
+    {
+      "id": "knowledge-0340",
+      "category": "自然",
+      "prompt": "关于洋流，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-1101",
+      "category": "计算与数学",
+      "prompt": "学习条件判断时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-1128",
+      "category": "计算与数学",
+      "prompt": "关于字符编码，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0548",
+      "category": "生物",
+      "prompt": "日常生活里，哪里能观察到或用到食物网？举一个具体例子。"
+    },
+    {
+      "id": "everyday-075-3",
+      "category": "日常计算",
+      "prompt": "把880个苹果平均装进10个袋子，每袋装几个？"
+    },
+    {
+      "id": "knowledge-1096",
+      "category": "计算与数学",
+      "prompt": "关于循环，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0474",
+      "category": "自然",
+      "prompt": "关于彗星，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "everyday-012-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以15再加25等于280，这个数是多少？"
+    },
+    {
+      "id": "knowledge-1024",
+      "category": "计算与数学",
+      "prompt": "关于中位数，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "everyday-029-3",
+      "category": "日常计算",
+      "prompt": "把630个苹果平均装进15个袋子，每袋装几个？"
+    },
+    {
+      "id": "everyday-036-0",
+      "category": "日常计算",
+      "prompt": "小林有49张卡片，又收到5张，随后送出2张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0075",
+      "category": "物理",
+      "prompt": "学习凝固时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0008",
+      "category": "物理",
+      "prompt": "日常生活里，哪里能观察到或用到摩擦力？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0786",
+      "category": "生活",
+      "prompt": "关于沉淀，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0049",
+      "category": "物理",
+      "prompt": "给小学生解释一下对流，核心意思是什么？"
+    },
+    {
+      "id": "everyday-041-0",
+      "category": "日常计算",
+      "prompt": "小林有54张卡片，又收到10张，随后送出5张。现在有多少张？"
+    },
+    {
+      "id": "everyday-001-1",
+      "category": "日常计算",
+      "prompt": "14分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-0652",
+      "category": "生物",
+      "prompt": "关于骆驼驼峰，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0047",
+      "category": "物理",
+      "prompt": "如果要用一个简单的类比介绍热传导，你会怎么说？"
+    },
+    {
+      "id": "knowledge-1102",
+      "category": "计算与数学",
+      "prompt": "关于条件判断，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0191",
+      "category": "物理",
+      "prompt": "如果要用一个简单的类比介绍绝缘体，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0877",
+      "category": "生活",
+      "prompt": "给小学生解释一下雨伞挡雨，核心意思是什么？"
+    },
+    {
+      "id": "knowledge-0129",
+      "category": "物理",
+      "prompt": "学习声波时，有哪个常见误解需要澄清？"
+    },
+    {
+      "id": "knowledge-0114",
+      "category": "物理",
+      "prompt": "关于色散，怎样设计一个简单观察或纸上例子帮助理解？"
+    },
+    {
+      "id": "knowledge-0574",
+      "category": "生物",
+      "prompt": "关于生产者，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-1148",
+      "category": "计算与数学",
+      "prompt": "日常生活里，哪里能观察到或用到浏览器？举一个具体例子。"
+    },
+    {
+      "id": "everyday-055-0",
+      "category": "日常计算",
+      "prompt": "小林有68张卡片，又收到7张，随后送出3张。现在有多少张？"
+    },
+    {
+      "id": "knowledge-0824",
+      "category": "生活",
+      "prompt": "日常生活里，哪里能观察到或用到铅笔书写？举一个具体例子。"
+    },
+    {
+      "id": "knowledge-0694",
+      "category": "生物",
+      "prompt": "关于细菌，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "everyday-073-4",
+      "category": "日常计算",
+      "prompt": "一个数乘以8再加86等于710，这个数是多少？"
+    },
+    {
+      "id": "everyday-066-2",
+      "category": "日常计算",
+      "prompt": "长方形长79厘米、宽18厘米。面积是多少平方厘米？"
+    },
+    {
+      "id": "everyday-028-1",
+      "category": "日常计算",
+      "prompt": "41分钟相当于多少秒？"
+    },
+    {
+      "id": "knowledge-0286",
+      "category": "自然",
+      "prompt": "关于云，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "knowledge-0719",
+      "category": "生物",
+      "prompt": "如果要用一个简单的类比介绍自然选择，你会怎么说？"
+    },
+    {
+      "id": "knowledge-0202",
+      "category": "物理",
+      "prompt": "关于并联电路，说出一个最重要的特点即可。"
+    },
+    {
+      "id": "everyday-019-2",
+      "category": "日常计算",
+      "prompt": "长方形长32厘米、宽5厘米。面积是多少平方厘米？"
+    }
+  ]
+}

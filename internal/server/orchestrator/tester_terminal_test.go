@@ -10,7 +10,7 @@ import (
 	"github.com/looplj/axonhub/llm/streams"
 )
 
-func TestScheduledHealthRejectsFailedStreamEvenAfterText(testingT *testing.T) {
+func TestChannelRejectsFailedStreamEvenAfterText(testingT *testing.T) {
 	for _, reason := range []string{"error", "cancelled", "canceled"} {
 		testingT.Run(reason, func(testingT *testing.T) {
 			processor := &TestChannelOrchestrator{}

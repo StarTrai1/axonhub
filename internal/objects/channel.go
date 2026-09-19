@@ -629,9 +629,8 @@ type ChannelPolicies struct {
 	// first match owns the failure. Unmatched custom failures fall back to global.
 	APIKeyAutoDisableRules []APIKeyAutoDisableRule `json:"apiKeyAutoDisableRules,omitempty"`
 
-	// ScheduledHealthChecks contains daily server-local times in HH:MM:SS form.
-	// The field is managed through the dedicated scheduler API so older GraphQL
-	// clients cannot accidentally clear it while editing other channel policies.
+	// ScheduledHealthChecks is retained only to round-trip legacy policy JSON.
+	// The retired health scheduler never reads or executes these values.
 	ScheduledHealthChecks []string `json:"scheduledHealthChecks,omitempty"`
 }
 
