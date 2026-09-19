@@ -47,8 +47,8 @@ func TestProbeQuotaOnlyReturnsPinnedResetTimes(t *testing.T) {
 		ID:        4,
 		ProjectID: 7,
 		Key:       "synthetic-probe-key",
-		Profiles: &objects.APIKeyProfiles{ActiveProfile: "probe", Profiles: []objects.APIKeyProfile{{Name: "probe", ChannelIDs: []int{ch.ID}}}},
-		Edges:    ent.APIKeyEdges{Project: &ent.Project{ID: 7}},
+		Profiles:  &objects.APIKeyProfiles{ActiveProfile: "probe", Profiles: []objects.APIKeyProfile{{Name: "probe", ChannelIDs: []int{ch.ID}}}},
+		Edges:     ent.APIKeyEdges{Project: &ent.Project{ID: 7}},
 	}
 	handler := NewProbeQuotaHandlers(ProbeQuotaHandlersParams{Ent: client, SystemService: system})
 	call := func(key *ent.APIKey) *httptest.ResponseRecorder {

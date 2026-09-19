@@ -143,7 +143,10 @@ async def watch_windows(args, state, runner, questions, first_time):
         atomic_json(path, journal)
         pending = [max(0, (instant(value['at']) - datetime.now(timezone.utc)).total_seconds())
                    for value in journal['slots'].values() if value['outcome'] == 'waiting']
-        delay = min([max(0.05, next_poll - time.monotonic()), 30.0] + pending)
+        poll_delay = next_poll - time.monotonic()
+        if poll_delay <= 0 and pending and min(pending) <= 16:
+            poll_delay = min(pending)
+        delay = min([max(0.05, poll_delay), 30.0] + pending)
         await pause(asyncio.Event(), max(0.05, delay), max(0.05, delay))
     emit('stopped', reason='budget')
     return 0
