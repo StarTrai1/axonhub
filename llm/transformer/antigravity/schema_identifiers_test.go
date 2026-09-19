@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm"
@@ -25,9 +26,13 @@ func TestSchemaIdentifiersPreservePropertyNames(t *testing.T) {
 
 func TestUnsupportedEvaluationKeywordsAreScopedToAntigravitySchemas(t *testing.T) {
 	const raw = `{"type":"object","unevaluatedProperties":false,"contentSchema":{"type":"string"},"properties":{"unevaluatedProperties":{"type":"string"},"rows":{"type":"array","additionalItems":false,"unevaluatedItems":false,"items":{"type":"object","contentSchema":{"type":"string"},"properties":{"contentSchema":{"type":"string"}},"required":["contentSchema"]}}},"required":["unevaluatedProperties","rows"]}`
-	request := &llm.Request{Model: "gemini-2.5-flash", Tools: []llm.Tool{
-		{Type: "function", Function: llm.Function{Name: "inspect", Parameters: json.RawMessage(raw)}},
-	}}
+	request := &llm.Request{
+		Model:    "gemini-2.5-flash",
+		Messages: []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("inspect rows")}}},
+		Tools: []llm.Tool{
+			{Type: "function", Function: llm.Function{Name: "inspect", Parameters: json.RawMessage(raw)}},
+		},
+	}
 	native, err := gemini.NewOutboundTransformer("https://example.com", "test-key")
 	require.NoError(t, err)
 	wire, err := native.TransformRequest(t.Context(), request)
