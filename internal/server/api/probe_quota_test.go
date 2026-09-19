@@ -29,7 +29,7 @@ func TestProbeQuotaOnlyReturnsPinnedResetTimes(t *testing.T) {
 	require.NoError(t, system.UpdateProviderQuotaCollectionSettings(ctx, lo.ToPtr(true), []biz.ProviderQuotaCollectionProvider{{Provider: "codex", Enabled: true}}))
 	ch, err := client.Channel.Create().SetName("private-key-channel").SetType(channel.TypeCodex).
 		SetStatus(channel.StatusEnabled).SetCredentials(objects.ChannelCredentials{APIKey: "never-return-this-secret"}).
-		SetSupportedModels([]string{"test"}).SetTags([]string{"permitted"}).Save(ctx)
+		SetSupportedModels([]string{"test"}).SetDefaultTestModel("test").SetTags([]string{"permitted"}).Save(ctx)
 	require.NoError(t, err)
 	reset := time.Now().Add(time.Hour).UTC().Truncate(time.Second)
 	_, err = client.ProviderQuotaStatus.Create().SetChannelID(ch.ID).
@@ -43,9 +43,12 @@ func TestProbeQuotaOnlyReturnsPinnedResetTimes(t *testing.T) {
 			},
 		}).Save(ctx)
 	require.NoError(t, err)
-	key := &ent.APIKey{ID: 4, ProjectID: 7, Key: "synthetic-probe-key",
+	key := &ent.APIKey{
+		ID:        4,
+		ProjectID: 7,
+		Key:       "synthetic-probe-key",
 		Profiles: &objects.APIKeyProfiles{ActiveProfile: "probe", Profiles: []objects.APIKeyProfile{{Name: "probe", ChannelIDs: []int{ch.ID}}}},
-		Edges: ent.APIKeyEdges{Project: &ent.Project{ID: 7}},
+		Edges:    ent.APIKeyEdges{Project: &ent.Project{ID: 7}},
 	}
 	handler := NewProbeQuotaHandlers(ProbeQuotaHandlersParams{Ent: client, SystemService: system})
 	call := func(key *ent.APIKey) *httptest.ResponseRecorder {

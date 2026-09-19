@@ -88,6 +88,28 @@ async def watch_windows(args, state, runner, questions, first_time):
         for slot_id, slot in daily_slots(now, first_time, zone):
             if (now - slot).total_seconds() <= args.catch_up_grace and slot_id not in slots:
                 slots[slot_id] = {'at': slot.isoformat(), 'outcome': 'waiting'}
+        waiting_delays = [(instant(value['at']) - now).total_seconds() for value in slots.values()
+                          if value['outcome'] == 'waiting']
+        # Do not block an already scheduled imminent slot on a network read.
+        if time.monotonic() >= next_poll and (next_poll == 0 or not waiting_delays or min(waiting_delays) > 16):
+            try:
+                snapshot = await asyncio.to_thread(fetch_windows, args.url, runner.key)
+                reset = weekly_reset(snapshot, datetime.now(timezone.utc), args.quota_max_age)
+            except ConnectionError:
+                emit('quota_poll_unavailable')
+            else:
+                if reset:
+                    slot_id = 'weekly:' + reset.isoformat()
+                    old = journal.get('weekly_reset')
+                    if old and old != slot_id and old in slots and slots[old]['outcome'] == 'waiting':
+                        slots[old]['outcome'] = 'superseded'
+                    journal['weekly_reset'] = slot_id
+                    if slot_id not in slots:
+                        slots[slot_id] = {'at': reset.isoformat(), 'outcome': 'waiting'}
+                        emit('weekly_reset_scheduled', at=reset.isoformat(), observed_at=snapshot['observed_at'])
+                else:
+                    emit('weekly_snapshot_unavailable', reason='missing or stale weekly window; daily slots remain enabled')
+            next_poll = time.monotonic() + args.quota_poll
         # Coalesce coincident weekly/daily slots, and skip old missed slots rather
         # than burst all old tasks after an outage. Claimed attempts never replay.
         due = [(key, value) for key, value in slots.items()
@@ -113,25 +135,7 @@ async def watch_windows(args, state, runner, questions, first_time):
                 emit('window_slot_finished', slots=chosen, status=result.status, retry=False)
                 if result.status not in ('success', 'high_demand', 'budget'):
                     return 1
-        if time.monotonic() >= next_poll:
-            try:
-                snapshot = await asyncio.to_thread(fetch_windows, args.url, runner.key)
-                reset = weekly_reset(snapshot, datetime.now(timezone.utc), args.quota_max_age)
-            except ConnectionError:
-                emit('quota_poll_unavailable')
-            else:
-                if reset:
-                    slot_id = 'weekly:' + reset.isoformat()
-                    old = journal.get('weekly_reset')
-                    if old and old != slot_id and old in slots and slots[old]['outcome'] == 'waiting':
-                        slots[old]['outcome'] = 'superseded'
-                    journal['weekly_reset'] = slot_id
-                    if slot_id not in slots:
-                        slots[slot_id] = {'at': reset.isoformat(), 'outcome': 'waiting'}
-                        emit('weekly_reset_scheduled', at=reset.isoformat(), observed_at=snapshot['observed_at'])
-                else:
-                    emit('weekly_snapshot_unavailable', reason='missing or stale weekly window; daily slots remain enabled')
-            next_poll = time.monotonic() + args.quota_poll
+        now = datetime.now(timezone.utc)
         # Keep at least two weekly periods of idempotency history, bounded on disk.
         cutoff = now - timedelta(days=30)
         journal['slots'] = {key: value for key, value in slots.items()

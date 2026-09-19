@@ -92,30 +92,10 @@ async def main():
                 raise ValueError("state belongs to a different URL/key/model; use a separate --state-dir")
             if progress.get("phase") not in (1, 2) or not isinstance(progress.get("high_demand"), int) or not 0 <= progress["high_demand"] < 10:
                 raise ValueError("invalid keepalive progress; inspect progress.json")
-        while not runner.budget_exhausted():
-            emit("phase", phase=progress["phase"], high_demand=progress["high_demand"])
-            if progress["phase"] == 1:
-                status = await acquire(runner, simple, args)
-                # acquire() has reaped/cancelled and cleaned every worker here.
-                if status != "success":
-                    emit("stopped", reason=status)
-                    return 0 if status == "budget" else 1
-                progress = {"phase": 2, "high_demand": 0, "binding": runner.binding()}
-                atomic_json(progress_file, progress)
-            else:
-                await pause(asyncio.Event(), args.interval_min, args.interval_max)
-                result = await runner.run(reasoning.draw(), args.reasoning_effort)
-                if result.status == "high_demand":
-                    progress["high_demand"] += 1
-                    if progress["high_demand"] >= 10:
-                        progress = {"phase": 1, "high_demand": 0, "binding": runner.binding()}
-                    atomic_json(progress_file, progress)
-                elif result.status not in ("success", "budget"):
-                    emit("stopped", reason=result.status)
-                    return 1
-                # Success does not reset the cumulative phase-two error count.
-        emit("stopped", reason="budget", attempts=runner.attempts, reported_tokens=runner.reported_tokens)
-        return 0
+        from pause_control import PauseControl, keepalive_cycle
+        with PauseControl() as control:
+            return await keepalive_cycle(control, progress, progress_file, runner, simple, reasoning, args)
+
 
 
 if __name__ == "__main__":

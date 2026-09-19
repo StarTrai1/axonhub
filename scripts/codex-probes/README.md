@@ -41,6 +41,12 @@ python3 scripts/codex-probes/keepalive.py \
 
 随机抖动只用于平滑流量/退避，不模拟人类身份、不尝试绕过封禁、速率限制或容量控制。
 
+### 手动暂停与恢复
+
+前台终端按 **P** 暂停、**R** 恢复、**空格** 切换、**Q** 退出，不需要回车。收到暂停时停止排新请求，取消当前私有 Codex 进程并完成全部清理后才打印 `paused`。删除正在进行时会先删完；清理失败则报错停止，不伪装为暂停成功。恢复创建新的会话，保持原阶段与累计 high-demand 次数；人为取消不计入高需求错误。
+
+后台/systemd 无终端时，用日志里的脚本 PID：`kill -USR1 PID` 暂停，`kill -USR2 PID` 恢复。systemd 可用 `systemctl kill --kill-whom=main --signal=SIGUSR1 YOUR_SERVICE`，恢复换 SIGUSR2。不要用 SIGSTOP，它会把清理一起冻结。暂停期间按 Q/Ctrl+C 仍会正常退出。暂停状态不跨脚本重启保存，阶段和计数会保存。
+
 ## 2. key 定时单次请求
 
 ```bash

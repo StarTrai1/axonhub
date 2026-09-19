@@ -18,6 +18,7 @@ from probe_common import Events, HIGH_DEMAND, Outcome, OwnedState, Questions, Ru
 from scheduled_probe import choose_slot
 from quota_schedule import daily_slots, weekly_reset
 from zoneinfo import ZoneInfo
+from pause_control import PauseControl
 
 
 FAKE = '''#!/usr/bin/env python3
@@ -130,6 +131,30 @@ class OwnershipTest(unittest.TestCase):
 
 
 class ProcessTest(unittest.IsolatedAsyncioTestCase):
+    async def test_pause_waits_for_cleanup_and_resume_does_not_reuse_turn(self):
+        started = asyncio.Event()
+        cleaned = asyncio.Event()
+        cleanup_allowed = asyncio.Event()
+        with PauseControl() as control:
+            async def work():
+                started.set()
+                try:
+                    await asyncio.sleep(100)
+                finally:
+                    await cleanup_allowed.wait()
+                    cleaned.set()
+            task = asyncio.create_task(control.run(work))
+            await started.wait()
+            control.request_pause()
+            await asyncio.sleep(0)
+            self.assertFalse(task.done())
+            self.assertFalse(cleaned.is_set())
+            control.request_resume()  # Even early resume must wait for cleanup.
+            cleanup_allowed.set()
+            self.assertIsNone(await task)
+            self.assertTrue(cleaned.is_set())
+            self.assertEqual(await control.run(lambda: asyncio.sleep(0, result='new')), 'new')
+
     async def asyncSetUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.base = Path(self.tmp.name)

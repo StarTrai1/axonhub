@@ -18,7 +18,7 @@ import (
 type Handlers struct {
 	fx.In
 
-	Graphql       *gql.GraphqlHandler
+	Graphql        *gql.GraphqlHandler
 	OpenAPIGraphql *openapi.GraphqlHandler
 	OpenAI         *api.OpenAIHandlers
 	Doubao         *api.DoubaoHandlers
