@@ -349,6 +349,7 @@ func TestResponsesRejectedCompactionGeneratesFromStoredHistory(t *testing.T) {
 type rejectedCompactionBridgeExecutor struct {
 	continuations [][]byte
 	summaries     [][]byte
+	rejection     error
 }
 
 func (e *rejectedCompactionBridgeExecutor) Do(context.Context, *httpclient.Request) (*httpclient.Response, error) {
@@ -372,6 +373,9 @@ func (e *rejectedCompactionBridgeExecutor) DoStream(ctx context.Context, req *ht
 	}
 	e.continuations = append(e.continuations, append([]byte(nil), req.Body...))
 	if gjson.GetBytes(req.Body, `input.#(type=="compaction")`).Exists() {
+		if e.rejection != nil {
+			return nil, e.rejection
+		}
 		return nil, resourceMismatchHTTPError()
 	}
 	return streams.SliceStream(rejectedReasoningCompactionEvents()), nil

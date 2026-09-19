@@ -246,6 +246,7 @@ class Outcome:
     returncode: int | None = None
     error: str | None = None
     error_source: str | None = None
+    http_status: int | None = None
 
 
 def is_high_demand(message: str) -> bool:
@@ -253,7 +254,15 @@ def is_high_demand(message: str) -> bool:
     # Never retry a denied request even if it also quotes an older capacity error.
     if re.search(r"status(?: code)?\s*[:=]?\s*(?:401|403)\b|\b(?:unauthorized|forbidden|invalid[_ ]api[_ ]key|insufficient_quota|banned|suspended|account_deactivated)\b|封禁", message, re.I):
         return False
-    return HIGH_DEMAND.casefold() in message.casefold() or MODEL_CAPACITY.search(message) is not None
+    normalized = " ".join(message.translate(str.maketrans("‘’ʼ＇", "''''")).split())
+    return HIGH_DEMAND.casefold() in normalized.casefold() or MODEL_CAPACITY.search(normalized) is not None
+
+
+def http_error_status(message: str) -> int | None:
+    # Codex exec JSONL exposes the error message, not a separate HTTP status.
+    # Read explicit transport status text; an arbitrary number is not evidence.
+    match = re.search(r"\b(?:unexpected status(?: code)?|HTTP(?:/\d(?:\.\d)?)?(?: status(?: code)?)?)\s*[:=]?\s*([1-5][0-9]{2})\b", message, re.I)
+    return int(match[1]) if match else None
 
 
 def redact_error(message: str, key: str) -> str:
@@ -318,6 +327,7 @@ class Events:
         self.last_error = ""
         self.retryable = False
         self.error_source: str | None = None
+        self.http_status: int | None = None
         self.usage: dict = {}
 
     def feed(self, line: bytes) -> None:
@@ -345,6 +355,7 @@ class Events:
     def _error(self, message: object, source: str) -> None:
         message = message if isinstance(message, str) else ""
         self.retryable = is_high_demand(message)
+        self.http_status = http_error_status(message)
         self.last_error = redact_error(message, self.key)
         self.error_source = source
 
@@ -352,13 +363,18 @@ class Events:
         # Agent text can quote errors. Only structured error events count.
         if returncode == 0 and self.completed and not self.failed:
             status = "success"
+        elif self.http_status in (401, 403):
+            status = "error"
         elif self.retryable:
             status = "high_demand"
+        elif self.http_status == 500:
+            status = "http_500"
         else:
             status = "error"
         return Outcome(status, self.thread_id, self.usage, returncode,
                        self.last_error if status != "success" else None,
-                       self.error_source if status != "success" else None)
+                       self.error_source if status != "success" else None,
+                       self.http_status if status != "success" else None)
 
 
 def config_text(args: argparse.Namespace, effort: str) -> str:
@@ -529,7 +545,8 @@ class Runner:
                 raise
         emit("attempt_result", status=outcome.status, question_id=question["id"], thread_id=outcome.thread_id,
              attempts=self.attempts, usage=outcome.usage, reported_tokens=self.reported_tokens,
-             returncode=outcome.returncode, error=outcome.error, error_source=outcome.error_source)
+             returncode=outcome.returncode, error=outcome.error, error_source=outcome.error_source,
+             http_status=outcome.http_status)
         return outcome
 
 

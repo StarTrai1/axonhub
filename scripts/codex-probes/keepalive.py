@@ -24,7 +24,7 @@ async def acquire(runner, questions, args):
                 if runner.budget_exhausted():
                     return
                 result = await runner.run(questions.draw(), args.effort)
-                if result.status != "high_demand":
+                if result.status not in ("high_demand", "http_500"):
                     if not winner.done():
                         winner.set_result(result.status)
                     stop.set()

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
 
 	"github.com/tidwall/gjson"
 
@@ -20,6 +21,35 @@ type responsesCompactionRecoveryKey struct {
 	threadID  string
 	apiKeyID  int
 	projectID int
+}
+
+var responsesRejectedCompactionMessagePattern = regexp.MustCompile(
+	`^(?:OpenAI Responses bad request: )?The encrypted content for item (cmp_[A-Za-z0-9_-]+) could not be verified\. Reason: Encrypted content could not be decrypted or parsed\.(?: \[trace_id=[A-Za-z0-9_-]+\])?$`,
+)
+
+// A native checkpoint can be valid at its source and rejected by another
+// provider. Match the exact checkpoint, never an unrelated encrypted item.
+func responsesRejectedCompactionMessage(body []byte, ref *remoteCompactionReference, code, message, param string) bool {
+	if ref == nil || isLocalCompactionReference(ref) ||
+		(code != "" && code != "bad_request" && code != "invalid_request_error" && code != "invalid_encrypted_content") {
+		return false
+	}
+	match := responsesRejectedCompactionMessagePattern.FindStringSubmatch(message)
+	if len(match) != 2 || match[1] != ref.ID {
+		return false
+	}
+	index := -1
+	for i, item := range gjson.GetBytes(body, "input").Array() {
+		if item.Get("id").String() != ref.ID {
+			continue
+		}
+		if index >= 0 || (item.Get("type").String() != remoteCompactionItemType && item.Get("type").String() != legacyRemoteCompactionSummaryType) ||
+			item.Get("encrypted_content").String() != ref.EncryptedContent {
+			return false
+		}
+		index = i
+	}
+	return index >= 0 && (param == "" || param == fmt.Sprintf("input[%d].encrypted_content", index))
 }
 
 type responsesCompactionRecoveryMiddleware struct {
@@ -48,20 +78,27 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawError(ctx context.C
 		return
 	}
 	code, message, param, ok := responsesBadRequestDetails(err)
-	if !ok || param != "" || !responsesResourceMismatch(code, message) {
+	if !ok {
 		return
 	}
 	request := m.outbound.state.RawProviderRequest
 	if request == nil {
 		return
 	}
-	// Let the existing ID recovery make the smaller correction first. It leaves
-	// both the checkpoint and every retained item in the canonical window intact.
-	if hasIDs, safe := responsesResourceHistorySupportsRecovery(request.Body); !safe || hasIDs {
+	hasIDs, safe := responsesResourceHistorySupportsRecovery(request.Body)
+	if !safe {
 		return
 	}
-	key, _, ok := m.recoveryKey(ctx, request)
+	key, ref, ok := m.recoveryKey(ctx, request)
 	if !ok {
+		return
+	}
+	if param == "" && responsesResourceMismatch(code, message) {
+		// An ambiguous resource rejection first tries the smaller ID correction.
+		if hasIDs {
+			return
+		}
+	} else if !responsesRejectedCompactionMessage(request.Body, ref, code, message, param) {
 		return
 	}
 	if _, alreadyRejected := m.rejected[key]; alreadyRejected {

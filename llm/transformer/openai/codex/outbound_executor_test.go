@@ -928,7 +928,7 @@ func TestCodexOutbound_PreservesMinimalCompatTransforms(t *testing.T) {
 	assert.NotContains(t, string(hreq.Body), "You are Codex")
 }
 
-func TestCodexOutbound_AppliesReasoningDefaultsWhenMissing(t *testing.T) {
+func TestCodexOutbound_DoesNotEnableReasoningSummaryWhenMissing(t *testing.T) {
 	ctx := context.Background()
 	outbound := newTestCodexOutbound(t)
 
@@ -949,13 +949,10 @@ func TestCodexOutbound_AppliesReasoningDefaultsWhenMissing(t *testing.T) {
 	require.NoError(t, err)
 
 	body := decodeCodexRequestBody(t, hreq)
-	reasoning, ok := body["reasoning"].(map[string]any)
-	require.True(t, ok)
-
 	assert.Equal(t, true, body["parallel_tool_calls"])
 	assert.Equal(t, []any{"reasoning.encrypted_content"}, body["include"])
-	assert.Equal(t, "auto", reasoning["summary"])
-	assert.Empty(t, reasoning["context"])
+	assert.False(t, gjson.GetBytes(hreq.Body, "reasoning.summary").Exists())
+	assert.False(t, gjson.GetBytes(hreq.Body, "reasoning.context").Exists())
 	assert.NotContains(t, body, "metadata")
 }
 

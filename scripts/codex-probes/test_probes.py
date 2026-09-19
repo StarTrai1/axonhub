@@ -58,6 +58,10 @@ if mode == 'sleep':
 if mode == 'demand':
     print(json.dumps({'type':'turn.failed','error':{'message':"We're currently experiencing high demand, which may cause temporary errors"}}), flush=True)
     sys.exit(1)
+if mode in ('demand-curly', 'http-500'):
+    message = "We’re currently experiencing high demand, which may cause temporary errors." if mode == 'demand-curly' else 'unexpected status 500 Internal Server Error: upstream internal error'
+    print(json.dumps({'type':'turn.failed','error':{'message':message}}), flush=True)
+    sys.exit(1)
 if mode == 'demand-cn':
     body = json.dumps({'error': {'message': '当前模型 gpt-6-astra 负载已经达到上限，请稍后重试 (request id: synthetic-request-id)'}}, ensure_ascii=False)
     message = 'unexpected status 500 Internal Server Error: ' + body
@@ -124,7 +128,7 @@ class EventsTest(unittest.TestCase):
                 self.assertEqual(events.outcome(1).status, expected)
 
     def test_other_http_and_quota_errors_are_not_capacity(self):
-        for message in ("unexpected status 500 Internal Server Error", "unexpected status 429 Too Many Requests",
+        for message in ("unexpected status 429 Too Many Requests", "the request contains 500 items",
                         "insufficient_quota", "模型不存在", "account banned: " + HIGH_DEMAND, "账号封禁 " + CHINESE_CAPACITY,
                         "unexpected status 401 Unauthorized: previous error was " + HIGH_DEMAND,
                         "unexpected status 403: " + CHINESE_CAPACITY):
@@ -132,6 +136,24 @@ class EventsTest(unittest.TestCase):
                 events = Events()
                 self.feed(events, "turn.failed", error={"message": message})
                 self.assertEqual(events.outcome(1).status, "error")
+
+    def test_high_demand_accepts_typographic_apostrophes(self):
+        for apostrophe in ("'", "’", "‘", "ʼ", "＇"):
+            with self.subTest(apostrophe=apostrophe):
+                events = Events()
+                self.feed(events, "turn.failed", error={"message": HIGH_DEMAND.replace("'", apostrophe) + "."})
+                self.assertEqual(events.outcome(1).status, "high_demand")
+
+    def test_http_500_is_distinct_from_capacity_and_other_numbers(self):
+        for message in ("unexpected status 500 Internal Server Error: unknown provider failure",
+                        "HTTP 500: internal error", "HTTP/1.1 500 Internal Server Error"):
+            with self.subTest(message=message):
+                events = Events()
+                self.feed(events, "turn.failed", error={"message": message})
+                result = events.outcome(1)
+                self.assertEqual(result.status, "http_500")
+                self.assertEqual(result.http_status, 500)
+                self.assertEqual(result.error, message)
 
     def test_error_diagnostics_redact_before_truncation(self):
         secret = "synthetic/test+key"
@@ -278,6 +300,8 @@ class ProcessTest(unittest.IsolatedAsyncioTestCase):
     async def test_failure_logs_are_useful_redacted_and_cleaned(self):
         for mode, status, source, fragment in (
             ("demand-cn", "high_demand", "turn.failed", "负载已经达到上限"),
+            ("demand-curly", "high_demand", "turn.failed", "We’re"),
+            ("http-500", "http_500", "turn.failed", "500"),
             ("private-error", "error", "turn.failed", "invalid API key"),
             ("startup-error", "error", "stderr", "invalid config"),
             ("stderr-demand", "error", "stderr", "high demand"),
@@ -362,7 +386,7 @@ class ScheduleTest(unittest.TestCase):
             fake.write_text(FAKE)
             fake.chmod(0o700)
             count = root / "calls"
-            sequence = ["demand-cn", "success"] + ["demand", "success", "demand-cn", "success"] * 4 + ["demand", "success", "demand-cn", "success"]
+            sequence = ["demand-cn"] + ["http-500"] * 3 + ["demand-curly", "success"] + ["demand", "success", "demand-cn", "success"] * 4 + ["demand-curly", "success", "demand-cn", "success"]
             env = dict(os.environ, FAKE_COUNT=str(count), FAKE_SEQUENCE=','.join(sequence),
                        AXONHUB_PROBE_API_KEY="synthetic-test-key")
             command = [sys.executable, str(Path(__file__).with_name("keepalive.py")),
@@ -378,6 +402,8 @@ class ScheduleTest(unittest.TestCase):
             attempts = [e for e in events if e['event'] == 'attempt_result']
             self.assertEqual(attempts[0]['status'], 'high_demand')
             self.assertIn('负载已经达到上限', attempts[0]['error'])
+            self.assertEqual([e['status'] for e in attempts[1:4]], ['http_500'] * 3)
+            self.assertEqual(attempts[4]['status'], 'high_demand')
             progress = json.loads((root / 'state/progress.json').read_text())
             self.assertEqual((progress['phase'], progress['high_demand']), (2, 0))
             self.assertEqual(len(count.read_text().splitlines()), len(sequence))

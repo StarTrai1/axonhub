@@ -333,11 +333,8 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 			ext.Request.ReasoningContext = "all_turns"
 		}
 
-		if !responsesLite && (reqCopy.ReasoningSummary == nil || *reqCopy.ReasoningSummary == "") {
-			// Enable reasoning summary for Codex CLI requests.
-			reqCopy.ReasoningSummary = lo.ToPtr("auto")
-		}
-
+		// Codex 0.155.1 leaves summaries disabled unless explicitly requested.
+		// Do not re-enable them for providers that reject reasoning.summary.
 	}
 
 	// Codex Responses rejects token limit fields, so strip them out.

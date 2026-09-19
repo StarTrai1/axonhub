@@ -30,11 +30,12 @@ python3 scripts/codex-probes/keepalive.py \
   --state-dir /home/probe/.local/state/axonhub-probes/any
 ```
 
-- 第一阶段：从简单题库随机无放回抽题，以配置的并发数运行独立新会话。启动错开，收到**最终结构化错误** `We're currently experiencing high demand, which may cause temporary errors` 或已确认的 `当前模型 <模型名> 负载已经达到上限，请稍后重试` 后删除本次本地会话，再按指数退避与随机抖动重试。默认并发 2，可配置 1–32。不会仅凭 HTTP 500/429 就归类为容量不足。
+- 第一阶段：从简单题库随机无放回抽题，以配置的并发数运行独立新会话。启动错开，收到**最终结构化错误** `We're currently experiencing high demand, which may cause temporary errors`（兼容 `We’re` 等弯引号）或 `当前模型 <模型名> 负载已经达到上限，请稍后重试` 后删除本次本地会话，再按指数退避与随机抖动重试。**其他明确的 HTTP 500 同样持续重试**，不限失败次数，直到任一请求成功；手动退出、暂停和显式预算限制仍有效。默认并发 2，可配置 1–32。
 - CLI 的 `request_max_retries`、`stream_max_retries` 设为 0，不叠加客户端重试；AxonHub 内部重试完成后 CLI 才会返回最终结果。脚本不修改网关重试。不能从错误文本证明上游物理执行次数。
 - 任一会话以 `turn.completed` 且进程退出码 0 完成，停止补充第一阶段任务，取消并等待其他私有子进程退出、清理全部本地 attempt 后进入第二阶段。已发送的上游请求可能仍在网关/提供方结束中；本地取消不是上游零用量保证。
 - 第二阶段：仅一个会话，从独立逻辑题库抽题，完成并清理后随机等待再创建下一会话。在这次第二阶段内**累计** 10 次目标 high-demand 错误回到第一阶段；中途成功不清零。phase/counter 落盘，重启后恢复。
-- 401/403、封禁提示、其他错误、超时、缺少完成事件均停止并清理，退出码 1，不被当作 high-demand 无限重试。`turn.failed` 优先于中间或迟到的 `error`，模型正文及 stderr 都不参与容量错误识别。
+- 第一阶段的普通 HTTP 500 日志标为 `http_500`；目标容量文案标为 `high_demand`。HTTP 401/403、其他非容量错误、超时、缺少完成事件仍停止并清理。第二阶段保持仅累计目标容量错误的规则，普通 HTTP 500 不计入容量错误次数并停止。`turn.failed` 优先于中间或迟到的 `error`，模型正文及 stderr 都不参与重试分类。
+- Codex JSONL 错误没有单独的 HTTP 状态字段，脚本从明确的 `unexpected status 500`、`HTTP 500` 等传输错误文本提取状态，并记录为 `http_status`。如果 CLI 只给出了业务错误文案，则使用已确认的中英文容量文案识别；无法证明 HTTP 状态的其他错误不会猜成 500。无需访问管理接口或读取网关数据库。
 - `attempt_result` 日志提供 `error` 和 `error_source`。优先记录结构化错误；没有结构化错误原因时，才记录 stderr 最后一条明确以 `Error:` 开头的错误行，或进程退出/超时说明。诊断先脱敏当前 key、常见凭据字段及认证头，再限制为 2048 字符；不保存原始 stderr、请求头或完整日志。成功时这两个字段为 `null`。
 - `--max-attempts N` / `--max-tokens N` 提供每次脚本启动的停止条件，0 为不限。token 预算按 CLI 已报告的 input+output 累计，reasoning 是 output 的子集，不再相加。并发在途请求和失败未报告用量可能超出预算；它不是硬计费上限。若要成本硬限制，请同时配置网关/API key 配额。
 
