@@ -67,9 +67,13 @@ func TestResponsesRejectedCompactionDecryptionPipelinePreservesWindow(t *testing
 				adapter := newRemoteCompactionAdapter(nil, nil, nil)
 				adapter.summaries.SetDefault(remoteCompactionOwnerCacheKey(&PersistenceState{APIKey: apiKey}, remoteCompactionCacheKey(ref)), "verified retained source summary")
 				executor := &responsesReasoningPipelineExecutor{
-					failures: []error{rejectedNativeCompactionError()}, events: rejectedReasoningCompactionEvents(),
-					response: &httpclient.Response{StatusCode: http.StatusOK, Headers: http.Header{"Content-Type": {"application/json"}},
-						Body: []byte(`{"id":"cmp_next","object":"response.compaction","output":[{"type":"compaction","id":"cmp_next","encrypted_content":"next-native-checkpoint"}]}`)},
+					failures: []error{rejectedNativeCompactionError()},
+					events:   rejectedReasoningCompactionEvents(),
+					response: &httpclient.Response{
+						StatusCode: http.StatusOK,
+						Headers:    http.Header{"Content-Type": {"application/json"}},
+						Body:       []byte(`{"id":"cmp_next","object":"response.compaction","output":[{"type":"compaction","id":"cmp_next","encrypted_content":"next-native-checkpoint"}]}`),
+					},
 				}
 				_, result, err := runRejectedReasoningPipeline(t, shared.WithSessionScope(t.Context(), "decryption-"+t.Name()), req, executor, "synthetic-credential", passThrough, 1,
 					func(state *PersistenceState, outbound *PersistentOutboundTransformer) pipeline.Middleware {
