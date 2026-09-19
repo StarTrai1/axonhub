@@ -237,17 +237,30 @@ func stripUnsupportedCodexPromptCacheOptions(outbound *PersistentOutboundTransfo
 		}
 
 		if hasPromptCacheBreakpoints {
-			for inputIndex, input := range gjson.GetBytes(body, "input").Array() {
-				for contentIndex, content := range input.Get("content").Array() {
-					if !content.Get("prompt_cache_breakpoint").Exists() {
-						continue
+			inputItems := gjson.GetBytes(body, "input")
+			if inputItems.IsArray() {
+				for inputIndex, input := range inputItems.Array() {
+					paths := make([]string, 0)
+					if input.Get("prompt_cache_breakpoint").Exists() {
+						paths = append(paths, fmt.Sprintf("input.%d.prompt_cache_breakpoint", inputIndex))
 					}
-
-					path := fmt.Sprintf("input.%d.content.%d.prompt_cache_breakpoint", inputIndex, contentIndex)
-					var err error
-					body, err = sjson.DeleteBytes(body, path)
-					if err != nil {
-						return nil, fmt.Errorf("strip unsupported Codex %s: %w", path, err)
+					for _, field := range []string{"content", "output"} {
+						parts := input.Get(field)
+						if !parts.IsArray() {
+							continue
+						}
+						for partIndex, part := range parts.Array() {
+							if part.Get("prompt_cache_breakpoint").Exists() {
+								paths = append(paths, fmt.Sprintf("input.%d.%s.%d.prompt_cache_breakpoint", inputIndex, field, partIndex))
+							}
+						}
+					}
+					for _, path := range paths {
+						var err error
+						body, err = sjson.DeleteBytes(body, path)
+						if err != nil {
+							return nil, fmt.Errorf("strip unsupported Codex %s: %w", path, err)
+						}
 					}
 				}
 			}

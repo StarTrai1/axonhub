@@ -498,7 +498,14 @@ func convertLLMToolResultToGeminiContent(msg *llm.Message, contents []*Content) 
 }
 
 func findToolNameByToolCallID(contents []*Content, id string) string {
-	for _, content := range contents {
+	if id == "" {
+		return ""
+	}
+
+	// IDs may be reused in later turns. Resolve against the nearest preceding
+	// call, never the first occurrence elsewhere in the conversation.
+	for i := len(contents) - 1; i >= 0; i-- {
+		content := contents[i]
 		for _, part := range content.Parts {
 			if part.FunctionCall != nil && part.FunctionCall.ID == id {
 				return part.FunctionCall.Name
