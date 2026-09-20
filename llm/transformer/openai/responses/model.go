@@ -1086,6 +1086,10 @@ type Error struct {
 	Message   string `json:"message"`
 	Param     string `json:"param,omitempty"`
 	RequestID string `json:"request_id,omitempty"`
+
+	// Preserve provider reset values for the existing quota cooldown parser.
+	ResetsAt        json.RawMessage `json:"resets_at,omitempty"`
+	ResetsInSeconds json.RawMessage `json:"resets_in_seconds,omitempty"`
 }
 
 type rawJSONSchema struct {

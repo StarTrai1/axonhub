@@ -1,7 +1,10 @@
 package responses
 
 import (
+	"encoding/json"
+
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/transformer/openai"
 )
 
 type Usage struct {
@@ -21,6 +24,25 @@ type Usage struct {
 	} `json:"output_tokens_details"`
 	TotalTokens int64    `json:"total_tokens"`
 	Cost        *float64 `json:"cost,omitempty"`
+}
+
+// UnmarshalJSON accepts the same cache-write aliases as Chat Completions while
+// keeping the Responses wire fields and inclusive usage totals unchanged.
+func (u *Usage) UnmarshalJSON(data []byte) error {
+	type plainUsage Usage
+	var base plainUsage
+	wire := struct {
+		*plainUsage
+		InputTokenDetails openai.PromptTokensDetails `json:"input_tokens_details"`
+	}{plainUsage: &base}
+	if err := json.Unmarshal(data, &wire); err != nil {
+		return err
+	}
+	*u = Usage(base)
+	u.InputTokenDetails.CacheWriteTokens = wire.InputTokenDetails.WriteCachedTokens
+	u.InputTokenDetails.CachedTokens = wire.InputTokenDetails.CachedTokens
+	u.InputTokenDetails.CachedTokensDetails = wire.InputTokenDetails.CachedTokensDetails
+	return nil
 }
 
 func (u *Usage) ToUsage() *llm.Usage {

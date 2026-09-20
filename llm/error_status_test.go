@@ -18,6 +18,7 @@ func TestInferResponseErrorStatusCode(t *testing.T) {
 		want      int
 	}{
 		{name: "rate limit code", code: "rate_limit_exceeded", want: http.StatusTooManyRequests},
+		{name: "Codex usage limit type", errorType: "usage_limit_reached", want: http.StatusTooManyRequests},
 		{name: "flow slow down", code: "slow_down", want: http.StatusTooManyRequests},
 		{name: "credit balance exhausted", code: "credit_balance_exhausted", want: http.StatusTooManyRequests},
 		{name: "organization spend limit", code: "organization_spend_limit_exceeded", want: http.StatusTooManyRequests},

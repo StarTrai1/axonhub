@@ -11,6 +11,7 @@ import (
 	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 const (
@@ -134,6 +135,10 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	}
 
 	// Convert to Gemini request format with config
+	llmReq, err := shared.RestrictFunctionAllowlist(llmReq)
+	if err != nil {
+		return nil, err
+	}
 	geminiReq := convertLLMToGeminiRequestWithConfig(llmReq, &t.config)
 
 	// Clear function call/response IDs for Vertex AI (not supported)

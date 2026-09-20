@@ -105,7 +105,7 @@ func convertToLlmUsage(usage *Usage, platformType PlatformType) *llm.Usage {
 
 func convertToAnthropicUsage(llmUsage *llm.Usage) *Usage {
 	usage := &Usage{
-		InputTokens:  llmUsage.PromptTokens,
+		InputTokens:  max(0, llmUsage.PromptTokens),
 		OutputTokens: llmUsage.CompletionTokens,
 		Cost:         llmUsage.Cost,
 	}
@@ -118,7 +118,10 @@ func convertToAnthropicUsage(llmUsage *llm.Usage) *Usage {
 			Ephemeral5mInputTokens: llmUsage.PromptTokensDetails.WriteCached5MinTokens,
 			Ephemeral1hInputTokens: llmUsage.PromptTokensDetails.WriteCached1HourTokens,
 		}
-		usage.InputTokens -= (usage.CacheReadInputTokens + usage.CacheCreationInputTokens)
+		// Subtract separately to avoid overflow in the sum of cache counters.
+		// Inconsistent upstream counters must not produce negative input usage.
+		usage.InputTokens -= min(usage.InputTokens, max(0, usage.CacheReadInputTokens))
+		usage.InputTokens -= min(usage.InputTokens, max(0, usage.CacheCreationInputTokens))
 	}
 
 	if llmUsage.CompletionTokensDetails != nil && llmUsage.CompletionTokensDetails.ReasoningTokens > 0 && llmUsage.CompletionTokens > 0 {

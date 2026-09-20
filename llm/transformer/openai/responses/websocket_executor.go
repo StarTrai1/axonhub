@@ -180,6 +180,12 @@ func TopLevelWebSocketError(chunks []*httpclient.StreamEvent) error {
 				detail["request_id"] = event.RequestID
 			}
 			if event.Error != nil {
+				if len(event.Error.ResetsAt) > 0 {
+					detail["resets_at"] = event.Error.ResetsAt
+				}
+				if len(event.Error.ResetsInSeconds) > 0 {
+					detail["resets_in_seconds"] = event.Error.ResetsInSeconds
+				}
 				if event.Error.Type != "" {
 					detail["type"] = event.Error.Type
 				}

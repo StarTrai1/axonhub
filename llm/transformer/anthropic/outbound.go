@@ -16,6 +16,7 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/internal/pkg/xjson"
 	"github.com/looplj/axonhub/llm/transformer"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 	"github.com/looplj/axonhub/llm/vertex"
 )
 
@@ -156,6 +157,11 @@ func (t *OutboundTransformer) TransformRequest(
 
 	if len(llmReq.Messages) == 0 {
 		return nil, fmt.Errorf("%w: messages are required", transformer.ErrInvalidRequest)
+	}
+
+	llmReq, err := shared.RestrictFunctionAllowlist(llmReq)
+	if err != nil {
+		return nil, err
 	}
 
 	// Validate max_tokens

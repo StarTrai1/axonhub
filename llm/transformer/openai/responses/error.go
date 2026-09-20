@@ -37,7 +37,9 @@ func responseErrorFromResponse(response *Response) *llm.ResponseError {
 		detail.Type = "server_error"
 	}
 
-	return newProtocolResponseError(detail)
+	result := newProtocolResponseError(detail)
+	result.Cause = responseErrorCause(result, response.Error, nil)
+	return result
 }
 
 func responseErrorFromStreamEvent(event *StreamEvent) *llm.ResponseError {
@@ -86,13 +88,29 @@ func responseErrorFromStreamEvent(event *StreamEvent) *llm.ResponseError {
 	if status >= 400 && status <= 599 {
 		result.StatusCode = status
 	}
-	if headers := responseErrorHeaders(event.Headers); len(headers) > 0 {
-		body, _ := json.Marshal(struct {
-			Error llm.ErrorDetail `json:"error"`
-		}{Error: detail})
-		result.Cause = &httpclient.Error{StatusCode: result.StatusCode, Headers: headers, Body: body}
-	}
+	result.Cause = responseErrorCause(result, event.Error, responseErrorHeaders(event.Headers))
 	return result
+}
+
+func responseErrorCause(result *llm.ResponseError, source *Error, headers http.Header) error {
+	wire := Error{
+		Type: result.Detail.Type, Code: result.Detail.Code, Message: result.Detail.Message,
+		Param: result.Detail.Param, RequestID: result.Detail.RequestID,
+	}
+	if source != nil {
+		wire.ResetsAt = source.ResetsAt
+		wire.ResetsInSeconds = source.ResetsInSeconds
+	}
+	if len(headers) == 0 && len(wire.ResetsAt) == 0 && len(wire.ResetsInSeconds) == 0 {
+		return nil
+	}
+	body, err := json.Marshal(struct {
+		Error Error `json:"error"`
+	}{Error: wire})
+	if err != nil {
+		return nil
+	}
+	return &httpclient.Error{StatusCode: result.StatusCode, Headers: headers, Body: body}
 }
 
 func responseErrorHeaders(values map[string]json.RawMessage) http.Header {

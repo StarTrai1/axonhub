@@ -335,7 +335,8 @@ func (t *Transformer) patchGeminiRequest(ctx context.Context, req *gemini.Genera
 
 	// B. Tool Config (VALIDATED mode for Claude/Antigravity)
 	if hasTools {
-		// Enforce VALIDATED mode
+		// Retain explicit NONE/ANY choices; VALIDATED still permits normal text
+		// and would otherwise weaken a required function call or enable tools.
 		if req.ToolConfig == nil {
 			req.ToolConfig = &gemini.ToolConfig{}
 		}
@@ -344,7 +345,9 @@ func (t *Transformer) patchGeminiRequest(ctx context.Context, req *gemini.Genera
 			req.ToolConfig.FunctionCallingConfig = &gemini.FunctionCallingConfig{}
 		}
 
-		req.ToolConfig.FunctionCallingConfig.Mode = "VALIDATED"
+		if mode := req.ToolConfig.FunctionCallingConfig.Mode; mode == "" || mode == "AUTO" {
+			req.ToolConfig.FunctionCallingConfig.Mode = "VALIDATED"
+		}
 
 		// C. Tool Hardening Instruction
 		hardeningMsg := "CRITICAL: DO NOT guess tool parameters. ONLY use the exact parameter structure defined in the tool schema. Parameter names are EXACT."

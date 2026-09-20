@@ -17,7 +17,7 @@ func InferResponseErrorStatusCode(code, errorType, message string) int {
 		return http.StatusForbidden
 	case containsAny(signal, "not_found", "model_not_found"):
 		return http.StatusNotFound
-	case containsAny(signal, "rate_limit", "too_many_requests", "slow_down", "insufficient_quota", "credit_balance_exhausted", "organization_spend_limit_exceeded", "project_spend_limit_exceeded", "organization_usage_limit_exceeded"):
+	case containsAny(signal, "rate_limit", "too_many_requests", "slow_down", "insufficient_quota", "usage_limit_reached", "credit_balance_exhausted", "organization_spend_limit_exceeded", "project_spend_limit_exceeded", "organization_usage_limit_exceeded"):
 		return http.StatusTooManyRequests
 	case containsAny(signal, "overloaded", "server_is_overloaded", "capacity"):
 		return http.StatusServiceUnavailable
