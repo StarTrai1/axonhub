@@ -134,7 +134,7 @@ func TestResponsesRejectedReasoningCachedRecoveryStillRequiresExplicitHistory(t 
 		value any
 	}{
 		{"previous_response_id", "resp_unresolved"},
-		{"input.9", map[string]any{"type": "compaction", "id": "cmp_opaque", "encrypted_content": "opaque"}},
+		{"input.9", map[string]any{"type": "compaction", "id": "cmp_axonhub_unknown", "encrypted_content": "opaque"}},
 		{"input.3.call_id", "missing_call"},
 		{"input.2.encrypted_function_args", "opaque"},
 		{"input.9", map[string]any{"type": "future_opaque_state"}},

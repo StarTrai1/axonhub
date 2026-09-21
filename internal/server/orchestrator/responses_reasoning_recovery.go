@@ -20,7 +20,7 @@ var responsesRejectedReasoningMessagePattern = regexp.MustCompile(
 )
 
 func responsesRejectedReasoningMessageRule(body []byte, code, message, param string) (responsesRejectedStatusRule, bool) {
-	if code != "" && code != "bad_request" && code != "invalid_request_error" {
+	if code != "" && code != "bad_request" && code != "invalid_request_error" && code != "invalid_encrypted_content" {
 		return responsesRejectedStatusRule{}, false
 	}
 	match := responsesRejectedReasoningMessagePattern.FindStringSubmatch(message)
@@ -48,7 +48,9 @@ func responsesRejectedReasoningMessageRule(body []byte, code, message, param str
 }
 
 func responsesRejectedReasoningRule(body []byte, param string) (responsesRejectedStatusRule, bool) {
-	hasEncryptedReasoning, complete := responsesExplicitHistorySupportsRecovery(body)
+	// An indexed rejection identifies reasoning, not the checkpoint. Unindexed
+	// generic encryption errors must keep the stricter complete-history guard.
+	hasEncryptedReasoning, complete := responsesReasoningHistorySupportsRecovery(body, param != "")
 	if !complete || !hasEncryptedReasoning {
 		return responsesRejectedStatusRule{}, false
 	}
@@ -67,15 +69,39 @@ func responsesRejectedReasoningRule(body []byte, param string) (responsesRejecte
 			return responsesRejectedStatusRule{}, false
 		}
 	}
-	return responsesRejectedStatusRule{itemType: "reasoning", index: -1, field: "encrypted_content", dropItem: true}, true
+	return responsesRejectedStatusRule{itemType: "reasoning", index: -1, field: "encrypted_content", dropItem: true, preserveCompaction: param != ""}, true
+}
+
+// A native checkpoint can remain verbatim while repairing rejected reasoning
+// outside it. This does not claim the checkpoint is decryptable on the target;
+// a subsequent checkpoint rejection uses the separate retained-source recovery.
+func responsesReasoningHistorySupportsRecovery(body []byte, preserveCompaction bool) (bool, bool) {
+	if hasReasoning, complete := responsesExplicitHistorySupportsRecovery(body); complete || !preserveCompaction {
+		return hasReasoning, complete
+	}
+	if _, complete := responsesResourceHistorySupportsRecovery(body); !complete {
+		return false, false
+	}
+	checkpoints := 0
+	for _, item := range gjson.GetBytes(body, "input").Array() {
+		if item.Get("type").String() != remoteCompactionItemType && item.Get("type").String() != legacyRemoteCompactionSummaryType {
+			continue
+		}
+		checkpoints++
+		ref := &remoteCompactionReference{ID: item.Get("id").String(), EncryptedContent: item.Get("encrypted_content").String()}
+		if checkpoints > 1 || !strings.HasPrefix(ref.ID, "cmp_") || isLocalCompactionReference(ref) {
+			return false, false
+		}
+	}
+	return responsesHistorySupportsRecovery(body, true)
 }
 
 func responsesExplicitHistorySupportsRecovery(body []byte) (hasEncryptedReasoning, complete bool) {
 	return responsesHistorySupportsRecovery(body, false)
 }
 
-// ID detachment can preserve an opaque checkpoint verbatim. Reasoning recovery
-// must still require the full explicit history and cannot use that exception.
+// Callers opt into preserving opaque checkpoints only when their rewrite leaves
+// them intact. Ordinary complete-history callers retain the stricter default.
 func responsesHistorySupportsRecovery(body []byte, preserveCompaction bool) (hasEncryptedReasoning, complete bool) {
 	if !gjson.ValidBytes(body) || gjson.GetBytes(body, "previous_response_id").String() != "" ||
 		gjson.GetBytes(body, "conversation").String() != "" {

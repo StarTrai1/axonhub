@@ -42,6 +42,10 @@ type responsesRejectedStatusRule struct {
 	resourceScope   *responsesMetadataCapabilityKey
 	reasoningScope  *responsesReasoningRecoveryScope
 	reasoningHashes map[[sha256.Size]byte]struct{}
+
+	// Only an exact reasoning rejection or previously successful scoped recovery
+	// may preserve an opaque native checkpoint while repairing reasoning items.
+	preserveCompaction bool
 }
 
 type responsesMetadataCapabilityKey struct {
@@ -240,6 +244,11 @@ func responsesBadRequestDetails(err error) (code, message, param string, ok bool
 
 func responsesRejectedStatusRuleForDetails(requestBody []byte, code, message, param string) (responsesRejectedStatusRule, bool) {
 	if code == "invalid_encrypted_content" {
+		if param == "" {
+			if rule, accepted := responsesRejectedReasoningMessageRule(requestBody, code, message, param); accepted {
+				return rule, true
+			}
+		}
 		return responsesRejectedReasoningRule(requestBody, param)
 	}
 	if rule, accepted := responsesRejectedReasoningMessageRule(requestBody, code, message, param); accepted {
@@ -364,7 +373,7 @@ func stripResponsesRejectedStatus(body []byte, rules []responsesRejectedStatusRu
 					}
 				}
 				if !recoveryValidated {
-					if _, safe := responsesRejectedReasoningRule(body, ""); !safe {
+					if _, safe := responsesReasoningHistorySupportsRecovery(body, rule.preserveCompaction); !safe {
 						return nil, false, errors.New("cannot rebuild rejected reasoning without complete explicit Responses history")
 					}
 					recoveryValidated = true
