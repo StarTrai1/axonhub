@@ -13123,6 +13123,11 @@ func (ec *executionContext) field_Mutation_resetChannelQuotaNow_args(ctx context
 		return nil, err
 	}
 	args["channelID"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "creditID", ec.unmarshalOString2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["creditID"] = arg1
 	return args, nil
 }
 

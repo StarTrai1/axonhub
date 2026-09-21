@@ -45,3 +45,17 @@ test('closed overlays release interaction even if CSS animations cannot finish',
   await page.getByTestId('navigation').click();
   await expect(page).toHaveURL(/#project$/);
 });
+
+test('idle animation suspension does not trap menus or confirmation layers', async ({ page }) => {
+  await page.addStyleTag({ content: '[data-state="closed"] { animation-play-state: paused !important; }' });
+  await page.getByTestId('row-menu').click();
+  await expect(page.getByRole('menu')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('menu')).toHaveCount(0);
+  await page.getByTestId('open-confirmation').click();
+  await expect(page.getByRole('alertdialog')).toBeVisible();
+  await page.getByTestId('confirm').click();
+  await expect(page.getByRole('alertdialog')).toHaveCount(0);
+  await page.getByTestId('navigation').click();
+  await expect(page).toHaveURL(/#project$/);
+});

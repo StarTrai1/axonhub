@@ -4,6 +4,7 @@ import '@/index.css';
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
+import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogTitle, AlertDialogDescription, AlertDialogAction } from '@/components/ui/alert-dialog';
 
 function Fixture() {
   const [dialog, setDialog] = useState(false);
@@ -15,6 +16,14 @@ function Fixture() {
     <Button data-testid="navigation" onClick={navigate}>Project</Button>
     <output data-testid="page">{page}</output>
     <Button data-testid="open-dialog" onClick={() => { setMounted(true); setDialog(true); }}>Open dialog</Button>
+    <AlertDialog>
+      <AlertDialogTrigger asChild><Button data-testid="open-confirmation">Confirmation</Button></AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogTitle>Offline confirmation</AlertDialogTitle>
+        <AlertDialogDescription>No provider request is made.</AlertDialogDescription>
+        <AlertDialogAction data-testid="confirm">Confirm</AlertDialogAction>
+      </AlertDialogContent>
+    </AlertDialog>
     <DropdownMenu open={menu} onOpenChange={setMenu}>
       <DropdownMenuTrigger asChild><Button data-testid="row-menu">Row actions</Button></DropdownMenuTrigger>
       <DropdownMenuContent>
