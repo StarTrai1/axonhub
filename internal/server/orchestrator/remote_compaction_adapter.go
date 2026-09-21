@@ -13,8 +13,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/samber/lo"
 	"golang.org/x/sync/singleflight"
 
+	lru "github.com/hashicorp/golang-lru/v2"
 	gocache "github.com/patrickmn/go-cache"
 
 	"github.com/looplj/axonhub/internal/ent"
@@ -58,6 +60,7 @@ type remoteCompactionAdapter struct {
 	systemService    *biz.SystemService
 	summaries        *gocache.Cache
 	summaryGenerator singleflight.Group
+	recoveries       *lru.Cache[responsesCompactionRecoveryKey, time.Time]
 }
 
 type remoteCompactionReference struct {
@@ -102,6 +105,7 @@ func newRemoteCompactionAdapter(
 		usageLogService: usageLogService,
 		systemService:   systemService,
 		summaries:       gocache.New(remoteCompactionCacheExpiration, remoteCompactionCacheCleanup),
+		recoveries:      lo.Must(lru.New[responsesCompactionRecoveryKey, time.Time](responsesReasoningRecoveryMaxScopes)),
 	}
 }
 

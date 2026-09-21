@@ -2,9 +2,12 @@ package orchestrator
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"regexp"
+	"time"
 
 	"github.com/tidwall/gjson"
 
@@ -13,6 +16,7 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
+	"github.com/looplj/axonhub/llm/streams"
 )
 
 type responsesCompactionRecoveryKey struct {
@@ -59,6 +63,7 @@ type responsesCompactionRecoveryMiddleware struct {
 	adapter  *remoteCompactionAdapter
 	executor pipeline.Executor
 	rejected map[responsesCompactionRecoveryKey]struct{}
+	adapted  *responsesCompactionRecoveryKey
 }
 
 func recoverRejectedRemoteCompaction(
@@ -74,6 +79,7 @@ func (m *responsesCompactionRecoveryMiddleware) Name() string {
 }
 
 func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawError(ctx context.Context, err error) {
+	m.adapted = nil
 	if ctx.Err() != nil || m.outbound == nil || m.outbound.state == nil || m.adapter == nil || m.executor == nil {
 		return
 	}
@@ -118,7 +124,8 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawRequest(
 	ctx context.Context,
 	request *httpclient.Request,
 ) (*httpclient.Request, error) {
-	if len(m.rejected) == 0 {
+	m.adapted = nil
+	if m.adapter == nil || m.executor == nil {
 		return request, nil
 	}
 	if err := ctx.Err(); err != nil {
@@ -128,7 +135,10 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawRequest(
 	if !ok {
 		return request, nil
 	}
-	if _, rejected := m.rejected[key]; !rejected {
+	_, rejected := m.rejected[key]
+	known := m.hasConfirmedRecovery(ctx, key)
+	local := m.outbound.GetCurrentChannel().Policies.UsesLocalRemoteCompactionBridge()
+	if !rejected && !known && !local {
 		return request, nil
 	}
 	if _, safe := responsesResourceHistorySupportsRecovery(request.Body); !safe {
@@ -167,7 +177,86 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawRequest(
 		request.JSONBody = body
 	}
 	request.Headers.Del(codexTurnStateHeader)
+	if rejected && !known {
+		m.adapted = &key
+	}
 	return request, nil
+}
+
+// Hash all authenticated and destination identities; no credentials or opaque
+// checkpoint bytes are written to the compatibility store.
+func (key responsesCompactionRecoveryKey) digest() [sha256.Size]byte {
+	identity := []any{
+		"compaction-recovery-v1", key.scope.provider.channelID, key.scope.provider.url,
+		key.scope.provider.model, key.scope.provider.credential, key.scope.owner,
+		key.scope.threadID, key.scope.windowID, key.cacheKey, key.threadID, key.apiKeyID, key.projectID,
+	}
+	encoded, _ := json.Marshal(identity)
+	return sha256.Sum256(encoded)
+}
+
+func (m *responsesCompactionRecoveryMiddleware) hasConfirmedRecovery(ctx context.Context, key responsesCompactionRecoveryKey) bool {
+	if m.adapter == nil {
+		return false
+	}
+	if m.adapter.recoveries != nil {
+		if expiry, found := m.adapter.recoveries.Get(key); found {
+			if time.Now().Before(expiry) {
+				return true
+			}
+			m.adapter.recoveries.Remove(key)
+		}
+	}
+	if m.adapter.systemService == nil {
+		return false
+	}
+	lookupCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	expiry, err := m.adapter.systemService.LoadResponsesCompactionRecovery(lookupCtx, key.digest())
+	if err != nil {
+		log.Warn(ctx, "could not load confirmed compaction recovery", log.Cause(err))
+		return false
+	}
+	if !time.Now().Before(expiry) {
+		return false
+	}
+	if m.adapter.recoveries != nil {
+		m.adapter.recoveries.Add(key, expiry)
+	}
+	return true
+}
+
+func (m *responsesCompactionRecoveryMiddleware) confirmRecovery(ctx context.Context, key responsesCompactionRecoveryKey) {
+	if ctx.Err() != nil || m.hasConfirmedRecovery(ctx, key) {
+		return
+	}
+	expiry := time.Now().Add(responsesReasoningRecoveryTTL)
+	if m.adapter.recoveries != nil {
+		m.adapter.recoveries.Add(key, expiry)
+	}
+	if m.adapter.systemService != nil {
+		saveCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+		defer cancel()
+		if err := m.adapter.systemService.SaveResponsesCompactionRecovery(saveCtx, key.digest(), expiry); err != nil {
+			log.Warn(ctx, "could not persist confirmed compaction recovery", log.Cause(err))
+		}
+	}
+}
+
+func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawResponse(ctx context.Context, response *httpclient.Response) (*httpclient.Response, error) {
+	if m.adapted != nil && response != nil && response.StatusCode >= 200 && response.StatusCode < 300 &&
+		responsesReasoningRecoverySucceeded(response.Body) {
+		m.confirmRecovery(ctx, *m.adapted)
+	}
+	return response, nil
+}
+
+func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawStream(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*httpclient.StreamEvent], error) {
+	if m.adapted == nil {
+		return stream, nil
+	}
+	key := *m.adapted
+	return &responsesReasoningRecoveryStream{Stream: stream, onSuccess: func() { m.confirmRecovery(ctx, key) }}, nil
 }
 
 func (m *responsesCompactionRecoveryMiddleware) recoveryKey(

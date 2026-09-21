@@ -34,9 +34,23 @@ type responsesMetadataCapabilities struct {
 }
 
 func (service *SystemService) LoadResponsesMetadataRejection(ctx context.Context, scope [sha256.Size]byte) (time.Time, error) {
+	return service.loadResponsesRecoveryExpiry(ctx, responsesMetadataCapabilitiesKey, scope)
+}
+
+// Compaction recovery facts have their own namespace; a metadata rejection is
+// never evidence that a native checkpoint can be replaced.
+func (service *SystemService) LoadResponsesCompactionRecovery(ctx context.Context, scope [sha256.Size]byte) (time.Time, error) {
+	return service.loadResponsesRecoveryExpiry(ctx, "responses_compaction_recoveries_v1", scope)
+}
+
+func (service *SystemService) SaveResponsesCompactionRecovery(ctx context.Context, scope [sha256.Size]byte, expiresAt time.Time) error {
+	return service.saveResponsesRecoveryExpiry(ctx, "responses_compaction_recoveries_v1", scope, expiresAt)
+}
+
+func (service *SystemService) loadResponsesRecoveryExpiry(ctx context.Context, storageKey string, scope [sha256.Size]byte) (time.Time, error) {
 	ctx = authz.WithSystemBypass(ctx, "load-responses-metadata-capability")
 	record, err := service.entFromContext(ctx).System.Query().
-		Where(system.KeyEQ(responsesMetadataCapabilitiesKey)).
+		Where(system.KeyEQ(storageKey)).
 		Only(ctx)
 	if ent.IsNotFound(err) {
 		return time.Time{}, nil
@@ -54,6 +68,10 @@ func (service *SystemService) LoadResponsesMetadataRejection(ctx context.Context
 }
 
 func (service *SystemService) SaveResponsesMetadataRejection(ctx context.Context, scope [sha256.Size]byte, expiresAt time.Time) error {
+	return service.saveResponsesRecoveryExpiry(ctx, responsesMetadataCapabilitiesKey, scope, expiresAt)
+}
+
+func (service *SystemService) saveResponsesRecoveryExpiry(ctx context.Context, storageKey string, scope [sha256.Size]byte, expiresAt time.Time) error {
 	now := time.Now()
 	if !expiresAt.After(now) || expiresAt.After(now.Add(ResponsesMetadataCapabilityTTL)) {
 		return fmt.Errorf("Responses metadata capability expiry must be within six hours")
@@ -63,7 +81,7 @@ func (service *SystemService) SaveResponsesMetadataRejection(ctx context.Context
 	client := service.entFromContext(ctx)
 	scopeKey := hex.EncodeToString(scope[:])
 	for range responsesMetadataCapabilitiesMaxAttempts {
-		record, err := client.System.Query().Where(system.KeyEQ(responsesMetadataCapabilitiesKey)).Only(schematype.SkipSoftDelete(ctx))
+		record, err := client.System.Query().Where(system.KeyEQ(storageKey)).Only(schematype.SkipSoftDelete(ctx))
 		if err != nil && !ent.IsNotFound(err) {
 			return fmt.Errorf("load Responses metadata capabilities for update: %w", err)
 		}
@@ -88,7 +106,7 @@ func (service *SystemService) SaveResponsesMetadataRejection(ctx context.Context
 		}
 		if record == nil {
 			err = client.System.Create().
-				SetKey(responsesMetadataCapabilitiesKey).
+				SetKey(storageKey).
 				SetValue(string(encoded)).
 				Exec(ctx)
 			if ent.IsConstraintError(err) {

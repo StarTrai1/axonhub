@@ -204,13 +204,13 @@ func (m *responsesRejectedStatusCompatibilityMiddleware) OnOutboundRawStream(
 	if m.recoveredReasoning == nil {
 		return stream, nil
 	}
-	return &responsesReasoningRecoveryStream{Stream: stream, recovery: m.recoveredReasoning}, nil
+	return &responsesReasoningRecoveryStream{Stream: stream, onSuccess: m.recoveredReasoning.confirm}, nil
 }
 
 type responsesReasoningRecoveryStream struct {
 	streams.Stream[*httpclient.StreamEvent]
 
-	recovery  *responsesReasoningRecovery
+	onSuccess func()
 	current   *httpclient.StreamEvent
 	confirmed bool
 	failed    bool
@@ -237,7 +237,7 @@ func (s *responsesReasoningRecoveryStream) Next() bool {
 	// terminal event is authoritative even if the transport closes afterward.
 	if !s.confirmed && !s.failed && eventType == "response.completed" &&
 		responsesReasoningRecoverySucceeded([]byte(gjson.GetBytes(event.Data, "response").Raw)) {
-		s.recovery.confirm()
+		s.onSuccess()
 		s.confirmed = true
 	}
 	return true

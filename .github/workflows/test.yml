@@ -93,3 +93,18 @@ jobs:
       - name: Test
         working-directory: frontend
         run: pnpm test:unit
+
+      - name: Install browser for isolated UI regressions
+        working-directory: frontend
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Verify overlay lifecycle and navigation
+        working-directory: frontend
+        run: pnpm exec playwright test --config playwright.interactions.config.ts
+
+      - name: Upload UI regression diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: ui-interaction-failures
+          path: frontend/test-results
