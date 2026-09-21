@@ -17,6 +17,7 @@ import (
 type quotaResetDispatchRecorder struct {
 	ResolverRoot
 	MutationResolver
+
 	channelID objects.GUID
 	creditID  *string
 	calls     int
