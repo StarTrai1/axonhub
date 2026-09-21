@@ -33,7 +33,7 @@ func TestResponsesCompactionRecoverySurvivesNextRequestAndRestart(t *testing.T) 
 				run := func(current *remoteCompactionAdapter, reject bool) {
 					t.Helper()
 					executor := &responsesReasoningPipelineExecutor{
-						events: rejectedReasoningCompactionEvents(),
+						events:   rejectedReasoningCompactionEvents(),
 						response: &httpclient.Response{StatusCode: http.StatusOK, Body: []byte(`{"id":"cmp_output","object":"response.compaction","output":[{"type":"compaction","id":"cmp_next","encrypted_content":"new-native-state"}]}`)},
 					}
 					budget := 0
@@ -55,10 +55,15 @@ func TestResponsesCompactionRecoverySurvivesNextRequestAndRestart(t *testing.T) 
 					assertRejectedCompactionWindowPreserved(t, req.Body, executor.requests[len(executor.requests)-1].Body)
 				}
 				run(adapter, true)
-				require.Len(t, adapter.recoveries.Keys(), 1)
+				// Pass-through drains its transformed stream asynchronously.
+				require.Eventually(t, func() bool { return adapter.recoveries.Len() == 1 }, time.Second, time.Millisecond)
 				key := adapter.recoveries.Keys()[0]
 				expiry, ok := adapter.recoveries.Peek(key)
 				require.True(t, ok)
+				require.Eventually(t, func() bool {
+					stored, loadErr := adapter.systemService.LoadResponsesCompactionRecovery(ctx, key.digest())
+					return loadErr == nil && stored.Equal(expiry)
+				}, time.Second, time.Millisecond)
 				run(adapter, false)
 				unchanged, _ := adapter.recoveries.Peek(key)
 				require.Equal(t, expiry, unchanged, "cache hits must not extend TTL")

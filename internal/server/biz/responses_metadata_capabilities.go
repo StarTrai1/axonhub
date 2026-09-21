@@ -37,8 +37,8 @@ func (service *SystemService) LoadResponsesMetadataRejection(ctx context.Context
 	return service.loadResponsesRecoveryExpiry(ctx, responsesMetadataCapabilitiesKey, scope)
 }
 
-// Compaction recovery facts have their own namespace; a metadata rejection is
-// never evidence that a native checkpoint can be replaced.
+// LoadResponsesCompactionRecovery uses a separate namespace: a metadata
+// rejection is never evidence that a native checkpoint can be replaced.
 func (service *SystemService) LoadResponsesCompactionRecovery(ctx context.Context, scope [sha256.Size]byte) (time.Time, error) {
 	return service.loadResponsesRecoveryExpiry(ctx, "responses_compaction_recoveries_v1", scope)
 }
