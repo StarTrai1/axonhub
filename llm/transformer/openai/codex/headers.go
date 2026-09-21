@@ -15,6 +15,7 @@ const (
 	SessionHeader         = "Session_id"
 	SessionHeaderHyphen   = "Session-Id"
 	TurnMetadataHeader    = "X-Codex-Turn-Metadata"
+	TurnStateHeader       = "X-Codex-Turn-State"
 	WindowIDHeader        = "X-Codex-Window-Id"
 	ClientRequestIDHeader = "X-Client-Request-Id"
 	BetaFeaturesHeader    = "X-Codex-Beta-Features"
@@ -47,6 +48,7 @@ type TurnMetadata struct {
 // Codex session shape.
 var PassthroughHeaders = []string{
 	TurnMetadataHeader,
+	TurnStateHeader,
 	WindowIDHeader,
 	ClientRequestIDHeader,
 	BetaFeaturesHeader,

@@ -58,12 +58,20 @@ type Request struct {
 	// SkipInboundQueryMerge when set to true, prevents query parameters from the original
 	// inbound request from being merged into this request during MergeInboundRequest.
 	SkipInboundQueryMerge bool     `json:"-"`
-	SkipInboundHeaders   []string `json:"-"`
+	SkipInboundHeaders    []string `json:"-"`
 
 	// DetachedStreamTimeout keeps an upstream stream alive after the inbound request is
 	// canceled, bounded by this timeout. It is reserved for protocols that must drain a
 	// delayed terminal event after the client-facing stream has already completed.
 	DetachedStreamTimeout time.Duration `json:"-"`
+
+	OnResponseHeaders func(context.Context, http.Header) `json:"-"`
+}
+
+func (r *Request) ObserveResponseHeaders(ctx context.Context, headers http.Header) {
+	if r != nil && r.OnResponseHeaders != nil {
+		r.OnResponseHeaders(ctx, headers.Clone())
+	}
 }
 
 // AuthConfig represents authentication configuration.
@@ -119,6 +127,9 @@ type StreamEvent struct {
 	// from Data for persistence (e.g. raw TTS audio chunks). It lets stream
 	// aggregators report total bytes without retaining the audio payload.
 	Size int `json:"size,omitempty"`
+	// Headers is populated only on the first event by HTTP stream executors.
+	// It carries transport metadata such as Codex turn-state headers.
+	Headers http.Header `json:"-"`
 }
 
 // IsBinaryAudioChunk reports whether the event carries a raw binary audio payload

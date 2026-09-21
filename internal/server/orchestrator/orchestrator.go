@@ -298,7 +298,10 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		stripUnsupportedCodexPromptCacheOptions(outbound),
 		// applyUserAgentPassThrough runs before header overrides to set the initial
 		// User-Agent value (either from client pass-through or default "axonhub/1.0").
-		// This allows override headers to modify the User-Agent if configured.
+		// A provider-required User-Agent already set by the outbound transformer
+		// (e.g. GitHubCopilotChat on Copilot channels) is preserved when
+		// pass-through is disabled. Override headers can still modify the
+		// User-Agent if configured.
 		applyUserAgentPassThrough(outbound, processor.SystemService),
 		applyOverrideRequestHeaders(outbound),
 		// Guard the client-minted sticky token before an OAuth identity policy

@@ -429,6 +429,9 @@ func (hc *HttpClient) Do(ctx context.Context, request *Request) (*Response, erro
 	}
 
 	rawResp, err := hc.client.Do(rawReq)
+	if rawResp != nil {
+		request.ObserveResponseHeaders(ctx, rawResp.Header)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("HTTP request failed: %w", err)
 	}
@@ -532,6 +535,9 @@ func (hc *HttpClient) DoStream(ctx context.Context, request *Request) (streams.S
 
 	// Execute request
 	rawResp, err := hc.client.Do(rawReq)
+	if rawResp != nil {
+		request.ObserveResponseHeaders(ctx, rawResp.Header)
+	}
 	if err != nil {
 		if streamCancel != nil {
 			streamCancel()
@@ -606,6 +612,18 @@ func (hc *HttpClient) DoStream(ctx context.Context, request *Request) (streams.S
 			cancel: streamCancel,
 		}
 	}
+	responseHeaders := make(http.Header)
+	if value := rawResp.Header.Get("X-Codex-Turn-State"); value != "" {
+		responseHeaders.Set("X-Codex-Turn-State", value)
+	}
+	first := true
+	stream = streams.Map(stream, func(event *StreamEvent) *StreamEvent {
+		if event != nil && first {
+			event.Headers = responseHeaders
+			first = false
+		}
+		return event
+	})
 
 	return stream, nil
 }

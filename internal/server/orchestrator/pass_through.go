@@ -40,6 +40,7 @@ const (
 // credentials, transport headers, and protocol-selection headers are never copied.
 var codexResponsesPassThroughHeaders = []string{
 	"X-Codex-Turn-Metadata",
+	"X-Codex-Turn-State",
 	"X-Codex-Window-Id",
 	"X-Client-Request-Id",
 	"X-Codex-Beta-Features",
@@ -511,8 +512,10 @@ func applyUserAgentPassThrough(outbound *PersistentOutboundTransformer, systemSe
 			// a generic client User-Agent. Keep the synthesized private-endpoint
 			// identity coherent when no explicit identity pass-through was requested.
 			request.Headers.Set("User-Agent", "codex_cli_rs/"+request.Headers.Get("Version"))
-		} else if !codexChannel || request.Headers.Get("User-Agent") == "" {
-			// Pass-through disabled: use AxonHub's default User-Agent
+		} else if request.Headers.Get("User-Agent") == "" {
+			// Pass-through disabled: use AxonHub's default User-Agent, unless the
+			// outbound transformer already set a provider-required one (e.g.
+			// GitHubCopilotChat on Copilot channels).
 			request.Headers.Set("User-Agent", "axonhub/1.0")
 		}
 
