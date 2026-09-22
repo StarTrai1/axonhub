@@ -63,7 +63,7 @@ func transientRateLimitRetryAfter(err error, now time.Time) (time.Duration, bool
 		}
 		return time.Duration(amount * float64(unit)), true
 	}
-	return 0, false
+	return httpclient.ParseGoogleRetryInfo(err)
 }
 
 func (p *PersistentOutboundTransformer) SameChannelRetryDelay(err error, attempt int) time.Duration {

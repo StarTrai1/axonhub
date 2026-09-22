@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"testing"
 	"time"
@@ -13,6 +14,7 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
+	"github.com/looplj/axonhub/llm/transformer/gemini"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
 
@@ -102,6 +104,8 @@ func TestWebSocketOverloadHeadersReachPersistentRetryPolicy(t *testing.T) {
 	for _, event := range []string{
 		`{"type":"error","status_code":429,"error":{"code":"slow_down","message":"temporarily busy"},"headers":{"retry-after":12}}`,
 		`{"type":"error","status_code":503,"error":{"code":"server_is_overloaded","message":"temporarily busy"},"headers":{"retry-after":"12"}}`,
+		`{"type":"error","error":{"status":429,"code":"opaque_provider_error","message":"temporarily busy"},"headers":{"retry-after":12}}`,
+		`{"type":"error","error":{"status_code":"503","code":"opaque_provider_error","message":"temporarily busy"},"headers":{"retry-after":"12"}}`,
 	} {
 		wrapped, err := responses.NewOutboundTransformer("https://api.openai.com", "test-key")
 		require.NoError(t, err)
@@ -118,5 +122,59 @@ func TestWebSocketOverloadHeadersReachPersistentRetryPolicy(t *testing.T) {
 		outbound.state.ChannelModelsCandidates = append(outbound.state.ChannelModelsCandidates, &ChannelModelsCandidate{Channel: &biz.Channel{Channel: &ent.Channel{ID: 30}}})
 		require.False(t, outbound.CanRetry(streamErr))
 		require.NoError(t, stream.Close())
+	}
+}
+
+func TestGoogleRetryInfoReachesRetryPolicyAndChannelCooldown(t *testing.T) {
+	for _, testCase := range []struct {
+		name       string
+		delay      string
+		retryAfter string
+		want       time.Duration
+		allowed    bool
+	}{
+		{"short capacity window", "39s", "", 39 * time.Second, true},
+		{"fractional window", "1.5s", "", 1500 * time.Millisecond, true},
+		{"long window does not block retry loop", "90s", "", 90 * time.Second, false},
+		{"cooldown remains bounded", "86400s", "", httpclient.MaxRetryAfterDuration, false},
+		{"header precedence", "90s", "10", 10 * time.Second, true},
+		{"invalid advice", "later", "", 0, true},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			wrapped, err := gemini.NewOutboundTransformer("https://example.com", "test-key")
+			require.NoError(t, err)
+			candidate := &ChannelModelsCandidate{Channel: &biz.Channel{Channel: &ent.Channel{ID: 29}}}
+			outbound := &PersistentOutboundTransformer{
+				wrapped: wrapped,
+				state:   &PersistenceState{
+					CurrentCandidate:        candidate,
+					ChannelModelsCandidates: []*ChannelModelsCandidate{candidate},
+				},
+			}
+			body := fmt.Sprintf(`{"error":{"code":429,"status":"RESOURCE_EXHAUSTED","message":"temporarily busy","details":[{"@type":"type.googleapis.com/google.rpc.RetryInfo","retryDelay":%q}]}}`, testCase.delay)
+			headers := make(http.Header)
+			if testCase.retryAfter != "" {
+				headers.Set("Retry-After", testCase.retryAfter)
+			}
+			failure := outbound.TransformError(t.Context(), &httpclient.Error{
+				StatusCode: http.StatusTooManyRequests, Headers: headers, Body: []byte(body),
+			})
+			require.Equal(t, testCase.allowed, outbound.CanRetry(failure))
+			if testCase.allowed {
+				delay := outbound.SameChannelRetryDelay(failure, 1)
+				minimum := max(2*time.Second, testCase.want)
+				require.GreaterOrEqual(t, delay, minimum)
+				require.LessOrEqual(t, delay, minimum+500*time.Millisecond)
+			}
+			tracker := NewChannelRequestTracker()
+			middleware := &rateLimitTracking{outbound: outbound, tracker: tracker}
+			before := time.Now()
+			middleware.OnOutboundRawError(t.Context(), failure)
+			until, ok := tracker.GetCooldownUntil(candidate.Channel.ID)
+			require.Equal(t, testCase.want > 0, ok)
+			if ok {
+				require.WithinDuration(t, before.Add(testCase.want), until, time.Second)
+			}
+		})
 	}
 }

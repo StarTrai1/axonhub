@@ -38,6 +38,7 @@ func responseErrorFromResponse(response *Response) *llm.ResponseError {
 	}
 
 	result := newProtocolResponseError(detail)
+	result.StatusCode = responseErrorStatusCode(response.Error, result.StatusCode)
 	result.Cause = responseErrorCause(result, response.Error, nil)
 	return result
 }
@@ -88,8 +89,21 @@ func responseErrorFromStreamEvent(event *StreamEvent) *llm.ResponseError {
 	if status >= 400 && status <= 599 {
 		result.StatusCode = status
 	}
+	result.StatusCode = responseErrorStatusCode(event.Error, result.StatusCode)
 	result.Cause = responseErrorCause(result, event.Error, responseErrorHeaders(event.Headers))
 	return result
+}
+
+func responseErrorStatusCode(source *Error, fallback int) int {
+	if source != nil {
+		for _, raw := range []json.RawMessage{source.StatusCode, source.Status} {
+			status, err := strconv.Atoi(strings.Trim(strings.TrimSpace(string(raw)), `"`))
+			if err == nil && status >= 400 && status <= 599 {
+				return status
+			}
+		}
+	}
+	return fallback
 }
 
 func responseErrorCause(result *llm.ResponseError, source *Error, headers http.Header) error {
@@ -98,6 +112,8 @@ func responseErrorCause(result *llm.ResponseError, source *Error, headers http.H
 		Param: result.Detail.Param, RequestID: result.Detail.RequestID,
 	}
 	if source != nil {
+		wire.Status = source.Status
+		wire.StatusCode = source.StatusCode
 		wire.ResetsAt = source.ResetsAt
 		wire.ResetsInSeconds = source.ResetsInSeconds
 	}

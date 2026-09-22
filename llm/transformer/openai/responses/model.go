@@ -1087,6 +1087,10 @@ type Error struct {
 	Param     string `json:"param,omitempty"`
 	RequestID string `json:"request_id,omitempty"`
 
+	// Compatible providers may encode HTTP status as a number or a string.
+	Status     json.RawMessage `json:"status,omitempty"`
+	StatusCode json.RawMessage `json:"status_code,omitempty"`
+
 	// Preserve provider reset values for the existing quota cooldown parser.
 	ResetsAt        json.RawMessage `json:"resets_at,omitempty"`
 	ResetsInSeconds json.RawMessage `json:"resets_in_seconds,omitempty"`

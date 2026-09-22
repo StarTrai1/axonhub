@@ -360,8 +360,9 @@ const PriceItemRow = memo(function PriceItemRow({
                             onChange={(e) =>
                               isLastTier
                                 ? field.onChange(null)
-                                : field.onChange(e.target.value ? parseInt(e.target.value) : null)
+                                : field.onChange(e.target.value ? Math.trunc(Number(e.target.value)) : null)
                             }
+                            data-testid='pricing-tier-upper-bound'
                             placeholder={isLastTier ? '∞' : t('price.upTo')}
                             disabled={isLastTier}
                             className='h-7 text-xs'
@@ -667,8 +668,9 @@ const PriceVariantRow = memo(function PriceVariantRow({
                           onChange={(e) =>
                             isLastTier
                               ? field.onChange(null)
-                              : field.onChange(e.target.value ? parseInt(e.target.value) : null)
+                              : field.onChange(e.target.value ? Math.trunc(Number(e.target.value)) : null)
                           }
+                          data-testid='pricing-tier-upper-bound'
                           placeholder={isLastTier ? '∞' : t('price.upTo')}
                           disabled={isLastTier}
                           className='h-6 text-[10px]'

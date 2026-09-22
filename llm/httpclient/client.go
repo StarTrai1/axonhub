@@ -503,17 +503,20 @@ func (hc *HttpClient) Do(ctx context.Context, request *Request) (*Response, erro
 
 // DoStream executes a streaming HTTP request using Server-Sent Events.
 func (hc *HttpClient) DoStream(ctx context.Context, request *Request) (streams.Stream[*StreamEvent], error) {
-	streamCtx := ctx
+	var streamCtx context.Context
 	var streamCancel context.CancelFunc
 	if request.DetachedStreamTimeout > 0 {
 		streamCtx, streamCancel = context.WithTimeout(context.WithoutCancel(ctx), request.DetachedStreamTimeout)
+	} else {
+		// Each attempt owns its transport cancellation. Closing a stream must
+		// cancel pending reads before closing the body, without canceling a
+		// caller context that may be reused for the next attempt.
+		streamCtx, streamCancel = context.WithCancel(ctx)
 	}
 
 	rawReq, err := hc.BuildHttpRequest(streamCtx, request)
 	if err != nil {
-		if streamCancel != nil {
-			streamCancel()
-		}
+		streamCancel()
 
 		return nil, fmt.Errorf("failed to build HTTP request: %w", err)
 	}
@@ -539,9 +542,7 @@ func (hc *HttpClient) DoStream(ctx context.Context, request *Request) (streams.S
 		request.ObserveResponseHeaders(ctx, rawResp.Header)
 	}
 	if err != nil {
-		if streamCancel != nil {
-			streamCancel()
-		}
+		streamCancel()
 
 		return nil, fmt.Errorf("HTTP stream request failed: %w", err)
 	}
@@ -549,9 +550,7 @@ func (hc *HttpClient) DoStream(ctx context.Context, request *Request) (streams.S
 	// Check for HTTP errors before creating stream
 	if rawResp.StatusCode >= 400 {
 		defer func() {
-			if streamCancel != nil {
-				streamCancel()
-			}
+			streamCancel()
 
 			err := rawResp.Body.Close()
 			if err != nil {
@@ -606,11 +605,9 @@ func (hc *HttpClient) DoStream(ctx context.Context, request *Request) (streams.S
 	RecordResponseHeaders(streamCtx, rawResp.Header)
 
 	stream := decoderFactory(streamCtx, rawResp.Body)
-	if streamCancel != nil {
-		stream = &detachedContextStream{
-			Stream: stream,
-			cancel: streamCancel,
-		}
+	stream = &requestContextStream{
+		Stream: stream,
+		cancel: streamCancel,
 	}
 	responseHeaders := make(http.Header)
 	if value := rawResp.Header.Get("X-Codex-Turn-State"); value != "" {
@@ -628,14 +625,14 @@ func (hc *HttpClient) DoStream(ctx context.Context, request *Request) (streams.S
 	return stream, nil
 }
 
-type detachedContextStream struct {
+type requestContextStream struct {
 	streams.Stream[*StreamEvent]
 	cancel    context.CancelFunc
 	closeErr  error
 	closeOnce sync.Once
 }
 
-func (s *detachedContextStream) Next() bool {
+func (s *requestContextStream) Next() bool {
 	if s.Stream.Next() {
 		return true
 	}
@@ -645,7 +642,7 @@ func (s *detachedContextStream) Next() bool {
 	return false
 }
 
-func (s *detachedContextStream) Close() error {
+func (s *requestContextStream) Close() error {
 	s.closeOnce.Do(func() {
 		s.cancel()
 		s.closeErr = s.Stream.Close()

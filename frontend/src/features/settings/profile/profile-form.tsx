@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -29,6 +29,12 @@ export default function ProfileForm() {
   const auth = useAuthStore((state) => state.auth);
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const avatarReaderRef = useRef<FileReader | null>(null);
+  useEffect(() => () => {
+    const reader = avatarReaderRef.current;
+    avatarReaderRef.current = null;
+    reader?.abort();
+  }, []);
 
   const profileFormSchema = z.object({
     firstName: z
@@ -105,10 +111,14 @@ export default function ProfileForm() {
   const handleAvatarUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      avatarReaderRef.current?.abort();
       // For now, we'll use a simple file reader to convert to base64
       // In a real app, you'd upload to a file storage service
       const reader = new FileReader();
+      avatarReaderRef.current = reader;
       reader.onload = (e) => {
+        if (avatarReaderRef.current !== reader) return;
+        avatarReaderRef.current = null;
         const result = e.target?.result as string;
         form.setValue('avatar', result);
       };
@@ -147,7 +157,7 @@ export default function ProfileForm() {
                       <Upload className='mr-2 h-4 w-4' />
                       {t('profile.form.fields.avatar.upload')}
                     </Button>
-                    <input ref={fileInputRef} type='file' accept='image/*' onChange={handleAvatarUpload} className='hidden' />
+                    <input ref={fileInputRef} type='file' accept='image/*' onChange={handleAvatarUpload} className='hidden' data-testid='avatar-upload' />
                   </div>
                 </div>
               </FormControl>

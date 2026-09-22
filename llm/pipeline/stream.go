@@ -132,10 +132,8 @@ func (s *cancelOnCloseStream) Err() error {
 }
 
 func (s *cancelOnCloseStream) Close() error {
-	err := s.stream.Close()
 	s.once.Do(s.cancel)
-
-	return err
+	return s.stream.Close()
 }
 
 // hasFinishReason checks if an llm.Response event contains a finish reason.

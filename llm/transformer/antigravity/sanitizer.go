@@ -489,7 +489,9 @@ func flattenTypeArrays(schema map[string]any, nullableFields map[string][]string
 		firstType := "string"
 		if len(nonNullTypes) > 0 {
 			firstType = nonNullTypes[0]
-			if _, hasItems := schema["items"]; hasItems {
+			_, hasItems := schema["items"]
+			_, hasPrefixItems := schema["prefixItems"]
+			if hasItems || hasPrefixItems {
 				for _, typeName := range nonNullTypes {
 					if strings.EqualFold(typeName, "array") {
 						firstType = typeName
@@ -656,6 +658,12 @@ func cleanupRequiredFields(schema map[string]any) map[string]any {
 // Visit schema positions explicitly so properties named "items" or "type"
 // and object-valued enum data are not interpreted as schema keywords.
 func sanitizeArrayItems(schema map[string]any) map[string]any {
+	if prefix, exists := schema["prefixItems"]; exists {
+		if items, ok := schema["items"].(map[string]any); !ok || len(items) == 0 {
+			schema["items"] = arrayItemSchema(prefix)
+		}
+		delete(schema, "prefixItems")
+	}
 	if _, hasItems := schema["items"]; hasItems {
 		typeName, isString := schema["type"].(string)
 		if schema["type"] == nil || isString && typeName == "" {
@@ -663,6 +671,9 @@ func sanitizeArrayItems(schema map[string]any) map[string]any {
 		} else if isString && !strings.EqualFold(typeName, "array") {
 			delete(schema, "items")
 		}
+	}
+	if typeName, ok := schema["type"].(string); ok && strings.EqualFold(typeName, "array") {
+		schema["items"] = arrayItemSchema(schema["items"])
 	}
 	for key, value := range schema {
 		switch key {
@@ -685,6 +696,50 @@ func sanitizeArrayItems(schema map[string]any) map[string]any {
 		}
 	}
 	return schema
+}
+
+// Gemini's protobuf schema cannot express tuple positions or boolean schemas.
+// Use the same best-schema selection as union flattening, retaining a concrete
+// item schema and the existing placeholder behavior for empty objects.
+func arrayItemSchema(value any) map[string]any {
+	if tuple, ok := value.([]any); ok {
+		var best map[string]any
+		bestScore := -1
+		for _, item := range tuple {
+			if candidate, ok := item.(map[string]any); ok && len(candidate) > 0 {
+				candidate = arrayItemSchema(candidate)
+				score, _ := scoreSchemaOption(candidate)
+				if score > bestScore {
+					best, bestScore = candidate, score
+				}
+			}
+		}
+		value = best
+	}
+	item, ok := value.(map[string]any)
+	if !ok || len(item) == 0 {
+		return map[string]any{"type": "string"}
+	}
+	if typeName, ok := item["type"].(string); ok && typeName != "" {
+		return item
+	}
+	switch {
+	case item["properties"] != nil:
+		item["type"] = "object"
+	case item["items"] != nil || item["prefixItems"] != nil:
+		item["type"] = "array"
+	default:
+		item["type"] = "string"
+		if values, ok := item["enum"].([]any); ok && len(values) > 0 {
+			switch values[0].(type) {
+			case float64:
+				item["type"] = "number"
+			case bool:
+				item["type"] = "boolean"
+			}
+		}
+	}
+	return item
 }
 
 // Phase 4 Helpers
@@ -740,11 +795,11 @@ func scoreSchemaOption(schema map[string]any) (int, string) {
 
 	typeName, _ := schema["type"].(string)
 
-	if typeName == "object" || schema["properties"] != nil {
+	if strings.EqualFold(typeName, "object") || schema["properties"] != nil {
 		return 3, "object"
 	}
 
-	if typeName == "array" || schema["items"] != nil {
+	if strings.EqualFold(typeName, "array") || schema["items"] != nil || schema["prefixItems"] != nil {
 		return 2, "array"
 	}
 

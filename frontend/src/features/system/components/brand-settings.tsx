@@ -21,6 +21,13 @@ export function BrandSettings() {
   const [title, setTitle] = useState('');
   const [brandLogo, setBrandLogo] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const logoReaderRef = useRef<FileReader | null>(null);
+  const cancelLogoRead = React.useCallback(() => {
+    const reader = logoReaderRef.current;
+    logoReaderRef.current = null;
+    reader?.abort();
+  }, []);
+  React.useEffect(() => cancelLogoRead, [cancelLogoRead]);
 
   // Update local state when settings are loaded
   React.useEffect(() => {
@@ -34,6 +41,7 @@ export function BrandSettings() {
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
+    cancelLogoRead();
 
     // Validate file type
     if (!['image/png', 'image/jpeg', 'image/jpg', 'image/webp'].includes(file.type)) {
@@ -48,9 +56,13 @@ export function BrandSettings() {
     }
 
     const reader = new FileReader();
+    logoReaderRef.current = reader;
     reader.onload = (e) => {
+      if (logoReaderRef.current !== reader) return;
       const img = new Image();
       img.onload = () => {
+        if (logoReaderRef.current !== reader) return;
+        logoReaderRef.current = null;
         // Check if image is square
         if (img.width !== img.height) {
           toast.error(t('system.brand.brandLogo.notSquare'));
@@ -64,6 +76,7 @@ export function BrandSettings() {
   };
 
   const handleRemoveLogo = () => {
+    cancelLogoRead();
     setBrandLogo('');
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -152,6 +165,7 @@ export function BrandSettings() {
                     variant='destructive'
                     size='sm'
                     onClick={handleRemoveLogo}
+                    data-testid='brand-logo-remove'
                     disabled={isLoading}
                     className='absolute -top-2 -right-2 h-6 w-6 rounded-full p-0 shadow-md'
                   >
@@ -163,6 +177,7 @@ export function BrandSettings() {
             <div className='space-y-2'>
               <input
                 ref={fileInputRef}
+                data-testid='brand-logo-upload'
                 type='file'
                 accept='image/png,image/jpeg,image/jpg,image/webp'
                 onChange={handleFileUpload}

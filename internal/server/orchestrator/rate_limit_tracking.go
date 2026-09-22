@@ -78,7 +78,7 @@ func (m *rateLimitTracking) OnOutboundLlmStream(ctx context.Context, stream stre
 }
 
 // OnOutboundRawError handles raw HTTP errors, specifically capturing 429 Too Many Requests.
-// When a 429 is received, it parses the Retry-After header and sets a cooldown for the channel.
+// When a 429 is received, explicit provider retry advice sets a channel cooldown.
 func (m *rateLimitTracking) OnOutboundRawError(ctx context.Context, err error) {
 	if m.outbound == nil {
 		return
@@ -122,13 +122,15 @@ func (m *rateLimitTracking) OnOutboundRawError(ctx context.Context, err error) {
 		return
 	}
 
-	// Only cool down a channel when the upstream explicitly provides a cooldown.
-	if !httpclient.HasRetryAfterHeader(err) {
-		return
+	// Preserve header precedence and the existing cooldown cap. Google may
+	// provide the same advice only in error.details as google.rpc.RetryInfo.
+	var cooldown time.Duration
+	var ok bool
+	if httpclient.HasRetryAfterHeader(err) {
+		cooldown, ok = httpclient.ParseRetryAfter(err)
+	} else {
+		cooldown, ok = httpclient.ParseGoogleRetryInfo(err)
 	}
-
-	// Parse Retry-After header from 429 error
-	cooldown, ok := httpclient.ParseRetryAfter(err)
 	if !ok {
 		return
 	}

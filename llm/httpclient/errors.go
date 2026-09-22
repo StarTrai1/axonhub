@@ -1,6 +1,7 @@
 package httpclient
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -74,6 +75,37 @@ func ParseRetryAfter(err error) (time.Duration, bool) {
 
 	// 3. Failed to parse, use default
 	return DefaultRetryAfterSeconds * time.Second, true
+}
+
+// ParseGoogleRetryInfo reads an explicit Google RPC retry delay on a 429.
+// Unlike ParseRetryAfter, missing or invalid advice does not invent a cooldown.
+func ParseGoogleRetryInfo(err error) (time.Duration, bool) {
+	var httpErr *Error
+	if !errors.As(err, &httpErr) || httpErr.StatusCode != http.StatusTooManyRequests {
+		return 0, false
+	}
+	var envelope struct {
+		Error struct {
+			Details []json.RawMessage `json:"details"`
+		} `json:"error"`
+	}
+	if json.Unmarshal(httpErr.Body, &envelope) != nil {
+		return 0, false
+	}
+	var longest time.Duration
+	for _, raw := range envelope.Error.Details {
+		var detail struct {
+			Type       string `json:"@type"`
+			RetryDelay string `json:"retryDelay"`
+		}
+		if json.Unmarshal(raw, &detail) != nil || detail.Type != "type.googleapis.com/google.rpc.RetryInfo" {
+			continue
+		}
+		if delay, parseErr := time.ParseDuration(detail.RetryDelay); parseErr == nil && delay > 0 {
+			longest = max(longest, min(delay, MaxRetryAfterDuration))
+		}
+	}
+	return longest, longest > 0
 }
 
 type Error struct {

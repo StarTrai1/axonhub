@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
 )
 
@@ -16,6 +17,26 @@ type metadataThenSilenceStream struct {
 	ctx     context.Context
 	started bool
 	closed  bool
+}
+
+type closeAfterCancellationStream struct {
+	streams.Stream[*httpclient.StreamEvent]
+	closeFunc func() error
+}
+
+func (s *closeAfterCancellationStream) Close() error { return s.closeFunc() }
+
+func TestFirstOutputGuardCancelsBeforeClosingStream(t *testing.T) {
+	ctx, guard := newFirstEventTimeoutGuard(t.Context(), time.Minute)
+	defer guard.cancelStream()
+	guard.completeFirstEventPhase()
+	source := &closeAfterCancellationStream{closeFunc: func() error {
+		require.ErrorIs(t, ctx.Err(), context.Canceled)
+		return nil
+	}}
+	stream := &cancelOnCloseStream{stream: source, cancel: guard.cancelStream}
+	require.NoError(t, stream.Close())
+	require.NoError(t, t.Context().Err())
 }
 
 func (s *metadataThenSilenceStream) Next() bool {
