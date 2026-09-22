@@ -40,7 +40,7 @@ func TestResponsesRejectedReasoningPreservesNativeCheckpointPipeline(t *testing.
 				}
 				nativePolicy := func(state *PersistenceState, _ *PersistentOutboundTransformer) pipeline.Middleware {
 					state.ChannelModelsCandidates[0].Channel.Policies.RemoteCompaction = objects.RemoteCompactionPolicyNative
-					return pipeline.DummyMiddleware{}
+					return &pipeline.DummyMiddleware{}
 				}
 				state, result, err := runRejectedReasoningPipeline(t, ctx, request, executor, "checkpoint-target", passThrough, 1, nativePolicy)
 				require.NoError(t, err)
