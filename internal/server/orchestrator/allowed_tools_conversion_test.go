@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -178,7 +179,7 @@ func TestChatAllowedToolsPreservesNativeChoiceAcrossFallbacks(t *testing.T) {
 	for _, mode := range []string{"auto", "required"} {
 		t.Run(mode, func(t *testing.T) {
 			raw := []byte(fmt.Sprintf(`{"model":"test","messages":[{"role":"user","content":"hi"}],"tools":[{"type":"function","function":{"name":"b"}},{"type":"function","function":{"name":"a"}}],"tool_choice":{"type":"allowed_tools","allowed_tools":{"mode":%q,"tools":[{"type":"function","function":{"name":"a"}}]}}}`, mode))
-			req, err := openai.NewInboundTransformer().TransformRequest(t.Context(), &httpclient.Request{Body: raw})
+			req, err := openai.NewInboundTransformer().TransformRequest(t.Context(), &httpclient.Request{Body: raw, Headers: http.Header{"Content-Type": {"application/json"}}})
 			require.NoError(t, err)
 			before, err := json.Marshal(req)
 			require.NoError(t, err)

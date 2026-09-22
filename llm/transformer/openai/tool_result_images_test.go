@@ -69,3 +69,32 @@ func TestConvertedImageOnlyToolReplyStaysNonEmpty(t *testing.T) {
 	require.Len(t, native.Messages, 1, "native Chat requests retain caller-controlled content")
 	require.Equal(t, "image_url", native.Messages[0].Content.MultipleContent[0].Type)
 }
+
+func TestConvertedToolFilesAudioAndVideoFollowToolReplies(t *testing.T) {
+	request := &llm.Request{
+		APIFormat: llm.APIFormatGeminiContents,
+		Messages: []llm.Message{{Role: "tool", ToolCallID: lo.ToPtr("call_media"), Content: llm.MessageContent{MultipleContent: []llm.MessageContentPart{
+			{Type: "input_file", File: &llm.FileContent{FileID: lo.ToPtr("file_1"), Filename: lo.ToPtr("result.pdf")}},
+			{Type: "input_audio", InputAudio: &llm.InputAudio{Format: "wav", Data: "YXVkaW8="}},
+			{Type: "video_url", VideoURL: &llm.VideoURL{URL: "https://example.com/result.mp4"}},
+		}}}},
+	}
+	sent := RequestFromLLM(t.Context(), request, ReasoningFieldAll)
+	require.Len(t, sent.Messages, 2)
+	require.NotEmpty(t, lo.FromPtr(sent.Messages[0].Content.Content))
+	require.Empty(t, sent.Messages[0].Content.MultipleContent)
+	require.Equal(t, "user", sent.Messages[1].Role)
+	media := sent.Messages[1].Content.MultipleContent
+	require.Len(t, media, 4)
+	require.Contains(t, lo.FromPtr(media[0].Text), "call_media")
+	require.Equal(t, "file_1", media[1].File.FileID)
+	require.Equal(t, "result.pdf", media[1].File.Filename)
+	require.Equal(t, "YXVkaW8=", media[2].InputAudio.Data)
+	require.Equal(t, "wav", media[2].InputAudio.Format)
+	require.Equal(t, "https://example.com/result.mp4", media[3].VideoURL.URL)
+
+	request.APIFormat = llm.APIFormatOpenAIChatCompletion
+	native := RequestFromLLM(t.Context(), request, ReasoningFieldAll)
+	require.Len(t, native.Messages, 1)
+	require.Len(t, native.Messages[0].Content.MultipleContent, 3)
+}

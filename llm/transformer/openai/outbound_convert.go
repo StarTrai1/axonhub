@@ -61,7 +61,7 @@ func RequestFromLLM(ctx context.Context, r *llm.Request, reasoningField Reasonin
 	// the existing Chat compatibility policy for Claude Code's system arrays.
 	req.Messages = mergeSystemMessages(req.Messages)
 	if r.APIFormat != llm.APIFormatOpenAIChatCompletion {
-		req.Messages = relayToolResultImages(req.Messages)
+		req.Messages = relayToolResultMedia(req.Messages)
 		// Anthropic and Responses identify results by call ID. Keep the matching
 		// tool name for Chat providers that also require it on result messages.
 		names := make(map[string]string)

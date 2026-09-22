@@ -99,6 +99,7 @@ func SanitizeJSONSchema(schema map[string]any) map[string]any {
 	// Phase 3: Cleanup
 	result = removeUnsupportedKeywords(result, false)
 	result = cleanupRequiredFields(result)
+	result = sanitizeArrayItems(result)
 
 	// Phase 4: Add placeholder for empty object schemas
 	result = addEmptySchemaPlaceholder(result)
@@ -477,7 +478,7 @@ func flattenTypeArrays(schema map[string]any, nullableFields map[string][]string
 
 		for _, t := range types {
 			if tStr, ok := t.(string); ok {
-				if tStr == "null" {
+				if strings.EqualFold(tStr, "null") {
 					hasNull = true
 				} else {
 					nonNullTypes = append(nonNullTypes, tStr)
@@ -488,6 +489,14 @@ func flattenTypeArrays(schema map[string]any, nullableFields map[string][]string
 		firstType := "string"
 		if len(nonNullTypes) > 0 {
 			firstType = nonNullTypes[0]
+			if _, hasItems := schema["items"]; hasItems {
+				for _, typeName := range nonNullTypes {
+					if strings.EqualFold(typeName, "array") {
+						firstType = typeName
+						break
+					}
+				}
+			}
 		} else if hasNull {
 			firstType = "null"
 		}
@@ -640,6 +649,41 @@ func cleanupRequiredFields(schema map[string]any) map[string]any {
 		}
 	}
 
+	return schema
+}
+
+// Antigravity uses Gemini's protobuf schema: items is only valid on ARRAY.
+// Visit schema positions explicitly so properties named "items" or "type"
+// and object-valued enum data are not interpreted as schema keywords.
+func sanitizeArrayItems(schema map[string]any) map[string]any {
+	if _, hasItems := schema["items"]; hasItems {
+		typeName, isString := schema["type"].(string)
+		if schema["type"] == nil || isString && typeName == "" {
+			schema["type"] = "array"
+		} else if isString && !strings.EqualFold(typeName, "array") {
+			delete(schema, "items")
+		}
+	}
+	for key, value := range schema {
+		switch key {
+		case "properties", "patternProperties", "$defs", "definitions", "dependentSchemas":
+			if entries, ok := value.(map[string]any); ok {
+				for _, entry := range entries {
+					if child, ok := entry.(map[string]any); ok {
+						sanitizeArrayItems(child)
+					}
+				}
+			}
+		case "items", "additionalItems", "additionalProperties", "contains", "not", "if", "then", "else", "propertyNames":
+			if child, ok := value.(map[string]any); ok {
+				sanitizeArrayItems(child)
+			}
+		case "anyOf", "oneOf", "allOf", "prefixItems":
+			if children, ok := value.([]any); ok {
+				schema[key] = processArray(children, sanitizeArrayItems)
+			}
+		}
+	}
 	return schema
 }
 

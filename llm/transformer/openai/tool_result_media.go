@@ -2,10 +2,10 @@ package openai
 
 import "github.com/samber/lo"
 
-// relayToolResultImages moves images from converted tool results to a user
+// relayToolResultMedia moves media from converted tool results to a user
 // message, as Chat Completions tool messages only accept text. Keep a contiguous
-// group of tool replies together before emitting their images.
-func relayToolResultImages(messages []Message) []Message {
+// group of tool replies together before emitting their media.
+func relayToolResultMedia(messages []Message) []Message {
 	result := make([]Message, 0, len(messages))
 	var pending []MessageContentPart
 	changed := false
@@ -21,26 +21,30 @@ func relayToolResultImages(messages []Message) []Message {
 			result = append(result, message)
 			continue
 		}
-		var remaining, images []MessageContentPart
+		var remaining, media []MessageContentPart
 		for _, part := range message.Content.MultipleContent {
-			if part.Type == "image_url" && part.ImageURL != nil {
-				images = append(images, part)
-			} else {
+			switch {
+			case part.Type == "image_url" && part.ImageURL != nil,
+				part.Type == "file" && part.File != nil,
+				part.Type == "input_audio" && part.InputAudio != nil,
+				part.Type == "video_url" && part.VideoURL != nil:
+				media = append(media, part)
+			default:
 				remaining = append(remaining, part)
 			}
 		}
-		if len(images) > 0 {
+		if len(media) > 0 {
 			changed = true
 			message.Content = MessageContent{MultipleContent: remaining}
 			if len(remaining) == 0 {
-				message.Content.Content = lo.ToPtr("[Tool returned images; see the following user message.]")
+				message.Content.Content = lo.ToPtr("[Tool returned media; see the following user message.]")
 			}
-			label := "Images returned by the preceding tool call:"
+			label := "Media returned by the preceding tool call:"
 			if message.ToolCallID != nil && *message.ToolCallID != "" {
-				label = "Images returned by tool call " + *message.ToolCallID + ":"
+				label = "Media returned by tool call " + *message.ToolCallID + ":"
 			}
 			pending = append(pending, MessageContentPart{Type: "text", Text: &label})
-			pending = append(pending, images...)
+			pending = append(pending, media...)
 		}
 		result = append(result, message)
 	}

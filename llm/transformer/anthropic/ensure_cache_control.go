@@ -314,7 +314,9 @@ func appendCacheControlRefs(refs []**CacheControl, content *MessageContent) []**
 		if isCacheableMessageBlock(*block) {
 			refs = append(refs, &block.CacheControl)
 		}
-		if block.Content != nil {
+		// A tool result is one cacheable block. Its inner parts do not accept
+		// cache_control, including breakpoints inserted by this optimizer.
+		if block.Content != nil && block.Type != "tool_result" {
 			refs = appendCacheControlRefs(refs, block.Content)
 		}
 	}

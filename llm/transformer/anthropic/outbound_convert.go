@@ -865,13 +865,30 @@ func buildRedactedThinkingBlock(redactedContent *string) *MessageContentBlock {
 }
 
 func convertToToolResultBlock(msg llm.Message) MessageContentBlock {
-	return MessageContentBlock{
+	block := MessageContentBlock{
 		Type:         "tool_result",
 		ToolUseID:    msg.ToolCallID,
 		Content:      convertToAnthropicTrivialContent(msg.Content),
 		CacheControl: convertToAnthropicCacheControl(msg.CacheControl),
 		IsError:      msg.ToolCallIsError,
 	}
+	if block.Content != nil {
+		// Anthropic accepts the breakpoint on tool_result itself, never on its
+		// nested text/image parts. The first valid part marker is more specific
+		// than a message marker; preserve its TTL while keeping caller data intact.
+		var partControl *CacheControl
+		for i := range block.Content.MultipleContent {
+			part := &block.Content.MultipleContent[i]
+			if partControl == nil && part.CacheControl != nil && part.CacheControl.Type == "ephemeral" {
+				partControl = part.CacheControl
+			}
+			part.CacheControl = nil
+		}
+		if partControl != nil {
+			block.CacheControl = partControl
+		}
+	}
+	return block
 }
 
 // convertImageURLToAnthropicBlock converts image_url content part to Anthropic MessageContentBlock.
