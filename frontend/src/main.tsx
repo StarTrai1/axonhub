@@ -12,13 +12,11 @@ import './index.css';
 // Initialize i18n
 import './lib/i18n';
 import i18n from './lib/i18n';
+import { installStaleChunkRecovery } from './lib/stale-chunk-recovery';
 // Generated Routes
 import { routeTree } from './routeTree.gen';
 
-window.addEventListener('vite:preloadError', (event) => {
-  event.preventDefault();
-  window.location.reload();
-});
+installStaleChunkRecovery(import.meta.url);
 
 const queryClient = new QueryClient({
   defaultOptions: {

@@ -174,6 +174,45 @@ func TestResponsesAllowedToolsExactNamePrecedesNamespace(t *testing.T) {
 	require.Equal(t, "required", gjson.GetBytes(wire.Body, "tool_choice").String())
 }
 
+func TestChatAllowedToolsPreservesNativeChoiceAcrossFallbacks(t *testing.T) {
+	for _, mode := range []string{"auto", "required"} {
+		t.Run(mode, func(t *testing.T) {
+			raw := []byte(fmt.Sprintf(`{"model":"test","messages":[{"role":"user","content":"hi"}],"tools":[{"type":"function","function":{"name":"b"}},{"type":"function","function":{"name":"a"}}],"tool_choice":{"type":"allowed_tools","allowed_tools":{"mode":%q,"tools":[{"type":"function","function":{"name":"a"}}]}}}`, mode))
+			req, err := openai.NewInboundTransformer().TransformRequest(t.Context(), &httpclient.Request{Body: raw})
+			require.NoError(t, err)
+			before, err := json.Marshal(req)
+			require.NoError(t, err)
+			chat, err := openai.NewOutboundTransformer("https://example.com/v1", "test")
+			require.NoError(t, err)
+			processor := newAllowedToolsTestProcessor(t, chat)
+			wire, err := processor.TransformRequest(t.Context(), req)
+			require.NoError(t, err)
+			require.Equal(t, int64(2), gjson.GetBytes(wire.Body, "tools.#").Int())
+			require.JSONEq(t, gjson.GetBytes(raw, "tool_choice").Raw, gjson.GetBytes(wire.Body, "tool_choice").Raw)
+
+			anthropicOutbound, err := anthropic.NewOutboundTransformer("https://example.com/v1", "test")
+			require.NoError(t, err)
+			fallback := newAllowedToolsTestProcessor(t, anthropicOutbound)
+			converted, err := fallback.TransformRequest(t.Context(), req)
+			require.NoError(t, err)
+			require.Equal(t, int64(1), gjson.GetBytes(converted.Body, "tools.#").Int())
+			require.Equal(t, "a", gjson.GetBytes(converted.Body, "tools.0.name").String())
+			wantMode := mode
+			if mode == "required" {
+				wantMode = "any"
+			}
+			require.Equal(t, wantMode, gjson.GetBytes(converted.Body, "tool_choice.type").String())
+
+			after, err := json.Marshal(req)
+			require.NoError(t, err)
+			require.JSONEq(t, string(before), string(after))
+			retried, err := processor.TransformRequest(t.Context(), req)
+			require.NoError(t, err)
+			require.JSONEq(t, string(wire.Body), string(retried.Body))
+		})
+	}
+}
+
 func newAllowedToolsTestProcessor(t *testing.T, target transformer.Outbound) *PersistentOutboundTransformer {
 	t.Helper()
 	native, err := responses.NewOutboundTransformer("https://example.com/v1", "test")

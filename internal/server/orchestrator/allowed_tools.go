@@ -12,9 +12,13 @@ import (
 // request is routed to a different protocol. Run this before filtering history
 // and before any Chat-based provider transformer can reduce the choice to a mode.
 // Native Responses keeps its full catalog and choice for prompt-cache fidelity.
+// Native Chat also retains the nested allowed_tools shape supported by its wire.
 func applyAllowedToolsForOutbound(req *llm.Request, format llm.APIFormat) (*llm.Request, error) {
 	if req == nil || req.ToolChoice == nil || req.ToolChoice.NamedToolChoice == nil ||
 		req.ToolChoice.NamedToolChoice.Type != "allowed_tools" || isResponsesFormat(format) {
+		return req, nil
+	}
+	if req.APIFormat == llm.APIFormatOpenAIChatCompletion && format == llm.APIFormatOpenAIChatCompletion {
 		return req, nil
 	}
 

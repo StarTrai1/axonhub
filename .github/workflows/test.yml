@@ -47,7 +47,7 @@ jobs:
       - name: Responses concurrency regression
         run: |
           go test -race ./internal/server/orchestrator -run 'TestResponsesSession|TestResponsesRejected|TestResponsesCompactionRecovery|TestChannelRejectsFailedStreamEvenAfterText|TestSealedLocalCompaction|TestLegacyLocalCompaction' -count=1
-          go test -race ./internal/server/biz -run '^TestSystemServiceResponsesMetadata' -count=1
+          go test -race ./internal/server/biz -run '^TestSystemServiceResponsesMetadata|^TestChannelMetrics_ConcurrentReadsAndWrites$' -count=1
           go test -race ./internal/server/api -run '^TestResponsesWebSocket(Warmup|Heartbeat|Auth)' -count=1
           cd llm
           go test -race ./pipeline -run 'TestFirstOutput' -count=1

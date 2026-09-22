@@ -997,6 +997,9 @@ func (s *LoadBalancedSelector) sortCandidates(
 	}
 
 	if len(candidates) <= 1 {
+		if trackSelection && loadBalancer != nil && len(candidates) == 1 {
+			loadBalancer.TrackSelection(candidates[0])
+		}
 		return candidates
 	}
 
@@ -1069,10 +1072,11 @@ groups:
 		}
 	}
 
-	if trackSelection && len(result) > 0 {
-		if loadBalancer != nil {
-			loadBalancer.TrackSelection(result[0])
-		}
+	// Priority groups are sorted independently, but only the first candidate in
+	// the final result is selected for the initial attempt. Track it once after
+	// assembling the result so fallback groups are not counted prematurely.
+	if trackSelection && loadBalancer != nil && len(result) > 0 {
+		loadBalancer.TrackSelection(result[0])
 	}
 
 	if log.DebugEnabled(ctx) {
