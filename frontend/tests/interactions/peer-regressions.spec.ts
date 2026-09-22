@@ -56,7 +56,7 @@ test.describe('superseded file operations', () => {
         readAsText(file: File) { this.read(file); }
         abort() { this.aborted = true; }
       }
-      class DeferredImage {
+      class DeferredImage extends EventTarget {
         width = 1;
         height = 1;
         naturalWidth = 1;
@@ -78,6 +78,7 @@ test.describe('superseded file operations', () => {
           for (const image of images.filter((item) => item.source === source && !item.complete)) {
             image.complete = true;
             image.onload?.();
+            image.dispatchEvent(new Event('load'));
           }
         },
         hasImage: (source) => images.some((item) => item.source === source),

@@ -146,7 +146,7 @@ func TestGoogleRetryInfoReachesRetryPolicyAndChannelCooldown(t *testing.T) {
 			candidate := &ChannelModelsCandidate{Channel: &biz.Channel{Channel: &ent.Channel{ID: 29}}}
 			outbound := &PersistentOutboundTransformer{
 				wrapped: wrapped,
-				state:   &PersistenceState{
+				state: &PersistenceState{
 					CurrentCandidate:        candidate,
 					ChannelModelsCandidates: []*ChannelModelsCandidate{candidate},
 				},
