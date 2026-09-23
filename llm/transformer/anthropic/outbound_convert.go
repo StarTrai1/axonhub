@@ -472,6 +472,9 @@ func convertStopSequences(stop *llm.Stop) []string {
 func validateUnsupportedContentParts(messages []llm.Message) error {
 	for _, msg := range messages {
 		for _, part := range msg.Content.MultipleContent {
+			if part.ImageURL != nil && part.ImageURL.FileID != "" {
+				return fmt.Errorf("%w: Anthropic cannot represent a Responses image file_id", transformer.ErrInvalidRequest)
+			}
 			if part.Type == "input_audio" {
 				return fmt.Errorf("%w: input_audio content parts are not supported by the Anthropic Messages API", transformer.ErrInvalidRequest)
 			}

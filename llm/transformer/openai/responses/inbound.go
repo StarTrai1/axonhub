@@ -45,6 +45,20 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *http
 	if len(httpReq.Body) == 0 {
 		return nil, fmt.Errorf("%w: request body is empty", transformer.ErrInvalidRequest)
 	}
+	for _, input := range gjson.GetBytes(httpReq.Body, "input").Array() {
+		for _, content := range input.Get("content").Array() {
+			if content.Get("type").String() != "input_video" && content.Get("type").String() != "video_url" {
+				continue
+			}
+			url := content.Get("video_url")
+			if url.IsObject() {
+				url = url.Get("url")
+			}
+			if url.Type != gjson.String || url.String() == "" {
+				return nil, fmt.Errorf("%w: input_video requires a nonempty video_url", transformer.ErrInvalidRequest)
+			}
+		}
+	}
 	if gjson.GetBytes(httpReq.Body, "stream_id").Exists() {
 		return nil, &llm.ResponseError{
 			StatusCode: http.StatusBadRequest,
@@ -609,7 +623,7 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 		return msg, nil
 	case "input_image":
 		// Input image as a standalone item
-		if item.ImageURL != nil {
+		if item.ImageURL != nil || item.FileID != nil {
 			return &llm.Message{
 				Role: lo.Ternary(item.Role != "", item.Role, "user"),
 				Content: llm.MessageContent{
@@ -617,7 +631,8 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 						{
 							Type: "image_url",
 							ImageURL: &llm.ImageURL{
-								URL:    *item.ImageURL,
+								URL:    lo.FromPtr(item.ImageURL),
+								FileID: lo.FromPtr(item.FileID),
 								Detail: item.Detail,
 							},
 							PromptCacheBreakpoint: item.PromptCacheBreakpoint,
@@ -819,12 +834,13 @@ func convertContentItemToPart(item *Item) (*llm.MessageContentPart, error) {
 		return nil, nil
 
 	case "input_image":
-		if item.ImageURL != nil {
+		if item.ImageURL != nil || item.FileID != nil {
 			return &llm.MessageContentPart{
 				ID:   item.ID,
 				Type: "image_url",
 				ImageURL: &llm.ImageURL{
-					URL:    *item.ImageURL,
+					URL:    lo.FromPtr(item.ImageURL),
+					FileID: lo.FromPtr(item.FileID),
 					Detail: item.Detail,
 				},
 				PromptCacheBreakpoint: item.PromptCacheBreakpoint,

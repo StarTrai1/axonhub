@@ -411,6 +411,9 @@ func MessageContentPartFromLLM(p llm.MessageContentPart) MessageContentPart {
 func validateChatDocumentParts(messages []llm.Message) error {
 	for _, message := range messages {
 		for _, part := range message.Content.MultipleContent {
+			if part.ImageURL != nil && part.ImageURL.FileID != "" {
+				return fmt.Errorf("%w: Chat Completions cannot represent an image file_id; use Responses", transformer.ErrInvalidRequest)
+			}
 			if part.Type != "document" || part.Document == nil {
 				continue
 			}

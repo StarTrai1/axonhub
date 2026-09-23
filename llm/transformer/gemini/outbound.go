@@ -107,6 +107,14 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		return nil, fmt.Errorf("request is nil")
 	}
 
+	for _, message := range llmReq.Messages {
+		for _, part := range message.Content.MultipleContent {
+			if part.ImageURL != nil && part.ImageURL.FileID != "" {
+				return nil, fmt.Errorf("%w: Gemini cannot represent a Responses image file_id", transformer.ErrInvalidRequest)
+			}
+		}
+	}
+
 	var apiKey string
 	if t.config.APIKeyProvider != nil {
 		apiKey = t.config.APIKeyProvider.Get(ctx)

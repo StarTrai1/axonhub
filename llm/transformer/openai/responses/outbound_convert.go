@@ -175,7 +175,8 @@ func convertUserMessage(msg llm.Message) Item {
 				if p.ImageURL != nil {
 					contentItems = append(contentItems, Item{
 						Type:                  "input_image",
-						ImageURL:              &p.ImageURL.URL,
+						ImageURL:              lo.EmptyableToPtr(p.ImageURL.URL),
+						FileID:                lo.EmptyableToPtr(p.ImageURL.FileID),
 						Detail:                p.ImageURL.Detail,
 						PromptCacheBreakpoint: p.PromptCacheBreakpoint,
 					})
@@ -390,7 +391,8 @@ func convertToolMessageWithType(msg llm.Message, itemType string) Item {
 					// document "auto" as the default, so always send one.
 					output.Items = append(output.Items, Item{
 						Type:     "input_image",
-						ImageURL: &p.ImageURL.URL,
+						ImageURL: lo.EmptyableToPtr(p.ImageURL.URL),
+						FileID:   lo.EmptyableToPtr(p.ImageURL.FileID),
 						Detail:   lo.ToPtr(lo.FromPtrOr(p.ImageURL.Detail, "auto")),
 					})
 				}

@@ -287,7 +287,8 @@ func repairInvalidOpenAIToolSchemas() pipeline.Middleware {
 			(!jsonFieldIsNull(request.Body, []byte(`"parameters"`)) &&
 				!jsonFieldIsNull(request.Body, []byte(`"type"`)) &&
 				!jsonFieldIsNull(request.Body, []byte(`"properties"`)) &&
-				!jsonFieldIsNull(request.Body, []byte(`"required"`))) {
+				!jsonFieldIsNull(request.Body, []byte(`"required"`)) &&
+				!bytes.Contains(request.Body, []byte(`\\0`))) {
 			return request, nil
 		}
 
@@ -379,7 +380,7 @@ func repairToolSchemaList(value any) bool {
 			definition[schemaKey] = parameters
 			changed = true
 		}
-		if repairNullRequired(parameters) {
+		if repairInvalidToolSchema(parameters) {
 			changed = true
 		}
 		if typeValue, exists := parameters["type"]; !exists || typeValue == nil {
@@ -399,8 +400,14 @@ func repairToolSchemaList(value any) bool {
 
 // Only schema-bearing keywords are traversed; examples/default/enum/const and
 // property names may themselves contain a literal "required": null.
-func repairNullRequired(schema map[string]any) bool {
+func repairInvalidToolSchema(schema map[string]any) bool {
 	changed := false
+	if pattern, ok := schema["pattern"].(string); ok {
+		if normalized := normalizeNULPattern(pattern); normalized != pattern {
+			schema["pattern"] = normalized
+			changed = true
+		}
+	}
 	if value, exists := schema["required"]; exists && value == nil {
 		delete(schema, "required")
 		changed = true
@@ -408,7 +415,7 @@ func repairNullRequired(schema map[string]any) bool {
 	for _, key := range []string{"properties", "patternProperties", "$defs", "definitions", "dependentSchemas"} {
 		if children, ok := schema[key].(map[string]any); ok {
 			for _, value := range children {
-				if child, ok := value.(map[string]any); ok && repairNullRequired(child) {
+				if child, ok := value.(map[string]any); ok && repairInvalidToolSchema(child) {
 					changed = true
 				}
 			}
@@ -417,18 +424,37 @@ func repairNullRequired(schema map[string]any) bool {
 	for _, key := range []string{"items", "prefixItems", "allOf", "anyOf", "oneOf", "additionalProperties", "additionalItems", "contains", "not", "if", "then", "else", "propertyNames", "unevaluatedProperties", "unevaluatedItems", "contentSchema"} {
 		switch value := schema[key].(type) {
 		case map[string]any:
-			if repairNullRequired(value) {
+			if repairInvalidToolSchema(value) {
 				changed = true
 			}
 		case []any:
 			for _, element := range value {
-				if child, ok := element.(map[string]any); ok && repairNullRequired(child) {
+				if child, ok := element.(map[string]any); ok && repairInvalidToolSchema(child) {
 					changed = true
 				}
 			}
 		}
 	}
 	return changed
+}
+
+// Strict regex validators reject the legacy \0 spelling. Use the equivalent
+// hex escape, retaining the constraint and literal escaped backslashes.
+func normalizeNULPattern(pattern string) string {
+	var result strings.Builder
+	for i := 0; i < len(pattern); i++ {
+		if pattern[i] == '\\' && i+1 < len(pattern) {
+			if pattern[i+1] == '0' && (i+2 == len(pattern) || pattern[i+2] < '0' || pattern[i+2] > '9') {
+				result.WriteString(`\x00`)
+			} else {
+				result.WriteString(pattern[i : i+2])
+			}
+			i++
+			continue
+		}
+		result.WriteByte(pattern[i])
+	}
+	return result.String()
 }
 
 func mergePassThroughRequestBody(rawBody []byte, apiFormat llm.APIFormat, model string) ([]byte, error) {

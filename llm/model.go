@@ -591,6 +591,9 @@ type MessageContentPart struct {
 
 // ImageURL represents an image URL with optional detail level.
 type ImageURL struct {
+	// FileID is an uploaded Responses image reference; it is not a URL.
+	FileID string `json:"file_id,omitempty"`
+
 	// URL is the URL of the image.
 	URL string `json:"url"`
 

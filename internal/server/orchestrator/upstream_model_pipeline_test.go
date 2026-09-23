@@ -185,7 +185,9 @@ func TestUpstreamModelPipeline_StreamingAndAutoAggregate(t *testing.T) {
 				require.NoError(t, result.EventStream.Err())
 				require.NoError(t, result.EventStream.Close())
 				if tt.passThrough {
-					require.Equal(t, events, received)
+					// Local stream handling stops after the terminal finish_reason;
+					// the redundant trailing [DONE] is not replayed.
+					require.Equal(t, events[:2], received)
 				}
 			}
 			// Pass-through drains the transformation branch asynchronously.
