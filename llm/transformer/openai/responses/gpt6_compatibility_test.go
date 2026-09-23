@@ -35,6 +35,7 @@ func TestGPT6SolLunaSamplingFollowsEffectiveReasoning(t *testing.T) {
 				body := []byte(fmt.Sprintf(`{"model":%q,"reasoning":{"effort":%q},"temperature":0.7,"top_p":0.8,"top_logprobs":2,"include":["message.output_text.logprobs","reasoning.encrypted_content"],"input":[{"role":"user","content":"hello"}%s]}`, model, tc.effort, update))
 				request, err := NewInboundTransformer().TransformRequest(t.Context(), &httpclient.Request{Body: body})
 				require.NoError(t, err)
+				request.RawRequest = &httpclient.Request{Body: body}
 				wire, err := outbound.TransformRequest(t.Context(), request)
 				require.NoError(t, err)
 				wantSample := tc.wantSample && model != "gpt-6-astra"

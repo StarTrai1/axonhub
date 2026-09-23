@@ -291,6 +291,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		User:                 llmReq.User,
 		Metadata:             llmReq.Metadata,
 		MaxOutputTokens:      llmReq.MaxCompletionTokens,
+		Temperature:          llmReq.Temperature,
 		TopLogprobs:          llmReq.TopLogprobs,
 		TopP:                 llmReq.TopP,
 		ToolChoice:           convertToolChoice(llmReq.ToolChoice),

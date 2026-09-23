@@ -855,7 +855,7 @@ func convertContentItemToPart(item *Item) (*llm.MessageContentPart, error) {
 		}
 		return &llm.MessageContentPart{
 			Type:                  "video_url",
-			VideoURL:               &llm.VideoURL{URL: *item.VideoURL, Processing: item.Processing},
+			VideoURL:              &llm.VideoURL{URL: *item.VideoURL, Processing: item.Processing},
 			PromptCacheBreakpoint: item.PromptCacheBreakpoint,
 		}, nil
 

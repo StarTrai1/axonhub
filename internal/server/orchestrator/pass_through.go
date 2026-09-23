@@ -275,7 +275,7 @@ func stripUnsupportedCodexPromptCacheOptions(outbound *PersistentOutboundTransfo
 
 // repairInvalidOpenAIToolSchemas covers same-format pass-through requests that
 // bypass the unified tool conversion path. It only parses bodies that contain
-// both tool parameters and null, keeping the normal hot path allocation-free.
+// tool schemas and candidate null fields or NUL escapes, keeping the normal hot path allocation-free.
 func repairInvalidOpenAIToolSchemas() pipeline.Middleware {
 	return pipeline.OnRawRequest("repair-openai-tool-schemas", func(_ context.Context, request *httpclient.Request) (*httpclient.Request, error) {
 		switch llm.APIFormat(request.APIFormat) {

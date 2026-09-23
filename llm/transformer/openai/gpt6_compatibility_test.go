@@ -2,6 +2,7 @@ package openai
 
 import (
 	"fmt"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -17,7 +18,7 @@ func TestGPT6ChatSamplingAndPassThrough(t *testing.T) {
 		for _, effort := range []string{"", "none", "minimal", "high"} {
 			t.Run(model+"/"+effort, func(t *testing.T) {
 				body := []byte(fmt.Sprintf(`{"model":%q,"reasoning_effort":%q,"temperature":0.7,"top_p":0.8,"top_logprobs":2,"logprobs":true,"messages":[{"role":"user","content":"hello"}]}`, model, effort))
-				request, err := NewInboundTransformer().TransformRequest(t.Context(), &httpclient.Request{Body: body})
+				request, err := NewInboundTransformer().TransformRequest(t.Context(), &httpclient.Request{Body: body, Headers: http.Header{"Content-Type": {"application/json"}}})
 				require.NoError(t, err)
 				wire, err := outbound.TransformRequest(t.Context(), request)
 				require.NoError(t, err)
