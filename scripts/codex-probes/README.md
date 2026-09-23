@@ -2,7 +2,7 @@
 
 两个 Python 入口直接调度**本机安装的官方 Codex CLI**。每次均为新 `codex exec --json --ephemeral`，不用 resume，不拼装/伪造 Codex 的 User-Agent、身份、会话头或 TLS 指纹。协议由所安装的 CLI 生成；这保证使用真实客户端，**不代表与交互式 Codex 的工具列表、指令或配置逐字节相同，也不保证不被渠道封禁**。
 
-运行要求：Linux（使用 `/proc`、进程组和 `flock`），Python 3.11+，Codex CLI 0.155.1+。本实现按官方 `rust-v0.155.1` 源码核对，建议固定该版本，升级后先运行 `--check` 并检查官方变更。Python 仅使用标准库。
+运行要求：Linux（使用 `/proc`、进程组和 `flock`），Python 3.11+，Codex CLI 0.155.1+。本实现已核对官方 `rust-v0.155.1` → `rust-v0.156.1` 源码，兼容 0.156.1。升级后先运行 `--check` 并检查官方变更。Python 仅使用标准库。
 
 ## 准备
 
@@ -17,7 +17,7 @@ python3 scripts/codex-probes/keepalive.py \
   --url https://gateway.example/v1 --model YOUR_MODEL --check
 ```
 
-`--check` 检查本地配置、题库与 CLI 版本；不发模型请求。`--codex /absolute/path/to/codex` 可指定二进制。先使用你渠道实际支持的 model/effort；脚本不会猜测模型别名、修改 service tier 或伪造能力。
+`--check` 检查本地配置、题库与 CLI 版本；不发模型请求。`--codex /absolute/path/to/codex` 可指定二进制。未指定时优先 `~/.codex/packages/standalone/current/codex`，不存在才从 PATH 查找；启动时解析并固定实际路径，`codex_version.executable` 会打印所用文件。npm 与 standalone 可以共存，运行中更新 current 不会改变本进程选用的版本。先使用你渠道实际支持的 model/effort；脚本不会猜测模型别名、修改 service tier 或伪造能力。
 
 ## 1. any 两阶段循环
 
@@ -30,12 +30,13 @@ python3 scripts/codex-probes/keepalive.py \
   --state-dir /home/probe/.local/state/axonhub-probes/any
 ```
 
-- 第一阶段：从简单题库随机无放回抽题，以配置的并发数运行独立新会话。启动错开，收到**最终结构化错误** `We're currently experiencing high demand, which may cause temporary errors`（兼容 `We’re` 等弯引号）或 `当前模型 <模型名> 负载已经达到上限，请稍后重试` 后删除本次本地会话，再按指数退避与随机抖动重试。**其他明确的 HTTP 500 同样持续重试**，不限失败次数，直到任一请求成功；手动退出、暂停和显式预算限制仍有效。默认并发 2，可配置 1–32。
+- 第一阶段：从简单题库随机无放回抽题，以配置的并发数运行独立新会话。启动错开，收到**最终结构化错误** `We're currently experiencing high demand, which may cause temporary errors`（兼容 `We’re` 等弯引号）或 `当前模型 <模型名> 负载已经达到上限，请稍后重试` 后删除本次本地会话，再按指数退避与随机抖动重试。**其他明确的 HTTP 500 同样持续重试**，不限失败次数，直到任一请求成功；手动退出、暂停和显式预算限制仍有效。默认并发 2，可配置 1–32。默认 `--stagger 0.5`，第 N 个 worker 在启动后 `(N-1)×stagger` 到 `N×stagger` 秒之间开始；5 并发最迟约 2.5 秒启动第 5 个进程（另加 CLI 启动耗时）。
 - CLI 的 `request_max_retries`、`stream_max_retries` 设为 0，不叠加客户端重试；AxonHub 内部重试完成后 CLI 才会返回最终结果。脚本不修改网关重试。不能从错误文本证明上游物理执行次数。
 - 任一会话以 `turn.completed` 且进程退出码 0 完成，停止补充第一阶段任务，取消并等待其他私有子进程退出、清理全部本地 attempt 后进入第二阶段。已发送的上游请求可能仍在网关/提供方结束中；本地取消不是上游零用量保证。
-- 第二阶段：仅一个会话，从独立逻辑题库抽题，完成并清理后随机等待再创建下一会话。在这次第二阶段内**累计** 10 次目标 high-demand 错误回到第一阶段；中途成功不清零。phase/counter 落盘，重启后恢复。
+- 第二阶段：仅一个会话，从独立逻辑题库抽题，完成并清理后随机等待再创建下一会话。在这次第二阶段内**累计** 10 次目标 high-demand 错误回到第一阶段；中途成功不清零。phase/counter 落盘，重启后恢复。`phase_loaded`/`phase` 日志注明实际并发，第二阶段固定为 1。要重新从第一阶段开始，显式加 `--restart-phase-one`；它只在核对绑定并清理脚本遗留会话后重置阶段，不删除日常 Codex 会话。
 - 第一阶段的普通 HTTP 500 日志标为 `http_500`；目标容量文案标为 `high_demand`。HTTP 401/403、其他非容量错误、超时、缺少完成事件仍停止并清理。第二阶段保持仅累计目标容量错误的规则，普通 HTTP 500 不计入容量错误次数并停止。`turn.failed` 优先于中间或迟到的 `error`，模型正文及 stderr 都不参与重试分类。
 - Codex JSONL 错误没有单独的 HTTP 状态字段，脚本从明确的 `unexpected status 500`、`HTTP 500` 等传输错误文本提取状态，并记录为 `http_status`。如果 CLI 只给出了业务错误文案，则使用已确认的中英文容量文案识别；无法证明 HTTP 状态的其他错误不会猜成 500。无需访问管理接口或读取网关数据库。
+- `attempt_started` 显示独立 attempt ID、递增序号、PID 和活跃并发数；`local_attempt_cleaned` 显示清理后的活跃数。`attempt_result` 的 `attempt_number` 对应自己的序号，`attempts` 是当前累计启动数量。进程并行启动不等于上游允许同时执行。
 - `attempt_result` 日志提供 `error` 和 `error_source`。优先记录结构化错误；没有结构化错误原因时，才记录 stderr 最后一条明确以 `Error:` 开头的错误行，或进程退出/超时说明。诊断先脱敏当前 key、常见凭据字段及认证头，再限制为 2048 字符；不保存原始 stderr、请求头或完整日志。成功时这两个字段为 `null`。
 - `--max-attempts N` / `--max-tokens N` 提供每次脚本启动的停止条件，0 为不限。token 预算按 CLI 已报告的 input+output 累计，reasoning 是 output 的子集，不再相加。并发在途请求和失败未报告用量可能超出预算；它不是硬计费上限。若要成本硬限制，请同时配置网关/API key 配额。
 
@@ -90,7 +91,7 @@ python3 scripts/codex-probes/scheduled_probe.py \
 
 需要部署本次 AxonHub 新增的 `GET /v1/axonhub/quota-windows`。它接受同一个推理 API key，但要求其 active profile **明确绑定且仅绑定一个渠道 ID**，并满足 project profile 的渠道和 tag 约束；无绑定、多渠道或匿名回退 key 会返回 403。只读接口不会创建会话、刷新上游或返回渠道凭据/account key/raw quota。必须在 AxonHub 开启该 provider 的配额采集，并能实际采到 `7d`/`weekly` 的重置时间；仅凭渠道名叫 key 并不足够。
 
-这不是上游事件推送：默认每 30 秒读取 AxonHub 快照，得到周 reset_at 后提前登记本地定时器，执行时间不必等下一次轮询。上游更改时间可由后续快照修正；快照超过默认 1 小时视为过期，不用它建立新计划。已经登记的 reset 时间可在短暂网络故障时执行，实际准确性仍取决于上游时间、服务器采集和时钟同步。`--quota-poll`、`--quota-max-age` 可调，客户端与服务器时间差超过 60 秒停止。
+这不是上游事件推送：默认每 30 秒读取 AxonHub 快照，得到周 reset_at 后提前登记本地定时器，执行时间不必等下一次轮询。上游更改时间可由后续快照修正；快照超过默认 1 小时视为过期，不用它建立新计划。已到期的周任务不会被轮询得到的下一周时间覆盖。快照 HTTP 429/5xx、网络超时会留待下一轮轮询；401/403 等配置或权限错误仍会停止。已经登记的 reset 时间可在短暂网络故障时执行，实际准确性仍取决于上游时间、服务器采集和时钟同步。`--quota-poll`、`--quota-max-age` 可调，客户端与服务器时间差超过 60 秒停止。
 
 本地持久化每个周 reset 和两个每日 slot；请求前记录 unconfirmed，SIGKILL/重启后不重复发已经开始的请求。默认漏过超过 15 分钟的 slot 记 missed；短暂中断仅补最新一个时刻，不爆发回放积压。`--catch-up-grace` 调整补执行时间。--watch-windows 常驻时的 systemd service 使用 `Type=simple`，不另外设置 timer，也不要与每日/每周 timer 同时运行。
 
@@ -153,4 +154,4 @@ python3 scripts/codex-probes/keepalive.py \
 - 官方 [non-interactive 模式](https://developers.openai.com/codex/noninteractive)：`exec`、JSONL 完成事件与 `--ephemeral`。
 - [Codex 配置](https://developers.openai.com/codex/config-reference) 与 [0.155.1 exec CLI](https://github.com/openai/codex/blob/rust-v0.155.1/codex-rs/exec/src/cli.rs)、[JSONL 事件](https://github.com/openai/codex/blob/rust-v0.155.1/codex-rs/exec/src/exec_events.rs)、[配置 schema](https://github.com/openai/codex/blob/rust-v0.155.1/codex-rs/core/config.schema.json)。检索日期 2026-09-19。
 - 简单题主题参考 NASA [天空为什么是蓝色](https://spaceplace.nasa.gov/blue-sky/) 与 USGS [水循环](https://www.usgs.gov/water-science-school/water-cycle)，问题为重新编写，没有复制“十万个为什么”书籍内容。
-- GitHub Actions 用 fake CLI 验证新会话、清理、超时/中断、错误分类、阶段切换、计数、定时去重和不触碰外部文件；不安装/执行真实 Codex，不调用真实上游。离线测试不能证明提供方额度窗口行为或封禁策略。
+- GitHub Actions 用 fake CLI 验证新会话、清理、超时/中断、错误分类、阶段切换、计数、定时去重和不触碰外部文件；另一个 hosted job 固定下载官方 0.156.1，仅连接 loopback 模拟服务器验证真实 CLI 并发与取消，不调用真实上游。离线测试不能证明提供方额度窗口行为或封禁策略。

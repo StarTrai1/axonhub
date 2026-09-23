@@ -10,13 +10,14 @@ import signal
 import subprocess
 import sys
 import tempfile
+from urllib.error import HTTPError
 import unittest
 from unittest.mock import patch
 
 import keepalive
-from probe_common import ERROR_LIMIT, Events, HIGH_DEMAND, Outcome, OwnedState, Questions, Runner, StderrErrors, atomic_json, load_bank, process_identity, redact_error
+from probe_common import ERROR_LIMIT, Events, HIGH_DEMAND, Outcome, OwnedState, Questions, Runner, StderrErrors, atomic_json, load_bank, process_identity, redact_error, resolve_codex
 from scheduled_probe import choose_slot
-from quota_schedule import daily_slots, weekly_reset
+from quota_schedule import daily_slots, weekly_reset, fetch_windows, watch_windows
 from zoneinfo import ZoneInfo
 from pause_control import PauseControl
 
@@ -194,6 +195,35 @@ class EventsTest(unittest.TestCase):
             self.assertEqual(len({entry['prompt'] for entry in entries}), len(entries))
 
 
+class ExecutableTest(unittest.TestCase):
+    def test_standalone_preferred_and_symlink_pinned(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            binary = root / "release/codex"
+            binary.parent.mkdir()
+            binary.write_text("unused fixture")
+            binary.chmod(0o700)
+            current = root / ".codex/packages/standalone/current"
+            current.parent.mkdir(parents=True)
+            current.symlink_to(binary.parent, target_is_directory=True)
+            with patch("probe_common.Path.home", return_value=root), patch("probe_common.shutil.which") as which:
+                self.assertEqual(resolve_codex(None), str(binary))
+                which.assert_not_called()
+            with patch("probe_common.shutil.which", return_value=str(binary)):
+                self.assertEqual(resolve_codex("chosen-cli"), str(binary))
+
+    def test_transient_quota_errors_keep_listener_running(self):
+        for status in (429, 500, 502, 503):
+            with patch("quota_schedule.build_opener") as opener:
+                opener.return_value.open.side_effect = HTTPError("http://local", status, "synthetic", {}, None)
+                with self.assertRaises(ConnectionError):
+                    fetch_windows("http://local/v1", "synthetic")
+        with patch("quota_schedule.build_opener") as opener:
+            opener.return_value.open.side_effect = HTTPError("http://local", 403, "synthetic", {}, None)
+            with self.assertRaises(ValueError):
+                fetch_windows("http://local/v1", "synthetic")
+
+
 class OwnershipTest(unittest.TestCase):
     def test_cleanup_never_follows_job_symlink(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -355,6 +385,40 @@ class ProcessTest(unittest.IsolatedAsyncioTestCase):
         result = await keepalive.acquire(FakeRunner(), Questions([{"id": "q", "prompt": "q"}]), args)
         self.assertEqual(result, "success")
         self.assertEqual(active, set())
+
+
+    async def test_weekly_due_during_poll_is_not_superseded(self):
+        now = datetime(2026, 9, 23, 0, 0, tzinfo=timezone.utc)
+        old = now - timedelta(seconds=1)
+        future = now + timedelta(days=7)
+        slot_id = 'weekly:' + old.isoformat()
+        class Clock(datetime):
+            @classmethod
+            def now(cls, tz=None):
+                return now
+        with OwnedState(self.args.state_dir) as state:
+            journal = {'binding': 'test', 'specification': {'first_time': '08:00:00', 'timezone': 'UTC'},
+                       'slots': {slot_id: {'at': old.isoformat(), 'outcome': 'waiting'}}, 'weekly_reset': slot_id}
+            atomic_json(state.root / 'window-schedule.json', journal)
+            calls = []
+            class FakeRunner:
+                key = 'synthetic'
+                def binding(self): return 'test'
+                def budget_exhausted(self): return bool(calls)
+                async def run(self, question, effort):
+                    calls.append(question)
+                    return Outcome('success')
+            snapshot = {'observed_at': now.isoformat(), 'server_time': now.isoformat(),
+                        'windows': [{'window': '7d', 'next_reset_at': future.isoformat()}]}
+            args = argparse.Namespace(timezone='UTC', catch_up_grace=300, quota_max_age=3600,
+                                      quota_poll=60, url='http://local/v1', effort='low')
+            async def no_wait(*_): pass
+            with patch('quota_schedule.datetime', Clock), patch('quota_schedule.fetch_windows', return_value=snapshot), patch('quota_schedule.pause', no_wait):
+                await watch_windows(args, state, FakeRunner(), Questions([{'id': 'q', 'prompt': 'q'}]), wallclock(8))
+            saved = json.loads((state.root / 'window-schedule.json').read_text())
+            self.assertEqual(saved['slots'][slot_id]['outcome'], 'success')
+            self.assertEqual(saved['slots']['weekly:' + future.isoformat()]['outcome'], 'waiting')
+            self.assertEqual(len(calls), 1)
 
 
 class ScheduleTest(unittest.TestCase):

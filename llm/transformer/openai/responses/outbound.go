@@ -330,7 +330,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	if payload.MaxOutputTokens == nil {
 		payload.MaxOutputTokens = llmReq.MaxTokens
 	}
-	applyGPT6AstraCompatibility(&payload)
+	applyGPT6Compatibility(&payload, llmReq)
 
 	body, err := marshalRequestPayload(payload, llmReq)
 	if err != nil {
@@ -368,25 +368,33 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	return httpReq, nil
 }
 
-func applyGPT6AstraCompatibility(payload *Request) {
-	if payload == nil || !strings.EqualFold(strings.TrimSpace(payload.Model), "gpt-6-astra") {
+func applyGPT6Compatibility(payload *Request, llmReq *llm.Request) {
+	if payload == nil || !shared.IsGPT6Model(payload.Model) {
 		return
 	}
 
-	payload.Temperature = nil
-	payload.TopP = nil
-	payload.TopLogprobs = nil
-	for i := range payload.Tools {
+		for i := range payload.Tools {
 		if payload.Tools[i].Type != "function" && payload.Tools[i].Type != "custom" {
 			payload.Tools[i].Async = nil
 		}
 	}
+	effort := ""
 	if payload.Reasoning != nil {
-		switch payload.Reasoning.Effort {
-		case llm.ReasoningEffortNone, llm.ReasoningEffortMinimal:
-			payload.Reasoning.Effort = llm.ReasoningEffortLow
-		}
+		payload.Reasoning.Effort = shared.NormalizeGPT6Effort(payload.Model, payload.Reasoning.Effort)
+		effort = payload.Reasoning.Effort
 	}
+	// Raw-only configuration updates are merged after this stage. Inspect their
+	// ordered source here so sampling follows the effective turn configuration.
+	var rawBody []byte
+	if llmReq.RawRequest != nil {
+		rawBody = llmReq.RawRequest.Body
+	}
+	if shared.GPT6EffectiveEffort(payload.Model, effort, rawBody) == llm.ReasoningEffortNone {
+		return
+	}
+	payload.Temperature = nil
+	payload.TopP = nil
+	payload.TopLogprobs = nil
 
 	filtered := make([]string, 0, len(payload.Include))
 	for _, field := range payload.Include {
@@ -408,6 +416,10 @@ func (t *OutboundTransformer) buildFullRequestURL(_ *llm.Request) (string, error
 	}
 
 	return t.config.BaseURL + "/responses", nil
+}
+
+func (t *OutboundTransformer) AllowPassThroughBody(_ context.Context, request *llm.Request, _ *httpclient.Request) bool {
+	return request == nil || request.RawRequest == nil || !shared.GPT6ResponsesNeedsNormalization(request.Model, request.RawRequest.Body)
 }
 
 // TransformResponse converts an OpenAI Responses API HTTP response to unified llm.Response.

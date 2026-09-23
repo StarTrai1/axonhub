@@ -96,7 +96,8 @@ async def keepalive_cycle(control, progress, progress_file, runner, simple, reas
 
     while not runner.budget_exhausted():
         await control.checkpoint()
-        emit('phase', phase=progress['phase'], high_demand=progress['high_demand'])
+        emit('phase', phase=progress['phase'], high_demand=progress['high_demand'],
+             concurrency=args.concurrency if progress['phase'] == 1 else 1)
         if progress['phase'] == 1:
             status = await control.run(lambda: acquire(runner, simple, args))
             if status is None:

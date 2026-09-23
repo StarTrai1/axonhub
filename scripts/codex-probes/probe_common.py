@@ -67,7 +67,7 @@ def add_common_arguments(parser: argparse.ArgumentParser, state_name: str) -> No
     parser.add_argument("--url", required=True, help="AxonHub API base URL, normally ending in /v1")
     parser.add_argument("--key-env", default="AXONHUB_PROBE_API_KEY", help="environment variable holding a dedicated channel-restricted key")
     parser.add_argument("--model", required=True)
-    parser.add_argument("--codex", default="codex", help="Codex executable path; use a pinned version")
+    parser.add_argument("--codex", help="Codex executable; default: standalone current, then PATH; pinned for this invocation")
     parser.add_argument("--state-dir", type=Path, default=Path.home() / ".local/state/axonhub-probes" / state_name)
     parser.add_argument("--timeout", type=positive, default=600.0, help="hard time limit per CLI process in seconds")
     parser.add_argument("--max-attempts", type=nonnegative, default=0, help="per invocation; 0 means unlimited")
@@ -77,6 +77,18 @@ def add_common_arguments(parser: argparse.ArgumentParser, state_name: str) -> No
     parser.add_argument("--supports-websockets", action="store_true", help="enable only if this custom provider supports native Codex WebSockets")
     parser.add_argument("--check", action="store_true", help="validate config and local Codex version; send no model requests")
     parser.add_argument("--cleanup-only", action="store_true", help="clean owned crash leftovers and exit without a request")
+
+
+def resolve_codex(executable: str | None) -> str:
+    if executable:
+        candidate = shutil.which(str(Path(executable).expanduser()))
+    else:
+        standalone = Path.home() / ".codex/packages/standalone/current/codex"
+        candidate = str(standalone) if standalone.is_file() and os.access(standalone, os.X_OK) else shutil.which("codex")
+    if not candidate:
+        raise ValueError("Codex executable not found; set --codex to the installed CLI")
+    # Resolve current/symlinks once so an update cannot change binaries mid-run.
+    return str(Path(candidate).resolve())
 
 
 def validate_common(args: argparse.Namespace) -> str:
@@ -425,6 +437,7 @@ class Runner:
     def __init__(self, args: argparse.Namespace, state: OwnedState, key: str):
         self.args, self.state, self.key = args, state, key
         self.attempts = 0
+        self.active_attempts = 0
         self.reported_tokens = 0
 
     def binding(self) -> str:
@@ -436,6 +449,7 @@ class Runner:
                     or (self.args.max_tokens and self.reported_tokens >= self.args.max_tokens))
 
     async def check_codex(self) -> None:
+        self.args.codex = resolve_codex(self.args.codex)
         proc = await asyncio.create_subprocess_exec(self.args.codex, "--version", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
         try:
             out, _ = await asyncio.wait_for(proc.communicate(), 10)
@@ -448,15 +462,17 @@ class Runner:
         if proc.returncode != 0 or not parsed:
             raise ValueError("Codex --version failed; install/pin the official CLI")
         if tuple(int(part) for part in parsed.groups()) < (0, 155, 1):
-            raise ValueError("Codex >= 0.155.1 required; this implementation was checked against 0.155.1")
-        emit("codex_version", version=version[:120])
+            raise ValueError("Codex >= 0.155.1 required; supported baseline is 0.155.1, with 0.156.1 compatibility")
+        emit("codex_version", version=version[:120], executable=self.args.codex)
 
     async def run(self, question: dict, effort: str) -> Outcome:
         if self.budget_exhausted():
             return Outcome("budget")
         self.attempts += 1
+        attempt_number = self.attempts
         job, marker = self.state.create_job()
         proc = None
+        active_registered = False
         readers = []
         events = Events(self.key)
         stderr_errors = StderrErrors(self.key)
@@ -484,6 +500,10 @@ class Runner:
                 cancelled = True
             marker.update(pid=proc.pid, identity=process_identity(proc.pid))
             atomic_json(job / ".job.json", marker)
+            self.active_attempts += 1
+            active_registered = True
+            emit("attempt_started", attempt=job.name, attempt_number=attempt_number,
+                 pid=proc.pid, active_attempts=self.active_attempts, question_id=question["id"])
             if cancelled:
                 raise asyncio.CancelledError
 
@@ -535,7 +555,9 @@ class Runner:
                 if readers:
                     await asyncio.gather(*readers, return_exceptions=True)
                 self.state.remove_job(job)
-                emit("local_attempt_cleaned", attempt=job.name)
+                if active_registered:
+                    self.active_attempts -= 1
+                emit("local_attempt_cleaned", attempt=job.name, active_attempts=self.active_attempts)
 
             cleanup_task = asyncio.create_task(cleanup())
             try:
@@ -544,7 +566,8 @@ class Runner:
                 await cleanup_task
                 raise
         emit("attempt_result", status=outcome.status, question_id=question["id"], thread_id=outcome.thread_id,
-             attempts=self.attempts, usage=outcome.usage, reported_tokens=self.reported_tokens,
+             attempts=self.attempts, attempt_number=attempt_number, attempt=job.name,
+             usage=outcome.usage, reported_tokens=self.reported_tokens,
              returncode=outcome.returncode, error=outcome.error, error_source=outcome.error_source,
              http_status=outcome.http_status)
         return outcome

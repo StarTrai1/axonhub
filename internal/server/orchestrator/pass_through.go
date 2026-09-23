@@ -279,19 +279,22 @@ func stripUnsupportedCodexPromptCacheOptions(outbound *PersistentOutboundTransfo
 func repairInvalidOpenAIToolSchemas() pipeline.Middleware {
 	return pipeline.OnRawRequest("repair-openai-tool-schemas", func(_ context.Context, request *httpclient.Request) (*httpclient.Request, error) {
 		switch llm.APIFormat(request.APIFormat) {
-		case llm.APIFormatOpenAIChatCompletion, llm.APIFormatOpenAIResponse:
+		case llm.APIFormatOpenAIChatCompletion, llm.APIFormatOpenAIResponse, llm.APIFormatAnthropicMessage:
 		default:
 			return request, nil
 		}
-		if !bytes.Contains(request.Body, []byte(`"parameters"`)) ||
+		if (!bytes.Contains(request.Body, []byte(`"parameters"`)) && !bytes.Contains(request.Body, []byte(`"input_schema"`))) ||
 			(!jsonFieldIsNull(request.Body, []byte(`"parameters"`)) &&
 				!jsonFieldIsNull(request.Body, []byte(`"type"`)) &&
-				!jsonFieldIsNull(request.Body, []byte(`"properties"`))) {
+				!jsonFieldIsNull(request.Body, []byte(`"properties"`)) &&
+				!jsonFieldIsNull(request.Body, []byte(`"required"`))) {
 			return request, nil
 		}
 
 		var payload map[string]any
-		if err := json.Unmarshal(request.Body, &payload); err != nil {
+		decoder := json.NewDecoder(bytes.NewReader(request.Body))
+		decoder.UseNumber()
+		if err := decoder.Decode(&payload); err != nil {
 			return request, nil
 		}
 		if !repairToolSchemaList(payload["tools"]) {
@@ -349,7 +352,8 @@ func repairToolSchemaList(value any) bool {
 		if tool["type"] == "namespace" && repairToolSchemaList(tool["tools"]) {
 			changed = true
 		}
-		if tool["type"] != "function" {
+		_, hasInputSchema := tool["input_schema"]
+		if tool["type"] != "function" && !hasInputSchema {
 			continue
 		}
 
@@ -357,7 +361,11 @@ func repairToolSchemaList(value any) bool {
 		if nested, ok := tool["function"].(map[string]any); ok {
 			definition = nested
 		}
-		parametersValue, exists := definition["parameters"]
+		schemaKey := "parameters"
+		if _, exists := definition["input_schema"]; exists {
+			schemaKey = "input_schema"
+		}
+		parametersValue, exists := definition[schemaKey]
 		if !exists {
 			continue
 		}
@@ -368,7 +376,10 @@ func repairToolSchemaList(value any) bool {
 				continue
 			}
 			parameters = map[string]any{}
-			definition["parameters"] = parameters
+			definition[schemaKey] = parameters
+			changed = true
+		}
+		if repairNullRequired(parameters) {
 			changed = true
 		}
 		if typeValue, exists := parameters["type"]; !exists || typeValue == nil {
@@ -383,6 +394,40 @@ func repairToolSchemaList(value any) bool {
 		}
 	}
 
+	return changed
+}
+
+// Only schema-bearing keywords are traversed; examples/default/enum/const and
+// property names may themselves contain a literal "required": null.
+func repairNullRequired(schema map[string]any) bool {
+	changed := false
+	if value, exists := schema["required"]; exists && value == nil {
+		delete(schema, "required")
+		changed = true
+	}
+	for _, key := range []string{"properties", "patternProperties", "$defs", "definitions", "dependentSchemas"} {
+		if children, ok := schema[key].(map[string]any); ok {
+			for _, value := range children {
+				if child, ok := value.(map[string]any); ok && repairNullRequired(child) {
+					changed = true
+				}
+			}
+		}
+	}
+	for _, key := range []string{"items", "prefixItems", "allOf", "anyOf", "oneOf", "additionalProperties", "additionalItems", "contains", "not", "if", "then", "else", "propertyNames", "unevaluatedProperties", "unevaluatedItems", "contentSchema"} {
+		switch value := schema[key].(type) {
+		case map[string]any:
+			if repairNullRequired(value) {
+				changed = true
+			}
+		case []any:
+			for _, element := range value {
+				if child, ok := element.(map[string]any); ok && repairNullRequired(child) {
+					changed = true
+				}
+			}
+		}
+	}
 	return changed
 }
 
@@ -459,7 +504,8 @@ func passThroughBodyNeedsModelPatch(apiFormat llm.APIFormat) bool {
 		// Image edits submitted as application/json carry a top-level model field.
 		// Multipart edit bodies never reach this point (passThroughBodySupported
 		// rejects them), so sjson patching only ever runs on JSON payloads.
-		llm.APIFormatOpenAIImageEdit:
+		llm.APIFormatOpenAIImageEdit,
+		llm.APIFormatTypeSafeSystemOne:
 		return true
 	default:
 		return false

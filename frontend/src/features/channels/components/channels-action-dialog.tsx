@@ -2216,7 +2216,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                         </div>
                       </div>
 
-                      {selectedProvider !== 'jina' && selectedProvider !== 'codex' && selectedProvider !== 'claudecode' && (
+                      {selectedProvider !== 'jina' && selectedProvider !== 'codex' && selectedProvider !== 'claudecode' && selectedProvider !== 'typesafe' && (
                         <FormItem className='space-y-2'>
                           <FormLabel className='font-medium'>{t('channels.dialogs.fields.apiFormat.label')}</FormLabel>
                           <div className='space-y-1'>

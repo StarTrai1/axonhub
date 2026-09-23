@@ -27,8 +27,10 @@ def fetch_windows(base_url, key):
             result = json.loads(body)
     except HTTPError as error:
         # Do not print raw provider/server response bodies or request headers.
+        if error.code == 429 or 500 <= error.code <= 599:
+            raise ConnectionError(f'quota snapshot HTTP {error.code}') from None
         raise ValueError(f'quota snapshot HTTP {error.code}; check endpoint, single-channel key profile and quota collection') from None
-    except URLError:
+    except (URLError, TimeoutError, OSError):
         raise ConnectionError('quota snapshot network error') from None
     if not isinstance(result, dict) or not isinstance(result.get('windows'), list):
         raise ValueError('invalid quota snapshot')
@@ -101,7 +103,8 @@ async def watch_windows(args, state, runner, questions, first_time):
                 if reset:
                     slot_id = 'weekly:' + reset.isoformat()
                     old = journal.get('weekly_reset')
-                    if old and old != slot_id and old in slots and slots[old]['outcome'] == 'waiting':
+                    if (old and old != slot_id and old in slots and slots[old]['outcome'] == 'waiting'
+                            and instant(slots[old]['at']) > datetime.now(timezone.utc)):
                         slots[old]['outcome'] = 'superseded'
                     journal['weekly_reset'] = slot_id
                     if slot_id not in slots:
@@ -110,6 +113,7 @@ async def watch_windows(args, state, runner, questions, first_time):
                 else:
                     emit('weekly_snapshot_unavailable', reason='missing or stale weekly window; daily slots remain enabled')
             next_poll = time.monotonic() + args.quota_poll
+        now = datetime.now(timezone.utc)
         # Coalesce coincident weekly/daily slots, and skip old missed slots rather
         # than burst all old tasks after an outage. Claimed attempts never replay.
         due = [(key, value) for key, value in slots.items()

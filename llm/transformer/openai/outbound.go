@@ -17,6 +17,7 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // PlatformType represents the platform type for OpenAI API.
@@ -199,7 +200,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	case PlatformOpenAI:
 		stripUnsupportedToolCallExtraContent(oaiReq)
 	}
-	applyGPT6AstraCompatibility(oaiReq)
+	applyGPT6Compatibility(oaiReq)
 
 	body, err := json.Marshal(oaiReq)
 	if err != nil {
@@ -236,18 +237,34 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	}, nil
 }
 
-func applyGPT6AstraCompatibility(request *Request) {
-	if request == nil || !strings.EqualFold(strings.TrimSpace(request.Model), "gpt-6-astra") {
+func applyGPT6Compatibility(request *Request) {
+	if request == nil || !shared.IsGPT6Model(request.Model) {
 		return
 	}
-
+	request.ReasoningEffort = shared.NormalizeGPT6Effort(request.Model, request.ReasoningEffort)
+	if request.ReasoningEffort == llm.ReasoningEffortNone {
+		return
+	}
 	request.Temperature = nil
 	request.TopP = nil
 	request.TopLogprobs = nil
 	request.Logprobs = nil
-	if request.ReasoningEffort == llm.ReasoningEffortNone || request.ReasoningEffort == llm.ReasoningEffortMinimal {
-		request.ReasoningEffort = llm.ReasoningEffortLow
+}
+
+func (t *OutboundTransformer) AllowPassThroughBody(_ context.Context, request *llm.Request, _ *httpclient.Request) bool {
+	if request == nil || request.RawRequest == nil || !shared.IsGPT6Model(request.Model) {
+		return true
 	}
+	var payload Request
+	if json.Unmarshal(request.RawRequest.Body, &payload) != nil {
+		return true
+	}
+	effort := shared.NormalizeGPT6Effort(request.Model, payload.ReasoningEffort)
+	if effort != payload.ReasoningEffort {
+		return false
+	}
+	return effort == llm.ReasoningEffortNone ||
+		(payload.Temperature == nil && payload.TopP == nil && payload.TopLogprobs == nil && payload.Logprobs == nil)
 }
 
 // TransformResponse transforms Response to ChatCompletionResponse.

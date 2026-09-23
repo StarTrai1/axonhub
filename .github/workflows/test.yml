@@ -28,6 +28,29 @@ jobs:
       - name: Verify isolated lifecycle and scheduling with a fake CLI
         run: python -m unittest discover -s scripts/codex-probes -p 'test_*.py' -v
 
+  test-codex-cli-compatibility:
+    name: Codex 0.156.1 concurrency (loopback only)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Download pinned official standalone package
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/codex156"
+          gh release download rust-v0.156.1 --repo openai/codex --pattern codex-package-x86_64-unknown-linux-musl.tar.gz --dir "$RUNNER_TEMP/codex156"
+          tar -xzf "$RUNNER_TEMP/codex156/codex-package-x86_64-unknown-linux-musl.tar.gz" -C "$RUNNER_TEMP/codex156"
+          codex_binary=$(find "$RUNNER_TEMP/codex156" -type f -path '*/bin/codex' -print -quit)
+          test -n "$codex_binary"
+          echo "PROBE_TEST_CODEX=$codex_binary" >> "$GITHUB_ENV"
+      - name: Verify real CLI concurrency against a local mock
+        run: python -m unittest discover -s scripts/codex-probes -p 'test_cli_integration.py' -v
+
   test:
     runs-on: ubuntu-latest
     steps:

@@ -29,6 +29,8 @@ async def acquire(runner, questions, args):
                         winner.set_result(result.status)
                     stop.set()
                     return
+                if runner.budget_exhausted():
+                    return
                 failures += 1
                 # Jitter spreads load; it does not impersonate people or bypass bans.
                 floor = min(args.retry_max, args.retry_min * 2 ** min(failures - 1, 12))
@@ -60,8 +62,9 @@ async def acquire(runner, questions, args):
 async def main():
     parser = argparse.ArgumentParser(description=__doc__)
     add_common_arguments(parser, "keepalive")
+    parser.add_argument("--restart-phase-one", action="store_true", help="reset saved phase after owned cleanup; does not affect other sessions")
     parser.add_argument("--concurrency", type=int, default=2)
-    parser.add_argument("--stagger", type=positive, default=3.0, help="stagger phase-one starts, seconds")
+    parser.add_argument("--stagger", type=positive, default=0.5, help="stagger phase-one starts, seconds; worker N starts within [(N-1)*stagger, N*stagger]")
     parser.add_argument("--retry-min", type=positive, default=10.0)
     parser.add_argument("--retry-max", type=positive, default=120.0)
     parser.add_argument("--interval-min", type=positive, default=30.0, help="phase-two delay between attempts")
@@ -92,6 +95,11 @@ async def main():
                 raise ValueError("state belongs to a different URL/key/model; use a separate --state-dir")
             if progress.get("phase") not in (1, 2) or not isinstance(progress.get("high_demand"), int) or not 0 <= progress["high_demand"] < 10:
                 raise ValueError("invalid keepalive progress; inspect progress.json")
+        if args.restart_phase_one:
+            progress.update(phase=1, high_demand=0)
+            atomic_json(progress_file, progress)
+        emit("phase_loaded", phase=progress["phase"], resumed=progress_file.exists(),
+             restarted=args.restart_phase_one, concurrency=args.concurrency if progress["phase"] == 1 else 1)
         from pause_control import PauseControl, keepalive_cycle
         with PauseControl() as control:
             return await keepalive_cycle(control, progress, progress_file, runner, simple, reasoning, args)
