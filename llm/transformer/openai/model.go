@@ -287,7 +287,8 @@ type ImageURL struct {
 
 // VideoURL represents a video URL.
 type VideoURL struct {
-	URL string `json:"url"`
+	URL        string `json:"url"`
+	Processing string `json:"processing,omitempty"`
 }
 
 // InputAudio represents audio content.

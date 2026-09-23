@@ -24,6 +24,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/pkg/modelmetadata"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
@@ -1173,7 +1174,7 @@ func (a *remoteCompactionAdapter) generateLocalSummaryWithCandidate(
 	if bridgeRecord != nil && a.requestService != nil {
 		persistCtx := context.WithoutCancel(ctx)
 		if executionRecord != nil {
-			if persistErr := a.requestService.UpdateRequestExecutionFinalized(persistCtx, executionRecord.ID, requestexecution.StatusCompleted, "", meta.ID, responseBody, metrics); persistErr != nil {
+			if persistErr := a.requestService.UpdateRequestExecutionFinalized(persistCtx, executionRecord.ID, requestexecution.StatusCompleted, "", meta.ID, responseBody, metrics, modelmetadata.ResponseModel(&httpclient.Response{Body: responseBody}, llm.APIFormat(providerRequest.APIFormat))); persistErr != nil {
 				log.Warn(persistCtx, "failed to persist local compaction bridge execution", log.Cause(persistErr))
 			}
 			if meta.Usage != nil && a.usageLogService != nil {
@@ -1225,7 +1226,7 @@ func (a *remoteCompactionAdapter) markBridgeExecutionFailed(ctx context.Context,
 	if execution == nil || a.requestService == nil || err == nil {
 		return
 	}
-	if updateErr := persistRequestExecutionFailure(context.WithoutCancel(ctx), a.requestService, execution.ID, err, nil); updateErr != nil {
+	if updateErr := persistRequestExecutionFailure(context.WithoutCancel(ctx), a.requestService, execution.ID, err, nil, ""); updateErr != nil {
 		log.Warn(ctx, "failed to persist local compaction bridge error", log.Cause(updateErr))
 	}
 }

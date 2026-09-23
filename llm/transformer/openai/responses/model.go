@@ -552,6 +552,8 @@ type Item struct {
 
 	// The URL of the image url or base64 encoded image, for input_image type.
 	ImageURL *string `json:"image_url,omitempty"`
+	VideoURL   *string `json:"video_url,omitempty"`
+	Processing string `json:"processing,omitempty"`
 
 	// The detail of the image. high, low, or auto, for input_image type.
 	Detail *string `json:"detail,omitempty"`
@@ -622,6 +624,7 @@ func (item *Item) UnmarshalJSON(data []byte) error {
 	raw := struct {
 		itemAlias
 		Arguments json.RawMessage `json:"arguments"`
+		VideoURL  json.RawMessage `json:"video_url"`
 	}{}
 
 	if err := json.Unmarshal(data, &raw); err != nil {
@@ -629,6 +632,20 @@ func (item *Item) UnmarshalJSON(data []byte) error {
 	}
 
 	*item = Item(raw.itemAlias)
+	if len(raw.VideoURL) > 0 && !bytes.Equal(raw.VideoURL, []byte("null")) {
+		var url string
+		if err := json.Unmarshal(raw.VideoURL, &url); err != nil {
+			var video llm.VideoURL
+			if err := json.Unmarshal(raw.VideoURL, &video); err != nil {
+				return fmt.Errorf("invalid video_url: %w", err)
+			}
+			url = video.URL
+			if item.Processing == "" {
+				item.Processing = video.Processing
+			}
+		}
+		item.VideoURL = &url
+	}
 	if len(raw.Arguments) == 0 || bytes.Equal(raw.Arguments, []byte("null")) {
 		return nil
 	}

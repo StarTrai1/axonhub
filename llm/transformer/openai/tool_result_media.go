@@ -1,6 +1,10 @@
 package openai
 
-import "github.com/samber/lo"
+import (
+	"strings"
+
+	"github.com/samber/lo"
+)
 
 // relayToolResultMedia moves media from converted tool results to a user
 // message, as Chat Completions tool messages only accept text. Keep a contiguous
@@ -45,6 +49,21 @@ func relayToolResultMedia(messages []Message) []Message {
 			}
 			pending = append(pending, MessageContentPart{Type: "text", Text: &label})
 			pending = append(pending, media...)
+		}
+		if len(message.Content.MultipleContent) > 0 {
+			texts := make([]string, 0, len(message.Content.MultipleContent))
+			textOnly := true
+			for _, part := range message.Content.MultipleContent {
+				if part.Type != "text" || part.Text == nil {
+					textOnly = false
+					break
+				}
+				texts = append(texts, *part.Text)
+			}
+			if textOnly {
+				message.Content = MessageContent{Content: lo.ToPtr(strings.Join(texts, "\n\n"))}
+				changed = true
+			}
 		}
 		result = append(result, message)
 	}

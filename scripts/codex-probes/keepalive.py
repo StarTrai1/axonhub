@@ -89,7 +89,8 @@ async def main():
             return 0
         progress_file = state.root / "progress.json"
         progress = {"phase": 1, "high_demand": 0, "binding": runner.binding()}
-        if progress_file.exists():
+        resumed = progress_file.exists()
+        if resumed:
             progress = json.loads(progress_file.read_text())
             if progress.get("binding") != runner.binding():
                 raise ValueError("state belongs to a different URL/key/model; use a separate --state-dir")
@@ -98,7 +99,7 @@ async def main():
         if args.restart_phase_one:
             progress.update(phase=1, high_demand=0)
             atomic_json(progress_file, progress)
-        emit("phase_loaded", phase=progress["phase"], resumed=progress_file.exists(),
+        emit("phase_loaded", phase=progress["phase"], resumed=resumed,
              restarted=args.restart_phase_one, concurrency=args.concurrency if progress["phase"] == 1 else 1)
         from pause_control import PauseControl, keepalive_cycle
         with PauseControl() as control:

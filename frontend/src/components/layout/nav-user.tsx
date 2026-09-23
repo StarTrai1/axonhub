@@ -99,7 +99,7 @@ export function NavUser({
           </DropdownMenu>
         </SidebarMenuItem>
       </SidebarMenu>
-      <MenuCustomizeDialog open={customizeOpen} onOpenChange={setCustomizeOpen} />
+      {customizeOpen && <MenuCustomizeDialog open={customizeOpen} onOpenChange={setCustomizeOpen} />}
     </>
   );
 }

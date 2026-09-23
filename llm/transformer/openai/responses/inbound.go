@@ -833,6 +833,16 @@ func convertContentItemToPart(item *Item) (*llm.MessageContentPart, error) {
 
 		return nil, nil
 
+	case "input_video", "video_url":
+		if item.VideoURL == nil || *item.VideoURL == "" {
+			return nil, fmt.Errorf("%w: input_video requires a video_url", transformer.ErrInvalidRequest)
+		}
+		return &llm.MessageContentPart{
+			Type:                  "video_url",
+			VideoURL:               &llm.VideoURL{URL: *item.VideoURL, Processing: item.Processing},
+			PromptCacheBreakpoint: item.PromptCacheBreakpoint,
+		}, nil
+
 	case "input_file":
 		message := responseInputFileMessage(item)
 		if message == nil || len(message.Content.MultipleContent) == 0 {

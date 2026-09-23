@@ -25,7 +25,7 @@ func TestGPT6ChatSamplingAndPassThrough(t *testing.T) {
 				for _, field := range []string{"temperature", "top_p", "top_logprobs", "logprobs"} {
 					require.Equal(t, wantSample, gjson.GetBytes(wire.Body, field).Exists(), field)
 				}
-				require.Equal(t, wantSample, outbound.AllowPassThroughBody(t.Context(), request, wire))
+				require.Equal(t, wantSample, outbound.(*OutboundTransformer).AllowPassThroughBody(t.Context(), request, wire))
 			})
 		}
 	}

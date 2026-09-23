@@ -371,7 +371,8 @@ func MessageContentPartFromLLM(p llm.MessageContentPart) MessageContentPart {
 
 	if p.VideoURL != nil {
 		part.VideoURL = &VideoURL{
-			URL: p.VideoURL.URL,
+			URL:        p.VideoURL.URL,
+			Processing: p.VideoURL.Processing,
 		}
 	}
 

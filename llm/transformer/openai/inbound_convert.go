@@ -251,7 +251,8 @@ func (p MessageContentPart) ToLLMPart() llm.MessageContentPart {
 
 	if p.VideoURL != nil {
 		part.VideoURL = &llm.VideoURL{
-			URL: p.VideoURL.URL,
+			URL:        p.VideoURL.URL,
+			Processing: p.VideoURL.Processing,
 		}
 	}
 

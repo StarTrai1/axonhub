@@ -373,7 +373,7 @@ func applyGPT6Compatibility(payload *Request, llmReq *llm.Request) {
 		return
 	}
 
-		for i := range payload.Tools {
+	for i := range payload.Tools {
 		if payload.Tools[i].Type != "function" && payload.Tools[i].Type != "custom" {
 			payload.Tools[i].Async = nil
 		}

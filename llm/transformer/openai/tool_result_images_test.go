@@ -33,8 +33,8 @@ func TestConvertedToolImagesFollowAllToolReplies(t *testing.T) {
 	require.Len(t, sent.Messages, 5)
 	require.Equal(t, []string{"assistant", "tool", "tool", "user", "user"}, lo.Map(sent.Messages, func(message Message, _ int) string { return message.Role }))
 	require.Equal(t, "call_image", *sent.Messages[1].ToolCallID)
-	require.Len(t, sent.Messages[1].Content.MultipleContent, 1)
-	require.Equal(t, "capture result", *sent.Messages[1].Content.MultipleContent[0].Text)
+	require.Empty(t, sent.Messages[1].Content.MultipleContent)
+	require.Equal(t, "capture result", *sent.Messages[1].Content.Content)
 	require.Equal(t, "call_text", *sent.Messages[2].ToolCallID)
 	require.Equal(t, "inspection result", *sent.Messages[2].Content.Content)
 	images := sent.Messages[3].Content.MultipleContent
@@ -97,4 +97,19 @@ func TestConvertedToolFilesAudioAndVideoFollowToolReplies(t *testing.T) {
 	native := RequestFromLLM(t.Context(), request, ReasoningFieldAll)
 	require.Len(t, native.Messages, 1)
 	require.Len(t, native.Messages[0].Content.MultipleContent, 3)
+}
+
+func TestConvertedToolTextArraysBecomeStrings(t *testing.T) {
+	request := &llm.Request{
+		APIFormat: llm.APIFormatOpenAIResponse,
+		Messages: []llm.Message{{Role: "tool", ToolCallID: lo.ToPtr("call_text"), Content: llm.MessageContent{MultipleContent: []llm.MessageContentPart{
+			{Type: "text", Text: lo.ToPtr("first")},
+			{Type: "text", Text: lo.ToPtr("second")},
+		}}}},
+	}
+	sent := RequestFromLLM(t.Context(), request, ReasoningFieldAll)
+	require.Len(t, sent.Messages, 1)
+	require.Equal(t, "first\n\nsecond", lo.FromPtr(sent.Messages[0].Content.Content))
+	require.Empty(t, sent.Messages[0].Content.MultipleContent)
+	require.Len(t, request.Messages[0].Content.MultipleContent, 2)
 }

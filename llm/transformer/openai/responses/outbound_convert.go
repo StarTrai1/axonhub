@@ -180,6 +180,16 @@ func convertUserMessage(msg llm.Message) Item {
 						PromptCacheBreakpoint: p.PromptCacheBreakpoint,
 					})
 				}
+			case "video_url":
+				if p.VideoURL != nil {
+					contentItems = append(contentItems, Item{
+						Type:                  "input_video",
+						VideoURL:              &p.VideoURL.URL,
+						Processing:            p.VideoURL.Processing,
+						PromptCacheBreakpoint: p.PromptCacheBreakpoint,
+					})
+				}
+
 			case "file", "input_file":
 				if p.File != nil {
 					contentItems = append(contentItems, Item{

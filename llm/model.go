@@ -611,6 +611,8 @@ type VideoURL struct {
 
 	// MIMEType is the MIME type of the video when provided by the source protocol.
 	MIMEType string `json:"mime_type,omitempty"`
+	// Processing is a provider-specific video processing hint.
+	Processing string `json:"processing,omitempty"`
 }
 
 // DocumentURL represents a document URL (PDF, Word, etc.)
