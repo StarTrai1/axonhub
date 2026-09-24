@@ -17,7 +17,9 @@ test('request model cells render every audit and lifecycle state without crashin
     await expect(audit.locator(`svg.tabler-icon-${icon}`)).toBeVisible();
     await audit.hover();
     await expect(page.getByRole('tooltip')).toBeVisible();
-    await page.mouse.move(0, 0);
+    await page.keyboard.press('Escape');
+    await page.mouse.move(1000, 700);
+    await expect(page.getByRole('tooltip')).toBeHidden();
   }
   expect(errors).toEqual([]);
 });
