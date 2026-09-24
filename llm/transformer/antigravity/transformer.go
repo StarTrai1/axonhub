@@ -249,6 +249,10 @@ func (t *Transformer) TransformRequest(ctx context.Context, llmReq *llm.Request)
 }
 
 func (t *Transformer) patchGeminiRequest(ctx context.Context, req *gemini.GenerateContentRequest, llmReq *llm.Request) error {
+	if strings.Contains(strings.ToLower(llmReq.Model), "claude") {
+		normalizeClaudeToolIDs(req.Contents)
+	}
+
 	// Claude attribution is client metadata, not a Google system instruction.
 	// Remove it before adding our own instructions, and only on this provider.
 	if req.SystemInstruction != nil {

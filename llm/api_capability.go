@@ -45,6 +45,7 @@ func CapableAPIFormats(requestType RequestType) map[string]struct{} {
 			APIFormatOpenAIImageGeneration.String(): {},
 			APIFormatOpenAIImageEdit.String():       {},
 			APIFormatOpenAIImageVariation.String():  {},
+			APIFormatModelScopeImage.String():       {},
 		}
 	case RequestTypeRerank:
 		return map[string]struct{}{

@@ -24,11 +24,11 @@ import (
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/log"
-	"github.com/looplj/axonhub/internal/pkg/modelmetadata"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/modelname"
 	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
@@ -1174,7 +1174,7 @@ func (a *remoteCompactionAdapter) generateLocalSummaryWithCandidate(
 	if bridgeRecord != nil && a.requestService != nil {
 		persistCtx := context.WithoutCancel(ctx)
 		if executionRecord != nil {
-			if persistErr := a.requestService.UpdateRequestExecutionFinalized(persistCtx, executionRecord.ID, requestexecution.StatusCompleted, "", meta.ID, responseBody, metrics, modelmetadata.ResponseModel(&httpclient.Response{Body: responseBody}, llm.APIFormat(providerRequest.APIFormat))); persistErr != nil {
+			if persistErr := a.requestService.UpdateRequestExecutionFinalized(persistCtx, executionRecord.ID, requestexecution.StatusCompleted, "", meta.ID, responseBody, metrics, modelname.FromResponse(&httpclient.Response{Body: responseBody}, llm.APIFormat(providerRequest.APIFormat))); persistErr != nil {
 				log.Warn(persistCtx, "failed to persist local compaction bridge execution", log.Cause(persistErr))
 			}
 			if meta.Usage != nil && a.usageLogService != nil {

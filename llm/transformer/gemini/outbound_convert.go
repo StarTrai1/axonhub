@@ -472,7 +472,9 @@ func convertLLMToolResultToGeminiContent(msg *llm.Message, contents []*Content) 
 		_ = json.Unmarshal([]byte(*msg.Content.Content), &responseData)
 	}
 
-	if responseData == nil {
+	// A JSON Schema $ref in tool output is data, not a reference to a Gemini
+	// functionResponse media part. Keep that output as opaque JSON text.
+	if responseData == nil || containsToolResultJSONRef(responseData) {
 		responseData = map[string]any{"result": lo.FromPtrOr(msg.Content.Content, "")}
 	}
 
@@ -495,6 +497,28 @@ func convertLLMToolResultToGeminiContent(msg *llm.Message, contents []*Content) 
 	}
 
 	return content
+}
+
+func containsToolResultJSONRef(value any) bool {
+	switch value := value.(type) {
+	case map[string]any:
+		if _, ok := value["$ref"].(string); ok {
+			return true
+		}
+		for _, child := range value {
+			if containsToolResultJSONRef(child) {
+				return true
+			}
+		}
+	case []any:
+		for _, child := range value {
+			if containsToolResultJSONRef(child) {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 func findToolNameByToolCallID(contents []*Content, id string) string {
