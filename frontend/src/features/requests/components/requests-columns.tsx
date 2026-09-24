@@ -321,6 +321,7 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
                 <TooltipTrigger asChild>
                   <span
                     className={`inline-flex h-5 w-5 items-center justify-center ${upstreamModelAuditIconClass}`}
+                    data-testid='upstream-model-audit'
                     tabIndex={0}
                     role='img'
                     aria-label={upstreamModelAuditTooltip}

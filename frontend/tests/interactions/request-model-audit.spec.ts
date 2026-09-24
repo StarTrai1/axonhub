@@ -12,7 +12,7 @@ test('request model cells render every audit and lifecycle state without crashin
   })) {
     const row = page.getByTestId(`request-${scenario}`);
     await expect(row).toContainText('gpt-6-sol');
-    const audit = row.getByRole('img').last();
+    const audit = row.getByTestId('upstream-model-audit');
     await expect(audit).toHaveAttribute('aria-label', /\S/);
     await expect(audit.locator(`svg.tabler-icon-${icon}`)).toBeVisible();
     await audit.hover();
