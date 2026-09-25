@@ -354,6 +354,7 @@ func TestOutboundTransformer_TransformRequest_ReplaysClientMetadata(t *testing.T
 				"session_id": "session-1",
 				"thread_id": "thread-1",
 				"parent_response_id": "resp_parent",
+				"mcp_attribution": "{\"status\":\"complete\",\"sources\":[{\"server_name\":\"docs\",\"tool_name\":\"search\",\"first_turn_id\":\"turn-1\"}]}",
 				"nested": {"source": "codex"}
 			}
 		}`),
@@ -368,6 +369,7 @@ func TestOutboundTransformer_TransformRequest_ReplaysClientMetadata(t *testing.T
 		"session_id":"session-1",
 		"thread_id":"thread-1",
 		"parent_response_id":"resp_parent",
+		"mcp_attribution":"{\"status\":\"complete\",\"sources\":[{\"server_name\":\"docs\",\"tool_name\":\"search\",\"first_turn_id\":\"turn-1\"}]}",
 		"nested":{"source":"codex"}
 	}`, string(llmReq.ProviderExtensions.OpenAIResponses.Request.RawFields["client_metadata"]))
 
@@ -383,6 +385,7 @@ func TestOutboundTransformer_TransformRequest_ReplaysClientMetadata(t *testing.T
 		"session_id":"session-1",
 		"thread_id":"thread-1",
 		"parent_response_id":"resp_parent",
+		"mcp_attribution":"{\"status\":\"complete\",\"sources\":[{\"server_name\":\"docs\",\"tool_name\":\"search\",\"first_turn_id\":\"turn-1\"}]}",
 		"nested":{"source":"codex"}
 	}`, string(payload["client_metadata"]))
 }

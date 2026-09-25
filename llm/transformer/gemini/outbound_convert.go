@@ -439,7 +439,8 @@ func convertLLMMessageToGeminiContent(msg *llm.Message) *Content {
 		// And this field will be preserved during claude code trace, will not degrade the gemini model performance.
 		msgThoughtSignature := shared.DecodeGeminiThoughtSignature(msg.ReasoningSignature)
 
-		if (len(msg.ToolCalls) > 0 || msg.ReasoningContent != nil) && msgThoughtSignature == nil {
+		// Unsigned text/thought history does not require a synthetic signature.
+		if firstFunctionCallPart != nil && msgThoughtSignature == nil {
 			msgThoughtSignature = lo.ToPtr(ContextEngineeringThoughtSignature)
 		}
 

@@ -13,7 +13,7 @@ from test_probes import args_for
 
 @unittest.skipUnless(os.environ.get("PROBE_TEST_CODEX"), "real CLI fixture runs only in hosted CI")
 class CLIIntegrationTest(unittest.IsolatedAsyncioTestCase):
-    async def test_three_requests_overlap_and_cancel_cleanly(self):
+    async def test_five_requests_overlap_and_cancel_cleanly(self):
         active = 0
         maximum = 0
         requests = []
@@ -35,7 +35,7 @@ class CLIIntegrationTest(unittest.IsolatedAsyncioTestCase):
                 requests.append((parsed, json.loads(body)))
                 active += 1
                 maximum = max(maximum, active)
-                if active == 3:
+                if active == 5:
                     all_arrived.set()
                 await release.wait()
                 active -= 1
@@ -57,20 +57,20 @@ class CLIIntegrationTest(unittest.IsolatedAsyncioTestCase):
                 with OwnedState(Path(tmp) / "owned") as state:
                     args = args_for(state.root, os.environ["PROBE_TEST_CODEX"])
                     args.url = f"http://127.0.0.1:{server.sockets[0].getsockname()[1]}/v1"
-                    args.model = "gpt-6-sol"
+                    args.model = os.environ.get("PROBE_TEST_MODEL", "gpt-6-sol")
                     args.timeout = 90
                     runner = Runner(args, state, "synthetic-test-key")
                     await runner.check_codex()
-                    tasks = [asyncio.create_task(runner.run({"id": f"q-{i}", "prompt": "Reply OK."}, "low")) for i in range(3)]
+                    tasks = [asyncio.create_task(runner.run({"id": f"q-{i}", "prompt": "Reply OK."}, "low")) for i in range(5)]
                     try:
                         await asyncio.wait_for(all_arrived.wait(), 60)
-                        self.assertEqual(maximum, 3)
-                        self.assertEqual(runner.active_attempts, 3)
-                        self.assertEqual(len(list(state.root.glob("attempt-*"))), 3)
+                        self.assertEqual(maximum, 5)
+                        self.assertEqual(runner.active_attempts, 5)
+                        self.assertEqual(len(list(state.root.glob("attempt-*"))), 5)
                         self.assertEqual(errors, [])
                         for headers, body in requests:
                             self.assertEqual(headers["authorization"].lower(), "bearer synthetic-test-key")
-                            self.assertEqual(body["model"], "gpt-6-sol")
+                            self.assertEqual(body["model"], args.model)
                     finally:
                         for task in tasks:
                             task.cancel()

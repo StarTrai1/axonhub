@@ -3893,3 +3893,37 @@ func TestConvertGeminiToLLMResponse_GroundingMetadata_Additional(t *testing.T) {
 		})
 	}
 }
+
+// Unsigned reasoning from other providers must not introduce a synthetic
+// signature on plain text. Function-call fallback remains covered above.
+func TestConvertLLMMessageToGeminiContent_UnsignedReasoningText(t *testing.T) {
+	for _, visible := range []string{"", "visible answer"} {
+		t.Run("visible="+visible, func(t *testing.T) {
+			msg := &llm.Message{
+				Role:             "assistant",
+				ReasoningContent: lo.ToPtr("thinking"),
+				Content:          llm.MessageContent{Content: lo.ToPtr(visible)},
+			}
+			result := convertLLMMessageToGeminiContent(msg)
+			require.NotNil(t, result)
+			require.Equal(t, "thinking", result.Parts[0].Text)
+			require.True(t, result.Parts[0].Thought)
+			for _, part := range result.Parts {
+				require.Empty(t, part.ThoughtSignature)
+			}
+			if visible != "" {
+				require.Len(t, result.Parts, 2)
+				require.Equal(t, visible, result.Parts[1].Text)
+				require.False(t, result.Parts[1].Thought)
+			} else {
+				require.Len(t, result.Parts, 1)
+			}
+
+			// Genuine provider signatures still accompany their text carrier.
+			signature := base64.StdEncoding.EncodeToString([]byte{0x0a, 0x02, 0x08, 0x01})
+			msg.ReasoningSignature = shared.EncodeGeminiThoughtSignature(lo.ToPtr(signature))
+			signed := convertLLMMessageToGeminiContent(msg)
+			require.Equal(t, signature, signed.Parts[len(signed.Parts)-1].ThoughtSignature)
+		})
+	}
+}

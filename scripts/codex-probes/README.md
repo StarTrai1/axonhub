@@ -2,7 +2,7 @@
 
 两个 Python 入口直接调度**本机安装的官方 Codex CLI**。每次均为新 `codex exec --json --ephemeral`，不用 resume，不拼装/伪造 Codex 的 User-Agent、身份、会话头或 TLS 指纹。协议由所安装的 CLI 生成；这保证使用真实客户端，**不代表与交互式 Codex 的工具列表、指令或配置逐字节相同，也不保证不被渠道封禁**。
 
-运行要求：Linux（使用 `/proc`、进程组和 `flock`），Python 3.11+，Codex CLI 0.155.1+。本实现已核对官方 `rust-v0.155.1` → `rust-v0.156.1` 源码，兼容 0.156.1。升级后先运行 `--check` 并检查官方变更。Python 仅使用标准库。
+运行要求：Linux（使用 `/proc`、进程组和 `flock`），Python 3.11+，Codex CLI 0.155.1+。本实现已核对官方 `rust-v0.155.1` → `rust-v0.157.0` 源码，兼容 0.156.1 和 0.157.0。升级后先运行 `--check` 并检查官方变更。Python 仅使用标准库。
 
 ## 准备
 
@@ -154,4 +154,8 @@ python3 scripts/codex-probes/keepalive.py \
 - 官方 [non-interactive 模式](https://developers.openai.com/codex/noninteractive)：`exec`、JSONL 完成事件与 `--ephemeral`。
 - [Codex 配置](https://developers.openai.com/codex/config-reference) 与 [0.155.1 exec CLI](https://github.com/openai/codex/blob/rust-v0.155.1/codex-rs/exec/src/cli.rs)、[JSONL 事件](https://github.com/openai/codex/blob/rust-v0.155.1/codex-rs/exec/src/exec_events.rs)、[配置 schema](https://github.com/openai/codex/blob/rust-v0.155.1/codex-rs/core/config.schema.json)。检索日期 2026-09-19。
 - 简单题主题参考 NASA [天空为什么是蓝色](https://spaceplace.nasa.gov/blue-sky/) 与 USGS [水循环](https://www.usgs.gov/water-science-school/water-cycle)，问题为重新编写，没有复制“十万个为什么”书籍内容。
-- GitHub Actions 用 fake CLI 验证新会话、清理、超时/中断、错误分类、阶段切换、计数、定时去重和不触碰外部文件；另一个 hosted job 固定下载官方 0.156.1，仅连接 loopback 模拟服务器验证真实 CLI 并发与取消，不调用真实上游。离线测试不能证明提供方额度窗口行为或封禁策略。
+- GitHub Actions 用 fake CLI 验证新会话、清理、超时/中断、错误分类、阶段切换、计数、定时去重和不触碰外部文件；hosted matrix 固定下载官方 0.156.1 和 0.157.0，分别使用 gpt-6-sol、gpt-6-luna，仅连接 loopback 模拟服务器验证真实 CLI 五并发与取消，不调用真实上游。离线测试不能证明提供方额度窗口行为或封禁策略。
+
+### Codex 0.157.0
+
+已对照官方 `rust-v0.156.1...rust-v0.157.0`：`codex exec` 参数和 JSONL 事件结构未变，仍在进程内运行嵌入式 app-server；交互 TUI 默认启用后台 daemon 不改变本脚本的执行路径。每次尝试继续使用独立的 `CODEX_HOME` 和进程组，暂停、取消与清理规则不变。新版本的 MCP attribution 属于官方目标专用的请求体元数据，脚本不自行合成。版本验证以 GitHub Actions 的真实 CLI loopback matrix 为准，不代表真实上游额度或可用性测试。

@@ -29,7 +29,14 @@ jobs:
         run: python -m unittest discover -s scripts/codex-probes -p 'test_*.py' -v
 
   test-codex-cli-compatibility:
-    name: Codex 0.156.1 concurrency (loopback only)
+    name: Codex ${{ matrix.codex }} / ${{ matrix.model }} concurrency (loopback only)
+    strategy:
+      fail-fast: false
+      matrix:
+        codex: ['0.156.1', '0.157.0']
+        model: [gpt-6-sol, gpt-6-luna]
+    env:
+      PROBE_TEST_MODEL: ${{ matrix.model }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -41,11 +48,12 @@ jobs:
       - name: Download pinned official standalone package
         env:
           GH_TOKEN: ${{ github.token }}
+          CODEX_VERSION: ${{ matrix.codex }}
         run: |
-          mkdir -p "$RUNNER_TEMP/codex156"
-          gh release download rust-v0.156.1 --repo openai/codex --pattern codex-package-x86_64-unknown-linux-musl.tar.gz --dir "$RUNNER_TEMP/codex156"
-          tar -xzf "$RUNNER_TEMP/codex156/codex-package-x86_64-unknown-linux-musl.tar.gz" -C "$RUNNER_TEMP/codex156"
-          codex_binary=$(find "$RUNNER_TEMP/codex156" -type f -path '*/bin/codex' -print -quit)
+          mkdir -p "$RUNNER_TEMP/codex-fixture"
+          gh release download "rust-v$CODEX_VERSION" --repo openai/codex --pattern codex-package-x86_64-unknown-linux-musl.tar.gz --dir "$RUNNER_TEMP/codex-fixture"
+          tar -xzf "$RUNNER_TEMP/codex-fixture/codex-package-x86_64-unknown-linux-musl.tar.gz" -C "$RUNNER_TEMP/codex-fixture"
+          codex_binary=$(find "$RUNNER_TEMP/codex-fixture" -type f -path '*/bin/codex' -print -quit)
           test -n "$codex_binary"
           echo "PROBE_TEST_CODEX=$codex_binary" >> "$GITHUB_ENV"
       - name: Verify real CLI concurrency against a local mock
