@@ -35,7 +35,7 @@ var responsesRejectedCompactionMessagePattern = regexp.MustCompile(
 // provider. Match the exact checkpoint, never an unrelated encrypted item.
 func responsesRejectedCompactionMessage(body []byte, ref *remoteCompactionReference, code, message, param string) bool {
 	if ref == nil || isLocalCompactionReference(ref) ||
-		(code != "" && code != "bad_request" && code != "invalid_request_error" && code != "invalid_encrypted_content") {
+		!responsesEncryptedContentRejectionCode(code) {
 		return false
 	}
 	match := responsesRejectedCompactionMessagePattern.FindStringSubmatch(message)

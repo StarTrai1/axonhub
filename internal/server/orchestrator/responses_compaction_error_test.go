@@ -31,6 +31,11 @@ func TestResponsesRejectedCompactionDecryptionRequiresExactItem(t *testing.T) {
 		want                       bool
 	}{
 		{name: "native", code: "invalid_encrypted_content", message: rejectedNativeCompactionMessage, want: true},
+		{name: "relay signature code", code: "thinking_signature_invalid", message: rejectedNativeCompactionMessage, want: true},
+		{name: "relay signature indexed", code: "thinking_signature_invalid", message: rejectedNativeCompactionMessage, param: "input[2].encrypted_content", want: true},
+		{name: "relay signature without exact message", code: "thinking_signature_invalid", message: "Invalid thinking signature", param: "input[2].encrypted_content"},
+		{name: "relay signature unknown item", code: "thinking_signature_invalid", message: strings.ReplaceAll(rejectedNativeCompactionMessage, "cmp_native", "cmp_other")},
+		{name: "relay signature wrong index", code: "thinking_signature_invalid", message: rejectedNativeCompactionMessage, param: "input[1].encrypted_content"},
 		{name: "relay without code", message: rejectedNativeCompactionMessage, want: true},
 		{name: "relay wrapper", code: "bad_request", message: "OpenAI Responses bad request: " + rejectedNativeCompactionMessage + " [trace_id=synthetic]", want: true},
 		{name: "indexed", code: "invalid_request_error", message: rejectedNativeCompactionMessage, param: "input[2].encrypted_content", want: true},

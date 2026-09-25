@@ -19,8 +19,20 @@ var responsesRejectedReasoningMessagePattern = regexp.MustCompile(
 	`^(?:OpenAI Responses bad request: )?The encrypted content for item (rs_[A-Za-z0-9_-]+) could not be verified\. Reason: Encrypted content could not be decrypted or parsed\.(?: \[trace_id=[A-Za-z0-9_-]+\])?$`,
 )
 
+// Relays may rename the code for both reasoning and compaction rejections.
+// Callers must still match the complete message and the exact encrypted item;
+// a generic thinking signature error alone does not authorize history changes.
+func responsesEncryptedContentRejectionCode(code string) bool {
+	switch code {
+	case "", "bad_request", "invalid_request_error", "invalid_encrypted_content", "thinking_signature_invalid":
+		return true
+	default:
+		return false
+	}
+}
+
 func responsesRejectedReasoningMessageRule(body []byte, code, message, param string) (responsesRejectedStatusRule, bool) {
-	if code != "" && code != "bad_request" && code != "invalid_request_error" && code != "invalid_encrypted_content" {
+	if !responsesEncryptedContentRejectionCode(code) {
 		return responsesRejectedStatusRule{}, false
 	}
 	match := responsesRejectedReasoningMessagePattern.FindStringSubmatch(message)
