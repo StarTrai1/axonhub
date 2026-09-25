@@ -30,7 +30,7 @@ function catalogOptions(modelID) {
 }
 
 test('reasoning efforts use the unified AxonHub vocabulary', () => {
-  assert.deepEqual([...REASONING_EFFORTS], ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']);
+  assert.deepEqual([...REASONING_EFFORTS], ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max', 'ultra']);
 });
 
 test('effort options map to the levels they enumerate, in canonical order', () => {
@@ -63,4 +63,13 @@ test('catalog entries without a level enumeration stay unknown', () => {
   // An effort option whose values AxonHub does not know carries no usable metadata.
   assert.equal(deriveReasoningEfforts([{ type: 'effort', values: ['bogus'] }]), undefined);
   assert.equal(deriveReasoningEfforts([{ type: 'effort', values: [] }]), undefined);
+});
+
+// Codex provider catalogs may expose ultra even when the public API catalog does not.
+test('model cards retain ultra when the provider explicitly declares it', () => {
+  assert.deepEqual(
+    deriveReasoningEfforts([{ type: 'effort', values: ['ultra', 'low', 'max'] }]),
+    ['low', 'max', 'ultra']
+  );
+  assert.deepEqual(deriveReasoningEfforts([{ type: 'effort', values: ['low', 'max'] }]), ['low', 'max']);
 });

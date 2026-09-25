@@ -4,7 +4,7 @@ import type { ProviderModel } from './providers.schema';
  * Reasoning effort levels AxonHub passes through unchanged (see llm/reasoning.go).
  * A model card lists the subset its upstream accepts.
  */
-export const REASONING_EFFORTS = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'] as const;
+export const REASONING_EFFORTS = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max', 'ultra'] as const;
 
 export type ReasoningEffort = (typeof REASONING_EFFORTS)[number];
 
