@@ -28,13 +28,15 @@ import (
 
 func TestResponsesRejectedLocalCompactionPersistsRetriesAndProviderErrors(t *testing.T) {
 	for _, scenario := range []struct {
-		name      string
-		exhausted bool
-		empty     bool
+		name         string
+		exhausted    bool
+		empty        bool
+		terminalOnly bool
 	}{
 		{name: "recovers after capacity error"},
 		{name: "capacity retry budget exhausted", exhausted: true},
 		{name: "tool-only response is retained as failure", empty: true},
+		{name: "terminal-only summary completes bridge", terminalOnly: true},
 	} {
 		t.Run(scenario.name, func(t *testing.T) {
 			client := enttest.NewEntClient(t, "sqlite3", "file:compaction-errors?mode=memory&_fk=0")
@@ -82,6 +84,9 @@ func TestResponsesRejectedLocalCompactionPersistsRetriesAndProviderErrors(t *tes
 			}
 			if scenario.empty {
 				executor.events = []*httpclient.StreamEvent{{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":{"id":"resp_bridge","status":"completed","output":[{"type":"custom_tool_call","id":"ctc_summary","call_id":"call_summary","name":"exec","input":"must not run"}]}}`)}}
+			}
+			if scenario.terminalOnly {
+				executor.events = executor.events[len(executor.events)-1:]
 			}
 			adapter := newRemoteCompactionAdapter(service, nil, system)
 			summary, err := adapter.generateLocalSummary(ctx, "synthetic-compaction-cache-key", &remoteCompactionSource{
