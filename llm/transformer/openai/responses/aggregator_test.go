@@ -95,6 +95,32 @@ func TestAggregateStreamChunks_CompletedEventPreservesResponseSnapshot(t *testin
 	}
 }
 
+func TestAggregateStreamChunks_TerminalSummaryWithoutTextDeltas(t *testing.T) {
+	for _, prefix := range []string{
+		"",
+		`{"type":"response.output_item.added","output_index":0,"item":{"type":"message","id":"msg_summary","role":"assistant","content":[]}}`,
+		`{"type":"response.output_item.added","output_index":0,"item":{"type":"reasoning","id":"rs_summary","summary":[],"encrypted_content":"opaque"}}`,
+	} {
+		chunks := []*httpclient.StreamEvent{}
+		if prefix != "" {
+			chunks = append(chunks, &httpclient.StreamEvent{Data: []byte(prefix)})
+		}
+		chunks = append(chunks, &httpclient.StreamEvent{Data: []byte(`{"type":"response.completed","response":{"id":"resp_summary","status":"completed","output":[{"type":"message","id":"msg_summary","role":"assistant","content":[{"type":"output_text","text":"complete handoff"}]}]}}`)})
+		body, _, err := AggregateStreamChunks(t.Context(), chunks)
+		require.NoError(t, err)
+		var response Response
+		require.NoError(t, json.Unmarshal(body, &response))
+		messages := 0
+		for _, item := range response.Output {
+			if item.Type == "message" {
+				messages++
+				require.Equal(t, "complete handoff", *item.Content.Items[0].Text)
+			}
+		}
+		require.Equal(t, 1, messages, "terminal snapshot must recover the answer exactly once")
+	}
+}
+
 func TestAggregateStreamChunks_CancelledSnapshotPreservesStatus(t *testing.T) {
 	resultBytes, _, err := AggregateStreamChunks(t.Context(), []*httpclient.StreamEvent{
 		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_canceled","object":"response","created_at":1700000000,"model":"gpt-5","status":"in_progress","output":[]}}`)},

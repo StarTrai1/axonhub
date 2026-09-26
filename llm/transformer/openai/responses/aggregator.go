@@ -630,6 +630,20 @@ func (a *streamAggregator) applyResponseSnapshot(response *Response) {
 	if response == nil {
 		return
 	}
+	// Relays may send complete output only in the terminal snapshot. Feed it
+	// through the same item finalization path, preserving streamed annotations
+	// and replacing whole text parts rather than appending them twice.
+	for index := range response.Output {
+		item := &response.Output[index]
+		known := a.outputItemsByID[item.ID]
+		if known == nil && item.ID == "" {
+			known = a.lastItemByOutputIndex(index)
+		}
+		if known == nil {
+			a.processEvent(&StreamEvent{Type: StreamEventTypeOutputItemAdded, OutputIndex: index, Item: item})
+		}
+		a.processEvent(&StreamEvent{Type: StreamEventTypeOutputItemDone, OutputIndex: index, Item: item})
+	}
 
 	if response.ID != "" {
 		a.responseID = response.ID
