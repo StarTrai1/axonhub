@@ -92,7 +92,9 @@ func TestResponsesRejectedReasoningPreservesCompactionTriggerAndTools(t *testing
 	require.Equal(t, "visible summary\n\nvisible rationale", input[3].Get("content.0.text").String())
 	require.Empty(t, gjson.GetBytes(result.Body, "input.#(encrypted_content)#").Array())
 	for index := 2; index <= 5; index++ {
-		require.JSONEq(t, gjson.Get(responsesRejectedReasoningFixture, "input").Array()[index].Raw, input[index+2].Raw)
+		expected, err := sjson.Delete(gjson.Get(responsesRejectedReasoningFixture, "input").Array()[index].Raw, "id")
+		require.NoError(t, err)
+		require.JSONEq(t, expected, input[index+2].Raw)
 	}
 	require.Equal(t, "keep-cache-key", gjson.GetBytes(result.Body, "prompt_cache_key").String())
 	require.NotEmpty(t, gjson.GetBytes(body, "input.3.encrypted_content").String(), "the client's source request must stay intact")

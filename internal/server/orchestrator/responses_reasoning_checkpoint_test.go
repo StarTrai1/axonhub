@@ -54,7 +54,13 @@ func TestResponsesRejectedReasoningPreservesNativeCheckpointPipeline(t *testing.
 				require.Equal(t, original, request.Body)
 				for _, item := range gjson.GetBytes(original, "input").Array() {
 					if item.Get("type").String() != "reasoning" {
-						require.Contains(t, string(retry), item.Raw, "preserve every message, tool call/output, checkpoint and control")
+						expected := item.Raw
+						if item.Get("id").String() == "fc_native" || item.Get("id").String() == "ctc_native" {
+							var err error
+							expected, err = sjson.Delete(expected, "id")
+							require.NoError(t, err)
+						}
+						require.Contains(t, string(retry), expected, "preserve every message, tool call/output, checkpoint and control")
 					}
 				}
 				require.Contains(t, string(retry), "visible summary")

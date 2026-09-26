@@ -55,10 +55,15 @@ func TestResponsesRejectedReasoningPipelineCompactionRecovery(t *testing.T) {
 			require.Empty(t, gjson.GetBytes(retry, `input.#(encrypted_content)#`).Array())
 			require.Equal(t, "visible summary\n\nvisible rationale", gjson.GetBytes(retry, "input.2.content.0.text").String())
 			for _, path := range []string{
-				"model", "reasoning", "prompt_cache_key", "input.0", "input.1", "input.3", "input.4", "input.5", "input.6",
+				"model", "reasoning", "prompt_cache_key", "input.0", "input.1", "input.4", "input.6",
 				`input.#(type=="compaction_trigger")`,
 			} {
 				require.JSONEq(t, gjson.GetBytes(executor.requests[0].Body, path).Raw, gjson.GetBytes(retry, path).Raw, path)
+			}
+			for _, path := range []string{"input.3", "input.5"} {
+				expected, err := sjson.Delete(gjson.GetBytes(executor.requests[0].Body, path).Raw, "id")
+				require.NoError(t, err)
+				require.JSONEq(t, expected, gjson.GetBytes(retry, path).Raw)
 			}
 			require.Equal(t, original, request.Body)
 			require.Contains(t, events, "response.completed")

@@ -295,9 +295,11 @@ func TestResponsesRejectedReasoningLocalCompactionSharesRetryBudget(test *testin
 			require.False(test, gjson.GetBytes(executor.bodies[1], "input.0.internal_chat_message_metadata_passthrough").Exists())
 			require.Equal(test, "rejected-with-summary", gjson.GetBytes(executor.bodies[1], "input.1.encrypted_content").String())
 			require.Equal(test, "visible summary\n\nvisible rationale", gjson.GetBytes(executor.bodies[2], "input.1.content.0.text").String())
-			require.Equal(test, "fc_native", gjson.GetBytes(executor.bodies[2], "input.2.id").String())
+			require.False(test, gjson.GetBytes(executor.bodies[2], "input.2.id").Exists())
+			require.Equal(test, "call_function", gjson.GetBytes(executor.bodies[2], "input.2.call_id").String())
 			require.Equal(test, "keep function output", gjson.GetBytes(executor.bodies[2], "input.3.output").String())
-			require.Equal(test, "ctc_native", gjson.GetBytes(executor.bodies[2], "input.4.id").String())
+			require.False(test, gjson.GetBytes(executor.bodies[2], "input.4.id").Exists())
+			require.Equal(test, "call_custom", gjson.GetBytes(executor.bodies[2], "input.4.call_id").String())
 			require.Empty(test, gjson.GetBytes(executor.bodies[2], "input.#(encrypted_content)#").Array())
 		})
 	}

@@ -109,7 +109,7 @@ func TestResponsesRejectedLocalCompactionPersistsRetriesAndProviderErrors(t *tes
 				require.Empty(t, summary)
 				require.Equal(t, request.StatusFailed, stored.Status)
 				require.Equal(t, requestexecution.StatusFailed, executions[1].Status)
-				providerBody, loadErr := service.LoadRequestExecutionResponseBody(ctx, executions[1])
+				providerBody, loadErr := biz.DecodeStoredPayload(executions[1].ResponseBody)
 				require.NoError(t, loadErr)
 				require.Equal(t, "custom_tool_call", gjson.GetBytes(providerBody, "output.0.type").String())
 			} else if scenario.exhausted {

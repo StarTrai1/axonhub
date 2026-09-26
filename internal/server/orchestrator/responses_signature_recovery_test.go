@@ -78,7 +78,13 @@ func TestResponsesRejectedRelaySignaturePipeline(t *testing.T) {
 							require.NotContains(t, string(retry), "opaque-native-checkpoint")
 							continue
 						}
-						require.Contains(t, string(retry), item.Raw, "retain messages, tool pairs, controls and unrejected checkpoints")
+						expected := item.Raw
+						if item.Get("id").String() == "fc_native" || item.Get("id").String() == "ctc_native" {
+							var err error
+							expected, err = sjson.Delete(expected, "id")
+							require.NoError(t, err)
+						}
+						require.Contains(t, string(retry), expected, "retain messages, tool pairs, controls and unrejected checkpoints")
 					}
 					for _, field := range []string{"model", "reasoning", "prompt_cache_key", "client_metadata", "store"} {
 						require.Equal(t, gjson.GetBytes(executor.requests[0].Body, field).Raw, gjson.GetBytes(retry, field).Raw, field)
