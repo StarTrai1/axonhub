@@ -32,6 +32,8 @@ import (
 const (
 	codexBaseURL = "https://chatgpt.com/backend-api/codex#"
 	codexAPIURL  = "https://chatgpt.com/backend-api/codex/responses"
+
+	codexFastServiceTier = "priority"
 )
 
 // OutboundTransformer implements transformer.Outbound for Codex proxy.
@@ -84,6 +86,19 @@ type Params struct {
 func isOfficialCodexBaseURL(baseURL string) bool {
 	parsed, err := url.Parse(baseURL)
 	return err == nil && strings.EqualFold(parsed.Hostname(), "chatgpt.com")
+}
+
+func resolveFastModel(model string, serviceTier *string) (string, *string) {
+	baseModel, isFast := fastModelBase(model)
+	if !isFast {
+		return model, serviceTier
+	}
+
+	if serviceTier != nil && strings.TrimSpace(*serviceTier) != "" {
+		return baseModel, serviceTier
+	}
+
+	return baseModel, lo.ToPtr(codexFastServiceTier)
 }
 
 // isOfficialCodex reports whether the transformer targets the official Codex backend.
@@ -298,6 +313,8 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	if isImageRequest {
 		reqCopy.Model = defaultImageMainModel
 		reqCopy.TransformerMetadata[responses.ImageGenerationToolModelMetadataKey] = llmReq.Model
+	} else {
+		reqCopy.Model, reqCopy.ServiceTier = resolveFastModel(reqCopy.Model, reqCopy.ServiceTier)
 	}
 
 	// Ask for encrypted reasoning content so the downstream can surface reasoning blocks.
