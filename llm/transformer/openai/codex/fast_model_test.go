@@ -8,9 +8,26 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
 
+	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
+
+func TestCodexFastAliasKeepsGPT6PassThroughConstraints(t *testing.T) {
+	outbound := &OutboundTransformer{}
+	for _, model := range []string{"gpt-6-sol-fast", "gpt-6-luna-fast"} {
+		for _, effort := range []string{"none", "high", "minimal"} {
+			request := &llm.Request{
+				Model:      model,
+				APIFormat:  llm.APIFormatOpenAIResponse,
+				RawRequest: &httpclient.Request{
+					Body: []byte(fmt.Sprintf(`{"model":%q,"reasoning":{"effort":%q},"temperature":0.5}`, model, effort)),
+				},
+			}
+			require.Equal(t, effort == "none", outbound.AllowPassThroughBody(t.Context(), request, nil), model+"/"+effort)
+		}
+	}
+}
 
 func TestCodexFastAliasAfterPassThrough(t *testing.T) {
 	for _, model := range []string{"gpt-6-sol", "gpt-6-luna"} {

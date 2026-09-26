@@ -172,6 +172,9 @@ func (t *OutboundTransformer) AllowPassThroughBody(_ context.Context, llmReq *ll
 }
 
 func requiresGPT6RequestNormalization(model string, body []byte) bool {
+	if base, ok := fastModelBase(model); ok {
+		model = base
+	}
 	return shared.GPT6ResponsesNeedsNormalization(model, body)
 }
 
