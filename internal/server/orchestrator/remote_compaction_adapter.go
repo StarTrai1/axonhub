@@ -1152,6 +1152,13 @@ func (a *remoteCompactionAdapter) generateLocalSummaryWithCandidate(
 	if summary == "" {
 		err = errors.New("local compaction provider returned no assistant summary")
 		a.markBridgeExecutionFailed(ctx, executionRecord, err)
+		// Keep the provider's final response for diagnosis. Without it a tool-only
+		// answer, refusal and empty completion all look like the same local error.
+		if executionRecord != nil && a.requestService != nil {
+			if persistErr := a.requestService.UpdateRequestExecutionFinalized(context.WithoutCancel(ctx), executionRecord.ID, requestexecution.StatusFailed, err.Error(), meta.ID, responseBody, nil, ""); persistErr != nil {
+				log.Warn(ctx, "failed to persist empty local compaction response", log.Cause(persistErr))
+			}
+		}
 		return "", err
 	}
 	if meta.Usage != nil {
@@ -1275,6 +1282,9 @@ func buildLocalCompactionGenerationRequest(body []byte, requestType llm.RequestT
 	}
 	setResponseEnvelopeBool(envelope, "stream", false)
 	setResponseEnvelopeBool(envelope, "store", false)
+	// A bridge cannot execute tools. Lite histories may carry additional_tools
+	// even without a top-level tools field, so explicitly request a text turn.
+	envelope["tool_choice"] = json.RawMessage(`"none"`)
 	updateCompactionImplementationMetadata(envelope)
 
 	return json.Marshal(envelope)
@@ -1302,6 +1312,7 @@ func buildLocalCompactionRequest(body []byte) ([]byte, error) {
 		return nil, err
 	}
 	setResponseEnvelopeBool(envelope, "stream", true)
+	envelope["tool_choice"] = json.RawMessage(`"none"`)
 	updateCompactionImplementationMetadata(envelope)
 
 	return json.Marshal(envelope)

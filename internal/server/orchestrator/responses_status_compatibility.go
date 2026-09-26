@@ -353,12 +353,18 @@ func stripResponsesRejectedStatus(body []byte, rules []responsesRejectedStatusRu
 	changed := false
 	recoveryValidated := false
 	resourceRecoveryValidated := false
+	detachReasoningDependents := false
 	for index, item := range items {
 		if !item.IsObject() {
 			retained = append(retained, json.RawMessage(item.Raw))
 			continue
 		}
 		updated := []byte(item.Raw)
+		itemType := strings.TrimSpace(item.Get("type").String())
+		if itemType == "reasoning" || itemType == remoteCompactionItemType || itemType == legacyRemoteCompactionSummaryType ||
+			((itemType == "message" || itemType == "") && item.Get("role").String() != "assistant") {
+			detachReasoningDependents = false
+		}
 		for _, rule := range rules {
 			if !responsesRejectedStatusRuleMatches([]responsesRejectedStatusRule{rule}, index, strings.TrimSpace(item.Get("type").String())) {
 				continue
@@ -384,6 +390,7 @@ func stripResponsesRejectedStatus(body []byte, rules []responsesRejectedStatusRu
 					return nil, false, err
 				}
 				changed = true
+				detachReasoningDependents = true
 				break
 			}
 			if !gjson.GetBytes(updated, rule.fieldName()).Exists() {
@@ -398,6 +405,24 @@ func stripResponsesRejectedStatus(body []byte, rules []responsesRejectedStatusRu
 			next, err := sjson.DeleteBytes(updated, rule.fieldName())
 			if err != nil {
 				return nil, false, fmt.Errorf("delete rejected Responses metadata at input[%d]: %w", index, err)
+			}
+			updated = next
+			changed = true
+		}
+		// An upstream message/tool ID can refer to its preceding reasoning item.
+		// When that reasoning is rebuilt, replay its materialized dependents as
+		// new input too. Keep call_id and all content, and stop at intact reasoning
+		// or a new user/checkpoint boundary so fresh native items remain native.
+		if detachReasoningDependents && responsesInputSupportsPortableID(itemType) && gjson.GetBytes(updated, "id").Exists() {
+			if !resourceRecoveryValidated {
+				if _, safe := responsesResourceHistorySupportsRecovery(body); !safe {
+					return nil, false, errors.New("cannot detach reasoning dependents without materialized Responses history")
+				}
+				resourceRecoveryValidated = true
+			}
+			next, err := sjson.DeleteBytes(updated, "id")
+			if err != nil {
+				return nil, false, fmt.Errorf("detach rejected reasoning dependent at input[%d]: %w", index, err)
 			}
 			updated = next
 			changed = true

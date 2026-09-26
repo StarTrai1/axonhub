@@ -86,6 +86,46 @@ func TestResponsesRejectedReasoningRemembersOnlySuccessfullyRecoveredItems(t *te
 	require.Equal(t, "rejected-with-summary", gjson.GetBytes(resultBody, `input.#(id=="rs_different").encrypted_content`).String())
 }
 
+func TestResponsesReasoningRecoveryDetachesOnlyRebuiltGroup(t *testing.T) {
+	body := []byte(`{"input":[
+		{"type":"message","id":"msg_user","role":"user","content":"context"},
+		{"type":"compaction","id":"cmp_native","encrypted_content":"checkpoint"},
+		{"type":"reasoning","id":"rs_bad","encrypted_content":"rejected","summary":[]},
+		{"type":"message","id":"msg_bad","role":"assistant","phase":"commentary","content":[{"type":"output_text","text":"keep answer"}]},
+		{"type":"custom_tool_call","id":"ctc_bad","call_id":"call_keep","name":"exec","input":"command"},
+		{"type":"custom_tool_call_output","id":"out_bad","call_id":"call_keep","output":"keep result"},
+		{"type":"reasoning","id":"rs_fresh","encrypted_content":"valid","summary":[]},
+		{"type":"message","id":"msg_fresh","role":"assistant","content":"fresh answer"},
+		{"type":"message","id":"msg_next","role":"user","content":"continue"}
+	]}`)
+	for _, cached := range []bool{false, true} {
+		t.Run(fmt.Sprintf("cached=%t", cached), func(t *testing.T) {
+			rule := responsesRejectedStatusRule{index: 2, field: "encrypted_content", dropItem: true, preserveCompaction: true}
+			if cached {
+				// A confirmed recovery matches only the old hash on the next turn.
+				rule.index = -1
+				rule.itemType = "reasoning"
+				rule.reasoningHashes = map[[sha256.Size]byte]struct{}{responsesReasoningItemHash(gjson.GetBytes(body, "input.2")): {}}
+			}
+			got, changed, err := stripResponsesRejectedStatus(body, []responsesRejectedStatusRule{rule})
+			require.NoError(t, err)
+			require.True(t, changed)
+			for _, index := range []int{2, 3, 4} {
+				require.False(t, gjson.GetBytes(got, fmt.Sprintf("input.%d.id", index)).Exists())
+			}
+			require.Equal(t, "keep answer", gjson.GetBytes(got, "input.2.content.0.text").String())
+			require.Equal(t, "commentary", gjson.GetBytes(got, "input.2.phase").String())
+			require.Equal(t, "call_keep", gjson.GetBytes(got, "input.3.call_id").String())
+			require.Equal(t, "call_keep", gjson.GetBytes(got, "input.4.call_id").String())
+			require.Equal(t, "keep result", gjson.GetBytes(got, "input.4.output").String())
+			for _, pair := range [][2]int{{0, 0}, {1, 1}, {6, 5}, {7, 6}, {8, 7}} {
+				require.JSONEq(t, gjson.GetBytes(body, fmt.Sprintf("input.%d", pair[0])).Raw, gjson.GetBytes(got, fmt.Sprintf("input.%d", pair[1])).Raw)
+			}
+			require.Equal(t, "msg_bad", gjson.GetBytes(body, "input.3.id").String(), "caller input remains unchanged")
+		})
+	}
+}
+
 func TestResponsesRejectedReasoningCacheScopeAndExpiry(t *testing.T) {
 	ctx, outbound, middleware, scope := responsesReasoningRecoveryFixture(t)
 	original := *outbound.state.RawProviderRequest

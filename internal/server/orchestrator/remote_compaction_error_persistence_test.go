@@ -27,12 +27,16 @@ import (
 )
 
 func TestResponsesRejectedLocalCompactionPersistsRetriesAndProviderErrors(t *testing.T) {
-	for _, exhausted := range []bool{false, true} {
-		name := "recovers after capacity error"
-		if exhausted {
-			name = "capacity retry budget exhausted"
-		}
-		t.Run(name, func(t *testing.T) {
+	for _, scenario := range []struct {
+		name      string
+		exhausted bool
+		empty     bool
+	}{
+		{name: "recovers after capacity error"},
+		{name: "capacity retry budget exhausted", exhausted: true},
+		{name: "tool-only response is retained as failure", empty: true},
+	} {
+		t.Run(scenario.name, func(t *testing.T) {
 			client := enttest.NewEntClient(t, "sqlite3", "file:compaction-errors?mode=memory&_fk=0")
 			t.Cleanup(func() { client.Close() })
 			ctx := authz.WithTestBypass(ent.NewContext(t.Context(), client))
@@ -73,16 +77,21 @@ func TestResponsesRejectedLocalCompactionPersistsRetriesAndProviderErrors(t *tes
 					{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":{"id":"resp_bridge","object":"response","status":"completed","model":"gpt-6-astra","output":[{"type":"message","id":"msg_bridge","role":"assistant","content":[{"type":"output_text","text":"complete bridge summary"}]}]}}`)},
 				},
 			}
-			if exhausted {
+			if scenario.exhausted {
 				executor.failures = append(executor.failures, bridgeOverloadError())
+			}
+			if scenario.empty {
+				executor.events = []*httpclient.StreamEvent{{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":{"id":"resp_bridge","status":"completed","output":[{"type":"custom_tool_call","id":"ctc_summary","call_id":"call_summary","name":"exec","input":"must not run"}]}}`)}}
 			}
 			adapter := newRemoteCompactionAdapter(service, nil, system)
 			summary, err := adapter.generateLocalSummary(ctx, "synthetic-compaction-cache-key", &remoteCompactionSource{
-				body:    []byte(`{"model":"gpt-6-astra","input":[{"type":"message","role":"user","content":[{"type":"input_text","text":"complete original history"}]},{"type":"compaction_trigger"}]}`),
+				body:    []byte(`{"model":"gpt-6-astra","tool_choice":"auto","input":[{"type":"additional_tools","role":"developer","tools":[{"type":"custom","name":"exec"}]},{"type":"message","role":"user","content":[{"type":"input_text","text":"complete original history"}]},{"type":"compaction_trigger"}]}`),
 				headers: http.Header{"Thread-Id": {"synthetic-bridge-thread"}},
 			}, state, executor)
 			require.Len(t, executor.bodies, 2, "summary execution returned: %v", err)
 			require.Equal(t, executor.bodies[0], executor.bodies[1])
+			require.Equal(t, "none", gjson.GetBytes(executor.bodies[1], "tool_choice").String())
+			require.Equal(t, "additional_tools", gjson.GetBytes(executor.bodies[1], "input.0.type").String())
 			stored, loadErr := client.Request.Query().Only(ctx)
 			require.NoError(t, loadErr)
 			require.Equal(t, apiKey.ID, stored.APIKeyID)
@@ -95,7 +104,15 @@ func TestResponsesRejectedLocalCompactionPersistsRetriesAndProviderErrors(t *tes
 			require.Equal(t, "model capacity reached", executions[0].ErrorMessage)
 			body, loadErr := biz.DecodeStoredPayload(stored.ResponseBody)
 			require.NoError(t, loadErr)
-			if exhausted {
+			if scenario.empty {
+				require.EqualError(t, err, "local compaction provider returned no assistant summary")
+				require.Empty(t, summary)
+				require.Equal(t, request.StatusFailed, stored.Status)
+				require.Equal(t, requestexecution.StatusFailed, executions[1].Status)
+				providerBody, loadErr := service.LoadRequestExecutionResponseBody(ctx, executions[1])
+				require.NoError(t, loadErr)
+				require.Equal(t, "custom_tool_call", gjson.GetBytes(providerBody, "output.0.type").String())
+			} else if scenario.exhausted {
 				require.Error(t, err)
 				require.Empty(t, summary)
 				require.Equal(t, request.StatusFailed, stored.Status)

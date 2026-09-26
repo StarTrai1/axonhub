@@ -133,8 +133,13 @@ func TestResponsesRejectedReasoningCompatibilityPreservesExplicitHistory(test *t
 	require.Equal(test, "message", gjson.GetBytes(retry.Body, "input.1.type").String())
 	require.False(test, gjson.GetBytes(retry.Body, "input.1.id").Exists())
 	require.Empty(test, gjson.GetBytes(retry.Body, "input.#(encrypted_content)#").Array())
-	for _, path := range []string{"model", "prompt_cache_key", "input.0", "input.2", "input.3", "input.4", "input.5"} {
+	for _, path := range []string{"model", "prompt_cache_key", "input.0", "input.3", "input.5"} {
 		require.JSONEq(test, gjson.Get(responsesRejectedReasoningFixture, path).Raw, gjson.GetBytes(retry.Body, path).Raw)
+	}
+	for _, path := range []string{"input.2", "input.4"} {
+		expected, err := sjson.Delete(gjson.Get(responsesRejectedReasoningFixture, path).Raw, "id")
+		require.NoError(test, err)
+		require.JSONEq(test, expected, gjson.GetBytes(retry.Body, path).Raw)
 	}
 	require.JSONEq(test, gjson.Get(responsesRejectedReasoningFixture, "input.7").Raw, gjson.GetBytes(retry.Body, "input.6").Raw)
 	require.JSONEq(test, gjson.Get(responsesRejectedReasoningFixture, "input.8").Raw, gjson.GetBytes(retry.Body, "input.7").Raw)

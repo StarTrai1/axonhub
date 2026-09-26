@@ -64,6 +64,7 @@ func TestBuildLocalCompactionRequest(t *testing.T) {
 	require.NotContains(t, string(got), remoteCompactionTriggerType)
 	require.Contains(t, string(input[1]), "CONTEXT CHECKPOINT COMPACTION")
 	require.JSONEq(t, "true", string(envelope["stream"]))
+	require.JSONEq(t, `"none"`, string(envelope["tool_choice"]))
 
 	var metadata map[string]json.RawMessage
 	require.NoError(t, json.Unmarshal(envelope["client_metadata"], &metadata))
@@ -91,6 +92,7 @@ func TestBuildStandaloneLocalCompactionGenerationRequest(t *testing.T) {
 	require.Contains(t, string(input[1]), "CONTEXT CHECKPOINT COMPACTION")
 	require.JSONEq(t, "false", string(envelope["stream"]))
 	require.JSONEq(t, "false", string(envelope["store"]))
+	require.JSONEq(t, `"none"`, string(envelope["tool_choice"]))
 	require.JSONEq(t, `"keep this instruction"`, string(envelope["instructions"]))
 }
 
