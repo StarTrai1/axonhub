@@ -39,7 +39,7 @@ const AUTO_SYNC_FREQUENCY_OPTIONS: { value: AutoSyncFrequency; label: string }[]
 
 export function ChannelsSystemSettingsDialog() {
   const { t } = useTranslation();
-  const { open, setOpen } = useChannels();
+  const { open, setOpen, skipEnableConfirmation, setSkipEnableConfirmation } = useChannels();
   const { hasSystemScope } = usePermissions();
   const isOpen = open === 'channelSettings';
   const canReadSettings = hasSystemScope('read_settings');
@@ -102,6 +102,34 @@ export function ChannelsSystemSettingsDialog() {
           </DialogTitle>
           <DialogDescription>{t('channels.dialogs.systemSettings.description')}</DialogDescription>
         </DialogHeader>
+
+        <Card>
+          <CardHeader className='pb-0'>
+            <CardTitle className='flex items-center gap-2 text-sm'>
+              <Settings2 className='text-muted-foreground h-4 w-4' />
+              {t('channels.dialogs.systemSettings.interaction.label')}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className='pt-4'>
+            <div className='flex items-center justify-between gap-4'>
+              <div className='space-y-1'>
+                <label htmlFor='skip-channel-enable-confirmation' className='text-sm font-medium'>
+                  {t('channels.dialogs.systemSettings.interaction.skipEnableConfirmation')}
+                </label>
+                <p id='skip-channel-enable-confirmation-description' className='text-muted-foreground text-sm'>
+                  {t('channels.dialogs.systemSettings.interaction.description')}
+                </p>
+              </div>
+              <Switch
+                id='skip-channel-enable-confirmation'
+                data-testid='skip-channel-enable-confirmation'
+                aria-describedby='skip-channel-enable-confirmation-description'
+                checked={skipEnableConfirmation}
+                onCheckedChange={setSkipEnableConfirmation}
+              />
+            </div>
+          </CardContent>
+        </Card>
 
         {isLoading ? (
           <div className='flex items-center justify-center py-12'>

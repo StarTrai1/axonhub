@@ -21,7 +21,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { TableSkeleton } from '@/components/ui/table-skeleton';
 import { ServerSidePagination } from '@/components/server-side-pagination';
 import { useChannels } from '../context/channels-context';
-import type { ChannelListColumnVisibility } from '../data/channels';
+import { useBulkEnableChannels, type ChannelListColumnVisibility } from '../data/channels';
 import { Channel, ChannelConnection } from '../data/schema';
 import { ChannelExpandedRow } from './channel-expanded-row';
 import { DataTableToolbar } from './data-table-toolbar';
@@ -98,8 +98,22 @@ export function ChannelsTable({
   canWrite = true,
 }: DataTableProps) {
   const { t } = useTranslation();
-  const { setSelectedChannels, setResetRowSelection, setOpen } = useChannels();
+  const { setSelectedChannels, setResetRowSelection, setOpen, selectedChannels, skipEnableConfirmation } = useChannels();
+  const bulkEnableChannels = useBulkEnableChannels();
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const handleBulkEnable = () => {
+    if (bulkEnableChannels.isPending || selectedChannels.length === 0) return;
+    if (!skipEnableConfirmation) {
+      setOpen('bulkEnable');
+      return;
+    }
+    bulkEnableChannels.mutate(selectedChannels.map((channel) => channel.id), {
+      onSuccess: () => {
+        setRowSelection({});
+        setSelectedChannels([]);
+      },
+    });
+  };
   const [expanded, setExpanded] = useState<ExpandedState>({});
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
@@ -433,7 +447,9 @@ export function ChannelsTable({
               variant='ghost'
               size='icon'
               className='h-8 w-8 text-green-600 hover:bg-green-100 hover:text-green-700'
-              onClick={() => setOpen('bulkEnable')}
+              onClick={handleBulkEnable}
+              disabled={bulkEnableChannels.isPending}
+              data-testid='channels-bulk-enable'
               title={t('common.buttons.enable')}
             >
               <IconCheck className='h-4 w-4' />

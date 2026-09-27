@@ -46,6 +46,8 @@ interface ChannelsContextType {
   setSelectedChannels: React.Dispatch<React.SetStateAction<Channel[]>>;
   resetRowSelection: () => void;
   setResetRowSelection: (fn: () => void) => void;
+  skipEnableConfirmation: boolean;
+  setSkipEnableConfirmation: React.Dispatch<React.SetStateAction<boolean>>;
   showTypeTabs: boolean;
   setShowTypeTabs: React.Dispatch<React.SetStateAction<boolean>>;
 }
@@ -80,6 +82,21 @@ export default function ChannelsProvider({ children }: Props) {
       // Ignore storage failures; the in-memory preference still works.
     }
   }, [showTypeTabs]);
+  const [skipEnableConfirmation, setSkipEnableConfirmation] = useState(() => {
+    try {
+      return localStorage.getItem('channels-skip-enable-confirmation') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('channels-skip-enable-confirmation', JSON.stringify(skipEnableConfirmation));
+    } catch {
+      // Ignore storage failures; the in-memory preference still works.
+    }
+  }, [skipEnableConfirmation]);
   const resetRowSelectionRef = useRef<() => void>(() => {});
 
   return (
@@ -95,6 +112,8 @@ export default function ChannelsProvider({ children }: Props) {
         setResetRowSelection: (fn: () => void) => {
           resetRowSelectionRef.current = fn;
         },
+        skipEnableConfirmation,
+        setSkipEnableConfirmation,
         showTypeTabs,
         setShowTypeTabs,
       }}
