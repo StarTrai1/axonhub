@@ -61,6 +61,20 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: axonhub_test
+          POSTGRES_PASSWORD: axonhub_test
+          POSTGRES_DB: axonhub_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U axonhub_test -d axonhub_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v7
         with:
@@ -74,6 +88,11 @@ jobs:
 
       - name: Test
         run: make test-backend-all
+
+      - name: Verify PostgreSQL quota routing migration
+        env:
+          AXONHUB_TEST_PG_DSN: postgres://axonhub_test:axonhub_test@127.0.0.1:5432/axonhub_test?sslmode=disable
+        run: go test ./internal/server/biz -run '^TestQuotaRoutingMigration_Postgres$' -count=1 -v
 
       - name: Responses concurrency regression
         run: |
