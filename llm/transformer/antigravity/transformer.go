@@ -193,6 +193,12 @@ func (t *Transformer) TransformRequest(ctx context.Context, llmReq *llm.Request)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal antigravity envelope: %w", err)
 	}
+	if geminiReq.GenerationConfig != nil && geminiReq.GenerationConfig.ThinkingConfig != nil {
+		body, err = applyResponsesSummaryVisibility(body, llmReq)
+		if err != nil {
+			return nil, fmt.Errorf("apply Antigravity reasoning summary: %w", err)
+		}
+	}
 
 	// 5. Build new Headers
 	headers := make(http.Header)
