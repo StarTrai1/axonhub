@@ -178,8 +178,20 @@ func convertConstToEnum(schema map[string]any) map[string]any {
 	}
 
 	if val, ok := schema["const"]; ok {
-		if _, hasEnum := schema["enum"]; !hasEnum {
+		if existing, hasEnum := schema["enum"]; !hasEnum {
 			schema["enum"] = []any{val}
+		} else if constant, isString := val.(string); isString {
+			if values, ok := existing.([]any); ok {
+				// const and enum both apply; keeping the original enum widens the schema.
+				intersection := []any{}
+				for _, value := range values {
+					if text, ok := value.(string); ok && text == constant {
+						intersection = append(intersection, constant)
+						break
+					}
+				}
+				schema["enum"] = intersection
+			}
 		}
 	}
 

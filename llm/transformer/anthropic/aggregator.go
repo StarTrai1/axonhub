@@ -27,6 +27,7 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 		stopReason    *string
 	)
 
+	toolInputStarted := make(map[int]bool)
 	for _, chunk := range chunks {
 		var event StreamEvent
 
@@ -48,11 +49,7 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 		case "content_block_start":
 			if event.ContentBlock != nil {
 				block := *event.ContentBlock
-				// For tool-use-like blocks, reset Input to nil so it is built
-				// from subsequent input_json_delta events.
-				if isAnthropicToolUseLike(block.Type) {
-					block.Input = nil
-				}
+				// Preserve inline tool input unless a real delta supersedes it.
 				// redacted_thinking blocks come complete in content_block_start
 				// with their Data field already populated.
 				// *_tool_result blocks also arrive complete (content + caller);
@@ -119,6 +116,13 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 					if event.Delta.PartialJSON != nil {
 						switch {
 						case isAnthropicToolUseLike(contentBlocks[index].Type):
+							if *event.Delta.PartialJSON == "" {
+								break
+							}
+							if !toolInputStarted[index] {
+								contentBlocks[index].Input = nil
+								toolInputStarted[index] = true
+							}
 							if contentBlocks[index].Input == nil {
 								contentBlocks[index].Input = []byte(*event.Delta.PartialJSON)
 							} else {

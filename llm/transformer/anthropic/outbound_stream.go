@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/samber/lo"
 	"github.com/tidwall/gjson"
@@ -29,7 +30,7 @@ func (t *OutboundTransformer) TransformStream(
 }
 
 // filterStreamEvent determines if a stream event should be processed
-// Filters out unnecessary events like ping, content_block_start, and content_block_stop.
+// Filters out non-content events such as ping.
 func filterStreamEvent(event *httpclient.StreamEvent) bool {
 	if event == nil || len(event.Data) == 0 {
 		return false
@@ -37,11 +38,11 @@ func filterStreamEvent(event *httpclient.StreamEvent) bool {
 
 	// Only process events that contribute to the OpenAI response format
 	switch event.Type {
-	case "message_start", "content_block_start", "content_block_delta", "message_delta", "message_stop":
+	case "message_start", "content_block_start", "content_block_delta", "content_block_stop", "message_delta", "message_stop":
 		return true
 	case "error":
 		return true
-	case "ping", "content_block_stop":
+	case "ping":
 		return false // Skip these events as they're not needed for OpenAI format
 	default:
 		return false // Skip unknown event types
@@ -56,8 +57,10 @@ type streamState struct {
 	providerUsage *Usage
 	platformType  PlatformType
 	// Tool call tracking
-	toolIndex int
-	toolCalls map[int]*llm.ToolCall // index -> tool call
+	toolIndex        int
+	toolCalls        map[int]*llm.ToolCall // index -> tool call
+	pendingToolInput string
+	pendingToolBlock int
 }
 
 // outboundStream wraps a stream and maintains state during processing.
@@ -202,6 +205,11 @@ func (s *outboundStream) transformStreamChunk(event *httpclient.StreamEvent) (*l
 				setAnthropicBlockIndex(&toolCall.TransformerMetadata, blockIdx)
 			}
 			state.toolCalls[state.toolIndex] = &toolCall
+			state.pendingToolInput = strings.TrimSpace(string(cb.Input))
+			if state.pendingToolInput == "{}" || state.pendingToolInput == "null" {
+				state.pendingToolInput = ""
+			}
+			state.pendingToolBlock = blockIdx
 
 			choice := llm.Choice{
 				Index: 0,
@@ -247,6 +255,10 @@ func (s *outboundStream) transformStreamChunk(event *httpclient.StreamEvent) (*l
 			switch *streamEvent.Delta.Type {
 			case "input_json_delta":
 				if streamEvent.Delta.PartialJSON != nil {
+					if *streamEvent.Delta.PartialJSON != "" {
+						// Real deltas replace the seed; never concatenate two JSON documents.
+						state.pendingToolInput = ""
+					}
 					tc, ok := state.toolCalls[state.toolIndex]
 					if !ok || tc == nil {
 						// A tool_use-style delta arrived without a preceding
@@ -303,6 +315,19 @@ func (s *outboundStream) transformStreamChunk(event *httpclient.StreamEvent) (*l
 
 			resp.Choices = []llm.Choice{choice}
 		}
+
+	case "content_block_stop":
+		if state.pendingToolInput == "" || (streamEvent.Index != nil && int(*streamEvent.Index) != state.pendingToolBlock) {
+			return nil, nil
+		}
+		tc := state.toolCalls[state.toolIndex]
+		deltaTC := *tc
+		deltaTC.Function.Arguments = state.pendingToolInput
+		state.pendingToolInput = ""
+		resp.Choices = []llm.Choice{{
+			Index: 0,
+			Delta: &llm.Message{Role: "assistant", ToolCalls: []llm.ToolCall{deltaTC}},
+		}}
 
 	case "message_delta":
 		// Update stored usage if available (final usage information)
