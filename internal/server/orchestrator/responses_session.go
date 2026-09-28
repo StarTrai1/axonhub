@@ -47,6 +47,7 @@ type responsesSessionRecord struct {
 	input     []json.RawMessage
 	output    []json.RawMessage
 	sessionID string
+	windowID  string
 	updatedAt time.Time
 	size      int
 }
@@ -82,6 +83,13 @@ func (s *responsesSessionStore) prepare(ctx context.Context, body []byte) ([]byt
 	record := s.lookupOrLoad(ctx, previousID)
 	if record == nil {
 		return encodePreparedResponsesBody(body, current, inputChanged), responseSessionID(sessionID)
+	}
+	windowID := shared.ReadCodexRequestMetadata(nil, body).WindowID
+	if windowID != "" && record.windowID != "" && windowID != record.windowID {
+		// A new Codex context window supplies its own compacted root. Replaying
+		// the old response here would prepend the discarded history again.
+		delete(current, "previous_response_id")
+		return encodePreparedResponsesBody(body, current, true), responseSessionID(sessionID)
 	}
 	if record.sessionID != "" {
 		sessionID = record.sessionID
@@ -185,11 +193,12 @@ func decodeResponsesSessionRecord(requestBody, responseBody []byte) *responsesSe
 
 	input := responseSessionInputItems(requestPayload["input"])
 	output := response.Output
-	size := rawResponseSessionValuesSize(input) + rawResponseSessionValuesSize(output)
+	windowID := shared.ReadCodexRequestMetadata(nil, requestBody).WindowID
+	size := rawResponseSessionValuesSize(input) + rawResponseSessionValuesSize(output) + len(windowID)
 	if size > responsesSessionMaxReplay {
 		return nil
 	}
-	return &responsesSessionRecord{input: input, output: output, size: size}
+	return &responsesSessionRecord{input: input, output: output, windowID: windowID, size: size}
 }
 
 func (s *responsesSessionStore) record(ctx context.Context, requestBody, responseBody []byte) {
@@ -247,6 +256,7 @@ func (s *responsesSessionStore) lookup(ctx context.Context, responseID string) *
 		input:     cloneResponseSessionValues(record.input),
 		output:    cloneResponseSessionValues(record.output),
 		sessionID: record.sessionID,
+		windowID:  record.windowID,
 		updatedAt: record.updatedAt,
 		size:      record.size,
 	}

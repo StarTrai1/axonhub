@@ -64,7 +64,7 @@ func ReadCodexRequestMetadata(headers http.Header, body []byte) CodexRequestMeta
 		}
 		return ""
 	}
-	windowID := first(headers.Get("X-Codex-Window-Id"), headerTurn.WindowID, bodyTurn.WindowID)
+	windowID := first(headers.Get("X-Codex-Window-Id"), headerTurn.WindowID, clientString("x-codex-window-id"), bodyTurn.WindowID)
 	windowThreadID, _, _ := strings.Cut(windowID, ":")
 	metadata := CodexRequestMetadata{
 		SessionID: first(headers.Get("Session_id"), headers.Get("Session-Id"), headerTurn.SessionID, bodyTurn.SessionID),
