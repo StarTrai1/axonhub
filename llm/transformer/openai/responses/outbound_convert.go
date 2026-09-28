@@ -624,8 +624,10 @@ func convertStreamOptions(src *llm.StreamOptions, metadata map[string]any) *Stre
 // Priority is given to effort when both are present.
 func convertReasoning(req *llm.Request) *Reasoning {
 	reasoningContext := ""
+	numericEffort := ""
 	if requestExt := openAIResponsesRequestExtensions(req); requestExt != nil {
 		reasoningContext = requestExt.ReasoningContext
+		numericEffort = requestExt.NumericReasoningEffort
 	}
 
 	// Check if any reasoning-related fields are present
@@ -639,10 +641,11 @@ func convertReasoning(req *llm.Request) *Reasoning {
 	}
 
 	reasoning := &Reasoning{
-		Context:   reasoningContext,
-		Effort:    req.ReasoningEffort,
-		Mode:      req.ReasoningMode,
-		MaxTokens: req.ReasoningBudget,
+		Context:       reasoningContext,
+		NumericEffort: numericEffort,
+		Effort:        req.ReasoningEffort,
+		Mode:          req.ReasoningMode,
+		MaxTokens:     req.ReasoningBudget,
 	}
 
 	// Handle summary field (generate_summary is already merged at inbound)

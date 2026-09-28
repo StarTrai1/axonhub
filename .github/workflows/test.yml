@@ -33,7 +33,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        codex: ['0.157.0', '0.157.1']
+        codex: ['0.157.1', '0.158.0']
         model: [gpt-6-sol, gpt-6-luna]
     env:
       PROBE_TEST_MODEL: ${{ matrix.model }}

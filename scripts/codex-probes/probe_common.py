@@ -462,7 +462,7 @@ class Runner:
         if proc.returncode != 0 or not parsed:
             raise ValueError("Codex --version failed; install/pin the official CLI")
         if tuple(int(part) for part in parsed.groups()) < (0, 155, 1):
-            raise ValueError("Codex >= 0.155.1 required; supported baseline is 0.155.1, with compatibility verified through 0.157.1")
+            raise ValueError("Codex >= 0.155.1 required; supported baseline is 0.155.1, with compatibility verified through 0.158.0")
         emit("codex_version", version=version[:120], executable=self.args.codex)
 
     async def run(self, question: dict, effort: str) -> Outcome:

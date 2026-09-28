@@ -2,7 +2,7 @@
 
 两个 Python 入口直接调度**本机安装的官方 Codex CLI**。每次均为新 `codex exec --json --ephemeral`，不用 resume，不拼装/伪造 Codex 的 User-Agent、身份、会话头或 TLS 指纹。协议由所安装的 CLI 生成；这保证使用真实客户端，**不代表与交互式 Codex 的工具列表、指令或配置逐字节相同，也不保证不被渠道封禁**。
 
-运行要求：Linux（使用 `/proc`、进程组和 `flock`），Python 3.11+，Codex CLI 0.155.1+。本实现已核对官方 `rust-v0.155.1` → `rust-v0.157.1` 源码，兼容 0.156.1、0.157.0 和 0.157.1。升级后先运行 `--check` 并检查官方变更。Python 仅使用标准库。
+运行要求：Linux（使用 `/proc`、进程组和 `flock`），Python 3.11+，Codex CLI 0.155.1+。本实现已核对官方 `rust-v0.155.1` → `rust-v0.158.0` 源码，兼容 0.156.1、0.157.0、0.157.1 和 0.158.0。升级后先运行 `--check` 并检查官方变更。Python 仅使用标准库。
 
 ## 准备
 
@@ -154,7 +154,7 @@ python3 scripts/codex-probes/keepalive.py \
 - 官方 [non-interactive 模式](https://developers.openai.com/codex/noninteractive)：`exec`、JSONL 完成事件与 `--ephemeral`。
 - [Codex 配置](https://developers.openai.com/codex/config-reference) 与 [0.155.1 exec CLI](https://github.com/openai/codex/blob/rust-v0.155.1/codex-rs/exec/src/cli.rs)、[JSONL 事件](https://github.com/openai/codex/blob/rust-v0.155.1/codex-rs/exec/src/exec_events.rs)、[配置 schema](https://github.com/openai/codex/blob/rust-v0.155.1/codex-rs/core/config.schema.json)。检索日期 2026-09-19。
 - 简单题主题参考 NASA [天空为什么是蓝色](https://spaceplace.nasa.gov/blue-sky/) 与 USGS [水循环](https://www.usgs.gov/water-science-school/water-cycle)，问题为重新编写，没有复制“十万个为什么”书籍内容。
-- GitHub Actions 用 fake CLI 验证新会话、清理、超时/中断、错误分类、阶段切换、计数、定时去重和不触碰外部文件；hosted matrix 固定下载官方 0.157.0 和 0.157.1，分别使用 gpt-6-sol、gpt-6-luna，仅连接 loopback 模拟服务器验证真实 CLI 五并发与取消，不调用真实上游。离线测试不能证明提供方额度窗口行为或封禁策略。
+- GitHub Actions 用 fake CLI 验证新会话、清理、超时/中断、错误分类、阶段切换、计数、定时去重和不触碰外部文件；hosted matrix 固定下载官方 0.157.1 和 0.158.0，分别使用 gpt-6-sol、gpt-6-luna，仅连接 loopback 模拟服务器验证真实 CLI 五并发与取消，不调用真实上游。离线测试不能证明提供方额度窗口行为或封禁策略。
 
 ### Codex 0.157.0
 
@@ -163,3 +163,9 @@ python3 scripts/codex-probes/keepalive.py \
 ### Codex 0.157.1
 
 精确 tag 源码差异集中在 Windows daemon、Code Mode 和本地 MCP 进程启动（隐藏控制台窗口、处理 Job Object 和关闭继承的启动器 stdio）。`codex exec` 参数、JSONL 事件、Responses 协议和 Sol/Luna 模型目录没有变化，Linux 调度、隔离会话和暂停清理逻辑无需修改。CI 保留 0.157.0 基线并验证 0.157.1；仅使用 loopback 模拟服务，不代表真实上游可用性验证。
+
+### Codex 0.158.0
+
+`codex exec --json` 的生命周期事件和脚本依赖的参数保持兼容；继续使用每次尝试独立的 CODEX_HOME 与禁用共享 daemon 的配置。CI 使用 0.157.1 / 0.158.0 × gpt-6-sol / gpt-6-luna 对 loopback 服务验证五并发及取消清理，不调用真实上游。
+
+新版自定义数字 effort 使用 JSON number，网关已兼容解析和 Responses 转发；脚本仍使用原有命名 effort 参数。Flex 容量不足现在由 CLI 显示为独立错误，脚本保留该错误，不将它伪装成高需求文案或 HTTP 500。现有两阶段重试规则不变。

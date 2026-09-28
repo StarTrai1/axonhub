@@ -30,19 +30,22 @@ func attachOpenAIResponsesRequestExtensions(chatReq *llm.Request, req *Request, 
 
 	raw := parseRawRequestFragments(rawBody)
 	reasoningContext := ""
+	numericEffort := ""
 	if req.Reasoning != nil {
 		reasoningContext = req.Reasoning.Context
+		numericEffort = req.Reasoning.NumericEffort
 	}
 	requestExt := &llm.OpenAIResponsesRequestExtensions{
-		ReasoningContext: reasoningContext,
-		RawFields:        selectRawRequestFields(raw.Fields, rawCreateRequestFields),
-		RawTools:         buildRawOnlyToolFragments(req.Tools, raw.Tools),
-		ToolSignatures:   buildRepresentedToolSignatures(req.Tools),
-		RawToolChoice:    rawUnsupportedToolChoice(req.ToolChoice, raw.ToolChoice),
-		RawInputItems:    buildRawOnlyInputFragments(req.Input, raw.InputItems),
+		ReasoningContext:       reasoningContext,
+		NumericReasoningEffort: numericEffort,
+		RawFields:              selectRawRequestFields(raw.Fields, rawCreateRequestFields),
+		RawTools:               buildRawOnlyToolFragments(req.Tools, raw.Tools),
+		ToolSignatures:         buildRepresentedToolSignatures(req.Tools),
+		RawToolChoice:          rawUnsupportedToolChoice(req.ToolChoice, raw.ToolChoice),
+		RawInputItems:          buildRawOnlyInputFragments(req.Input, raw.InputItems),
 	}
 
-	if requestExt.ReasoningContext == "" && len(requestExt.RawFields) == 0 && len(requestExt.RawTools) == 0 && len(requestExt.RawToolChoice) == 0 && len(requestExt.RawInputItems) == 0 {
+	if requestExt.ReasoningContext == "" && requestExt.NumericReasoningEffort == "" && len(requestExt.RawFields) == 0 && len(requestExt.RawTools) == 0 && len(requestExt.RawToolChoice) == 0 && len(requestExt.RawInputItems) == 0 {
 		return
 	}
 

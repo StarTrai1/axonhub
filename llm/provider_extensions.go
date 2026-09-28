@@ -13,12 +13,13 @@ type OpenAIResponsesProviderExtensions struct {
 }
 
 type OpenAIResponsesRequestExtensions struct {
-	ReasoningContext string                       `json:"-"`
-	RawFields        map[string]json.RawMessage   `json:"-"`
-	RawTools         []OpenAIResponsesRawFragment `json:"-"`
-	ToolSignatures   []string                     `json:"-"`
-	RawToolChoice    json.RawMessage              `json:"-"`
-	RawInputItems    []OpenAIResponsesRawFragment `json:"-"`
+	NumericReasoningEffort string                       `json:"-"`
+	ReasoningContext       string                       `json:"-"`
+	RawFields              map[string]json.RawMessage   `json:"-"`
+	RawTools               []OpenAIResponsesRawFragment `json:"-"`
+	ToolSignatures         []string                     `json:"-"`
+	RawToolChoice          json.RawMessage              `json:"-"`
+	RawInputItems          []OpenAIResponsesRawFragment `json:"-"`
 }
 
 type OpenAIResponsesRawFragment struct {
@@ -57,12 +58,13 @@ func CloneProviderExtensions(src *ProviderExtensions) *ProviderExtensions {
 		cloned.OpenAIResponses = &OpenAIResponsesProviderExtensions{}
 		if src.OpenAIResponses.Request != nil {
 			cloned.OpenAIResponses.Request = &OpenAIResponsesRequestExtensions{
-				ReasoningContext: src.OpenAIResponses.Request.ReasoningContext,
-				RawFields:        cloneRawMessageMap(src.OpenAIResponses.Request.RawFields),
-				RawTools:         cloneOpenAIResponsesRawFragments(src.OpenAIResponses.Request.RawTools),
-				ToolSignatures:   append([]string(nil), src.OpenAIResponses.Request.ToolSignatures...),
-				RawToolChoice:    cloneRawMessage(src.OpenAIResponses.Request.RawToolChoice),
-				RawInputItems:    cloneOpenAIResponsesRawFragments(src.OpenAIResponses.Request.RawInputItems),
+				ReasoningContext:       src.OpenAIResponses.Request.ReasoningContext,
+				NumericReasoningEffort: src.OpenAIResponses.Request.NumericReasoningEffort,
+				RawFields:              cloneRawMessageMap(src.OpenAIResponses.Request.RawFields),
+				RawTools:               cloneOpenAIResponsesRawFragments(src.OpenAIResponses.Request.RawTools),
+				ToolSignatures:         append([]string(nil), src.OpenAIResponses.Request.ToolSignatures...),
+				RawToolChoice:          cloneRawMessage(src.OpenAIResponses.Request.RawToolChoice),
+				RawInputItems:          cloneOpenAIResponsesRawFragments(src.OpenAIResponses.Request.RawInputItems),
 			}
 		}
 	}

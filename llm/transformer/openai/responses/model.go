@@ -180,6 +180,8 @@ type Reasoning struct {
 	Context string `json:"context,omitempty"`
 	// The effort level for reasoning. Any of "low", "medium", "high".
 	Effort string `json:"effort,omitempty"`
+	// NumericEffort remembers the exact numeric wire value without changing shared effort strings.
+	NumericEffort string `json:"-"`
 	// The reasoning mode. GPT-5.6 supports "pro" for quality-first workloads.
 	Mode string `json:"mode,omitempty"`
 	// Whether to generate a summary of the reasoning. Any of "auto", "concise", "detailed".
@@ -310,6 +312,8 @@ type ResponseReasoning struct {
 	// Constrains effort on reasoning for reasoning models.
 	// Any of "none", "minimal", "low", "medium", "high", "xhigh".
 	Effort string `json:"effort,omitempty"`
+	// NumericEffort remembers the exact numeric wire value without changing shared effort strings.
+	NumericEffort string `json:"-"`
 	// A summary of the reasoning performed by the model.
 	// Any of "auto", "concise", "detailed".
 	Summary string `json:"summary,omitempty"`
