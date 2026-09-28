@@ -46,6 +46,7 @@ func TestToolInputOnBlockStartSurvivesStreamAndAggregation(t *testing.T) {
 			require.NoError(t, err)
 			defer stream.Close()
 			arguments := make(map[string]*strings.Builder)
+			names := make(map[string]string)
 			for stream.Next() {
 				for _, choice := range stream.Current().Choices {
 					if choice.Delta == nil {
@@ -56,10 +57,13 @@ func TestToolInputOnBlockStartSurvivesStreamAndAggregation(t *testing.T) {
 							arguments[call.ID] = &strings.Builder{}
 						}
 						arguments[call.ID].WriteString(call.Function.Arguments)
+						names[call.ID] += call.Function.Name
 					}
 				}
 			}
 			require.NoError(t, stream.Err())
+			require.Equal(t, "search", names["tool_seed"])
+			require.Equal(t, "next", names["tool_next"])
 			require.JSONEq(t, tc.want, arguments["tool_seed"].String())
 			require.JSONEq(t, `{"next":true}`, arguments["tool_next"].String())
 			body, meta, err := AggregateStreamChunks(t.Context(), events, PlatformDirect)

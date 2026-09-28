@@ -322,6 +322,7 @@ func (s *outboundStream) transformStreamChunk(event *httpclient.StreamEvent) (*l
 		}
 		tc := state.toolCalls[state.toolIndex]
 		deltaTC := *tc
+		deltaTC.Function.Name = ""
 		deltaTC.Function.Arguments = state.pendingToolInput
 		state.pendingToolInput = ""
 		resp.Choices = []llm.Choice{{
