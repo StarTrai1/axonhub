@@ -68,7 +68,7 @@ const clampWeight = (value: number) => formatWeight(Math.min(MAX_WEIGHT, Math.ma
 const StatusSwitchCell = memo(({ row }: { row: Row<Channel> }) => {
   const channel = row.original;
   const [dialogOpen, setDialogOpen] = useState(false);
-  const { skipEnableConfirmation } = useChannels();
+  const { skipStatusConfirmation } = useChannels();
   const updateChannelStatus = useUpdateChannelStatus();
   const { channelPermissions } = usePermissions();
 
@@ -77,12 +77,12 @@ const StatusSwitchCell = memo(({ row }: { row: Row<Channel> }) => {
 
   const handleSwitchClick = useCallback(() => {
     if (isArchived || updateChannelStatus.isPending) return;
-    if (!isEnabled && skipEnableConfirmation) {
-      updateChannelStatus.mutate({ id: channel.id, status: 'enabled' });
+    if (skipStatusConfirmation) {
+      updateChannelStatus.mutate({ id: channel.id, status: isEnabled ? 'disabled' : 'enabled' });
     } else {
       setDialogOpen(true);
     }
-  }, [isArchived, isEnabled, skipEnableConfirmation, channel.id, updateChannelStatus]);
+  }, [isArchived, isEnabled, skipStatusConfirmation, channel.id, updateChannelStatus]);
 
   if (!channelPermissions.canWrite) {
     return <Badge variant='outline'>{channel.status}</Badge>;

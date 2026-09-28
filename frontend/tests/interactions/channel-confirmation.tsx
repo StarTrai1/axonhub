@@ -11,6 +11,7 @@ import ChannelsProvider, { useChannels } from '@/features/channels/context/chann
 import { ChannelsTable } from '@/features/channels/components/channels-table';
 import { createColumns } from '@/features/channels/components/channels-columns';
 import { ChannelsSystemSettingsDialog } from '@/features/channels/components/channels-system-settings-dialog';
+import { ChannelsBulkDisableDialog } from '@/features/channels/components/channels-bulk-disable-dialog';
 import { ChannelsBulkEnableDialog } from '@/features/channels/components/channels-bulk-enable-dialog';
 import type { Channel } from '@/features/channels/data/schema';
 
@@ -41,6 +42,7 @@ function Fixture() {
       onColumnVisibilityChange={setColumnVisibility} />
     <ChannelsSystemSettingsDialog />
     <ChannelsBulkEnableDialog />
+    <ChannelsBulkDisableDialog />
     <Toaster />
   </>;
 }

@@ -46,8 +46,8 @@ interface ChannelsContextType {
   setSelectedChannels: React.Dispatch<React.SetStateAction<Channel[]>>;
   resetRowSelection: () => void;
   setResetRowSelection: (fn: () => void) => void;
-  skipEnableConfirmation: boolean;
-  setSkipEnableConfirmation: React.Dispatch<React.SetStateAction<boolean>>;
+  skipStatusConfirmation: boolean;
+  setSkipStatusConfirmation: React.Dispatch<React.SetStateAction<boolean>>;
   showTypeTabs: boolean;
   setShowTypeTabs: React.Dispatch<React.SetStateAction<boolean>>;
 }
@@ -82,8 +82,9 @@ export default function ChannelsProvider({ children }: Props) {
       // Ignore storage failures; the in-memory preference still works.
     }
   }, [showTypeTabs]);
-  const [skipEnableConfirmation, setSkipEnableConfirmation] = useState(() => {
+  const [skipStatusConfirmation, setSkipStatusConfirmation] = useState(() => {
     try {
+      // Keep the existing storage key so the combined preference retains the user's choice.
       return localStorage.getItem('channels-skip-enable-confirmation') === 'true';
     } catch {
       return false;
@@ -92,11 +93,11 @@ export default function ChannelsProvider({ children }: Props) {
 
   useEffect(() => {
     try {
-      localStorage.setItem('channels-skip-enable-confirmation', JSON.stringify(skipEnableConfirmation));
+      localStorage.setItem('channels-skip-enable-confirmation', JSON.stringify(skipStatusConfirmation));
     } catch {
       // Ignore storage failures; the in-memory preference still works.
     }
-  }, [skipEnableConfirmation]);
+  }, [skipStatusConfirmation]);
   const resetRowSelectionRef = useRef<() => void>(() => {});
 
   return (
@@ -112,8 +113,8 @@ export default function ChannelsProvider({ children }: Props) {
         setResetRowSelection: (fn: () => void) => {
           resetRowSelectionRef.current = fn;
         },
-        skipEnableConfirmation,
-        setSkipEnableConfirmation,
+        skipStatusConfirmation,
+        setSkipStatusConfirmation,
         showTypeTabs,
         setShowTypeTabs,
       }}

@@ -39,7 +39,7 @@ const AUTO_SYNC_FREQUENCY_OPTIONS: { value: AutoSyncFrequency; label: string }[]
 
 export function ChannelsSystemSettingsDialog() {
   const { t } = useTranslation();
-  const { open, setOpen, skipEnableConfirmation, setSkipEnableConfirmation } = useChannels();
+  const { open, setOpen, skipStatusConfirmation, setSkipStatusConfirmation } = useChannels();
   const { hasSystemScope } = usePermissions();
   const isOpen = open === 'channelSettings';
   const canReadSettings = hasSystemScope('read_settings');
@@ -113,19 +113,19 @@ export function ChannelsSystemSettingsDialog() {
           <CardContent className='pt-4'>
             <div className='flex items-center justify-between gap-4'>
               <div className='space-y-1'>
-                <label htmlFor='skip-channel-enable-confirmation' className='text-sm font-medium'>
-                  {t('channels.dialogs.systemSettings.interaction.skipEnableConfirmation')}
+                <label htmlFor='skip-channel-status-confirmation' className='text-sm font-medium'>
+                  {t('channels.dialogs.systemSettings.interaction.skipStatusConfirmation')}
                 </label>
-                <p id='skip-channel-enable-confirmation-description' className='text-muted-foreground text-sm'>
+                <p id='skip-channel-status-confirmation-description' className='text-muted-foreground text-sm'>
                   {t('channels.dialogs.systemSettings.interaction.description')}
                 </p>
               </div>
               <Switch
-                id='skip-channel-enable-confirmation'
-                data-testid='skip-channel-enable-confirmation'
-                aria-describedby='skip-channel-enable-confirmation-description'
-                checked={skipEnableConfirmation}
-                onCheckedChange={setSkipEnableConfirmation}
+                id='skip-channel-status-confirmation'
+                data-testid='skip-channel-status-confirmation'
+                aria-describedby='skip-channel-status-confirmation-description'
+                checked={skipStatusConfirmation}
+                onCheckedChange={setSkipStatusConfirmation}
               />
             </div>
           </CardContent>

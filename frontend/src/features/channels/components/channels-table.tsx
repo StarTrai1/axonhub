@@ -21,7 +21,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { TableSkeleton } from '@/components/ui/table-skeleton';
 import { ServerSidePagination } from '@/components/server-side-pagination';
 import { useChannels } from '../context/channels-context';
-import { useBulkEnableChannels, type ChannelListColumnVisibility } from '../data/channels';
+import { useBulkEnableChannels, useBulkDisableChannels, type ChannelListColumnVisibility } from '../data/channels';
 import { Channel, ChannelConnection } from '../data/schema';
 import { ChannelExpandedRow } from './channel-expanded-row';
 import { DataTableToolbar } from './data-table-toolbar';
@@ -98,16 +98,19 @@ export function ChannelsTable({
   canWrite = true,
 }: DataTableProps) {
   const { t } = useTranslation();
-  const { setSelectedChannels, setResetRowSelection, setOpen, selectedChannels, skipEnableConfirmation } = useChannels();
+  const { setSelectedChannels, setResetRowSelection, setOpen, selectedChannels, skipStatusConfirmation } = useChannels();
   const bulkEnableChannels = useBulkEnableChannels();
+  const bulkDisableChannels = useBulkDisableChannels();
+  const statusChangePending = bulkEnableChannels.isPending || bulkDisableChannels.isPending;
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
-  const handleBulkEnable = () => {
-    if (bulkEnableChannels.isPending || selectedChannels.length === 0) return;
-    if (!skipEnableConfirmation) {
-      setOpen('bulkEnable');
+  const handleBulkStatusChange = (status: 'enabled' | 'disabled') => {
+    if (statusChangePending || selectedChannels.length === 0) return;
+    if (!skipStatusConfirmation) {
+      setOpen(status === 'enabled' ? 'bulkEnable' : 'bulkDisable');
       return;
     }
-    bulkEnableChannels.mutate(selectedChannels.map((channel) => channel.id), {
+    const mutation = status === 'enabled' ? bulkEnableChannels : bulkDisableChannels;
+    mutation.mutate(selectedChannels.map((channel) => channel.id), {
       onSuccess: () => {
         setRowSelection({});
         setSelectedChannels([]);
@@ -447,8 +450,8 @@ export function ChannelsTable({
               variant='ghost'
               size='icon'
               className='h-8 w-8 text-green-600 hover:bg-green-100 hover:text-green-700'
-              onClick={handleBulkEnable}
-              disabled={bulkEnableChannels.isPending}
+              onClick={() => handleBulkStatusChange('enabled')}
+              disabled={statusChangePending}
               data-testid='channels-bulk-enable'
               title={t('common.buttons.enable')}
             >
@@ -458,7 +461,9 @@ export function ChannelsTable({
               variant='ghost'
               size='icon'
               className='h-8 w-8 text-amber-600 hover:bg-amber-100 hover:text-amber-700'
-              onClick={() => setOpen('bulkDisable')}
+              onClick={() => handleBulkStatusChange('disabled')}
+              disabled={statusChangePending}
+              data-testid='channels-bulk-disable'
               title={t('common.buttons.disable')}
             >
               <IconBan className='h-4 w-4' />
