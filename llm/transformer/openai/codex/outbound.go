@@ -142,6 +142,11 @@ func NewOutboundTransformer(params Params) (*OutboundTransformer, error) {
 	}, nil
 }
 
+// SupportsCodexResponseHeaders reports the server-owned Codex header contract.
+func (t *OutboundTransformer) SupportsCodexResponseHeaders() bool {
+	return true
+}
+
 func (t *OutboundTransformer) APIFormat() llm.APIFormat {
 	return llm.APIFormatOpenAIResponse
 }

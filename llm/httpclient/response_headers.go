@@ -3,8 +3,13 @@ package httpclient
 import (
 	"context"
 	"net/http"
+	"strings"
 	"sync"
 )
+
+// ReasoningIncludedHeader tells Codex that upstream usage already includes
+// previously generated reasoning tokens.
+const ReasoningIncludedHeader = "X-Reasoning-Included"
 
 type responseHeaderCaptureContextKey struct{}
 
@@ -58,4 +63,45 @@ func (c *ResponseHeaderCapture) Headers() http.Header {
 	defer c.mu.RUnlock()
 
 	return c.headers.Clone()
+}
+
+// MergeForwardResponseHeaders copies the small, explicit set of upstream
+// headers that are safe and meaningful at AxonHub's client boundary.
+func MergeForwardResponseHeaders(dst, src http.Header) http.Header {
+	forward := hasOnlyTrueHeaderValues(src, ReasoningIncludedHeader)
+	if dst != nil {
+		for key := range dst {
+			if strings.EqualFold(key, ReasoningIncludedHeader) {
+				delete(dst, key)
+			}
+		}
+	}
+	if !forward {
+		return dst
+	}
+	if dst == nil {
+		dst = make(http.Header)
+	}
+
+	dst[ReasoningIncludedHeader] = []string{"true"}
+
+	return dst
+}
+
+func hasOnlyTrueHeaderValues(headers http.Header, name string) bool {
+	found := false
+	for key, values := range headers {
+		if !strings.EqualFold(key, name) {
+			continue
+		}
+
+		for _, value := range values {
+			found = true
+			if !strings.EqualFold(strings.TrimSpace(value), "true") {
+				return false
+			}
+		}
+	}
+
+	return found
 }

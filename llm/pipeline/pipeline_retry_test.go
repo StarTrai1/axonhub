@@ -529,6 +529,9 @@ func TestPipeline_Process_StreamRetriesPreCommitError(t *testing.T) {
 	executor := &mockExecutor{
 		doStream: func(ctx context.Context, req *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
 			attempts++
+			if attempts == 1 {
+				httpclient.RecordResponseHeaders(ctx, http.Header{httpclient.ReasoningIncludedHeader: []string{"true"}})
+			}
 			return streams.SliceStream([]*httpclient.StreamEvent{{Data: []byte("raw")}}), nil
 		},
 	}
@@ -572,6 +575,7 @@ func TestPipeline_Process_StreamRetriesPreCommitError(t *testing.T) {
 	require.True(t, res.Stream)
 	require.Equal(t, 2, attempts)
 	require.Equal(t, 1, prepareCalls)
+	require.Empty(t, res.ResponseHeaders.Get(httpclient.ReasoningIncludedHeader))
 
 	events, err := streams.All(res.EventStream)
 	require.NoError(t, err)

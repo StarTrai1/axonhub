@@ -176,9 +176,10 @@ func (processor *ChatCompletionOrchestrator) WithProxy(proxy *httpclient.ProxyCo
 }
 
 type ChatCompletionResult struct {
-	ChatCompletion       *httpclient.Response
-	ChatCompletionStream streams.Stream[*httpclient.StreamEvent]
-	ResponseHeaders      http.Header
+	ChatCompletion                *httpclient.Response
+	ChatCompletionStream          streams.Stream[*httpclient.StreamEvent]
+	ResponseHeaders               http.Header
+	CodexResponseHeadersSupported bool
 }
 
 func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, request *httpclient.Request) (ChatCompletionResult, error) {
@@ -410,9 +411,10 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 			result.EventStream = processor.responsesSessions.wrapStream(ctx, preparedResponsesBody, result.EventStream)
 		}
 		return ChatCompletionResult{
-			ChatCompletion:       nil,
-			ChatCompletionStream: withRequestSwitchLifecycle(result.EventStream, state),
-			ResponseHeaders:      result.ResponseHeaders,
+			ChatCompletion:                nil,
+			ChatCompletionStream:          withRequestSwitchLifecycle(result.EventStream, state),
+			ResponseHeaders:               result.ResponseHeaders,
+			CodexResponseHeadersSupported: outbound.SupportsCodexResponseHeaders(),
 		}, nil
 	}
 	if preparedResponsesBody != nil && result.Response != nil && (state.RawProviderRequest == nil || state.RawProviderRequest.APIFormat != string(llm.APIFormatOpenAIResponse)) {
@@ -422,9 +424,10 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 	unregisterRequestSwitch(state)
 
 	return ChatCompletionResult{
-		ChatCompletion:       result.Response,
-		ChatCompletionStream: nil,
-		ResponseHeaders:      result.ResponseHeaders,
+		ChatCompletion:                result.Response,
+		ChatCompletionStream:          nil,
+		ResponseHeaders:               result.ResponseHeaders,
+		CodexResponseHeadersSupported: outbound.SupportsCodexResponseHeaders(),
 	}, nil
 }
 

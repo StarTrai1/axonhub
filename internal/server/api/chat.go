@@ -29,7 +29,6 @@ const (
 
 var codexResponseHeaders = []string{
 	"X-Codex-Turn-State",
-	"X-Reasoning-Included",
 }
 
 // StreamWriter is a function type for writing stream events to the response.
@@ -107,6 +106,7 @@ func (handlers *ChatCompletionHandlers) ChatCompletionWithRequest(c *gin.Context
 	}
 
 	forwardCodexResponseHeaders(c, result.ResponseHeaders)
+	writeForwardResponseHeaders(c, genericReq, result)
 
 	if result.ChatCompletion != nil {
 		resp := result.ChatCompletion
@@ -160,6 +160,14 @@ func forwardCodexResponseHeaders(c *gin.Context, headers http.Header) {
 
 		c.Writer.Header()[name] = append([]string(nil), values...)
 	}
+}
+
+func writeForwardResponseHeaders(c *gin.Context, request *httpclient.Request, result orchestrator.ChatCompletionResult) {
+	if !result.CodexResponseHeadersSupported || request == nil || !strings.HasSuffix(request.Path, "/responses") || codex.GetSessionIDFromHeaders(request.Headers) == "" {
+		return
+	}
+
+	_ = httpclient.MergeForwardResponseHeaders(c.Writer.Header(), result.ResponseHeaders)
 }
 
 func copyCodexTurnStateHeader(dst, src http.Header) {
