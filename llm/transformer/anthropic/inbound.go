@@ -85,6 +85,15 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *http
 			if anthropicReq.Thinking.BudgetTokens <= 0 {
 				return nil, fmt.Errorf("%w: budget_tokens is required and must be positive when thinking type is enabled", transformer.ErrInvalidRequest)
 			}
+		case "between_tools":
+			if anthropicReq.OutputConfig != nil {
+				switch anthropicReq.OutputConfig.Effort {
+				case "", "low", "medium", "high":
+					// Native between-tools thinking supports up to high effort.
+				default:
+					return nil, fmt.Errorf("%w: between_tools requires low, medium, or high effort", transformer.ErrInvalidRequest)
+				}
+			}
 		case "adaptive":
 			// output_config is optional for adaptive thinking (defaults to "high" effort upstream)
 			if anthropicReq.OutputConfig != nil && anthropicReq.OutputConfig.Effort != "" {
@@ -96,7 +105,7 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *http
 				}
 			}
 		default:
-			return nil, fmt.Errorf("%w: thinking.type must be one of: enabled, disabled, adaptive", transformer.ErrInvalidRequest)
+			return nil, fmt.Errorf("%w: thinking.type must be one of: enabled, disabled, adaptive, between_tools", transformer.ErrInvalidRequest)
 		}
 	}
 

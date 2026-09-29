@@ -17,6 +17,7 @@ func normalizeEmptyFunctionArguments(request *httpclient.Request) *httpclient.Re
 		return request
 	}
 	body := request.Body
+	changed := false
 	for index, item := range gjson.GetBytes(body, "input").Array() {
 		arguments := item.Get("arguments")
 		if item.Get("type").String() != "function_call" || arguments.Type != gjson.String || strings.TrimSpace(arguments.String()) != "" {
@@ -27,6 +28,10 @@ func normalizeEmptyFunctionArguments(request *httpclient.Request) *httpclient.Re
 			return request
 		}
 		body = updated
+		changed = true
+	}
+	if !changed {
+		return request
 	}
 	copyRequest := *request
 	copyRequest.Body = body
