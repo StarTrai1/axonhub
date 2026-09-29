@@ -619,6 +619,12 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 		}
 
 	case StreamEventTypeResponseIncomplete:
+		if ev.Response != nil && ev.Response.IncompleteDetails != nil && ev.Response.IncompleteDetails.Reason == "interrupted" {
+			// The drained terminal output is authoritative after discard_partial_items.
+			// Do not resurrect unfinished reasoning or tool calls from earlier deltas.
+			clear(a.outputItems)
+			clear(a.outputItemsByID)
+		}
 		a.applyResponseSnapshot(ev.Response)
 		if ev.Response == nil || ev.Response.Status == nil {
 			a.status = "incomplete"

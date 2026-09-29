@@ -1250,7 +1250,8 @@ func (s *webSocketStream) Next() bool {
 		return true
 	}
 	continueAfterSteer := s.shouldContinueAfterSteer(typ, msg)
-	if typ == "response.completed" {
+	interrupted := typ == "response.incomplete" && incompleteReason(msg) == "interrupted"
+	if typ == "response.completed" || interrupted {
 		responseID := responseIDFromWebSocketEvent(msg)
 		if responseID == "" {
 			continueAfterSteer = false
@@ -1265,8 +1266,8 @@ func (s *webSocketStream) Next() bool {
 		// Only top-level `error` events are transport failures. Response-level
 		// terminal events are yielded and then close the stream normally so the
 		// non-streaming Do path can aggregate their response object.
-		evict := terminalWebSocketEventEvicts(typ)
-		if typ == "response.completed" {
+		evict := terminalWebSocketEventEvicts(typ) && !interrupted
+		if typ == "response.completed" || interrupted {
 			if responseIDFromWebSocketEvent(msg) == "" {
 				evict = true
 			}

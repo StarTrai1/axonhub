@@ -25,16 +25,17 @@ import (
 )
 
 const (
-	responseCreateWebSocketEventType   = "response.create"
-	responseSteerWebSocketEventType    = "response.steer"
-	responsesWebSocketMaxMessageSize   = 1 << 20
-	responsesWebSocketIdleTimeout      = 5 * time.Minute
-	responsesWebSocketPingInterval     = responsesWebSocketIdleTimeout / 2
-	responsesWebSocketPingWriteTimeout = 10 * time.Second
-	responsesWebSocketWriteTimeout     = 10 * time.Second
-	responsesWebSocketMaxActive        = 16
-	responsesWebSocketMaxPending       = 64
-	responsesWebSocketMaxNamedStreams  = 32
+	responseInterruptWebSocketEventType = "response.interrupt"
+	responseCreateWebSocketEventType    = "response.create"
+	responseSteerWebSocketEventType     = "response.steer"
+	responsesWebSocketMaxMessageSize    = 1 << 20
+	responsesWebSocketIdleTimeout       = 5 * time.Minute
+	responsesWebSocketPingInterval      = responsesWebSocketIdleTimeout / 2
+	responsesWebSocketPingWriteTimeout  = 10 * time.Second
+	responsesWebSocketWriteTimeout      = 10 * time.Second
+	responsesWebSocketMaxActive         = 16
+	responsesWebSocketMaxPending        = 64
+	responsesWebSocketMaxNamedStreams   = 32
 )
 
 type responsesWebSocketProcessFunc func(context.Context, *httpclient.Request) (orchestrator.ChatCompletionResult, error)
@@ -113,15 +114,21 @@ func serveResponsesWebSocket(
 			}
 			continue
 		}
-		if eventType == responseSteerWebSocketEventType {
+		if eventType == responseSteerWebSocketEventType || eventType == responseInterruptWebSocketEventType {
 			if _, authErr := middleware.RefreshAPIKeyContext(ctx); authErr != nil {
 				if err := writeResponsesWebSocketError(writer, authErr, ""); err != nil {
 					return
 				}
 				continue
 			}
-			if steerErr := dispatcher.routeSteer(message); steerErr != nil {
-				if err := writeResponsesWebSocketError(writer, steerErr, ""); err != nil {
+			var controlErr *httpclient.Error
+			if eventType == responseInterruptWebSocketEventType {
+				controlErr = dispatcher.routeInterrupt(message)
+			} else {
+				controlErr = dispatcher.routeSteer(message)
+			}
+			if controlErr != nil {
+				if err := writeResponsesWebSocketError(writer, controlErr, ""); err != nil {
 					return
 				}
 			}
@@ -299,17 +306,13 @@ func (d *responsesWebSocketDispatcher) lane(streamID string) (*responsesWebSocke
 	return lane, nil
 }
 
-func (l *responsesWebSocketLane) begin(model string) (*shared.ResponsesWebSocketSteering, bool) {
+func (l *responsesWebSocketLane) begin(model string) *shared.ResponsesWebSocketSteering {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.active = true
 	l.astra = strings.EqualFold(strings.TrimSpace(model), "gpt-6-astra")
-	if l.astra {
-		l.steer = shared.NewResponsesWebSocketSteering(16)
-	} else {
-		l.steer = nil
-	}
-	return l.steer, l.astra
+	l.steer = shared.NewResponsesWebSocketSteering(16)
+	return l.steer
 }
 
 func (l *responsesWebSocketLane) end() {
@@ -414,15 +417,13 @@ func (d *responsesWebSocketDispatcher) processMessage(lane *responsesWebSocketLa
 		Model string `json:"model"`
 	}
 	_ = json.Unmarshal(request.Body, &modelPayload)
-	steers, astra := lane.begin(modelPayload.Model)
+	steers := lane.begin(modelPayload.Model)
 	defer func() {
 		lane.end()
 		d.unregisterLane(lane)
 	}()
 
-	if astra {
-		requestCtx = shared.WithResponsesWebSocketSteer(requestCtx, steers)
-	}
+	requestCtx = shared.WithResponsesWebSocketSteer(requestCtx, steers)
 	if request.RawRequest != nil {
 		request.RawRequest = request.RawRequest.WithContext(requestCtx)
 	}
@@ -487,8 +488,8 @@ func responsesWebSocketEnvelope(message []byte) (string, string, *httpclient.Err
 	}
 
 	var eventType string
-	if rawType, ok := payload["type"]; !ok || json.Unmarshal(rawType, &eventType) != nil || (eventType != responseCreateWebSocketEventType && eventType != responseSteerWebSocketEventType) {
-		return "", "", invalidResponsesWebSocketRequest("expected a response.create or response.steer event", "type")
+	if rawType, ok := payload["type"]; !ok || json.Unmarshal(rawType, &eventType) != nil || (eventType != responseCreateWebSocketEventType && eventType != responseSteerWebSocketEventType && eventType != responseInterruptWebSocketEventType) {
+		return "", "", invalidResponsesWebSocketRequest("expected a response.create, response.steer, or response.interrupt event", "type")
 	}
 
 	rawStreamID, ok := payload["stream_id"]
@@ -819,7 +820,7 @@ func writeResponsesWebSocketResult(
 			if err := writeResponsesWebSocketMessage(writer, websocket.TextMessage, data); err != nil {
 				return err
 			}
-			if event.Type == "response.completed" && responseCompleted != nil {
+			if (event.Type == "response.completed" || isInterruptedResponsesTerminal(event)) && responseCompleted != nil {
 				responseCompleted()
 			}
 		}

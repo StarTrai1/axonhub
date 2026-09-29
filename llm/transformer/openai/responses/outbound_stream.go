@@ -209,6 +209,18 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 
 //nolint:maintidx,gocognit // It is complex and hard to split.
 func (s *responsesOutboundStream) transformStreamEvent(event *httpclient.StreamEvent, streamEvent StreamEvent) error {
+	if streamEvent.Type == "response.interrupt.accepted" || streamEvent.Type == "response.output_item.interrupted" {
+		// Keep the provider's item-discard and terminal semantics through Responses.
+		s.steerPassthrough = true
+		s.enqueue(rawResponsesEvent(event.Data, &streamEvent))
+		return nil
+	}
+	if streamEvent.Type == StreamEventTypeResponseIncomplete && streamEvent.Response != nil &&
+		streamEvent.Response.IncompleteDetails != nil && streamEvent.Response.IncompleteDetails.Reason == "interrupted" {
+		s.responseCompleted = true
+		s.enqueue(rawResponsesEvent(event.Data, &streamEvent))
+		return nil
+	}
 	if streamEvent.Type == "response.steer.accepted" {
 		if streamEvent.Steer != nil && streamEvent.Steer.ID != "" && streamEvent.Steer.PreviousResponseID != "" {
 			s.steerAccepted[streamEvent.Steer.ID] = streamEvent.Steer.PreviousResponseID

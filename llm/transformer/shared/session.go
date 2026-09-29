@@ -15,11 +15,11 @@ type sessionScopeContextKey struct{}
 // Responses WebSocket endpoint.
 type responsesWebSocketContextKey struct{}
 
-// responsesWebSocketSteerContextKey carries downstream GPT-6 Astra steering
+// responsesWebSocketSteerContextKey carries downstream Responses control
 // messages to the active upstream Responses WebSocket lease.
 type responsesWebSocketSteerContextKey struct{}
 
-// ResponsesWebSocketSteering forwards GPT-6 Astra mid-turn input to the
+// ResponsesWebSocketSteering forwards mid-turn steering and interrupts to the
 // active upstream Responses WebSocket connection.
 type ResponsesWebSocketSteering struct {
 	events chan []byte
@@ -72,7 +72,7 @@ func NewResponsesWebSocketSteering(capacity int) *ResponsesWebSocketSteering {
 	return &ResponsesWebSocketSteering{events: make(chan []byte, capacity)}
 }
 
-// Events returns queued response.steer payloads.
+// Events returns queued response.steer and response.interrupt payloads.
 func (s *ResponsesWebSocketSteering) Events() <-chan []byte {
 	if s == nil {
 		return nil
@@ -99,7 +99,7 @@ func (s *ResponsesWebSocketSteering) Ready() bool {
 	return s != nil && s.ready.Load()
 }
 
-// Send queues a response.steer payload without blocking.
+// Send queues a Responses control payload without blocking.
 func (s *ResponsesWebSocketSteering) Send(message []byte) bool {
 	if !s.Ready() {
 		return false
@@ -112,12 +112,12 @@ func (s *ResponsesWebSocketSteering) Send(message []byte) bool {
 	}
 }
 
-// WithResponsesWebSocketSteer attaches downstream GPT-6 Astra steering to a request.
+// WithResponsesWebSocketSteer attaches downstream Responses control to a request.
 func WithResponsesWebSocketSteer(ctx context.Context, steering *ResponsesWebSocketSteering) context.Context {
 	return context.WithValue(ctx, responsesWebSocketSteerContextKey{}, steering)
 }
 
-// GetResponsesWebSocketSteer retrieves downstream GPT-6 Astra steering state.
+// GetResponsesWebSocketSteer retrieves downstream Responses control state.
 func GetResponsesWebSocketSteer(ctx context.Context) (*ResponsesWebSocketSteering, bool) {
 	steering, ok := ctx.Value(responsesWebSocketSteerContextKey{}).(*ResponsesWebSocketSteering)
 	return steering, ok
