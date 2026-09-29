@@ -1431,9 +1431,19 @@ func (s *responsesInboundStream) closeCurrentOutputItem() error {
 
 func (s *responsesInboundStream) emitStreamErrorEvent(err error) error {
 	code, message := classifyStreamError(err)
+	var providerError *Error
+	if responseErr, ok := errors.AsType[*llm.ResponseError](err); ok {
+		providerError = &Error{
+			Type: responseErr.Detail.Type, Code: code, Message: message,
+			LimitWindowMinutes: responseErr.Detail.LimitWindowMinutes,
+		}
+	}
 
 	if s.hasResponseCreated {
 		response := s.buildFailedResponse(code, message)
+		if providerError != nil {
+			response.Error = providerError
+		}
 		if err := s.enqueueEvent(&StreamEvent{
 			Type:     StreamEventTypeResponseFailed,
 			Response: response,
@@ -1443,6 +1453,7 @@ func (s *responsesInboundStream) emitStreamErrorEvent(err error) error {
 	} else {
 		if err := s.enqueueEvent(&StreamEvent{
 			Type:    StreamEventTypeError,
+			Error:   providerError,
 			Code:    code,
 			Message: message,
 		}); err != nil {

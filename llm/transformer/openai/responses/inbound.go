@@ -118,6 +118,9 @@ type ResponseError struct {
 }
 
 type ResponseErrorDetail struct {
+	// LimitWindowMinutes is provider quota metadata consumed by Codex 0.159.
+	LimitWindowMinutes json.RawMessage `json:"limit_window_minutes,omitempty"`
+
 	Message string `json:"message"`
 	Type    string `json:"type"`
 	Code    string `json:"code,omitempty"`
@@ -145,6 +148,8 @@ func (t *InboundTransformer) TransformError(ctx context.Context, rawErr error) *
 	if llmErr, ok := errors.AsType[*llm.ResponseError](rawErr); ok {
 		errResp := ResponseError{
 			Error: ResponseErrorDetail{
+				LimitWindowMinutes: llmErr.Detail.LimitWindowMinutes,
+
 				Message: llmErr.Detail.Message,
 				Type:    llmErr.Detail.Type,
 				Code:    llmErr.Detail.Code,

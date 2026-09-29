@@ -9,6 +9,9 @@ import (
 
 // MessageRequest represents the Anthropic Messages API request format.
 type MessageRequest struct {
+	// Safeguards preserves the native auto-mode policy without interpreting it.
+	Safeguards json.RawMessage `json:"safeguards,omitempty"`
+
 	MaxTokens int64          `json:"max_tokens" validate:"required,gte=1"`
 	Messages  []MessageParam `json:"messages"   validate:"required"`
 	Model     string         `json:"model,omitempty"      validate:"required"`
@@ -155,6 +158,8 @@ type SystemPromptPart struct {
 	CacheControl *CacheControl `json:"cache_control,omitempty"`
 }
 
+const transformerMetadataKeySafeguards = "anthropic_safeguards"
+
 // TransformerMetadataKeyThinkingType is the key for storing thinking type in TransformerMetadata.
 const TransformerMetadataKeyThinkingType = "thinking_type"
 
@@ -178,7 +183,7 @@ const TransformerMetadataKeyCacheControl = "anthropic_cache_control"
 const TransformerMetadataKeyAnthropicResponseContent = "anthropic_response_content"
 
 type Thinking struct {
-	Type         string `json:"type"          validate:"required,oneof=enabled disabled adaptive"`
+	Type         string `json:"type"          validate:"required,oneof=enabled disabled adaptive between_tools"`
 	BudgetTokens int64  `json:"budget_tokens,omitempty" validate:"required_if=Type enabled"`
 	// Display is an optional display name for the thinking, enum: summarized, omitted.
 	Display string `json:"display,omitempty"`

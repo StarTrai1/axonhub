@@ -183,8 +183,8 @@ func buildBaseRequest(chatReq *llm.Request, config *Config) *MessageRequest {
 	switch thinkingType {
 	case "disabled":
 		req.Thinking = &Thinking{Type: "disabled"}
-	case "adaptive":
-		req.Thinking = &Thinking{Type: "adaptive"}
+	case "adaptive", "between_tools":
+		req.Thinking = &Thinking{Type: thinkingType}
 	case "enabled":
 		// Native budget client: round-trip budget_tokens verbatim. buildThinking
 		// prefers ReasoningBudget, so no level-to-budget conversion happens here.
@@ -244,6 +244,17 @@ func buildBaseRequest(chatReq *llm.Request, config *Config) *MessageRequest {
 				}
 			}
 		}
+	}
+
+	if raw, ok := chatReq.TransformerMetadata[transformerMetadataKeySafeguards].(json.RawMessage); ok {
+		req.Safeguards = append(json.RawMessage(nil), raw...)
+	}
+	// Sonnet 5.5's lowest supported mode disables up-front thinking. Preserve
+	// explicit native settings, while mapping a converted no-reasoning request.
+	if thinkingType == "" && chatReq.Model == "claude-sonnet-5-5" &&
+		chatReq.ReasoningEffort == llm.ReasoningEffortNone && shouldDecodeAnthropicSignature(config) {
+		req.Thinking = &Thinking{Type: "between_tools"}
+		req.OutputConfig = &OutputConfig{Effort: "low"}
 	}
 
 	// Restore Anthropic's top-level cache_control (automatic prompt caching).

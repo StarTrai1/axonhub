@@ -66,6 +66,9 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 		TransformerMetadata: map[string]any{},
 		TransformOptions:    llm.TransformOptions{},
 	}
+	if len(anthropicReq.Safeguards) > 0 {
+		chatReq.TransformerMetadata[transformerMetadataKeySafeguards] = append(json.RawMessage(nil), anthropicReq.Safeguards...)
+	}
 	if anthropicReq.Metadata != nil {
 		chatReq.Metadata["user_id"] = anthropicReq.Metadata.UserID
 	}
@@ -359,6 +362,10 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 			// Preserve disabled thinking type so outbound transformers can disable reasoning.
 			chatReq.TransformerMetadata[TransformerMetadataKeyThinkingType] = "disabled"
 			chatReq.ReasoningEffort = "none"
+		case "between_tools":
+			chatReq.TransformerMetadata[TransformerMetadataKeyThinkingType] = "between_tools"
+			chatReq.TransformerMetadata[TransformerMetadataKeyThinkingDisplay] = anthropicReq.Thinking.Display
+			chatReq.ReasoningEffort = llm.ReasoningEffortNone
 		case "adaptive":
 			// Adaptive thinking doesn't require a budget; preserve the type marker via TransformerMetadata.
 			chatReq.TransformerMetadata[TransformerMetadataKeyThinkingType] = "adaptive"

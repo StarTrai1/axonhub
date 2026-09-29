@@ -997,6 +997,9 @@ func (e ResponseError) Error() string {
 
 // ErrorDetail represents error details.
 type ErrorDetail struct {
+	// LimitWindowMinutes is provider quota metadata consumed by Codex 0.159.
+	LimitWindowMinutes json.RawMessage `json:"limit_window_minutes,omitempty"`
+
 	Code      string `json:"code,omitempty"`
 	Message   string `json:"message"`
 	Type      string `json:"type"`

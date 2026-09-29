@@ -29,7 +29,7 @@ func TestResponsesWebSocketInterruptDrainsAndContinues(t *testing.T) {
 		conn, err := upgrader.Upgrade(w, r, nil)
 		require.NoError(t, err)
 		defer conn.Close()
-		require.NoError(t, conn.SetReadDeadline(time.Now().Add(10 * time.Second)))
+		require.NoError(t, conn.SetReadDeadline(time.Now().Add(10*time.Second)))
 		var create map[string]any
 		require.NoError(t, conn.ReadJSON(&create))
 		require.Equal(t, "response.create", create["type"])
@@ -72,7 +72,7 @@ func TestResponsesWebSocketInterruptDrainsAndContinues(t *testing.T) {
 	server := newResponsesWebSocketTestServer(t, process, nil)
 	conn := dialResponsesWebSocket(t, server.URL, nil)
 	defer conn.Close()
-	require.NoError(t, conn.SetReadDeadline(time.Now().Add(10 * time.Second)))
+	require.NoError(t, conn.SetReadDeadline(time.Now().Add(10*time.Second)))
 	require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create","model":"gpt-6-sol","input":"first"}`)))
 	_, created, err := conn.ReadMessage()
 	require.NoError(t, err)

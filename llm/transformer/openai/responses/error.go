@@ -21,6 +21,7 @@ func responseErrorFromResponse(response *Response) *llm.ResponseError {
 
 	detail := llm.ErrorDetail{RequestID: response.RequestID}
 	if response.Error != nil {
+		detail.LimitWindowMinutes = response.Error.LimitWindowMinutes
 		detail.Code = response.Error.Code
 		detail.Message = response.Error.Message
 		detail.Type = response.Error.Type
@@ -58,6 +59,7 @@ func responseErrorFromStreamEvent(event *StreamEvent) *llm.ResponseError {
 		detail.Param = *event.Param
 	}
 	if event.Error != nil {
+		detail.LimitWindowMinutes = event.Error.LimitWindowMinutes
 		if event.Error.Code != "" {
 			detail.Code = event.Error.Code
 		}
@@ -108,6 +110,8 @@ func responseErrorStatusCode(source *Error, fallback int) int {
 
 func responseErrorCause(result *llm.ResponseError, source *Error, headers http.Header) error {
 	wire := Error{
+		LimitWindowMinutes: result.Detail.LimitWindowMinutes,
+
 		Type: result.Detail.Type, Code: result.Detail.Code, Message: result.Detail.Message,
 		Param: result.Detail.Param, RequestID: result.Detail.RequestID,
 	}

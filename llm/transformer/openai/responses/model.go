@@ -1102,6 +1102,9 @@ type ContentItem struct {
 }
 
 type Error struct {
+	// LimitWindowMinutes is provider quota metadata consumed by Codex 0.159.
+	LimitWindowMinutes json.RawMessage `json:"limit_window_minutes,omitempty"`
+
 	Type      string `json:"type,omitempty"`
 	Code      string `json:"code,omitempty"`
 	Message   string `json:"message"`

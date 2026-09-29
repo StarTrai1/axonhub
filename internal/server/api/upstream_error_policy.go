@@ -68,6 +68,8 @@ func applyUpstreamErrorPolicy(ctx context.Context, err error, systemService *biz
 		return &llm.ResponseError{
 			StatusCode: respErr.StatusCode,
 			Detail: llm.ErrorDetail{
+				LimitWindowMinutes: respErr.Detail.LimitWindowMinutes,
+
 				Message:   message,
 				Type:      firstNonEmpty(respErr.Detail.Type, "upstream_error"),
 				Code:      respErr.Detail.Code,
