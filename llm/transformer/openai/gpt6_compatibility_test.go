@@ -41,7 +41,7 @@ func TestSol61ChatToolCallsRequireResponses(t *testing.T) {
 		`{"model":"gpt-6.1-sol","reasoning_effort":"none","messages":[{"role":"user","content":"hello"}],"tools":[{"type":"function","function":{"name":"lookup","parameters":{"type":"object"}}}]}`,
 		`{"model":"gpt-6.1-sol","messages":[{"role":"assistant","tool_calls":[{"id":"call_1","type":"function","function":{"name":"lookup","arguments":"{}"}}]},{"role":"tool","tool_call_id":"call_1","content":"found"}]}`,
 	} {
-		request, err := NewInboundTransformer().TransformRequest(t.Context(), &httpclient.Request{Body: []byte(body)})
+		request, err := NewInboundTransformer().TransformRequest(t.Context(), &httpclient.Request{Body: []byte(body), Headers: http.Header{"Content-Type": {"application/json"}}})
 		require.NoError(t, err)
 		wire, err := outbound.TransformRequest(t.Context(), request)
 		require.ErrorIs(t, err, transformer.ErrInvalidRequest)
