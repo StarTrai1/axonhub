@@ -13,13 +13,13 @@ import (
 
 func TestResponsesCustomToolDoneRecoversMissingInput(t *testing.T) {
 	for _, scenario := range []struct {
-		name    string
-		delta   string
-		final   string
-		callID  bool
+		name     string
+		delta    string
+		final    string
+		callID   bool
 		itemDone bool
-		want    string
-		wantErr bool
+		want     string
+		wantErr  bool
 	}{
 		{name: "item done only", itemDone: true, final: "print('ok')", want: "print('ok')"},
 		{name: "item done partial", itemDone: true, delta: "print(", final: "print('ok')", want: "print('ok')"},

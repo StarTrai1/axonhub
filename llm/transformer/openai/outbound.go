@@ -181,6 +181,17 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		return nil, err
 	}
 
+	// Sol 6.1 tool calling is only available through Responses, including replayed calls.
+	if llmReq.Model == "gpt-6.1-sol" {
+		hasTools := len(llmReq.Tools) > 0
+		for _, message := range llmReq.Messages {
+			hasTools = hasTools || len(message.ToolCalls) > 0 || message.Role == "tool"
+		}
+		if hasTools {
+			return nil, fmt.Errorf("%w: gpt-6.1-sol tool calls require a Responses endpoint", transformer.ErrInvalidRequest)
+		}
+	}
+
 	// Determine which reasoning field to use, default to ReasoningFieldContent.
 	// reasoning_content is the standard field used by most providers (OpenAI o-series,
 	// DeepSeek, Mimo, Gemini, etc.) to return chain-of-thought in responses, and some

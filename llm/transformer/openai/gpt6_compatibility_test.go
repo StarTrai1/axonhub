@@ -9,6 +9,7 @@ import (
 	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/transformer"
 )
 
 func TestGPT6ChatSamplingAndPassThrough(t *testing.T) {
@@ -29,5 +30,22 @@ func TestGPT6ChatSamplingAndPassThrough(t *testing.T) {
 				require.Equal(t, wantSample, outbound.(*OutboundTransformer).AllowPassThroughBody(t.Context(), request, wire))
 			})
 		}
+	}
+}
+
+func TestSol61ChatToolCallsRequireResponses(t *testing.T) {
+	outbound, err := NewOutboundTransformer("https://example.test/v1", "fake-key")
+	require.NoError(t, err)
+	for _, body := range []string{
+		`{"model":"gpt-6.1-sol","messages":[{"role":"user","content":"hello"}],"tools":[{"type":"function","function":{"name":"lookup","parameters":{"type":"object"}}}]}`,
+		`{"model":"gpt-6.1-sol","reasoning_effort":"none","messages":[{"role":"user","content":"hello"}],"tools":[{"type":"function","function":{"name":"lookup","parameters":{"type":"object"}}}]}`,
+		`{"model":"gpt-6.1-sol","messages":[{"role":"assistant","tool_calls":[{"id":"call_1","type":"function","function":{"name":"lookup","arguments":"{}"}}]},{"role":"tool","tool_call_id":"call_1","content":"found"}]}`,
+	} {
+		request, err := NewInboundTransformer().TransformRequest(t.Context(), &httpclient.Request{Body: []byte(body)})
+		require.NoError(t, err)
+		wire, err := outbound.TransformRequest(t.Context(), request)
+		require.ErrorIs(t, err, transformer.ErrInvalidRequest)
+		require.ErrorContains(t, err, "tool calls require a Responses endpoint")
+		require.Nil(t, wire)
 	}
 }
