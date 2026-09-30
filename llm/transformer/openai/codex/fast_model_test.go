@@ -24,7 +24,8 @@ func TestCodexFastAliasKeepsGPT6PassThroughConstraints(t *testing.T) {
 					Body: []byte(fmt.Sprintf(`{"model":%q,"reasoning":{"effort":%q},"temperature":0.5}`, model, effort)),
 				},
 			}
-			require.Equal(t, effort == "none", outbound.AllowPassThroughBody(t.Context(), request, nil), model+"/"+effort)
+			wantPassThrough := effort == "none" && model != "gpt-6.1-sol-fast"
+			require.Equal(t, wantPassThrough, outbound.AllowPassThroughBody(t.Context(), request, nil), model+"/"+effort)
 		}
 	}
 }
