@@ -196,7 +196,9 @@ func TestResponsesRejectedReasoningPipelineRetriesTLSWithoutLosingRecovery(t *te
 					require.Len(t, executor.requests, 3)
 					require.JSONEq(t, string(executor.requests[1].Body), string(executor.requests[2].Body))
 				}
-				require.Empty(t, gjson.GetBytes(executor.requests[1].Body, `input.#(type=="reasoning")#`).Array())
+				require.Empty(t, gjson.GetBytes(executor.requests[1].Body, `input.#(encrypted_content)#`).Array())
+				require.JSONEq(t, gjson.GetBytes(original, `input.#(id=="rs_public")`).Raw,
+					gjson.GetBytes(executor.requests[1].Body, `input.#(id=="rs_public")`).Raw)
 				require.Equal(t, original, request.Body)
 				scope, ok := responsesReasoningScope(ctx, state.CurrentCandidate.Channel, executor.requests[0])
 				require.True(t, ok)
