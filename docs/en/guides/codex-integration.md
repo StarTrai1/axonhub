@@ -164,3 +164,16 @@ You can manually trigger a quota refresh by clicking the refresh icon in the quo
 - [Tracing Guide](tracing.md)
 - [OpenAI API](../api-reference/openai-api.md)
 - README sections on [Usage Guide](../../../README.en-US.md#usage-guide)
+
+
+## Codex 0.159.2 and GPT-6.1 Sol
+
+The gateway recognizes `gpt-6.1-sol` and the local `gpt-6.1-sol-fast` alias. The alias selects `service_tier: priority` only when the request has not supplied a tier. Explicit client versions remain authoritative; the fallback version is 0.159.2.
+
+The [public API model](https://developers.openai.com/api/docs/models/gpt-6.1-sol) supports `low`, `medium`, `high`, `xhigh`, and `max`, with `medium` as its API default. Codex 0.159.2 uses its own model preset (default `low`, plus a client `ultra` option); the gateway does not replace an explicit client effort with the API default. When migrating requests, unsupported `none`/`minimal` become `low`, including ordered `configuration_update` items. Sampling and logprob parameters are removed when reasoning is enabled. Use a Responses endpoint for tool calls; the model's Chat Completions endpoint supports requests without tools.
+
+The bundled catalog records the official standard input/cache-read/cache-write/output rates of $2/$0.10/$2.50/$10 per million tokens, and the >272K context rates and Fast mode metadata. Existing channel price settings remain authoritative for billing. [Astra Ultrafast](https://developers.openai.com/api/docs/guides/ultrafast-mode) uses `service_tier: ultrafast`; its metadata is included, and the tier is preserved through HTTP, WebSocket, conversion, and response usage reporting. Sol 6.1 Ultrafast is not advertised as available.
+
+A TLS `bad record MAC` before usable output is classified as an upstream transport failure and uses the existing bounded retry policy. If encrypted reasoning was already repaired following an explicit rejection, the retry retains that repair and visible history. TLS verification is unchanged. Generic HTTP 400 responses without an encryption error code or precise item rejection do not authorize deleting conversation history. A retry can still fail if the upstream connection or capacity remains unavailable.
+
+DevDay's Agents API browser sessions use a separate `/v1/agents/sessions` lifecycle, and Private Safety Processing is an organization/project provisioning feature. These are not enabled by a Responses model change. Decisions API was announced in limited preview; no stable public request contract was found during this update. This gateway update does not claim support for those separate services.

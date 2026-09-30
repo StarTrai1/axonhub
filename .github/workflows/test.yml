@@ -89,7 +89,17 @@ jobs:
       - name: Verify Ent and GraphQL generation
         run: |
           make generate
-          git diff --exit-code -- internal/ent internal/server/gql
+          git diff --binary -- internal/ent internal/server/gql > "$RUNNER_TEMP/generated.patch"
+          git diff --stat -- internal/ent internal/server/gql
+          test ! -s "$RUNNER_TEMP/generated.patch"
+
+      - name: Preserve generated source differences
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: generated-source-differences
+          path: ${{ runner.temp }}/generated.patch
+          if-no-files-found: ignore
 
       - name: Test
         run: make test-backend-all

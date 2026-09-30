@@ -133,6 +133,9 @@ models:
   RemoteCompactionPolicy:
     model:
       - github.com/looplj/axonhub/internal/objects.RemoteCompactionPolicy
+  CodexIdentityPolicy:
+    model:
+      - github.com/looplj/axonhub/internal/objects.CodexIdentityPolicy
   ChannelEndpoint:
     model:
       - github.com/looplj/axonhub/internal/objects.ChannelEndpoint
