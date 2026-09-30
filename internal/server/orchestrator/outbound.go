@@ -581,6 +581,10 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 	}
 	llmRequest = filterResponseCustomToolMessagesForNonResponsesOutbound(llmRequest, outboundFormat)
 
+	if llmRequest.Stream == nil && outboundFormat == llm.APIFormatAnthropicMessage {
+		llmRequest.Stream = lo.ToPtr(false)
+	}
+
 	if !p.state.DisableStreamForcing && shouldForceStreamingForCandidate(candidate, llmRequest) {
 		streamPtr := lo.ToPtr(true)
 		llmRequest.Stream = streamPtr

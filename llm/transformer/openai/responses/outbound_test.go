@@ -1981,3 +1981,21 @@ func TestOutboundTransformer_TransformResponse_ProtocolFailure(t *testing.T) {
 	require.Equal(t, http.StatusBadGateway, responseErr.StatusCode)
 	require.Equal(t, "server_error", responseErr.Detail.Code)
 }
+
+func TestOutboundTransformer_PreservesSol61AdditionalTools(t *testing.T) {
+	rawItem := `{"type":"additional_tools","role":"developer","tools":[{"type":"custom","name":"exec","format":{"type":"grammar","syntax":"lark","definition":"start: /.+/"},"async":true}]}`
+	request, err := NewInboundTransformer().TransformRequest(context.Background(), &httpclient.Request{
+		Body: []byte(`{"model":"gpt-6.1-sol","input":[` + rawItem + `,{"type":"message","role":"user","content":"continue"}]}`),
+	})
+	require.NoError(t, err)
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+	result, err := outbound.TransformRequest(context.Background(), request)
+	require.NoError(t, err)
+	var payload struct {
+		Input []json.RawMessage `json:"input"`
+	}
+	require.NoError(t, json.Unmarshal(result.Body, &payload))
+	require.Len(t, payload.Input, 2)
+	require.JSONEq(t, rawItem, string(payload.Input[0]))
+}

@@ -92,9 +92,12 @@ func TestDefaultEndpointsForChannelType_UseLLMAPIFormatValues(t *testing.T) {
 			expected: []string{llm.APIFormatOpenAIChatCompletion.String()},
 		},
 		{
-			name:     "minimax exposes chat only",
-			typ:      channel.TypeMinimax,
-			expected: []string{llm.APIFormatOpenAIChatCompletion.String()},
+			name: "minimax exposes chat and image generation",
+			typ:  channel.TypeMinimax,
+			expected: []string{
+				llm.APIFormatOpenAIChatCompletion.String(),
+				llm.APIFormatOpenAIImageGeneration.String(),
+			},
 		},
 		{
 			name:     "xiaomi exposes chat only",
@@ -113,6 +116,11 @@ func TestDefaultEndpointsForChannelType_UseLLMAPIFormatValues(t *testing.T) {
 				llm.APIFormatOpenAIResponse.String(),
 				llm.APIFormatOpenAISearch.String(),
 			},
+		},
+		{
+			name:     "bailian responses defaults to responses",
+			typ:      channel.TypeBailianResponses,
+			expected: []string{llm.APIFormatOpenAIResponse.String()},
 		},
 		{
 			name: "xai api key exposes chat and responses",

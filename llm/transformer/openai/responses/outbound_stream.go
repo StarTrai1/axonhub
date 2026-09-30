@@ -578,30 +578,13 @@ func (s *responsesOutboundStream) transformStreamEvent(event *httpclient.StreamE
 				callID = *streamEvent.ItemID
 			}
 		}
-		toolCall, ok := s.state.toolCalls[callID]
-		if !ok || toolCall.ResponseCustomToolCall == nil || streamEvent.Input == "" {
+		emitted, err := s.reconcileCustomToolCallInput(resp, callID, streamEvent.Input)
+		if err != nil {
+			return err
+		}
+		if !emitted {
 			return nil
 		}
-		forwarded := toolCall.ResponseCustomToolCall.Input
-		if streamEvent.Input == forwarded {
-			return nil
-		}
-		if !strings.HasPrefix(streamEvent.Input, forwarded) {
-			s.err = fmt.Errorf("custom tool call %q input changed after streaming began", callID)
-			return nil
-		}
-		missing := streamEvent.Input[len(forwarded):]
-		toolCall.ResponseCustomToolCall.Input = streamEvent.Input
-		resp.Choices = []llm.Choice{{Index: 0, Delta: &llm.Message{ToolCalls: []llm.ToolCall{{
-			Index: s.state.toolCallIndex[callID],
-			Type:  llm.ToolTypeResponsesCustomTool,
-			Async: toolCall.Async,
-			ResponseCustomToolCall: &llm.ResponseCustomToolCall{
-				CallID: callID,
-				Name:   toolCall.ResponseCustomToolCall.Name,
-				Input:  missing,
-			},
-		}}}}}
 
 	case StreamEventTypeContentPartAdded:
 		if streamEvent.Part != nil && streamEvent.Part.Type == "output_text" {
@@ -649,6 +632,27 @@ func (s *responsesOutboundStream) transformStreamEvent(event *httpclient.StreamE
 	case StreamEventTypeOutputItemDone:
 		if streamEvent.Item == nil {
 			return nil // Intentionally skip this event
+		}
+		if streamEvent.Item.Type == "custom_tool_call" {
+			callID := streamEvent.Item.CallID
+			if callID == "" {
+				callID = s.state.itemToCallID[streamEvent.Item.ID]
+				if callID == "" {
+					callID = streamEvent.Item.ID
+				}
+			}
+			if streamEvent.Item.Input == nil {
+				return nil // Intentionally skip an item without a final input.
+			}
+
+			emitted, err := s.reconcileCustomToolCallInput(resp, callID, *streamEvent.Item.Input)
+			if err != nil {
+				return err
+			}
+			if !emitted {
+				return nil
+			}
+			break
 		}
 		if streamEvent.Item.Type == "compaction" || streamEvent.Item.Type == "compaction_summary" {
 			resp.Choices = []llm.Choice{{
@@ -986,6 +990,58 @@ func (s *responsesOutboundStream) hasGeneratedOutput() bool {
 		s.state.textDelivered ||
 		s.state.reasoningContent.Len() > 0 ||
 		len(s.state.pendingReasoningEncryptedContent) > 0
+}
+
+func (s *responsesOutboundStream) reconcileCustomToolCallInput(
+	resp *llm.Response,
+	callID string,
+	finalInput string,
+) (bool, error) {
+	tc, ok := s.state.toolCalls[callID]
+	if !ok || tc.ResponseCustomToolCall == nil {
+		return false, nil
+	}
+	if finalInput == "" {
+		return false, nil // An empty final event must not overwrite accumulated deltas.
+	}
+
+	forwardedInput := tc.ResponseCustomToolCall.Input
+	missingInput := ""
+	switch {
+	case forwardedInput == "":
+		missingInput = finalInput
+	case strings.HasPrefix(finalInput, forwardedInput):
+		missingInput = strings.TrimPrefix(finalInput, forwardedInput)
+	default:
+		return false, fmt.Errorf("custom tool call input mismatch for call_id %q", callID)
+	}
+
+	tc.ResponseCustomToolCall.Input = finalInput
+	if missingInput == "" {
+		return false, nil
+	}
+
+	resp.Choices = []llm.Choice{
+		{
+			Index: 0,
+			Delta: &llm.Message{
+				ToolCalls: []llm.ToolCall{
+					{
+						Index: s.state.toolCallIndex[callID],
+						Type:  llm.ToolTypeResponsesCustomTool,
+						Async: tc.Async,
+						ResponseCustomToolCall: &llm.ResponseCustomToolCall{
+							CallID: callID,
+							Name:   tc.ResponseCustomToolCall.Name,
+							Input:  missingInput,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	return true, nil
 }
 
 func equalJSONValues(left, right string) bool {

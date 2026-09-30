@@ -17,9 +17,12 @@ func TestResponsesCustomToolDoneRecoversMissingInput(t *testing.T) {
 		delta   string
 		final   string
 		callID  bool
+		itemDone bool
 		want    string
 		wantErr bool
 	}{
+		{name: "item done only", itemDone: true, final: "print('ok')", want: "print('ok')"},
+		{name: "item done partial", itemDone: true, delta: "print(", final: "print('ok')", want: "print('ok')"},
 		{name: "done only", final: "print('ok')", want: "print('ok')"},
 		{name: "partial delta", delta: "print(", final: "print('ok')", want: "print('ok')"},
 		{name: "complete delta", delta: "print('ok')", final: "print('ok')", want: "print('ok')"},
@@ -42,13 +45,16 @@ func TestResponsesCustomToolDoneRecoversMissingInput(t *testing.T) {
 				delete(done, "item_id")
 				done["call_id"] = "call_custom"
 			}
+			if scenario.itemDone {
+				done = map[string]any{"type": "response.output_item.done", "output_index": 0, "item": map[string]any{"id": "ctc_native", "type": "custom_tool_call", "call_id": "call_custom", "name": "exec", "input": scenario.final}}
+			}
 			data, err := json.Marshal(done)
 			require.NoError(t, err)
 			events = append(events, &httpclient.StreamEvent{Data: data}, &httpclient.StreamEvent{Data: data}, &httpclient.StreamEvent{Data: []byte(`{"type":"response.completed","response":{"id":"resp_custom","status":"completed","output":[]}}`)})
 			stream := newResponsesOutboundStream(streams.SliceStream(events))
 			converted, err := streams.All(stream)
 			if scenario.wantErr {
-				require.ErrorContains(t, err, "input changed after streaming began")
+				require.ErrorContains(t, err, "custom tool call input mismatch")
 				return
 			}
 			require.NoError(t, err)
@@ -64,6 +70,8 @@ func TestResponsesCustomToolDoneRecoversMissingInput(t *testing.T) {
 					for _, toolCall := range choice.Delta.ToolCalls {
 						if toolCall.ResponseCustomToolCall != nil {
 							input += toolCall.ResponseCustomToolCall.Input
+							require.NotNil(t, toolCall.Async)
+							require.True(t, *toolCall.Async)
 						}
 					}
 				}

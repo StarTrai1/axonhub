@@ -611,6 +611,10 @@ func normalizeResponseSessionItems(items []json.RawMessage) ([]json.RawMessage, 
 			normalized = append(normalized, cloneResponseSessionValue(item))
 			continue
 		}
+		if responseSessionString(object["type"]) == "web_search_call" {
+			normalized = append(normalized, cloneResponseSessionValue(item))
+			continue
+		}
 
 		delete(object, "status")
 		if localID {
