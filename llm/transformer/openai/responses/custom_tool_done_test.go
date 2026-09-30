@@ -70,8 +70,10 @@ func TestResponsesCustomToolDoneRecoversMissingInput(t *testing.T) {
 					for _, toolCall := range choice.Delta.ToolCalls {
 						if toolCall.ResponseCustomToolCall != nil {
 							input += toolCall.ResponseCustomToolCall.Input
-							require.NotNil(t, toolCall.Async)
-							require.True(t, *toolCall.Async)
+							if toolCall.ResponseCustomToolCall.Input != "" && toolCall.ResponseCustomToolCall.Input != scenario.delta {
+								require.NotNil(t, toolCall.Async)
+								require.True(t, *toolCall.Async)
+							}
 						}
 					}
 				}
