@@ -576,11 +576,11 @@ type ComplexityRoot struct {
 		AutoTrimedModelPrefixes  func(childComplexity int) int
 		BodyOverrideOperations   func(childComplexity int) int
 		ExtraModelPrefix         func(childComplexity int) int
+		HTTP2ConnectionShards    func(childComplexity int) int
+		HTTPProtocol             func(childComplexity int) int
 		HeaderOverrideOperations func(childComplexity int) int
 		HideMappedModels         func(childComplexity int) int
 		HideOriginalModels       func(childComplexity int) int
-		HTTP2ConnectionShards    func(childComplexity int) int
-		HTTPProtocol             func(childComplexity int) int
 		LowercaseModelID         func(childComplexity int) int
 		ModelMappings            func(childComplexity int) int
 		ModelProtocols           func(childComplexity int) int
@@ -4226,12 +4226,42 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelPolicies.CodexIdentity(childComplexity), true
+	case "ChannelPolicies.remoteCompaction":
+		if e.complexity.ChannelPolicies.RemoteCompaction == nil {
+			break
+		}
+
+		return e.complexity.ChannelPolicies.RemoteCompaction(childComplexity), true
+	case "ChannelPolicies.routingTier":
+		if e.complexity.ChannelPolicies.RoutingTier == nil {
+			break
+		}
+
+		return e.complexity.ChannelPolicies.RoutingTier(childComplexity), true
 	case "ChannelPolicies.stream":
 		if e.complexity.ChannelPolicies.Stream == nil {
 			break
 		}
 
 		return e.complexity.ChannelPolicies.Stream(childComplexity), true
+	case "ChannelPolicies.supportsRemoteCompaction":
+		if e.complexity.ChannelPolicies.SupportsRemoteCompaction == nil {
+			break
+		}
+
+		return e.complexity.ChannelPolicies.SupportsRemoteCompaction(childComplexity), true
+	case "ChannelPolicies.supportsWebSearch":
+		if e.complexity.ChannelPolicies.SupportsWebSearch == nil {
+			break
+		}
+
+		return e.complexity.ChannelPolicies.SupportsWebSearch(childComplexity), true
+	case "ChannelPolicies.webSearch":
+		if e.complexity.ChannelPolicies.WebSearch == nil {
+			break
+		}
+
+		return e.complexity.ChannelPolicies.WebSearch(childComplexity), true
 
 	case "ChannelProbe.avgTimeToFirstTokenMs":
 		if e.complexity.ChannelProbe.AvgTimeToFirstTokenMs == nil {
@@ -4414,6 +4444,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelSettings.ExtraModelPrefix(childComplexity), true
+	case "ChannelSettings.http2ConnectionShards":
+		if e.complexity.ChannelSettings.HTTP2ConnectionShards == nil {
+			break
+		}
+
+		return e.complexity.ChannelSettings.HTTP2ConnectionShards(childComplexity), true
+	case "ChannelSettings.httpProtocol":
+		if e.complexity.ChannelSettings.HTTPProtocol == nil {
+			break
+		}
+
+		return e.complexity.ChannelSettings.HTTPProtocol(childComplexity), true
 	case "ChannelSettings.headerOverrideOperations":
 		if e.complexity.ChannelSettings.HeaderOverrideOperations == nil {
 			break
@@ -4432,18 +4474,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelSettings.HideOriginalModels(childComplexity), true
-	case "ChannelSettings.http2ConnectionShards":
-		if e.complexity.ChannelSettings.HTTP2ConnectionShards == nil {
-			break
-		}
-
-		return e.complexity.ChannelSettings.HTTP2ConnectionShards(childComplexity), true
-	case "ChannelSettings.httpProtocol":
-		if e.complexity.ChannelSettings.HTTPProtocol == nil {
-			break
-		}
-
-		return e.complexity.ChannelSettings.HTTPProtocol(childComplexity), true
 	case "ChannelSettings.lowercaseModelId":
 		if e.complexity.ChannelSettings.LowercaseModelID == nil {
 			break
@@ -13148,11 +13178,6 @@ func (ec *executionContext) field_Mutation_enableAllChannelAPIKeys_args(ctx cont
 		return nil, err
 	}
 	args["channelID"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "creditID", ec.unmarshalOString2ᚖstring)
-	if err != nil {
-		return nil, err
-	}
-	args["creditID"] = arg1
 	return args, nil
 }
 
@@ -20979,10 +21004,10 @@ func (ec *executionContext) fieldContext_Channel_policies(_ context.Context, fie
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "stream":
-				return ec.fieldContext_ChannelPolicies_stream(ctx, field)
 			case "routingTier":
 				return ec.fieldContext_ChannelPolicies_routingTier(ctx, field)
+			case "stream":
+				return ec.fieldContext_ChannelPolicies_stream(ctx, field)
 			case "remoteCompaction":
 				return ec.fieldContext_ChannelPolicies_remoteCompaction(ctx, field)
 			case "supportsRemoteCompaction":
@@ -24386,6 +24411,35 @@ func (ec *executionContext) fieldContext_ChannelPerformanceStat_requestCount(_ c
 	return fc, nil
 }
 
+func (ec *executionContext) _ChannelPolicies_routingTier(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelPolicies) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelPolicies_routingTier,
+		func(ctx context.Context) (any, error) {
+			return obj.RoutingTier, nil
+		},
+		nil,
+		ec.marshalORoutingTier2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐRoutingTier,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelPolicies_routingTier(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelPolicies",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type RoutingTier does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ChannelPolicies_stream(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelPolicies) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -24410,6 +24464,151 @@ func (ec *executionContext) fieldContext_ChannelPolicies_stream(_ context.Contex
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type CapabilityPolicy does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelPolicies_remoteCompaction(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelPolicies) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelPolicies_remoteCompaction,
+		func(ctx context.Context) (any, error) {
+			return obj.RemoteCompaction, nil
+		},
+		nil,
+		ec.marshalORemoteCompactionPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐRemoteCompactionPolicy,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelPolicies_remoteCompaction(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelPolicies",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type RemoteCompactionPolicy does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelPolicies_supportsRemoteCompaction(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelPolicies) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelPolicies_supportsRemoteCompaction,
+		func(ctx context.Context) (any, error) {
+			return obj.SupportsRemoteCompaction, nil
+		},
+		nil,
+		ec.marshalOBoolean2bool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelPolicies_supportsRemoteCompaction(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelPolicies",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelPolicies_webSearch(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelPolicies) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelPolicies_webSearch,
+		func(ctx context.Context) (any, error) {
+			return obj.WebSearch, nil
+		},
+		nil,
+		ec.marshalOWebSearchPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐWebSearchPolicy,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelPolicies_webSearch(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelPolicies",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type WebSearchPolicy does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelPolicies_supportsWebSearch(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelPolicies) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelPolicies_supportsWebSearch,
+		func(ctx context.Context) (any, error) {
+			return obj.SupportsWebSearch, nil
+		},
+		nil,
+		ec.marshalOBoolean2ᚖbool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelPolicies_supportsWebSearch(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelPolicies",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelPolicies_codexIdentity(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelPolicies) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelPolicies_codexIdentity,
+		func(ctx context.Context) (any, error) {
+			return obj.CodexIdentity, nil
+		},
+		nil,
+		ec.marshalOCodexIdentityPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐCodexIdentityPolicy,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelPolicies_codexIdentity(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelPolicies",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type CodexIdentityPolicy does not have child fields")
 		},
 	}
 	return fc, nil
@@ -24458,90 +24657,6 @@ func (ec *executionContext) _ChannelPolicies_apiKeyAutoDisableRules(ctx context.
 		true,
 		false,
 	)
-}
-
-func (ec *executionContext) _ChannelPolicies_routingTier(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelPolicies) (ret graphql.Marshaler) {
-	return graphql.ResolveField(ctx, ec.OperationContext, field, ec.fieldContext_ChannelPolicies_routingTier,
-		func(ctx context.Context) (any, error) { return obj.RoutingTier, nil }, nil,
-		ec.marshalORoutingTier2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐRoutingTier, true, false)
-}
-
-func (ec *executionContext) fieldContext_ChannelPolicies_routingTier(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{Object: "ChannelPolicies", Field: field, IsMethod: false, IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type RoutingTier does not have child fields")
-		}}
-	return fc, nil
-}
-
-func (ec *executionContext) _ChannelPolicies_remoteCompaction(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelPolicies) (ret graphql.Marshaler) {
-	return graphql.ResolveField(ctx, ec.OperationContext, field, ec.fieldContext_ChannelPolicies_remoteCompaction,
-		func(ctx context.Context) (any, error) { return obj.RemoteCompaction, nil }, nil,
-		ec.marshalORemoteCompactionPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐRemoteCompactionPolicy, true, false)
-}
-
-func (ec *executionContext) fieldContext_ChannelPolicies_remoteCompaction(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{Object: "ChannelPolicies", Field: field, IsMethod: false, IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type RemoteCompactionPolicy does not have child fields")
-		}}
-	return fc, nil
-}
-
-func (ec *executionContext) _ChannelPolicies_supportsRemoteCompaction(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelPolicies) (ret graphql.Marshaler) {
-	return graphql.ResolveField(ctx, ec.OperationContext, field, ec.fieldContext_ChannelPolicies_supportsRemoteCompaction,
-		func(ctx context.Context) (any, error) { return obj.SupportsRemoteCompaction, nil }, nil,
-		ec.marshalOBoolean2bool, true, false)
-}
-
-func (ec *executionContext) fieldContext_ChannelPolicies_supportsRemoteCompaction(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{Object: "ChannelPolicies", Field: field, IsMethod: false, IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		}}
-	return fc, nil
-}
-
-func (ec *executionContext) _ChannelPolicies_webSearch(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelPolicies) (ret graphql.Marshaler) {
-	return graphql.ResolveField(ctx, ec.OperationContext, field, ec.fieldContext_ChannelPolicies_webSearch,
-		func(ctx context.Context) (any, error) { return obj.WebSearch, nil }, nil,
-		ec.marshalOWebSearchPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐWebSearchPolicy, true, false)
-}
-
-func (ec *executionContext) fieldContext_ChannelPolicies_webSearch(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{Object: "ChannelPolicies", Field: field, IsMethod: false, IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type WebSearchPolicy does not have child fields")
-		}}
-	return fc, nil
-}
-
-func (ec *executionContext) _ChannelPolicies_supportsWebSearch(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelPolicies) (ret graphql.Marshaler) {
-	return graphql.ResolveField(ctx, ec.OperationContext, field, ec.fieldContext_ChannelPolicies_supportsWebSearch,
-		func(ctx context.Context) (any, error) { return obj.SupportsWebSearch, nil }, nil,
-		ec.marshalOBoolean2ᚖbool, true, false)
-}
-
-func (ec *executionContext) fieldContext_ChannelPolicies_supportsWebSearch(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{Object: "ChannelPolicies", Field: field, IsMethod: false, IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		}}
-	return fc, nil
-}
-
-func (ec *executionContext) _ChannelPolicies_codexIdentity(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelPolicies) (ret graphql.Marshaler) {
-	return graphql.ResolveField(ctx, ec.OperationContext, field, ec.fieldContext_ChannelPolicies_codexIdentity,
-		func(ctx context.Context) (any, error) { return obj.CodexIdentity, nil }, nil,
-		ec.marshalOCodexIdentityPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐCodexIdentityPolicy, true, false)
-}
-
-func (ec *executionContext) fieldContext_ChannelPolicies_codexIdentity(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{Object: "ChannelPolicies", Field: field, IsMethod: false, IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type CodexIdentityPolicy does not have child fields")
-		}}
-	return fc, nil
 }
 
 func (ec *executionContext) fieldContext_ChannelPolicies_apiKeyAutoDisableRules(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -69244,7 +69359,9 @@ func (ec *executionContext) unmarshalInputChannelPoliciesInput(ctx context.Conte
 		case "routingTier":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("routingTier"))
 			data, err := ec.unmarshalORoutingTier2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐRoutingTier(ctx, v)
-			if err != nil { return it, err }
+			if err != nil {
+				return it, err
+			}
 			it.RoutingTier = data
 		case "stream":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("stream"))
@@ -69256,27 +69373,37 @@ func (ec *executionContext) unmarshalInputChannelPoliciesInput(ctx context.Conte
 		case "remoteCompaction":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("remoteCompaction"))
 			data, err := ec.unmarshalORemoteCompactionPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐRemoteCompactionPolicy(ctx, v)
-			if err != nil { return it, err }
+			if err != nil {
+				return it, err
+			}
 			it.RemoteCompaction = data
 		case "supportsRemoteCompaction":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("supportsRemoteCompaction"))
 			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil { return it, err }
+			if err != nil {
+				return it, err
+			}
 			it.SupportsRemoteCompaction = data
 		case "webSearch":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("webSearch"))
 			data, err := ec.unmarshalOWebSearchPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐWebSearchPolicy(ctx, v)
-			if err != nil { return it, err }
+			if err != nil {
+				return it, err
+			}
 			it.WebSearch = data
 		case "supportsWebSearch":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("supportsWebSearch"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
-			if err != nil { return it, err }
+			if err != nil {
+				return it, err
+			}
 			it.SupportsWebSearch = data
 		case "codexIdentity":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("codexIdentity"))
 			data, err := ec.unmarshalOCodexIdentityPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐCodexIdentityPolicy(ctx, v)
-			if err != nil { return it, err }
+			if err != nil {
+				return it, err
+			}
 			it.CodexIdentity = data
 		case "apiKeyAutoDisableMode":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiKeyAutoDisableMode"))
@@ -96161,10 +96288,10 @@ func (ec *executionContext) _ChannelPolicies(ctx context.Context, sel ast.Select
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("ChannelPolicies")
-		case "stream":
-			out.Values[i] = ec._ChannelPolicies_stream(ctx, field, obj)
 		case "routingTier":
 			out.Values[i] = ec._ChannelPolicies_routingTier(ctx, field, obj)
+		case "stream":
+			out.Values[i] = ec._ChannelPolicies_stream(ctx, field, obj)
 		case "remoteCompaction":
 			out.Values[i] = ec._ChannelPolicies_remoteCompaction(ctx, field, obj)
 		case "supportsRemoteCompaction":
@@ -121257,6 +121384,19 @@ func (ec *executionContext) unmarshalOCleanupOptionInput2ᚕgithubᚗcomᚋloopl
 	return res, nil
 }
 
+func (ec *executionContext) unmarshalOCodexIdentityPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐCodexIdentityPolicy(ctx context.Context, v any) (objects.CodexIdentityPolicy, error) {
+	tmp, err := graphql.UnmarshalString(v)
+	res := objects.CodexIdentityPolicy(tmp)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOCodexIdentityPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐCodexIdentityPolicy(ctx context.Context, sel ast.SelectionSet, v objects.CodexIdentityPolicy) graphql.Marshaler {
+	_ = sel
+	_ = ctx
+	res := graphql.MarshalString(string(v))
+	return res
+}
+
 func (ec *executionContext) marshalOCommandCodeQuotaSettings2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐCommandCodeQuotaSettings(ctx context.Context, sel ast.SelectionSet, v *objects.CommandCodeQuotaSettings) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -124236,6 +124376,19 @@ func (ec *executionContext) unmarshalORegexAssociationInput2ᚖgithubᚗcomᚋlo
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalORemoteCompactionPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐRemoteCompactionPolicy(ctx context.Context, v any) (objects.RemoteCompactionPolicy, error) {
+	tmp, err := graphql.UnmarshalString(v)
+	res := objects.RemoteCompactionPolicy(tmp)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalORemoteCompactionPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐRemoteCompactionPolicy(ctx context.Context, sel ast.SelectionSet, v objects.RemoteCompactionPolicy) graphql.Marshaler {
+	_ = sel
+	_ = ctx
+	res := graphql.MarshalString(string(v))
+	return res
+}
+
 func (ec *executionContext) marshalORequest2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐRequest(ctx context.Context, sel ast.SelectionSet, v *ent.Request) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -124897,6 +125050,19 @@ func (ec *executionContext) unmarshalORoleWhereInput2ᚖgithubᚗcomᚋloopljᚋ
 	}
 	res, err := ec.unmarshalInputRoleWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalORoutingTier2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐRoutingTier(ctx context.Context, v any) (objects.RoutingTier, error) {
+	tmp, err := graphql.UnmarshalString(v)
+	res := objects.RoutingTier(tmp)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalORoutingTier2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐRoutingTier(ctx context.Context, sel ast.SelectionSet, v objects.RoutingTier) graphql.Marshaler {
+	_ = sel
+	_ = ctx
+	res := graphql.MarshalString(string(v))
+	return res
 }
 
 func (ec *executionContext) marshalOS32ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐS3(ctx context.Context, sel ast.SelectionSet, v *objects.S3) graphql.Marshaler {
@@ -126276,38 +126442,15 @@ func (ec *executionContext) unmarshalOWebDAVInput2ᚖgithubᚗcomᚋloopljᚋaxo
 
 func (ec *executionContext) unmarshalOWebSearchPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐWebSearchPolicy(ctx context.Context, v any) (objects.WebSearchPolicy, error) {
 	tmp, err := graphql.UnmarshalString(v)
-	return objects.WebSearchPolicy(tmp), graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) unmarshalORoutingTier2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐRoutingTier(ctx context.Context, v any) (objects.RoutingTier, error) {
-	tmp, err := graphql.UnmarshalString(v)
-	return objects.RoutingTier(tmp), graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) unmarshalORemoteCompactionPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐRemoteCompactionPolicy(ctx context.Context, v any) (objects.RemoteCompactionPolicy, error) {
-	tmp, err := graphql.UnmarshalString(v)
-	return objects.RemoteCompactionPolicy(tmp), graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) unmarshalOCodexIdentityPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐCodexIdentityPolicy(ctx context.Context, v any) (objects.CodexIdentityPolicy, error) {
-	tmp, err := graphql.UnmarshalString(v)
-	return objects.CodexIdentityPolicy(tmp), graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalORemoteCompactionPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐRemoteCompactionPolicy(ctx context.Context, sel ast.SelectionSet, v objects.RemoteCompactionPolicy) graphql.Marshaler {
-	return graphql.MarshalString(string(v))
-}
-
-func (ec *executionContext) marshalOCodexIdentityPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐCodexIdentityPolicy(ctx context.Context, sel ast.SelectionSet, v objects.CodexIdentityPolicy) graphql.Marshaler {
-	return graphql.MarshalString(string(v))
+	res := objects.WebSearchPolicy(tmp)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOWebSearchPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐWebSearchPolicy(ctx context.Context, sel ast.SelectionSet, v objects.WebSearchPolicy) graphql.Marshaler {
-	return graphql.MarshalString(string(v))
-}
-
-func (ec *executionContext) marshalORoutingTier2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐRoutingTier(ctx context.Context, sel ast.SelectionSet, v objects.RoutingTier) graphql.Marshaler {
-	return graphql.MarshalString(string(v))
+	_ = sel
+	_ = ctx
+	res := graphql.MarshalString(string(v))
+	return res
 }
 
 func (ec *executionContext) unmarshalOWebhookSubscriptionInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐWebhookSubscriptionᚄ(ctx context.Context, v any) ([]biz.WebhookSubscription, error) {

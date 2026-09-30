@@ -115,46 +115,50 @@ func TestResponsesWebSocketStreamIDIsClientOnlyAndReturnedOnEveryEvent(t *testin
 	require.Equal(t, "lane.alpha-1", gjson.GetBytes(request.JSONBody, "stream_id").String())
 }
 
-func TestResponsesWebSocketRoutesSteeringOnlyToActiveGPT6Astra(t *testing.T) {
-	steerReceived := make(chan []byte, 1)
-	release := make(chan struct{})
-	process := func(ctx context.Context, _ *httpclient.Request) (orchestrator.ChatCompletionResult, error) {
-		steers, ok := shared.GetResponsesWebSocketSteer(ctx)
-		if !ok {
-			return orchestrator.ChatCompletionResult{}, errors.New("missing GPT-6 Astra steering channel")
-		}
-		steers.Activate()
-		return orchestrator.ChatCompletionResult{
-			ChatCompletionStream: &testSteeringEventStream{
-				steers:        steers.Events(),
-				steerReceived: steerReceived,
-				release:       release,
-			},
-		}, nil
+func TestResponsesWebSocketRoutesSteeringToActiveGPT6(t *testing.T) {
+	for _, model := range []string{"gpt-6-astra", "gpt-6-sol", "gpt-6-luna", "gpt-6.1-sol", "gpt-6.1-sol-fast"} {
+		t.Run(model, func(t *testing.T) {
+			steerReceived := make(chan []byte, 1)
+			release := make(chan struct{})
+			process := func(ctx context.Context, _ *httpclient.Request) (orchestrator.ChatCompletionResult, error) {
+				steers, ok := shared.GetResponsesWebSocketSteer(ctx)
+				if !ok {
+					return orchestrator.ChatCompletionResult{}, errors.New("missing GPT-6 steering channel")
+				}
+				steers.Activate()
+				return orchestrator.ChatCompletionResult{
+					ChatCompletionStream: &testSteeringEventStream{
+						steers:        steers.Events(),
+						steerReceived: steerReceived,
+						release:       release,
+					},
+				}, nil
+			}
+
+			server := newResponsesWebSocketTestServer(t, process, nil)
+			conn := dialResponsesWebSocket(t, server.URL, nil)
+			defer conn.Close()
+
+			require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf(`{"type":"response.create","model":%q,"input":"hello"}`, model))))
+			_, created, err := conn.ReadMessage()
+			require.NoError(t, err)
+			require.Equal(t, "resp_initial", gjson.GetBytes(created, "response.id").String())
+
+			steer := []byte(`{"type":"response.steer","previous_response_id":"resp_initial","input":"Use the new requirement."}`)
+			require.NoError(t, conn.WriteMessage(websocket.TextMessage, steer))
+			select {
+			case got := <-steerReceived:
+				require.JSONEq(t, string(steer), string(got))
+			case <-time.After(time.Second):
+				t.Fatal("response.steer was not forwarded to the active GPT-6 request")
+			}
+
+			close(release)
+			_, completed, err := conn.ReadMessage()
+			require.NoError(t, err)
+			require.Equal(t, "response.completed", gjson.GetBytes(completed, "type").String())
+		})
 	}
-
-	server := newResponsesWebSocketTestServer(t, process, nil)
-	conn := dialResponsesWebSocket(t, server.URL, nil)
-	defer conn.Close()
-
-	require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create","model":"gpt-6-astra","input":"hello"}`)))
-	_, created, err := conn.ReadMessage()
-	require.NoError(t, err)
-	require.Equal(t, "resp_initial", gjson.GetBytes(created, "response.id").String())
-
-	steer := []byte(`{"type":"response.steer","previous_response_id":"resp_initial","input":"Use the new requirement."}`)
-	require.NoError(t, conn.WriteMessage(websocket.TextMessage, steer))
-	select {
-	case got := <-steerReceived:
-		require.JSONEq(t, string(steer), string(got))
-	case <-time.After(time.Second):
-		t.Fatal("response.steer was not forwarded to the active GPT-6 Astra request")
-	}
-
-	close(release)
-	_, completed, err := conn.ReadMessage()
-	require.NoError(t, err)
-	require.Equal(t, "response.completed", gjson.GetBytes(completed, "type").String())
 }
 
 func TestResponsesWebSocketRejectsSteeringForOtherModelsAndExtraFields(t *testing.T) {

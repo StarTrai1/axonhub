@@ -123,3 +123,5 @@ Codex 的 5 小时、7 天及上游已报告的 GPT-Reserve 窗口显示浏览�
 首个有效输出前发生 TLS `bad record MAC` 时，按上游传输失败分类并复用既有有界重试。如果已根据明确拒绝修复加密 reasoning，后续重试保留该修复和可见历史。TLS 验证不变。缺少加密错误码或精确 item 拒绝的通用 HTTP400 不会触发删除历史。上游连接或容量仍不可用时，重试仍可能失败。
 
 DevDay 的 Agents API 浏览器会话使用独立 `/v1/agents/sessions` 生命周期；Private Safety Processing 属于组织/项目开通配置，不会随 Responses 模型更新而启用。Decisions API 公告仍为有限预览，本次未找到稳定公开的请求契约。本次更新不宣称已支持这些独立服务。
+
+在上游 WebSocket 活跃期间，GPT-6 系列（包括 Sol 6.1 和本地 Fast 别名）可发送 `response.steer`。控制帧仍绑定同连接已注册的响应，并使用既有有界队列；GPT-5.6 及更早模型不开放该功能。参见[中途调整指令](https://developers.openai.com/api/docs/guides/steering)。

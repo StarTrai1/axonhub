@@ -163,7 +163,7 @@ type responsesWebSocketLane struct {
 	tail    <-chan struct{}
 	mu      sync.Mutex
 	active  bool
-	astra   bool
+	gpt6    bool
 	steer   *shared.ResponsesWebSocketSteering
 }
 
@@ -310,7 +310,7 @@ func (l *responsesWebSocketLane) begin(model string) *shared.ResponsesWebSocketS
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.active = true
-	l.astra = strings.EqualFold(strings.TrimSpace(model), "gpt-6-astra")
+	l.gpt6 = shared.IsGPT6Model(strings.TrimSuffix(strings.ToLower(strings.TrimSpace(model)), "-fast"))
 	l.steer = shared.NewResponsesWebSocketSteering(16)
 	return l.steer
 }
@@ -319,14 +319,14 @@ func (l *responsesWebSocketLane) end() {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.active = false
-	l.astra = false
+	l.gpt6 = false
 	l.steer = nil
 }
 
 func (l *responsesWebSocketLane) sendActiveEvent(message []byte) *httpclient.Error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	if !l.active || !l.astra || l.steer == nil || !l.steer.Ready() {
+	if !l.active || !l.gpt6 || l.steer == nil || !l.steer.Ready() {
 		if !l.active {
 			return responsesWebSocketRequestError(
 				"response not found on this WebSocket connection",
@@ -335,7 +335,7 @@ func (l *responsesWebSocketLane) sendActiveEvent(message []byte) *httpclient.Err
 			)
 		}
 		return responsesWebSocketRequestError(
-			"response.steer is available only for an active GPT-6 Astra response on this WebSocket connection",
+			"response.steer is available only for an active GPT-6 response on this WebSocket connection",
 			"previous_response_id",
 			"steering_not_supported",
 		)
@@ -345,7 +345,7 @@ func (l *responsesWebSocketLane) sendActiveEvent(message []byte) *httpclient.Err
 	}
 	if !l.steer.Ready() {
 		return responsesWebSocketRequestError(
-			"response.steer is available only while the upstream GPT-6 Astra WebSocket remains active",
+			"response.steer is available only while the upstream GPT-6 WebSocket remains active",
 			"previous_response_id",
 			"steering_not_supported",
 		)
