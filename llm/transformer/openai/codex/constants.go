@@ -10,6 +10,7 @@ var fastModelPairs = []fastModelPair{
 	{model: "gpt-5.6-terra", alias: "gpt-5.6-terra-fast"},
 	{model: "gpt-5.6-luna", alias: "gpt-5.6-luna-fast"},
 	{model: "gpt-6-astra", alias: "gpt-6-astra-fast"},
+	{model: "gpt-6.1-sol", alias: "gpt-6.1-sol-fast"},
 	{model: "gpt-6-sol", alias: "gpt-6-sol-fast"},
 	{model: "gpt-6-luna", alias: "gpt-6-luna-fast"},
 }
@@ -38,6 +39,7 @@ func DefaultModels() []string {
 		"gpt-5.6-terra",
 		"gpt-5.6-luna",
 		"gpt-6-astra",
+		"gpt-6.1-sol",
 		"gpt-6-sol",
 		"gpt-6-luna",
 		"gpt-reserve",
@@ -70,7 +72,7 @@ const (
 	RedirectURI = "http://localhost:1455/auth/callback"
 	Scopes      = "openid profile email offline_access"
 
-	codexDefaultVersion = "0.159.0"
+	codexDefaultVersion = "0.159.2"
 
 	// fabricatedBetaFeatures mirrors the X-Codex-Beta-Features value the current
 	// Codex CLI sends, used when a non-Codex inbound client omits the header.

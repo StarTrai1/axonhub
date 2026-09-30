@@ -2,7 +2,7 @@
 
 两个 Python 入口直接调度**本机安装的官方 Codex CLI**。每次均为新 `codex exec --json --ephemeral`，不用 resume，不拼装/伪造 Codex 的 User-Agent、身份、会话头或 TLS 指纹。协议由所安装的 CLI 生成；这保证使用真实客户端，**不代表与交互式 Codex 的工具列表、指令或配置逐字节相同，也不保证不被渠道封禁**。
 
-运行要求：Linux（使用 `/proc`、进程组和 `flock`），Python 3.11+，Codex CLI 0.155.1+。本实现已核对官方 `rust-v0.155.1` → `rust-v0.159.0` 源码，兼容 0.156.1、0.157.0、0.157.1、0.158.0 和 0.159.0。升级后先运行 `--check` 并检查官方变更。Python 仅使用标准库。
+运行要求：Linux（使用 `/proc`、进程组和 `flock`），Python 3.11+，Codex CLI 0.155.1+。本实现已核对官方 `rust-v0.155.1` → `rust-v0.159.2` 源码，兼容 0.156.1、0.157.0、0.157.1、0.158.0 、0.159.0 和 0.159.2。升级后先运行 `--check` 并检查官方变更。Python 仅使用标准库。
 
 ## 准备
 
@@ -173,3 +173,10 @@ python3 scripts/codex-probes/keepalive.py \
 ### Codex 0.159.0
 
 `codex exec --json` 参数与生命周期保持兼容。新增 opt-in `instant_interrupt` 的 WebSocket 控制帧由网关转发到当前上游连接，读完 `response.incomplete` 后续接；HTTP 上游不能承诺该 WebSocket 专有操作。CI 使用 0.158.0 / 0.159.0 × Sol/Luna 验证脚本五并发和取消清理。
+
+
+### Codex 0.159.2 与 GPT-6.1 Sol
+
+已核对官方 0.159.0 → 0.159.2 的回补：模型目录增加 gpt-6.1-sol，其他主要变化为 Windows 后台进程控制台抑制、Bedrock 目录和客户端修复。Responses wire 与 exec JSONL 接口保持兼容。当前托管矩阵使用 0.159.0 / 0.159.2 × gpt-6-sol / gpt-6.1-sol，仅连接 loopback 服务。
+
+Sol 6.1 的推理档位为 low/medium/high/xhigh/max，默认 medium；不使用 none/minimal。带工具的请求使用 Responses 出口。CLI 测试不证明真实渠道已开通该模型或能解密其他上游的 reasoning。

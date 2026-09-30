@@ -11,7 +11,7 @@ import (
 // IsGPT6Model only matches published model IDs, not unrelated provider aliases.
 func IsGPT6Model(model string) bool {
 	switch strings.ToLower(strings.TrimSpace(model)) {
-	case "gpt-6-astra", "gpt-6-sol", "gpt-6-luna":
+	case "gpt-6-astra", "gpt-6.1-sol", "gpt-6-sol", "gpt-6-luna":
 		return true
 	default:
 		return false
@@ -19,8 +19,9 @@ func IsGPT6Model(model string) bool {
 }
 
 func NormalizeGPT6Effort(model, effort string) string {
+	model = strings.ToLower(strings.TrimSpace(model))
 	if effort == llm.ReasoningEffortMinimal ||
-		(effort == llm.ReasoningEffortNone && strings.EqualFold(strings.TrimSpace(model), "gpt-6-astra")) {
+		(effort == llm.ReasoningEffortNone && (model == "gpt-6-astra" || model == "gpt-6.1-sol")) {
 		return llm.ReasoningEffortLow
 	}
 	return effort
@@ -46,6 +47,14 @@ func GPT6ResponsesNeedsNormalization(model string, body []byte) bool {
 	effort := gjson.GetBytes(body, "reasoning.effort").String()
 	if NormalizeGPT6Effort(model, effort) != effort {
 		return true
+	}
+	for _, item := range gjson.GetBytes(body, "input").Array() {
+		if item.Get("type").String() == "configuration_update" {
+			updated := item.Get("reasoning.effort").String()
+			if NormalizeGPT6Effort(model, updated) != updated {
+				return true
+			}
+		}
 	}
 	if GPT6EffectiveEffort(model, effort, body) == llm.ReasoningEffortNone {
 		return false

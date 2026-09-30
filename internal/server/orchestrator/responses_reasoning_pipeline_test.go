@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"testing"
 	"time"
@@ -168,6 +169,41 @@ func TestResponsesRejectedReasoningPipelineHonorsRetryBudget(t *testing.T) {
 	require.True(t, ok)
 	_, found := rememberedResponsesReasoningRule(scope, request.Body)
 	require.False(t, found)
+}
+
+func TestResponsesRejectedReasoningPipelineRetriesTLSWithoutLosingRecovery(t *testing.T) {
+	for _, passThrough := range []bool{false, true} {
+		for _, budget := range []int{1, 2} {
+			t.Run(fmt.Sprintf("pass-through=%t/budget=%d", passThrough, budget), func(t *testing.T) {
+				request := rejectedReasoningPipelineRequest(t, llm.APIFormatOpenAIResponse)
+				original := append([]byte(nil), request.Body...)
+				executor := &responsesReasoningPipelineExecutor{
+					failures: []error{
+						&httpclient.Error{StatusCode: 400, Body: []byte(`{"error":{"code":"invalid_encrypted_content"}}`)},
+						fmt.Errorf("HTTP stream request failed: %w", errors.New("local error: tls: bad record MAC")),
+					},
+					events: rejectedReasoningCompactionEvents(),
+				}
+				ctx := shared.WithSessionScope(t.Context(), "api_key:1:project:1")
+				state, result, err := runRejectedReasoningPipeline(t, ctx, request, executor, "tls-recovery-credential", passThrough, budget)
+				if budget == 1 {
+					require.Error(t, err)
+					require.Nil(t, result)
+					require.Len(t, executor.requests, 2)
+				} else {
+					require.NoError(t, err)
+					require.Contains(t, drainRejectedReasoningPipeline(t, result), "response.completed")
+					require.Len(t, executor.requests, 3)
+					require.JSONEq(t, string(executor.requests[1].Body), string(executor.requests[2].Body))
+				}
+				require.Empty(t, gjson.GetBytes(executor.requests[1].Body, `input.#(type=="reasoning")#`).Array())
+				require.Equal(t, original, request.Body)
+				scope, ok := responsesReasoningScope(ctx, state.CurrentCandidate.Channel, executor.requests[0])
+				require.True(t, ok)
+				t.Cleanup(func() { responsesReasoningRecoveries.Remove(scope) })
+			})
+		}
+	}
 }
 
 func rejectedReasoningPipelineRequest(t *testing.T, format llm.APIFormat) *httpclient.Request {

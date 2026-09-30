@@ -13,7 +13,7 @@ import (
 func TestGPT6SolLunaSamplingFollowsEffectiveReasoning(t *testing.T) {
 	outbound, err := NewOutboundTransformer("https://example.test/v1", "fake-key")
 	require.NoError(t, err)
-	for _, model := range []string{"gpt-6-sol", "gpt-6-luna", "gpt-6-astra"} {
+	for _, model := range []string{"gpt-6-sol", "gpt-6-luna", "gpt-6-astra", "gpt-6.1-sol"} {
 		for _, tc := range []struct {
 			name       string
 			effort     string
@@ -38,7 +38,7 @@ func TestGPT6SolLunaSamplingFollowsEffectiveReasoning(t *testing.T) {
 				request.RawRequest = &httpclient.Request{Body: body}
 				wire, err := outbound.TransformRequest(t.Context(), request)
 				require.NoError(t, err)
-				wantSample := tc.wantSample && model != "gpt-6-astra"
+				wantSample := tc.wantSample && model != "gpt-6-astra" && model != "gpt-6.1-sol"
 				for _, field := range []string{"temperature", "top_p", "top_logprobs"} {
 					require.Equal(t, wantSample, gjson.GetBytes(wire.Body, field).Exists(), field)
 				}
@@ -46,11 +46,15 @@ func TestGPT6SolLunaSamplingFollowsEffectiveReasoning(t *testing.T) {
 				require.Contains(t, include, "reasoning.encrypted_content")
 				require.Equal(t, wantSample, gjson.GetBytes(wire.Body, `include.#(=="message.output_text.logprobs")`).Exists())
 				require.Equal(t, wantSample, outbound.AllowPassThroughBody(t.Context(), request, wire))
-				if tc.effort == "none" && model != "gpt-6-astra" {
+				if tc.effort == "none" && model != "gpt-6-astra" && model != "gpt-6.1-sol" {
 					require.Equal(t, "none", gjson.GetBytes(wire.Body, "reasoning.effort").String())
 				}
 				if tc.update != "" {
-					require.Equal(t, tc.update, gjson.GetBytes(wire.Body, "input.1.reasoning.effort").String())
+					expectedUpdate := tc.update
+					if tc.update == "none" && (model == "gpt-6-astra" || model == "gpt-6.1-sol") {
+						expectedUpdate = "low"
+					}
+					require.Equal(t, expectedUpdate, gjson.GetBytes(wire.Body, "input.1.reasoning.effort").String())
 				}
 				require.Equal(t, string(body), string(request.RawRequest.Body))
 			})

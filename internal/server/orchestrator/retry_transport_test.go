@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
+	"net/url"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -11,7 +13,34 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/httpclient"
 )
+
+func TestTLSBadRecordMACRetryClassification(t *testing.T) {
+	failure := &url.Error{Op: "Post", URL: "https://example.test/v1/responses", Err: &net.OpError{
+		Op: "local error", Err: errors.New("tls: bad record MAC"),
+	}}
+	for _, scenario := range []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{name: "wrapped TLS record failure", err: fmt.Errorf("HTTP stream request failed: %w", failure), want: true},
+		{name: "peer TLS record failure", err: errors.New("remote error: tls: bad record MAC"), want: true},
+		{name: "unrelated text", err: errors.New("provider reported local error: tls: bad record MAC")},
+		{name: "certificate verification", err: errors.New("tls: failed to verify certificate: x509: certificate signed by unknown authority")},
+		{name: "HTTP 400", err: &httpclient.Error{StatusCode: 400, Body: []byte(`{"error":{"message":"local error: tls: bad record MAC"}}`)}},
+		{name: "canceled", err: errors.Join(context.Canceled, failure)},
+	} {
+		t.Run(scenario.name, func(t *testing.T) {
+			require.Equal(t, scenario.want, isRetryableTransportError(scenario.err))
+			require.Equal(t, scenario.want, IsUpstreamTransportError(scenario.err))
+			if scenario.want {
+				require.Equal(t, 502, ExtractStatusCodeFromError(ClassifyUpstreamTransportError(scenario.err)))
+			}
+		})
+	}
+}
 
 func TestHTTP2PeerResetRetryClassification(t *testing.T) {
 	for _, scenario := range []struct {

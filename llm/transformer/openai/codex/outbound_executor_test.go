@@ -142,9 +142,11 @@ func TestCodexOutbound_RejectsGPT6PassThroughBodyThatNeedsNormalization(t *testi
 		`{"model":"gpt-6-astra","input":"hi","temperature":0.7}`,
 		`{"model":"gpt-6-astra","input":"hi","reasoning":{"effort":"none"}}`,
 		`{"model":"gpt-6-astra","input":"hi","include":["message.output_text.logprobs"]}`,
+		`{"model":"gpt-6.1-sol","input":"hi","reasoning":{"effort":"none"}}`,
+		`{"model":"gpt-6.1-sol","input":[{"type":"configuration_update","reasoning":{"effort":"none"}}]}`,
 	} {
 		llmReq := &llm.Request{
-			Model:     "gpt-6-astra",
+			Model:     gjson.Get(body, "model").String(),
 			APIFormat: llm.APIFormatOpenAIResponse,
 			RawRequest: &httpclient.Request{
 				Body: []byte(body),

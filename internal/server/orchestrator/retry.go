@@ -71,6 +71,12 @@ func isRetryableTransportError(err error) bool {
 		return false
 	}
 	for cause := err; cause != nil; cause = errors.Unwrap(cause) {
+		// crypto/tls returns an unexported permanent alert for a corrupt record.
+		// Retry the request within the existing pre-output budget on a new
+		// connection; never weaken TLS verification or treat an HTTP error as TLS.
+		if cause.Error() == "local error: tls: bad record MAC" || cause.Error() == "remote error: tls: bad record MAC" {
+			return true
+		}
 		if retryableHTTP2StreamError.MatchString(cause.Error()) {
 			return true
 		}

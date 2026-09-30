@@ -15,7 +15,7 @@ import (
 
 func TestCodexFastAliasKeepsGPT6PassThroughConstraints(t *testing.T) {
 	outbound := &OutboundTransformer{}
-	for _, model := range []string{"gpt-6-sol-fast", "gpt-6-luna-fast"} {
+	for _, model := range []string{"gpt-6-sol-fast", "gpt-6-luna-fast", "gpt-6.1-sol-fast"} {
 		for _, effort := range []string{"none", "high", "minimal"} {
 			request := &llm.Request{
 				Model:      model,
@@ -30,7 +30,7 @@ func TestCodexFastAliasKeepsGPT6PassThroughConstraints(t *testing.T) {
 }
 
 func TestCodexFastAliasAfterPassThrough(t *testing.T) {
-	for _, model := range []string{"gpt-6-sol", "gpt-6-luna"} {
+	for _, model := range []string{"gpt-6-sol", "gpt-6-luna", "gpt-6.1-sol"} {
 		for _, transport := range []string{responses.TransportHTTP, responses.TransportWebSocket} {
 			for _, tier := range []string{"", "flex"} {
 				t.Run(model+"/"+transport+"/"+tier, func(t *testing.T) {
