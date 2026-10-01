@@ -28,7 +28,7 @@ function DialogOverlay({ className, ...props }: React.ComponentProps<typeof Dial
     <DialogPrimitive.Overlay
       data-slot='dialog-overlay'
       className={cn(
-        'data-[state=open]:animate-in data-[state=open]:fade-in-0 fixed inset-0 z-50 flex items-center justify-center bg-black/50',
+        'data-[state=open]:animate-dialog-in fixed inset-0 z-50 flex items-center justify-center bg-black/50',
         className
       )}
       {...props}
@@ -49,7 +49,7 @@ const DialogContent = React.forwardRef<
           ref={ref}
           data-slot='dialog-content'
           className={cn(
-            'bg-background data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 relative z-50 grid max-h-[calc(100dvh-2rem)] w-full max-w-[calc(100%-2rem)] gap-4 overflow-y-auto rounded-lg border p-6 shadow-lg duration-200 sm:max-w-lg',
+            'bg-background data-[state=open]:animate-dialog-in relative z-50 grid max-h-[calc(100dvh-2rem)] w-full max-w-[calc(100%-2rem)] gap-4 overflow-y-auto rounded-lg border p-6 shadow-lg duration-200 sm:max-w-lg',
             className
           )}
           onInteractOutside={(e) => {

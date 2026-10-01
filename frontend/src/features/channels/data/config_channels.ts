@@ -129,6 +129,8 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     channelType: 'codex',
     baseURL: 'https://chatgpt.com/backend-api/codex#',
     defaultModels: [
+      'gpt-6.1-sol',
+      'gpt-6.1-sol-fast',
       'gpt-5.2',
       'gpt-5.2-codex',
       'gpt-5.6-sol',

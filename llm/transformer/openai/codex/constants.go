@@ -15,10 +15,7 @@ var fastModelPairs = []fastModelPair{
 	{model: "gpt-6-luna", alias: "gpt-6-luna-fast"},
 }
 
-// DefaultModels returns a static list of Codex-capable model IDs.
-//
-// The ChatGPT Codex backend does not provide a stable public /models endpoint.
-// CLIProxyAPI keeps a local registry; we mirror that approach to power AxonHub "Fetch Models".
+// DefaultModels returns the static fallback when the official OAuth catalog is unavailable.
 func DefaultModels() []string {
 	models := []string{
 		"gpt-5",

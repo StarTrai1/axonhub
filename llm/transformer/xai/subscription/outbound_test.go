@@ -43,6 +43,8 @@ func TestOutboundTransformer_TransformRequest_uses_xAI_CLI_responses_identity(t 
 	require.Equal(t, CLIClientVersion, httpRequest.Headers.Get(CLIClientVersionHeader))
 	require.Equal(t, CLIClientIdentifier, httpRequest.Headers.Get(CLIClientIdentifierHeader))
 	require.Equal(t, CLIUserAgent, httpRequest.Headers.Get("User-Agent"))
+	require.Equal(t, "interactive", httpRequest.Headers.Get("X-Grok-Client-Mode"))
+	require.Equal(t, "authenticate-response", httpRequest.Headers.Get("X-Authenticateresponse"))
 	var payload map[string]any
 	require.NoError(t, json.Unmarshal(httpRequest.Body, &payload))
 	store, ok := payload["store"].(bool)
@@ -77,5 +79,19 @@ func TestOutboundTransformer_TransformRequest_rejects_non_chat_requests(t *testi
 			require.Nil(t, request)
 			require.ErrorIs(t, err, transformer.ErrInvalidRequest)
 		})
+	}
+}
+
+func TestCLIUserAgentPlatformIdentity(t *testing.T) {
+	for _, scenario := range []struct {
+		platform string
+		arch     string
+		want     string
+	}{
+		{"linux", "amd64", "linux; x86_64"},
+		{"darwin", "arm64", "macos; aarch64"},
+		{"windows", "386", "windows; x86"},
+	} {
+		require.Equal(t, "grok-pager/1.0.13 grok-shell/1.0.13 ("+scenario.want+")", cliUserAgent(scenario.platform, scenario.arch))
 	}
 }

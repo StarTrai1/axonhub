@@ -70,10 +70,8 @@ func (checker *XAISubscriptionQuotaChecker) fetchBilling(
 		WithBearerToken(accessToken).
 		WithHeader("Accept", "application/json").
 		WithHeader("Content-Type", "application/json").
-		WithHeader(subscription.CLITokenAuthHeader, subscription.CLITokenAuth).
-		WithHeader(subscription.CLIClientVersionHeader, subscription.CLIClientVersion).
-		WithHeader("User-Agent", "grok-pager/"+subscription.CLIClientVersion+" grok-shell/"+subscription.CLIClientVersion+" (macos; aarch64)").
 		Build()
+	subscription.ApplyCLIHeaders(request.Headers)
 	response, err := client.Do(ctx, request)
 	if err != nil {
 		return nil, err

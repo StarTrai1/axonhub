@@ -135,6 +135,10 @@ func newXAIBillingTestClient(t *testing.T, accessToken, weeklyBody, monthlyBody 
 		require.Equal(t, "Bearer "+accessToken, request.Header.Get("Authorization"))
 		require.Equal(t, subscription.CLITokenAuth, request.Header.Get(subscription.CLITokenAuthHeader))
 		require.Equal(t, subscription.CLIClientVersion, request.Header.Get(subscription.CLIClientVersionHeader))
+		require.Equal(t, subscription.CLIClientIdentifier, request.Header.Get(subscription.CLIClientIdentifierHeader))
+		require.Equal(t, subscription.CLIUserAgent, request.Header.Get("User-Agent"))
+		require.Equal(t, "interactive", request.Header.Get("X-Grok-Client-Mode"))
+		require.Equal(t, "authenticate-response", request.Header.Get("X-Authenticateresponse"))
 
 		body := monthlyBody
 		if request.URL.String() == subscription.BillingWeeklyURL {

@@ -68,10 +68,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, request *llm
 	}
 
 	httpRequest.Auth = &httpclient.AuthConfig{Type: httpclient.AuthTypeBearer, APIKey: credentials.AccessToken}
-	httpRequest.Headers.Set(CLITokenAuthHeader, CLITokenAuth)
-	httpRequest.Headers.Set(CLIClientVersionHeader, CLIClientVersion)
-	httpRequest.Headers.Set(CLIClientIdentifierHeader, CLIClientIdentifier)
-	httpRequest.Headers.Set("User-Agent", CLIUserAgent)
+	ApplyCLIHeaders(httpRequest.Headers)
 
 	return httpRequest, nil
 }
