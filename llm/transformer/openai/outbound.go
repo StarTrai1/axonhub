@@ -252,6 +252,10 @@ func applyGPT6Compatibility(request *Request) {
 	if request == nil || !shared.IsGPT6Model(request.Model) {
 		return
 	}
+	if request.MaxCompletionTokens == nil {
+		request.MaxCompletionTokens = request.MaxTokens
+	}
+	request.MaxTokens = nil
 	request.ReasoningEffort = shared.NormalizeGPT6Effort(request.Model, request.ReasoningEffort)
 	if request.ReasoningEffort == llm.ReasoningEffortNone {
 		return
@@ -269,6 +273,9 @@ func (t *OutboundTransformer) AllowPassThroughBody(_ context.Context, request *l
 	var payload Request
 	if json.Unmarshal(request.RawRequest.Body, &payload) != nil {
 		return true
+	}
+	if payload.MaxTokens != nil {
+		return false
 	}
 	effort := shared.NormalizeGPT6Effort(request.Model, payload.ReasoningEffort)
 	if effort != payload.ReasoningEffort {

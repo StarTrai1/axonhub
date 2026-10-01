@@ -49,3 +49,30 @@ func TestSol61ChatToolCallsRequireResponses(t *testing.T) {
 		require.Nil(t, wire)
 	}
 }
+
+func TestGPT6ChatCompletionTokenLimit(t *testing.T) {
+	outbound, err := NewOutboundTransformer("https://example.test/v1", "fake-key")
+	require.NoError(t, err)
+	for _, model := range []string{"gpt-6-astra", "gpt-6-sol", "gpt-6-luna", "gpt-6.1-sol"} {
+		for _, limits := range []struct {
+			fields string
+			want   int64
+		}{
+			{`"max_tokens":123`, 123},
+			{`"max_tokens":123,"max_completion_tokens":456`, 456},
+			{`"max_completion_tokens":456`, 456},
+		} {
+			t.Run(model+"/"+limits.fields, func(t *testing.T) {
+				body := []byte(fmt.Sprintf(`{"model":%q,%s,"messages":[{"role":"user","content":"hello"}]}`, model, limits.fields))
+				request, err := NewInboundTransformer().TransformRequest(t.Context(), &httpclient.Request{Body: body, Headers: http.Header{"Content-Type": {"application/json"}}})
+				require.NoError(t, err)
+				wire, err := outbound.TransformRequest(t.Context(), request)
+				require.NoError(t, err)
+				require.False(t, gjson.GetBytes(wire.Body, "max_tokens").Exists())
+				require.Equal(t, limits.want, gjson.GetBytes(wire.Body, "max_completion_tokens").Int())
+				require.Equal(t, !gjson.GetBytes(body, "max_tokens").Exists(), outbound.(*OutboundTransformer).AllowPassThroughBody(t.Context(), request, wire))
+				require.Equal(t, body, request.RawRequest.Body)
+			})
+		}
+	}
+}

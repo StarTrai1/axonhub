@@ -14,7 +14,7 @@ const (
 	ChatToolOriginalsMetadataKey = "responses_chat_tool_originals_v1"
 )
 
-// ResponsesChatToolAliases assigns bounded Chat names without changing native
+// ResponsesChatToolAliases assigns valid bounded Chat/Anthropic names without changing native
 // Responses identities. Reserve short declarations, local names and history
 // first so a generated alias can never take another tool's existing name.
 func ResponsesChatToolAliases(req *llm.Request) map[string]string {
@@ -22,7 +22,9 @@ func ResponsesChatToolAliases(req *llm.Request) map[string]string {
 	long := make(map[string]bool)
 	add := func(name string) {
 		reserved[name] = true
-		if len(name) > 64 {
+		if len(name) > 64 || strings.IndexFunc(name, func(r rune) bool {
+			return !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '_' || r == '-')
+		}) >= 0 {
 			long[name] = true
 		}
 	}

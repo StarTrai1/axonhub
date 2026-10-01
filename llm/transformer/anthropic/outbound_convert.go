@@ -27,6 +27,7 @@ func convertToAnthropicRequestWithConfig(chatReq *llm.Request, config *Config) *
 	req.ToolChoice = convertToolChoiceToAnthropic(chatReq.ToolChoice)
 	req.ToolChoice = applyParallelToolCalls(req.ToolChoice, chatReq.ParallelToolCalls, len(req.Tools) > 0)
 	req.Messages = convertMessages(chatReq, config)
+	mapResponsesToolNames(chatReq, req)
 	req.Messages = dropUnsupportedFableAssistantPrefill(chatReq.Model, req.Messages)
 	req.StopSequences = convertStopSequences(chatReq.Stop)
 
@@ -37,6 +38,40 @@ func convertToAnthropicRequestWithConfig(chatReq *llm.Request, config *Config) *
 	}
 
 	return req
+}
+
+// Reuse the immutable inbound alias map so declarations, replay and responses
+// share one identity even when a Responses namespace exceeds provider name limits.
+func mapResponsesToolNames(src *llm.Request, dst *MessageRequest) {
+	if src.APIFormat != llm.APIFormatOpenAIResponse && src.APIFormat != llm.APIFormatOpenAIResponseWebSocket {
+		return
+	}
+	mapName := func(name string) string {
+		return shared.MappedChatToolName(src.TransformerMetadata, shared.ChatToolAliasesMetadataKey, name)
+	}
+	for i := range dst.Tools {
+		if dst.Tools[i].Type == "" {
+			dst.Tools[i].Name = mapName(dst.Tools[i].Name)
+		}
+	}
+	for i := range dst.Messages {
+		for j := range dst.Messages[i].Content.MultipleContent {
+			block := &dst.Messages[i].Content.MultipleContent[j]
+			if block.Type == "tool_use" && block.Name != nil {
+				block.Name = lo.ToPtr(mapName(*block.Name))
+			}
+		}
+	}
+	if dst.ToolChoice != nil && dst.ToolChoice.Type == "tool" && dst.ToolChoice.Name != nil {
+		name := *dst.ToolChoice.Name
+		if src.ToolChoice != nil && src.ToolChoice.NamedToolChoice != nil {
+			function := src.ToolChoice.NamedToolChoice.Function
+			if function.Namespace != "" {
+				name = function.Namespace + "__" + function.Name
+			}
+		}
+		dst.ToolChoice.Name = lo.ToPtr(mapName(name))
+	}
 }
 
 func dropUnsupportedFableAssistantPrefill(model string, messages []MessageParam) []MessageParam {
