@@ -47,7 +47,9 @@ func TestFunctionAllowlistAcrossConvertedProviders(t *testing.T) {
 					require.Len(t, decls, 1)
 					require.Equal(t, "allowed", decls[0].Get("name").String())
 					require.Equal(t, int64(7), decls[0].Get("parametersJsonSchema.properties.value.minimum").Int())
-					want := "AUTO"
+					// The allowed declaration is strict, so optional selection also
+					// requests schema validation without widening the allowlist.
+					want := "VALIDATED"
 					if mode == "required" {
 						want = "ANY"
 					}
