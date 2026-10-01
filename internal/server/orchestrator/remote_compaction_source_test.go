@@ -157,15 +157,19 @@ func TestResponsesRejectedNativeSourceBeforePassThrough(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, state.RawStreamCh)
 	t.Cleanup(func() { _ = fanned.Close() })
-	for got := range state.RawStreamCh {
-		require.Same(t, event, got)
+	rawStream, err := applyPassThroughStream(outbound, nil).OnInboundRawStream(ctx, fanned)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = rawStream.Close() })
+	count := 0
+	for rawStream.Next() {
+		count++
+		require.Same(t, event, rawStream.Current())
 		source, loadErr := adapter.loadNativeCompactionSource(ctx, ref, state)
 		require.NoError(t, loadErr)
 		require.NotNil(t, source, "source must be durable as soon as the client can receive the checkpoint")
 	}
-	require.True(t, fanned.Next())
-	require.False(t, fanned.Next())
-	require.NoError(t, fanned.Err())
+	require.Equal(t, 1, count, "the checkpoint must actually be delivered")
+	require.NoError(t, rawStream.Err())
 }
 
 func TestResponsesRejectedNativeSourceBackfillsOldLogs(t *testing.T) {

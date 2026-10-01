@@ -1803,6 +1803,17 @@ func processPassThroughStream(
 ) []*httpclient.StreamEvent {
 	t.Helper()
 
+	return processPassThroughStreamWithTimeout(t, process, request, 2*time.Second)
+}
+
+func processPassThroughStreamWithTimeout(
+	t *testing.T,
+	process func(context.Context, *httpclient.Request) (*pipeline.Result, error),
+	request *httpclient.Request,
+	timeout time.Duration,
+) []*httpclient.StreamEvent {
+	t.Helper()
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -1838,7 +1849,7 @@ func processPassThroughStream(
 		require.NoError(t, outcome.err)
 
 		return outcome.events
-	case <-time.After(2 * time.Second):
+	case <-time.After(timeout):
 		cancel()
 
 		select {

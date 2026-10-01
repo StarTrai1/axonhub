@@ -108,7 +108,8 @@ func TestPassThroughAnthropicStream_HTTPRetryIsolation(t *testing.T) {
 	}))
 	defer server.Close()
 	process, request := rawBudgetPipeline(t, httpclient.NewHttpClientWithClient(server.Client()), server.URL)
-	events := processPassThroughStream(t, process, request)
+	// Include the production overload backoff (2 seconds plus jitter).
+	events := processPassThroughStreamWithTimeout(t, process, request, 5*time.Second)
 	require.EqualValues(t, 2, attempts.Load())
 	require.Len(t, events, len(success))
 	for i, event := range events {

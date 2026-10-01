@@ -50,16 +50,18 @@ func TestResponsesSessionPublishesNativeHistoryBeforePassThroughTerminal(t *test
 			require.NoError(t, err)
 			defer pipelineStream.Close()
 
+			rawStream, err := applyPassThroughStream(outbound, nil).OnInboundRawStream(ctx, pipelineStream)
+			require.NoError(t, err)
+			defer rawStream.Close()
 			terminal := false
-			for !terminal {
-				select {
-				case event, open := <-outbound.state.RawStreamCh:
-					require.True(t, open, "terminal event must reach the pass-through consumer")
-					terminal = event.Type == "response.completed"
-				case <-ctx.Done():
-					t.Fatal("pass-through terminal was not published")
+			for rawStream.Next() {
+				if rawStream.Current().Type == "response.completed" {
+					terminal = true
+					break
 				}
 			}
+			require.True(t, terminal, "terminal event must reach the pass-through consumer")
+			require.NoError(t, rawStream.Err())
 
 			prepared, _ := store.prepare(ctx, []byte(`{"previous_response_id":"resp_native","input":[{"type":"function_call_output","call_id":"call_native","output":"done"}]}`))
 			require.False(t, gjson.GetBytes(prepared, "previous_response_id").Exists())
@@ -69,8 +71,6 @@ func TestResponsesSessionPublishesNativeHistoryBeforePassThroughTerminal(t *test
 			require.Equal(t, "fc_native", gjson.GetBytes(prepared, "input.2.id").String())
 			require.Equal(t, "call_native", gjson.GetBytes(prepared, "input.3.call_id").String())
 			require.Nil(t, store.lookup(shared.WithSessionScope(ctx, "other-owner"), "resp_native"))
-			_, err = streams.All(pipelineStream)
-			require.NoError(t, err)
 		})
 	}
 }
