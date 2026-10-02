@@ -133,6 +133,39 @@ func (handlers *PlaygroundHandlers) HandleError(rawErr error) *PlaygroundRespons
 		}
 	}
 
+	// Prefer the transformed detail over an underlying raw upstream error.
+	if llmErr, ok := xerrors.As[*llm.ResponseError](rawErr); ok && llmErr != nil {
+		if llmErr.Detail.Message == "" {
+			return &PlaygroundResponseError{
+				Status: llmErr.StatusCode,
+				Error: struct {
+					Code    int    `json:"code,omitempty"`
+					Message string `json:"message"`
+				}{
+					Code:    llmErr.StatusCode,
+					Message: http.StatusText(llmErr.StatusCode),
+				},
+			}
+		}
+
+		// Try parse provider error code if present and numeric; otherwise use HTTP status.
+		parsedCode, _ := strconv.Atoi(llmErr.Detail.Code)
+		if parsedCode == 0 {
+			parsedCode = llmErr.StatusCode
+		}
+
+		return &PlaygroundResponseError{
+			Status: llmErr.StatusCode,
+			Error: struct {
+				Code    int    `json:"code,omitempty"`
+				Message string `json:"message"`
+			}{
+				Code:    parsedCode,
+				Message: llmErr.Detail.Message,
+			},
+		}
+	}
+
 	if httpErr, ok := xerrors.As[*httpclient.Error](rawErr); ok {
 		// Prefer upstream error message when available
 		msg := tryExtractUpstreamErrorMessage(httpErr.Body)
@@ -162,38 +195,6 @@ func (handlers *PlaygroundHandlers) HandleError(rawErr error) *PlaygroundRespons
 			}{
 				Code:    http.StatusBadRequest,
 				Message: http.StatusText(http.StatusBadRequest),
-			},
-		}
-	}
-
-	if llmErr, ok := xerrors.As[*llm.ResponseError](rawErr); ok && llmErr != nil {
-		if llmErr.Detail.Message == "" {
-			return &PlaygroundResponseError{
-				Status: llmErr.StatusCode,
-				Error: struct {
-					Code    int    `json:"code,omitempty"`
-					Message string `json:"message"`
-				}{
-					Code:    llmErr.StatusCode,
-					Message: http.StatusText(llmErr.StatusCode),
-				},
-			}
-		}
-
-		// Try parse provider error code if present and numeric; otherwise use HTTP status.
-		parsedCode, _ := strconv.Atoi(llmErr.Detail.Code)
-		if parsedCode == 0 {
-			parsedCode = llmErr.StatusCode
-		}
-
-		return &PlaygroundResponseError{
-			Status: llmErr.StatusCode,
-			Error: struct {
-				Code    int    `json:"code,omitempty"`
-				Message string `json:"message"`
-			}{
-				Code:    parsedCode,
-				Message: llmErr.Detail.Message,
 			},
 		}
 	}

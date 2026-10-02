@@ -211,6 +211,35 @@ func (t *InboundTransformer) TransformError(ctx context.Context, rawErr error) *
 		}
 	}
 
+	if isLLMError {
+		statusCode := llmErr.StatusCode
+		if statusCode == 0 && llmErr.Detail.Code == "context_length_exceeded" {
+			statusCode = http.StatusBadRequest
+		} else if statusCode < http.StatusBadRequest || statusCode > 599 {
+			statusCode = http.StatusBadGateway
+		}
+
+		// The transformer owns the client-facing detail. A raw Cause remains
+		// available for classification, but must not override a sanitized body.
+		var headers http.Header
+		if cause, ok := errors.AsType[*httpclient.Error](llmErr.Cause); ok && cause != nil {
+			headers = cause.Headers.Clone()
+			if headers != nil {
+				headers.Del("Content-Length")
+				headers.Del("Content-Encoding")
+				headers.Del("Transfer-Encoding")
+				headers.Set("Content-Type", "application/json")
+			}
+		}
+
+		return &httpclient.Error{
+			StatusCode: statusCode,
+			Status:     http.StatusText(statusCode),
+			Body:       xjson.MustMarshal(&OpenAIError{Detail: llmErr.Detail}),
+			Headers:    headers,
+		}
+	}
+
 	if httpErr, ok := errors.AsType[*httpclient.Error](rawErr); ok {
 		if httpErr == nil {
 			return &httpclient.Error{
@@ -229,21 +258,6 @@ func (t *InboundTransformer) TransformError(ctx context.Context, rawErr error) *
 			StatusCode: http.StatusBadRequest,
 			Status:     http.StatusText(http.StatusBadRequest),
 			Body:       xjson.MustMarshal(&OpenAIError{Detail: llm.ErrorDetail{Message: rawErr.Error(), Type: "invalid_request_error"}}),
-		}
-	}
-
-	if isLLMError {
-		statusCode := llmErr.StatusCode
-		if statusCode == 0 && llmErr.Detail.Code == "context_length_exceeded" {
-			statusCode = http.StatusBadRequest
-		} else if statusCode < http.StatusBadRequest || statusCode > 599 {
-			statusCode = http.StatusBadGateway
-		}
-
-		return &httpclient.Error{
-			StatusCode: statusCode,
-			Status:     http.StatusText(statusCode),
-			Body:       xjson.MustMarshal(&OpenAIError{Detail: llmErr.Detail}),
 		}
 	}
 
