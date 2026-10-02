@@ -32,6 +32,15 @@ func (t *SystemOneInboundTransformer) TransformRequest(
 		return nil, fmt.Errorf("%w: request body is empty", transformer.ErrInvalidRequest)
 	}
 
+	// Validate the whole body before decoding: Decoder.Decode alone accepts a
+	// second JSON value or garbage that would otherwise survive raw pass-through.
+	if !json.Valid(httpReq.Body) {
+		return nil, fmt.Errorf("%w: systemone request must contain a single JSON value", transformer.ErrInvalidRequest)
+	}
+	if err := validateSystemOneEnvelopeKeys(httpReq.Body); err != nil {
+		return nil, err
+	}
+
 	decoder := json.NewDecoder(bytes.NewReader(httpReq.Body))
 	decoder.UseNumber()
 	var wireReq systemOneWireRequest
@@ -134,10 +143,16 @@ func (t *SystemOneInboundTransformer) TransformError(
 		}
 	}
 
-	return &httpclient.Error{
-		StatusCode: http.StatusInternalServerError,
-		Body:       []byte(fmt.Sprintf(`{"error":{"message":%q,"type":"api_error"}}`, err.Error())),
+	statusCode := http.StatusInternalServerError
+	errorType := "api_error"
+	if errors.Is(err, transformer.ErrInvalidRequest) {
+		statusCode = http.StatusBadRequest
+		errorType = "invalid_request_error"
 	}
+	body, _ := json.Marshal(map[string]any{
+		"error": map[string]string{"message": err.Error(), "type": errorType},
+	})
+	return &httpclient.Error{StatusCode: statusCode, Body: body}
 }
 
 func (t *SystemOneInboundTransformer) TransformStream(

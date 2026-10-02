@@ -10,6 +10,7 @@ import (
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/transformer"
 )
 
 func TestSystemOneInboundTransformer_TransformRequest(t *testing.T) {
@@ -69,6 +70,47 @@ func TestSystemOneInboundTransformer_TransformRequest(t *testing.T) {
 	}`)
 	_, err = transformer.TransformRequest(ctx, &httpclient.Request{Method: http.MethodPost, Body: streamBody})
 	require.Error(t, err)
+}
+
+func TestSystemOneInboundTransformer_RejectsTrailingJSON(t *testing.T) {
+	adapter := NewSystemOneInboundTransformer()
+	body := `{"model":"jev-latest","state":{"id":9007199254740993},"questions":{"ok":{"type":"noul","instructions":"Is it valid?"}}}`
+	for _, suffix := range []string{`{}`, `null`, `false`, `garbage`} {
+		t.Run(suffix, func(t *testing.T) {
+			request, err := adapter.TransformRequest(t.Context(), &httpclient.Request{Body: []byte(body + suffix)})
+			require.Nil(t, request)
+			require.ErrorIs(t, err, transformer.ErrInvalidRequest)
+			require.Equal(t, http.StatusBadRequest, adapter.TransformError(t.Context(), err).StatusCode)
+		})
+	}
+	request, err := adapter.TransformRequest(t.Context(), &httpclient.Request{Body: []byte(body + " \n\t")})
+	require.NoError(t, err)
+	require.Equal(t, json.Number("9007199254740993"), request.SystemOne.State.(map[string]any)["id"])
+}
+
+func TestSystemOneInboundTransformer_RejectsAmbiguousEnvelope(t *testing.T) {
+	adapter := NewSystemOneInboundTransformer()
+	prefix := `{"model":"jev-latest","state":{"stream":true,"Stream":false},"questions":{"ok":{"type":"noul","instructions":"Is it valid?"}}`
+	for _, extra := range []string{
+		`,"stream":true,"stream":false`,
+		`,"stream":true,"Stream":false`,
+		`,"stream":true,"ſtream":false`,
+		`,"Model":"another-model"`,
+		`,"model":"another-model"`,
+	} {
+		t.Run(extra, func(t *testing.T) {
+			request, err := adapter.TransformRequest(t.Context(), &httpclient.Request{Body: []byte(prefix + extra + "}")})
+			require.Nil(t, request)
+			require.ErrorIs(t, err, transformer.ErrInvalidRequest)
+			require.Equal(t, http.StatusBadRequest, adapter.TransformError(t.Context(), err).StatusCode)
+		})
+	}
+	// Arbitrary keys in caller state and unknown extension fields remain valid.
+	request, err := adapter.TransformRequest(t.Context(), &httpclient.Request{
+		Body: []byte(prefix + `,"stream":false,"extension":{"Model":"opaque"}}`),
+	})
+	require.NoError(t, err)
+	require.Equal(t, map[string]any{"stream": true, "Stream": false}, request.SystemOne.State)
 }
 
 func TestSystemOneInboundTransformer_TransformResponse(t *testing.T) {

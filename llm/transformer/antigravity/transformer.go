@@ -452,7 +452,11 @@ func (t *Transformer) TransformResponse(ctx context.Context, httpResp *httpclien
 	}
 
 	if httpResp.StatusCode >= 400 {
-		return nil, fmt.Errorf("HTTP error %d: %s", httpResp.StatusCode, string(httpResp.Body))
+		return nil, t.TransformError(ctx, &httpclient.Error{
+			StatusCode: httpResp.StatusCode,
+			Headers:    httpResp.Headers,
+			Body:       httpResp.Body,
+		})
 	}
 
 	// Antigravity returns { "response": { "candidates": [...] } }
@@ -478,12 +482,6 @@ func (t *Transformer) TransformResponse(ctx context.Context, httpResp *httpclien
 
 	// Use Gemini transformer to convert response
 	return t.geminiTransformer.TransformResponse(ctx, fakeResp)
-}
-
-// TransformError transforms HTTP error.
-func (t *Transformer) TransformError(ctx context.Context, rawErr *httpclient.Error) *llm.ResponseError {
-	// Delegate to Gemini transformer
-	return t.geminiTransformer.TransformError(ctx, rawErr)
 }
 
 // SetAPIKey updates the API key.
