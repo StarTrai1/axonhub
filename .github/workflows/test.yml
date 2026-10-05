@@ -15,6 +15,19 @@ on:
 env:
   GO111MODULE: on
 jobs:
+  test-windows-websocket-proxy:
+    name: Windows WebSocket SOCKS and reset recovery (loopback only)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v7
+        with:
+          go-version: stable
+      - name: Verify Winsock classification and real WSS through SOCKS
+        run: go test ./internal/server/orchestrator -run '^(TestWindowsWebSocketConnectionReset|TestWebSocketSOCKSChannelRetry|TestRetryTransportClassification|TestRetryTransportPipeline)$' -count=1 -v
+
   test-codex-probe-scripts:
     name: Test Codex probe scripts (offline)
     runs-on: ubuntu-latest

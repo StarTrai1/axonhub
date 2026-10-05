@@ -49,7 +49,8 @@ func IsUpstreamTransportError(err error) bool {
 		errors.Is(err, llm.ErrStreamIncomplete) ||
 		errors.Is(err, ErrStreamIncomplete) ||
 		errors.Is(err, syscall.ECONNRESET) ||
-		errors.Is(err, syscall.EPIPE) {
+		errors.Is(err, syscall.EPIPE) ||
+		isPlatformConnectionResetError(err) {
 		return true
 	}
 

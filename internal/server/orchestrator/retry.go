@@ -70,6 +70,9 @@ func isRetryableTransportError(err error) bool {
 	if ExtractStatusCodeFromError(err) != 0 {
 		return false
 	}
+	if isPlatformConnectionResetError(err) {
+		return true
+	}
 	for cause := err; cause != nil; cause = errors.Unwrap(cause) {
 		// crypto/tls returns an unexported permanent alert for a corrupt record.
 		// Retry the request within the existing pre-output budget on a new
