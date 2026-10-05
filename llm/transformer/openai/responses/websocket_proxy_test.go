@@ -168,6 +168,8 @@ func TestWebSocketSOCKSCancellation(t *testing.T) {
 	defer cancel()
 	done := make(chan error, 1)
 	go func() {
+		defer close(done)
+		defer cancel()
 		defer func() {
 			if recovered := recover(); recovered != nil {
 				t.Errorf("SOCKS cancellation fixture panic: %v", recovered)

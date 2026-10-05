@@ -278,6 +278,7 @@ func (f *socksRetryFixture) serve(conn net.Conn, attempt int32) error {
 
 type socksRetryResponseWriter struct {
 	*httptest.ResponseRecorder
+
 	conn   net.Conn
 	reader *bufio.Reader
 }

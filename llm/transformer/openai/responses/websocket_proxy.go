@@ -28,7 +28,7 @@ func webSocketDialerWithProxy(ctx context.Context, dialer *websocket.Dialer, wsU
 	case "wss":
 		u.Scheme = "https"
 	}
-	request := (&http.Request{Method: http.MethodGet, URL: u, Header: headers.Clone()}).WithContext(ctx)
+	request := (&http.Request{Method: http.MethodGet, URL: u, Host: u.Host, Header: headers.Clone()}).WithContext(ctx)
 	proxyURL, err := dialer.Proxy(request)
 	if err != nil {
 		return nil, err
