@@ -17,6 +17,7 @@ func TestInferResponseErrorStatusCode(t *testing.T) {
 		message   string
 		want      int
 	}{
+		{name: "Google resource exhausted", errorType: "RESOURCE_EXHAUSTED", want: http.StatusTooManyRequests},
 		{name: "rate limit code", code: "rate_limit_exceeded", want: http.StatusTooManyRequests},
 		{name: "Codex usage limit type", errorType: "usage_limit_reached", want: http.StatusTooManyRequests},
 		{name: "flow slow down", code: "slow_down", want: http.StatusTooManyRequests},
