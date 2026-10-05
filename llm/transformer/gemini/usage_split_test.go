@@ -43,3 +43,19 @@ func TestSplitUsageSnapshotsPreserveMissingFields(t *testing.T) {
 	require.Equal(t, "MAX_TOKENS", response.Candidates[0].FinishReason)
 	require.EqualValues(t, 100, meta.Usage.PromptTokens)
 }
+
+func TestStreamUsageInvalidChunkDoesNotMutateSnapshot(t *testing.T) {
+	previous := &UsageMetadata{PromptTokenCount: 100}
+	_, err := unmarshalStreamResponse([]byte(`{"usageMetadata":{"promptTokenCount":200},"candidates":"invalid"}`), previous)
+	require.Error(t, err)
+	require.EqualValues(t, 100, previous.PromptTokenCount)
+}
+
+func TestStreamUsageExplicitNullCostClearsSnapshot(t *testing.T) {
+	var previous UsageMetadata
+	require.NoError(t, json.Unmarshal([]byte(`{"cost":"0.25"}`), &previous))
+	response, err := unmarshalStreamResponse([]byte(`{"usageMetadata":{"cost":null}}`), &previous)
+	require.NoError(t, err)
+	require.Nil(t, response.UsageMetadata.Cost)
+	require.NotNil(t, previous.Cost)
+}

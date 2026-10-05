@@ -93,7 +93,10 @@ func (t *Transformer) inBandError(ctx context.Context, body []byte) error {
 	}
 	status := detail.Code
 	if status < 400 || status > 599 {
-		status = http.StatusBadGateway
+		status = llm.InferResponseErrorStatusCode("", detail.Status, detail.Message)
+		if status == 0 {
+			status = http.StatusBadGateway
+		}
 	}
 	return t.TransformError(ctx, &httpclient.Error{StatusCode: status, Body: append([]byte(nil), body...)})
 }

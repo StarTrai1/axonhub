@@ -35,13 +35,13 @@ var (
 )
 
 type responsesRejectedStatusRule struct {
-	itemType         string
-	index            int
-	field            string
-	dropItem         bool
+	itemType          string
+	index             int
+	field             string
+	dropItem          bool
 	detachReasoningID bool
-	metadataScope    *responsesMetadataCapabilityKey
-	resourceScope    *responsesMetadataCapabilityKey
+	metadataScope     *responsesMetadataCapabilityKey
+	resourceScope     *responsesMetadataCapabilityKey
 	reasoningScope    *responsesReasoningRecoveryScope
 	reasoningHashes   map[[sha256.Size]byte]struct{}
 

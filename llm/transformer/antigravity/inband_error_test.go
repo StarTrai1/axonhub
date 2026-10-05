@@ -34,7 +34,7 @@ func TestInBandErrorsPreserveStatusAndSanitizeIdentity(t *testing.T) {
 					require.True(t, errors.As(failure, &converted))
 					want := status
 					if want == 0 {
-						want = 502
+						want = 429
 					}
 					require.Equal(t, want, converted.StatusCode)
 					require.Equal(t, "Quota for projects/***", converted.Detail.Message)

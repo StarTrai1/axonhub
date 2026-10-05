@@ -45,8 +45,8 @@ func AggregateStreamChunks(
 			continue
 		}
 
-		geminiResp := GenerateContentResponse{UsageMetadata: usage}
-		if err := json.Unmarshal(chunk.Data, &geminiResp); err != nil {
+		geminiResp, err := unmarshalStreamResponse(chunk.Data, usage)
+		if err != nil {
 			continue // Skip invalid chunks
 		}
 		if err := geminiInBandError(geminiResp.Error); err != nil {

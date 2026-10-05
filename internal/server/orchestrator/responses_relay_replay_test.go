@@ -34,7 +34,10 @@ func TestResponsesRejectedRelayReplayPreservesCiphertextAndHistory(t *testing.T)
 			}
 			ctx := shared.WithSessionScope(t.Context(), "relay-replay-owner")
 			state, result, err := runRejectedReasoningPipeline(t, ctx, request, executor, "relay-replay-credential", passThrough, 1,
-				func(*PersistenceState, *PersistentOutboundTransformer) pipeline.Middleware { return &relayReplayTestDestination{} })
+				func(*PersistenceState, *PersistentOutboundTransformer) pipeline.Middleware {
+					return &relayReplayTestDestination{}
+				},
+			)
 			require.NoError(t, err)
 			drainRejectedReasoningPipeline(t, result)
 			require.Len(t, executor.requests, 2)
@@ -64,7 +67,10 @@ func TestResponsesRejectedRelayReplaySharesBudgetAndStops(t *testing.T) {
 		request.Body = []byte(responsesResourceHistoryFixture)
 		executor := &responsesReasoningPipelineExecutor{failures: []error{opaqueRelayReplayError(), opaqueRelayReplayError()}}
 		_, _, err := runRejectedReasoningPipeline(t, t.Context(), request, executor, "relay-replay-bounded", true, retries,
-			func(*PersistenceState, *PersistentOutboundTransformer) pipeline.Middleware { return &relayReplayTestDestination{} })
+			func(*PersistenceState, *PersistentOutboundTransformer) pipeline.Middleware {
+				return &relayReplayTestDestination{}
+			},
+		)
 		require.Error(t, err)
 		want := 2
 		if retries == 0 {

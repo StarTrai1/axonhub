@@ -2,7 +2,6 @@ package gemini
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/google/uuid"
 	"github.com/samber/lo"
@@ -60,8 +59,8 @@ func (t *OutboundTransformer) transformStreamChunkWithState(
 	}
 
 	// Parse the Gemini response chunk
-	resp := GenerateContentResponse{UsageMetadata: state.usage}
-	if err := json.Unmarshal(event.Data, &resp); err != nil {
+	resp, err := unmarshalStreamResponse(event.Data, state.usage)
+	if err != nil {
 		return nil, err
 	}
 	state.usage = resp.UsageMetadata
