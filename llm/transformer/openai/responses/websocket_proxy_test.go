@@ -159,3 +159,59 @@ func TestNormalizeWebSocketProxyPreservesSourceAndErrors(t *testing.T) {
 	require.ErrorIs(t, err, failure)
 	require.Nil(t, normalizeWebSocketProxy(nil))
 }
+
+func TestWebSocketSOCKSCancellation(t *testing.T) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = listener.Close() })
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	done := make(chan error, 1)
+	go func() {
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				t.Errorf("SOCKS cancellation fixture panic: %v", recovered)
+			}
+		}()
+		conn, err := listener.Accept()
+		if err != nil {
+			done <- err
+			return
+		}
+		defer conn.Close()
+		_ = conn.SetDeadline(time.Now().Add(5 * time.Second))
+		header := make([]byte, 2)
+		if _, err := io.ReadFull(conn, header); err != nil {
+			done <- err
+			return
+		}
+		if _, err := io.CopyN(io.Discard, conn, int64(header[1])); err != nil {
+			done <- err
+			return
+		}
+		// Cancel while the proxy deliberately withholds its greeting reply.
+		// Cancellation must close the connection without waiting for the full
+		// WebSocket handshake timeout or opening a direct connection.
+		cancel()
+		_, err = conn.Read(header[:1])
+		if err == nil {
+			done <- errors.New("SOCKS connection continued after cancellation")
+			return
+		}
+		if networkErr, ok := err.(net.Error); ok && networkErr.Timeout() {
+			done <- err
+			return
+		}
+		done <- nil
+	}()
+	executor := NewWebSocketExecutor(httpclient.NewHttpClientWithProxy(&httpclient.ProxyConfig{
+		Type: httpclient.ProxyTypeURL, URL: "socks5://" + listener.Addr().String(),
+	}))
+	t.Cleanup(func() { _ = executor.Close() })
+	_, err = executor.DoStream(ctx, &httpclient.Request{
+		Method: http.MethodPost, URL: "https://unresolvable.invalid/v1/responses",
+		Body: []byte(`{"model":"gpt-6.1-sol","input":"hello","stream":true}`),
+	})
+	require.ErrorIs(t, err, context.Canceled)
+	require.NoError(t, <-done)
+}

@@ -589,6 +589,10 @@ func (e *WebSocketExecutor) dial(ctx context.Context, request *httpclient.Reques
 	if dialer == nil {
 		dialer = websocket.DefaultDialer
 	}
+	dialer, err := webSocketDialerWithProxy(ctx, dialer, wsURL, headers)
+	if err != nil {
+		return nil, newWebSocketDialError(request, nil, err)
+	}
 
 	conn, resp, err := dialer.DialContext(ctx, wsURL, headers)
 	if resp != nil {
