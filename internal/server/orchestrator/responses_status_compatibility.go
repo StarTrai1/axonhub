@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -34,14 +35,15 @@ var (
 )
 
 type responsesRejectedStatusRule struct {
-	itemType        string
-	index           int
-	field           string
-	dropItem        bool
-	metadataScope   *responsesMetadataCapabilityKey
-	resourceScope   *responsesMetadataCapabilityKey
-	reasoningScope  *responsesReasoningRecoveryScope
-	reasoningHashes map[[sha256.Size]byte]struct{}
+	itemType         string
+	index            int
+	field            string
+	dropItem         bool
+	detachReasoningID bool
+	metadataScope    *responsesMetadataCapabilityKey
+	resourceScope    *responsesMetadataCapabilityKey
+	reasoningScope    *responsesReasoningRecoveryScope
+	reasoningHashes   map[[sha256.Size]byte]struct{}
 
 	// Only an exact reasoning rejection or previously successful scoped recovery
 	// may preserve an opaque native checkpoint while repairing reasoning items.
@@ -154,10 +156,16 @@ func (m *responsesRejectedStatusCompatibilityMiddleware) OnOutboundRawRequest(
 		return request, nil
 	}
 
-	if hasReasoningScope {
+	if hasReasoningScope && !hasResponsesRelayReplayRule(rules) {
 		m.recoveredReasoning = newResponsesReasoningRecovery(reasoningScope, request.Body, body)
 	}
 	request.Body = body
+	if len(request.JSONBody) > 0 {
+		request.JSONBody = body
+	}
+	if hasResponsesRelayReplayRule(rules) {
+		request.Headers.Del(codexTurnStateHeader)
+	}
 	log.Debug(ctx, "adapted upstream-rejected Responses input state",
 		log.Int("channel_id", channel.ID),
 		log.String("channel", channel.Name))
@@ -178,10 +186,24 @@ func (m *responsesRejectedStatusCompatibilityMiddleware) OnOutboundRawError(ctx 
 	}
 
 	rule, ok := responsesRejectedStatusRuleFromError(err, state.RawProviderRequest.Body)
+	if !ok && ctx.Err() == nil && channel.Type == entchannel.TypeCodex && !channel.Credentials.IsOAuth() &&
+		state.RawProviderRequest.APIFormat == string(llm.APIFormatOpenAIResponse) {
+		destination, parseErr := url.Parse(state.RawProviderRequest.URL)
+		if parseErr == nil && destination.Hostname() != "" && !strings.EqualFold(destination.Hostname(), "chatgpt.com") &&
+			!strings.EqualFold(destination.Hostname(), "api.openai.com") {
+			if code, message, param, badRequest := responsesBadRequestDetails(err); badRequest {
+				rule, ok = responsesRelayReplayRule(state.RawProviderRequest.Body, code, message, param)
+			}
+		}
+	}
 	if !ok || ((rule.dropItem || rule.fieldName() == "id") && channel.Type != entchannel.TypeCodex) {
 		return
 	}
-	if rule.dropItem {
+	if rule.fieldName() == "relay_history_replay" {
+		// This bundle is evidence for one request, not a provider-wide capability
+		// or proof that reasoning alone caused the rejection.
+		rule.resourceScope = lo.ToPtr(responsesMetadataKey(channel.ID, state.RawProviderRequest))
+	} else if rule.dropItem {
 		if scope, scoped := responsesReasoningScope(ctx, channel, state.RawProviderRequest); scoped {
 			rule.reasoningScope = &scope
 		}
@@ -341,6 +363,9 @@ func rememberResponsesRejectedStatusRule(state *PersistenceState, channelID int,
 }
 
 func stripResponsesRejectedStatus(body []byte, rules []responsesRejectedStatusRule) ([]byte, bool, error) {
+	if hasResponsesRelayReplayRule(rules) {
+		return replayResponsesRelayHistory(body, rules)
+	}
 	if len(rules) == 0 {
 		return body, false, nil
 	}
@@ -448,7 +473,7 @@ func stripResponsesRejectedStatus(body []byte, rules []responsesRejectedStatusRu
 func responsesRejectedStatusRuleMatches(rules []responsesRejectedStatusRule, index int, itemType string) bool {
 	for _, rule := range rules {
 		if rule.fieldName() == "id" {
-			if responsesInputSupportsPortableID(itemType) {
+			if responsesInputSupportsPortableID(itemType) || rule.detachReasoningID && itemType == "reasoning" {
 				return true
 			}
 			continue

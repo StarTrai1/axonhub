@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/internal/pkg/xjson"
 	"github.com/looplj/axonhub/llm/transformer/openai"
 )
 
@@ -34,11 +35,13 @@ func (u *Usage) UnmarshalJSON(data []byte) error {
 	wire := struct {
 		*plainUsage
 		InputTokenDetails openai.PromptTokensDetails `json:"input_tokens_details"`
+		Cost              json.RawMessage            `json:"cost"`
 	}{plainUsage: &base}
 	if err := json.Unmarshal(data, &wire); err != nil {
 		return err
 	}
 	*u = Usage(base)
+	u.Cost = xjson.ParseOptionalFloat64(wire.Cost)
 	u.InputTokenDetails.CacheWriteTokens = wire.InputTokenDetails.WriteCachedTokens
 	u.InputTokenDetails.CachedTokens = wire.InputTokenDetails.CachedTokens
 	u.InputTokenDetails.CachedTokensDetails = wire.InputTokenDetails.CachedTokensDetails
