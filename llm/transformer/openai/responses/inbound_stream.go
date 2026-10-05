@@ -367,6 +367,8 @@ func (s *responsesInboundStream) Next() bool {
 			case "content_filter":
 				s.aggregator.status = "incomplete"
 				s.aggregator.incompleteDetails = &ResponseIncompleteDetails{Reason: "content_filter"}
+			case "pause_turn":
+				s.aggregator.status = "incomplete"
 			case "error":
 				s.aggregator.status = "failed"
 			case "cancelled", "canceled":

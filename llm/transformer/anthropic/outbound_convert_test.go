@@ -488,7 +488,7 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 					"max_tokens":    "length",
 					"stop_sequence": "stop",
 					"tool_use":      "tool_calls",
-					"pause_turn":    "stop",
+					"pause_turn":    "pause_turn",
 					"refusal":       "content_filter",
 				}
 

@@ -459,6 +459,10 @@ func (t *Transformer) TransformResponse(ctx context.Context, httpResp *httpclien
 		})
 	}
 
+	if err := t.inBandError(ctx, httpResp.Body); err != nil {
+		return nil, err
+	}
+
 	// Antigravity returns { "response": { "candidates": [...] } }
 	// We need to unwrap it before passing to Gemini transformer
 	var envelope struct {
@@ -515,6 +519,10 @@ func (t *Transformer) AggregateStreamChunks(ctx context.Context, req *httpclient
 			continue
 		}
 
+		if err := t.inBandError(ctx, chunk.Data); err != nil {
+			return nil, llm.ResponseMeta{}, err
+		}
+
 		// Copy the chunk
 		newChunk := *chunk
 		unwrappedChunks[i] = &newChunk
@@ -546,14 +554,18 @@ func (t *Transformer) TransformStream(ctx context.Context, req *httpclient.Reque
 	// before Gemini transformer processes them.
 
 	// Create a new stream that maps events
-	unwrappedStream := streams.Map(stream, func(event *httpclient.StreamEvent) *httpclient.StreamEvent {
+	unwrappedStream := streams.MapErr(stream, func(event *httpclient.StreamEvent) (*httpclient.StreamEvent, error) {
 		if event == nil || len(event.Data) == 0 {
-			return event
+			return event, nil
 		}
 
 		// Check if it's the DONE event
 		if string(event.Data) == "[DONE]" {
-			return event
+			return event, nil
+		}
+
+		if err := t.inBandError(ctx, event.Data); err != nil {
+			return nil, err
 		}
 
 		// Unwrap logic
@@ -565,10 +577,10 @@ func (t *Transformer) TransformStream(ctx context.Context, req *httpclient.Reque
 			newEvent := *event
 			newEvent.Data = wrapper.Response
 
-			return &newEvent
+			return &newEvent, nil
 		}
 
-		return event
+		return event, nil
 	})
 
 	return t.geminiTransformer.TransformStream(ctx, req, unwrappedStream)

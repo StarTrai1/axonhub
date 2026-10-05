@@ -71,3 +71,29 @@ func sanitizeErrorMessage(message string) string {
 	message = errorEmail.ReplaceAllString(message, "***")
 	return errorConsumer.ReplaceAllString(message, "${1}${2}***")
 }
+
+// Backend errors can arrive inside a successful HTTP stream. Preserve their
+// status for retry/quota handling and use the same client-safe error conversion.
+func (t *Transformer) inBandError(ctx context.Context, body []byte) error {
+	var envelope struct {
+		Error    *gemini.ErrorDetail `json:"error"`
+		Response *struct {
+			Error *gemini.ErrorDetail `json:"error"`
+		} `json:"response"`
+	}
+	if json.Unmarshal(body, &envelope) != nil {
+		return nil
+	}
+	detail := envelope.Error
+	if detail == nil && envelope.Response != nil {
+		detail = envelope.Response.Error
+	}
+	if detail == nil {
+		return nil
+	}
+	status := detail.Code
+	if status < 400 || status > 599 {
+		status = http.StatusBadGateway
+	}
+	return t.TransformError(ctx, &httpclient.Error{StatusCode: status, Body: append([]byte(nil), body...)})
+}

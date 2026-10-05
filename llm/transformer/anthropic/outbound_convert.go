@@ -1558,7 +1558,7 @@ func convertToLlmFinishReason(stopReason *string) *string {
 		return lo.ToPtr("stop")
 	case "max_tokens":
 		return lo.ToPtr("length")
-	case "stop_sequence", "pause_turn":
+	case "stop_sequence":
 		return lo.ToPtr("stop")
 	case "tool_use":
 		return lo.ToPtr("tool_calls")

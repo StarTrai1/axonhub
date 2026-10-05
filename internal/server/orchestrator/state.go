@@ -54,6 +54,15 @@ type PersistenceState struct {
 	// candidate-specific forcing to provider-side streaming happens.
 	OriginalRequestStream *bool
 
+	// PromptProtectionMaskRules records the mask rules that changed this request.
+	// Request-body pass-through uses it to patch the original JSON without dropping
+	// provider-specific fields that are not represented by the unified request.
+	PromptProtectionMaskRules []*ent.PromptProtectionRule
+
+	// PromptProtectionBodyCheck verifies raw replay against the protected prompt
+	// snapshot using the actual inbound mapping, including legacy protectors.
+	PromptProtectionBodyCheck *promptProtectionBodyCheck
+
 	// Persistence state
 	Request             *ent.Request
 	RequestExec         *ent.RequestExecution
@@ -85,6 +94,9 @@ type PersistenceState struct {
 	// Request/execution status and channel health intentionally interpret this
 	// outcome differently, as described by StreamCompleted and Perf above.
 	OutboundStreamTerminal streamTerminalState
+	// CleanEOFCompletionEvidence is set only by a protocol transformer after it
+	// has exhausted a clean source and emitted validated terminal evidence.
+	CleanEOFCompletionEvidence bool
 
 	// RawProviderResponse stores the raw provider response for non-stream response pass-through.
 	RawProviderResponse *httpclient.Response

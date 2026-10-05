@@ -58,7 +58,7 @@ func fastModelBase(model string) (string, bool) {
 }
 
 const (
-	defaultImageMainModel = "gpt-5.4-mini"
+	defaultImageMainModel = "gpt-6-luna"
 
 	AxonHubOriginator   = "axonhub"
 	CodexCLIOriginator  = "codex_cli_rs"

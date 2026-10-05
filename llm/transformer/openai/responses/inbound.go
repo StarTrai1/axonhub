@@ -1459,7 +1459,7 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 			switch *choice.FinishReason {
 			case "stop":
 				resp.Status = lo.ToPtr("completed")
-			case "length":
+			case "length", "pause_turn":
 				resp.Status = lo.ToPtr("incomplete")
 			case "tool_calls":
 				resp.Status = lo.ToPtr("completed")

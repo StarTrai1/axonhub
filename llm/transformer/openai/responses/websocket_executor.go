@@ -67,7 +67,7 @@ type WebSocketExecutor struct {
 func NewWebSocketExecutor(inner pipeline.Executor) *WebSocketExecutor {
 	dialer := &websocket.Dialer{
 		HandshakeTimeout: 30 * time.Second,
-		Proxy:            http.ProxyFromEnvironment,
+		Proxy:            normalizeWebSocketProxy(http.ProxyFromEnvironment),
 	}
 	if hc, ok := inner.(*httpclient.HttpClient); ok {
 		dialer.Proxy = normalizeWebSocketProxy(hc.ProxyFunc())
@@ -96,10 +96,18 @@ func normalizeWebSocketProxy(proxy func(*http.Request) (*url.URL, error)) func(*
 
 	return func(req *http.Request) (*url.URL, error) {
 		proxyURL, err := proxy(req)
-		if err != nil || proxyURL == nil || !strings.EqualFold(proxyURL.Scheme, "socks5h") {
+		if err != nil || proxyURL == nil {
 			return proxyURL, err
 		}
 
+		switch strings.ToLower(proxyURL.Scheme) {
+		case "socks", "socks5", "socks5h":
+		default:
+			return proxyURL, nil
+		}
+
+		// Gorilla delegates SOCKS URLs to x/net/proxy, which accepts socks5.
+		// Its SOCKS5 dialer sends destination hostnames to the proxy.
 		normalized := *proxyURL
 		normalized.Scheme = "socks5"
 		return &normalized, nil

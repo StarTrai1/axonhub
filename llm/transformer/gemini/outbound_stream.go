@@ -16,6 +16,7 @@ import (
 type streamState struct {
 	toolCallIndex int
 	responseID    string
+	usage         *UsageMetadata
 }
 
 // TransformStream transforms the HTTP stream response to the unified response format.
@@ -59,10 +60,11 @@ func (t *OutboundTransformer) transformStreamChunkWithState(
 	}
 
 	// Parse the Gemini response chunk
-	var resp GenerateContentResponse
+	resp := GenerateContentResponse{UsageMetadata: state.usage}
 	if err := json.Unmarshal(event.Data, &resp); err != nil {
 		return nil, err
 	}
+	state.usage = resp.UsageMetadata
 	if err := geminiInBandError(resp.Error); err != nil {
 		return nil, err
 	}
