@@ -164,6 +164,14 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 						contentParts = append(contentParts, part)
 						hasContent = true
 					}
+				case "document":
+					part, err := documentBlockToLLMPart(block)
+					if err != nil {
+						return nil, err
+					}
+					setAnthropicBlockIndex(&part.TransformerMetadata, blockIdx)
+					contentParts = append(contentParts, part)
+					hasContent = true
 				case "tool_result":
 					hasToolResult = true
 					// TODO: support other result types
@@ -196,6 +204,12 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 									if part, ok := convertImageSourceToLLMImageURLPart(contentBlock.Source, contentBlock.CacheControl); ok {
 										toolContentParts = append(toolContentParts, part)
 									}
+								case "document":
+									part, err := documentBlockToLLMPart(contentBlock)
+									if err != nil {
+										return nil, err
+									}
+									toolContentParts = append(toolContentParts, part)
 								}
 							}
 

@@ -416,6 +416,9 @@ type MessageContentBlock struct {
 	// *_tool_result). It is kept as json.RawMessage to avoid version-matrix
 	// churn (direct / code_execution_20250825 / code_execution_20260120 / ...).
 	Caller json.RawMessage `json:"caller,omitempty"`
+
+	// RawDocument retains document-only fields, including citation options.
+	RawDocument json.RawMessage `json:"-"`
 }
 
 // TextCitation represents a citation attached to an Anthropic text block.
@@ -430,6 +433,22 @@ type TextCitation struct {
 
 func (b MessageContentBlock) MarshalJSON() ([]byte, error) {
 	type blockAlias MessageContentBlock
+
+	if b.Type == "document" && len(b.RawDocument) > 0 {
+		var fields map[string]json.RawMessage
+		if err := json.Unmarshal(b.RawDocument, &fields); err != nil {
+			return nil, err
+		}
+		delete(fields, "cache_control")
+		if b.CacheControl != nil {
+			value, err := json.Marshal(b.CacheControl)
+			if err != nil {
+				return nil, err
+			}
+			fields["cache_control"] = value
+		}
+		return json.Marshal(fields)
+	}
 
 	if b.Type == "thinking" {
 		type thinkingBlock struct {
@@ -447,6 +466,41 @@ func (b MessageContentBlock) MarshalJSON() ([]byte, error) {
 	}
 
 	return json.Marshal(blockAlias(b))
+}
+
+func (b *MessageContentBlock) UnmarshalJSON(data []byte) error {
+	var header struct {
+		Type string `json:"type"`
+	}
+	if err := json.Unmarshal(data, &header); err != nil {
+		return err
+	}
+	if header.Type == "document" {
+		// Document citations are an options object, unlike text citations.
+		var document struct {
+			Source       *ImageSource  `json:"source"`
+			Title        string        `json:"title"`
+			CacheControl *CacheControl `json:"cache_control"`
+		}
+		if err := json.Unmarshal(data, &document); err != nil {
+			return err
+		}
+		*b = MessageContentBlock{
+			Type:         "document",
+			Source:       document.Source,
+			Title:        document.Title,
+			CacheControl: document.CacheControl,
+			RawDocument:  append(json.RawMessage(nil), data...),
+		}
+		return nil
+	}
+	type blockAlias MessageContentBlock
+	var decoded blockAlias
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	*b = MessageContentBlock(decoded)
+	return nil
 }
 
 // ImageSource represents image source for Anthropic.

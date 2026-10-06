@@ -1077,6 +1077,10 @@ func convertToAnthropicTrivialContent(content llm.MessageContent) *MessageConten
 				if block, ok := convertImageURLToAnthropicBlock(part); ok {
 					blocks = append(blocks, block)
 				}
+			case "document":
+				if block, ok := documentPartToAnthropicBlock(part); ok {
+					blocks = append(blocks, block)
+				}
 			}
 		}
 
@@ -1181,6 +1185,10 @@ func convertMultiplePartContent(msg llm.Message) (MessageContent, bool) {
 	// Process content parts in order to preserve original sequence
 	for _, part := range msg.Content.MultipleContent {
 		switch part.Type {
+		case "document":
+			if block, ok := documentPartToAnthropicBlock(part); ok {
+				appendOrdered(part.TransformerMetadata, block)
+			}
 		case "text":
 			if part.Text != nil {
 				appendOrdered(part.TransformerMetadata, MessageContentBlock{

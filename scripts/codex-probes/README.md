@@ -2,7 +2,7 @@
 
 两个 Python 入口直接调度**本机安装的官方 Codex CLI**。每次均为新 `codex exec --json --ephemeral`，不用 resume，不拼装/伪造 Codex 的 User-Agent、身份、会话头或 TLS 指纹。协议由所安装的 CLI 生成；这保证使用真实客户端，**不代表与交互式 Codex 的工具列表、指令或配置逐字节相同，也不保证不被渠道封禁**。
 
-运行要求：Linux（使用 `/proc`、进程组和 `flock`），Python 3.11+，Codex CLI 0.155.1+。本实现已核对官方 `rust-v0.155.1` → `rust-v0.160.0` 源码，兼容 0.156.1、0.157.0、0.157.1、0.158.0、0.159.0、0.159.2、0.159.3 和 0.160.0。升级后先运行 `--check` 并检查官方变更。Python 仅使用标准库。
+运行要求：Linux（使用 `/proc`、进程组和 `flock`），Python 3.11+，Codex CLI 0.155.1+。本实现已核对官方 `rust-v0.155.1` → `rust-v0.160.1` 源码，兼容 0.156.1、0.157.0、0.157.1、0.158.0、0.159.0、0.159.2、0.159.3 、0.160.0 和 0.160.1。升级后先运行 `--check` 并检查官方变更。Python 仅使用标准库。
 
 ## 准备
 
@@ -154,7 +154,7 @@ python3 scripts/codex-probes/keepalive.py \
 - 官方 [non-interactive 模式](https://developers.openai.com/codex/noninteractive)：`exec`、JSONL 完成事件与 `--ephemeral`。
 - [Codex 配置](https://developers.openai.com/codex/config-reference) 与 [0.155.1 exec CLI](https://github.com/openai/codex/blob/rust-v0.155.1/codex-rs/exec/src/cli.rs)、[JSONL 事件](https://github.com/openai/codex/blob/rust-v0.155.1/codex-rs/exec/src/exec_events.rs)、[配置 schema](https://github.com/openai/codex/blob/rust-v0.155.1/codex-rs/core/config.schema.json)。检索日期 2026-09-19。
 - 简单题主题参考 NASA [天空为什么是蓝色](https://spaceplace.nasa.gov/blue-sky/) 与 USGS [水循环](https://www.usgs.gov/water-science-school/water-cycle)，问题为重新编写，没有复制“十万个为什么”书籍内容。
-- GitHub Actions 用 fake CLI 验证新会话、清理、超时/中断、错误分类、阶段切换、计数、定时去重和不触碰外部文件；hosted matrix 固定下载官方 0.159.3 和 0.160.0，分别使用 gpt-6-sol、gpt-6.1-sol，仅连接 loopback 模拟服务器验证真实 CLI 五并发、取消及完成事件与用量，不调用真实上游。离线测试不能证明提供方额度窗口行为或封禁策略。
+- GitHub Actions 用 fake CLI 验证新会话、清理、超时/中断、错误分类、阶段切换、计数、定时去重和不触碰外部文件；hosted matrix 固定下载官方 0.160.0 和 0.160.1，分别使用 gpt-6-sol、gpt-6.1-sol，仅连接 loopback 模拟服务器验证真实 CLI 五并发、取消及完成事件与用量，不调用真实上游。离线测试不能证明提供方额度窗口行为或封禁策略。
 
 ### Codex 0.157.0
 
@@ -193,3 +193,10 @@ Sol 6.1 的推理档位为 low/medium/high/xhigh/max，默认 medium；不使用
 0.160.0 将 `response.incomplete` 的 `content_filter` 原因独立分类，并在客户端采样重试时加入模型指导。网关现有流式转换与聚合已保留该原因，不额外注入重试提示。显式 `model_catalog_url` 的权威目录及失败处理属于客户端配置，不改变网关管理端 OAuth 目录获取的静态 fallback。Guardian 的加密消息继续作为原生不透明条目保留；TUI 重连队列与服务端默认配置修复不要求新的网关路由。
 
 网关缺省版本更新为 0.160.0，继续保留动态稳定版刷新与客户端显式身份优先级。托管矩阵使用 0.159.3 / 0.160.0 × gpt-6-sol / gpt-6.1-sol；除五并发和取消清理外，新增完整 Responses SSE → 官方 CLI `turn.completed`、线程 ID、输入/缓存/输出用量的 loopback 回归。所有请求仅发往本地模拟服务，不证明真实提供方可用性或生产旧会话恢复。
+
+
+### Codex 0.160.1
+
+已核对官方 [0.160.1 发布说明](https://github.com/openai/codex/releases/tag/rust-v0.160.1) 和两个发布 tag 的差异：功能改动仅为远程 stdio MCP 启动时保留 Windows 执行器的 `SYSTEMROOT`、`TEMP`、`TMP`，另有版本号变更。该修复属于客户端进程环境，Responses HTTP/WebSocket、模型目录和 exec JSONL 契约没有新增适配要求。
+
+网关缺省客户端版本更新为 0.160.1，保留动态稳定版刷新和来访显式身份的优先级。托管矩阵更新为 0.160.0 / 0.160.1 × gpt-6-sol / gpt-6.1-sol，继续验证五并发、取消清理、完成事件及用量，仅连接 loopback 模拟服务。
