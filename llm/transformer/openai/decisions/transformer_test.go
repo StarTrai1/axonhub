@@ -121,3 +121,14 @@ func TestDecisionsEndpointAndResponseValidation(t *testing.T) {
 		require.Error(t, err)
 	}
 }
+
+func TestDecisionsDoesNotEchoUnverifiedProviderCost(t *testing.T) {
+	response, err := NewInboundTransformer().TransformResponse(context.Background(), &llm.Response{
+		Decisions: []byte(`{"answers":[{"type":"score","score":1.1,"probabilities":[{"value":0,"probability":0.1},{"value":1,"probability":0.7},{"value":2,"probability":0.2}],"confidence":0.55}],"usage":{"input_tokens":42,"cost":99}}`),
+		Usage: &llm.Usage{PromptTokens: 42},
+	})
+	require.NoError(t, err)
+	require.False(t, gjson.GetBytes(response.Body, "usage.cost").Exists())
+	require.Equal(t, 1.1, gjson.GetBytes(response.Body, "answers.0.score").Float())
+	require.Len(t, gjson.GetBytes(response.Body, "answers.0.probabilities").Array(), 3)
+}

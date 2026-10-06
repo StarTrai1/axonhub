@@ -3,6 +3,12 @@
 name: Test
 on:
   workflow_dispatch:
+    inputs:
+      format_base:
+        description: Base revision for changed Go formatting (optional)
+        required: false
+        default: HEAD^
+        type: string
   push:
     branches:
       - "dev"
@@ -103,9 +109,11 @@ jobs:
           go-version: stable
 
       - name: Verify generation and changed Go formatting
+        env:
+          FORMAT_BASE: ${{ inputs.format_base || 'HEAD^' }}
         run: |
           make generate
-          git diff --name-only -z --diff-filter=ACMRT HEAD^ HEAD -- '*.go' | xargs -0 -r gofmt -w
+          git diff --name-only -z --diff-filter=ACMRT "$FORMAT_BASE" HEAD -- '*.go' | xargs -0 -r gofmt -w
           git diff --binary > "$RUNNER_TEMP/generated.patch"
           git diff --stat
           test ! -s "$RUNNER_TEMP/generated.patch"
