@@ -16,7 +16,7 @@ func TestDefaultEndpointsForChannelType_ZenMuxProtocolDefaults(t *testing.T) {
 		typ      channel.Type
 		expected []objects.ChannelEndpoint
 	}{
-		{name: "openai-compatible", typ: channel.TypeZenmux, expected: DefaultEndpointsForChannelType(channel.TypeOpenai)},
+		{name: "openai-compatible", typ: channel.TypeZenmux, expected: openAIFullDefaultEndpoints},
 		{name: "responses", typ: channel.TypeZenmuxResponses, expected: DefaultEndpointsForChannelType(channel.TypeNanogptResponses)},
 		{name: "anthropic", typ: channel.TypeZenmuxAnthropic, expected: DefaultEndpointsForChannelType(channel.TypeMinimaxAnthropic)},
 		{name: "gemini", typ: channel.TypeZenmuxGemini, expected: DefaultEndpointsForChannelType(channel.TypeGemini)},

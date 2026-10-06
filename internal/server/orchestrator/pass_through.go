@@ -95,6 +95,11 @@ func (p *PersistentOutboundTransformer) isPassThroughEnabled(ctx context.Context
 }
 
 func (p *PersistentOutboundTransformer) isResponsePassThroughEnabled(ctx context.Context, systemService *biz.SystemService) bool {
+	// Native Decisions already retains the raw JSON. Keep its response transform
+	// so model restoration and optional gateway cost injection are not bypassed.
+	if p.state != nil && p.state.LlmRequest != nil && p.state.LlmRequest.RequestType == llm.RequestTypeDecisions {
+		return false
+	}
 	return p.state != nil && !p.state.DisableResponsePassThrough && p.isPassThroughEnabled(ctx, systemService)
 }
 
@@ -539,7 +544,7 @@ func passThroughBodyNeedsModelPatch(apiFormat llm.APIFormat) bool {
 		// Multipart edit bodies never reach this point (passThroughBodySupported
 		// rejects them), so sjson patching only ever runs on JSON payloads.
 		llm.APIFormatOpenAIImageEdit,
-		llm.APIFormatTypeSafeSystemOne:
+		llm.APIFormatTypeSafeSystemOne, llm.APIFormatOpenAIDecisions:
 		return true
 	default:
 		return false

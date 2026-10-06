@@ -254,6 +254,9 @@ type Request struct {
 	// SystemOne is the System One request, will be set if the request is System One request.
 	SystemOne *SystemOneRequest `json:"systemone,omitempty"`
 
+	// Decisions preserves the native ordered questions and extension fields.
+	Decisions json.RawMessage `json:"decisions,omitempty"`
+
 	// Image is the image request, will be set if the request is image request.
 	Image *ImageRequest `json:"image,omitempty"`
 
@@ -761,6 +764,9 @@ type Response struct {
 
 	// SystemOne is the System One response, will present if the request is System One request.
 	SystemOne *SystemOneResponse `json:"systemone,omitempty"`
+
+	// Decisions preserves native answers, including per-question refusals.
+	Decisions json.RawMessage `json:"decisions,omitempty"`
 
 	// Image is the image response, will present if the request is image request.
 	Image *ImageResponse `json:"image,omitempty"`

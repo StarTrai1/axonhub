@@ -130,6 +130,11 @@ func hasResponseContent(resp *llm.Response) bool {
 		return true
 	}
 
+	// Decisions responses are validated by the native transformer, including refusals.
+	if len(resp.Decisions) > 0 {
+		return true
+	}
+
 	if resp.SystemOne != nil && len(resp.SystemOne.Answers) > 0 {
 		return true
 	}

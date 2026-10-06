@@ -31,6 +31,7 @@ func TestDefaultEndpointsForChannelType_UseLLMAPIFormatValues(t *testing.T) {
 				llm.APIFormatOpenAISpeech.String(),
 				llm.APIFormatOpenAITranscription.String(),
 				llm.APIFormatOpenAITranslation.String(),
+				llm.APIFormatOpenAIDecisions.String(),
 			},
 		},
 		{
@@ -110,10 +111,11 @@ func TestDefaultEndpointsForChannelType_UseLLMAPIFormatValues(t *testing.T) {
 			expected: []string{llm.APIFormatOpenAIResponse.String()},
 		},
 		{
-			name: "openai responses exposes standalone search",
+			name: "openai responses exposes standalone search and decisions",
 			typ:  channel.TypeOpenaiResponses,
 			expected: []string{
 				llm.APIFormatOpenAIResponse.String(),
+				llm.APIFormatOpenAIDecisions.String(),
 				llm.APIFormatOpenAISearch.String(),
 			},
 		},

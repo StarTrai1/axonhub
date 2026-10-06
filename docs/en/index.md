@@ -45,6 +45,7 @@ Welcome to the AxonHub documentation center! This index will help you quickly fi
 | [Image Generation API](api-reference/image-generation.md) | Image generation interface documentation |
 | [Embedding API](api-reference/embedding-api.md) | Vector embedding interface documentation |
 | [Rerank API](api-reference/rerank-api.md) | Reranking interface documentation |
+| [Decisions API](api-reference/decisions-api.md) | OpenAI typed decisions, native protocol and separate pricing |
 | [System One API](api-reference/systemone-api.md) | Native decision inference interface documentation |
 
 ### 🛠️ Development

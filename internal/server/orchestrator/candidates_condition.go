@@ -88,11 +88,11 @@ func populateAPIFormat(ctx context.Context, candidates []*ChannelModelsCandidate
 			for _, entry := range c.Models {
 				endpoints := applyForcedAPIFormats(ctx, c.Channel, []biz.ChannelModelEntry{entry}, req.Model, baseEndpoints)
 				format := SelectAPIFormat(endpoints, req)
-				// Alpha Search has no generic fallback. A model whose forced protocol
-				// list cannot serve Alpha Search must not remain as the first retry
+				// Dedicated protocols have no generic fallback. A model whose forced
+				// protocol list cannot serve this request must not remain as the first retry
 				// entry, otherwise an empty candidate format falls back to the channel's
 				// primary (usually chat) outbound.
-				if req.RequestType == llm.RequestTypeAlphaSearch && format == "" {
+				if requiresNativeEndpoint(req) && format == "" {
 					continue
 				}
 
@@ -104,7 +104,7 @@ func populateAPIFormat(ctx context.Context, candidates []*ChannelModelsCandidate
 				continue
 			}
 
-			if req.RequestType == llm.RequestTypeAlphaSearch {
+			if requiresNativeEndpoint(req) {
 				c.Models = selectedModels
 			}
 			c.modelAPIFormats = selectedFormats
@@ -115,7 +115,7 @@ func populateAPIFormat(ctx context.Context, candidates []*ChannelModelsCandidate
 			c.APIFormat = SelectAPIFormat(endpoints, req)
 		}
 
-		if req.RequestType == llm.RequestTypeAlphaSearch && c.APIFormat == "" {
+		if requiresNativeEndpoint(req) && c.APIFormat == "" {
 			continue
 		}
 

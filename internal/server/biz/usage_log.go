@@ -27,7 +27,7 @@ type UsageLogService struct {
 	OnUsageLogCreated func()
 }
 
-func (s *UsageLogService) computeUsageCost(ctx context.Context, channelID int, modelID string, usage *llm.Usage) ([]objects.CostItem, *float64, string) {
+func (s *UsageLogService) computeUsageCost(ctx context.Context, channelID int, modelID string, usage *llm.Usage, formats ...llm.APIFormat) ([]objects.CostItem, *float64, string) {
 	if usage == nil {
 		return nil, nil, ""
 	}
@@ -51,7 +51,14 @@ func (s *UsageLogService) computeUsageCost(ctx context.Context, channelID int, m
 	}
 
 	if modelPrice, ok := ch.cachedModelPrices[modelID]; ok {
-		items, total := ComputeUsageCost(usage, modelPrice.Price, time.Now())
+		var format llm.APIFormat
+		if len(formats) > 0 {
+			format = formats[0]
+		}
+		items, total := computeUsageCostForFormat(usage, modelPrice.Price, time.Now(), format)
+		if len(items) == 0 {
+			return nil, nil, ""
+		}
 
 		totalCost := total.InexactFloat64()
 		if log.DebugEnabled(ctx) {
@@ -73,12 +80,12 @@ func (s *UsageLogService) computeUsageCost(ctx context.Context, channelID int, m
 // InjectUsageCost writes AxonHub-calculated cost onto usage when a matching
 // channel model price is cached. usage is left unchanged when it is nil.
 // When no matching price is available, usage.Cost is set to nil.
-func (s *UsageLogService) InjectUsageCost(ctx context.Context, channelID int, modelID string, usage *llm.Usage) {
+func (s *UsageLogService) InjectUsageCost(ctx context.Context, channelID int, modelID string, usage *llm.Usage, formats ...llm.APIFormat) {
 	if usage == nil {
 		return
 	}
 
-	_, totalCost, _ := s.computeUsageCost(ctx, channelID, modelID, usage)
+	_, totalCost, _ := s.computeUsageCost(ctx, channelID, modelID, usage, formats...)
 	usage.Cost = totalCost
 }
 
@@ -156,7 +163,7 @@ func (s *UsageLogService) CreateUsageLog(ctx context.Context, params CreateUsage
 		priceReferenceID string
 	)
 
-	costItems, totalCost, priceReferenceID = s.computeUsageCost(ctx, params.ChannelID, params.ActualModelID, params.Usage)
+	costItems, totalCost, priceReferenceID = s.computeUsageCost(ctx, params.ChannelID, params.ActualModelID, params.Usage, llm.APIFormat(params.Format))
 
 	mut = mut.
 		SetNillableTotalCost(totalCost).

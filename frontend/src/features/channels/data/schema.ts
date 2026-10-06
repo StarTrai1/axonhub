@@ -24,6 +24,7 @@ export const apiFormatSchema = z.enum([
   'jina/rerank',
   'jina/embeddings',
   'typesafe/systemone',
+  'openai/decisions',
   'ollama/chat',
 ]);
 
@@ -48,6 +49,7 @@ export const configurableChannelEndpointApiFormats = [
   'jina/rerank',
   'jina/embeddings',
   'typesafe/systemone',
+  'openai/decisions',
 ] as const;
 
 export const configurableChannelEndpointApiFormatSchema = z.enum(configurableChannelEndpointApiFormats);
@@ -525,7 +527,13 @@ export type TestChannelAPIKeysPayload = z.infer<typeof testChannelAPIKeysPayload
 export const pricingModeSchema = z.enum(['flat_fee', 'usage_per_unit', 'usage_tiered', 'usage_volume']);
 export type PricingMode = z.infer<typeof pricingModeSchema>;
 
-export const priceItemCodeSchema = z.enum(['prompt_tokens', 'completion_tokens', 'prompt_cached_tokens', 'prompt_write_cached_tokens']);
+export const priceItemCodeSchema = z.enum([
+  'prompt_tokens',
+  'completion_tokens',
+  'prompt_cached_tokens',
+  'prompt_write_cached_tokens',
+  'decisions_input_tokens',
+]);
 export type PriceItemCode = z.infer<typeof priceItemCodeSchema>;
 
 export const priceTierSchema = z.object({

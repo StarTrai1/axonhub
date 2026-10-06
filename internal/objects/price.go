@@ -239,6 +239,9 @@ const (
 	// PriceItemCodeUsage is the price item code for the token usage.
 	PriceItemCodeUsage PriceItemCode = "prompt_tokens"
 
+	// PriceItemCodeDecisionsInputTokens prices native Decisions independently of chat.
+	PriceItemCodeDecisionsInputTokens PriceItemCode = "decisions_input_tokens"
+
 	// PriceItemCodeCompletion is the price item code for the token completion.
 	PriceItemCodeCompletion PriceItemCode = "completion_tokens"
 

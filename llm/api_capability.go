@@ -73,6 +73,10 @@ func CapableAPIFormats(requestType RequestType) map[string]struct{} {
 		return map[string]struct{}{
 			APIFormatTypeSafeSystemOne.String(): {},
 		}
+	case RequestTypeDecisions:
+		return map[string]struct{}{
+			APIFormatOpenAIDecisions.String(): {},
+		}
 	default:
 		return nil
 	}

@@ -36,7 +36,7 @@ func SelectAPIFormat(endpoints []objects.ChannelEndpoint, req *llm.Request) stri
 			}
 		}
 
-		if req.RequestType == llm.RequestTypeAlphaSearch || req.RequestType == llm.RequestTypeSystemOne {
+		if requiresNativeEndpoint(req) {
 			return ""
 		}
 	}
@@ -145,4 +145,9 @@ func applyForcedAPIFormats(
 	)
 
 	return endpoints
+}
+
+// Dedicated protocols cannot be emulated by a channel's primary chat endpoint.
+func requiresNativeEndpoint(req *llm.Request) bool {
+	return req.RequestType == llm.RequestTypeAlphaSearch || req.RequestType == llm.RequestTypeSystemOne || req.RequestType == llm.RequestTypeDecisions
 }

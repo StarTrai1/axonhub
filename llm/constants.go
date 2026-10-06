@@ -25,6 +25,7 @@ const (
 
 	// RequestTypeSystemOne represents a System One decision inference request.
 	RequestTypeSystemOne RequestType = "systemone"
+	RequestTypeDecisions RequestType = "decisions"
 )
 
 func (r RequestType) String() string {
@@ -65,6 +66,7 @@ const (
 	APIFormatJinaEmbedding APIFormat = "jina/embeddings"
 
 	APIFormatTypeSafeSystemOne APIFormat = "typesafe/systemone"
+	APIFormatOpenAIDecisions   APIFormat = "openai/decisions"
 
 	APIFormatOllamaChat    APIFormat = "ollama/chat"
 	APIFormatSeedanceVideo APIFormat = "seedance/video"

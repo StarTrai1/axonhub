@@ -237,6 +237,7 @@
   "price.items": "Price Items",
   "price.addItem": "Add Price Item",
   "price.itemCode": "Item Code",
+  "price.itemCodes.decisions_input_tokens": "Decisions Input Tokens",
   "price.itemCodes.prompt_tokens": "Input Tokens",
   "price.itemCodes.completion_tokens": "Output Tokens",
   "price.itemCodes.prompt_cached_tokens": "Input Cached Tokens",

@@ -86,6 +86,7 @@
   "price.items": "计费项",
   "price.addItem": "添加计费项",
   "price.itemCode": "计费项代码",
+  "price.itemCodes.decisions_input_tokens": "Decisions 输入 Token",
   "price.itemCodes.prompt_tokens": "输入 Token",
   "price.itemCodes.completion_tokens": "输出 Token",
   "price.itemCodes.prompt_cached_tokens": "输入缓存 Token",

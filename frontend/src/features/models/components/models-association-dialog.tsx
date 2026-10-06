@@ -58,6 +58,7 @@ const requestFormatConditionOptions = [
   'jina/rerank',
   'jina/embeddings',
   'typesafe/systemone',
+  'openai/decisions',
   'ollama/chat',
   'seedance/video',
 ] as const;

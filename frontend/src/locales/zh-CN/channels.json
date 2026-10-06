@@ -380,6 +380,7 @@
   "channels.dialogs.fields.apiFormat.formats.gemini/embeddings": "Gemini (Embeddings)",
   "channels.dialogs.fields.apiFormat.formats.jina/rerank": "Jina (Rerank)",
   "channels.dialogs.fields.apiFormat.formats.jina/embeddings": "Jina (Embeddings)",
+  "channels.dialogs.fields.apiFormat.formats.openai/decisions": "OpenAI (Decisions)",
   "channels.dialogs.fields.apiFormat.formats.typesafe/systemone": "TypeSafe (System One)",
   "channels.dialogs.fields.apiFormat.formats.ollama/chat": "Ollama (Chat)",
   "channels.dialogs.fields.provider.label": "服务商",

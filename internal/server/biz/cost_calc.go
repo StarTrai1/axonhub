@@ -142,6 +142,10 @@ func getUpToOrZero(v *int64) int64 {
 // ComputeUsageCost calculates total cost and cost items breakdown for the given usage and model price.
 // The now parameter is used for time-based schedule matching.
 func ComputeUsageCost(usage *llm.Usage, price objects.ModelPrice, now time.Time) ([]objects.CostItem, decimal.Decimal) {
+	return computeUsageCostForFormat(usage, price, now, "")
+}
+
+func computeUsageCostForFormat(usage *llm.Usage, price objects.ModelPrice, now time.Time, format llm.APIFormat) ([]objects.CostItem, decimal.Decimal) {
 	effectiveItems := price.Items
 
 	if price.Schedule != nil {
@@ -150,18 +154,24 @@ func ComputeUsageCost(usage *llm.Usage, price objects.ModelPrice, now time.Time)
 		}
 	}
 
-	return computeUsageCostWithItems(usage, effectiveItems)
+	return computeUsageCostWithItems(usage, effectiveItems, format)
 }
 
-func computeUsageCostWithItems(usage *llm.Usage, priceItems []objects.ModelPriceItem) ([]objects.CostItem, decimal.Decimal) {
+func computeUsageCostWithItems(usage *llm.Usage, priceItems []objects.ModelPriceItem, formats ...llm.APIFormat) ([]objects.CostItem, decimal.Decimal) {
 	var items []objects.CostItem
 
 	total := decimal.Zero
 
+	isDecisions := len(formats) > 0 && formats[0] == llm.APIFormatOpenAIDecisions
 	for _, it := range priceItems {
+		if (it.ItemCode == objects.PriceItemCodeDecisionsInputTokens) != isDecisions {
+			continue
+		}
 		var quantity int64
 
 		switch it.ItemCode {
+		case objects.PriceItemCodeDecisionsInputTokens:
+			quantity = max(usage.PromptTokens, 0)
 		case objects.PriceItemCodeUsage:
 			// Exclude cached tokens from input token cost calculation
 			// PromptTokens includes all tokens, so we subtract:

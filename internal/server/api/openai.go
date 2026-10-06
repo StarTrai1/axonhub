@@ -24,6 +24,7 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/openai"
+	"github.com/looplj/axonhub/llm/transformer/openai/decisions"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 	"github.com/looplj/axonhub/llm/transformer/shared"
 )
@@ -60,6 +61,7 @@ type OpenAIHandlers struct {
 	SearchHandlers             *ChatCompletionHandlers
 	CompactHandlers            *ChatCompletionHandlers
 	EmbeddingHandlers          *ChatCompletionHandlers
+	DecisionsHandlers          *ChatCompletionHandlers
 	ModerationHandlers         *ChatCompletionHandlers
 	AlphaSearchHandlers        *ChatCompletionHandlers
 	ImageGenerationHandlers    *ChatCompletionHandlers
@@ -176,6 +178,23 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.RequestService,
 				params.HttpClient,
 				openai.NewEmbeddingInboundTransformer(),
+				params.SystemService,
+				params.UsageLogService,
+				params.PromptService,
+				params.QuotaService,
+				params.PromptProtectionRuleService,
+				params.LiveStreamRegistry,
+				params.ChannelLimiterManager,
+				params.ProviderQuotaStatusProvider,
+			),
+		},
+		DecisionsHandlers: &ChatCompletionHandlers{
+			ChatCompletionOrchestrator: orchestrator.NewChatCompletionOrchestrator(
+				params.ChannelService,
+				params.DefaultSelector,
+				params.RequestService,
+				params.HttpClient,
+				decisions.NewInboundTransformer(),
 				params.SystemService,
 				params.UsageLogService,
 				params.PromptService,
@@ -401,6 +420,11 @@ func (handlers *OpenAIHandlers) CompactResponse(c *gin.Context) {
 
 func (handlers *OpenAIHandlers) CreateEmbedding(c *gin.Context) {
 	handlers.EmbeddingHandlers.ChatCompletion(c)
+}
+
+// CreateDecision handles POST /v1/decisions.
+func (handlers *OpenAIHandlers) CreateDecision(c *gin.Context) {
+	handlers.DecisionsHandlers.ChatCompletion(c)
 }
 
 // CreateModeration handles POST /v1/moderations.

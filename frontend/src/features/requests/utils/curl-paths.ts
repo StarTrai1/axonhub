@@ -22,6 +22,7 @@ const API_FORMAT_PATHS: Record<string, string> = {
   'jina/rerank': '/v1/rerank',
   'jina/embeddings': '/jina/v1/embeddings',
   'typesafe/systemone': '/v1/systemone',
+  'openai/decisions': '/v1/decisions',
 };
 
 export function getApiPath(apiFormat?: string, body?: unknown, channelType?: string): string {

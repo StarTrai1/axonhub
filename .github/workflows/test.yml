@@ -102,11 +102,12 @@ jobs:
         with:
           go-version: stable
 
-      - name: Verify Ent and GraphQL generation
+      - name: Verify generation and changed Go formatting
         run: |
           make generate
-          git diff --binary -- internal/ent internal/server/gql > "$RUNNER_TEMP/generated.patch"
-          git diff --stat -- internal/ent internal/server/gql
+          git diff --name-only -z --diff-filter=ACMRT HEAD^ HEAD -- '*.go' | xargs -0 -r gofmt -w
+          git diff --binary > "$RUNNER_TEMP/generated.patch"
+          git diff --stat
           test ! -s "$RUNNER_TEMP/generated.patch"
 
       - name: Preserve generated source differences

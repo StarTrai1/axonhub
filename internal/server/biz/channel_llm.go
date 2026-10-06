@@ -39,6 +39,7 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/nanogpt"
 	"github.com/looplj/axonhub/llm/transformer/ollama"
 	"github.com/looplj/axonhub/llm/transformer/openai"
+	"github.com/looplj/axonhub/llm/transformer/openai/decisions"
 	"github.com/looplj/axonhub/llm/transformer/openai/codex"
 	"github.com/looplj/axonhub/llm/transformer/openai/copilot"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
@@ -237,6 +238,7 @@ func (svc *ChannelService) buildChannelWithOutbounds(c *ent.Channel, apiKeyOverr
 		}
 
 		needsDedicatedOutbound := ep.APIFormat == llm.APIFormatOpenAISearch.String() ||
+			ep.APIFormat == llm.APIFormatOpenAIDecisions.String() ||
 			(c.Type == channel.TypeXai && ep.APIFormat != ch.Outbound.APIFormat().String())
 		if !needsDedicatedOutbound {
 			outbounds[ep.APIFormat] = ch.Outbound
@@ -428,6 +430,9 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 			return nil, err
 		}
 	}
+	if ep.APIFormat == llm.APIFormatOpenAIDecisions.String() && ep.Transport == "" {
+		ep.Transport = objects.ChannelEndpointTransportHTTP
+	}
 	if endpointTransport(ep) == objects.ChannelEndpointTransportWebSocket && !supportsWebSocketTransport(ep.APIFormat) {
 		return nil, fmt.Errorf("websocket transport only supports api_format %q", llm.APIFormatOpenAIResponse.String())
 	}
@@ -594,6 +599,10 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 			BaseURL:        baseURL,
 			APIKeyProvider: apiKeyProvider(),
 			EndpointPath:   ep.Path,
+		})
+	case llm.APIFormatOpenAIDecisions.String():
+		return decisions.NewOutboundTransformer(decisions.Config{
+			BaseURL: baseURL, APIKeyProvider: apiKeyProvider(), EndpointPath: ep.Path,
 		})
 	case llm.APIFormatTypeSafeSystemOne.String():
 		return typesafe.NewOutboundTransformerWithConfig(&typesafe.Config{
