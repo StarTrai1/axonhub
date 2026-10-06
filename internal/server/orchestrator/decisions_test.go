@@ -64,7 +64,7 @@ func TestDecisionsPipelinePersistsNativeAnswersAndCost(t *testing.T) {
 			channelService.PreloadModelPricesForTest(ctx, built)
 			channelService.SetEnabledChannelsForTest([]*biz.Channel{built})
 			require.NoError(t, systemService.SetInjectUsageCostEnabled(ctx, true))
-			require.NoError(t, systemService.SetRetryPolicy(ctx, &biz.RetryPolicy{EmptyResponseDetection: true}))
+			require.NoError(t, systemService.SetRetryPolicy(ctx, &biz.RetryPolicy{Enabled: true, EmptyResponseDetection: true}))
 			candidates := populateAPIFormat(ctx, channelsToTestCandidates([]*biz.Channel{built}, "gpt-6-luna"), &llm.Request{Model: "gpt-6-luna", RequestType: llm.RequestTypeDecisions, APIFormat: llm.APIFormatOpenAIDecisions})
 			require.Len(t, candidates, 1)
 			orch := &ChatCompletionOrchestrator{
@@ -85,6 +85,7 @@ func TestDecisionsPipelinePersistsNativeAnswersAndCost(t *testing.T) {
 			select {
 			case got := <-received:
 				require.JSONEq(t, string(body), string(got))
+				require.Equal(t, "9007199254740993", gjson.GetBytes(got, "extra").Raw)
 			default:
 				t.Fatal("upstream did not receive request")
 			}
@@ -101,6 +102,15 @@ func TestDecisionsPipelinePersistsNativeAnswersAndCost(t *testing.T) {
 			stored, err := client.Request.Query().Only(ctx)
 			require.NoError(t, err)
 			require.Equal(t, llm.APIFormatOpenAIDecisions.String(), stored.Format)
+			denied := contexts.WithAPIKey(ctx, &ent.APIKey{Profiles: &objects.APIKeyProfiles{ActiveProfile: "restricted", Profiles: []objects.APIKeyProfile{{Name: "restricted", ModelIDs: []string{"other-model"}}}}})
+			_, err = orch.Process(denied, &httpclient.Request{Method: http.MethodPost, Body: body, Headers: http.Header{"Content-Type": {"application/json"}}})
+			require.ErrorIs(t, err, biz.ErrInvalidModel)
+			select {
+			case <-received:
+				t.Fatal("denied model reached upstream")
+			default:
+			}
+
 		})
 	}
 }

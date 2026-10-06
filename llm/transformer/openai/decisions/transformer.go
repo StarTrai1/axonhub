@@ -86,7 +86,7 @@ type Config struct {
 }
 
 type OutboundTransformer struct {
-	*openai.OutboundTransformer
+	transformer.Outbound
 
 	config Config
 }
@@ -115,7 +115,7 @@ func NewOutboundTransformer(config Config) (*OutboundTransformer, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &OutboundTransformer{OutboundTransformer: delegate, config: config}, nil
+	return &OutboundTransformer{Outbound: delegate, config: config}, nil
 }
 
 func (t *OutboundTransformer) APIFormat() llm.APIFormat { return llm.APIFormatOpenAIDecisions }
