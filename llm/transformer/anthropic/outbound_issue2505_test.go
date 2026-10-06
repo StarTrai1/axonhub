@@ -96,8 +96,7 @@ func TestOutboundTransformer_InputAudioContentPart(t *testing.T) {
 }
 
 // input_audio is not the only part type without an Anthropic representation.
-// A document part (produced e.g. by the Responses API input_file item) or a
-// video_url part is dropped by convertMultiplePartContent just the same, so a
+// A document without a portable payload or a video_url part is dropped, so a
 // message made up only of such parts would be sent as "content": null. The
 // request must fail instead of losing the content silently.
 func TestOutboundTransformer_AllPartsDropped(t *testing.T) {
@@ -106,11 +105,11 @@ func TestOutboundTransformer_AllPartsDropped(t *testing.T) {
 		part llm.MessageContentPart
 	}{
 		{
-			name: "document",
+			name: "document without portable payload",
 			part: llm.MessageContentPart{
 				Type: "document",
 				Document: &llm.DocumentURL{
-					URL:      "data:application/pdf;base64,JVBERi0=",
+					FileID:   "file_from_other_provider",
 					Filename: "report.pdf",
 					MIMEType: "application/pdf",
 				},

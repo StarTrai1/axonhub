@@ -6,9 +6,11 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
 
+	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/gemini"
@@ -91,4 +93,23 @@ func TestDocumentCacheControlAndBlockReuse(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(`{"type":"text","text":"next"}`), &block))
 	require.Empty(t, block.RawDocument)
 	require.Nil(t, block.Source)
+}
+
+func TestOutboundDocumentOnlyRequest(t *testing.T) {
+	outbound, err := NewOutboundTransformer("https://example.com", "synthetic-key")
+	require.NoError(t, err)
+	request, err := outbound.TransformRequest(t.Context(), &llm.Request{
+		Model:     "claude-sonnet-5-5",
+		MaxTokens: lo.ToPtr(int64(1024)),
+		Messages: []llm.Message{{
+			Role: "user",
+			Content: llm.MessageContent{MultipleContent: []llm.MessageContentPart{{
+				Type:     "document",
+				Document: &llm.DocumentURL{URL: "data:application/pdf;base64,JVBERi0=", MIMEType: "application/pdf"},
+			}}},
+		}},
+	})
+	require.NoError(t, err)
+	require.Equal(t, "document", gjson.GetBytes(request.Body, "messages.0.content.0.type").String())
+	require.Equal(t, "JVBERi0=", gjson.GetBytes(request.Body, "messages.0.content.0.source.data").String())
 }

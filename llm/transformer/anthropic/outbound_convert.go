@@ -531,9 +531,8 @@ func validateUnsupportedContentParts(messages []llm.Message) error {
 }
 
 // validateDroppedContentParts rejects user messages whose content parts are all
-// dropped by the conversion to the Anthropic format. convertMultiplePartContent
-// only understands text and image_url, so a message made up of other parts
-// (document, video_url, ...) would be sent as "content": null, and Anthropic
+// dropped by the conversion to the Anthropic format. A message made up of
+// unsupported parts (video_url, ...) would be sent as "content": null, and Anthropic
 // rejects that with an error that never names the offending part.
 //
 // Messages without content parts (e.g. tool_result turns) are left alone: they
@@ -552,7 +551,7 @@ func validateDroppedContentParts(messages []llm.Message) error {
 
 		dropped := make([]string, 0, len(msg.Content.MultipleContent))
 		for _, part := range msg.Content.MultipleContent {
-			if part.Type == "text" || part.Type == "image_url" {
+			if part.Type == "text" || part.Type == "image_url" || part.Type == "document" {
 				dropped = append(dropped, part.Type+" without payload")
 				continue
 			}
@@ -561,7 +560,7 @@ func validateDroppedContentParts(messages []llm.Message) error {
 		}
 
 		return fmt.Errorf(
-			"%w: message %d (role %q) cannot be represented in the Anthropic Messages API: only text and image_url content parts are supported, %s would be dropped",
+			"%w: message %d (role %q) cannot be represented in the Anthropic Messages API: only text, image_url and document content parts with supported payloads are accepted, %s would be dropped",
 			transformer.ErrInvalidRequest, i, msg.Role, strings.Join(lo.Uniq(dropped), ", "),
 		)
 	}
