@@ -51,10 +51,10 @@ func validateRequest(body []byte) (string, error) {
 		return "", err
 	}
 	var request struct {
-		Model string `json:"model"`
-		Input json.RawMessage `json:"input"`
+		Model     string            `json:"model"`
+		Input     json.RawMessage   `json:"input"`
 		Questions []json.RawMessage `json:"questions"`
-		Stream bool `json:"stream"`
+		Stream    bool              `json:"stream"`
 	}
 	if err := json.Unmarshal(body, &request); err != nil {
 		return "", invalidRequest("invalid Decisions request fields")
@@ -88,13 +88,13 @@ func validateInput(raw json.RawMessage) error {
 		return nil
 	}
 	var messages []struct {
-		Type string `json:"type"`
-		Role string `json:"role"`
+		Type    string `json:"type"`
+		Role    string `json:"role"`
 		Content []struct {
-			Type string `json:"type"`
-			Text *string `json:"text"`
-			ImageURL string `json:"image_url"`
-			FileID json.RawMessage `json:"file_id"`
+			Type     string          `json:"type"`
+			Text     *string         `json:"text"`
+			ImageURL string          `json:"image_url"`
+			FileID   json.RawMessage `json:"file_id"`
 		} `json:"content"`
 	}
 	if err := json.Unmarshal(raw, &messages); err != nil || len(messages) == 0 {
@@ -130,11 +130,11 @@ func validateInput(raw json.RawMessage) error {
 
 func validateQuestion(raw json.RawMessage) error {
 	var question struct {
-		Type string `json:"type"`
-		Name *string `json:"name"`
-		Instructions string `json:"instructions"`
-		Choices []json.RawMessage `json:"choices"`
-		Levels []json.RawMessage `json:"levels"`
+		Type         string            `json:"type"`
+		Name         *string           `json:"name"`
+		Instructions string            `json:"instructions"`
+		Choices      []json.RawMessage `json:"choices"`
+		Levels       []json.RawMessage `json:"levels"`
 	}
 	if err := json.Unmarshal(raw, &question); err != nil || strings.TrimSpace(question.Instructions) == "" {
 		return invalidRequest("questions require instructions")

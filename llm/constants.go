@@ -35,9 +35,9 @@ func (r RequestType) String() string {
 type APIFormat string
 
 const (
-	APIFormatOpenAIChatCompletion  APIFormat = "openai/chat_completions"
-	APIFormatOpenAICompletion      APIFormat = "openai/completions"
-	APIFormatOpenAIResponse        APIFormat = "openai/responses"
+	APIFormatOpenAIChatCompletion APIFormat = "openai/chat_completions"
+	APIFormatOpenAICompletion     APIFormat = "openai/completions"
+	APIFormatOpenAIResponse       APIFormat = "openai/responses"
 	// APIFormatOpenAIResponseWebSocket identifies a downstream Responses
 	// WebSocket request in persisted request/trace metadata. Upstream channel
 	// selection continues to use APIFormatOpenAIResponse with websocket transport.

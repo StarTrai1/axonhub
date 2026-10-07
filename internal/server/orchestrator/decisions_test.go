@@ -42,14 +42,17 @@ func TestDecisionsPipelinePersistsNativeAnswersAndCost(t *testing.T) {
 					return
 				}
 				body, err := io.ReadAll(r.Body)
-				if err != nil { http.Error(w, "read body", http.StatusBadRequest); return }
+				if err != nil {
+					http.Error(w, "read body", http.StatusBadRequest)
+					return
+				}
 				received <- body
 				w.Header().Set("Content-Type", "application/json")
 				_, _ = io.WriteString(w, `{"model":"gpt-6-luna","answers":[{"type":"predicate","name":null,"probability":0.8},{"type":"refusal","name":"private","reason":"fixture"}],"usage":{"input_tokens":42,"output_tokens":0,"total_tokens":42},"extra":9007199254740993}`)
 			}))
 			defer upstream.Close()
 			ch, err := client.Channel.Create().SetType(channel.TypeOpenai).SetName("Decisions fixture").
-				SetBaseURL(upstream.URL+"/v1").SetCredentials(objects.ChannelCredentials{APIKey: "fixture-key"}).
+				SetBaseURL(upstream.URL + "/v1").SetCredentials(objects.ChannelCredentials{APIKey: "fixture-key"}).
 				SetSupportedModels([]string{"gpt-6-luna"}).SetDefaultTestModel("gpt-6-luna").
 				SetSettings(&objects.ChannelSettings{PassThroughBody: lo.ToPtr(passThrough)}).Save(ctx)
 			require.NoError(t, err)
@@ -69,10 +72,10 @@ func TestDecisionsPipelinePersistsNativeAnswersAndCost(t *testing.T) {
 			require.Len(t, candidates, 1)
 			orch := &ChatCompletionOrchestrator{
 				channelSelector: &staticChannelSelector{candidates: candidates},
-				Inbound: decisions.NewInboundTransformer(), RequestService: requestService, ChannelService: channelService,
+				Inbound:         decisions.NewInboundTransformer(), RequestService: requestService, ChannelService: channelService,
 				PromptProvider: &stubPromptProvider{}, SystemService: systemService, UsageLogService: usageLogService,
 				PipelineFactory: pipeline.NewFactory(httpclient.NewHttpClientWithClient(upstream.Client())),
-				ModelMapper: NewModelMapper(), channelLimiterManager: NewChannelLimiterManager(),
+				ModelMapper:     NewModelMapper(), channelLimiterManager: NewChannelLimiterManager(),
 			}
 			body := []byte(`{"model":"gpt-6-luna","input":"Invoice evidence","questions":[{"type":"predicate","instructions":"Billing issue?"},{"type":"predicate","name":"private","instructions":"Is this private?"}],"extra":9007199254740993}`)
 			result, err := orch.Process(ctx, &httpclient.Request{Method: http.MethodPost, Body: body, Headers: http.Header{"Content-Type": {"application/json"}}})
@@ -110,7 +113,6 @@ func TestDecisionsPipelinePersistsNativeAnswersAndCost(t *testing.T) {
 				t.Fatal("denied model reached upstream")
 			default:
 			}
-
 		})
 	}
 }

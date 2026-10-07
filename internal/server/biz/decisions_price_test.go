@@ -49,7 +49,9 @@ func TestDecisionsPricingVolumeAndSchedule(t *testing.T) {
 	for _, count := range []int64{272_000, 272_001} {
 		_, total := computeUsageCostForFormat(&llm.Usage{PromptTokens: count}, price, time.Now(), llm.APIFormatOpenAIDecisions)
 		rate := decimal.RequireFromString("0.10")
-		if count > 272_000 { rate = decimal.RequireFromString("0.20") }
+		if count > 272_000 {
+			rate = decimal.RequireFromString("0.20")
+		}
 		require.True(t, total.Equal(rate.Mul(decimal.NewFromInt(count)).Div(decimal.NewFromInt(1_000_000))))
 	}
 	price.Schedule = &objects.PriceSchedule{Timezone: "UTC", Overrides: []objects.PriceOverride{{

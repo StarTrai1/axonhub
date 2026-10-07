@@ -160,7 +160,7 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, response *h
 			OutputTokens int64 `json:"output_tokens"`
 			TotalTokens  int64 `json:"total_tokens"`
 			InputDetails *struct {
-				CachedTokens int64 `json:"cached_tokens"`
+				CachedTokens      int64 `json:"cached_tokens"`
 				WriteCachedTokens int64 `json:"cache_write_tokens"`
 			} `json:"input_tokens_details"`
 		} `json:"usage"`

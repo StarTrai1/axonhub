@@ -2,7 +2,7 @@
 
 AxonHub exposes `POST /v1/decisions` with the native `openai/decisions` format. Authenticate with an AxonHub API key in `Authorization: Bearer …` and send `Content-Type: application/json`. Existing model permissions, model mappings, channel proxies, bounded retry policies, and request/usage logging apply.
 
-OpenAI currently offers this public beta with `gpt-6-luna`. Configure that model, or an alias mapping to it, on an OpenAI or OpenAI Responses channel. Both channel types include a dedicated Decisions endpoint. It always uses HTTP, including when the primary Responses endpoint uses WebSocket. Other compatible channel types can explicitly add `openai/decisions` with a custom base URL/path if their upstream supports it. Candidates without the native endpoint are excluded.
+OpenAI currently offers this public beta with `gpt-6-luna`. Configure that model, or an alias mapping to it, on an OpenAI or OpenAI Responses channel. Both channel types include a dedicated Decisions endpoint. It always uses HTTP, including when the primary Responses endpoint uses WebSocket. Other compatible channel types can explicitly add `openai/decisions` with a custom base URL/path if their upstream supports it. Candidates without the native endpoint are excluded. If a model has a protocol override, include `openai/decisions` in its allowed protocols to serve these requests.
 
 ```json
 {

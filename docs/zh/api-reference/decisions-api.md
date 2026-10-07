@@ -2,7 +2,7 @@
 
 AxonHub 通过 `POST /v1/decisions` 提供原生 `openai/decisions` 协议。使用 AxonHub API Key 设置 `Authorization: Bearer …`，请求头设置 `Content-Type: application/json`。沿用现有模型权限、模型映射、渠道代理、有界重试和请求／用量记录。
 
-OpenAI 当前公测支持 `gpt-6-luna`。在 OpenAI 或 OpenAI Responses 渠道配置该模型，也可使用映射到它的别名。这两种渠道内置独立的 Decisions 端点，即使主 Responses 端点使用 WebSocket，Decisions 仍使用 HTTP。其他兼容渠道可在确认上游支持后，显式添加 `openai/decisions` 和自定义地址／路径。不支持原生端点的候选渠道会被排除。
+OpenAI 当前公测支持 `gpt-6-luna`。在 OpenAI 或 OpenAI Responses 渠道配置该模型，也可使用映射到它的别名。这两种渠道内置独立的 Decisions 端点，即使主 Responses 端点使用 WebSocket，Decisions 仍使用 HTTP。其他兼容渠道可在确认上游支持后，显式添加 `openai/decisions` 和自定义地址／路径。不支持原生端点的候选渠道会被排除。若模型已配置协议覆盖，需要将 `openai/decisions` 加入允许的协议，才能接收此类请求。
 
 ```json
 {

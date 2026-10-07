@@ -15,7 +15,10 @@ import (
 )
 
 func TestDecisionsChannelEndpointTransport(t *testing.T) {
-	for _, tc := range []struct{ kind channel.Type; base, path, want string }{
+	for _, tc := range []struct {
+		kind             channel.Type
+		base, path, want string
+	}{
 		{channel.TypeOpenai, "https://api.openai.com/v1", "", "https://api.openai.com/v1/decisions"},
 		{channel.TypeOpenaiResponses, "wss://api.openai.com/v1", "", "https://api.openai.com/v1/decisions"},
 		{channel.TypeZenmux, "https://example.invalid/gateway", "/decide", "https://example.invalid/gateway/decide"},
@@ -26,7 +29,9 @@ func TestDecisionsChannelEndpointTransport(t *testing.T) {
 			ctx := authz.WithTestBypass(context.Background())
 			create := client.Channel.Create().SetType(tc.kind).SetName("Decisions").SetBaseURL(tc.base).
 				SetCredentials(objects.ChannelCredentials{APIKey: "fixture"}).SetSupportedModels([]string{"gpt-6-luna"}).SetDefaultTestModel("gpt-6-luna")
-			if tc.path != "" { create.SetEndpoints([]objects.ChannelEndpoint{{APIFormat: llm.APIFormatOpenAIDecisions.String(), Path: tc.path}}) }
+			if tc.path != "" {
+				create.SetEndpoints([]objects.ChannelEndpoint{{APIFormat: llm.APIFormatOpenAIDecisions.String(), Path: tc.path}})
+			}
 			ch, err := create.Save(ctx)
 			require.NoError(t, err)
 			svc := NewChannelServiceForTest(client)
