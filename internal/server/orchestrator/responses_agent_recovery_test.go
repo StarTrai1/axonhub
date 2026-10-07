@@ -47,9 +47,9 @@ func TestResponsesExactRejectionPreservesAgentMessages(t *testing.T) {
 	body := agentRecoveryRequest(t, llm.APIFormatOpenAIResponse).Body
 	for _, tc := range []struct {
 		name, code, message, param string
-		path string
-		value any
-		want bool
+		path                       string
+		value                      any
+		want                       bool
 	}{
 		{name: "official websocket whole input", code: "invalid_encrypted_content", message: rejectedReasoningMessage, param: "input", want: true},
 		{name: "relay whole input", code: "thinking_signature_invalid", message: rejectedReasoningMessage, param: "input", want: true},
@@ -61,7 +61,7 @@ func TestResponsesExactRejectionPreservesAgentMessages(t *testing.T) {
 		{name: "unknown named item", code: "invalid_encrypted_content", message: "The encrypted content for item rs_missing could not be verified. Reason: Encrypted content could not be decrypted or parsed.", param: "input"},
 		{name: "external response", code: "invalid_encrypted_content", message: rejectedReasoningMessage, param: "input", path: "previous_response_id", value: "resp_missing"},
 		{name: "incomplete tools", code: "invalid_encrypted_content", message: rejectedReasoningMessage, param: "input", path: "input.5.call_id", value: "missing-call"},
-		{name: "encrypted tool result", code: "invalid_encrypted_content", message: rejectedReasoningMessage, param: "input", path: "input.5.output", value: []map[string]string{{"type":"encrypted_content","encrypted_content":"opaque-tool"}}},
+		{name: "encrypted tool result", code: "invalid_encrypted_content", message: rejectedReasoningMessage, param: "input", path: "input.5.output", value: []map[string]string{{"type": "encrypted_content", "encrypted_content": "opaque-tool"}}},
 		{name: "agent missing recipient", code: "invalid_encrypted_content", message: rejectedReasoningMessage, param: "input", path: "input.11.recipient", value: ""},
 		{name: "agent unknown state", code: "invalid_encrypted_content", message: rejectedReasoningMessage, param: "input", path: "input.11.content.1.type", value: "future_opaque_state"},
 		{name: "agent malformed ciphertext", code: "invalid_encrypted_content", message: rejectedReasoningMessage, param: "input", path: "input.11.content.1.encrypted_content", value: 123},
@@ -87,6 +87,29 @@ func TestResponsesExactRejectionPreservesAgentMessages(t *testing.T) {
 	}
 	_, safe := responsesResourceHistorySupportsRecovery(body)
 	require.False(t, safe, "generic resource mismatches retain the strict guard")
+}
+
+func TestResponsesAgentMessageDoesNotHideReasoningDependents(t *testing.T) {
+	body := agentRecoveryRequest(t, llm.APIFormatOpenAIResponse).Body
+	var items []json.RawMessage
+	for index, item := range gjson.GetBytes(body, "input").Array() {
+		if index == 4 {
+			items = append(items, json.RawMessage(preservedEncryptedAgentMessage))
+		}
+		if item.Get("id").String() != "am_private" {
+			items = append(items, json.RawMessage(item.Raw))
+		}
+	}
+	body, err := sjson.SetBytes(body, "input", items)
+	require.NoError(t, err)
+	rule, ok := responsesRejectedStatusRuleForDetails(body, "invalid_encrypted_content", rejectedReasoningMessage, "input")
+	require.True(t, ok)
+	after, changed, err := stripResponsesRejectedStatus(body, []responsesRejectedStatusRule{rule})
+	require.NoError(t, err)
+	require.True(t, changed)
+	require.Contains(t, string(after), preservedEncryptedAgentMessage)
+	require.False(t, gjson.GetBytes(after, `input.#(type=="function_call").id`).Exists())
+	require.Equal(t, "call_function", gjson.GetBytes(after, `input.#(type=="function_call").call_id`).String())
 }
 
 // Errors arriving inside a Responses stream must use the same recovery as an
@@ -117,7 +140,7 @@ func (e *agentRecoveryStreamExecutor) DoStream(ctx context.Context, req *httpcli
 }
 
 func agentRecoveryError(message string) error {
-	return &httpclient.Error{StatusCode: 400, Body: []byte(`{"error":{"type":"invalid_request_error","code":"invalid_encrypted_content","param":"input","message":"`+message+`"}}`)}
+	return &httpclient.Error{StatusCode: http.StatusBadRequest, Body: []byte(`{"error":{"type":"invalid_request_error","code":"invalid_encrypted_content","param":"input","message":"` + message + `"}}`)}
 }
 
 func TestResponsesAgentHistoryRecoveryPipeline(t *testing.T) {
@@ -131,7 +154,7 @@ func TestResponsesAgentHistoryRecoveryPipeline(t *testing.T) {
 					apiKey := &ent.APIKey{ID: 501, ProjectID: 502}
 					ref, _, _, err := parseRemoteCompactionRequest(req.Body)
 					require.NoError(t, err)
-					adapter.summaries.SetDefault(remoteCompactionOwnerCacheKey(&PersistenceState{APIKey:apiKey}, remoteCompactionCacheKey(ref)), "authenticated retained summary")
+					adapter.summaries.SetDefault(remoteCompactionOwnerCacheKey(&PersistenceState{APIKey: apiKey}, remoteCompactionCacheKey(ref)), "authenticated retained summary")
 					failures := []error{agentRecoveryError(rejectedNativeCompactionMessage), agentRecoveryError(rejectedReasoningMessage)}
 					if scenario == "reasoning then checkpoint" {
 						failures[0], failures[1] = failures[1], failures[0]
@@ -144,8 +167,8 @@ func TestResponsesAgentHistoryRecoveryPipeline(t *testing.T) {
 					original := append([]byte(nil), req.Body...)
 					executor := &agentRecoveryStreamExecutor{responsesReasoningPipelineExecutor: responsesReasoningPipelineExecutor{
 						failures: failures, events: rejectedReasoningCompactionEvents(),
-						response: &httpclient.Response{StatusCode:200, Body:[]byte(`{"object":"response.compaction","output":[{"type":"compaction","id":"cmp_new","encrypted_content":"new-target-checkpoint"}]}`)},
-					}, inBand:true}
+						response: &httpclient.Response{StatusCode: 200, Body: []byte(`{"object":"response.compaction","output":[{"type":"compaction","id":"cmp_new","encrypted_content":"new-target-checkpoint"}]}`)},
+					}, inBand: true}
 					configure := func(state *PersistenceState, outbound *PersistentOutboundTransformer) pipeline.Middleware {
 						state.APIKey = apiKey
 						state.ChannelModelsCandidates[0].Channel.Policies.RemoteCompaction = objects.RemoteCompactionPolicyNative
@@ -153,7 +176,9 @@ func TestResponsesAgentHistoryRecoveryPipeline(t *testing.T) {
 					}
 					state, result, err := runRejectedReasoningPipeline(t, ctx, req, executor, "synthetic-target", raw, len(failures), configure)
 					require.NoError(t, err)
-					if result.Stream { drainRejectedReasoningPipeline(t, result) }
+					if result.Stream {
+						drainRejectedReasoningPipeline(t, result)
+					}
 					require.Len(t, executor.requests, len(failures)+1)
 					for _, attempt := range executor.requests {
 						require.Contains(t, string(attempt.Body), preservedEncryptedAgentMessage)
@@ -169,14 +194,16 @@ func TestResponsesAgentHistoryRecoveryPipeline(t *testing.T) {
 					require.Equal(t, original, req.Body)
 					scope, ok := responsesReasoningScope(ctx, state.CurrentCandidate.Channel, executor.requests[0])
 					require.True(t, ok)
-					t.Cleanup(func(){ responsesReasoningRecoveries.Remove(scope) })
+					t.Cleanup(func() { responsesReasoningRecoveries.Remove(scope) })
 					require.Eventually(t, func() bool { _, found := rememberedResponsesReasoningRule(scope, original); return found }, time.Second, time.Millisecond)
 					req.Body, err = sjson.SetRawBytes(original, "input.-1", []byte(`{"type":"reasoning","id":"rs_fresh","encrypted_content":"fresh-target-reasoning"}`))
 					require.NoError(t, err)
-					next := &responsesReasoningPipelineExecutor{events:executor.events,response:executor.response}
+					next := &responsesReasoningPipelineExecutor{events: executor.events, response: executor.response}
 					_, result, err = runRejectedReasoningPipeline(t, ctx, req, next, "synthetic-target", raw, 0, configure)
 					require.NoError(t, err)
-					if result.Stream { drainRejectedReasoningPipeline(t, result) }
+					if result.Stream {
+						drainRejectedReasoningPipeline(t, result)
+					}
 					require.Len(t, next.requests, 1)
 					require.Len(t, encryptedResponsesReasoningHashes(next.requests[0].Body), 1)
 					require.Contains(t, string(next.requests[0].Body), preservedEncryptedAgentMessage)

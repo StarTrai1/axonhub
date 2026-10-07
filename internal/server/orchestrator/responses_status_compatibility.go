@@ -47,7 +47,7 @@ type responsesRejectedStatusRule struct {
 
 	// Only an exact reasoning rejection or previously successful scoped recovery
 	// may preserve an opaque native checkpoint while repairing reasoning items.
-	preserveCompaction bool
+	preserveCompaction    bool
 	preserveAgentMessages bool
 }
 
@@ -389,7 +389,7 @@ func stripResponsesRejectedStatus(body []byte, rules []responsesRejectedStatusRu
 		}
 		updated := []byte(item.Raw)
 		itemType := strings.TrimSpace(item.Get("type").String())
-		if itemType == "reasoning" || itemType == "agent_message" || itemType == remoteCompactionItemType || itemType == legacyRemoteCompactionSummaryType ||
+		if itemType == "reasoning" || itemType == remoteCompactionItemType || itemType == legacyRemoteCompactionSummaryType ||
 			((itemType == "message" || itemType == "") && item.Get("role").String() != "assistant") {
 			detachReasoningDependents = false
 		}
