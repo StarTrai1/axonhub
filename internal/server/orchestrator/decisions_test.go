@@ -62,6 +62,7 @@ func TestDecisionsPipelinePersistsNativeAnswersAndCost(t *testing.T) {
 			}}).Save(ctx)
 			require.NoError(t, err)
 			channelService, requestService, systemService, usageLogService := setupTestServices(t, client)
+			require.Same(t, channelService, usageLogService.ChannelService)
 			built, err := channelService.GetChannel(ctx, ch.ID)
 			require.NoError(t, err)
 			channelService.PreloadModelPricesForTest(ctx, built)

@@ -232,8 +232,6 @@ func setupTestServices(t *testing.T, client *ent.Client) (*biz.ChannelService, *
 	usageLogService := biz.NewUsageLogService(client, systemService, channelService)
 	requestService := biz.NewRequestService(client, systemService.CacheConfig, systemService, usageLogService, dataStorageService, biz.NewLiveStreamRegistry())
 
-	channelService = biz.NewChannelServiceForTest(client)
-
 	return channelService, requestService, systemService, usageLogService
 }
 
