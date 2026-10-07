@@ -95,7 +95,7 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *http
 				}
 			}
 		case "adaptive":
-			// output_config is optional for adaptive thinking (defaults to "high" effort upstream)
+			// output_config is optional; the source model determines the default effort
 			if anthropicReq.OutputConfig != nil && anthropicReq.OutputConfig.Effort != "" {
 				switch anthropicReq.OutputConfig.Effort {
 				case "low", "medium", "high", "xhigh", "max":

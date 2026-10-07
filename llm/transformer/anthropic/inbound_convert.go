@@ -384,13 +384,17 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 			// Adaptive thinking doesn't require a budget; preserve the type marker via TransformerMetadata.
 			chatReq.TransformerMetadata[TransformerMetadataKeyThinkingType] = "adaptive"
 			// Set a default reasoning effort so other outbound transformers (e.g., OpenAI) can use it.
-			// Anthropic's official default for adaptive thinking is "high".
-			chatReq.ReasoningEffort = "high"
+			// Opus 5.5 defaults to medium; older models retain high.
+			chatReq.ReasoningEffort = defaultAnthropicReasoningEffort(anthropicReq.Model)
 
 			if anthropicReq.Thinking.Display != "" {
 				chatReq.TransformerMetadata[TransformerMetadataKeyThinkingDisplay] = anthropicReq.Thinking.Display
 			}
 		}
+	}
+
+	if anthropicReq.Thinking == nil && defaultAnthropicReasoningEffort(anthropicReq.Model) == llm.ReasoningEffortMedium {
+		chatReq.ReasoningEffort = llm.ReasoningEffortMedium
 	}
 
 	// Convert output_config
@@ -749,6 +753,8 @@ func convertToAnthropicResponse(chatResp *llm.Response) *Message {
 			case "length":
 				stopReason := "max_tokens"
 				resp.StopReason = &stopReason
+			case "content_filter":
+				resp.StopReason = lo.ToPtr("refusal")
 			case "tool_calls":
 				stopReason := "tool_use"
 				resp.StopReason = &stopReason

@@ -216,8 +216,9 @@ func convertLLMToGeminiRequestWithConfig(chatReq *llm.Request, config *Config) *
 			// Tool response - need to find the corresponding function call
 			// Group consecutive tool messages into a single Content entry
 			toolContent := convertLLMToolResultToGeminiContent(&msg, contents)
+			placeGeminiToolMedia(toolContent, chatReq.Model)
 			if isPreviousContentToolResponse(contents) {
-				contents[len(contents)-1].Parts = append(contents[len(contents)-1].Parts, toolContent.Parts...)
+				appendGeminiToolResponse(contents[len(contents)-1], toolContent)
 			} else {
 				contents = append(contents, toolContent)
 			}
@@ -488,15 +489,26 @@ func convertLLMToolResultToGeminiContent(msg *llm.Message, contents []*Content) 
 		Role: "user", // Function responses come from user role in Gemini
 	}
 
-	var responseData map[string]any
-	if msg.Content.Content != nil {
-		_ = json.Unmarshal([]byte(*msg.Content.Content), &responseData)
+	text := lo.FromPtr(msg.Content.Content)
+	var media []*Part
+	if msg.Content.Content == nil {
+		var texts []string
+		for _, part := range msg.Content.MultipleContent {
+			if part.Type == "text" && part.Text != nil {
+				texts = append(texts, *part.Text)
+			} else if converted := geminiToolMediaPart(part); converted != nil {
+				media = append(media, converted)
+			}
+		}
+		text = strings.Join(texts, "\n")
 	}
+	var responseData map[string]any
+	_ = json.Unmarshal([]byte(text), &responseData)
 
 	// A JSON Schema $ref in tool output is data, not a reference to a Gemini
 	// functionResponse media part. Keep that output as opaque JSON text.
 	if responseData == nil || containsToolResultJSONRef(responseData) {
-		responseData = map[string]any{"result": lo.FromPtrOr(msg.Content.Content, "")}
+		responseData = map[string]any{"result": text}
 	}
 
 	toolCallID := lo.FromPtr(msg.ToolCallID)
@@ -513,9 +525,7 @@ func convertLLMToolResultToGeminiContent(msg *llm.Message, contents []*Content) 
 		Response: responseData,
 	}
 
-	content.Parts = []*Part{
-		{FunctionResponse: fp},
-	}
+	content.Parts = append([]*Part{{FunctionResponse: fp}}, media...)
 
 	return content
 }

@@ -67,6 +67,7 @@ func (m *performanceRecording) OnOutboundRawRequest(ctx context.Context, request
 	perf := biz.PerformanceRecord{}
 	perf.StartTime = time.Now()
 	perf.ChannelID = channel.ID
+	perf.ChannelRevision = channel.UpdatedAt
 	perf.Success = false
 	perf.RequestCompleted = false
 	perf.Stream = streamFlag

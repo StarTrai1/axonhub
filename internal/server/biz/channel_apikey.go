@@ -41,6 +41,11 @@ func (svc *ChannelService) DisableAPIKey(
 		return fmt.Errorf("failed to get channel: %w", err)
 	}
 
+	revision, hasRevision := ctx.Value(autoDisableRevisionKey{}).(time.Time)
+	if hasRevision && !ch.UpdatedAt.Equal(revision) {
+		return nil
+	}
+
 	// 检查 key 是否在 credentials 中。OAuth 渠道用固定的 OAuthCredentialRef 作为
 	// 唯一凭证标识，所以这里按凭证引用而非明文 key 匹配。
 	allKeys := ch.Credentials.GetAllCredentialRefs()
@@ -83,6 +88,9 @@ func (svc *ChannelService) DisableAPIKey(
 	// 更新 channel
 	update := svc.entFromContext(ctx).Channel.UpdateOneID(channelID).
 		SetDisabledAPIKeys(newDisabledKeys)
+	if hasRevision {
+		update.Where(channel.UpdatedAtEQ(revision))
+	}
 
 	// 如果没有可用 key 了，禁用整个 channel
 	channelDisabled := len(enabledKeys) == 0
@@ -104,6 +112,9 @@ func (svc *ChannelService) DisableAPIKey(
 	}
 
 	if _, err := update.Save(ctx); err != nil {
+		if hasRevision && ent.IsNotFound(err) {
+			return nil
+		}
 		return fmt.Errorf("failed to disable api key: %w", err)
 	}
 

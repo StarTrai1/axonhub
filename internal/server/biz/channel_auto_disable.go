@@ -19,6 +19,19 @@ import (
 
 var compiledAPIKeyRuleRegexes sync.Map
 
+type autoDisableRevisionKey struct{}
+
+// Late outcomes still count in historical metrics, but cannot mutate the
+// availability or failure streak of a newer channel configuration.
+func (svc *ChannelService) performanceRevisionCurrent(ctx context.Context, perf *PerformanceRecord) bool {
+	if perf.ChannelRevision.IsZero() {
+		return true
+	}
+	current, err := svc.entFromContext(ctx).Channel.Query().Where(channel.IDEQ(perf.ChannelID)).Select(channel.FieldUpdatedAt).Only(ctx)
+	return err == nil && current.UpdatedAt.Equal(perf.ChannelRevision)
+}
+
+
 type autoDisableScope string
 
 const (
@@ -53,6 +66,9 @@ func (svc *ChannelService) markChannelUnavailable(
 		SetStatus(channel.StatusDisabled).
 		SetErrorMessage(reason).
 		SetAutoDisabledAt(time.Now())
+	if revision, ok := ctx.Value(autoDisableRevisionKey{}).(time.Time); ok {
+		update.Where(channel.UpdatedAtEQ(revision))
+	}
 	if expiresAt != nil {
 		update.SetAutoDisableExpiresAt(*expiresAt)
 	} else {
@@ -209,7 +225,7 @@ func (svc *ChannelService) evaluateRules(
 	rules []objects.APIKeyAutoDisableRule,
 	scope autoDisableScope,
 ) (matched, acted bool) {
-	if len(rules) == 0 {
+	if len(rules) == 0 || !svc.performanceRevisionCurrent(ctx, perf) {
 		return false, false
 	}
 
@@ -275,9 +291,15 @@ func (svc *ChannelService) evaluateRules(
 	return false, false
 }
 
-func (svc *ChannelService) clearAutoDisableCountsOnSuccess(perf *PerformanceRecord) {
+func (svc *ChannelService) clearAutoDisableCountsOnSuccess(ctx context.Context, perf *PerformanceRecord) {
 	svc.apiKeyErrorCountsLock.Lock()
 	defer svc.apiKeyErrorCountsLock.Unlock()
+
+	// Most successes have no outstanding rule streak. Avoid a database read
+	// on that hot path; only validate a revision when there is state to clear.
+	if len(svc.apiKeyErrorCounts[perf.ChannelID]) == 0 || !svc.performanceRevisionCurrent(ctx, perf) {
+		return
+	}
 
 	identity := autoDisableCounterIdentity(perf)
 	prefix := identity + ":"
@@ -400,6 +422,12 @@ func (svc *ChannelService) executeMatchedRuleAction(
 	rule objects.APIKeyAutoDisableRule,
 	count int,
 ) bool {
+	// Keyless and OAuth channels use a stable credential reference, so guard
+	// their write as well. API-key actions already match the actual key and
+	// may deliberately perform several updates (disable/delete/preserve).
+	if !perf.ChannelRevision.IsZero() && (perf.APIKey == "" || perf.APIKey == objects.OAuthCredentialRef) {
+		ctx = context.WithValue(ctx, autoDisableRevisionKey{}, perf.ChannelRevision)
+	}
 	if perf.APIKey == "" {
 		return svc.executeChannelRuleAction(ctx, perf, rule, count)
 	}

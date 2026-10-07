@@ -1509,38 +1509,6 @@ func extractProjectIDFromAntigravityCreds(apiKey string) (string, error) {
 	return "", errors.New("api key does not contain project ID (expected format: \"<refreshToken>|<projectID>\")")
 }
 
-func (svc *ChannelService) refreshOAuthToken(ctx context.Context, ch *ent.Channel, refreshed *oauth.OAuthCredentials) error {
-	if refreshed == nil {
-		return nil
-	}
-
-	updated := ch.Credentials
-
-	if ch.Type == channel.TypeAntigravity {
-		projectID, err := extractProjectIDFromAntigravityCreds(ch.Credentials.APIKey)
-		if err != nil {
-			log.Warn(ctx, "failed to extract project ID from antigravity credentials",
-				log.Cause(err),
-				log.String("channel", ch.Name))
-			return fmt.Errorf("failed to extract project ID from antigravity credentials: %w", err)
-		}
-		updated.APIKey = fmt.Sprintf("%s|%s", refreshed.RefreshToken, projectID)
-	} else {
-		credJSON, err := refreshed.ToJSON()
-		if err != nil {
-			return fmt.Errorf("failed to serialize refreshed credentials: %w", err)
-		}
-		// NOTE：必须是使用 APIKey 字段，不能使用 API Keys 字段
-		updated.APIKey = credJSON
-	}
-
-	updated.OAuth = refreshed
-
-	_, err := svc.entFromContext(ctx).Channel.UpdateOneID(ch.ID).SetCredentials(updated).Save(ctx)
-
-	return err
-}
-
 // GetModelEntries returns all models this channel can handle, RequestModel -> Entry
 // This unifies:
 // - SupportedModels (direct models)

@@ -105,6 +105,14 @@ type FunctionResponse struct {
 	// function output and "error" key to specify error details (if any). If "output" and
 	// "error" keys are not specified, then whole "response" is treated as function output.
 	Response map[string]any `json:"response,omitempty"`
+
+	// Parts carries inline images/documents in Gemini 3+ tool results.
+	Parts []*FunctionResponsePart `json:"parts,omitempty"`
+}
+
+// FunctionResponsePart accepts inline media only, unlike a regular Part.
+type FunctionResponsePart struct {
+	InlineData *Blob `json:"inlineData,omitempty"`
 }
 
 // Tool represents a tool that the model may use.

@@ -1103,7 +1103,17 @@ func (s *anthropicInboundStream) Next() bool {
 				contentClosed = true
 			}
 
-			if !contentClosed && !s.hasTextContentStarted && !s.hasToolContentStarted && !s.hasThinkingContentStarted {
+			if !contentClosed && s.contentIndex == 0 && !s.hasTextContentStarted && !s.hasToolContentStarted && !s.hasThinkingContentStarted {
+				// A partless refusal still needs a balanced content block; never
+				// send content_block_stop for an index that was not started.
+				if err := s.enqueEvent(&StreamEvent{
+					Type: "content_block_start",
+					Index: &s.contentIndex,
+					ContentBlock: &MessageContentBlock{Type: "text", Text: lo.ToPtr("")},
+				}); err != nil {
+					s.err = fmt.Errorf("failed to enqueue empty content_block_start: %w", err)
+					return false
+				}
 				streamEvent := StreamEvent{
 					Type:  "content_block_stop",
 					Index: &s.contentIndex,
@@ -1124,6 +1134,8 @@ func (s *anthropicInboundStream) Next() bool {
 				stopReason = "end_turn"
 			case "length":
 				stopReason = "max_tokens"
+			case "content_filter":
+				stopReason = "refusal"
 			case "tool_calls":
 				stopReason = "tool_use"
 			default:

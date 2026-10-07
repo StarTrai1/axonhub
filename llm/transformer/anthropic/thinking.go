@@ -1,6 +1,10 @@
 package anthropic
 
-import "github.com/looplj/axonhub/llm"
+import (
+	"strings"
+
+	"github.com/looplj/axonhub/llm"
+)
 
 func supportsAdaptiveThinking(config *Config) bool {
 	if config == nil {
@@ -91,4 +95,15 @@ func getThinkingBudgetTokensWithConfig(reasoningEffort string, config *Config) i
 
 	// Default to medium if not found
 	return 15000
+}
+
+// defaultAnthropicReasoningEffort preserves the source model's default when
+// translating adaptive thinking to a provider that requires an explicit effort.
+// https://platform.claude.com/docs/en/build-with-claude/effort
+func defaultAnthropicReasoningEffort(model string) string {
+	model = strings.ToLower(strings.TrimSpace(model))
+	if model == "claude-opus-5-5" || strings.HasPrefix(model, "claude-opus-5-5-") {
+		return llm.ReasoningEffortMedium
+	}
+	return llm.ReasoningEffortHigh
 }

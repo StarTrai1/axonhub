@@ -498,13 +498,27 @@ func convertGeminiContentToLLMMessage(content *Content, previousContents []*Cont
 				functionResponseID = findMatchingFunctionCallID(part.FunctionResponse.Name, previousContents)
 			}
 
+			toolContent := llm.MessageContent{Content: lo.ToPtr(string(responseJSON))}
+			if len(part.FunctionResponse.Parts) > 0 {
+				toolContent = llm.MessageContent{MultipleContent: []llm.MessageContentPart{{Type: "text", Text: lo.ToPtr(string(responseJSON))}}}
+				for _, media := range part.FunctionResponse.Parts {
+					if media == nil || media.InlineData == nil {
+						continue
+					}
+					blob := media.InlineData
+					dataURL := xurl.BuildDataURL(blob.MIMEType, blob.Data, true)
+					if strings.HasPrefix(blob.MIMEType, "image/") {
+						toolContent.MultipleContent = append(toolContent.MultipleContent, llm.MessageContentPart{Type: "image_url", ImageURL: &llm.ImageURL{URL: dataURL}})
+					} else {
+						toolContent.MultipleContent = append(toolContent.MultipleContent, llm.MessageContentPart{Type: "document", Document: &llm.DocumentURL{URL: dataURL, MIMEType: blob.MIMEType}})
+					}
+				}
+			}
 			return &llm.Message{
 				Role:         "tool",
 				ToolCallID:   lo.ToPtr(functionResponseID),
 				ToolCallName: lo.ToPtr(part.FunctionResponse.Name),
-				Content: llm.MessageContent{
-					Content: lo.ToPtr(string(responseJSON)),
-				},
+				Content:      toolContent,
 			}, nil
 		}
 	}
