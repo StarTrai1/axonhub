@@ -110,7 +110,9 @@ func NewOutboundTransformer(config Config) (*OutboundTransformer, error) {
 		config.BaseURL = transformer.NormalizeBaseURL(config.BaseURL, "")
 	}
 	delegate, err := openai.NewOutboundTransformerWithConfig(&openai.Config{
-		BaseURL: config.BaseURL, APIKeyProvider: config.APIKeyProvider,
+		PlatformType:   openai.PlatformOpenAI,
+		BaseURL:        config.BaseURL,
+		APIKeyProvider: config.APIKeyProvider,
 	})
 	if err != nil {
 		return nil, err

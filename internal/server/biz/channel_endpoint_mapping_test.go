@@ -365,6 +365,7 @@ func TestResolveEndpoints_MergesDefaultsAndUserOverrides(t *testing.T) {
 		{APIFormat: llm.APIFormatOpenAISpeech.String()},
 		{APIFormat: llm.APIFormatOpenAITranscription.String()},
 		{APIFormat: llm.APIFormatOpenAITranslation.String()},
+		{APIFormat: llm.APIFormatOpenAIDecisions.String()},
 		{APIFormat: llm.APIFormatGeminiContents.String(), Path: "/v1/gemini"},
 	}, endpoints)
 }
