@@ -97,3 +97,23 @@ func TestGeminiToolMediaWithoutPortablePayloadIsRejected(t *testing.T) {
 	_, err = adapter.TransformRequest(t.Context(), &llm.Request{Model: "gemini-3-pro-preview", Messages: []llm.Message{{Role: "tool", Content: llm.MessageContent{MultipleContent: []llm.MessageContentPart{{Type: "document", Document: &llm.DocumentURL{FileID: "file_external"}}}}}}})
 	require.ErrorIs(t, err, transformer.ErrInvalidRequest)
 }
+
+func TestAnthropicToolMediaKeepsRemoteFilesOutsideFunctionResponse(t *testing.T) {
+	payload := []byte(`{"model":"claude-sonnet-5-5","max_tokens":1000,"messages":[{"role":"assistant","content":[{"type":"tool_use","id":"one","name":"inspect","input":{}},{"type":"tool_use","id":"two","name":"read","input":{}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"one","content":[{"type":"text","text":"remote image"},{"type":"image","source":{"type":"url","url":"https://example.com/image.png"}}]},{"type":"tool_result","tool_use_id":"two","content":[{"type":"document","source":{"type":"base64","media_type":"application/pdf","data":"cGRm"}}]}]}]}`)
+	request, err := anthropic.NewInboundTransformer().TransformRequest(t.Context(), &httpclient.Request{Body: payload})
+	require.NoError(t, err)
+	request.Model = "gemini-3-pro-preview"
+	adapter, err := gemini.NewOutboundTransformer("", "fixture")
+	require.NoError(t, err)
+	wire, err := adapter.TransformRequest(t.Context(), request)
+	require.NoError(t, err)
+	var result gemini.GenerateContentRequest
+	require.NoError(t, json.Unmarshal(wire.Body, &result))
+	parts := result.Contents[len(result.Contents)-1].Parts
+	require.Len(t, parts, 3)
+	require.Equal(t, "one", parts[0].FunctionResponse.ID)
+	require.Equal(t, "two", parts[1].FunctionResponse.ID)
+	require.Empty(t, parts[0].FunctionResponse.Parts)
+	require.Equal(t, "cGRm", parts[1].FunctionResponse.Parts[0].InlineData.Data)
+	require.Equal(t, "https://example.com/image.png", parts[2].FileData.FileURI)
+}

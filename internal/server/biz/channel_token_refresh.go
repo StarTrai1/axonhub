@@ -1,11 +1,11 @@
 package biz
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
-	"bytes"
-	"encoding/json"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
@@ -58,6 +58,7 @@ func (svc *ChannelService) refreshOAuthToken(ctx context.Context, ch *ent.Channe
 	return saved, err
 }
 
+//nolint:gosec // G117: serialized credentials are compared only in memory; never logged, persisted or returned.
 func sameOAuthRefreshCredentials(current, snapshot *ent.Channel) bool {
 	currentJSON, currentErr := json.Marshal(current.Credentials)
 	snapshotJSON, snapshotErr := json.Marshal(snapshot.Credentials)

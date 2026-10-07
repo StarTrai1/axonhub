@@ -10,7 +10,7 @@ import (
 )
 
 func TestOpus55DefaultEffortAcrossRequestForms(t *testing.T) {
-	for _, tc := range []struct { model, thinking, effort, want string }{
+	for _, tc := range []struct{ model, thinking, effort, want string }{
 		{"claude-opus-5-5", "", "", "medium"},
 		{"claude-opus-5-5-20261001", "adaptive", "", "medium"},
 		{"claude-opus-5-5", "adaptive", "high", "high"},
@@ -22,8 +22,12 @@ func TestOpus55DefaultEffortAcrossRequestForms(t *testing.T) {
 	} {
 		t.Run(tc.model+"/"+tc.thinking+"/"+tc.effort, func(t *testing.T) {
 			payload := map[string]any{"model": tc.model, "max_tokens": 1000, "messages": []any{map[string]any{"role": "user", "content": "hello"}}}
-			if tc.thinking != "" { payload["thinking"] = map[string]any{"type": tc.thinking} }
-			if tc.effort != "" { payload["output_config"] = map[string]any{"effort": tc.effort} }
+			if tc.thinking != "" {
+				payload["thinking"] = map[string]any{"type": tc.thinking}
+			}
+			if tc.effort != "" {
+				payload["output_config"] = map[string]any{"effort": tc.effort}
+			}
 			body, err := json.Marshal(payload)
 			require.NoError(t, err)
 			request, err := NewInboundTransformer().TransformRequest(t.Context(), &httpclient.Request{Body: body})

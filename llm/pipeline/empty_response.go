@@ -148,6 +148,11 @@ func hasResponseContent(resp *llm.Response) bool {
 	}
 
 	for _, choice := range resp.Choices {
+		// An explicit provider refusal is meaningful even without text. Retrying
+		// it as an empty answer hides the refusal and repeats the same request.
+		if choice.FinishReason != nil && *choice.FinishReason == "content_filter" {
+			return true
+		}
 		if hasMessageContent(choice.Delta) || hasMessageContent(choice.Message) {
 			return true
 		}

@@ -31,7 +31,6 @@ func (svc *ChannelService) performanceRevisionCurrent(ctx context.Context, perf 
 	return err == nil && current.UpdatedAt.Equal(perf.ChannelRevision)
 }
 
-
 type autoDisableScope string
 
 const (

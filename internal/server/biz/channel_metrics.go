@@ -667,10 +667,10 @@ func deriveErrorMessage(errorCode int) string {
 
 // PerformanceRecord contains performance metrics collected during request processing.
 type PerformanceRecord struct {
-	ChannelID          int
+	ChannelID int
 	// ChannelRevision identifies the cached channel used for this attempt. It is not persisted.
 	ChannelRevision    time.Time `json:"-"`
-	APIKey             string // API key used for the request (sensitive, do not log full value)
+	APIKey             string    // API key used for the request (sensitive, do not log full value)
 	StartTime          time.Time
 	FirstTokenTime     *time.Time
 	ReasoningStartTime *time.Time

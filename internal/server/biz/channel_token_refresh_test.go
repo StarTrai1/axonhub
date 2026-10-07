@@ -58,7 +58,9 @@ func TestOAuthRefreshAllowsSequentialRefreshAndUnrelatedEdits(t *testing.T) {
 	ch := createTestOAuthChannel(t, client, ctx, "refresh-sequence")
 	original := ch.Credentials.OAuth.AccessToken
 	callback := svc.onTokenRefreshed(ch)
-	_, err := client.Channel.UpdateOneID(ch.ID).SetName("renamed").Save(ctx)
+	expires := time.Now().UTC().Add(time.Hour).Truncate(time.Second)
+	disabled := []objects.DisabledAPIKey{{Key: objects.OAuthCredentialRef, ErrorCode: 429, ExpiresAt: &expires}}
+	_, err := client.Channel.UpdateOneID(ch.ID).SetName("renamed").SetDisabledAPIKeys(disabled).Save(ctx)
 	require.NoError(t, err)
 	for _, token := range []string{"first-refresh", "second-refresh"} {
 		require.NoError(t, callback(ctx, &oauth.OAuthCredentials{AccessToken: token, RefreshToken: "refresh", ExpiresAt: time.Now().Add(time.Hour)}))
@@ -66,6 +68,7 @@ func TestOAuthRefreshAllowsSequentialRefreshAndUnrelatedEdits(t *testing.T) {
 	stored, err := client.Channel.Get(ctx, ch.ID)
 	require.NoError(t, err)
 	require.Equal(t, "renamed", stored.Name)
+	require.Equal(t, disabled, stored.DisabledAPIKeys, "refresh cannot reset quota cooldown")
 	require.Equal(t, "second-refresh", stored.Credentials.OAuth.AccessToken)
 	require.Equal(t, original, ch.Credentials.OAuth.AccessToken, "cached channel snapshot stays immutable")
 }

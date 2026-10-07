@@ -1107,8 +1107,8 @@ func (s *anthropicInboundStream) Next() bool {
 				// A partless refusal still needs a balanced content block; never
 				// send content_block_stop for an index that was not started.
 				if err := s.enqueEvent(&StreamEvent{
-					Type: "content_block_start",
-					Index: &s.contentIndex,
+					Type:         "content_block_start",
+					Index:        &s.contentIndex,
 					ContentBlock: &MessageContentBlock{Type: "text", Text: lo.ToPtr("")},
 				}); err != nil {
 					s.err = fmt.Errorf("failed to enqueue empty content_block_start: %w", err)
