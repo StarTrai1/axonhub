@@ -2,6 +2,7 @@ package anthropic
 
 import (
 	"encoding/json"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -30,7 +31,7 @@ func TestOpus55DefaultEffortAcrossRequestForms(t *testing.T) {
 			}
 			body, err := json.Marshal(payload)
 			require.NoError(t, err)
-			request, err := NewInboundTransformer().TransformRequest(t.Context(), &httpclient.Request{Body: body})
+			request, err := NewInboundTransformer().TransformRequest(t.Context(), &httpclient.Request{Headers: http.Header{"Content-Type": []string{"application/json"}}, Body: body})
 			require.NoError(t, err)
 			require.Equal(t, tc.want, request.ReasoningEffort)
 		})

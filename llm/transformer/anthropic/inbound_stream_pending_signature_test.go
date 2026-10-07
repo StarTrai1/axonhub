@@ -801,10 +801,10 @@ func TestPendingSignature_SignatureWithoutThinking_FinishOnly(t *testing.T) {
 	require.Equal(t, "message_stop", events[5].Type)
 }
 
-// TestFinishReason_WithoutAnyOpenBlockPreservesTrailingStop verifies the legacy
+// TestFinishReason_WithoutAnyOpenBlockEmitsBalancedEmptyBlock verifies the legacy
 // finish_reason behavior: even when no text/tool block is open, the transformer
 // still emits a trailing content_block_stop before message_delta.
-func TestFinishReason_WithoutAnyOpenBlockPreservesTrailingStop(t *testing.T) {
+func TestFinishReason_WithoutAnyOpenBlockEmitsBalancedEmptyBlock(t *testing.T) {
 	const (
 		id    = "msg_test_finish_only"
 		model = "test-model"
@@ -818,17 +818,16 @@ func TestFinishReason_WithoutAnyOpenBlockPreservesTrailingStop(t *testing.T) {
 
 	events := collectStreamEvents(t, responses)
 
-	// Expected legacy event order:
-	// 0: message_start
-	// 1: content_block_stop (index 0)
-	// 2: message_delta
-	// 3: message_stop
-	require.Len(t, events, 4)
+	// A partless finish must not stop a block that never started.
+	require.Len(t, events, 5)
 	require.Equal(t, "message_start", events[0].Type)
-	require.Equal(t, "content_block_stop", events[1].Type)
+	require.Equal(t, "content_block_start", events[1].Type)
 	require.Equal(t, int64(0), *events[1].Index)
-	require.Equal(t, "message_delta", events[2].Type)
-	require.Equal(t, "message_stop", events[3].Type)
+	require.Equal(t, "text", events[1].ContentBlock.Type)
+	require.Equal(t, "content_block_stop", events[2].Type)
+	require.Equal(t, int64(0), *events[2].Index)
+	require.Equal(t, "message_delta", events[3].Type)
+	require.Equal(t, "message_stop", events[4].Type)
 }
 
 func TestFinishReason_WithOpenTextBlock_EmitsSingleStop(t *testing.T) {

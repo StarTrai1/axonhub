@@ -36,7 +36,7 @@ func TestGeminiRefusalPassesEmptyResponseDetection(t *testing.T) {
 				outbound, err := gemini.NewOutboundTransformer("", "fixture")
 				require.NoError(t, err)
 				p := pipeline.NewFactory(executor).Pipeline(anthropic.NewInboundTransformer(), outbound, pipeline.WithEmptyResponseDetection())
-				result, err := p.Process(t.Context(), &httpclient.Request{Method: http.MethodPost, Body: fmt.Appendf(nil, `{"model":"gemini-3-pro-preview","max_tokens":1000,"stream":%v,"messages":[{"role":"user","content":"hello"}]}`, stream)})
+				result, err := p.Process(t.Context(), &httpclient.Request{Method: http.MethodPost, Headers: http.Header{"Content-Type": []string{"application/json"}}, Body: fmt.Appendf(nil, `{"model":"gemini-3-pro-preview","max_tokens":1000,"stream":%v,"messages":[{"role":"user","content":"hello"}]}`, stream)})
 				if reason == "STOP" {
 					require.ErrorIs(t, err, pipeline.ErrEmptyResponse, "ordinary empty completions must still be rejected")
 					return

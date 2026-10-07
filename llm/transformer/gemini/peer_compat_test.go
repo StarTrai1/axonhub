@@ -2,6 +2,7 @@ package gemini_test
 
 import (
 	"encoding/json"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -57,7 +58,7 @@ func TestResponsesToolMediaToGemini(t *testing.T) {
 	for _, model := range []string{"gemini-2.5-flash", "gemini-3-pro-preview", "models/gemini-3.5-flash", "custom-model", "gemini-"} {
 		t.Run(model, func(t *testing.T) {
 			body := []byte(`{"model":"fixture","input":[{"type":"function_call","call_id":"one","name":"inspect","arguments":"{}"},{"type":"function_call","call_id":"two","name":"read","arguments":"{}"},{"type":"function_call_output","call_id":"one","output":[{"type":"input_text","text":"image result"},{"type":"input_image","image_url":"data:image/png;base64,aW1hZ2U="}]},{"type":"function_call_output","call_id":"two","output":[{"type":"input_text","text":"document result"},{"type":"input_file","filename":"result.pdf","file_data":"data:application/pdf;base64,cGRm"}]}]}`)
-			request, err := responses.NewInboundTransformer().TransformRequest(t.Context(), &httpclient.Request{Body: body})
+			request, err := responses.NewInboundTransformer().TransformRequest(t.Context(), &httpclient.Request{Headers: http.Header{"Content-Type": []string{"application/json"}}, Body: body})
 			require.NoError(t, err)
 			request.Model = model
 			outbound, err := gemini.NewOutboundTransformer("", "fixture")
@@ -100,7 +101,7 @@ func TestGeminiToolMediaWithoutPortablePayloadIsRejected(t *testing.T) {
 
 func TestAnthropicToolMediaKeepsRemoteFilesOutsideFunctionResponse(t *testing.T) {
 	payload := []byte(`{"model":"claude-sonnet-5-5","max_tokens":1000,"messages":[{"role":"assistant","content":[{"type":"tool_use","id":"one","name":"inspect","input":{}},{"type":"tool_use","id":"two","name":"read","input":{}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"one","content":[{"type":"text","text":"remote image"},{"type":"image","source":{"type":"url","url":"https://example.com/image.png"}}]},{"type":"tool_result","tool_use_id":"two","content":[{"type":"document","source":{"type":"base64","media_type":"application/pdf","data":"cGRm"}}]}]}]}`)
-	request, err := anthropic.NewInboundTransformer().TransformRequest(t.Context(), &httpclient.Request{Body: payload})
+	request, err := anthropic.NewInboundTransformer().TransformRequest(t.Context(), &httpclient.Request{Headers: http.Header{"Content-Type": []string{"application/json"}}, Body: payload})
 	require.NoError(t, err)
 	request.Model = "gemini-3-pro-preview"
 	adapter, err := gemini.NewOutboundTransformer("", "fixture")

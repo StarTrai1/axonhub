@@ -2118,7 +2118,7 @@ func TestConvertGeminiToLLMResponse_FinishReasons(t *testing.T) {
 		"MAX_TOKENS":              "length",
 		"SAFETY":                  "content_filter",
 		"RECITATION":              "content_filter",
-		"MALFORMED_FUNCTION_CALL": "stop", // Error condition, maps to stop
+		"MALFORMED_FUNCTION_CALL": "content_filter", // A refused tool call is not normal completion.
 		"UNKNOWN":                 "stop",
 	}
 
