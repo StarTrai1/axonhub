@@ -21,7 +21,13 @@ const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const MINUTES = Array.from({ length: 60 }, (_, i) => i);
 
 type PricingMode = 'flat_fee' | 'usage_per_unit' | 'usage_tiered' | 'usage_volume';
-const priceItemCodes = ['prompt_tokens', 'completion_tokens', 'prompt_cached_tokens', 'prompt_write_cached_tokens'] as const;
+const priceItemCodes = [
+  'prompt_tokens',
+  'completion_tokens',
+  'prompt_cached_tokens',
+  'prompt_write_cached_tokens',
+  'decisions_input_tokens',
+] as const;
 
 type DateRangeValue = { start: string; end: string };
 
