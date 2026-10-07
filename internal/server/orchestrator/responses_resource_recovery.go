@@ -64,7 +64,11 @@ func responsesInputSupportsPortableID(itemType string) bool {
 }
 
 func responsesResourceHistorySupportsRecovery(body []byte) (hasIDs, safe bool) {
-	if _, complete := responsesHistorySupportsRecovery(body, true); !complete {
+	return responsesResourceHistorySupportsRecoveryWithAgents(body, false)
+}
+
+func responsesResourceHistorySupportsRecoveryWithAgents(body []byte, preserveAgentMessages bool) (hasIDs, safe bool) {
+	if _, complete := responsesHistorySupportsRecoveryWithAgents(body, true, preserveAgentMessages); !complete {
 		return false, false
 	}
 	for _, item := range gjson.GetBytes(body, "input").Array() {
@@ -88,6 +92,13 @@ func responsesResourceHistorySupportsRecovery(body []byte) (hasIDs, safe bool) {
 				return false, false
 			}
 		case "additional_tools", "reasoning", "configuration_update", "compaction_trigger", "compaction", "compaction_summary":
+		case "agent_message":
+			if !preserveAgentMessages || !responsesAgentMessageSupportsPreservation(item) {
+				return false, false
+			}
+			// The whole agent item, including its ID and encrypted content, stays
+			// unchanged. It is not a candidate for resource-ID detachment.
+			continue
 		default:
 			return false, false
 		}

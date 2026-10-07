@@ -53,7 +53,7 @@ func responsesRejectedCompactionMessage(body []byte, ref *remoteCompactionRefere
 		}
 		index = i
 	}
-	return index >= 0 && (param == "" || param == fmt.Sprintf("input[%d].encrypted_content", index))
+	return index >= 0 && (param == "" || param == "input" || param == fmt.Sprintf("input[%d].encrypted_content", index))
 }
 
 type responsesCompactionRecoveryMiddleware struct {
@@ -91,12 +91,13 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawError(ctx context.C
 	if request == nil {
 		return
 	}
-	hasIDs, safe := responsesResourceHistorySupportsRecovery(request.Body)
-	if !safe {
-		return
-	}
 	key, ref, ok := m.recoveryKey(ctx, request)
 	if !ok {
+		return
+	}
+	exactCheckpoint := responsesRejectedCompactionMessage(request.Body, ref, code, message, param)
+	hasIDs, safe := responsesResourceHistorySupportsRecoveryWithAgents(request.Body, exactCheckpoint)
+	if !safe {
 		return
 	}
 	if param == "" && responsesResourceMismatch(code, message) {
@@ -104,7 +105,7 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawError(ctx context.C
 		if hasIDs {
 			return
 		}
-	} else if !responsesRejectedCompactionMessage(request.Body, ref, code, message, param) {
+	} else if !exactCheckpoint {
 		return
 	}
 	if _, alreadyRejected := m.rejected[key]; alreadyRejected {
@@ -141,7 +142,7 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawRequest(
 	if !rejected && !known && !local {
 		return request, nil
 	}
-	if _, safe := responsesResourceHistorySupportsRecovery(request.Body); !safe {
+	if _, safe := responsesResourceHistorySupportsRecoveryWithAgents(request.Body, true); !safe {
 		return nil, &remoteCompactionPreparationError{cause: errors.New("cannot recover rejected compaction with unresolved Responses history")}
 	}
 	state := m.outbound.state

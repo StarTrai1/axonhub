@@ -48,6 +48,7 @@ type responsesRejectedStatusRule struct {
 	// Only an exact reasoning rejection or previously successful scoped recovery
 	// may preserve an opaque native checkpoint while repairing reasoning items.
 	preserveCompaction bool
+	preserveAgentMessages bool
 }
 
 type responsesMetadataCapabilityKey struct {
@@ -265,16 +266,17 @@ func responsesBadRequestDetails(err error) (code, message, param string, ok bool
 }
 
 func responsesRejectedStatusRuleForDetails(requestBody []byte, code, message, param string) (responsesRejectedStatusRule, bool) {
-	if code == "invalid_encrypted_content" {
-		if param == "" {
-			if rule, accepted := responsesRejectedReasoningMessageRule(requestBody, code, message, param); accepted {
-				return rule, true
-			}
-		}
-		return responsesRejectedReasoningRule(requestBody, param)
+	if responsesRejectedReasoningMessagePattern.MatchString(message) {
+		// The named item is authoritative, including when param is "input".
+		// A conflicting indexed parameter must not fall through to generic
+		// invalid_encrypted_content recovery and authorize a different item.
+		return responsesRejectedReasoningMessageRule(requestBody, code, message, param)
 	}
-	if rule, accepted := responsesRejectedReasoningMessageRule(requestBody, code, message, param); accepted {
-		return rule, true
+	if responsesRejectedCompactionMessagePattern.MatchString(message) {
+		return responsesRejectedStatusRule{}, false
+	}
+	if code == "invalid_encrypted_content" {
+		return responsesRejectedReasoningRule(requestBody, param)
 	}
 	if rule, accepted := responsesRejectedResourceRule(requestBody, code, message, param); accepted {
 		return rule, true
@@ -379,6 +381,7 @@ func stripResponsesRejectedStatus(body []byte, rules []responsesRejectedStatusRu
 	recoveryValidated := false
 	resourceRecoveryValidated := false
 	detachReasoningDependents := false
+	preserveAgentMessages := false
 	for index, item := range items {
 		if !item.IsObject() {
 			retained = append(retained, json.RawMessage(item.Raw))
@@ -386,7 +389,7 @@ func stripResponsesRejectedStatus(body []byte, rules []responsesRejectedStatusRu
 		}
 		updated := []byte(item.Raw)
 		itemType := strings.TrimSpace(item.Get("type").String())
-		if itemType == "reasoning" || itemType == remoteCompactionItemType || itemType == legacyRemoteCompactionSummaryType ||
+		if itemType == "reasoning" || itemType == "agent_message" || itemType == remoteCompactionItemType || itemType == legacyRemoteCompactionSummaryType ||
 			((itemType == "message" || itemType == "") && item.Get("role").String() != "assistant") {
 			detachReasoningDependents = false
 		}
@@ -404,11 +407,12 @@ func stripResponsesRejectedStatus(body []byte, rules []responsesRejectedStatusRu
 					}
 				}
 				if !recoveryValidated {
-					if _, safe := responsesReasoningHistorySupportsRecovery(body, rule.preserveCompaction); !safe {
+					if _, safe := responsesReasoningHistorySupportsRecoveryWithAgents(body, rule.preserveCompaction, rule.preserveAgentMessages); !safe {
 						return nil, false, errors.New("cannot rebuild rejected reasoning without complete explicit Responses history")
 					}
 					recoveryValidated = true
 				}
+				preserveAgentMessages = preserveAgentMessages || rule.preserveAgentMessages
 				var err error
 				updated, err = recoverResponsesReasoningSummary(updated)
 				if err != nil {
@@ -440,7 +444,7 @@ func stripResponsesRejectedStatus(body []byte, rules []responsesRejectedStatusRu
 		// or a new user/checkpoint boundary so fresh native items remain native.
 		if detachReasoningDependents && responsesInputSupportsPortableID(itemType) && gjson.GetBytes(updated, "id").Exists() {
 			if !resourceRecoveryValidated {
-				if _, safe := responsesResourceHistorySupportsRecovery(body); !safe {
+				if _, safe := responsesResourceHistorySupportsRecoveryWithAgents(body, preserveAgentMessages); !safe {
 					return nil, false, errors.New("cannot detach reasoning dependents without materialized Responses history")
 				}
 				resourceRecoveryValidated = true

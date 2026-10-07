@@ -53,7 +53,10 @@ func responsesRejectedReasoningMessageRule(body []byte, code, message, param str
 		return responsesRejectedStatusRule{}, false
 	}
 	itemParam := fmt.Sprintf("input[%d].encrypted_content", index)
-	if param != "" && param != itemParam {
+	// Codex WebSocket errors can identify the whole input parameter while the
+	// complete message still names one unique reasoning item. An indexed param
+	// must agree with that item; never fall back to another indexed item.
+	if param != "" && param != "input" && param != itemParam {
 		return responsesRejectedStatusRule{}, false
 	}
 	return responsesRejectedReasoningRule(body, itemParam)
@@ -62,7 +65,7 @@ func responsesRejectedReasoningMessageRule(body []byte, code, message, param str
 func responsesRejectedReasoningRule(body []byte, param string) (responsesRejectedStatusRule, bool) {
 	// An indexed rejection identifies reasoning, not the checkpoint. Unindexed
 	// generic encryption errors must keep the stricter complete-history guard.
-	hasEncryptedReasoning, complete := responsesReasoningHistorySupportsRecovery(body, param != "")
+	hasEncryptedReasoning, complete := responsesReasoningHistorySupportsRecoveryWithAgents(body, param != "", param != "")
 	if !complete || !hasEncryptedReasoning {
 		return responsesRejectedStatusRule{}, false
 	}
@@ -81,17 +84,21 @@ func responsesRejectedReasoningRule(body []byte, param string) (responsesRejecte
 			return responsesRejectedStatusRule{}, false
 		}
 	}
-	return responsesRejectedStatusRule{itemType: "reasoning", index: -1, field: "encrypted_content", dropItem: true, preserveCompaction: param != ""}, true
+	return responsesRejectedStatusRule{itemType: "reasoning", index: -1, field: "encrypted_content", dropItem: true, preserveCompaction: param != "", preserveAgentMessages: param != ""}, true
 }
 
 // A native checkpoint can remain verbatim while repairing rejected reasoning
 // outside it. This does not claim the checkpoint is decryptable on the target;
 // a subsequent checkpoint rejection uses the separate retained-source recovery.
 func responsesReasoningHistorySupportsRecovery(body []byte, preserveCompaction bool) (bool, bool) {
-	if hasReasoning, complete := responsesExplicitHistorySupportsRecovery(body); complete || !preserveCompaction {
+	return responsesReasoningHistorySupportsRecoveryWithAgents(body, preserveCompaction, false)
+}
+
+func responsesReasoningHistorySupportsRecoveryWithAgents(body []byte, preserveCompaction, preserveAgentMessages bool) (bool, bool) {
+	if hasReasoning, complete := responsesHistorySupportsRecoveryWithAgents(body, false, preserveAgentMessages); complete || !preserveCompaction {
 		return hasReasoning, complete
 	}
-	if _, complete := responsesResourceHistorySupportsRecovery(body); !complete {
+	if _, complete := responsesResourceHistorySupportsRecoveryWithAgents(body, preserveAgentMessages); !complete {
 		return false, false
 	}
 	checkpoints := 0
@@ -105,7 +112,7 @@ func responsesReasoningHistorySupportsRecovery(body []byte, preserveCompaction b
 			return false, false
 		}
 	}
-	return responsesHistorySupportsRecovery(body, true)
+	return responsesHistorySupportsRecoveryWithAgents(body, true, preserveAgentMessages)
 }
 
 func responsesExplicitHistorySupportsRecovery(body []byte) (hasEncryptedReasoning, complete bool) {
@@ -115,6 +122,10 @@ func responsesExplicitHistorySupportsRecovery(body []byte) (hasEncryptedReasonin
 // Callers opt into preserving opaque checkpoints only when their rewrite leaves
 // them intact. Ordinary complete-history callers retain the stricter default.
 func responsesHistorySupportsRecovery(body []byte, preserveCompaction bool) (hasEncryptedReasoning, complete bool) {
+	return responsesHistorySupportsRecoveryWithAgents(body, preserveCompaction, false)
+}
+
+func responsesHistorySupportsRecoveryWithAgents(body []byte, preserveCompaction, preserveAgentMessages bool) (hasEncryptedReasoning, complete bool) {
 	if !gjson.ValidBytes(body) || gjson.GetBytes(body, "previous_response_id").String() != "" ||
 		gjson.GetBytes(body, "conversation").String() != "" {
 		return false, false
@@ -175,6 +186,12 @@ func responsesHistorySupportsRecovery(body []byte, preserveCompaction bool) (has
 				return false, false
 			}
 		case "agent_message":
+			if preserveAgentMessages {
+				if !responsesAgentMessageSupportsPreservation(item) {
+					return false, false
+				}
+				continue
+			}
 			for _, content := range item.Get("content").Array() {
 				if content.Get("type").String() == "encrypted_content" {
 					return false, false
@@ -191,6 +208,38 @@ func responsesHistorySupportsRecovery(body []byte, preserveCompaction bool) (has
 		}
 	}
 	return hasEncryptedReasoning, hasUserHistory
+}
+
+// These items are independent opaque messages, not missing tool results. A
+// targeted reasoning/checkpoint repair can leave them verbatim without claiming
+// to decrypt or materialize them. Generic encryption/resource errors still use
+// the strict history guard. Never treat visible text as a substitute for the
+// encrypted portion of an agent message.
+func responsesAgentMessageSupportsPreservation(item gjson.Result) bool {
+	content := item.Get("content")
+	if !content.IsArray() || len(content.Array()) == 0 ||
+		item.Get("author").Type != gjson.String || item.Get("author").String() == "" ||
+		item.Get("recipient").Type != gjson.String || item.Get("recipient").String() == "" {
+		return false
+	}
+	for _, part := range content.Array() {
+		if !part.IsObject() || part.Get("file_id").Exists() || part.Get("encrypted_function_args").Exists() {
+			return false
+		}
+		switch part.Get("type").String() {
+		case "input_text", "output_text":
+			if part.Get("text").Type != gjson.String || part.Get("encrypted_content").Exists() {
+				return false
+			}
+		case "encrypted_content":
+			if part.Get("encrypted_content").Type != gjson.String || part.Get("encrypted_content").String() == "" {
+				return false
+			}
+		default:
+			return false
+		}
+	}
+	return true
 }
 
 func recoverResponsesReasoningSummary(item []byte) ([]byte, error) {

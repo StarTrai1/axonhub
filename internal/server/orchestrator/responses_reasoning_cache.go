@@ -163,11 +163,11 @@ func rememberedResponsesReasoningRule(scope responsesReasoningRecoveryScope, bod
 	if len(matched) == 0 {
 		return responsesRejectedStatusRule{}, false
 	}
-	hasReasoning, safe := responsesReasoningHistorySupportsRecovery(body, true)
+	hasReasoning, safe := responsesReasoningHistorySupportsRecoveryWithAgents(body, true, true)
 	if !safe || !hasReasoning {
 		return responsesRejectedStatusRule{}, false
 	}
-	rule := responsesRejectedStatusRule{itemType: "reasoning", index: -1, field: "encrypted_content", dropItem: true, preserveCompaction: true}
+	rule := responsesRejectedStatusRule{itemType: "reasoning", index: -1, field: "encrypted_content", dropItem: true, preserveCompaction: true, preserveAgentMessages: true}
 	rule.reasoningScope = &scope
 	rule.reasoningHashes = matched
 	return rule, true
