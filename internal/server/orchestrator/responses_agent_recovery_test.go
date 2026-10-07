@@ -43,7 +43,7 @@ func agentRecoveryRequest(t *testing.T, format llm.APIFormat) *httpclient.Reques
 	return req
 }
 
-func TestResponsesExactRejectionPreservesAgentMessages(t *testing.T) {
+func TestResponsesRejectedAgentHistoryGuards(t *testing.T) {
 	body := agentRecoveryRequest(t, llm.APIFormatOpenAIResponse).Body
 	for _, tc := range []struct {
 		name, code, message, param string
@@ -89,7 +89,7 @@ func TestResponsesExactRejectionPreservesAgentMessages(t *testing.T) {
 	require.False(t, safe, "generic resource mismatches retain the strict guard")
 }
 
-func TestResponsesAgentMessageDoesNotHideReasoningDependents(t *testing.T) {
+func TestResponsesRejectedAgentMessagePreservesReasoningDependencies(t *testing.T) {
 	body := agentRecoveryRequest(t, llm.APIFormatOpenAIResponse).Body
 	var items []json.RawMessage
 	for index, item := range gjson.GetBytes(body, "input").Array() {
@@ -143,7 +143,7 @@ func agentRecoveryError(message string) error {
 	return &httpclient.Error{StatusCode: http.StatusBadRequest, Body: []byte(`{"error":{"type":"invalid_request_error","code":"invalid_encrypted_content","param":"input","message":"` + message + `"}}`)}
 }
 
-func TestResponsesAgentHistoryRecoveryPipeline(t *testing.T) {
+func TestResponsesRejectedAgentHistoryPipeline(t *testing.T) {
 	for _, format := range []llm.APIFormat{llm.APIFormatOpenAIResponse, llm.APIFormatOpenAIResponseCompact} {
 		for _, raw := range []bool{true, false} {
 			for _, scenario := range []string{"checkpoint then reasoning", "reasoning then checkpoint", "expanded local history"} {

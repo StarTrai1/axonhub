@@ -22,7 +22,7 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
 
-func TestResponsesAgentHistoryWebSocketCompactionSwitch(t *testing.T) {
+func TestResponsesRejectedAgentHistoryWebSocketCompactionSwitch(t *testing.T) {
 	for _, raw := range []bool{true, false} {
 		for _, scenario := range []string{"sealed local to native", "native to local", "foreign native to native"} {
 			name := scenario + map[bool]string{true: "/raw", false: "/converted"}[raw]
@@ -115,7 +115,8 @@ func TestResponsesAgentHistoryWebSocketCompactionSwitch(t *testing.T) {
 					},
 				)
 				require.NoError(t, err)
-				drainRejectedReasoningPipeline(t, result)
+				events := drainRejectedReasoningPipeline(t, result)
+				require.Equal(t, "new-native-compaction", gjson.Get(events["response.completed"], "response.output.0.encrypted_content").String())
 				want := int32(2)
 				if scenario == "foreign native to native" {
 					want = 3
@@ -128,8 +129,10 @@ func TestResponsesAgentHistoryWebSocketCompactionSwitch(t *testing.T) {
 					case <-ctx.Done():
 						t.Fatal("missing captured WebSocket frame")
 					}
-					require.Contains(t, string(last), preservedEncryptedAgentMessage)
-					require.Contains(t, string(last), preservedPlainAgentMessage)
+					// WebSocket serialization orders object keys. Compare every
+					// field, including exact ciphertext strings and array order.
+					require.JSONEq(t, preservedEncryptedAgentMessage, gjson.GetBytes(last, `input.#(id=="am_private")`).Raw)
+					require.JSONEq(t, preservedPlainAgentMessage, gjson.GetBytes(last, `input.#(id=="am_public")`).Raw)
 					require.NotContains(t, string(last), localCompactionSealedReferencePrefix)
 					if scenario != "foreign native to native" {
 						require.Contains(t, string(last), summary)
