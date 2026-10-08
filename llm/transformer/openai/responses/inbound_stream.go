@@ -58,11 +58,11 @@ type responsesInboundStream struct {
 	createdAt  int64
 
 	// Content tracking
-	outputIndex         int
-	contentIndex        int
-	sequenceNumber      int
-	currentItemID       string
-	currentMessagePhase *string
+	outputIndex           int
+	contentIndex          int
+	sequenceNumber        int
+	currentItemID         string
+	currentMessagePhase   *string
 	currentContentRefusal bool
 
 	// Content accumulation for items (used for emitting done events)
@@ -723,7 +723,7 @@ func (s *responsesInboundStream) ensureReasoningItemStarted(sourceID string) err
 }
 
 func (s *responsesInboundStream) handleTextContent(message *llm.Message) error {
-	return s.handleMessageContent(message,message.Content.Content,false)
+	return s.handleMessageContent(message, message.Content.Content, false)
 }
 
 func (s *responsesInboundStream) handleMessageContent(message *llm.Message, content *string, refusal bool) error {
@@ -793,15 +793,17 @@ func (s *responsesInboundStream) handleMessageContent(message *llm.Message, cont
 			Type:        "output_text",
 			Annotations: []Annotation{},
 		}}, s.pendingAnnotations)
-		part := &StreamEventContentPart{Type:"output_text", Text:"", Annotations:textPartItems[0].Annotations}
-		if refusal { part = &StreamEventContentPart{Type:"refusal", Refusal:lo.ToPtr("")} }
+		part := &StreamEventContentPart{Type: "output_text", Text: "", Annotations: textPartItems[0].Annotations}
+		if refusal {
+			part = &StreamEventContentPart{Type: "refusal", Refusal: lo.ToPtr("")}
+		}
 
 		err := s.enqueueEvent(&StreamEvent{
 			Type:         StreamEventTypeContentPartAdded,
 			ItemID:       &s.currentItemID,
 			OutputIndex:  s.outputIndex,
 			ContentIndex: &s.contentIndex,
-			Part: part,
+			Part:         part,
 		})
 		if err != nil {
 			return fmt.Errorf("failed to enqueue content_part.added event: %w", err)
@@ -814,7 +816,9 @@ func (s *responsesInboundStream) handleMessageContent(message *llm.Message, cont
 
 	// Emit output_text.delta
 	deltaType := StreamEventTypeOutputTextDelta
-	if refusal { deltaType = StreamEventTypeRefusalDelta }
+	if refusal {
+		deltaType = StreamEventTypeRefusalDelta
+	}
 	err := s.enqueueEvent(&StreamEvent{
 		Type:         deltaType,
 		ItemID:       &s.currentItemID,
@@ -1271,7 +1275,9 @@ func (s *responsesInboundStream) closeMessageItem() error {
 		},
 	}
 	item.Content.Items, _ = attachAnnotationsToFirstTextItem(item.Content.Items, s.pendingAnnotations)
-	if s.currentContentRefusal { item.Content.Items = []Item{{Type:"refusal",Refusal:&fullText}} }
+	if s.currentContentRefusal {
+		item.Content.Items = []Item{{Type: "refusal", Refusal: &fullText}}
+	}
 	s.pendingAnnotations = nil
 
 	err := s.enqueueEvent(&StreamEvent{
@@ -1299,8 +1305,10 @@ func (s *responsesInboundStream) closeCurrentContentPart() error {
 	s.hasContentPartStarted = false
 	fullText := s.accumulatedText.String()
 	if s.currentContentRefusal {
-		if err := s.enqueueEvent(&StreamEvent{Type:StreamEventTypeRefusalDone,ItemID:&s.currentItemID,OutputIndex:s.outputIndex,ContentIndex:&s.contentIndex,Refusal:fullText}); err != nil { return err }
-		return s.enqueueEvent(&StreamEvent{Type:StreamEventTypeContentPartDone,ItemID:&s.currentItemID,OutputIndex:s.outputIndex,ContentIndex:&s.contentIndex,Part:&StreamEventContentPart{Type:"refusal",Refusal:&fullText}})
+		if err := s.enqueueEvent(&StreamEvent{Type: StreamEventTypeRefusalDone, ItemID: &s.currentItemID, OutputIndex: s.outputIndex, ContentIndex: &s.contentIndex, Refusal: fullText}); err != nil {
+			return err
+		}
+		return s.enqueueEvent(&StreamEvent{Type: StreamEventTypeContentPartDone, ItemID: &s.currentItemID, OutputIndex: s.outputIndex, ContentIndex: &s.contentIndex, Part: &StreamEventContentPart{Type: "refusal", Refusal: &fullText}})
 	}
 
 	// Emit output_text.done with accumulated text

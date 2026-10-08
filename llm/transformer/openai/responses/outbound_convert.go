@@ -353,7 +353,7 @@ func convertAssistantMessage(msg llm.Message) []Item {
 	}
 
 	if msg.Refusal != "" {
-		contentItems = append(contentItems,Item{Type:"refusal",Refusal:lo.ToPtr(msg.Refusal)})
+		contentItems = append(contentItems, Item{Type: "refusal", Refusal: lo.ToPtr(msg.Refusal)})
 	}
 
 	// In the common assistant flow, the visible message content precedes any
@@ -716,9 +716,9 @@ func appendResponseWebSearchCallMetadata(transformerMetadata map[string]any, out
 	}
 
 	call := Item{
-		ID:     outputItem.ID,
-		Type:   outputItem.Type,
-		Status: outputItem.Status,
+		ID:      outputItem.ID,
+		Type:    outputItem.Type,
+		Status:  outputItem.Status,
 		Results: append(json.RawMessage(nil), outputItem.Results...),
 	}
 	if outputItem.Action != nil && outputItem.Action.WebSearch != nil {
