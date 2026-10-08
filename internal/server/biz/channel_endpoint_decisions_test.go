@@ -48,3 +48,14 @@ func TestDecisionsChannelEndpointTransport(t *testing.T) {
 	}
 	require.Error(t, ValidateEndpoints([]objects.ChannelEndpoint{{APIFormat: llm.APIFormatOpenAIDecisions.String(), Transport: objects.ChannelEndpointTransportWebSocket}}))
 }
+
+func TestValidateEndpoints_AllowsManualDecisionsEndpoint(t *testing.T) {
+	// Given a manually configured Decisions endpoint
+	endpoints := []objects.ChannelEndpoint{{APIFormat: llm.APIFormatOpenAIDecisions.String()}}
+
+	// When endpoint configuration is validated
+	err := ValidateEndpoints(endpoints)
+
+	// Then the opt-in format is accepted without becoming a default
+	require.NoError(t, err)
+}

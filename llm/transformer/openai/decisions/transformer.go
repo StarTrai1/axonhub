@@ -29,7 +29,11 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, request *http
 	if request == nil {
 		return nil, fmt.Errorf("%w: request is nil", transformer.ErrInvalidRequest)
 	}
-	model, err := validateRequest(request.Body)
+	contentType := request.Headers.Get("Content-Type")
+ if contentType != "" && !strings.Contains(strings.ToLower(contentType), "application/json") {
+  return nil, fmt.Errorf("%w: unsupported content type: %s", transformer.ErrInvalidRequest, contentType)
+ }
+ model, err := validateRequest(request.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -91,6 +95,10 @@ type OutboundTransformer struct {
 	config Config
 }
 
+func NewOutboundTransformerWithKey(baseURL, apiKey string) (*OutboundTransformer, error) {
+ return NewOutboundTransformer(Config{BaseURL:baseURL,APIKeyProvider:auth.NewStaticKeyProvider(apiKey)})
+}
+
 func NewOutboundTransformer(config Config) (*OutboundTransformer, error) {
 	if config.APIKeyProvider == nil {
 		return nil, fmt.Errorf("API key provider is required")
@@ -103,7 +111,10 @@ func NewOutboundTransformer(config Config) (*OutboundTransformer, error) {
 	config.BaseURL = strings.TrimSpace(config.BaseURL)
 	config.BaseURL = strings.Replace(config.BaseURL, "wss://", "https://", 1)
 	config.BaseURL = strings.Replace(config.BaseURL, "ws://", "http://", 1)
-	if config.EndpointPath == "" {
+	if strings.HasSuffix(config.BaseURL, "##") {
+ config.BaseURL = strings.TrimRight(strings.TrimSuffix(config.BaseURL, "##"), "/")
+ config.EndpointPath = ""
+ } else if config.EndpointPath == "" {
 		config.BaseURL = transformer.NormalizeBaseURL(config.BaseURL, "v1")
 		config.EndpointPath = "/decisions"
 	} else {
@@ -149,7 +160,7 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, response *h
 	if response == nil {
 		return nil, fmt.Errorf("decisions response is nil")
 	}
-	if response.StatusCode >= 400 {
+	if response.StatusCode >= http.StatusMultipleChoices {
 		return nil, t.TransformError(ctx, &httpclient.Error{
 			StatusCode: response.StatusCode, Headers: response.Headers, Body: response.Body,
 		})

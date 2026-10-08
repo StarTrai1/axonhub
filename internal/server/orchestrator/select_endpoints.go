@@ -36,12 +36,18 @@ func SelectAPIFormat(endpoints []objects.ChannelEndpoint, req *llm.Request) stri
 			}
 		}
 
-		if requiresNativeEndpoint(req) {
+		if requiresExplicitEndpoint(req.RequestType) {
 			return ""
 		}
 	}
 
 	return endpoints[0].APIFormat
+}
+
+func requiresExplicitEndpoint(requestType llm.RequestType) bool {
+	return requestType == llm.RequestTypeAlphaSearch ||
+		requestType == llm.RequestTypeDecisions ||
+		requestType == llm.RequestTypeSystemOne
 }
 
 // FilterEndpointsByAPIFormats restricts endpoints to the given api formats. The
@@ -147,7 +153,19 @@ func applyForcedAPIFormats(
 	return endpoints
 }
 
-// Dedicated protocols cannot be emulated by a channel's primary chat endpoint.
-func requiresNativeEndpoint(req *llm.Request) bool {
-	return req.RequestType == llm.RequestTypeAlphaSearch || req.RequestType == llm.RequestTypeSystemOne || req.RequestType == llm.RequestTypeDecisions
+func applyForcedAPIFormatsForRequest(
+	ctx context.Context,
+	ch *biz.Channel,
+	entries []biz.ChannelModelEntry,
+	requestModel string,
+	requestType llm.RequestType,
+	endpoints []objects.ChannelEndpoint,
+) []objects.ChannelEndpoint {
+	forced := forcedAPIFormatsForCandidate(ch, entries, requestModel)
+	filtered := applyForcedAPIFormats(ctx, ch, entries, requestModel, endpoints)
+	if len(forced) > 0 && len(filtered) == len(endpoints) && requiresExplicitEndpoint(requestType) && len(FilterEndpointsByAPIFormats(endpoints, forced)) == 0 {
+		return nil
+	}
+
+	return filtered
 }

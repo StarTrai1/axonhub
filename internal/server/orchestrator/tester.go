@@ -197,10 +197,12 @@ func (processor *TestChannelOrchestrator) TestChannel(
 	useStream := channel != nil && channel.Policies.Stream == objects.CapabilityPolicyRequire
 
 	var testRequest *httpclient.Request
+	apiFormat := channelTestAPIFormat(channel, testModel)
 	if remoteCompactionProbe {
 		testRequest, err = buildRemoteCompactionChannelTestRequest(testModel, systemPrompt, userPrompt)
 	} else {
-		testRequest, err = buildChannelTestRequest(testModel, useStream, systemPrompt, userPrompt, usesResponsesWebSocket(channel))
+		inbound, testRequest, err = processor.buildNativeChannelTestInput(ctx, testModel, useStream, systemPrompt, userPrompt, usesResponsesWebSocket(channel), apiFormat)
+		chatProcessor.Inbound = inbound
 	}
 	if err != nil {
 		return nil, err
@@ -247,6 +249,12 @@ func (processor *TestChannelOrchestrator) TestChannel(
 			Message: new("remote_compaction_v2"),
 		}, nil
 	}
+
+ if apiFormat == llm.APIFormatTypeSafeSystemOne || apiFormat == llm.APIFormatOpenAIDecisions {
+  message, err := channelTestResponseMessage(rawResponse.ChatCompletion.Body, apiFormat)
+  if err != nil { return &TestChannelResult{Latency:latency,Success:false,Error:lo.ToPtr(err.Error())},nil }
+  return &TestChannelResult{Latency:latency,Success:true,Message:message},nil
+ }
 
 	// Handle non-streaming response
 	response, err := xjson.To[llm.Response](rawResponse.ChatCompletion.Body)
@@ -582,6 +590,7 @@ func (processor *TestChannelOrchestrator) TestChannelAPIKeys(
 				proxy,
 				systemPrompt,
 				userPrompt,
+				channelTestAPIFormat(ch, testModel),
 			)
 			_, isDisabled := disabledSet[apiKey]
 			result.Disabled = isDisabled
@@ -652,7 +661,7 @@ func (processor *TestChannelOrchestrator) TestSingleAPIKey(
 		disabledSet[dk.Key] = struct{}{}
 	}
 
-	result := processor.testSingleKey(ctx, channelID, key, testModel, useStream, usesResponsesWebSocket(ch), proxy, systemPrompt, userPrompt)
+	result := processor.testSingleKey(ctx, channelID, key, testModel, useStream, usesResponsesWebSocket(ch), proxy, systemPrompt, userPrompt, channelTestAPIFormat(ch, testModel))
 	_, isDisabled := disabledSet[key]
 	result.Disabled = isDisabled
 
@@ -670,10 +679,13 @@ func (processor *TestChannelOrchestrator) testSingleKey(
 	proxy *httpclient.ProxyConfig,
 	systemPrompt string,
 	userPrompt string,
+	apiFormats ...llm.APIFormat,
 ) *TestAPIKeyResult {
 	keyPrefix := maskAPIKey(key)
 
-	inbound := openai.NewInboundTransformer()
+	var inbound transformer.Inbound = openai.NewInboundTransformer()
+	apiFormat := llm.APIFormatOpenAIChatCompletion
+	if len(apiFormats) > 0 { apiFormat = apiFormats[0] }
 
 	chatProcessor := &ChatCompletionOrchestrator{
 		channelSelector: &SpecifiedChannelSelector{
@@ -701,7 +713,8 @@ func (processor *TestChannelOrchestrator) testSingleKey(
 		modelCircuitBreaker:        processor.modelCircuitBreaker,
 	}
 
-	testRequest, err := buildChannelTestRequest(testModel, useStream, systemPrompt, userPrompt, responsesWebSocket)
+	inbound, testRequest, err := processor.buildNativeChannelTestInput(ctx, testModel, useStream, systemPrompt, userPrompt, responsesWebSocket, apiFormat)
+	chatProcessor.Inbound = inbound
 	if err != nil {
 		errMsg := err.Error()
 
@@ -740,6 +753,12 @@ func (processor *TestChannelOrchestrator) testSingleKey(
 	}
 
 	latency := time.Since(startTime).Seconds()
+
+ if apiFormat == llm.APIFormatTypeSafeSystemOne || apiFormat == llm.APIFormatOpenAIDecisions {
+  _, err := channelTestResponseMessage(rawResponse.ChatCompletion.Body, apiFormat)
+  if err != nil { return &TestAPIKeyResult{KeyPrefix:keyPrefix,Latency:latency,Success:false,Error:lo.ToPtr(err.Error())} }
+  return &TestAPIKeyResult{KeyPrefix:keyPrefix,Latency:latency,Success:true}
+ }
 
 	// Handle non-streaming response
 	response, err := xjson.To[llm.Response](rawResponse.ChatCompletion.Body)
