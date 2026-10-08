@@ -19,7 +19,9 @@ func TestAggregateStreamIgnoresNegativeContentIndices(t *testing.T) {
 		`{"type":"content_block_delta","index":-1,"delta":{"type":"text_delta","text":"poison"}}`,
 		`{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"hello"}}`,
 		`{"type":"message_stop"}`,
-	} { chunks = append(chunks, &httpclient.StreamEvent{Data:[]byte(raw)}) }
+	} {
+		chunks = append(chunks, &httpclient.StreamEvent{Data: []byte(raw)})
+	}
 	body, _, err := AggregateStreamChunks(t.Context(), chunks, PlatformDirect)
 	require.NoError(t, err)
 	var response Message

@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
 )
@@ -16,6 +17,10 @@ func TestConvertOutputPreservesRefusalAlongsideText(t *testing.T) {
 	message := convertOutputToMessage(response.Output, nil)
 	require.Equal(t, "Unable to help.", message.Refusal)
 	require.Equal(t, "Visible.", *message.Content.Content)
+	reencoded := convertToResponsesAPIResponse(&llm.Response{Choices:[]llm.Choice{{Message:&message}}})
+	require.Equal(t, "Unable to help.", convertOutputToMessage(reencoded.Output,nil).Refusal)
+	history := convertAssistantMessage(message)
+	require.Equal(t,"Unable to help.",convertOutputToMessage(history,nil).Refusal)
 }
 
 func TestRefusalStreamAndAggregation(t *testing.T) {
@@ -49,6 +54,16 @@ func TestRefusalStreamAndAggregation(t *testing.T) {
 			for _, result := range results { for _, choice := range result.Choices { if choice.Delta != nil { refusal+=choice.Delta.Refusal } } }
 			require.Equal(t,"Unable to help.",refusal)
 			require.True(t,stream.hasGeneratedOutput())
+			nativeStream,err := NewInboundTransformer().TransformStream(t.Context(),streams.SliceStream(results))
+			require.NoError(t,err)
+			defer nativeStream.Close()
+			nativeEvents,err := streams.All(nativeStream)
+			require.NoError(t,err)
+			nativeBody,_,err := AggregateStreamChunks(t.Context(),nativeEvents)
+			require.NoError(t,err)
+			var nativeResponse Response
+			require.NoError(t,json.Unmarshal(nativeBody,&nativeResponse))
+			require.Equal(t,"Unable to help.",convertOutputToMessage(nativeResponse.Output,nil).Refusal)
 			body,_,err := AggregateStreamChunks(t.Context(),source)
 			require.NoError(t,err)
 			var aggregated Response

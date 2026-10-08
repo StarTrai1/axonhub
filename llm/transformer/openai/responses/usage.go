@@ -15,17 +15,17 @@ type Usage struct {
 		CacheWriteTokens int64 `json:"cache_write_tokens"`
 		// CachedTokens is the number of input tokens retrieved from the prompt cache.
 		CachedTokens int64 `json:"cached_tokens"`
-		ImageTokens int64 `json:"image_tokens,omitempty"`
-		TextTokens int64 `json:"text_tokens,omitempty"`
+		ImageTokens  int64 `json:"image_tokens,omitempty"`
+		TextTokens   int64 `json:"text_tokens,omitempty"`
 
 		// CachedTokensDetails contains optional subsets, not additional usage.
 		CachedTokensDetails *llm.CachedTokensDetails `json:"cached_tokens_details,omitempty"`
 	} `json:"input_tokens_details"`
 	OutputTokens       int64 `json:"output_tokens"`
 	OutputTokenDetails struct {
-		ReasoningTokens int64 `json:"reasoning_tokens"`
-		ImageTokens *int64 `json:"image_tokens,omitempty"`
-		TextTokens *int64 `json:"text_tokens,omitempty"`
+		ReasoningTokens int64  `json:"reasoning_tokens"`
+		ImageTokens     *int64 `json:"image_tokens,omitempty"`
+		TextTokens      *int64 `json:"text_tokens,omitempty"`
 	} `json:"output_tokens_details"`
 	TotalTokens int64    `json:"total_tokens"`
 	Cost        *float64 `json:"cost,omitempty"`
@@ -63,13 +63,13 @@ func (u *Usage) ToUsage() *llm.Usage {
 			CachedTokens:        u.InputTokenDetails.CachedTokens,
 			CachedTokensDetails: u.InputTokenDetails.CachedTokensDetails.Clone(),
 			WriteCachedTokens:   u.InputTokenDetails.CacheWriteTokens,
-			ImageTokens: u.InputTokenDetails.ImageTokens,
-			TextTokens: u.InputTokenDetails.TextTokens,
+			ImageTokens:         u.InputTokenDetails.ImageTokens,
+			TextTokens:          u.InputTokenDetails.TextTokens,
 		},
 		CompletionTokensDetails: &llm.CompletionTokensDetails{
 			ReasoningTokens: u.OutputTokenDetails.ReasoningTokens,
-			ImageTokens: u.OutputTokenDetails.ImageTokens,
-			TextTokens: u.OutputTokenDetails.TextTokens,
+			ImageTokens:     u.OutputTokenDetails.ImageTokens,
+			TextTokens:      u.OutputTokenDetails.TextTokens,
 		},
 	}
 }

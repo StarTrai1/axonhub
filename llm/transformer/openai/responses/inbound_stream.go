@@ -63,6 +63,7 @@ type responsesInboundStream struct {
 	sequenceNumber      int
 	currentItemID       string
 	currentMessagePhase *string
+	currentContentRefusal bool
 
 	// Content accumulation for items (used for emitting done events)
 	accumulatedText               strings.Builder
@@ -334,6 +335,12 @@ func (s *responsesInboundStream) Next() bool {
 		// Handle text content delta
 		if choice.Delta != nil && choice.Delta.Content.Content != nil && *choice.Delta.Content.Content != "" {
 			if err := s.handleTextContent(choice.Delta); err != nil {
+				s.err = err
+				return false
+			}
+		}
+		if choice.Delta != nil && choice.Delta.Refusal != "" {
+			if err := s.handleMessageContent(choice.Delta, &choice.Delta.Refusal, true); err != nil {
 				s.err = err
 				return false
 			}
@@ -716,7 +723,10 @@ func (s *responsesInboundStream) ensureReasoningItemStarted(sourceID string) err
 }
 
 func (s *responsesInboundStream) handleTextContent(message *llm.Message) error {
-	content := message.Content.Content
+	return s.handleMessageContent(message,message.Content.Content,false)
+}
+
+func (s *responsesInboundStream) handleMessageContent(message *llm.Message, content *string, refusal bool) error {
 	if content == nil {
 		return nil
 	}
@@ -736,7 +746,12 @@ func (s *responsesInboundStream) handleTextContent(message *llm.Message) error {
 	if s.hasMessageItemStarted {
 		phaseChanged := message.Phase != nil && s.currentMessagePhase != nil && *message.Phase != *s.currentMessagePhase
 		idChanged := message.ID != "" && s.currentItemID != "" && message.ID != s.currentItemID
-		if phaseChanged || idChanged {
+		if s.currentContentRefusal != refusal {
+			messageCopy := *message
+			messageCopy.ID = ""
+			message = &messageCopy
+		}
+		if phaseChanged || idChanged || s.currentContentRefusal != refusal {
 			if err := s.closeMessageItem(); err != nil {
 				return err
 			}
@@ -746,6 +761,7 @@ func (s *responsesInboundStream) handleTextContent(message *llm.Message) error {
 	// Start message output item if not started.
 	if !s.hasMessageItemStarted {
 		s.hasMessageItemStarted = true
+		s.currentContentRefusal = refusal
 		s.currentMessagePhase = message.Phase
 		s.currentItemID = message.ID
 		if s.currentItemID == "" {
@@ -777,17 +793,15 @@ func (s *responsesInboundStream) handleTextContent(message *llm.Message) error {
 			Type:        "output_text",
 			Annotations: []Annotation{},
 		}}, s.pendingAnnotations)
+		part := &StreamEventContentPart{Type:"output_text", Text:"", Annotations:textPartItems[0].Annotations}
+		if refusal { part = &StreamEventContentPart{Type:"refusal", Refusal:lo.ToPtr("")} }
 
 		err := s.enqueueEvent(&StreamEvent{
 			Type:         StreamEventTypeContentPartAdded,
 			ItemID:       &s.currentItemID,
 			OutputIndex:  s.outputIndex,
 			ContentIndex: &s.contentIndex,
-			Part: &StreamEventContentPart{
-				Type:        "output_text",
-				Text:        "",
-				Annotations: textPartItems[0].Annotations,
-			},
+			Part: part,
 		})
 		if err != nil {
 			return fmt.Errorf("failed to enqueue content_part.added event: %w", err)
@@ -799,8 +813,10 @@ func (s *responsesInboundStream) handleTextContent(message *llm.Message) error {
 	s.accumulatedText.WriteString(*content)
 
 	// Emit output_text.delta
+	deltaType := StreamEventTypeOutputTextDelta
+	if refusal { deltaType = StreamEventTypeRefusalDelta }
 	err := s.enqueueEvent(&StreamEvent{
-		Type:         StreamEventTypeOutputTextDelta,
+		Type:         deltaType,
 		ItemID:       &s.currentItemID,
 		OutputIndex:  s.outputIndex,
 		ContentIndex: &s.contentIndex,
@@ -1255,6 +1271,7 @@ func (s *responsesInboundStream) closeMessageItem() error {
 		},
 	}
 	item.Content.Items, _ = attachAnnotationsToFirstTextItem(item.Content.Items, s.pendingAnnotations)
+	if s.currentContentRefusal { item.Content.Items = []Item{{Type:"refusal",Refusal:&fullText}} }
 	s.pendingAnnotations = nil
 
 	err := s.enqueueEvent(&StreamEvent{
@@ -1281,6 +1298,10 @@ func (s *responsesInboundStream) closeCurrentContentPart() error {
 
 	s.hasContentPartStarted = false
 	fullText := s.accumulatedText.String()
+	if s.currentContentRefusal {
+		if err := s.enqueueEvent(&StreamEvent{Type:StreamEventTypeRefusalDone,ItemID:&s.currentItemID,OutputIndex:s.outputIndex,ContentIndex:&s.contentIndex,Refusal:fullText}); err != nil { return err }
+		return s.enqueueEvent(&StreamEvent{Type:StreamEventTypeContentPartDone,ItemID:&s.currentItemID,OutputIndex:s.outputIndex,ContentIndex:&s.contentIndex,Part:&StreamEventContentPart{Type:"refusal",Refusal:&fullText}})
+	}
 
 	// Emit output_text.done with accumulated text
 	err := s.enqueueEvent(&StreamEvent{

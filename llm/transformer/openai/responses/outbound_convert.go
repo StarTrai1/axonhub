@@ -352,6 +352,10 @@ func convertAssistantMessage(msg llm.Message) []Item {
 		}
 	}
 
+	if msg.Refusal != "" {
+		contentItems = append(contentItems,Item{Type:"refusal",Refusal:lo.ToPtr(msg.Refusal)})
+	}
+
 	// In the common assistant flow, the visible message content precedes any
 	// subsequent tool calls. Flush message segments before appending tool-call
 	// items so the encoded Responses item order matches that expectation.

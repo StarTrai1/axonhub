@@ -606,13 +606,19 @@ func (s *responsesOutboundStream) transformStreamEvent(event *httpclient.StreamE
 
 	case StreamEventTypeRefusalDone:
 		delta := s.recoverRefusalDone(streamEvent, streamEvent.Refusal)
-		if delta == nil { return nil }
+		if delta == nil {
+			return nil
+		}
 		resp.Choices = []llm.Choice{{Index: 0, Delta: delta}}
 
 	case StreamEventTypeContentPartDone:
-		if streamEvent.Part == nil || streamEvent.Part.Type != "refusal" { return nil }
+		if streamEvent.Part == nil || streamEvent.Part.Type != "refusal" {
+			return nil
+		}
 		delta := s.recoverRefusalDone(streamEvent, lo.FromPtr(streamEvent.Part.Refusal))
-		if delta == nil { return nil }
+		if delta == nil {
+			return nil
+		}
 		resp.Choices = []llm.Choice{{Index: 0, Delta: delta}}
 
 	case StreamEventTypeOutputTextDelta:

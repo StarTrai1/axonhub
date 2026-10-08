@@ -151,8 +151,12 @@ func (t *ClaudeCodeTransformer) TransformRequest(
 	}
 	if injectedSystem {
 		httpReq.Body, err = alignInjectedSystemCacheTTL(httpReq.Body)
-		if err != nil { return nil, err }
-		if len(httpReq.JSONBody) > 0 { httpReq.JSONBody = append([]byte(nil), httpReq.Body...) }
+		if err != nil {
+			return nil, err
+		}
+		if len(httpReq.JSONBody) > 0 {
+			httpReq.JSONBody = append([]byte(nil), httpReq.Body...)
+		}
 	}
 
 	// Add beta=true query parameter if not present

@@ -36,15 +36,15 @@ func TestConvertSSOToBuild_completes_device_flow(t *testing.T) {
 		case "https://auth.x.ai/oauth2/device/consent":
 			response.Body = io.NopCloser(strings.NewReader(`<input value="synthetic&amp;consent" type="hidden" name="consent_token">`))
 		case SSOApproveURL:
-			require.NoError(t,request.ParseForm())
-			require.Equal(t,"synthetic&consent",request.PostForm.Get("consent_token"))
-			require.Equal(t,"https://auth.x.ai",request.Header.Get("Origin"))
-			require.Equal(t,"https://auth.x.ai/oauth2/device/consent",request.Header.Get("Referer"))
+			require.NoError(t, request.ParseForm())
+			require.Equal(t, "synthetic&consent", request.PostForm.Get("consent_token"))
+			require.Equal(t, "https://auth.x.ai", request.Header.Get("Origin"))
+			require.Equal(t, "https://auth.x.ai/oauth2/device/consent", request.Header.Get("Referer"))
 			response.StatusCode = http.StatusFound
 			response.Header.Set("Location", "https://auth.x.ai/oauth2/device/done")
 		case "https://auth.x.ai/oauth2/device/done":
-			require.Empty(t,request.Header.Get("Origin"))
-			require.Empty(t,request.Header.Get("Referer"))
+			require.Empty(t, request.Header.Get("Origin"))
+			require.Empty(t, request.Header.Get("Referer"))
 		case TokenURL:
 			response.Body = io.NopCloser(strings.NewReader(`{"access_token":"access","refresh_token":"refresh","expires_in":3600}`))
 		default:

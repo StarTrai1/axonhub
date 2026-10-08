@@ -315,9 +315,13 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 		item := a.getItemForEvent(ev.OutputIndex, ev.ItemID)
 		if item != nil {
 			index := len(item.Content)
-			if ev.ContentIndex != nil { index = *ev.ContentIndex }
+			if ev.ContentIndex != nil {
+				index = *ev.ContentIndex
+			}
 			contentPart := ensureContentPart(item, index)
-			if contentPart == nil { return }
+			if contentPart == nil {
+				return
+			}
 
 			if ev.Part != nil {
 				contentPart.Type = ev.Part.Type
@@ -331,15 +335,22 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 		}
 
 	case StreamEventTypeRefusalDelta, StreamEventTypeRefusalDone, StreamEventTypeContentPartDone:
-		if ev.Type == StreamEventTypeContentPartDone && (ev.Part == nil || ev.Part.Type != "refusal") { return }
+		if ev.Type == StreamEventTypeContentPartDone && (ev.Part == nil || ev.Part.Type != "refusal") {
+			return
+		}
 		item := a.getItemForEvent(ev.OutputIndex, ev.ItemID)
 		part := ensureContentPart(item, lo.FromPtr(ev.ContentIndex))
-		if part == nil { return }
+		if part == nil {
+			return
+		}
 		part.Type = "refusal"
 		switch ev.Type {
-		case StreamEventTypeRefusalDelta: part.Text.WriteString(ev.Delta)
-		case StreamEventTypeRefusalDone: applyDoneText(part.Text, ev.Refusal)
-		case StreamEventTypeContentPartDone: applyDoneText(part.Text, lo.FromPtr(ev.Part.Refusal))
+		case StreamEventTypeRefusalDelta:
+			part.Text.WriteString(ev.Delta)
+		case StreamEventTypeRefusalDone:
+			applyDoneText(part.Text, ev.Refusal)
+		case StreamEventTypeContentPartDone:
+			applyDoneText(part.Text, lo.FromPtr(ev.Part.Refusal))
 		}
 
 	case StreamEventTypeOutputTextDelta:

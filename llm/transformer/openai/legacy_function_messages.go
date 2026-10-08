@@ -30,11 +30,13 @@ func normalizeLegacyFunctionMessages(messages []Message) error {
 			for {
 				id = fmt.Sprintf("call_legacy_%d", next)
 				next++
-				if !used[id] { break }
+				if !used[id] {
+					break
+				}
 			}
 			used[id] = true
 			pending[call.Name] = append(pending[call.Name], id)
-			message.ToolCalls = []ToolCall{{ID:id, Type:"function", Function:*call}}
+			message.ToolCalls = []ToolCall{{ID: id, Type: "function", Function: *call}}
 			message.FunctionCall = nil
 		}
 		if message.Role == "function" {

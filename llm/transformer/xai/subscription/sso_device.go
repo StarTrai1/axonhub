@@ -136,10 +136,12 @@ func (flow *ssoDeviceFlow) convert(ctx context.Context) (*oauth.OAuthCredentials
 		approval.Set("consent_token", token)
 	}
 	consentURL, err := url.Parse(finalURL)
-	if err != nil { return nil, fmt.Errorf("parse xAI consent URL: %w",err) }
+	if err != nil {
+		return nil, fmt.Errorf("parse xAI consent URL: %w", err)
+	}
 	status, finalURL, _, err = flow.do(ctx, http.MethodPost, SSOApproveURL, approval, http.Header{
-		"Origin":{consentURL.Scheme+"://"+consentURL.Host},
-		"Referer":{finalURL},
+		"Origin":  {consentURL.Scheme + "://" + consentURL.Host},
+		"Referer": {finalURL},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("approve xAI device code: %w", err)
@@ -219,7 +221,7 @@ func (flow *ssoDeviceFlow) do(ctx context.Context, method, endpoint string, form
 		if redirects == 0 {
 			for _, header := range headers {
 				for name, values := range header {
-					request.Header[name] = append([]string(nil),values...)
+					request.Header[name] = append([]string(nil), values...)
 				}
 			}
 		}
@@ -260,19 +262,27 @@ func ssoConsentToken(body []byte) string {
 	tokenizer := html.NewTokenizer(bytes.NewReader(body))
 	for {
 		switch tokenizer.Next() {
-		case html.ErrorToken: return ""
+		case html.ErrorToken:
+			return ""
 		case html.StartTagToken, html.SelfClosingTagToken:
 			token := tokenizer.Token()
-			if token.Data != "input" { continue }
+			if token.Data != "input" {
+				continue
+			}
 			var name, value, inputType string
 			for _, attribute := range token.Attr {
 				switch attribute.Key {
-				case "name": name=attribute.Val
-				case "value": value=attribute.Val
-				case "type": inputType=attribute.Val
+				case "name":
+					name = attribute.Val
+				case "value":
+					value = attribute.Val
+				case "type":
+					inputType = attribute.Val
 				}
 			}
-			if name == "consent_token" && strings.EqualFold(inputType,"hidden") { return value }
+			if name == "consent_token" && strings.EqualFold(inputType, "hidden") {
+				return value
+			}
 		}
 	}
 }

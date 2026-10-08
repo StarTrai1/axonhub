@@ -20,7 +20,7 @@ func TestInboundLegacyFunctionHistory(t *testing.T) {
 	{"role":"function","name":"lookup","content":"two"},
 	{"role":"user","content":"continue"}]}`)
 	req, err := NewInboundTransformer().TransformRequest(t.Context(), &httpclient.Request{
-		Headers:http.Header{"Content-Type":{"application/json"}}, Body:body,
+		Headers: http.Header{"Content-Type": {"application/json"}}, Body: body,
 	})
 	require.NoError(t, err)
 	require.Equal(t, "call_legacy_0", req.Messages[0].ToolCalls[0].ID)
@@ -39,8 +39,8 @@ func TestInboundLegacyFunctionHistory(t *testing.T) {
 
 func TestInboundRejectsUnpairedLegacyFunctionResult(t *testing.T) {
 	_, err := NewInboundTransformer().TransformRequest(t.Context(), &httpclient.Request{
-		Headers:http.Header{"Content-Type":{"application/json"}},
-		Body:[]byte(`{"model":"test","messages":[{"role":"function","name":"missing","content":"orphan"}]}`),
+		Headers: http.Header{"Content-Type": {"application/json"}},
+		Body:    []byte(`{"model":"test","messages":[{"role":"function","name":"missing","content":"orphan"}]}`),
 	})
 	require.ErrorContains(t, err, "no matching call")
 }

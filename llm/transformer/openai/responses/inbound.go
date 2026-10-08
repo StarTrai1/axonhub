@@ -624,6 +624,11 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 		} else if item.Text != nil {
 			msg.Content = llm.MessageContent{Content: item.Text}
 		}
+		if item.Content != nil {
+			for _, part := range item.Content.Items {
+				if part.Type == "refusal" { msg.Refusal += lo.FromPtr(part.Refusal) }
+			}
+		}
 
 		return msg, nil
 	case "input_image":
@@ -1453,6 +1458,19 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 					Status:  lo.ToPtr("completed"),
 				})
 			}
+		}
+
+		if message.Refusal != "" {
+			refusalPart := Item{Type:"refusal",Refusal:lo.ToPtr(message.Refusal)}
+			attached := false
+			for i := len(resp.Output)-1; i >= 0; i-- {
+				if resp.Output[i].Type == "message" && resp.Output[i].ID == messageItemID && resp.Output[i].Content != nil {
+					resp.Output[i].Content.Items = append(resp.Output[i].Content.Items,refusalPart)
+					attached = true
+					break
+				}
+			}
+			if !attached { resp.Output = append(resp.Output,Item{ID:messageItemID,Type:"message",Role:"assistant",Phase:message.Phase,Status:lo.ToPtr("completed"),Content:&Input{Items:[]Item{refusalPart}}}) }
 		}
 
 		// Set status based on finish reason
