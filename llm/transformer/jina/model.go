@@ -11,7 +11,7 @@ type RerankRequest struct {
 }
 
 type RerankResponse struct {
-	ID string `json:"id,omitempty"`
+	ID      string         `json:"id,omitempty"`
 	Model   string         `json:"model"`
 	Object  string         `json:"object"`
 	Results []RerankResult `json:"results"`
@@ -21,7 +21,7 @@ type RerankResponse struct {
 }
 
 type RerankTokens struct {
-	InputTokens int64 `json:"input_tokens"`
+	InputTokens  int64 `json:"input_tokens"`
 	OutputTokens int64 `json:"output_tokens"`
 }
 

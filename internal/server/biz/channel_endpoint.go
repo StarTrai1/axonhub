@@ -300,9 +300,9 @@ var defaultEndpointsForChannelType = map[channel.Type][]objects.ChannelEndpoint{
 		{APIFormat: llm.APIFormatOpenAIChatCompletion.String()},
 		{APIFormat: llm.APIFormatOpenAIResponse.String()},
 	},
-	channel.TypeXaiResponses:        {{APIFormat: llm.APIFormatOpenAIResponse.String()}},
-	channel.TypeXaiSubscription:     {{APIFormat: llm.APIFormatOpenAIResponse.String()}},
-	channel.TypePpio:                openAICompatibleDefaultEndpoints,
+	channel.TypeXaiResponses:    {{APIFormat: llm.APIFormatOpenAIResponse.String()}},
+	channel.TypeXaiSubscription: {{APIFormat: llm.APIFormatOpenAIResponse.String()}},
+	channel.TypePpio:            openAICompatibleDefaultEndpoints,
 	channel.TypeSiliconflow: append(
 		append([]objects.ChannelEndpoint{}, openAICompatibleDefaultEndpoints...),
 		objects.ChannelEndpoint{APIFormat: llm.APIFormatJinaRerank.String()},
