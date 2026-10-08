@@ -1,6 +1,7 @@
 package subscription
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -11,6 +12,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"golang.org/x/net/html"
 
 	"github.com/looplj/axonhub/llm/oauth"
 )
@@ -116,7 +119,7 @@ func (flow *ssoDeviceFlow) convert(ctx context.Context) (*oauth.OAuthCredentials
 	if status < 200 || status >= 400 {
 		return nil, fmt.Errorf("open xAI device verification: HTTP %d", status)
 	}
-	status, finalURL, _, err = flow.do(ctx, http.MethodPost, SSOVerifyURL, url.Values{"user_code": {device.UserCode}})
+	status, finalURL, body, err = flow.do(ctx, http.MethodPost, SSOVerifyURL, url.Values{"user_code": {device.UserCode}})
 	if err != nil {
 		return nil, fmt.Errorf("verify xAI device code: %w", err)
 	}
@@ -126,8 +129,17 @@ func (flow *ssoDeviceFlow) convert(ctx context.Context) (*oauth.OAuthCredentials
 	if !strings.Contains(finalURL, "consent") {
 		return nil, errors.New("verify xAI device code did not reach consent")
 	}
-	status, finalURL, _, err = flow.do(ctx, http.MethodPost, SSOApproveURL, url.Values{
+	approval := url.Values{
 		"user_code": {device.UserCode}, "action": {"allow"}, "principal_type": {"User"}, "principal_id": {""},
+	}
+	if token := ssoConsentToken(body); token != "" {
+		approval.Set("consent_token", token)
+	}
+	consentURL, err := url.Parse(finalURL)
+	if err != nil { return nil, fmt.Errorf("parse xAI consent URL: %w",err) }
+	status, finalURL, _, err = flow.do(ctx, http.MethodPost, SSOApproveURL, approval, http.Header{
+		"Origin":{consentURL.Scheme+"://"+consentURL.Host},
+		"Referer":{finalURL},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("approve xAI device code: %w", err)
@@ -187,9 +199,9 @@ func (flow *ssoDeviceFlow) pollToken(ctx context.Context, device ssoDeviceRespon
 	return nil, errors.New("xAI device token polling timed out")
 }
 
-func (flow *ssoDeviceFlow) do(ctx context.Context, method, endpoint string, form url.Values) (int, string, []byte, error) {
+func (flow *ssoDeviceFlow) do(ctx context.Context, method, endpoint string, form url.Values, headers ...http.Header) (int, string, []byte, error) {
 	currentURL, currentMethod, currentForm := endpoint, method, form
-	for range 9 {
+	for redirects := range 9 {
 		if !trustedXAIURL(currentURL) {
 			return 0, currentURL, nil, errors.New("xAI OAuth URL is not trusted")
 		}
@@ -204,6 +216,13 @@ func (flow *ssoDeviceFlow) do(ctx context.Context, method, endpoint string, form
 		request.Header.Set("Accept", "application/json, text/html;q=0.9, */*;q=0.8")
 		request.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
 		request.Header.Set("Accept-Language", "en-US,en;q=0.9")
+		if redirects == 0 {
+			for _, header := range headers {
+				for name, values := range header {
+					request.Header[name] = append([]string(nil),values...)
+				}
+			}
+		}
 		if currentForm != nil {
 			request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		}
@@ -234,6 +253,28 @@ func (flow *ssoDeviceFlow) do(ctx context.Context, method, endpoint string, form
 		}
 	}
 	return 0, currentURL, nil, errors.New("xAI OAuth redirected too many times")
+}
+
+// Consent is scoped to this device flow and is never stored with credentials.
+func ssoConsentToken(body []byte) string {
+	tokenizer := html.NewTokenizer(bytes.NewReader(body))
+	for {
+		switch tokenizer.Next() {
+		case html.ErrorToken: return ""
+		case html.StartTagToken, html.SelfClosingTagToken:
+			token := tokenizer.Token()
+			if token.Data != "input" { continue }
+			var name, value, inputType string
+			for _, attribute := range token.Attr {
+				switch attribute.Key {
+				case "name": name=attribute.Val
+				case "value": value=attribute.Val
+				case "type": inputType=attribute.Val
+				}
+			}
+			if name == "consent_token" && strings.EqualFold(inputType,"hidden") { return value }
+		}
+	}
 }
 
 func seedSSOCookies(jar http.CookieJar, token string) {
