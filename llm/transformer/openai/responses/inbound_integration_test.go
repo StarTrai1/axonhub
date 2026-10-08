@@ -296,7 +296,7 @@ func TestInboundTransformer_TransformResponse_WithTestData(t *testing.T) {
 		{
 			name:         "tool call response transformation",
 			responseFile: "llm-tool.response.json",
-			expectedFile: "tool.response.json",
+			expectedFile: "tool-with-modalities.response.json",
 			validate: func(t *testing.T, result *httpclient.Response, resp *Response) {
 				t.Helper()
 
@@ -324,7 +324,7 @@ func TestInboundTransformer_TransformResponse_WithTestData(t *testing.T) {
 		{
 			name:         "custom tool call response transformation",
 			responseFile: "llm-custom_tool.response.json",
-			expectedFile: "custom_tool.response.json",
+			expectedFile: "custom_tool-with-modalities.response.json",
 			validate: func(t *testing.T, result *httpclient.Response, resp *Response) {
 				t.Helper()
 

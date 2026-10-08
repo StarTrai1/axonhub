@@ -16,8 +16,10 @@ func TestInjectedSystemCachePreservesLaterOneHourAnchor(t *testing.T) {
 		t.Run(ttl, func(t *testing.T) {
 			body := []byte(`{"model":"claude-sonnet-4-5","max_tokens":32,"messages":[{"role":"user","content":[{"type":"text","text":"hello","cache_control":{"type":"ephemeral","ttl":"` + ttl + `"}}]}]}`)
 			inbound := anthropic.NewInboundTransformer()
-			req, err := inbound.TransformRequest(t.Context(), &httpclient.Request{Body: body, Headers: http.Header{"Content-Type": {"application/json"}}})
+			rawRequest := &httpclient.Request{Body: body, Headers: http.Header{"Content-Type": {"application/json"}}}
+			req, err := inbound.TransformRequest(t.Context(), rawRequest)
 			require.NoError(t, err)
+			req.RawRequest = rawRequest
 			outbound, err := NewOutboundTransformer(Params{TokenProvider: newMockTokenProvider("synthetic-oauth")})
 			require.NoError(t, err)
 			result, err := outbound.TransformRequest(t.Context(), req)

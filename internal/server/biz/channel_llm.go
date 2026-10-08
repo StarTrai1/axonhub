@@ -239,6 +239,7 @@ func (svc *ChannelService) buildChannelWithOutbounds(c *ent.Channel, apiKeyOverr
 
 		needsDedicatedOutbound := ep.APIFormat == llm.APIFormatOpenAISearch.String() ||
 			ep.APIFormat == llm.APIFormatOpenAIDecisions.String() ||
+			(c.Type == channel.TypeSiliconflow && ep.APIFormat == llm.APIFormatJinaRerank.String()) ||
 			(c.Type == channel.TypeXai && ep.APIFormat != ch.Outbound.APIFormat().String())
 		if !needsDedicatedOutbound {
 			outbounds[ep.APIFormat] = ch.Outbound
