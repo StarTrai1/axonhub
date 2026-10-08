@@ -1,4 +1,4 @@
-package pipeline
+package pipeline_test
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/looplj/axonhub/llm/transformer/openai/decisions"
 )
 
@@ -33,11 +34,11 @@ func TestDecisionsEmptyResponseRetryStopsAfterConfiguredAttempts(t *testing.T) {
 
 	outbound, err := decisions.NewOutboundTransformerWithKey(server.URL, "test-provider-key")
 	require.NoError(t, err)
-	p := NewFactory(httpclient.NewHttpClientWithClient(server.Client())).Pipeline(
+	p := pipeline.NewFactory(httpclient.NewHttpClientWithClient(server.Client())).Pipeline(
 		decisions.NewInboundTransformer(),
 		&decisionsRetryableOutbound{OutboundTransformer: outbound},
-		WithRetry(0, 1, 0),
-		WithEmptyResponseDetection(),
+		pipeline.WithRetry(0, 1, 0),
+		pipeline.WithEmptyResponseDetection(),
 	)
 
 	_, err = p.Process(context.Background(), &httpclient.Request{
