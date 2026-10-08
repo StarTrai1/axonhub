@@ -51,8 +51,8 @@ func newResponsesStreamAdapter(ctx context.Context, stream streams.Stream[*httpc
 
 			Status    int               `json:"status"`
 			Headers   map[string]string `json:"headers,omitempty"`
-			Param     *string `json:"param"`
-			RequestID string  `json:"request_id,omitempty"`
+			Param     *string           `json:"param"`
+			RequestID string            `json:"request_id,omitempty"`
 		}{StreamEvent: responses.StreamEvent{
 			Type: responses.StreamEventTypeError, SequenceNumber: int(nextSequence.Load()), Code: code, Message: message,
 		}, Status: streamErrorStatus(err), Headers: retryAdviceEventHeaders(upstreamRetryAdvice(err, streamErrorStatus(err))), RequestID: streamErrorRequestID(ctx, requestID)})

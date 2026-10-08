@@ -22,9 +22,9 @@ import (
 
 func TestUpstreamRetryAdviceValidation(t *testing.T) {
 	for _, tc := range []struct {
-		name string
+		name   string
 		values []string
-		want string
+		want   string
 	}{
 		{"seconds", []string{" 12 "}, "12"},
 		{"fraction", []string{"0.25"}, "0.25"},
@@ -64,11 +64,16 @@ func TestRetryAdviceSurvivesErrorPolicyAndDownstreamTransports(t *testing.T) {
 			orch := &orchestrator.ChatCompletionOrchestrator{Inbound: responses.NewInboundTransformer(), SystemService: svc}
 			for _, status := range []int{429, 503} {
 				t.Run(fmt.Sprint(status), func(t *testing.T) {
-					raw := &httpclient.Error{StatusCode: status,
-						Headers: http.Header{"Retry-After": {"12"}, "Retry-After-Ms": {"12500"}, "X-Ms-Retry-After-Ms": {"13000"}, "Set-Cookie": {"private-cookie"}},
-						Body: []byte(`{"error":{"type":"server_error","code":"server_is_overloaded","message":"private upstream details"}}`)}
-					failure := pipeline.WrapUpstreamError(&llm.ResponseError{StatusCode: status, Cause: raw,
-						Detail: llm.ErrorDetail{Type: "server_error", Code: "server_is_overloaded", Message: "private upstream details"}})
+					raw := &httpclient.Error{
+						StatusCode: status,
+						Headers:    http.Header{"Retry-After": {"12"}, "Retry-After-Ms": {"12500"}, "X-Ms-Retry-After-Ms": {"13000"}, "Set-Cookie": {"private-cookie"}},
+						Body:       []byte(`{"error":{"type":"server_error","code":"server_is_overloaded","message":"private upstream details"}}`),
+					}
+					failure := pipeline.WrapUpstreamError(&llm.ResponseError{
+						StatusCode: status,
+						Cause:      raw,
+						Detail:     llm.ErrorDetail{Type: "server_error", Code: "server_is_overloaded", Message: "private upstream details"},
+					})
 					httpErr := transformOrchestratorError(ctx, failure, orch)
 					require.Equal(t, status, httpErr.StatusCode)
 					expectedMessage := "private upstream details"

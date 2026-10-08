@@ -60,8 +60,8 @@ func fastModelBase(model string) (string, bool) {
 const (
 	defaultImageMainModel = "gpt-6-luna"
 
-	AxonHubOriginator   = "axonhub"
-	CodexCLIOriginator  = "codex_cli_rs"
+	AxonHubOriginator  = "axonhub"
+	CodexCLIOriginator = "codex_cli_rs"
 	AuthorizeURL       = "https://auth.openai.com/oauth/authorize"
 	//nolint:gosec // false alert.
 	TokenURL    = "https://auth.openai.com/oauth/token"

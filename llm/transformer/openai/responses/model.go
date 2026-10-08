@@ -390,9 +390,9 @@ type Annotation struct {
 	// EndIndex is the end offset of the annotated span in the output text.
 	EndIndex *int64 `json:"end_index,omitempty"`
 	// URLCitation contains URL citation details when Type is "url_citation".
-	URLCitation *URLCitation `json:"url_citation,omitempty"`
-	EncryptedIndex *string `json:"encrypted_index,omitempty"`
-	CitedText      *string `json:"cited_text,omitempty"`
+	URLCitation    *URLCitation `json:"url_citation,omitempty"`
+	EncryptedIndex *string      `json:"encrypted_index,omitempty"`
+	CitedText      *string      `json:"cited_text,omitempty"`
 }
 
 func (a *Annotation) UnmarshalJSON(data []byte) error {
@@ -555,9 +555,9 @@ type Item struct {
 	Status *string `json:"status,omitempty"`
 
 	// The URL of the image url or base64 encoded image, for input_image type.
-	ImageURL *string `json:"image_url,omitempty"`
+	ImageURL   *string `json:"image_url,omitempty"`
 	VideoURL   *string `json:"video_url,omitempty"`
-	Processing string `json:"processing,omitempty"`
+	Processing string  `json:"processing,omitempty"`
 
 	// The detail of the image. high, low, or auto, for input_image type.
 	Detail *string `json:"detail,omitempty"`

@@ -272,13 +272,13 @@ func (s *responsesInboundStream) Next() bool {
 
 		response := &Response{
 			AccessPrograms: cloneRaw(s.aggregator.accessPrograms),
-			Object:      "response",
-			ID:          s.responseID,
-			Model:       s.model,
-			ServiceTier: s.aggregator.serviceTier,
-			CreatedAt:   s.createdAt,
-			Status:      lo.ToPtr("in_progress"),
-			Output:      []Item{},
+			Object:         "response",
+			ID:             s.responseID,
+			Model:          s.model,
+			ServiceTier:    s.aggregator.serviceTier,
+			CreatedAt:      s.createdAt,
+			Status:         lo.ToPtr("in_progress"),
+			Output:         []Item{},
 		}
 
 		if s.usage != nil {

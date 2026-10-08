@@ -18,7 +18,7 @@ func TestAccessProgramsSurviveRequestConversion(t *testing.T) {
 	apiKey, err := responses.NewOutboundTransformer("https://api.example/v1", "synthetic-key")
 	require.NoError(t, err)
 	subscription, err := NewOutboundTransformer(Params{
-		BaseURL: "https://relay.example/v1",
+		BaseURL:       "https://relay.example/v1",
 		TokenProvider: staticTokenGetter{creds: &oauth.OAuthCredentials{AccessToken: testAccessTokenWithAccountID(t)}},
 	})
 	require.NoError(t, err)

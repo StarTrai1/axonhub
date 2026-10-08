@@ -844,7 +844,7 @@ func (a *streamAggregator) buildResponse() *Response {
 	}
 
 	return &Response{
-		AccessPrograms:      cloneRaw(a.accessPrograms),
+		AccessPrograms:     cloneRaw(a.accessPrograms),
 		Object:             "response",
 		ID:                 a.responseID,
 		Model:              a.model,

@@ -503,14 +503,14 @@ func (t *OutboundTransformer) transformStandardResponse(
 
 	llmResp := &llm.Response{
 		ResponsesAccessPrograms: cloneRaw(resp.AccessPrograms),
-		Object:              "chat.completion",
-		ID:                  resp.ID,
-		Model:               resp.Model,
-		ServiceTier:         lo.FromPtr(resp.ServiceTier),
-		Created:             resp.CreatedAt,
-		PreviousResponseID:  resp.PreviousResponseID,
-		Choices:             make([]llm.Choice, 0),
-		TransformerMetadata: map[string]any{},
+		Object:                  "chat.completion",
+		ID:                      resp.ID,
+		Model:                   resp.Model,
+		ServiceTier:             lo.FromPtr(resp.ServiceTier),
+		Created:                 resp.CreatedAt,
+		PreviousResponseID:      resp.PreviousResponseID,
+		Choices:                 make([]llm.Choice, 0),
+		TransformerMetadata:     map[string]any{},
 	}
 
 	// Convert usage if present

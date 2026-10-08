@@ -22,8 +22,7 @@ func upstreamRetryAdvice(err error, status int) http.Header {
 	if status != http.StatusTooManyRequests && status != http.StatusServiceUnavailable {
 		return nil
 	}
-	var quotaErr *orchestrator.QuotaExhaustedError
-	if errors.As(err, &quotaErr) {
+	if _, ok := errors.AsType[*orchestrator.QuotaExhaustedError](err); ok {
 		return nil
 	}
 	var raw *httpclient.Error
@@ -32,8 +31,7 @@ func upstreamRetryAdvice(err error, status int) http.Header {
 	}
 	code := upstreamErrorCodeFromHTTP(raw)
 	typeName := upstreamErrorTypeFromHTTP(raw)
-	var responseErr *llm.ResponseError
-	if errors.As(err, &responseErr) {
+	if responseErr, ok := errors.AsType[*llm.ResponseError](err); ok {
 		code = firstNonEmpty(responseErr.Detail.Code, code)
 		typeName = firstNonEmpty(responseErr.Detail.Type, typeName)
 	}

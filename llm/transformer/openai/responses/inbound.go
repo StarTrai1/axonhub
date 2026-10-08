@@ -1024,9 +1024,9 @@ const (
 	anthropicTypeMetadataKey              = "anthropic_type"
 	anthropicBlockIndexMetadataKey        = "anthropic_block_index"
 	anthropicToolResultContentMetadataKey = "anthropic_tool_result_content"
-	anthropicServerToolUseType             = "server_tool_use"
-	anthropicWebSearchToolResultType       = "web_search_tool_result"
-	webSearchFunctionName                  = "web_search"
+	anthropicServerToolUseType            = "server_tool_use"
+	anthropicWebSearchToolResultType      = "web_search_tool_result"
+	webSearchFunctionName                 = "web_search"
 )
 
 func anthropicWebSearchCallItem(toolCall llm.ToolCall, inlineResults []llm.InlineToolResult) (Item, bool) {
@@ -1130,8 +1130,8 @@ func anthropicWebSearchMessage(item *Item) *llm.Message {
 			TransformerMetadata: toolMetadata,
 		}},
 		InlineToolResults: []llm.InlineToolResult{{
-			ToolCallID:         toolUseID,
-			Output:             string(resultContent),
+			ToolCallID:          toolUseID,
+			Output:              string(resultContent),
 			TransformerMetadata: resultMetadata,
 		}},
 	}
@@ -1252,9 +1252,9 @@ func getResponseWebSearchCallsFromMetadata(metadata map[string]any) []Item {
 		}
 
 		call := Item{
-			ID:     item.ID,
-			Type:   item.Type,
-			Status: item.Status,
+			ID:      item.ID,
+			Type:    item.Type,
+			Status:  item.Status,
 			Results: append(json.RawMessage(nil), item.Results...),
 		}
 		if item.Action != nil && item.Action.WebSearch != nil {
@@ -1320,7 +1320,7 @@ func attachAnnotationsToFirstTextItem(items []Item, annotations []llm.Annotation
 // convertToResponsesAPIResponse converts llm.Response to Responses API Response.
 func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 	resp := &Response{
-		AccessPrograms:      cloneRaw(chatResp.ResponsesAccessPrograms),
+		AccessPrograms:     cloneRaw(chatResp.ResponsesAccessPrograms),
 		Object:             "response",
 		ID:                 chatResp.ID,
 		Model:              chatResp.Model,

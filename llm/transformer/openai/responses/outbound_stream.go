@@ -152,7 +152,6 @@ func (s *responsesOutboundStream) Next() bool {
 
 // transformStreamChunk transforms a single OpenAI Responses API streaming chunk to unified llm.Response.
 // Events are enqueued via s.enqueue() instead of being returned.
-//
 func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamEvent) error {
 	if event == nil {
 		return nil
@@ -267,12 +266,12 @@ func (s *responsesOutboundStream) transformStreamEvent(event *httpclient.StreamE
 	// Build base response
 	resp := &llm.Response{
 		ResponsesAccessPrograms: cloneRaw(s.state.accessPrograms),
-		Object:             "chat.completion.chunk",
-		ID:                 s.state.responseID,
-		Model:              s.state.responseModel,
-		ServiceTier:        s.state.serviceTier,
-		Created:            s.state.created,
-		PreviousResponseID: s.state.previousResponseID,
+		Object:                  "chat.completion.chunk",
+		ID:                      s.state.responseID,
+		Model:                   s.state.responseModel,
+		ServiceTier:             s.state.serviceTier,
+		Created:                 s.state.created,
+		PreviousResponseID:      s.state.previousResponseID,
 	}
 	if len(s.state.responseHeaders) > 0 {
 		resp.TransformerMetadata = map[string]any{
@@ -926,14 +925,14 @@ func (s *responsesOutboundStream) transformStreamEvent(event *httpclient.StreamE
 		s.state.usage = streamEvent.Response.Usage.ToUsage()
 		s.enqueue(&llm.Response{
 			ResponsesAccessPrograms: cloneRaw(s.state.accessPrograms),
-			Object:             "chat.completion.chunk",
-			ID:                 s.state.responseID,
-			Model:              s.state.responseModel,
-			ServiceTier:        s.state.serviceTier,
-			Created:            s.state.created,
-			PreviousResponseID: s.state.previousResponseID,
-			Choices:            []llm.Choice{},
-			Usage:              s.state.usage,
+			Object:                  "chat.completion.chunk",
+			ID:                      s.state.responseID,
+			Model:                   s.state.responseModel,
+			ServiceTier:             s.state.serviceTier,
+			Created:                 s.state.created,
+			PreviousResponseID:      s.state.previousResponseID,
+			Choices:                 []llm.Choice{},
+			Usage:                   s.state.usage,
 		})
 	}
 
