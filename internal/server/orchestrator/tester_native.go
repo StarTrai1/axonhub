@@ -59,12 +59,19 @@ func (processor *TestChannelOrchestrator) buildNativeChannelTestInput(ctx contex
 		{Role: "system", Content: llm.MessageContent{Content: lo.ToPtr(systemPrompt)}},
 		{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr(userPrompt)}},
 	}}
+	if apiFormat == llm.APIFormatOpenAIDecisions {
+		// Native Decisions input is protected by the normal pipeline. Only the
+		// system test instructions need protection before becoming a question.
+		prompts.Messages = prompts.Messages[:1]
+	}
 	protected, err := processor.promptProtectionRuleService.Protect(ctx, prompts)
 	if err != nil {
 		return nil, nil, err
 	}
 	systemPrompt = lo.FromPtr(protected.Messages[0].Content.Content)
-	userPrompt = lo.FromPtr(protected.Messages[1].Content.Content)
+	if apiFormat == llm.APIFormatTypeSafeSystemOne {
+		userPrompt = lo.FromPtr(protected.Messages[1].Content.Content)
+	}
 	var inbound transformer.Inbound
 	var payload any
 	if apiFormat == llm.APIFormatTypeSafeSystemOne {

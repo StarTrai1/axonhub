@@ -14,6 +14,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/promptprotectionrule"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
@@ -86,4 +87,47 @@ func TestSystemOneChannelTestPromptProtection(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestDecisionsChannelTestProtectsUserExactlyOnce(t *testing.T) {
+	ctx, client := setupTest(t)
+	ctx = contexts.WithProjectID(ctx, createTestProject(t, ctx, client).ID)
+	_, err := client.PromptProtectionRule.Create().SetName("single replacement").SetPattern("secret").
+		SetStatus(promptprotectionrule.StatusEnabled).SetSettings(&objects.PromptProtectionSettings{
+		Action: objects.PromptProtectionActionMask, Replacement: "secret_masked", Scopes: []objects.PromptProtectionScope{objects.PromptProtectionScopeUser},
+	}).Save(ctx)
+	require.NoError(t, err)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Input string `json:"input"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Input != "secret_masked" {
+			http.Error(w, "test prompt was not protected exactly once", http.StatusBadRequest)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"model":"test-model","answers":[{"type":"predicate","name":"connection","probability":1}]}`))
+	}))
+	t.Cleanup(server.Close)
+	ch, err := client.Channel.Create().SetType(channel.TypeOpenai).SetName("native decisions protection").
+		SetBaseURL(server.URL + "/v1").SetCredentials(objects.ChannelCredentials{APIKeys: []string{"test-key"}}).
+		SetSupportedModels([]string{"test-model"}).SetDefaultTestModel("test-model").
+		SetEndpoints([]objects.ChannelEndpoint{{APIFormat: llm.APIFormatOpenAIDecisions.String()}}).Save(ctx)
+	require.NoError(t, err)
+	channelService, requestService, systemService, usageLogService := setupTestServices(t, client)
+	require.NoError(t, systemService.SetChannelSetting(ctx, biz.SystemChannelSettings{TestSystemPrompt: "system", TestUserPrompt: "secret"}))
+	require.NoError(t, systemService.SetRetryPolicy(ctx, &biz.RetryPolicy{}))
+	protection := biz.NewPromptProtectionRuleService(biz.PromptProtectionRuleServiceParams{Ent: client})
+	t.Cleanup(protection.Stop)
+	processor := NewTestChannelOrchestrator(channelService, requestService, systemService, usageLogService, protection, httpclient.NewHttpClient())
+	id := objects.GUID{Type: "Channel", ID: ch.ID}
+	result, err := processor.TestChannel(ctx, id, nil, nil, nil)
+	require.NoError(t, err)
+	require.True(t, result.Success)
+	keyResult, err := processor.TestSingleAPIKey(ctx, id, "test-key", nil, nil)
+	require.NoError(t, err)
+	require.True(t, keyResult.Success)
+	batch, err := processor.TestChannelAPIKeys(ctx, id, nil, nil)
+	require.NoError(t, err)
+	require.Equal(t, 1, batch.SuccessCount)
 }
