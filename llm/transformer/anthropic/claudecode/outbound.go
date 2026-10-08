@@ -135,7 +135,9 @@ func (t *ClaudeCodeTransformer) TransformRequest(
 	// Apply structured transformations before serialization
 	reqCopy = *disableThinkingIfToolChoiceForcedStructured(&reqCopy)
 
+	messageCount := len(reqCopy.Messages)
 	reqCopy = *injectClaudeCodeSystemMessageStructured(&reqCopy)
+	injectedSystem := len(reqCopy.Messages) > messageCount
 
 	reqCopy = injectFakeUserIDStructured(ctx, reqCopy, t.accountIdentity)
 	if t.isOfficial && !keepClientUA {
@@ -146,6 +148,11 @@ func (t *ClaudeCodeTransformer) TransformRequest(
 	httpReq, err := t.Outbound.TransformRequest(ctx, &reqCopy)
 	if err != nil {
 		return nil, err
+	}
+	if injectedSystem {
+		httpReq.Body, err = alignInjectedSystemCacheTTL(httpReq.Body)
+		if err != nil { return nil, err }
+		if len(httpReq.JSONBody) > 0 { httpReq.JSONBody = append([]byte(nil), httpReq.Body...) }
 	}
 
 	// Add beta=true query parameter if not present
