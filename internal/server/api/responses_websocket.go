@@ -1041,11 +1041,15 @@ func writeResponsesWebSocketError(writer *responsesWebSocketWriter, httpErr *htt
 		}
 	}
 
-	return writeResponsesWebSocketJSON(writer, responsesWebSocketEvent(streamID, gin.H{
+	event := gin.H{
 		"type":   "error",
 		"status": status,
 		"error":  detail,
-	}))
+	}
+	if headers := retryAdviceEventHeaders(upstreamRetryAdvice(httpErr, status)); len(headers) > 0 {
+		event["headers"] = headers
+	}
+	return writeResponsesWebSocketJSON(writer, responsesWebSocketEvent(streamID, event))
 }
 
 func responsesWebSocketEvent(streamID string, event gin.H) gin.H {

@@ -2,7 +2,7 @@
 
 两个 Python 入口直接调度**本机安装的官方 Codex CLI**。每次均为新 `codex exec --json --ephemeral`，不用 resume，不拼装/伪造 Codex 的 User-Agent、身份、会话头或 TLS 指纹。协议由所安装的 CLI 生成；这保证使用真实客户端，**不代表与交互式 Codex 的工具列表、指令或配置逐字节相同，也不保证不被渠道封禁**。
 
-运行要求：Linux（使用 `/proc`、进程组和 `flock`），Python 3.11+，Codex CLI 0.155.1+。本实现已核对官方 `rust-v0.155.1` → `rust-v0.160.1` 源码，兼容 0.156.1、0.157.0、0.157.1、0.158.0、0.159.0、0.159.2、0.159.3 、0.160.0 和 0.160.1。升级后先运行 `--check` 并检查官方变更。Python 仅使用标准库。
+运行要求：Linux（使用 `/proc`、进程组和 `flock`），Python 3.11+，Codex CLI 0.155.1+。本实现已核对官方 `rust-v0.155.1` → `rust-v0.161.0` 源码，兼容 0.156.1、0.157.0、0.157.1、0.158.0、0.159.0、0.159.2、0.159.3 、0.160.0、0.160.1 和 0.161.0。升级后先运行 `--check` 并检查官方变更。Python 仅使用标准库。
 
 ## 准备
 
@@ -154,7 +154,7 @@ python3 scripts/codex-probes/keepalive.py \
 - 官方 [non-interactive 模式](https://developers.openai.com/codex/noninteractive)：`exec`、JSONL 完成事件与 `--ephemeral`。
 - [Codex 配置](https://developers.openai.com/codex/config-reference) 与 [0.155.1 exec CLI](https://github.com/openai/codex/blob/rust-v0.155.1/codex-rs/exec/src/cli.rs)、[JSONL 事件](https://github.com/openai/codex/blob/rust-v0.155.1/codex-rs/exec/src/exec_events.rs)、[配置 schema](https://github.com/openai/codex/blob/rust-v0.155.1/codex-rs/core/config.schema.json)。检索日期 2026-09-19。
 - 简单题主题参考 NASA [天空为什么是蓝色](https://spaceplace.nasa.gov/blue-sky/) 与 USGS [水循环](https://www.usgs.gov/water-science-school/water-cycle)，问题为重新编写，没有复制“十万个为什么”书籍内容。
-- GitHub Actions 用 fake CLI 验证新会话、清理、超时/中断、错误分类、阶段切换、计数、定时去重和不触碰外部文件；hosted matrix 固定下载官方 0.160.0 和 0.160.1，分别使用 gpt-6-sol、gpt-6.1-sol，仅连接 loopback 模拟服务器验证真实 CLI 五并发、取消及完成事件与用量，不调用真实上游。离线测试不能证明提供方额度窗口行为或封禁策略。
+- GitHub Actions 用 fake CLI 验证新会话、清理、超时/中断、错误分类、阶段切换、计数、定时去重和不触碰外部文件；hosted matrix 固定下载官方 0.160.1 和 0.161.0，分别使用 gpt-6-sol、gpt-6.1-sol，仅连接 loopback 模拟服务器验证真实 CLI 五并发、取消及完成事件与用量，不调用真实上游。离线测试不能证明提供方额度窗口行为或封禁策略。
 
 ### Codex 0.157.0
 
@@ -200,3 +200,16 @@ Sol 6.1 的推理档位为 low/medium/high/xhigh/max，默认 medium；不使用
 已核对官方 [0.160.1 发布说明](https://github.com/openai/codex/releases/tag/rust-v0.160.1) 和两个发布 tag 的差异：功能改动仅为远程 stdio MCP 启动时保留 Windows 执行器的 `SYSTEMROOT`、`TEMP`、`TMP`，另有版本号变更。该修复属于客户端进程环境，Responses HTTP/WebSocket、模型目录和 exec JSONL 契约没有新增适配要求。
 
 网关缺省客户端版本更新为 0.160.1，保留动态稳定版刷新和来访显式身份的优先级。托管矩阵更新为 0.160.0 / 0.160.1 × gpt-6-sol / gpt-6.1-sol，继续验证五并发、取消清理、完成事件及用量，仅连接 loopback 模拟服务。
+
+
+### Codex 0.161.0
+
+已核对官方 [0.161.0 发布说明](https://github.com/openai/codex/releases/tag/rust-v0.161.0) 和精确 tag：0.160.1 为维护分支，前向 155 个提交、反向 4 个提交；完整 Git tree 比较共 1,195 个文件变化。GPT-6.1 Sol 目录已回补到 0.160.1，两个 tag 的 `models-manager/models.json` 相同。
+
+网关保留显式 `access_programs`，覆盖 Responses/Codex 请求重建、compact、本地压缩和续接；响应的实际程序选择（包括 `null`）经过转换、流式及聚合后仍可见。程序选择属于当前请求，历史重放不继承旧轮选择。网关不自动设置 Daybreak；模型与项目权限由上游校验，具体语义见 [官方 Daybreak 指南](https://developers.openai.com/api/docs/guides/daybreak)。自定义 Codex provider 不会自动转发 Cyber 程序，不能把网关字段兼容当作 CLI 默认开启该功能。
+
+上游 429/503 的合法 `Retry-After`、`Retry-After-Ms`、`X-Ms-Retry-After-Ms` 在 HTTP 错误和 Responses SSE/WebSocket 错误中保留；隐藏/自定义错误文案不影响时间提示，不暴露其他上游头。保留原有网关重试预算与硬额度错误分类。0.161.0 新增 WebSocket 握手 HTTP 错误的等待提示解析，并在回退 HTTP 前等待；它的嵌套 WebSocket 错误仍未把 headers 转换成 retry deadline，不能据此保证客户端一定按事件中的时间重试。
+
+API key 模型发现默认开启，但仅支持官方默认端点或显式 `model_catalog_url`，当前自定义网关配置无需改变标准 `/models`。请求 JSON 字段重排、工具尝试元数据、目标消息和权威恢复历史的调整不新增网关路由或 item 类型；Windows/MCP/TUI/Bedrock 客户端功能按现有协议兼容。
+
+缺省身份版本更新为 0.161.0，动态稳定版刷新及显式身份优先级继续生效。托管回环矩阵为 0.160.1 / 0.161.0 × gpt-6-sol / gpt-6.1-sol，检查五并发、取消清理、完成事件、用量，以及包含程序选择的响应。只连接本地模拟服务，不验证真实项目的 Daybreak 权限或生产部署。

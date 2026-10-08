@@ -8,6 +8,7 @@ import (
 )
 
 var rawCreateRequestFields = []string{
+	"access_programs",
 	"client_metadata",
 	"context_management",
 	"conversation",
@@ -17,6 +18,7 @@ var rawCreateRequestFields = []string{
 }
 
 var rawCompactRequestFields = []string{
+	"access_programs",
 	"previous_response_id",
 	"prompt_cache_options",
 	"prompt_cache_retention",

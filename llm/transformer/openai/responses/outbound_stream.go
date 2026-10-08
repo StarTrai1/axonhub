@@ -62,6 +62,7 @@ type outboundStreamState struct {
 	responseID         string
 	responseModel      string
 	serviceTier        string
+	accessPrograms     json.RawMessage
 	previousResponseID *string
 	usage              *llm.Usage
 	created            int64
@@ -259,9 +260,13 @@ func (s *responsesOutboundStream) transformStreamEvent(event *httpclient.StreamE
 	if streamEvent.Response != nil && lo.FromPtr(streamEvent.Response.ServiceTier) != "" {
 		s.state.serviceTier = *streamEvent.Response.ServiceTier
 	}
+	if streamEvent.Response != nil && len(streamEvent.Response.AccessPrograms) > 0 {
+		s.state.accessPrograms = cloneRaw(streamEvent.Response.AccessPrograms)
+	}
 
 	// Build base response
 	resp := &llm.Response{
+		ResponsesAccessPrograms: cloneRaw(s.state.accessPrograms),
 		Object:             "chat.completion.chunk",
 		ID:                 s.state.responseID,
 		Model:              s.state.responseModel,
@@ -920,6 +925,7 @@ func (s *responsesOutboundStream) transformStreamEvent(event *httpclient.StreamE
 	if s.responseCompleted && streamEvent.Response != nil && streamEvent.Response.Usage != nil {
 		s.state.usage = streamEvent.Response.Usage.ToUsage()
 		s.enqueue(&llm.Response{
+			ResponsesAccessPrograms: cloneRaw(s.state.accessPrograms),
 			Object:             "chat.completion.chunk",
 			ID:                 s.state.responseID,
 			Model:              s.state.responseModel,

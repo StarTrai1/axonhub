@@ -258,6 +258,9 @@ func (s *responsesInboundStream) Next() bool {
 	if chunk.ServiceTier != "" {
 		s.aggregator.serviceTier = lo.ToPtr(chunk.ServiceTier)
 	}
+	if len(chunk.ResponsesAccessPrograms) > 0 {
+		s.aggregator.accessPrograms = cloneRaw(chunk.ResponsesAccessPrograms)
+	}
 
 	if len(chunk.TransformerMetadata) > 0 {
 		s.mergeTransformerMetadata(chunk.TransformerMetadata)
@@ -268,6 +271,7 @@ func (s *responsesInboundStream) Next() bool {
 		s.hasResponseCreated = true
 
 		response := &Response{
+			AccessPrograms: cloneRaw(s.aggregator.accessPrograms),
 			Object:      "response",
 			ID:          s.responseID,
 			Model:       s.model,

@@ -25,6 +25,7 @@ type streamAggregator struct {
 	status             string
 	previousResponseID *string
 	serviceTier        *string
+	accessPrograms     json.RawMessage
 
 	// Output items - keyed by output_index.
 	// Some streams may (unexpectedly) reuse output_index for multiple items, so we store a slice.
@@ -245,6 +246,9 @@ func AggregateStreamChunks(_ context.Context, chunks []*httpclient.StreamEvent) 
 
 //nolint:gocognit,maintidx // Event processing is inherently complex.
 func (a *streamAggregator) processEvent(ev *StreamEvent) {
+	if ev.Response != nil && len(ev.Response.AccessPrograms) > 0 {
+		a.accessPrograms = cloneRaw(ev.Response.AccessPrograms)
+	}
 	if ev.Response != nil && lo.FromPtr(ev.Response.ServiceTier) != "" {
 		a.serviceTier = ev.Response.ServiceTier
 	}
@@ -840,6 +844,7 @@ func (a *streamAggregator) buildResponse() *Response {
 	}
 
 	return &Response{
+		AccessPrograms:      cloneRaw(a.accessPrograms),
 		Object:             "response",
 		ID:                 a.responseID,
 		Model:              a.model,

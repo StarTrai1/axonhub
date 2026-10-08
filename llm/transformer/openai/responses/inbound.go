@@ -1320,6 +1320,7 @@ func attachAnnotationsToFirstTextItem(items []Item, annotations []llm.Annotation
 // convertToResponsesAPIResponse converts llm.Response to Responses API Response.
 func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 	resp := &Response{
+		AccessPrograms:      cloneRaw(chatResp.ResponsesAccessPrograms),
 		Object:             "response",
 		ID:                 chatResp.ID,
 		Model:              chatResp.Model,

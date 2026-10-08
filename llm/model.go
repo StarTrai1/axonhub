@@ -721,6 +721,10 @@ const (
 type Response struct {
 	ID string `json:"id"`
 
+	// ResponsesAccessPrograms preserves the upstream selection, including an
+	// explicit null, only when converting back to the Responses protocol.
+	ResponsesAccessPrograms json.RawMessage `json:"-"`
+
 	// A list of chat completion choices. Can be more than one if `n` is greater
 	// than 1.
 	Choices []Choice `json:"choices"`

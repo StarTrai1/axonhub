@@ -854,6 +854,8 @@ type ReasoningContent struct {
 }
 
 type Response struct {
+	AccessPrograms json.RawMessage `json:"access_programs,omitempty"`
+
 	// The object type of this resource - always set to "response".
 	Object string `json:"object"`
 	// Unique identifier for this Response.

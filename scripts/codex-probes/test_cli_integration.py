@@ -21,6 +21,7 @@ class CLIIntegrationTest(unittest.IsolatedAsyncioTestCase):
                    "content": [{"type": "output_text", "text": "OK.", "annotations": []}]}
         response = {"id": "resp_fixture", "object": "response", "created_at": 1700000000,
                     "model": model, "status": "completed", "output": [message],
+                    "access_programs": {"cyber": "standard"},
                     "usage": {"input_tokens": 11, "input_tokens_details": {"cached_tokens": 3},
                               "output_tokens": 2, "output_tokens_details": {"reasoning_tokens": 0}, "total_tokens": 13}}
         events = [
@@ -78,6 +79,7 @@ class CLIIntegrationTest(unittest.IsolatedAsyncioTestCase):
                     self.assertEqual(len(requests), 1)
                     self.assertEqual(requests[0][0]["authorization"].lower(), "bearer synthetic-test-key")
                     self.assertEqual(requests[0][1]["model"], model)
+                    self.assertNotIn("access_programs", requests[0][1])
                     self.assertEqual(errors, [])
                     self.assertEqual(runner.active_attempts, 0)
                     self.assertFalse(list(state.root.glob("attempt-*")))

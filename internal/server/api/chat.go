@@ -101,7 +101,7 @@ func (handlers *ChatCompletionHandlers) ChatCompletionWithRequest(c *gin.Context
 		log.Error(ctx, "Error processing chat completion", log.Cause(err))
 
 		httpErr := transformOrchestratorError(ctx, err, handlers.ChatCompletionOrchestrator)
-		c.JSON(httpErr.StatusCode, json.RawMessage(httpErr.Body))
+		writeOrchestratorHTTPError(c, httpErr)
 
 		return
 	}

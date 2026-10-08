@@ -22,7 +22,9 @@ func transformOrchestratorError(ctx context.Context, err error, orch *orchestrat
 
 	if orch != nil {
 		err = applyUpstreamErrorPolicy(ctx, err, orch.SystemService)
-		return orch.Inbound.TransformError(ctx, err)
+		httpErr := orch.Inbound.TransformError(ctx, err)
+		httpErr.Headers = upstreamRetryAdvice(err, httpErr.StatusCode)
+		return httpErr
 	}
 
 	return &httpclient.Error{
