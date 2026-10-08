@@ -65,6 +65,9 @@ func (t *InboundTransformer) TransformRequest(
 	}
 
 	// Convert to unified llm.Request
+	if err := normalizeLegacyFunctionMessages(oaiReq.Messages); err != nil {
+		return nil, fmt.Errorf("%w: %w", transformer.ErrInvalidRequest, err)
+	}
 	chatReq := oaiReq.ToLLMRequest()
 	chatReq.RawRequest = httpReq
 	chatReq.RequestType = llm.RequestTypeChat

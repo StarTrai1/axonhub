@@ -174,6 +174,7 @@ type Message struct {
 	// For tool call response.
 	ToolCallID *string    `json:"tool_call_id,omitempty"`
 	ToolCalls  []ToolCall `json:"tool_calls,omitempty"`
+	FunctionCall *FunctionCall `json:"function_call,omitempty"`
 
 	// ReasoningContent for deepseek-reasoner support.
 	ReasoningContent *string `json:"reasoning_content,omitempty"`

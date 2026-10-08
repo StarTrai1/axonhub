@@ -92,7 +92,7 @@ func TestOpenAIHandlers_CreateDecisions_usesOfflineUpstreamAndPreservesClientSha
 
 	require.Equal(t, http.StatusOK, response.Code)
 	require.Equal(t, "application/json", response.Header().Get("Content-Type"))
-	require.JSONEq(t, upstreamBody, response.Body.String())
+	require.JSONEq(t, strings.Replace(upstreamBody, `"model":"provider-model"`, `"model":"gpt-6-luna"`, 1), response.Body.String())
 }
 
 type decisionsOfflineHarness struct {
@@ -191,7 +191,7 @@ func TestOpenAIHandlers_CreateDecisions_persistsFinalRequestAndExecutionUsage(t 
 	requestRow, err := harness.client.Request.Query().Where(request.ProjectIDEQ(harness.project.ID)).Only(ctx)
 	require.NoError(t, err)
 	require.Equal(t, request.StatusCompleted, requestRow.Status)
-	require.JSONEq(t, `{"model":"provider-model","answers":[{"type":"predicate","name":"connection","probability":1}],"usage":{"input_tokens":120,"output_tokens":0}}`, string(requestRow.ResponseBody))
+	require.JSONEq(t, `{"model":"gpt-6-luna","answers":[{"type":"predicate","name":"connection","probability":1}],"usage":{"input_tokens":120,"output_tokens":0}}`, string(requestRow.ResponseBody))
 	execution, err := harness.client.RequestExecution.Query().Where(requestexecution.RequestIDEQ(requestRow.ID)).Only(ctx)
 	require.NoError(t, err)
 	require.Equal(t, requestexecution.StatusCompleted, execution.Status)

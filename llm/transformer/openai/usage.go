@@ -11,6 +11,8 @@ import (
 type PromptTokensDetails struct {
 	AudioTokens  int64 `json:"audio_tokens"`
 	CachedTokens int64 `json:"cached_tokens"`
+	ImageTokens int64 `json:"image_tokens,omitempty"`
+	TextTokens int64 `json:"text_tokens,omitempty"`
 
 	// Optional subsets of cached_tokens, preserved without changing totals.
 	CachedTokensDetails *llm.CachedTokensDetails `json:"cached_tokens_details,omitempty"`
@@ -25,6 +27,8 @@ func (d *PromptTokensDetails) UnmarshalJSON(data []byte) error {
 	var wire struct {
 		AudioTokens          int64                    `json:"audio_tokens"`
 		CachedTokens         int64                    `json:"cached_tokens"`
+		ImageTokens int64 `json:"image_tokens"`
+		TextTokens int64 `json:"text_tokens"`
 		CachedTokensDetails  *llm.CachedTokensDetails `json:"cached_tokens_details"`
 		CacheWriteTokens     *int64                   `json:"cache_write_tokens"`
 		WriteCachedTokens    *int64                   `json:"write_cached_tokens"`
@@ -37,6 +41,8 @@ func (d *PromptTokensDetails) UnmarshalJSON(data []byte) error {
 
 	d.AudioTokens = wire.AudioTokens
 	d.CachedTokens = wire.CachedTokens
+	d.ImageTokens = wire.ImageTokens
+	d.TextTokens = wire.TextTokens
 	d.CachedTokensDetails = wire.CachedTokensDetails
 	d.WriteCachedTokens = 0
 	for _, value := range []*int64{
@@ -61,6 +67,8 @@ type CompletionTokensDetails struct {
 	ReasoningTokens          int64 `json:"reasoning_tokens"`
 	AcceptedPredictionTokens int64 `json:"accepted_prediction_tokens"`
 	RejectedPredictionTokens int64 `json:"rejected_prediction_tokens"`
+	ImageTokens *int64 `json:"image_tokens,omitempty"`
+	TextTokens *int64 `json:"text_tokens,omitempty"`
 }
 
 // Usage represents the usage response from OpenAI compatible format.
@@ -124,6 +132,8 @@ func (u *Usage) ToLLMUsage() *llm.Usage {
 			CachedTokens:        u.PromptTokensDetails.CachedTokens,
 			CachedTokensDetails: u.PromptTokensDetails.CachedTokensDetails.Clone(),
 			WriteCachedTokens:   u.PromptTokensDetails.WriteCachedTokens,
+			ImageTokens: u.PromptTokensDetails.ImageTokens,
+			TextTokens: u.PromptTokensDetails.TextTokens,
 		}
 	}
 
@@ -143,6 +153,8 @@ func (u *Usage) ToLLMUsage() *llm.Usage {
 			ReasoningTokens:          reasoningTokens,
 			AcceptedPredictionTokens: u.CompletionTokensDetails.AcceptedPredictionTokens,
 			RejectedPredictionTokens: u.CompletionTokensDetails.RejectedPredictionTokens,
+			ImageTokens: u.CompletionTokensDetails.ImageTokens,
+			TextTokens: u.CompletionTokensDetails.TextTokens,
 		}
 	}
 
@@ -176,6 +188,8 @@ func UsageFromLLM(u *llm.Usage) *Usage {
 			CachedTokens:        u.PromptTokensDetails.CachedTokens,
 			CachedTokensDetails: u.PromptTokensDetails.CachedTokensDetails.Clone(),
 			WriteCachedTokens:   u.PromptTokensDetails.WriteCachedTokens,
+			ImageTokens: u.PromptTokensDetails.ImageTokens,
+			TextTokens: u.PromptTokensDetails.TextTokens,
 		}
 	}
 
@@ -185,6 +199,8 @@ func UsageFromLLM(u *llm.Usage) *Usage {
 			ReasoningTokens:          u.CompletionTokensDetails.ReasoningTokens,
 			AcceptedPredictionTokens: u.CompletionTokensDetails.AcceptedPredictionTokens,
 			RejectedPredictionTokens: u.CompletionTokensDetails.RejectedPredictionTokens,
+			ImageTokens: u.CompletionTokensDetails.ImageTokens,
+			TextTokens: u.CompletionTokensDetails.TextTokens,
 		}
 	}
 

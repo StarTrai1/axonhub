@@ -144,6 +144,8 @@ func TestChannelTestRequestFormats(t *testing.T) {
 			if tt.wantSuccess {
 				if tt.channelType == channel.TypeTypesafe {
 					require.Contains(t, lo.FromPtr(result.Message), `"noul":0.95`)
+				} else if tt.forcedFormat == llm.APIFormatOpenAIDecisions.String() {
+					require.JSONEq(t, `{"model":"test-model","answers":[{"type":"predicate","name":"connection","probability":1}],"usage":{"input_tokens":10}}`, lo.FromPtr(result.Message))
 				} else {
 					require.Equal(t, "hello", lo.FromPtr(result.Message))
 				}

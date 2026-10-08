@@ -37,6 +37,9 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 		}
 
 		// log.Debug(ctx, "chat stream event", log.Any("event", event))
+		if event.Index != nil && *event.Index < 0 {
+			continue
+		}
 
 		switch event.Type {
 		case "message_start":

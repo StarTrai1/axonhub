@@ -745,6 +745,7 @@ func convertOutputToMessage(output []Item, transformerMetadata map[string]any) l
 	var (
 		contentParts         []llm.MessageContentPart
 		textContent          strings.Builder
+		refusalContent       strings.Builder
 		reasoningContent     strings.Builder
 		reasoningSignature   *string
 		reasoningItems       []llm.ReasoningItem
@@ -788,6 +789,8 @@ func convertOutputToMessage(output []Item, transformerMetadata map[string]any) l
 			for _, contentItem := range outputItem.Content.Items {
 				if contentItem.Type == "output_text" {
 					annotations = appendOutputText(&textContent, &visibleTextRuneCount, annotations, contentItem)
+				} else if contentItem.Type == "refusal" {
+					refusalContent.WriteString(lo.FromPtr(contentItem.Refusal))
 				}
 			}
 		case "output_text":
@@ -900,6 +903,7 @@ func convertOutputToMessage(output []Item, transformerMetadata map[string]any) l
 	msg := llm.Message{
 		ID:          messageID,
 		Role:        "assistant",
+		Refusal:     refusalContent.String(),
 		ToolCalls:   toolCalls,
 		Annotations: annotations,
 	}

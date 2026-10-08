@@ -15,6 +15,8 @@ type Usage struct {
 		CacheWriteTokens int64 `json:"cache_write_tokens"`
 		// CachedTokens is the number of input tokens retrieved from the prompt cache.
 		CachedTokens int64 `json:"cached_tokens"`
+		ImageTokens int64 `json:"image_tokens,omitempty"`
+		TextTokens int64 `json:"text_tokens,omitempty"`
 
 		// CachedTokensDetails contains optional subsets, not additional usage.
 		CachedTokensDetails *llm.CachedTokensDetails `json:"cached_tokens_details,omitempty"`
@@ -22,6 +24,8 @@ type Usage struct {
 	OutputTokens       int64 `json:"output_tokens"`
 	OutputTokenDetails struct {
 		ReasoningTokens int64 `json:"reasoning_tokens"`
+		ImageTokens *int64 `json:"image_tokens,omitempty"`
+		TextTokens *int64 `json:"text_tokens,omitempty"`
 	} `json:"output_tokens_details"`
 	TotalTokens int64    `json:"total_tokens"`
 	Cost        *float64 `json:"cost,omitempty"`
@@ -44,6 +48,8 @@ func (u *Usage) UnmarshalJSON(data []byte) error {
 	u.Cost = xjson.ParseOptionalFloat64(wire.Cost)
 	u.InputTokenDetails.CacheWriteTokens = wire.InputTokenDetails.WriteCachedTokens
 	u.InputTokenDetails.CachedTokens = wire.InputTokenDetails.CachedTokens
+	u.InputTokenDetails.ImageTokens = wire.InputTokenDetails.ImageTokens
+	u.InputTokenDetails.TextTokens = wire.InputTokenDetails.TextTokens
 	u.InputTokenDetails.CachedTokensDetails = wire.InputTokenDetails.CachedTokensDetails
 	return nil
 }
@@ -57,9 +63,13 @@ func (u *Usage) ToUsage() *llm.Usage {
 			CachedTokens:        u.InputTokenDetails.CachedTokens,
 			CachedTokensDetails: u.InputTokenDetails.CachedTokensDetails.Clone(),
 			WriteCachedTokens:   u.InputTokenDetails.CacheWriteTokens,
+			ImageTokens: u.InputTokenDetails.ImageTokens,
+			TextTokens: u.InputTokenDetails.TextTokens,
 		},
 		CompletionTokensDetails: &llm.CompletionTokensDetails{
 			ReasoningTokens: u.OutputTokenDetails.ReasoningTokens,
+			ImageTokens: u.OutputTokenDetails.ImageTokens,
+			TextTokens: u.OutputTokenDetails.TextTokens,
 		},
 	}
 }
@@ -81,10 +91,14 @@ func ConvertLLMUsageToResponsesUsage(usage *llm.Usage) *Usage {
 		result.InputTokenDetails.CachedTokens = usage.PromptTokensDetails.CachedTokens
 		result.InputTokenDetails.CachedTokensDetails = usage.PromptTokensDetails.CachedTokensDetails.Clone()
 		result.InputTokenDetails.CacheWriteTokens = usage.PromptTokensDetails.WriteCachedTokens
+		result.InputTokenDetails.ImageTokens = usage.PromptTokensDetails.ImageTokens
+		result.InputTokenDetails.TextTokens = usage.PromptTokensDetails.TextTokens
 	}
 
 	if usage.CompletionTokensDetails != nil {
 		result.OutputTokenDetails.ReasoningTokens = usage.CompletionTokensDetails.ReasoningTokens
+		result.OutputTokenDetails.ImageTokens = usage.CompletionTokensDetails.ImageTokens
+		result.OutputTokenDetails.TextTokens = usage.CompletionTokensDetails.TextTokens
 	}
 
 	return result

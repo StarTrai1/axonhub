@@ -131,7 +131,7 @@ func TestSpecifiedChannelSelector_DecisionsWithoutEndpointReturnsNoCandidate(t *
 	t.Cleanup(func() { require.NoError(t, client.Close()) })
 
 	channelEntity, err := client.Channel.Create().
-		SetType(channel.TypeOpenai).
+		SetType(channel.TypeDeepseek).
 		SetName("chat-only").
 		SetBaseURL("https://example.test").
 		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).

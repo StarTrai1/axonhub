@@ -246,6 +246,9 @@ func AggregateStreamChunks(_ context.Context, chunks []*httpclient.StreamEvent) 
 
 //nolint:gocognit,maintidx // Event processing is inherently complex.
 func (a *streamAggregator) processEvent(ev *StreamEvent) {
+	if ev.ContentIndex != nil && !validAggregatedContentIndex(*ev.ContentIndex) {
+		return
+	}
 	if ev.Response != nil && len(ev.Response.AccessPrograms) > 0 {
 		a.accessPrograms = cloneRaw(ev.Response.AccessPrograms)
 	}
@@ -311,17 +314,32 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 	case StreamEventTypeContentPartAdded:
 		item := a.getItemForEvent(ev.OutputIndex, ev.ItemID)
 		if item != nil {
-			contentPart := newAggregatedContentPart()
+			index := len(item.Content)
+			if ev.ContentIndex != nil { index = *ev.ContentIndex }
+			contentPart := ensureContentPart(item, index)
+			if contentPart == nil { return }
 
 			if ev.Part != nil {
 				contentPart.Type = ev.Part.Type
-				if ev.Part.Text != "" {
-					contentPart.Text.WriteString(ev.Part.Text)
+				if ev.Part.Type == "refusal" {
+					applyDoneText(contentPart.Text, lo.FromPtr(ev.Part.Refusal))
+				} else if ev.Part.Text != "" {
+					applyDoneText(contentPart.Text, ev.Part.Text)
 				}
 				contentPart.Annotations = append([]Annotation(nil), ev.Part.Annotations...)
 			}
+		}
 
-			item.Content = append(item.Content, contentPart)
+	case StreamEventTypeRefusalDelta, StreamEventTypeRefusalDone, StreamEventTypeContentPartDone:
+		if ev.Type == StreamEventTypeContentPartDone && (ev.Part == nil || ev.Part.Type != "refusal") { return }
+		item := a.getItemForEvent(ev.OutputIndex, ev.ItemID)
+		part := ensureContentPart(item, lo.FromPtr(ev.ContentIndex))
+		if part == nil { return }
+		part.Type = "refusal"
+		switch ev.Type {
+		case StreamEventTypeRefusalDelta: part.Text.WriteString(ev.Delta)
+		case StreamEventTypeRefusalDone: applyDoneText(part.Text, ev.Refusal)
+		case StreamEventTypeContentPartDone: applyDoneText(part.Text, lo.FromPtr(ev.Part.Refusal))
 		}
 
 	case StreamEventTypeOutputTextDelta:
@@ -572,6 +590,9 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 						if contentItem.Text != nil {
 							applyDoneText(part.Text, *contentItem.Text)
 						}
+						if contentItem.Type == "refusal" && contentItem.Refusal != nil {
+							applyDoneText(part.Text, *contentItem.Refusal)
+						}
 						if contentItem.Annotations != nil {
 							part.Annotations = append([]Annotation(nil), contentItem.Annotations...)
 						}
@@ -709,6 +730,10 @@ func (a *streamAggregator) buildResponse() *Response {
 				contentItems := make([]Item, 0, len(item.Content))
 				for _, cp := range item.Content {
 					text := cp.Text.String()
+					if cp.Type == "refusal" {
+						contentItems = append(contentItems, Item{Type: "refusal", Refusal: &text})
+						continue
+					}
 					contentItems = append(contentItems, Item{
 						Type:        cp.Type,
 						Text:        &text,

@@ -569,6 +569,7 @@ type Item struct {
 
 	// Text for output_text/input_text type.
 	Text *string `json:"text,omitempty"`
+	Refusal *string `json:"refusal,omitempty"`
 
 	// Marks the end of a reusable GPT-5.6+ prompt prefix.
 	PromptCacheBreakpoint *llm.PromptCacheBreakpoint `json:"prompt_cache_breakpoint,omitempty"`

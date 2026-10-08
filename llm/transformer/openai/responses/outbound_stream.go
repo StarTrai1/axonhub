@@ -70,6 +70,8 @@ type outboundStreamState struct {
 	// Content accumulation
 	textParts           map[outboundTextPart]*outboundTextState
 	textDelivered       bool
+	refusalParts        map[outboundTextPart]*outboundTextState
+	refusalDelivered    bool
 	reasoningContent    strings.Builder
 	currentMessagePhase *string
 
@@ -93,6 +95,7 @@ func newResponsesOutboundStream(stream streams.Stream[*httpclient.StreamEvent]) 
 		stream: stream,
 		state: &outboundStreamState{
 			textParts:                        make(map[outboundTextPart]*outboundTextState),
+			refusalParts:                     make(map[outboundTextPart]*outboundTextState),
 			toolCalls:                        make(map[string]*llm.ToolCall),
 			itemToCallID:                     make(map[string]string),
 			toolCallIndex:                    make(map[string]int),
@@ -593,8 +596,24 @@ func (s *responsesOutboundStream) transformStreamEvent(event *httpclient.StreamE
 	case StreamEventTypeContentPartAdded:
 		if streamEvent.Part != nil && streamEvent.Part.Type == "output_text" {
 			s.textPart(streamEvent)
+		} else if streamEvent.Part != nil && streamEvent.Part.Type == "refusal" {
+			s.refusalPart(streamEvent)
 		}
 		return nil // Intentionally skip this event
+
+	case StreamEventTypeRefusalDelta:
+		resp.Choices = []llm.Choice{{Index: 0, Delta: s.refusalDelta(streamEvent, streamEvent.Delta)}}
+
+	case StreamEventTypeRefusalDone:
+		delta := s.recoverRefusalDone(streamEvent, streamEvent.Refusal)
+		if delta == nil { return nil }
+		resp.Choices = []llm.Choice{{Index: 0, Delta: delta}}
+
+	case StreamEventTypeContentPartDone:
+		if streamEvent.Part == nil || streamEvent.Part.Type != "refusal" { return nil }
+		delta := s.recoverRefusalDone(streamEvent, lo.FromPtr(streamEvent.Part.Refusal))
+		if delta == nil { return nil }
+		resp.Choices = []llm.Choice{{Index: 0, Delta: delta}}
 
 	case StreamEventTypeOutputTextDelta:
 		resp.Choices = []llm.Choice{{Index: 0, Delta: s.textDelta(streamEvent, streamEvent.Delta)}}
@@ -705,6 +724,7 @@ func (s *responsesOutboundStream) transformStreamEvent(event *httpclient.StreamE
 		}
 
 		msg := convertOutputToMessage([]Item{*streamEvent.Item}, s.state.transformerMetadata)
+		s.recoverItemRefusal(resp, streamEvent)
 		if len(msg.Annotations) == 0 {
 			return nil // Intentionally skip this event
 		}
@@ -722,8 +742,7 @@ func (s *responsesOutboundStream) transformStreamEvent(event *httpclient.StreamE
 			},
 		}
 
-	case StreamEventTypeContentPartDone,
-		StreamEventTypeReasoningSummaryPartAdded, StreamEventTypeReasoningSummaryPartDone:
+	case StreamEventTypeReasoningSummaryPartAdded, StreamEventTypeReasoningSummaryPartDone:
 		// These events don't need special handling - skip
 		return nil // Intentionally skip this event
 
@@ -746,6 +765,7 @@ func (s *responsesOutboundStream) transformStreamEvent(event *httpclient.StreamE
 			return responseErr
 		}
 		s.recoverTerminalText(resp, streamEvent.Response)
+		s.recoverTerminalRefusal(resp, streamEvent.Response)
 		// Response completed - emit two events: one with finish_reason, one with usage
 		s.responseCompleted = true
 		emptyCompletion := !s.hasGeneratedOutput()
@@ -838,6 +858,7 @@ func (s *responsesOutboundStream) transformStreamEvent(event *httpclient.StreamE
 			return nil
 		}
 		s.recoverTerminalText(resp, streamEvent.Response)
+		s.recoverTerminalRefusal(resp, streamEvent.Response)
 		// Response incomplete (e.g., max tokens)
 		s.responseCompleted = true
 		finishReason := "length"
@@ -992,7 +1013,7 @@ func (s *responsesOutboundStream) steeringEventEndsTurn(event StreamEvent) bool 
 
 func (s *responsesOutboundStream) hasGeneratedOutput() bool {
 	return s.state.reasoningOutputEmitted || len(s.state.toolCalls) > 0 ||
-		s.state.textDelivered ||
+		s.state.textDelivered || s.state.refusalDelivered ||
 		s.state.reasoningContent.Len() > 0 ||
 		len(s.state.pendingReasoningEncryptedContent) > 0
 }
