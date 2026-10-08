@@ -250,11 +250,13 @@ func (processor *TestChannelOrchestrator) TestChannel(
 		}, nil
 	}
 
- if apiFormat == llm.APIFormatTypeSafeSystemOne || apiFormat == llm.APIFormatOpenAIDecisions {
-  message, err := channelTestResponseMessage(rawResponse.ChatCompletion.Body, apiFormat)
-  if err != nil { return &TestChannelResult{Latency:latency,Success:false,Error:lo.ToPtr(err.Error())},nil }
-  return &TestChannelResult{Latency:latency,Success:true,Message:message},nil
- }
+	if apiFormat == llm.APIFormatTypeSafeSystemOne || apiFormat == llm.APIFormatOpenAIDecisions {
+		message, err := channelTestResponseMessage(rawResponse.ChatCompletion.Body, apiFormat)
+		if err != nil {
+			return &TestChannelResult{Latency: latency, Success: false, Error: lo.ToPtr(err.Error())}, nil
+		}
+		return &TestChannelResult{Latency: latency, Success: true, Message: message}, nil
+	}
 
 	// Handle non-streaming response
 	response, err := xjson.To[llm.Response](rawResponse.ChatCompletion.Body)
@@ -685,7 +687,9 @@ func (processor *TestChannelOrchestrator) testSingleKey(
 
 	var inbound transformer.Inbound = openai.NewInboundTransformer()
 	apiFormat := llm.APIFormatOpenAIChatCompletion
-	if len(apiFormats) > 0 { apiFormat = apiFormats[0] }
+	if len(apiFormats) > 0 {
+		apiFormat = apiFormats[0]
+	}
 
 	chatProcessor := &ChatCompletionOrchestrator{
 		channelSelector: &SpecifiedChannelSelector{
@@ -754,11 +758,13 @@ func (processor *TestChannelOrchestrator) testSingleKey(
 
 	latency := time.Since(startTime).Seconds()
 
- if apiFormat == llm.APIFormatTypeSafeSystemOne || apiFormat == llm.APIFormatOpenAIDecisions {
-  _, err := channelTestResponseMessage(rawResponse.ChatCompletion.Body, apiFormat)
-  if err != nil { return &TestAPIKeyResult{KeyPrefix:keyPrefix,Latency:latency,Success:false,Error:lo.ToPtr(err.Error())} }
-  return &TestAPIKeyResult{KeyPrefix:keyPrefix,Latency:latency,Success:true}
- }
+	if apiFormat == llm.APIFormatTypeSafeSystemOne || apiFormat == llm.APIFormatOpenAIDecisions {
+		_, err := channelTestResponseMessage(rawResponse.ChatCompletion.Body, apiFormat)
+		if err != nil {
+			return &TestAPIKeyResult{KeyPrefix: keyPrefix, Latency: latency, Success: false, Error: lo.ToPtr(err.Error())}
+		}
+		return &TestAPIKeyResult{KeyPrefix: keyPrefix, Latency: latency, Success: true}
+	}
 
 	// Handle non-streaming response
 	response, err := xjson.To[llm.Response](rawResponse.ChatCompletion.Body)

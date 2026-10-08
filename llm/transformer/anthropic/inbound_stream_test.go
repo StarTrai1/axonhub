@@ -444,9 +444,9 @@ func TestInboundStream_UsesUsageFromFinalUsageOnlyChunk(t *testing.T) {
 			Usage: &llm.Usage{},
 		},
 		{
-			ID:     "chatcmpl-modelscope",
-			Object: "chat.completion.chunk",
-			Model:  "deepseek-v4.1-flash",
+			ID:      "chatcmpl-modelscope",
+			Object:  "chat.completion.chunk",
+			Model:   "deepseek-v4.1-flash",
 			Choices: []llm.Choice{},
 			Usage: &llm.Usage{
 				PromptTokens:     338678,

@@ -30,10 +30,10 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, request *http
 		return nil, fmt.Errorf("%w: request is nil", transformer.ErrInvalidRequest)
 	}
 	contentType := request.Headers.Get("Content-Type")
- if contentType != "" && !strings.Contains(strings.ToLower(contentType), "application/json") {
-  return nil, fmt.Errorf("%w: unsupported content type: %s", transformer.ErrInvalidRequest, contentType)
- }
- model, err := validateRequest(request.Body)
+	if contentType != "" && !strings.Contains(strings.ToLower(contentType), "application/json") {
+		return nil, fmt.Errorf("%w: unsupported content type: %s", transformer.ErrInvalidRequest, contentType)
+	}
+	model, err := validateRequest(request.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +96,7 @@ type OutboundTransformer struct {
 }
 
 func NewOutboundTransformerWithKey(baseURL, apiKey string) (*OutboundTransformer, error) {
- return NewOutboundTransformer(Config{BaseURL:baseURL,APIKeyProvider:auth.NewStaticKeyProvider(apiKey)})
+	return NewOutboundTransformer(Config{BaseURL: baseURL, APIKeyProvider: auth.NewStaticKeyProvider(apiKey)})
 }
 
 func NewOutboundTransformer(config Config) (*OutboundTransformer, error) {
@@ -112,9 +112,9 @@ func NewOutboundTransformer(config Config) (*OutboundTransformer, error) {
 	config.BaseURL = strings.Replace(config.BaseURL, "wss://", "https://", 1)
 	config.BaseURL = strings.Replace(config.BaseURL, "ws://", "http://", 1)
 	if strings.HasSuffix(config.BaseURL, "##") {
- config.BaseURL = strings.TrimRight(strings.TrimSuffix(config.BaseURL, "##"), "/")
- config.EndpointPath = ""
- } else if config.EndpointPath == "" {
+		config.BaseURL = strings.TrimRight(strings.TrimSuffix(config.BaseURL, "##"), "/")
+		config.EndpointPath = ""
+	} else if config.EndpointPath == "" {
 		config.BaseURL = transformer.NormalizeBaseURL(config.BaseURL, "v1")
 		config.EndpointPath = "/decisions"
 	} else {

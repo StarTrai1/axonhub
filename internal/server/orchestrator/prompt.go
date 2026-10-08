@@ -87,7 +87,7 @@ func injectPrompts(inbound *PersistentInboundTransformer) pipeline.Middleware {
 }
 
 func injectDecisionsPrompts(request *llm.Request, prompts []*ent.Prompt) error {
-	if request.Decisions == nil || len(request.Decisions) == 0 {
+	if len(request.Decisions) == 0 {
 		return nil
 	}
 	body := append([]byte(nil), request.Decisions...)

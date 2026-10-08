@@ -378,9 +378,9 @@ func TestInboundTransformer_TransformStream_PreservesWebSearchCallsFromChunkMeta
 			Model:   "gpt-4o-search-preview",
 			TransformerMetadata: map[string]any{
 				responsesWebSearchCallsTransformerMetadataKey: []Item{{
-					ID:     "ws_456",
-					Type:   "web_search_call",
-					Status: lo.ToPtr("completed"),
+					ID:      "ws_456",
+					Type:    "web_search_call",
+					Status:  lo.ToPtr("completed"),
 					Results: json.RawMessage(`[{"type":"search_result","url":"https://example.com/source"}]`),
 				}},
 			},
@@ -437,7 +437,7 @@ func TestInboundTransformer_TransformStream_MapsAnthropicServerWebSearch(t *test
 			ID: "resp_anthropic_search", Model: "claude-test", Created: 1700000000,
 			Choices: []llm.Choice{{Delta: &llm.Message{ToolCalls: []llm.ToolCall{{
 				Index: 0, ID: "srvtoolu_search_1", Type: "function",
-				Function: llm.FunctionCall{Name: webSearchFunctionName},
+				Function:            llm.FunctionCall{Name: webSearchFunctionName},
 				TransformerMetadata: toolMetadata,
 			}}}}},
 		},

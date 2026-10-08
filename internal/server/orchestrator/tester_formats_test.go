@@ -81,14 +81,14 @@ func TestChannelTestRequestFormats(t *testing.T) {
 				default:
 					valid = body["model"] == "test-model" && body["messages"] != nil && body["stream"] == tt.stream
 					if tt.forcedFormat == llm.APIFormatOpenAIDecisions.String() {
-      questions, _ := body["questions"].([]any)
-      if len(questions) == 1 {
-       question, _ := questions[0].(map[string]any)
-       valid = body["model"] == "test-model" && body["input"] == "user prompt" && question["type"] == "predicate" && question["instructions"] != nil && body["messages"] == nil && body["stream"] == nil
-      }
-     }
-     if tt.channelType == channel.TypeAnthropic {
-      valid = valid && body["system"] != nil && body["max_tokens"] == float64(channelTestMaxCompletionTokens)
+						questions, _ := body["questions"].([]any)
+						if len(questions) == 1 {
+							question, _ := questions[0].(map[string]any)
+							valid = body["model"] == "test-model" && body["input"] == "user prompt" && question["type"] == "predicate" && question["instructions"] != nil && body["messages"] == nil && body["stream"] == nil
+						}
+					}
+					if tt.channelType == channel.TypeAnthropic {
+						valid = valid && body["system"] != nil && body["max_tokens"] == float64(channelTestMaxCompletionTokens)
 					}
 				}
 				if !valid {
@@ -119,9 +119,11 @@ func TestChannelTestRequestFormats(t *testing.T) {
 				SetSupportedModels([]string{"test-model"}).SetDefaultTestModel("test-model").SetPolicies(policies).Save(ctx)
 			require.NoError(t, err)
 			if tt.forcedFormat != "" {
-    endpoint := objects.ChannelEndpoint{APIFormat: llm.APIFormatTypeSafeSystemOne.String(), Path: "/systemone"}
-    if tt.forcedFormat == llm.APIFormatOpenAIDecisions.String() { endpoint = objects.ChannelEndpoint{APIFormat:tt.forcedFormat, Path:"/decisions"} }
-    ch, err = client.Channel.UpdateOne(ch).SetEndpoints([]objects.ChannelEndpoint{
+				endpoint := objects.ChannelEndpoint{APIFormat: llm.APIFormatTypeSafeSystemOne.String(), Path: "/systemone"}
+				if tt.forcedFormat == llm.APIFormatOpenAIDecisions.String() {
+					endpoint = objects.ChannelEndpoint{APIFormat: tt.forcedFormat, Path: "/decisions"}
+				}
+				ch, err = client.Channel.UpdateOne(ch).SetEndpoints([]objects.ChannelEndpoint{
 					endpoint,
 				}).SetSettings(&objects.ChannelSettings{ModelProtocols: []objects.ModelProtocol{
 					{Model: "test-model", APIFormats: []string{tt.forcedFormat}},

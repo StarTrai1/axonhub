@@ -28,7 +28,7 @@ func TestConvertToResponsesAPIResponse_MapsAnthropicServerWebSearch(t *testing.T
 			Role: "assistant",
 			ToolCalls: []llm.ToolCall{{
 				ID: "srvtoolu_search_1", Type: "function",
-				Function: llm.FunctionCall{Name: webSearchFunctionName, Arguments: `{"query":"latest codex release"}`},
+				Function:            llm.FunctionCall{Name: webSearchFunctionName, Arguments: `{"query":"latest codex release"}`},
 				TransformerMetadata: map[string]any{anthropicTypeMetadataKey: anthropicServerToolUseType},
 			}},
 			InlineToolResults: []llm.InlineToolResult{{

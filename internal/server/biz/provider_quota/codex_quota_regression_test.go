@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-"github.com/looplj/axonhub/internal/ent/providerquotastatus"
+	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 )
 
 func TestCodexQuotaChecker_ExhaustionPreservesIndependentWindowUsage(t *testing.T) {
