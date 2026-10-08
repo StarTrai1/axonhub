@@ -321,6 +321,7 @@ func (t *OutboundTransformer) transformRerankResponse(
 	// Build unified response
 	llmResp := &llm.Response{
 		RequestType: llm.RequestTypeRerank,
+		ID: jinaResp.ID,
 		APIFormat:   llm.APIFormatJinaRerank,
 		Rerank:      &llmRerankResp,
 		Model:       jinaResp.Model,
@@ -331,6 +332,12 @@ func (t *OutboundTransformer) transformRerankResponse(
 		llmResp.Usage = &llm.Usage{
 			PromptTokens: int64(jinaResp.Usage.PromptTokens),
 			TotalTokens:  int64(jinaResp.Usage.TotalTokens),
+		}
+	} else if jinaResp.Tokens != nil {
+		llmResp.Usage = &llm.Usage{
+			PromptTokens:jinaResp.Tokens.InputTokens,
+			CompletionTokens:jinaResp.Tokens.OutputTokens,
+			TotalTokens:jinaResp.Tokens.InputTokens+jinaResp.Tokens.OutputTokens,
 		}
 	}
 

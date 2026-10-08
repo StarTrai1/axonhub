@@ -11,10 +11,18 @@ type RerankRequest struct {
 }
 
 type RerankResponse struct {
+	ID string `json:"id,omitempty"`
 	Model   string         `json:"model"`
 	Object  string         `json:"object"`
 	Results []RerankResult `json:"results"`
 	Usage   *RerankUsage   `json:"usage,omitempty"`
+	// SiliconFlow reports native token counts outside Jina's usage envelope.
+	Tokens *RerankTokens `json:"tokens,omitempty"`
+}
+
+type RerankTokens struct {
+	InputTokens int64 `json:"input_tokens"`
+	OutputTokens int64 `json:"output_tokens"`
 }
 
 type RerankResult struct {

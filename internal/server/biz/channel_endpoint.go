@@ -303,7 +303,10 @@ var defaultEndpointsForChannelType = map[channel.Type][]objects.ChannelEndpoint{
 	channel.TypeXaiResponses:        {{APIFormat: llm.APIFormatOpenAIResponse.String()}},
 	channel.TypeXaiSubscription:     {{APIFormat: llm.APIFormatOpenAIResponse.String()}},
 	channel.TypePpio:                openAICompatibleDefaultEndpoints,
-	channel.TypeSiliconflow:         openAICompatibleDefaultEndpoints,
+	channel.TypeSiliconflow: append(
+		append([]objects.ChannelEndpoint{}, openAICompatibleDefaultEndpoints...),
+		objects.ChannelEndpoint{APIFormat: llm.APIFormatJinaRerank.String()},
+	),
 	channel.TypeVolcengine:          {{APIFormat: llm.APIFormatOpenAIChatCompletion.String()}},
 	channel.TypeVolcengineAnthropic: {{APIFormat: llm.APIFormatAnthropicMessage.String()}},
 	channel.TypeLongcat:             {{APIFormat: llm.APIFormatOpenAIChatCompletion.String()}},
