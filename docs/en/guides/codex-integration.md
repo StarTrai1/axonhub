@@ -120,6 +120,12 @@ external_web_access = true
 
 The fallback Codex identity is 0.162.0. Explicit client identity and dynamic stable-version refresh remain authoritative. Hosted checks compare 0.161.0 and 0.162.0 with gpt-6-sol and gpt-6.1-sol against loopback fixtures, including a failure frame produced by the gateway itself. They do not establish provider account availability.
 
+#### Instant steering
+
+Codex 0.162.0 enables the existing `instant_interrupt` client feature by default. For Responses Lite over WebSocket, the client sends `response.interrupt` with `mode: "discard_partial_items"`, drains the interrupted response, and continues with the new input. AxonHub already forwards this control event on the active connection, preserves completed output and usage, and excludes unfinished items from the interrupted snapshot. HTTP cancellation follows the existing cancellation path; a gateway cannot provide graceful upstream interruption when the selected upstream lacks it.
+
+The public [mid-turn steering API](https://developers.openai.com/api/docs/guides/steering) still accepts only `type`, `previous_response_id`, and `input` for `response.steer`. Do not add an `instant` field. This public queued-steering flow and the Codex client interrupt flow retain their respective completion and tool-result rules.
+
 ### Troubleshooting
 - **Codex reports authentication errors**: ensure `AXONHUB_API_KEY` is exported in the same shell session that launches Codex.
 - **Unexpected model responses**: review active profile mappings in the AxonHub console; disable or adjust rules if necessary.

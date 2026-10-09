@@ -120,6 +120,12 @@ external_web_access = true
 
 缺省 Codex 身份版本为 0.162.0，显式客户端身份和动态稳定版刷新继续优先。托管检查使用 0.161.0 / 0.162.0 × gpt-6-sol / gpt-6.1-sol 回环矩阵，包含网关自身生成的失败帧，不代表真实提供商账户可用性验证。
 
+#### Instant steering
+
+Codex 0.162.0 默认启用已有的 `instant_interrupt` 客户端功能。在 Responses Lite WebSocket 模式下，客户端发送 `response.interrupt` 和 `mode: "discard_partial_items"`，读取被中断响应的终态后再携带新输入继续。AxonHub 已在当前连接转发该控制事件，保留已完成输出与用量，并从中断快照中排除未完成项目。HTTP 模式走已有取消路径；所选上游不支持主动中断时，网关不能替它实现同等能力。
+
+公开的[轮内 steering API](https://developers.openai.com/api/docs/guides/steering) 仍只允许 `response.steer` 携带 `type`、`previous_response_id`、`input`，不应额外添加 `instant` 字段。公开 API 的排队 steering 与 Codex 客户端中断流程分别遵循各自的终态和工具结果处理规则。
+
 ### 常见问题
 - **Codex 认证失败**：确保在启动 Codex 的同一 shell 会话中设置了 `AXONHUB_API_KEY`。
 - **模型结果异常**：检查 AxonHub 控制台中当前启用的配置文件映射，必要时禁用或调整规则。

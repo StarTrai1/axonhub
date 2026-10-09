@@ -945,7 +945,7 @@ func (s *responsesOutboundStream) transformStreamEvent(event *httpclient.StreamE
 			resp.TransformerMetadata = make(map[string]any)
 		}
 		resp.TransformerMetadata[responsesTerminalDetailsTransformerMetadataKey] = responsesTerminalDetails{
-			Error:             streamEvent.Response.Error,
+			Error:             sanitizedResponseError(streamEvent.Response.Error),
 			IncompleteDetails: streamEvent.Response.IncompleteDetails,
 		}
 	}

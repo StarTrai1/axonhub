@@ -38,11 +38,14 @@ func TestCodex162NestedRetryAdvice(t *testing.T) {
 }
 
 func TestCodex162FailedResponseAdviceSurvivesConversion(t *testing.T) {
-	for _, started := range []bool{false, true} {
-		t.Run(fmt.Sprint(started), func(t *testing.T) {
+	for _, stage := range []string{"before response", "after created", "after output"} {
+		t.Run(stage, func(t *testing.T) {
 			events := []*httpclient.StreamEvent{}
-			if started {
+			if stage != "before response" {
 				events = append(events, &httpclient.StreamEvent{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_retry","model":"gpt-6.1-sol","status":"in_progress","output":[]}}`)})
+			}
+			if stage == "after output" {
+				events = append(events, &httpclient.StreamEvent{Type: "response.output_text.delta", Data: []byte(`{"type":"response.output_text.delta","item_id":"msg_retry","output_index":0,"content_index":0,"delta":"partial"}`)})
 			}
 			events = append(events, &httpclient.StreamEvent{Type: "response.failed", Data: []byte(`{"type":"response.failed","response":{"id":"resp_retry","status":"failed","error":{"code":"server_is_overloaded","message":"retry later","headers":{"Retry-After":"7","Authorization":"private"}}}}`)})
 			outbound, err := NewOutboundTransformer("https://api.example/v1", "synthetic-key")
@@ -61,9 +64,13 @@ func TestCodex162FailedResponseAdviceSurvivesConversion(t *testing.T) {
 					require.NotContains(t, string(event.Data), "private")
 				}
 			}
-			var failure *llm.ResponseError
-			require.True(t, errors.As(wire.Err(), &failure))
-			require.Equal(t, 503, failure.StatusCode)
+			if stage != "after output" {
+				var failure *llm.ResponseError
+				require.True(t, errors.As(wire.Err(), &failure))
+				require.Equal(t, 503, failure.StatusCode)
+			} else {
+				require.NoError(t, wire.Err())
+			}
 			require.Equal(t, 1, failures)
 			require.NoError(t, wire.Close())
 		})

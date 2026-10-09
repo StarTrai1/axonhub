@@ -149,6 +149,28 @@ func responseErrorCause(result *llm.ResponseError, source *Error, headers http.H
 	return &httpclient.Error{StatusCode: result.StatusCode, Headers: headers, Body: body}
 }
 
+// Converted failure snapshots expose timing advice, never arbitrary headers
+// embedded in a provider error. The raw upstream record remains unchanged.
+func sanitizedResponseError(source *Error) *Error {
+	if source == nil {
+		return nil
+	}
+	result := *source
+	result.Headers = nil
+	var values map[string]json.RawMessage
+	if json.Unmarshal(source.Headers, &values) == nil {
+		advice := httpclient.RetryAdviceHeaders(responseErrorHeaders(values))
+		if len(advice) > 0 {
+			headers := make(map[string]string, len(advice))
+			for name := range advice {
+				headers[strings.ToLower(name)] = advice.Get(name)
+			}
+			result.Headers, _ = json.Marshal(headers)
+		}
+	}
+	return &result
+}
+
 func responseErrorHeaders(values map[string]json.RawMessage) http.Header {
 	headers := make(http.Header)
 	for name, raw := range values {
