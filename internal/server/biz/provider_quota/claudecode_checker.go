@@ -180,7 +180,8 @@ func (c *ClaudeCodeQuotaChecker) parseResponse(headers http.Header) (QuotaData, 
 	// Overage is a separate billing wallet. A rejection of that claim is not
 	// evidence that both shared subscription windows are exhausted. Preserve
 	// absent window evidence as unknown instead of benching the whole channel.
-	if strings.Contains(representativeClaim, "overage") && normalizedStatus == "exhausted" {
+	overageRejected := strings.Contains(representativeClaim, "overage") && normalizedStatus == "exhausted"
+	if overageRejected {
 		normalizedStatus = "unknown"
 		known := 0
 		warning := false
@@ -205,6 +206,7 @@ func (c *ClaudeCodeQuotaChecker) parseResponse(headers http.Header) (QuotaData, 
 	}
 
 	return NormalizeQuotaData(QuotaData{
+		statusAuthoritative: overageRejected,
 		Status:       normalizedStatus,
 		ProviderType: "claudecode",
 		RawData:      rawData,

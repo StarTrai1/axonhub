@@ -103,6 +103,9 @@ type QuotaLimitStatus struct {
 
 // QuotaData is the unified quota data structure.
 type QuotaData struct {
+	// Preserve the checker's scoped status when partial window data cannot
+	// establish overall availability. This is internal and never serialized.
+	statusAuthoritative bool
 	Status       string             `json:"status"` // available, warning, exhausted, unknown
 	ProviderType string             `json:"provider_type"`
 	RawData      map[string]any     `json:"raw_data"`

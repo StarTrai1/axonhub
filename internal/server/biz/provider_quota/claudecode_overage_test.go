@@ -16,6 +16,7 @@ func TestClaudeCodeOverageDoesNotExhaustSharedQuota(t *testing.T) {
 		{"shared warning", "allowed_warning", "allowed", "warning"},
 		{"five hour exhausted", "rejected", "allowed", "exhausted"},
 		{"partial shared evidence", "allowed", "", "unknown"},
+		{"partial weekly evidence", "", "allowed", "unknown"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			now := time.Now().Truncate(time.Second)
@@ -35,13 +36,21 @@ func TestClaudeCodeOverageDoesNotExhaustSharedQuota(t *testing.T) {
 			quota, err := NewClaudeCodeQuotaChecker(nil).parseResponse(headers)
 			require.NoError(t, err)
 			require.Equal(t, tc.want, quota.Status)
+			// The service normalizes again before persistence. Incomplete shared
+			// evidence must not be promoted to an available account there either.
+			quota = NormalizeQuotaData(quota)
+			require.Equal(t, tc.want, quota.Status)
+			require.Equal(t, IsReadyStatus(tc.want), quota.Ready)
 			state, _ := EvaluateQuotaRouting(quota.Limits, quota.Status, QuotaLimitTypeToken, now)
 			if tc.want == "exhausted" {
 				require.Equal(t, RoutingExhausted, state)
+			} else {
+				require.NotEqual(t, RoutingExhausted, state)
+			}
+			if tc.fiveHour != "" {
 				require.NotNil(t, quota.NextResetAt)
 				require.Equal(t, now.Add(time.Hour), *quota.NextResetAt)
 			} else {
-				require.NotEqual(t, RoutingExhausted, state)
 				require.Nil(t, quota.NextResetAt)
 			}
 			require.Equal(t, now.Add(20*24*time.Hour).Unix(), quota.RawData["reset"])

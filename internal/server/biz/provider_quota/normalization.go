@@ -15,6 +15,9 @@ func normalizeQuotaDataAt(data QuotaData, now time.Time) QuotaData {
 	data.Limits = normalizeQuotaLimits(data.Limits, now)
 
 	status := normalizeOverallQuotaStatus(data.Status, data.Limits)
+	if data.statusAuthoritative {
+		status = normalizeQuotaStatus(data.Status)
+	}
 
 	var nextResetAt *time.Time
 	if data.NextResetAt != nil && data.NextResetAt.After(now) {
