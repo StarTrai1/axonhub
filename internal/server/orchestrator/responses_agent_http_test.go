@@ -42,7 +42,7 @@ func TestResponsesAgentTransportNonStreaming(t *testing.T) {
 				events := portableAgentEvents(t)
 				responseBody := []byte(gjson.GetBytes(events[len(events)-1].Data, "response").Raw)
 				executor := &responsesReasoningPipelineExecutor{
-					events:   events,
+					events: events,
 					response: &httpclient.Response{StatusCode: 200, Body: responseBody, Headers: http.Header{
 						"Content-Type":   []string{"application/json"},
 						"Content-Length": []string{fmt.Sprint(len(responseBody))},
