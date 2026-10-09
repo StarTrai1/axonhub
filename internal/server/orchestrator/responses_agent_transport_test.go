@@ -124,12 +124,12 @@ func TestResponsesAgentTransportPolicySurvivesNativeCheckpoint(t *testing.T) {
 	request.Headers.Set("Authorization", "Bearer test-owner")
 	request.Headers.Set("Thread-Id", "same-upstream-thread")
 	request.Headers.Set("Session-Id", "same-upstream-session")
-	first := portableResponsesAgentTransport(&PersistentOutboundTransformer{state: state}, service).(*responsesAgentTransport)
+	first := portableResponsesAgentTransport(&PersistentOutboundTransformer{state: state}, service)
 	_, err := first.OnOutboundRawRequest(ctx, request)
 	require.NoError(t, err)
 	_, err = first.OnOutboundRawResponse(ctx, &httpclient.Response{StatusCode: 200, Body: []byte(`{"object":"response.compaction","output":[{"type":"compaction","id":"cmp_native","encrypted_content":"native-checkpoint"}]}`)})
 	require.NoError(t, err)
-	second := portableResponsesAgentTransport(&PersistentOutboundTransformer{state: state}, biz.NewSystemService(biz.SystemServiceParams{Ent: client})).(*responsesAgentTransport)
+	second := portableResponsesAgentTransport(&PersistentOutboundTransformer{state: state}, biz.NewSystemService(biz.SystemServiceParams{Ent: client}))
 	request.URL = "https://relay.example/responses"
 	request.APIFormat = string(llm.APIFormatOpenAIResponse)
 	request.Body = []byte(`{"model":"gpt-6-astra","input":[{"type":"compaction","id":"cmp_native","encrypted_content":"native-checkpoint"},{"role":"user","content":"continue"}]}`)
@@ -150,7 +150,7 @@ func TestResponsesAgentTransportPolicySurvivesNativeCheckpoint(t *testing.T) {
 		case "destination":
 			changed.URL = "https://other.example/responses"
 		}
-		isolated := portableResponsesAgentTransport(&PersistentOutboundTransformer{state: &changedState}, service).(*responsesAgentTransport)
+		isolated := portableResponsesAgentTransport(&PersistentOutboundTransformer{state: &changedState}, service)
 		_, err := isolated.OnOutboundRawRequest(ctx, &changed)
 		require.NoError(t, err)
 		require.Empty(t, isolated.tools, kind)
@@ -164,7 +164,7 @@ func TestResponsesAgentTransportScopeAndRetry(t *testing.T) {
 	service := biz.NewSystemService(biz.SystemServiceParams{Ent: client})
 	require.NoError(t, service.SetSecretKey(ctx, "test-agent-message-installation-secret"))
 	state := agentMessageTestState()
-	middleware := portableResponsesAgentTransport(&PersistentOutboundTransformer{state: state}, service).(*responsesAgentTransport)
+	middleware := portableResponsesAgentTransport(&PersistentOutboundTransformer{state: state}, service)
 	request := &httpclient.Request{APIFormat: string(llm.APIFormatOpenAIResponse), Body: []byte(portableAgentToolFixture)}
 	changed, err := middleware.OnOutboundRawRequest(ctx, request)
 	require.NoError(t, err)

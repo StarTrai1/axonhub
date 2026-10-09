@@ -266,6 +266,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 	middlewares = append(middlewares, newBillingSystemMessageMiddleware(state))
 
 	inbound, outbound := NewPersistentTransformers(state, processor.Inbound, middlewares...)
+	agentTransport := portableResponsesAgentTransport(outbound, processor.SystemService)
 
 	// Add inbound middlewares (executed after inbound.TransformRequest)
 	middlewares = append(middlewares,
@@ -321,7 +322,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		// already confirmed ID/reasoning corrections to its retained messages.
 		applyResponsesHistoryPortability(outbound),
 		applyResponsesRejectedStatusCompatibility(outbound),
-		portableResponsesAgentTransport(outbound, processor.SystemService),
+		agentTransport.requestMiddleware(),
 		// Remove transport-incompatible fields after pass-through and overrides,
 		// so persistence and execution observe the same provider request.
 		finalizeTransportRequest(outbound),
@@ -357,6 +358,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		// before capture can publish checkpoints through the pass-through stream.
 		captureRawProviderResponse(outbound, processor.SystemService),
 		captureRawProviderStream(outbound, processor.SystemService),
+		agentTransport.responseMiddleware(),
 		retainNativeCompactionSources(outbound, processor.remoteCompactionAdapter),
 	)
 

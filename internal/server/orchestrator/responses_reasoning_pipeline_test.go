@@ -283,8 +283,15 @@ func runRejectedReasoningPipeline(
 		applyPassThroughRequestBody(outbound, nil),
 		applyPassThroughRequestHeaders(outbound),
 	}
+	var beforeCapture []pipeline.Middleware
 	for _, buildMiddleware := range extraMiddlewares {
-		middlewares = append(middlewares, buildMiddleware(state, outbound))
+		middleware := buildMiddleware(state, outbound)
+		if transport, ok := middleware.(*responsesAgentTransport); ok {
+			middlewares = append(middlewares, transport.requestMiddleware())
+			beforeCapture = append(beforeCapture, transport.responseMiddleware())
+		} else {
+			middlewares = append(middlewares, middleware)
+		}
 	}
 	middlewares = append(middlewares,
 		applyResponsesRejectedStatusCompatibility(outbound),
@@ -292,6 +299,7 @@ func runRejectedReasoningPipeline(
 		captureRawProviderResponse(outbound, nil),
 		captureRawProviderStream(outbound, nil),
 	)
+	middlewares = append(middlewares, beforeCapture...)
 	pipe := pipeline.NewFactory(executor).Pipeline(
 		inbound, outbound,
 		pipeline.WithRetry(0, maxRetries, 0),

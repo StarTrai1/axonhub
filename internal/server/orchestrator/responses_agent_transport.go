@@ -33,7 +33,7 @@ func responsesAgentTool(namespace, name string) bool {
 // Request plaintext only for the dedicated message parameter, then seal that
 // exact parameter for the client. The gateway can reopen it on any channel in
 // the same installation and authenticated owner scope, including after restart.
-func portableResponsesAgentTransport(outbound *PersistentOutboundTransformer, service *biz.SystemService) pipeline.Middleware {
+func portableResponsesAgentTransport(outbound *PersistentOutboundTransformer, service *biz.SystemService) *responsesAgentTransport {
 	return &responsesAgentTransport{outbound: outbound, service: service}
 }
 
@@ -50,6 +50,33 @@ type responsesAgentTransport struct {
 }
 
 func (m *responsesAgentTransport) Name() string { return "responses-portable-agent-transport" }
+
+func (m *responsesAgentTransport) requestMiddleware() pipeline.Middleware {
+	return pipeline.OnRawRequest(m.Name()+"-prepare", m.OnOutboundRawRequest)
+}
+
+// Response callbacks run before the raw capture forks a pass-through stream.
+// Keeping this separate from request preparation lets execution persistence
+// continue to observe the exact final provider request.
+func (m *responsesAgentTransport) responseMiddleware() pipeline.Middleware {
+	return &responsesAgentTransportResponse{transport: m}
+}
+
+type responsesAgentTransportResponse struct {
+	pipeline.DummyMiddleware
+
+	transport *responsesAgentTransport
+}
+
+func (m *responsesAgentTransportResponse) Name() string { return "responses-portable-agent-transport-response" }
+
+func (m *responsesAgentTransportResponse) OnOutboundRawResponse(ctx context.Context, response *httpclient.Response) (*httpclient.Response, error) {
+	return m.transport.OnOutboundRawResponse(ctx, response)
+}
+
+func (m *responsesAgentTransportResponse) OnOutboundRawStream(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*httpclient.StreamEvent], error) {
+	return m.transport.OnOutboundRawStream(ctx, stream)
+}
 
 func (m *responsesAgentTransport) OnOutboundRawRequest(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error) {
 	m.tools = nil
