@@ -159,11 +159,12 @@ func TestResponsesStream_Policy_when_ConversionFailed(t *testing.T) {
 			c, _ := gin.CreateTestContext(w)
 			c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil).WithContext(ctx)
 			h := &ChatCompletionHandlers{streamAdapterFactory: newResponsesStreamAdapter, ChatCompletionOrchestrator: &orchestrator.ChatCompletionOrchestrator{SystemService: svc}}
-			stream := &errorAfterStream{items: []*httpclient.StreamEvent{{Type: "response.failed", Data: []byte(`{"type":"response.failed","sequence_number":8,"response":{"id":"resp_policy","status":"failed","output":[],"error":{"code":"stream_error","message":"private upstream detail"}}}`)}}}
+			stream := &errorAfterStream{items: []*httpclient.StreamEvent{{Type: "response.failed", Data: []byte(`{"type":"response.failed","sequence_number":8,"code":"stream_error","message":"private upstream detail","response":{"id":"resp_policy","status":"failed","output":[],"error":{"code":"stream_error","message":"private upstream detail","misalignment":{"review_target":"opaque-private-target","detailed_explanation":"private upstream detail"}}}}`)}}}
 			// When
 			h.writeSSEStream(c, stream)
 			// Then the configured safe message replaces only the upstream message.
 			require.NotContains(t, w.Body.String(), "private upstream detail")
+			require.NotContains(t, w.Body.String(), "opaque-private-target")
 			require.Contains(t, w.Body.String(), "resp_policy")
 			require.Contains(t, w.Body.String(), `"sequence_number":8`)
 			expected := biz.DefaultUpstreamErrorMessage

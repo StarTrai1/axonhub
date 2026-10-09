@@ -24,7 +24,7 @@ import (
 
 func TestResponsesStream_ConversionOutcome_when_SourceEnds(t *testing.T) {
 	for _, heartbeat := range []bool{false, true} {
-		for _, sourceErr := range []error{nil, io.ErrUnexpectedEOF, context.Canceled, context.DeadlineExceeded} {
+		for _, sourceErr := range []error{nil, io.ErrUnexpectedEOF, context.Canceled, context.DeadlineExceeded, errors.New("private upstream detail")} {
 			for _, mode := range []string{biz.UpstreamErrorModePassthrough, biz.UpstreamErrorModeHidden, biz.UpstreamErrorModeCustom} {
 				t.Run(mode+"/"+fmtResponsesCase(heartbeat, sourceErr), func(t *testing.T) {
 					// Given a real Responses converter with partial content and a source failure.
@@ -59,6 +59,9 @@ func TestResponsesStream_ConversionOutcome_when_SourceEnds(t *testing.T) {
 					}
 					if mode == biz.UpstreamErrorModeHidden && !errors.Is(sourceErr, context.DeadlineExceeded) {
 						require.Contains(t, body, biz.DefaultUpstreamErrorMessage)
+					}
+					if mode != biz.UpstreamErrorModePassthrough {
+						require.NotContains(t, body, "private upstream detail")
 					}
 					decoder := httpclient.NewDefaultSSEDecoder(ctx, io.NopCloser(strings.NewReader(body)))
 					var lastSequence int64 = -1

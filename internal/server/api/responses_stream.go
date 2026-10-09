@@ -115,15 +115,27 @@ func applyResponsesEventErrorPolicy(ctx context.Context, event *httpclient.Strea
 		Type:    gjson.GetBytes(event.Data, prefix+"type").String(),
 	}}
 	err := applyUpstreamErrorPolicy(ctx, pipeline.WrapUpstreamError(responseErr), systemService)
-	data, rewriteErr := sjson.SetBytes(event.Data, messagePath, orchestrator.ExtractErrorMessage(err))
-	if rewriteErr != nil {
-		return nil, rewriteErr
+	message := orchestrator.ExtractErrorMessage(err)
+	data := event.Data
+	// Converted failure frames can retain top-level diagnostics as well as the
+	// nested Responses error. Apply the policy to every emitted copy.
+	for _, path := range []string{"message", "error.message", "response.error.message"} {
+		if !gjson.GetBytes(data, path).Exists() {
+			continue
+		}
+		var rewriteErr error
+		data, rewriteErr = sjson.SetBytes(data, path, message)
+		if rewriteErr != nil {
+			return nil, rewriteErr
+		}
 	}
-	// These provider details can contain explanations and opaque review targets.
-	// Keep hidden/custom stream errors consistent with converted HTTP errors.
-	data, rewriteErr = sjson.DeleteBytes(data, prefix+"misalignment")
-	if rewriteErr != nil {
-		return nil, rewriteErr
+	// These details can contain explanations and opaque review targets.
+	for _, path := range []string{"misalignment", "error.misalignment", "response.error.misalignment"} {
+		var rewriteErr error
+		data, rewriteErr = sjson.DeleteBytes(data, path)
+		if rewriteErr != nil {
+			return nil, rewriteErr
+		}
 	}
 	copyEvent := *event
 	copyEvent.Data = data
