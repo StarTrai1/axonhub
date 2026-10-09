@@ -133,6 +133,7 @@ jobs:
         run: |
           go mod tidy
           (cd llm && go mod tidy)
+          (cd cmd/schema && go mod tidy)
           make generate
           git diff --name-only -z --diff-filter=ACMRT "$FORMAT_BASE" HEAD -- '*.go' | xargs -0 -r gofmt -w
           git diff --binary > "$RUNNER_TEMP/generated.patch"

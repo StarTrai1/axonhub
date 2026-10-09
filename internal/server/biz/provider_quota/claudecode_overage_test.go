@@ -44,7 +44,7 @@ func TestClaudeCodeOverageDoesNotExhaustSharedQuota(t *testing.T) {
 				require.NotEqual(t, RoutingExhausted, state)
 				require.Nil(t, quota.NextResetAt)
 			}
-			require.Equal(t, int64(now.Add(20*24*time.Hour).Unix()), quota.RawData["reset"])
+			require.Equal(t, now.Add(20*24*time.Hour).Unix(), quota.RawData["reset"])
 		})
 	}
 }

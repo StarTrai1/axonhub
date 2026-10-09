@@ -38,7 +38,7 @@ func attachOpenAIResponsesRequestExtensions(chatReq *llm.Request, req *Request, 
 		numericEffort = req.Reasoning.NumericEffort
 	}
 	requestExt := &llm.OpenAIResponsesRequestExtensions{
-		NumericReasoningEffort: numericEffort,
+		NumericReasoningEffort:  numericEffort,
 		ReasoningContext:        reasoningContext,
 		RawFields:               selectRawRequestFields(raw.Fields, rawCreateRequestFields),
 		RawTools:                buildRawOnlyToolFragments(req.Tools, raw.Tools),

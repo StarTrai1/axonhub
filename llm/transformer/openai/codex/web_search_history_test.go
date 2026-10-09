@@ -56,7 +56,10 @@ func TestCodexWebSearchHistoryKeepsCatalogIdentityAndCompactionTrigger(t *testin
 }
 
 func TestCodexWebSearchHistoryScope(t *testing.T) {
-	for _, tc := range []struct{ name, body, requestType string; relay bool }{
+	for _, tc := range []struct {
+		name, body, requestType string
+		relay                   bool
+	}{
 		{"no history", `{"input":[{"type":"message","role":"user","content":"web_search_call"}]}`, "", false},
 		{"existing declaration", `{"tools":[{"type":"web_search","external_web_access":true}],"input":[{"type":"web_search_call"}]}`, "", false},
 		{"existing catalog declaration", `{"input":[{"type":"additional_tools","tools":[{"type":"web_search_preview"}]},{"type":"web_search_call"}]}`, "", false},
