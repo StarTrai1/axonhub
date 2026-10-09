@@ -137,7 +137,7 @@ func TestResponsesRejectedRelayAffinityPreservesHistory(t *testing.T) {
 			later := &responsesReasoningPipelineExecutor{
 				failures: []error{relayAffinityFailure(http.StatusInternalServerError,
 					"We're currently experiencing high demand, which may cause temporary errors", "33,22")},
-				events:   rejectedReasoningCompactionEvents(),
+				events: rejectedReasoningCompactionEvents(),
 			}
 			_, result, err = runRejectedReasoningPipeline(t, t.Context(), request, later, t.Name(), raw, 1,
 				func(*PersistenceState, *PersistentOutboundTransformer) pipeline.Middleware {

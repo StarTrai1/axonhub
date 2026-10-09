@@ -208,7 +208,7 @@ func (m *responsesRelayAffinityMiddleware) OnOutboundRawError(ctx context.Contex
 			return
 		}
 		migrations = previous.migrations
-	} else if !(applied != nil && *applied == key && responsesRelayCapacityOverload(err, key.provider.model)) &&
+	} else if (applied == nil || *applied != key || !responsesRelayCapacityOverload(err, key.provider.model)) &&
 		!responsesRelayStickyOverload(err, key.provider.model) {
 		return
 	}
