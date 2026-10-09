@@ -11,8 +11,8 @@ import (
 	"github.com/looplj/axonhub/internal/ent/system"
 )
 
-// Recovery entries are explicitly imported by the operator after recovering
-// the original message. Normal requests only read them; they never ask another
+// LoadAgentMessageRecovery reads entries explicitly imported by the operator
+// after recovering the original message. Normal requests only read them; they never ask another
 // provider to infer missing text or enable a disabled source channel.
 func (s *SystemService) LoadAgentMessageRecovery(ctx context.Context, projectID, apiKeyID int, digest string) (string, error) {
 	decoded, err := hex.DecodeString(digest)

@@ -39,6 +39,7 @@ func portableResponsesAgentTransport(outbound *PersistentOutboundTransformer, se
 
 type responsesAgentTransport struct {
 	pipeline.DummyMiddleware
+
 	outbound *PersistentOutboundTransformer
 	service  *biz.SystemService
 	tools    map[string]bool
@@ -70,11 +71,13 @@ func (m *responsesAgentTransport) OnOutboundRawRequest(ctx context.Context, requ
 		if channel.Credentials.IsOAuth() && request.Headers.Get("Chatgpt-Account-Id") != "" {
 			credential = "oauth-account:" + request.Headers.Get("Chatgpt-Account-Id")
 		}
-		endpoint := strings.TrimSuffix(provider.url, "/compact")
+		endpoint := provider.url
 		if parsed, err := url.Parse(endpoint); err == nil {
-			if parsed.Scheme == "wss" {
+			parsed.Path = strings.TrimSuffix(parsed.Path, "/compact")
+			switch parsed.Scheme {
+			case "wss":
 				parsed.Scheme = "https"
-			} else if parsed.Scheme == "ws" {
+			case "ws":
 				parsed.Scheme = "http"
 			}
 			endpoint = parsed.String()
@@ -154,6 +157,8 @@ func (m *responsesAgentTransport) OnOutboundRawRequest(ctx context.Context, requ
 		return nil, err
 	}
 	updated := *request
+	updated.Headers = request.Headers.Clone()
+	updated.Headers.Del("Content-Length")
 	updated.Body = body
 	if len(request.JSONBody) > 0 {
 		updated.JSONBody = body
@@ -257,6 +262,8 @@ func (m *responsesAgentTransport) OnOutboundRawResponse(ctx context.Context, res
 		}
 	}
 	updated := *response
+	updated.Headers = response.Headers.Clone()
+	updated.Headers.Del("Content-Length")
 	updated.Body = body
 	return &updated, nil
 }
@@ -271,6 +278,7 @@ func (m *responsesAgentTransport) OnOutboundRawStream(ctx context.Context, strea
 
 type responsesAgentTransportStream struct {
 	streams.Stream[*httpclient.StreamEvent]
+
 	ctx       context.Context
 	transport *responsesAgentTransport
 	active    map[string]bool

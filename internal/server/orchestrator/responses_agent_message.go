@@ -216,6 +216,7 @@ func recoverResponsesAgentMessages(outbound *PersistentOutboundTransformer, serv
 			updated.JSONBody = body
 		}
 		updated.Headers = request.Headers.Clone()
+		updated.Headers.Del("Content-Length")
 		updated.Headers.Del(codexTurnStateHeader)
 		return &updated, nil
 	})

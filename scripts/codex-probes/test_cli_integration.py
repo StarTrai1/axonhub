@@ -128,6 +128,89 @@ class CLIIntegrationTest(unittest.IsolatedAsyncioTestCase):
                 server.close()
                 await server.wait_closed()
 
+    @unittest.skipUnless(os.environ.get("PROBE_TEST_CODEX_VERSION") == "0.162.0", "requires current agent-message protocol")
+    async def test_gateway_agent_envelope_reaches_child_intact(self):
+        # No model or external service is called. The real CLI executes one
+        # synthetic spawn in its isolated scratch directory against this mock.
+        sealed = "axonhub-agent-v1.synthetic-client-transport-fixture"
+        child_seen = asyncio.Event()
+        requests, errors = [], []
+        model = os.environ.get("PROBE_TEST_MODEL", "gpt-6-sol")
+
+        async def respond(reader, writer):
+            try:
+                headers = await asyncio.wait_for(reader.readuntil(b"\r\n\r\n"), 15)
+                lines = headers.decode().split("\r\n")
+                parsed = dict(line.lower().split(": ", 1) for line in lines[1:] if ": " in line)
+                raw = await reader.readexactly(int(parsed.get("content-length", "0")))
+                if not lines[0].startswith("POST /v1/responses "):
+                    writer.write(b"HTTP/1.1 404 Not Found\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}")
+                    await writer.drain()
+                    return
+                body = json.loads(raw)
+                requests.append(body)
+                number = len(requests)
+                history = body.get("input", [])
+                delivered = any(
+                    item.get("type") == "agent_message" and any(
+                        part.get("type") == "encrypted_content" and part.get("encrypted_content") == sealed
+                        for part in item.get("content", [])
+                    ) for item in history if isinstance(item, dict)
+                )
+                if delivered:
+                    child_seen.set()
+                if number == 1:
+                    item = {"id": "fc_agent_fixture", "type": "function_call", "status": "completed",
+                            "call_id": "call_agent_fixture", "namespace": "agents", "name": "spawn_agent",
+                            "encrypted_function_args": ["message"],
+                            "arguments": json.dumps({"task_name": "transport_fixture", "fork_turns": "none", "message": sealed})}
+                else:
+                    if not delivered:
+                        await asyncio.wait_for(child_seen.wait(), 20)
+                    item = {"id": f"msg_agent_{number}", "type": "message", "role": "assistant", "phase": "final_answer",
+                            "status": "completed", "content": [{"type": "output_text", "text": "OK.", "annotations": []}]}
+                response = {"id": f"resp_agent_{number}", "object": "response", "created_at": 1700000000,
+                            "model": model, "status": "completed", "output": [item],
+                            "usage": {"input_tokens": 11, "output_tokens": 2, "total_tokens": 13}}
+                events = [{"type": "response.created", "response": {**response, "status": "in_progress", "output": []}},
+                          {"type": "response.output_item.done", "output_index": 0, "item": item},
+                          {"type": "response.completed", "response": response}]
+                payload = "".join(f"event: {event['type']}\ndata: {json.dumps(event)}\n\n" for event in events).encode()
+                writer.write(b"HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nConnection: close\r\nContent-Length: "
+                             + str(len(payload)).encode() + b"\r\n\r\n" + payload)
+                await writer.drain()
+            except (ConnectionError, asyncio.IncompleteReadError):
+                pass
+            except Exception as error:
+                errors.append(str(error))
+            finally:
+                writer.close()
+                await writer.wait_closed()
+
+        with tempfile.TemporaryDirectory() as tmp:
+            server = await asyncio.start_server(respond, "127.0.0.1", 0)
+            try:
+                with OwnedState(Path(tmp) / "owned") as state:
+                    args = args_for(state.root, os.environ["PROBE_TEST_CODEX"])
+                    args.url = f"http://127.0.0.1:{server.sockets[0].getsockname()[1]}/v1"
+                    args.model, args.timeout = model, 60
+                    runner = Runner(args, state, "synthetic-test-key")
+                    from probe_common import config_text
+                    def agent_config(*values):
+                        return config_text(*values).replace(
+                            "multi_agent_v2 = false",
+                            'multi_agent_v2 = { enabled = true, tool_namespace = "agents", message_board_in_memory = true }',
+                        )
+                    with mock.patch("probe_common.config_text", side_effect=agent_config):
+                        outcome = await runner.run({"id": "agent-transport", "prompt": "Run the synthetic transport fixture."}, "low")
+                    self.assertTrue(child_seen.is_set(), f"encrypted delivery missing; requests={len(requests)}; {outcome.error}")
+                    self.assertEqual(outcome.status, "success", outcome.error)
+                    self.assertEqual(errors, [])
+                    self.assertEqual(runner.active_attempts, 0)
+            finally:
+                server.close()
+                await server.wait_closed()
+
     async def test_five_requests_overlap_and_cancel_cleanly(self):
         active = 0
         maximum = 0

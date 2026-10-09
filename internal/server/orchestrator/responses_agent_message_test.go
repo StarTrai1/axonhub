@@ -30,7 +30,7 @@ const responsesAgentMessageFixture = `{"model":"gpt-6-astra","stream":true,"inpu
 
 func agentMessageTestState() *PersistenceState {
 	return &PersistenceState{
-		APIKey: &ent.APIKey{ID: 1, ProjectID: 1},
+		APIKey:           &ent.APIKey{ID: 1, ProjectID: 1},
 		CurrentCandidate: &ChannelModelsCandidate{Channel: &biz.Channel{Channel: &ent.Channel{ID: 1, Type: entchannel.TypeCodex}}},
 	}
 }
