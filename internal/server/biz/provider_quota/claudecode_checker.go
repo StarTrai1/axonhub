@@ -96,8 +96,8 @@ func (c *ClaudeCodeQuotaChecker) parseResponse(headers http.Header) (QuotaData, 
 		return QuotaData{}, fmt.Errorf("missing quota headers")
 	}
 
-	unifiedStatus := headers.Get("Anthropic-Ratelimit-Unified-Status")
-	representativeClaim := headers.Get("Anthropic-Ratelimit-Unified-Representative-Claim")
+	unifiedStatus := strings.ToLower(strings.TrimSpace(headers.Get("Anthropic-Ratelimit-Unified-Status")))
+	representativeClaim := strings.ToLower(strings.TrimSpace(headers.Get("Anthropic-Ratelimit-Unified-Representative-Claim")))
 
 	// Parse window data
 	windows := map[string]any{
@@ -133,6 +133,8 @@ func (c *ClaudeCodeQuotaChecker) parseResponse(headers http.Header) (QuotaData, 
 	switch unifiedStatus {
 	case "allowed":
 		normalizedStatus = "available"
+	case "allowed_warning":
+		normalizedStatus = "warning"
 	case "throttled", "rejected":
 		normalizedStatus = "exhausted"
 	default:
@@ -161,7 +163,7 @@ func (c *ClaudeCodeQuotaChecker) parseResponse(headers http.Header) (QuotaData, 
 
 	var nextResetAt *time.Time
 
-	if resetWindow, ok := windows[windowKey].(map[string]any); ok {
+	if resetWindow, ok := windows[windowKey].(map[string]any); ok && (windowKey == "5h" || windowKey == "7d") {
 		if resetTs, exists := resetWindow["reset"].(int64); exists && resetTs > 0 {
 			t := time.Unix(resetTs, 0)
 			nextResetAt = &t
@@ -173,6 +175,32 @@ func (c *ClaudeCodeQuotaChecker) parseResponse(headers http.Header) (QuotaData, 
 		limit, ok := c.buildTokenLimit(windowKey, headers)
 		if ok {
 			limits = append(limits, limit)
+		}
+	}
+	// Overage is a separate billing wallet. A rejection of that claim is not
+	// evidence that both shared subscription windows are exhausted. Preserve
+	// absent window evidence as unknown instead of benching the whole channel.
+	if strings.Contains(representativeClaim, "overage") && normalizedStatus == "exhausted" {
+		normalizedStatus = "unknown"
+		known := 0
+		warning := false
+		for _, limit := range limits {
+			if limit.Status == "exhausted" {
+				normalizedStatus = "exhausted"
+				if limit.NextResetAt != nil && (nextResetAt == nil || limit.NextResetAt.After(*nextResetAt)) {
+					nextResetAt = limit.NextResetAt
+				}
+			}
+			if limit.Status == "available" || limit.Status == "warning" {
+				known++
+			}
+			warning = warning || limit.Status == "warning"
+		}
+		if normalizedStatus != "exhausted" && known == 2 {
+			normalizedStatus = "available"
+			if warning {
+				normalizedStatus = "warning"
+			}
 		}
 	}
 
@@ -214,10 +242,13 @@ func (c *ClaudeCodeQuotaChecker) buildTokenLimit(windowKey string, headers http.
 	resetTs := parseUnixTimestamp(headers.Get(resetKey))
 
 	status := "available"
-	if utilization >= 1.0 {
+	windowStatus := strings.ToLower(strings.TrimSpace(headers.Get("Anthropic-Ratelimit-Unified-" + windowKey + "-Status")))
+	if windowStatus == "rejected" || windowStatus == "throttled" || utilization >= 1.0 {
 		status = "exhausted"
-	} else if utilization >= WarningThresholdRatio {
+	} else if windowStatus == "allowed_warning" || utilization >= WarningThresholdRatio {
 		status = "warning"
+	} else if windowStatus != "allowed" && headers.Get(utilizationKey) == "" {
+		status = "unknown"
 	}
 
 	var nextReset *time.Time

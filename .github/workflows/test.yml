@@ -124,7 +124,6 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v7
         with:
-          # x/tools v0.48.0 cannot read Go 1.27.2 export data (v5).
           # Share the verified toolchain with Build, Lint and Release.
           go-version-file: .go-version
 
@@ -132,6 +131,8 @@ jobs:
         env:
           FORMAT_BASE: ${{ inputs.format_base || 'HEAD^' }}
         run: |
+          go mod tidy
+          (cd llm && go mod tidy)
           make generate
           git diff --name-only -z --diff-filter=ACMRT "$FORMAT_BASE" HEAD -- '*.go' | xargs -0 -r gofmt -w
           git diff --binary > "$RUNNER_TEMP/generated.patch"
