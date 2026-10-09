@@ -23,7 +23,7 @@ func TestCodex162IncrementalHistoryPreservesOrder(t *testing.T) {
 		{"type":"function_call_output","call_id":"call_first","output":"found"},
 		{"type":"additional_tools","id":"at_update","role":"developer","tools":[{"type":"namespace","name":"functions","description":"This is an incremental namespace update. Previously declared tools remain available for direct calls unless explicitly marked unavailable.","tools":[{"type":"function","name":"inspect","parameters":{"type":"object"}}]}]},
 		{"type":"message","role":"developer","content":[{"type":"input_text","text":"The following tools are no longer available. Do not call them:\n- functions.lookup"}]},
-		{"type":"reasoning","id":"rs_retained","encrypted_content":"opaque-retained","summary":[]},
+		{"type":"reasoning","id":"rs_retained","encrypted_content":"gAAAA_RETAINED_SYNTHETIC_BLOB","summary":[]},
 		{"type":"message","role":"user","content":[{"type":"input_text","text":"Continue."}]}
 	]`
 	request := &httpclient.Request{Body: []byte(`{"model":"gpt-6.1-sol","stream":true,"input":` + input + `}`)}
@@ -50,7 +50,7 @@ func TestCodex162IncrementalHistoryPreservesOrder(t *testing.T) {
 	require.Equal(t, "call_first", got[4].Get("call_id").String())
 	require.Equal(t, "call_first", got[5].Get("call_id").String())
 	require.Equal(t, want[7].Get("content.0.text").String(), got[7].Get("content.0.text").String())
-	require.Equal(t, "opaque-retained", got[8].Get("encrypted_content").String())
+	require.Equal(t, "gAAAA_RETAINED_SYNTHETIC_BLOB", got[8].Get("encrypted_content").String())
 	require.Equal(t, before, string(request.Body))
 }
 

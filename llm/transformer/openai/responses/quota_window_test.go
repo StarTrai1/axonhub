@@ -31,11 +31,8 @@ func TestQuotaWindowSurvivesHTTPAndStreamErrors(t *testing.T) {
 					stream := &responsesInboundStream{hasResponseCreated: created}
 					require.NoError(t, stream.emitStreamErrorEvent(upstreamError))
 					require.Len(t, stream.eventQueue, 1)
-					path := "error.limit_window_minutes"
-					if created {
-						path = "response." + path
-					}
-					require.Equal(t, window, gjson.GetBytes(stream.eventQueue[0].Data, path).Raw)
+					require.Equal(t, "response.failed", stream.eventQueue[0].Type)
+					require.Equal(t, window, gjson.GetBytes(stream.eventQueue[0].Data, "response.error.limit_window_minutes").Raw)
 				}
 			}
 		})

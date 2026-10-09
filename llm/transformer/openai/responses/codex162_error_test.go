@@ -66,11 +66,14 @@ func TestCodex162FailedResponseAdviceSurvivesConversion(t *testing.T) {
 			}
 			if stage != "after output" {
 				var failure *llm.ResponseError
-				require.True(t, errors.As(wire.Err(), &failure))
+				// The unified stream exposes the upstream error to retry handling;
+				// the inbound stream consumes it into a single wire failure event.
+				require.True(t, errors.As(unified.Err(), &failure))
 				require.Equal(t, 503, failure.StatusCode)
 			} else {
-				require.NoError(t, wire.Err())
+				require.NoError(t, unified.Err())
 			}
+			require.NoError(t, wire.Err())
 			require.Equal(t, 1, failures)
 			require.NoError(t, wire.Close())
 		})
