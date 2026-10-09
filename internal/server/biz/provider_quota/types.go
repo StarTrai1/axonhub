@@ -106,13 +106,13 @@ type QuotaData struct {
 	// Preserve the checker's scoped status when partial window data cannot
 	// establish overall availability. This is internal and never serialized.
 	statusAuthoritative bool
-	Status       string             `json:"status"` // available, warning, exhausted, unknown
-	ProviderType string             `json:"provider_type"`
-	RawData      map[string]any     `json:"raw_data"`
-	NextResetAt  *time.Time         `json:"next_reset_at"` // Next quota reset timestamp
-	Ready        bool               `json:"ready"`         // True if status is available or warning
-	Limits       []QuotaLimitStatus `json:"limits"`
-	Resets       *ResetList         `json:"resets,omitempty"`
+	Status              string             `json:"status"` // available, warning, exhausted, unknown
+	ProviderType        string             `json:"provider_type"`
+	RawData             map[string]any     `json:"raw_data"`
+	NextResetAt         *time.Time         `json:"next_reset_at"` // Next quota reset timestamp
+	Ready               bool               `json:"ready"`         // True if status is available or warning
+	Limits              []QuotaLimitStatus `json:"limits"`
+	Resets              *ResetList         `json:"resets,omitempty"`
 }
 
 // WarningThresholdRatio is the usage ratio at which a channel transitions to "warning" status.

@@ -207,12 +207,12 @@ func (c *ClaudeCodeQuotaChecker) parseResponse(headers http.Header) (QuotaData, 
 
 	return NormalizeQuotaData(QuotaData{
 		statusAuthoritative: overageRejected,
-		Status:       normalizedStatus,
-		ProviderType: "claudecode",
-		RawData:      rawData,
-		NextResetAt:  nextResetAt,
-		Ready:        IsReadyStatus(normalizedStatus),
-		Limits:       limits,
+		Status:              normalizedStatus,
+		ProviderType:        "claudecode",
+		RawData:             rawData,
+		NextResetAt:         nextResetAt,
+		Ready:               IsReadyStatus(normalizedStatus),
+		Limits:              limits,
 	}), nil
 }
 
