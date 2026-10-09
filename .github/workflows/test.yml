@@ -38,6 +38,13 @@ jobs:
         run: go test ./transformer/openai/responses -run '^(TestWebSocketProxyAliasesDialThroughSOCKS|TestWebSocketSOCKSCancellation)$' -count=1 -v
       - name: Verify native SQLite recovery import and rollback
         run: go test ./cmd/axonhub -run '^TestAgentRecoveryCLI$' -count=1 -v
+      - name: Build native recovery maintenance tool
+        run: go build -o axonhub-recovery.exe ./cmd/axonhub
+      - name: Preserve native recovery maintenance tool
+        uses: actions/upload-artifact@v6
+        with:
+          name: windows-agent-recovery-tool
+          path: axonhub-recovery.exe
 
   test-codex-probe-scripts:
     name: Test Codex probe scripts (offline)

@@ -265,7 +265,8 @@ func (m *responsesAgentTransport) OnOutboundRawStream(ctx context.Context, strea
 	if len(m.tools) == 0 {
 		return stream, nil
 	}
-	return &responsesAgentTransportStream{Stream: stream, ctx: ctx, transport: m, active: make(map[string]bool), calls: make(map[string]responsesAgentSealedCall)}, nil
+	transport := *m
+	return &responsesAgentTransportStream{Stream: stream, ctx: ctx, transport: &transport, active: make(map[string]bool), calls: make(map[string]responsesAgentSealedCall)}, nil
 }
 
 type responsesAgentTransportStream struct {
