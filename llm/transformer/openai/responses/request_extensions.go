@@ -265,10 +265,26 @@ func buildRawOnlyInputFragments(input Input, rawItems []json.RawMessage) []llm.O
 			CallID:        item.CallID,
 			OriginalIndex: i,
 			Raw:           cloneRaw(rawItems[i]),
+
+			RepresentedInputItemCount: representedRawInputItemCount(item),
 		})
 	}
 
 	return fragments
+}
+
+func representedRawInputItemCount(item Item) int {
+	// The inbound also exposes native search history as an Anthropic server
+	// tool call. Responses replay must replace that one bridge item, not
+	// append both it and the original web_search_call. An ID-less native
+	// search has no bridge representation.
+	if item.Type == "web_search_call" && anthropicServerToolUseID(item.ID) != "" {
+		return 1
+	}
+	if item.Type == "input_file" && responseInputFileMessage(&item) != nil {
+		return 1
+	}
+	return 0
 }
 
 func buildOmittedInputItemIndices(input Input) []int {
@@ -406,7 +422,17 @@ func mergeRawOnlyInputItems(structuredRaw json.RawMessage, requestExt *llm.OpenA
 		}
 	}
 
-	maxOriginalIndex := len(structuredItems) + len(fragments) + len(requestExt.OmittedInputItemIndices) - 1
+	representedCount := 0
+	for _, fragment := range fragments {
+		if fragment.RepresentedInputItemCount < 0 {
+			return nil, false
+		}
+		representedCount += fragment.RepresentedInputItemCount
+	}
+	if representedCount > len(structuredItems) {
+		return nil, false
+	}
+	maxOriginalIndex := len(structuredItems) - representedCount + len(fragments) + len(requestExt.OmittedInputItemIndices) - 1
 	for _, fragment := range fragments {
 		if fragment.OriginalIndex > maxOriginalIndex {
 			maxOriginalIndex = fragment.OriginalIndex
@@ -422,13 +448,13 @@ func mergeRawOnlyInputItems(structuredRaw json.RawMessage, requestExt *llm.OpenA
 	}
 	items := make([]json.RawMessage, 0, len(structuredItems)+len(fragments))
 	structuredIndex := 0
-	rawByIndex := make(map[int]json.RawMessage, len(fragments))
+	rawByIndex := make(map[int]llm.OpenAIResponsesRawFragment, len(fragments))
 	omittedByIndex := make(map[int]struct{}, len(requestExt.OmittedInputItemIndices))
 	for _, fragment := range fragments {
 		if len(fragment.Raw) == 0 || fragment.OriginalIndex < 0 {
 			return nil, false
 		}
-		rawByIndex[fragment.OriginalIndex] = cloneRaw(fragment.Raw)
+		rawByIndex[fragment.OriginalIndex] = fragment
 	}
 	for _, index := range requestExt.OmittedInputItemIndices {
 		omittedByIndex[index] = struct{}{}
@@ -438,8 +464,12 @@ func mergeRawOnlyInputItems(structuredRaw json.RawMessage, requestExt *llm.OpenA
 		if _, omitted := omittedByIndex[i]; omitted {
 			continue
 		}
-		if raw, ok := rawByIndex[i]; ok {
-			items = append(items, raw)
+		if fragment, ok := rawByIndex[i]; ok {
+			items = append(items, cloneRaw(fragment.Raw))
+			structuredIndex += fragment.RepresentedInputItemCount
+			if structuredIndex > len(structuredItems) {
+				return nil, false
+			}
 			continue
 		}
 		if structuredIndex >= len(structuredItems) {

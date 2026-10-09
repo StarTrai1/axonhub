@@ -31,6 +31,10 @@ type OpenAIResponsesRawFragment struct {
 	// RepresentedToolCount is the number of structured tools replaced when Raw is replayed.
 	RepresentedToolCount int             `json:"-"`
 	Raw                  json.RawMessage `json:"-"`
+
+	// RepresentedInputItemCount is the number of structured input items
+	// replaced when a native item also has a cross-provider representation.
+	RepresentedInputItemCount int `json:"-"`
 }
 
 func EnsureOpenAIResponsesProviderExtensions(req *Request) *OpenAIResponsesProviderExtensions {

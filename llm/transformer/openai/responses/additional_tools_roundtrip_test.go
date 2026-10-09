@@ -5,9 +5,12 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"github.com/tidwall/gjson"
 
+	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/transformer"
 )
 
 // additionalToolsLiteRequest is the shape Codex CLI sends for a model it marks as
@@ -144,6 +147,50 @@ func TestAdditionalTools_MixedRawItemsKeepTheirPlace(t *testing.T) {
 	require.Contains(t, string(input[0]), "additional_tools")
 	require.Contains(t, string(input[1]), "Hello")
 	require.Contains(t, string(input[2]), "web_search_call")
+}
+
+func TestAdditionalToolsNativeSearchReplacesBridgeInCreateAndCompact(t *testing.T) {
+	const body = `{"model":"gpt-6.1-sol","input":[
+		{"type":"reasoning","summary":[]},
+		{"type":"additional_tools","id":"at_native","role":"developer","tools":[]},
+		{"type":"message","role":"user","content":"before"},
+		{"type":"web_search_call","id":"ws_first","status":"completed","action":{"type":"search","query":"first"},"x_future":{"kept":true}},
+		{"type":"file_search_call","id":"fs_after","queries":["memo"]},
+		{"type":"web_search_call","status":"completed"},
+		{"type":"web_search_call","id":"ws_second","status":"completed","action":{"type":"search","query":"second"}},
+		{"type":"function_call","call_id":"client_call","name":"web_search","arguments":"{}"},
+		{"type":"function_call_output","call_id":"client_call","output":"local result"},
+		{"type":"input_file","file_id":"file_native","x_future":{"kept":true}},
+		{"type":"message","role":"user","content":"after"}
+	]}`
+	for name, inbound := range map[string]transformer.Inbound{
+		"create":  NewInboundTransformer(),
+		"compact": NewCompactInboundTransformer(),
+	} {
+		t.Run(name, func(t *testing.T) {
+			req, err := inbound.TransformRequest(t.Context(), &httpclient.Request{Body: []byte(body)})
+			require.NoError(t, err)
+			out := additionalToolsOutbound(t)
+			for range 2 {
+				cloned := *req
+				cloned.ProviderExtensions = llm.CloneProviderExtensions(req.ProviderExtensions)
+				wire, err := out.TransformRequest(t.Context(), &cloned)
+				require.NoError(t, err)
+				input := gjson.GetBytes(wire.Body, "input").Array()
+				require.Len(t, input, 10)
+				for i, typ := range []string{"additional_tools", "message", "web_search_call", "file_search_call", "web_search_call", "web_search_call", "function_call", "function_call_output", "input_file", "message"} {
+					require.Equal(t, typ, input[i].Get("type").String())
+				}
+				original := gjson.Get(body, "input").Array()
+				for _, i := range []int{1, 3, 4, 5, 6, 9} {
+					require.JSONEq(t, original[i].Raw, input[i-1].Raw)
+				}
+				require.Equal(t, "client_call", input[6].Get("call_id").String())
+				require.Equal(t, "client_call", input[7].Get("call_id").String())
+				require.Contains(t, input[9].Raw, "after")
+			}
+		})
+	}
 }
 
 func TestAdditionalToolsAfterSkippedReasoningItemIsPreserved(t *testing.T) {
