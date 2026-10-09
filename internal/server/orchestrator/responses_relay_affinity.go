@@ -11,13 +11,15 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/samber/lo"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 
+	lru "github.com/hashicorp/golang-lru/v2"
+
 	entchannel "github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
@@ -84,9 +86,6 @@ func (m *responsesRelayAffinityMiddleware) scope(request *httpclient.Request) (r
 		host == "openai.com" || strings.HasSuffix(host, ".openai.com") {
 		return responsesRelayAffinityKey{}, false
 	}
-	if !responsesRelayAffinityHistory(request.Body) {
-		return responsesRelayAffinityKey{}, false
-	}
 	client := shared.ReadCodexRequestMetadata(state.RawRequest.Headers, rawRequestPayload(state.RawRequest))
 	if client.ThreadID == "" || len(client.ThreadID) > 512 || len(client.SessionID) > 512 {
 		return responsesRelayAffinityKey{}, false
@@ -99,13 +98,20 @@ func (m *responsesRelayAffinityMiddleware) scope(request *httpclient.Request) (r
 	return key, key.provider.model != ""
 }
 
-func responsesRelayAffinityHistory(body []byte) bool {
+func responsesRelayAffinityReplayable(body []byte) bool {
 	// Full input is essential: server-side references cannot be moved to a new
 	// session. Opaque agent messages are allowed only because they stay intact.
 	if _, explicit := responsesHistorySupportsRecoveryWithAgents(body, false, true); !explicit {
 		return false
 	}
 	if _, materialized := responsesResourceHistorySupportsRecoveryWithAgents(body, true); !materialized {
+		return false
+	}
+	return true
+}
+
+func responsesRelayAffinityHistory(body []byte) bool {
+	if !responsesRelayAffinityReplayable(body) {
 		return false
 	}
 	for _, item := range gjson.GetBytes(body, "input").Array() {
@@ -123,7 +129,7 @@ func (m *responsesRelayAffinityMiddleware) OnOutboundRawRequest(ctx context.Cont
 		m.outbound.state.responsesRelayAffinityApplied = false
 	}
 	key, ok := m.scope(request)
-	if !ok {
+	if !ok || !responsesRelayAffinityReplayable(request.Body) {
 		return request, nil
 	}
 	affinity, found := m.pending[key]
@@ -156,7 +162,7 @@ func (m *responsesRelayAffinityMiddleware) OnOutboundRawError(ctx context.Contex
 	state.responsesRelayAffinityRetryChannel = 0
 	state.responsesRelayAffinityExhaustedChannel = 0
 	key, ok := m.scope(state.RawProviderRequest)
-	if !ok || !responsesRelayStickyOverload(err, key.provider.model) {
+	if !ok || !responsesRelayAffinityHistory(state.RawProviderRequest.Body) || !responsesRelayStickyOverload(err, key.provider.model) {
 		return
 	}
 	if _, attempted := m.pending[key]; attempted {
@@ -302,13 +308,7 @@ func responsesSessionProviderBody(state *PersistenceState) []byte {
 	if !state.responsesRelayAffinityApplied || state.RawRequest == nil {
 		return body
 	}
-	metadata := gjson.GetBytes(rawRequestPayload(state.RawRequest), "client_metadata")
-	var err error
-	if metadata.Exists() {
-		body, err = sjson.SetRawBytes(body, "client_metadata", []byte(metadata.Raw))
-	} else {
-		body, err = sjson.DeleteBytes(body, "client_metadata")
-	}
+	body, err := biz.ResponsesSessionClientBody(body, rawRequestPayload(state.RawRequest), state.RawRequest.Headers)
 	if err != nil {
 		return nil
 	}

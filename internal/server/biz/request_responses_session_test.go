@@ -2,10 +2,13 @@ package biz
 
 import (
 	"context"
+	"net/http"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"github.com/tidwall/gjson"
+	"github.com/tidwall/sjson"
 
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
@@ -17,6 +20,7 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 func TestRequestServiceLoadCompletedResponsesSessionScopesByAPIKeyAndProject(t *testing.T) {
@@ -145,6 +149,32 @@ func TestRequestServiceLoadCompletedResponsesSessionScopesByAPIKeyAndProject(t *
 	_, _, found, err = service.LoadCompletedResponsesSession(otherCtx, "resp_websocket")
 	require.NoError(t, err)
 	require.False(t, found)
+
+	// A cold restore must use the complete upstream input while retaining the
+	// original client window, not the relay alias persisted on the execution.
+	aliasedRequest, err := sjson.SetBytes(nativeRequest, "client_metadata", map[string]string{
+		"thread_id": "upstream-alias", "x-codex-window-id": "upstream-alias:7",
+	})
+	require.NoError(t, err)
+	_, err = client.RequestExecution.Update().
+		Where(requestexecution.RequestIDEQ(parent.ID), requestexecution.StatusEQ(requestexecution.StatusCompleted)).
+		SetRequestBody(aliasedRequest).Save(ctx)
+	require.NoError(t, err)
+	for _, clientBody := range [][]byte{
+		websocketDelta,
+		[]byte(`{"previous_response_id":"resp_ancestor","client_metadata":{"thread_id":"client-thread","root_turn_id":"keep-root","x-codex-window-id":"client-thread:7"},"input":[]}`),
+	} {
+		_, err = parent.Update().SetRequestBody(clientBody).
+			SetRequestHeaders(http.Header{"X-Codex-Window-Id": {"client-thread:7"}}).Save(ctx)
+		require.NoError(t, err)
+		requestBody, responseBody, found, err = service.LoadCompletedResponsesSession(ownerCtx, "resp_websocket")
+		require.NoError(t, err)
+		require.True(t, found)
+		require.Equal(t, "client-thread:7", shared.ReadCodexRequestMetadata(nil, requestBody).WindowID)
+		require.Equal(t, gjson.GetBytes(nativeRequest, "input").Raw, gjson.GetBytes(requestBody, "input").Raw)
+		require.JSONEq(t, string(nativeResponse), string(responseBody))
+		require.False(t, gjson.GetBytes(requestBody, "previous_response_id").Exists())
+	}
 }
 
 func TestRequestServiceLoadCompletedResponsesSessionRejectsEmptyBodies(t *testing.T) {

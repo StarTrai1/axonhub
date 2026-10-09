@@ -1551,6 +1551,10 @@ func (s *RequestService) LoadCompletedResponsesSession(
 		}
 		if json.Unmarshal(executionResponse, &snapshot) == nil && snapshot.ID == responseID &&
 			json.Valid(executionRequest) && !bytes.Equal(executionRequest, xjson.EmptyJSONRawMessage) {
+			executionRequest, loadErr = ResponsesSessionClientBody(executionRequest, storedRequest, req.RequestHeaders)
+			if loadErr != nil {
+				return nil, nil, false, fmt.Errorf("restore Responses client window: %w", loadErr)
+			}
 			storedRequest, storedResponse = executionRequest, executionResponse
 		}
 	}

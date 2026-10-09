@@ -1071,6 +1071,7 @@ func (a *remoteCompactionAdapter) generateLocalSummaryWithCandidate(
 	bridgeRequest.RawRequest = rawRequest
 
 	attemptState := &PersistenceState{
+		APIKey:                  parentState.APIKey,
 		RequestService:          a.requestService,
 		UsageLogService:         a.usageLogService,
 		SystemService:           a.systemService,
@@ -1096,6 +1097,7 @@ func (a *remoteCompactionAdapter) generateLocalSummaryWithCandidate(
 	}
 
 	compatibility := applyResponsesRejectedStatusCompatibility(outbound)
+	affinity := recoverResponsesRelayAffinity(outbound)
 	requestMiddlewares := []pipeline.Middleware{
 		applyPassThroughRequestBody(outbound, a.systemService),
 		applyOverrideRequestBody(outbound),
@@ -1103,6 +1105,7 @@ func (a *remoteCompactionAdapter) generateLocalSummaryWithCandidate(
 		applyOverrideRequestHeaders(outbound),
 		applyCodexIdentityPolicy(outbound),
 		compatibility,
+		affinity,
 		finalizeTransportRequest(outbound),
 	}
 	for _, middleware := range requestMiddlewares {
@@ -1120,7 +1123,7 @@ func (a *remoteCompactionAdapter) generateLocalSummaryWithCandidate(
 		Stream:    true,
 	}
 	attemptState.Perf = perf
-	stream, executionRecord, err := a.startLocalCompactionStream(ctx, outbound, providerRequest, customizedExecutor, compatibility)
+	stream, executionRecord, err := a.startLocalCompactionStream(ctx, outbound, providerRequest, customizedExecutor, compatibility, affinity)
 	if err != nil {
 		return "", err
 	}

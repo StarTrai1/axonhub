@@ -18,7 +18,7 @@ func (a *remoteCompactionAdapter) startLocalCompactionStream(
 	outbound *PersistentOutboundTransformer,
 	providerRequest *httpclient.Request,
 	executor pipeline.Executor,
-	compatibility pipeline.Middleware,
+	compatibility ...pipeline.Middleware,
 ) (streams.Stream[*httpclient.StreamEvent], *ent.RequestExecution, error) {
 	state := outbound.state
 	maxRetries := 0
@@ -37,6 +37,8 @@ func (a *remoteCompactionAdapter) startLocalCompactionStream(
 		}
 		state.RawProviderRequest = providerRequest
 		state.responsesRejectedStatusRetryChannel = 0
+		state.responsesRelayAffinityRetryChannel = 0
+		state.responsesRelayAffinityExhaustedChannel = 0
 		var execution *ent.RequestExecution
 		if state.Request != nil && a.requestService != nil {
 			candidate := state.CurrentCandidate
@@ -57,17 +59,22 @@ func (a *remoteCompactionAdapter) startLocalCompactionStream(
 		}
 		stream, err := executor.DoStream(ctx, providerRequest)
 		if err == nil {
-			observed, observeErr := compatibility.OnOutboundRawStream(ctx, stream)
-			if observeErr != nil {
-				_ = stream.Close()
-				a.markBridgeExecutionFailed(ctx, execution, observeErr)
-				return nil, execution, observeErr
+			for _, middleware := range compatibility {
+				observed, observeErr := middleware.OnOutboundRawStream(ctx, stream)
+				if observeErr != nil {
+					_ = stream.Close()
+					a.markBridgeExecutionFailed(ctx, execution, observeErr)
+					return nil, execution, observeErr
+				}
+				stream = observed
 			}
-			return observed, execution, nil
+			return stream, execution, nil
 		}
 		err = normalizeLocalCompactionError(ctx, outbound, err)
 		a.markBridgeExecutionFailed(ctx, execution, err)
-		compatibility.OnOutboundRawError(ctx, err)
+		for _, middleware := range compatibility {
+			middleware.OnOutboundRawError(ctx, err)
+		}
 		if attempt >= maxRetries || ctx.Err() != nil || !canRetryLocalCompactionStream(outbound, err) {
 			return nil, execution, err
 		}
@@ -81,9 +88,11 @@ func (a *remoteCompactionAdapter) startLocalCompactionStream(
 			case <-timer.C:
 			}
 		}
-		providerRequest, err = compatibility.OnOutboundRawRequest(ctx, providerRequest)
-		if err != nil {
-			return nil, execution, err
+		for _, middleware := range compatibility {
+			providerRequest, err = middleware.OnOutboundRawRequest(ctx, providerRequest)
+			if err != nil {
+				return nil, execution, err
+			}
 		}
 	}
 }
@@ -113,6 +122,12 @@ func canRetryLocalCompactionStream(outbound *PersistentOutboundTransformer, err 
 	}
 	state := outbound.state
 	channel := state.CurrentCandidate.Channel
+	if channel.ID > 0 && state.responsesRelayAffinityExhaustedChannel == channel.ID {
+		return false
+	}
+	if channel.ID > 0 && state.responsesRelayAffinityRetryChannel == channel.ID {
+		return true
+	}
 	if hasResponsesRejectedStatusCompatibilityRetry(state, channel.ID) {
 		return true
 	}

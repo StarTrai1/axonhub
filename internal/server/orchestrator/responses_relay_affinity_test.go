@@ -17,9 +17,11 @@ import (
 	"github.com/tidwall/sjson"
 
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
+	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
@@ -80,7 +82,9 @@ func TestResponsesRejectedRelayAffinityPreservesHistory(t *testing.T) {
 			executor := &responsesReasoningPipelineExecutor{failures: []error{relayAffinityOverload()}, events: rejectedReasoningCompactionEvents()}
 			var middleware *responsesRelayAffinityMiddleware
 			state, result, err := runRejectedReasoningPipeline(t, t.Context(), request, executor, t.Name(), raw, 2,
-				func(*PersistenceState, *PersistentOutboundTransformer) pipeline.Middleware { return &relayReplayTestDestination{} },
+				func(*PersistenceState, *PersistentOutboundTransformer) pipeline.Middleware {
+					return &relayReplayTestDestination{}
+				},
 				relayAffinityMiddleware(t, &middleware),
 			)
 			require.NoError(t, err)
@@ -117,7 +121,9 @@ func TestResponsesRejectedRelayAffinityPreservesHistory(t *testing.T) {
 			// only the successfully recovered upstream alias.
 			next := &responsesReasoningPipelineExecutor{events: rejectedReasoningCompactionEvents()}
 			_, result, err = runRejectedReasoningPipeline(t, t.Context(), request, next, t.Name(), raw, 2,
-				func(*PersistenceState, *PersistentOutboundTransformer) pipeline.Middleware { return &relayReplayTestDestination{} },
+				func(*PersistenceState, *PersistentOutboundTransformer) pipeline.Middleware {
+					return &relayReplayTestDestination{}
+				},
 				relayAffinityMiddleware(t, nil),
 			)
 			require.NoError(t, err)
@@ -134,7 +140,9 @@ func TestResponsesRejectedRelayAffinitySharesBudget(t *testing.T) {
 			executor := &responsesReasoningPipelineExecutor{failures: []error{relayAffinityOverload(), relayAffinityOverload()}}
 			var middleware *responsesRelayAffinityMiddleware
 			_, _, err := runRejectedReasoningPipeline(t, t.Context(), relayAffinityRequest(t), executor, t.Name(), true, retries,
-				func(*PersistenceState, *PersistentOutboundTransformer) pipeline.Middleware { return &relayReplayTestDestination{} },
+				func(*PersistenceState, *PersistentOutboundTransformer) pipeline.Middleware {
+					return &relayReplayTestDestination{}
+				},
 				relayAffinityMiddleware(t, &middleware),
 			)
 			require.Error(t, err)
@@ -286,7 +294,9 @@ func TestResponsesRejectedRelayAffinityScopeIsolation(t *testing.T) {
 	executor := &responsesReasoningPipelineExecutor{failures: []error{relayAffinityOverload()}, events: rejectedReasoningCompactionEvents()}
 	var middleware *responsesRelayAffinityMiddleware
 	state, result, err := runRejectedReasoningPipeline(t, t.Context(), request, executor, "scope-credential", false, 1,
-		func(*PersistenceState, *PersistentOutboundTransformer) pipeline.Middleware { return &relayReplayTestDestination{} },
+		func(*PersistenceState, *PersistentOutboundTransformer) pipeline.Middleware {
+			return &relayReplayTestDestination{}
+		},
 		relayAffinityMiddleware(t, &middleware),
 	)
 	require.NoError(t, err)
@@ -352,4 +362,51 @@ func TestResponsesRejectedRelayAffinityPreservesUnknownMetadata(t *testing.T) {
 	request.Headers.Set("X-Codex-Turn-Metadata", "null")
 	_, err = applyResponsesRelayAffinity(request, "new-affinity")
 	require.Error(t, err, "null metadata must not panic or silently retain the old affinity")
+}
+
+func TestResponsesRejectedRelayAffinityLocalCompaction(t *testing.T) {
+	for _, exhausted := range []bool{false, true} {
+		t.Run(fmt.Sprint(exhausted), func(t *testing.T) {
+			outbound := newCodexResponsesPassThroughOutbound()
+			outbound.wrapped = new(responses.OutboundTransformer)
+			outbound.state.CurrentCandidate.Channel.ID = 95071
+			outbound.state.APIKey = &ent.APIKey{ID: 41, ProjectID: 42}
+			outbound.state.RetryPolicyProvider = &mockRetryPolicyProvider{policy: &biz.RetryPolicy{Enabled: true, MaxSingleChannelRetries: 4}}
+			request := relayAffinityRequest(t)
+			request.URL = "https://relay.invalid/v1/responses"
+			request.Headers.Set("Authorization", "Bearer synthetic-bridge-credential")
+			outbound.state.RawRequest = request
+			middleware := recoverResponsesRelayAffinity(outbound).(*responsesRelayAffinityMiddleware)
+			t.Cleanup(func() {
+				for key := range middleware.pending {
+					responsesRelayAffinities.Remove(key)
+				}
+			})
+			executor := &responsesReasoningPipelineExecutor{failures: []error{relayAffinityOverload()}, events: rejectedReasoningCompactionEvents()}
+			if exhausted {
+				executor.failures = append(executor.failures, relayAffinityOverload())
+			}
+			adapter := newRemoteCompactionAdapter(nil, nil, nil)
+			stream, _, err := adapter.startLocalCompactionStream(t.Context(), outbound, request, executor,
+				applyResponsesRejectedStatusCompatibility(outbound), middleware)
+			require.Len(t, executor.requests, 2)
+			require.Equal(t, gjson.GetBytes(executor.requests[0].Body, "input").Raw, gjson.GetBytes(executor.requests[1].Body, "input").Raw)
+			require.NotEqual(t, executor.requests[0].Headers.Get("Thread-Id"), executor.requests[1].Headers.Get("Thread-Id"))
+			if exhausted {
+				require.Error(t, err)
+				require.Nil(t, stream)
+				return
+			}
+			require.NoError(t, err)
+			for stream.Next() {
+				_ = stream.Current()
+			}
+			require.NoError(t, stream.Err())
+			require.NoError(t, stream.Close())
+			for key := range middleware.pending {
+				_, confirmed := responsesRelayAffinities.Get(key)
+				require.True(t, confirmed)
+			}
+		})
+	}
 }

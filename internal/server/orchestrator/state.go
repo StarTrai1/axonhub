@@ -53,7 +53,7 @@ type PersistenceState struct {
 	// stops if the replacement affinity is also explicitly overloaded.
 	responsesRelayAffinityRetryChannel     int
 	responsesRelayAffinityExhaustedChannel int
-	responsesRelayAffinityApplied         bool
+	responsesRelayAffinityApplied          bool
 
 	// OriginalRequestStream stores the client's original stream intent before any
 	// candidate-specific forcing to provider-side streaming happens.
