@@ -68,7 +68,9 @@ type responsesAgentTransportResponse struct {
 	transport *responsesAgentTransport
 }
 
-func (m *responsesAgentTransportResponse) Name() string { return "responses-portable-agent-transport-response" }
+func (m *responsesAgentTransportResponse) Name() string {
+	return "responses-portable-agent-transport-response"
+}
 
 func (m *responsesAgentTransportResponse) OnOutboundRawResponse(ctx context.Context, response *httpclient.Response) (*httpclient.Response, error) {
 	return m.transport.OnOutboundRawResponse(ctx, response)
