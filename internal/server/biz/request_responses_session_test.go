@@ -2,6 +2,7 @@ package biz
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -155,23 +156,33 @@ func TestRequestServiceLoadCompletedResponsesSessionScopesByAPIKeyAndProject(t *
 		"thread_id": "upstream-alias", "x-codex-window-id": "upstream-alias:7",
 	})
 	require.NoError(t, err)
-	_, err = client.RequestExecution.Update().
-		Where(requestexecution.RequestIDEQ(parent.ID), requestexecution.StatusEQ(requestexecution.StatusCompleted)).
-		SetRequestBody(aliasedRequest).Save(ctx)
-	require.NoError(t, err)
-	for _, clientBody := range [][]byte{
+	for index, clientBody := range [][]byte{
 		websocketDelta,
 		[]byte(`{"previous_response_id":"resp_ancestor","client_metadata":{"thread_id":"client-thread","root_turn_id":"keep-root","x-codex-window-id":"client-thread:7"},"input":[]}`),
 	} {
-		_, err = parent.Update().SetRequestBody(clientBody).
-			SetRequestHeaders([]byte(`{"X-Codex-Window-Id":["client-thread:7"]}`)).Save(ctx)
+		responseID := fmt.Sprintf("resp_relay_alias_%d", index)
+		aliasedResponse, setErr := sjson.SetBytes(nativeResponse, "id", responseID)
+		require.NoError(t, setErr)
+		aliasParent, createErr := client.Request.Create().
+			SetAPIKeyID(ownerKey.ID).SetProjectID(projectEntity.ID).
+			SetModelID("gpt-5").SetFormat(string(llm.APIFormatOpenAIResponseWebSocket)).
+			SetRequestBody(clientBody).SetRequestHeaders([]byte(`{"X-Codex-Window-Id":["client-thread:7"]}`)).
+			SetResponseBody(aliasedResponse).SetExternalID(responseID).
+			SetStatus(request.StatusCompleted).SetStream(true).Save(ctx)
+		require.NoError(t, createErr)
+		_, err = client.RequestExecution.Create().
+			SetProjectID(projectEntity.ID).SetRequestID(aliasParent.ID).
+			SetModelID("gpt-5").SetFormat(string(llm.APIFormatOpenAIResponse)).
+			SetRequestBody(aliasedRequest).SetResponseBody(aliasedResponse).
+			SetDataStorageID(primaryStorage.ID).SetStatus(requestexecution.StatusCompleted).
+			SetStream(true).Save(ctx)
 		require.NoError(t, err)
-		requestBody, responseBody, found, err = service.LoadCompletedResponsesSession(ownerCtx, "resp_websocket")
+		requestBody, responseBody, found, err = service.LoadCompletedResponsesSession(ownerCtx, responseID)
 		require.NoError(t, err)
 		require.True(t, found)
 		require.Equal(t, "client-thread:7", shared.ReadCodexRequestMetadata(nil, requestBody).WindowID)
 		require.Equal(t, gjson.GetBytes(nativeRequest, "input").Raw, gjson.GetBytes(requestBody, "input").Raw)
-		require.JSONEq(t, string(nativeResponse), string(responseBody))
+		require.JSONEq(t, string(aliasedResponse), string(responseBody))
 		require.False(t, gjson.GetBytes(requestBody, "previous_response_id").Exists())
 	}
 }
