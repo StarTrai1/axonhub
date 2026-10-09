@@ -106,7 +106,9 @@ thread, with a two-hour lifetime and at most 2,048 entries. Failed aliases are n
 
 Recovery consumes the existing same-channel retry budget. If the replacement identity is also
 explicitly overloaded, identical same-channel replay stops and the existing alternate-channel
-path applies. Exhausted quota, wait hints longer than one minute, user cancellation, official
+path applies. This also covers a fresh selection reporting plain route IDs or omitting the
+route header; the sticky-pair requirement only admits the initial migration. Exhausted quota,
+wait hints longer than one minute, user cancellation, official
 endpoints and already-committed output do not trigger this recovery. It neither decrypts history
 nor guarantees that the relay can supply a healthy upstream route.
 

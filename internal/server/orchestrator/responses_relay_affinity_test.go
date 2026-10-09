@@ -159,6 +159,32 @@ func TestResponsesRejectedRelayAffinitySharesBudget(t *testing.T) {
 	}
 }
 
+func TestResponsesRejectedRelayAffinityStopsPlainRouteOverload(t *testing.T) {
+	for _, raw := range []bool{false, true} {
+		t.Run(fmt.Sprintf("raw=%t", raw), func(t *testing.T) {
+			const demand = "We’re currently experiencing high demand, which may cause temporary errors"
+			first := relayAffinityFailure(http.StatusInternalServerError, demand, "(70605,70605),(411041,411041)")
+			next := relayAffinityFailure(http.StatusInternalServerError, demand, "108877,411041")
+			executor := &responsesReasoningPipelineExecutor{failures: []error{first, next}, events: rejectedReasoningCompactionEvents()}
+			var middleware *responsesRelayAffinityMiddleware
+			_, _, err := runRejectedReasoningPipeline(t, t.Context(), relayAffinityRequest(t), executor, t.Name(), raw, 5,
+				func(*PersistenceState, *PersistentOutboundTransformer) pipeline.Middleware {
+					return &relayReplayTestDestination{}
+				},
+				relayAffinityMiddleware(t, &middleware),
+			)
+			require.Error(t, err)
+			require.Len(t, executor.requests, 2, "a failed migration must not repeat merely because the relay changed its route diagnostic format")
+			require.NotEqual(t, executor.requests[0].Headers.Get("Thread-Id"), executor.requests[1].Headers.Get("Thread-Id"))
+			require.Equal(t, gjson.GetBytes(executor.requests[0].Body, "input").Raw, gjson.GetBytes(executor.requests[1].Body, "input").Raw)
+			for key := range middleware.pending {
+				_, cached := responsesRelayAffinities.Get(key)
+				require.False(t, cached)
+			}
+		})
+	}
+}
+
 func TestResponsesRejectedRelayAffinityOverloadGuards(t *testing.T) {
 	const demand = "We’re currently experiencing high demand, which may cause temporary errors"
 	for _, tc := range []struct {

@@ -186,14 +186,19 @@ func (m *responsesRelayAffinityMiddleware) OnOutboundRawError(ctx context.Contex
 	state.responsesRelayAffinityRetryChannel = 0
 	state.responsesRelayAffinityExhaustedChannel = 0
 	key, ok := m.scope(state.RawProviderRequest)
-	if !ok || !responsesRelayAffinityHistory(state.RawProviderRequest.Body) || !responsesRelayStickyOverload(err, key.provider.model) {
+	if !ok || !responsesRelayAffinityHistory(state.RawProviderRequest.Body) {
 		return
 	}
 	if _, attempted := m.pending[key]; attempted {
-		// Repeating the same exhausted route with the same new identity cannot
-		// recover. Allow the normal alternative-channel path, without burning
-		// the rest of the same-channel budget on identical requests.
-		state.responsesRelayAffinityExhaustedChannel = key.provider.channelID
+		// A fresh selection may report plain route IDs instead of sticky pairs.
+		// It is still a failed migration when the same explicit capacity error
+		// returns. Do not spend the remaining budget replaying that identity.
+		if responsesRelayCapacityOverload(err, key.provider.model) {
+			state.responsesRelayAffinityExhaustedChannel = key.provider.channelID
+		}
+		return
+	}
+	if !responsesRelayStickyOverload(err, key.provider.model) {
 		return
 	}
 	if m.pending == nil {
@@ -206,20 +211,15 @@ func (m *responsesRelayAffinityMiddleware) OnOutboundRawError(ctx context.Contex
 }
 
 func responsesRelayStickyOverload(err error, model string) bool {
-	var failure *httpclient.Error
-	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || !canRetryTransientRateLimit(err) ||
-		!errors.As(err, &failure) || (failure.StatusCode != http.StatusInternalServerError && failure.StatusCode != http.StatusServiceUnavailable) {
+	if !responsesRelayCapacityOverload(err, model) {
 		return false
 	}
-	// Some relays use 500 for capacity errors, but their explicit wait hint has
-	// the same meaning as a 503. Do not rotate around a long cooldown.
-	capacityFailure := *failure
-	capacityFailure.StatusCode = http.StatusServiceUnavailable
-	if !canRetryTransientRateLimit(&capacityFailure) {
+	var failure *httpclient.Error
+	if !errors.As(err, &failure) {
 		return false
 	}
 	// Repeated (selected,selected) pairs are the relay's explicit sticky-route
-	// diagnostic. A generic 500/503 without it is not evidence of stale affinity.
+	// diagnostic. A generic 500/503 without it cannot start a new migration.
 	route := strings.TrimSpace(failure.Headers.Get("X-New-Api-Routed-Channel-Id"))
 	matches := responsesRelayStickyRoutePattern.FindAllStringSubmatch(route, -1)
 	if len(matches) == 0 || len(matches) > 8 {
@@ -232,7 +232,20 @@ func responsesRelayStickyOverload(err error, model string) bool {
 		}
 		parts = append(parts, match[0])
 	}
-	if strings.Join(parts, ",") != route {
+	return strings.Join(parts, ",") == route
+}
+
+func responsesRelayCapacityOverload(err error, model string) bool {
+	var failure *httpclient.Error
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || !canRetryTransientRateLimit(err) ||
+		!errors.As(err, &failure) || (failure.StatusCode != http.StatusInternalServerError && failure.StatusCode != http.StatusServiceUnavailable) {
+		return false
+	}
+	// Some relays use 500 for capacity errors, but their explicit wait hint has
+	// the same meaning as a 503. Do not rotate around a long cooldown.
+	capacityFailure := *failure
+	capacityFailure.StatusCode = http.StatusServiceUnavailable
+	if !canRetryTransientRateLimit(&capacityFailure) {
 		return false
 	}
 	message := strings.TrimSpace(gjson.GetBytes(failure.Body, "error.message").String())
