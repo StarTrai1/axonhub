@@ -30,7 +30,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@v7
         with:
-          go-version: stable
+          go-version-file: .go-version
       - name: Verify Winsock classification and real WSS through SOCKS
         run: go test ./internal/server/orchestrator -run '^(TestWindowsWebSocketConnectionReset|TestWebSocketSOCKSChannelRetry|TestRetryTransportClassification|TestRetryTransportPipeline)$' -count=1 -v
       - name: Verify SOCKS aliases and cancellation on Windows
@@ -83,7 +83,7 @@ jobs:
       - uses: actions/setup-go@v7
         if: matrix.codex == '0.162.0'
         with:
-          go-version: stable
+          go-version-file: .go-version
       - name: Export the gateway retry failure for the real CLI
         if: matrix.codex == '0.162.0'
         run: go test ./internal/server/api -run '^TestCodex162RetryFixture$' -count=1
@@ -115,7 +115,9 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v7
         with:
-          go-version: stable
+          # x/tools v0.48.0 cannot read Go 1.27.2 export data (v5).
+          # Share the verified toolchain with Build, Lint and Release.
+          go-version-file: .go-version
 
       - name: Verify generation and changed Go formatting
         env:
