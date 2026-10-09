@@ -427,7 +427,7 @@ func TestResponsesRejectedRelayAffinityThenReasoning(t *testing.T) {
 			request := relayAffinityRequest(t)
 			executor := &responsesReasoningPipelineExecutor{
 				failures: []error{relayAffinityOverload(), agentRecoveryError("The encrypted content for item rs_source could not be verified. Reason: Encrypted content could not be decrypted or parsed.")},
-				events: rejectedReasoningCompactionEvents(),
+				events:   rejectedReasoningCompactionEvents(),
 			}
 			state, result, err := runRejectedReasoningPipeline(t, ctx, request, executor, "affinity-reasoning-combination", raw, 3,
 				func(*PersistenceState, *PersistentOutboundTransformer) pipeline.Middleware {
@@ -445,7 +445,10 @@ func TestResponsesRejectedRelayAffinityThenReasoning(t *testing.T) {
 			scope, ok := responsesReasoningScope(ctx, state.CurrentCandidate.Channel, executor.requests[1])
 			require.True(t, ok)
 			t.Cleanup(func() { responsesReasoningRecoveries.Remove(scope) })
-			require.Eventually(t, func() bool { _, found := rememberedResponsesReasoningRule(scope, executor.requests[1].Body); return found }, time.Second, time.Millisecond)
+			require.Eventually(t, func() bool {
+				_, found := rememberedResponsesReasoningRule(scope, executor.requests[1].Body)
+				return found
+			}, time.Second, time.Millisecond)
 
 			// A checkpoint created on the recovered session must keep that alias.
 			// Full-history admission only gates a new migration, not this reuse.
@@ -458,7 +461,7 @@ func TestResponsesRejectedRelayAffinityThenReasoning(t *testing.T) {
 			adapter.summaries.SetDefault(remoteCompactionOwnerCacheKey(owner, remoteCompactionCacheKey(ref)), "summary retained on the recovered session")
 			next := &responsesReasoningPipelineExecutor{
 				failures: []error{agentRecoveryError("The encrypted content for item cmp_recovered_session could not be verified. Reason: Encrypted content could not be decrypted or parsed.")},
-				events: rejectedReasoningCompactionEvents(),
+				events:   rejectedReasoningCompactionEvents(),
 			}
 			_, result, err = runRejectedReasoningPipeline(t, ctx, request, next, "affinity-reasoning-combination", raw, 1,
 				func(*PersistenceState, *PersistentOutboundTransformer) pipeline.Middleware {
