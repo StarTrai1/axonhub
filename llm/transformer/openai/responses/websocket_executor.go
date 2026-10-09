@@ -1305,7 +1305,7 @@ func (s *webSocketStream) writeSteer(lease *webSocketLease, message []byte) (boo
 		return false, nil
 	}
 	var control struct {
-		Type string `json:"type"`
+		Type       string `json:"type"`
 		ResponseID string `json:"response_id"`
 	}
 	if json.Unmarshal(message, &control) == nil && control.Type == "response.interrupt" && s.steering.IsTerminalResponse(control.ResponseID) {

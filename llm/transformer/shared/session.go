@@ -22,8 +22,8 @@ type responsesWebSocketSteerContextKey struct{}
 // ResponsesWebSocketSteering forwards mid-turn steering and interrupts to the
 // active upstream Responses WebSocket connection.
 type ResponsesWebSocketSteering struct {
-	events chan []byte
-	ready  atomic.Bool
+	events    chan []byte
+	ready     atomic.Bool
 	terminals ResponsesWebSocketTerminals
 }
 

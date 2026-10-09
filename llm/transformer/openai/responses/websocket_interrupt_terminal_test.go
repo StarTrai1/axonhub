@@ -50,8 +50,8 @@ func TestWebSocketExecutorInterruptSkipsTerminalSteeredResponse(t *testing.T) {
 			executor := NewWebSocketExecutor(nil)
 			stream, err := executor.DoStream(ctx, &httpclient.Request{
 				Method: http.MethodPost,
-				URL: server.URL + "/v1/responses",
-				Body: []byte(fmt.Sprintf(`{"model":%q}`, model)),
+				URL:    server.URL + "/v1/responses",
+				Body:   []byte(fmt.Sprintf(`{"model":%q}`, model)),
 			})
 			require.NoError(t, err)
 			defer stream.Close()

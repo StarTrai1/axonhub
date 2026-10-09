@@ -168,23 +168,23 @@ type responsesWebSocketLane struct {
 }
 
 type responsesWebSocketDispatcher struct {
-	ctx            context.Context
-	cancel         context.CancelFunc
-	conn           *websocket.Conn
-	writer         *responsesWebSocketWriter
-	rawRequest     *http.Request
-	requestTimeout time.Duration
-	process        responsesWebSocketProcessFunc
-	transformError responsesWebSocketErrorFunc
-	active         chan struct{}
-	pending        chan struct{}
-	lanes          map[string]*responsesWebSocketLane
-	responseLanes  map[string]*responsesWebSocketLane
+	ctx               context.Context
+	cancel            context.CancelFunc
+	conn              *websocket.Conn
+	writer            *responsesWebSocketWriter
+	rawRequest        *http.Request
+	requestTimeout    time.Duration
+	process           responsesWebSocketProcessFunc
+	transformError    responsesWebSocketErrorFunc
+	active            chan struct{}
+	pending           chan struct{}
+	lanes             map[string]*responsesWebSocketLane
+	responseLanes     map[string]*responsesWebSocketLane
 	terminalResponses shared.ResponsesWebSocketTerminals
-	mu             sync.Mutex
-	namedStreams   int
-	wg             sync.WaitGroup
-	closeOnce      sync.Once
+	mu                sync.Mutex
+	namedStreams      int
+	wg                sync.WaitGroup
+	closeOnce         sync.Once
 }
 
 func newResponsesWebSocketDispatcher(
