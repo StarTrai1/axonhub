@@ -22,7 +22,7 @@ AxonHub can act as a drop-in replacement for OpenAI endpoints, letting Codex con
    model_provider = "axonhub-responses"
 
    [model_providers.axonhub-responses]
-   name = "AxonHub using Chat Completions"
+   name = "AxonHub Responses"
    base_url = "http://127.0.0.1:8090/v1"
    env_key = "AXONHUB_API_KEY"
    wire_api = "responses"
@@ -55,7 +55,7 @@ server:
 **Note**: Enabling this also ensures that requests from the same trace are prioritized to be sent to the same upstream channel, significantly improving provider-side cache hit rates (e.g., Anthropic Prompt Caching).
 
 #### Testing
-- Send a sample prompt; AxonHub's request logs should show a `/v1/chat/completions` call.
+- Send a sample prompt; AxonHub's request logs should show a `/v1/responses` call.
 - Enable tracing in AxonHub to inspect prompts, responses, and latency.
 
 ### Working with Model Profiles
@@ -101,6 +101,24 @@ For older `axonhub-local-v1` references, AxonHub first uses an existing checkpoi
 The gateway preserves `configuration_update` items without inventing message IDs and retains supplied `client_metadata.parent_response_id` and `guardian_credits_requested`. The default client version for requests without a Codex identity is 0.154.0; an explicit client identity remains authoritative.
 
 Additional quota data retains the reported `normal_model_slug` as metadata, without remapping requests. The passive quota checker does not advertise `x-openai-codex-luna-reserve: 1`: that capability is for clients able to apply a Reserve selection, as specified in the [Codex 0.154.0 usage client](https://github.com/openai/codex/blob/rust-v0.154.0/codex-rs/backend-client/src/client/rate_limit_resets.rs).
+
+### Codex 0.162.0 compatibility
+
+The gateway preserves `partial_answer` message phases and explicit `end_turn: false` through Responses conversion and stream aggregation. Completing one inference does not imply that Codex should end the turn. Base instructions supplied as developer input messages and incremental `additional_tools` declarations retain their history order, including tool-removal notices.
+
+Generated stream failures use `response.failed`, with validated retry timing under `response.error.headers`. Nested WebSocket error advice is retained as well. Existing retry budgets and hard-quota handling still apply. Provider misalignment details, including opaque `review_target` values, survive normal Responses error conversion; hidden/custom error policies continue to omit those details.
+
+Codex 0.162.0 adds custom-provider capability overrides. If the selected AxonHub channels support native compaction or have local compaction bridging enabled, this optional client configuration enables the V2 `compaction_trigger` protocol:
+
+```toml
+[model_providers.axonhub-responses.capabilities]
+remote_compaction = "v2"
+external_web_access = true
+```
+
+`remote_compaction = "unsupported"` keeps compaction in the client. `external_web_access` controls whether Codex may request live web search; it does not grant upstream search or account access. Omitted values retain the client's provider defaults. See the [official capability schema](https://github.com/openai/codex/blob/rust-v0.162.0/codex-rs/model-provider-info/src/capabilities.rs).
+
+The fallback Codex identity is 0.162.0. Explicit client identity and dynamic stable-version refresh remain authoritative. Hosted checks compare 0.161.0 and 0.162.0 with gpt-6-sol and gpt-6.1-sol against loopback fixtures, including a failure frame produced by the gateway itself. They do not establish provider account availability.
 
 ### Troubleshooting
 - **Codex reports authentication errors**: ensure `AXONHUB_API_KEY` is exported in the same shell session that launches Codex.

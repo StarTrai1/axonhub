@@ -22,9 +22,13 @@ import (
 
 func newResponsesStreamAdapter(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent], systemService *biz.SystemService) (streams.Stream[*httpclient.StreamEvent], StreamErrorEncoder) {
 	var nextSequence atomic.Int64
+	var responseID atomic.Value
 	stream = streams.MapErr(stream, func(event *httpclient.StreamEvent) (*httpclient.StreamEvent, error) {
 		if seq := gjson.GetBytes(event.Data, "sequence_number"); seq.Type == gjson.Number && seq.Int() >= nextSequence.Load() {
 			nextSequence.Store(seq.Int() + 1)
+		}
+		if id := gjson.GetBytes(event.Data, "response.id"); id.Type == gjson.String && id.String() != "" {
+			responseID.Store(id.String())
 		}
 		return applyResponsesEventErrorPolicy(ctx, event, systemService)
 	})
@@ -46,6 +50,23 @@ func newResponsesStreamAdapter(ctx context.Context, stream streams.Stream[*httpc
 			code = firstNonEmpty(upstreamErrorCodeFromHTTP(httpErr), code)
 			requestID = upstreamRequestIDFromHTTP(httpErr)
 		}
+		advice := retryAdviceEventHeaders(upstreamRetryAdvice(err, streamErrorStatus(err)))
+		detail := &responses.Error{Code: code, Message: message, Type: "server_error", RequestID: streamErrorRequestID(ctx, requestID)}
+		if responseErr != nil {
+			detail.Type = responseErr.Detail.Type
+			detail.Param = responseErr.Detail.Param
+			detail.LimitWindowMinutes = responseErr.Detail.LimitWindowMinutes
+			detail.Misalignment = responseErr.Detail.Misalignment
+		}
+		if len(advice) > 0 {
+			detail.Headers, _ = json.Marshal(advice)
+		}
+		failed := &responses.Response{Object: "response", Status: new("failed"), Output: []responses.Item{}, Error: detail}
+		if id := responseID.Load(); id != nil {
+			failed.ID = id.(string)
+		}
+		// Codex parses retry advice from response.failed.response.error.headers.
+		// Retain the old top-level diagnostics for other Responses clients.
 		data, marshalErr := json.Marshal(struct {
 			responses.StreamEvent
 
@@ -54,12 +75,12 @@ func newResponsesStreamAdapter(ctx context.Context, stream streams.Stream[*httpc
 			Param     *string           `json:"param"`
 			RequestID string            `json:"request_id,omitempty"`
 		}{StreamEvent: responses.StreamEvent{
-			Type: responses.StreamEventTypeError, SequenceNumber: int(nextSequence.Load()), Code: code, Message: message,
-		}, Status: streamErrorStatus(err), Headers: retryAdviceEventHeaders(upstreamRetryAdvice(err, streamErrorStatus(err))), RequestID: streamErrorRequestID(ctx, requestID)})
+			Type: responses.StreamEventTypeResponseFailed, Response: failed, SequenceNumber: int(nextSequence.Load()), Code: code, Message: message,
+		}, Status: streamErrorStatus(err), Headers: advice, RequestID: streamErrorRequestID(ctx, requestID)})
 		if marshalErr != nil {
 			return nil, marshalErr
 		}
-		return &httpclient.StreamEvent{Type: "error", Data: data}, nil
+		return &httpclient.StreamEvent{Type: "response.failed", Data: data}, nil
 	}
 	return stream, encodeErr
 }
@@ -95,6 +116,12 @@ func applyResponsesEventErrorPolicy(ctx context.Context, event *httpclient.Strea
 	}}
 	err := applyUpstreamErrorPolicy(ctx, pipeline.WrapUpstreamError(responseErr), systemService)
 	data, rewriteErr := sjson.SetBytes(event.Data, messagePath, orchestrator.ExtractErrorMessage(err))
+	if rewriteErr != nil {
+		return nil, rewriteErr
+	}
+	// These provider details can contain explanations and opaque review targets.
+	// Keep hidden/custom stream errors consistent with converted HTTP errors.
+	data, rewriteErr = sjson.DeleteBytes(data, prefix+"misalignment")
 	if rewriteErr != nil {
 		return nil, rewriteErr
 	}

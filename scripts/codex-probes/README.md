@@ -2,7 +2,7 @@
 
 两个 Python 入口直接调度**本机安装的官方 Codex CLI**。每次均为新 `codex exec --json --ephemeral`，不用 resume，不拼装/伪造 Codex 的 User-Agent、身份、会话头或 TLS 指纹。协议由所安装的 CLI 生成；这保证使用真实客户端，**不代表与交互式 Codex 的工具列表、指令或配置逐字节相同，也不保证不被渠道封禁**。
 
-运行要求：Linux（使用 `/proc`、进程组和 `flock`），Python 3.11+，Codex CLI 0.155.1+。本实现已核对官方 `rust-v0.155.1` → `rust-v0.161.0` 源码，兼容 0.156.1、0.157.0、0.157.1、0.158.0、0.159.0、0.159.2、0.159.3 、0.160.0、0.160.1 和 0.161.0。升级后先运行 `--check` 并检查官方变更。Python 仅使用标准库。
+运行要求：Linux（使用 `/proc`、进程组和 `flock`），Python 3.11+，Codex CLI 0.155.1+。本实现已核对官方 `rust-v0.155.1` → `rust-v0.162.0` 源码，兼容 0.156.1、0.157.0、0.157.1、0.158.0、0.159.0、0.159.2、0.159.3 、0.160.0、0.160.1 、0.161.0 和 0.162.0。升级后先运行 `--check` 并检查官方变更。Python 仅使用标准库。
 
 ## 准备
 
@@ -154,7 +154,7 @@ python3 scripts/codex-probes/keepalive.py \
 - 官方 [non-interactive 模式](https://developers.openai.com/codex/noninteractive)：`exec`、JSONL 完成事件与 `--ephemeral`。
 - [Codex 配置](https://developers.openai.com/codex/config-reference) 与 [0.155.1 exec CLI](https://github.com/openai/codex/blob/rust-v0.155.1/codex-rs/exec/src/cli.rs)、[JSONL 事件](https://github.com/openai/codex/blob/rust-v0.155.1/codex-rs/exec/src/exec_events.rs)、[配置 schema](https://github.com/openai/codex/blob/rust-v0.155.1/codex-rs/core/config.schema.json)。检索日期 2026-09-19。
 - 简单题主题参考 NASA [天空为什么是蓝色](https://spaceplace.nasa.gov/blue-sky/) 与 USGS [水循环](https://www.usgs.gov/water-science-school/water-cycle)，问题为重新编写，没有复制“十万个为什么”书籍内容。
-- GitHub Actions 用 fake CLI 验证新会话、清理、超时/中断、错误分类、阶段切换、计数、定时去重和不触碰外部文件；hosted matrix 固定下载官方 0.160.1 和 0.161.0，分别使用 gpt-6-sol、gpt-6.1-sol，仅连接 loopback 模拟服务器验证真实 CLI 五并发、取消及完成事件与用量，不调用真实上游。离线测试不能证明提供方额度窗口行为或封禁策略。
+- GitHub Actions 用 fake CLI 验证新会话、清理、超时/中断、错误分类、阶段切换、计数、定时去重和不触碰外部文件；hosted matrix 固定下载官方 0.161.0 和 0.162.0，分别使用 gpt-6-sol、gpt-6.1-sol，仅连接 loopback 模拟服务器验证真实 CLI 五并发、取消及完成事件与用量，不调用真实上游。离线测试不能证明提供方额度窗口行为或封禁策略。
 
 ### Codex 0.157.0
 
@@ -213,3 +213,9 @@ Sol 6.1 的推理档位为 low/medium/high/xhigh/max，默认 medium；不使用
 API key 模型发现默认开启，但仅支持官方默认端点或显式 `model_catalog_url`，当前自定义网关配置无需改变标准 `/models`。请求 JSON 字段重排、工具尝试元数据、目标消息和权威恢复历史的调整不新增网关路由或 item 类型；Windows/MCP/TUI/Bedrock 客户端功能按现有协议兼容。
 
 缺省身份版本更新为 0.161.0，动态稳定版刷新及显式身份优先级继续生效。托管回环矩阵为 0.160.1 / 0.161.0 × gpt-6-sol / gpt-6.1-sol，检查五并发、取消清理、完成事件、用量，以及包含程序选择的响应。只连接本地模拟服务，不验证真实项目的 Daybreak 权限或生产部署。
+
+### Codex 0.162.0
+
+已核对两个精确官方 tag：前向 227 个提交、反向 2 个提交，完整树差异 1,657 个文件。基础指令改为 developer input 消息；增量工具目录使用多个 additional_tools 与普通 developer 移除通知；新增 partial_answer 阶段并保留 end_turn=false 的继续推理语义。
+
+网关补齐 end_turn 的双向转换和聚合，生成 response.failed 终态，保留嵌套 Retry-After，并透传正常错误策略下的 misalignment review_target。缺省身份为 0.162.0。真实 CLI 0.162.0 检查额外覆盖部分回答续传，以及读取网关 Go 测试导出的失败帧后至少等待 3 秒再重试；测试临时将 stream_max_retries 设为 1，不改变日常探测器的零重试预算。所有推理连接仅指向回环模拟服务。

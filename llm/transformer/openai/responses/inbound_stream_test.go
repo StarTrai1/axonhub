@@ -500,7 +500,7 @@ func TestInboundTransformer_TransformStream_EmitsUpstreamErrorEvents(t *testing.
 		{
 			name:      "emits error event before response starts",
 			source:    &errorResponseStream{err: errors.New("upstream boom")},
-			wantTypes: []StreamEventType{StreamEventTypeError},
+			wantTypes: []StreamEventType{StreamEventTypeResponseFailed},
 			assert: func(t *testing.T, events []StreamEvent) {
 				require.Equal(t, "stream_error", events[0].Code)
 				require.Equal(t, "upstream boom", events[0].Message)

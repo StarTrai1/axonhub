@@ -1093,13 +1093,13 @@ func TestWriteSSEStream_MessageStopIsNotIncomplete(t *testing.T) {
 	require.NotContains(t, body, "event:error")
 }
 
-// parseSSEErrorEvent extracts the JSON payload of the first "error" SSE event.
+// parseSSEErrorEvent extracts the first protocol failure event.
 func parseSSEErrorEvent(t *testing.T, body string) map[string]any {
 	t.Helper()
 
 	lines := strings.Split(body, "\n")
 	for i, line := range lines {
-		if !strings.HasPrefix(line, "event:error") {
+		if !strings.HasPrefix(line, "event:error") && !strings.HasPrefix(line, "event:response.failed") {
 			continue
 		}
 

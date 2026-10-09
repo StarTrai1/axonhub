@@ -37,7 +37,7 @@ func TestResponsesStream_ProtocolError_when_Interrupted(t *testing.T) {
 				// Then the partial output is followed by exactly one Responses error.
 				require.Equal(t, 2, strings.Count(w.Body.String(), "data:"))
 				event := parseSSEErrorEvent(t, w.Body.String())
-				require.Equal(t, "error", event["type"])
+				require.Equal(t, "response.failed", event["type"])
 				require.Equal(t, float64(42), event["sequence_number"])
 				require.NotEmpty(t, event["code"])
 				require.NotEmpty(t, event["message"])
@@ -69,7 +69,7 @@ func TestResponsesStream_ContextOutcome_when_Interrupted(t *testing.T) {
 				// Then cancellation is silent and a server deadline is a protocol error.
 				if deadline {
 					event := parseSSEErrorEvent(t, w.Body.String())
-					require.Equal(t, "error", event["type"])
+					require.Equal(t, "response.failed", event["type"])
 					require.Equal(t, float64(5), event["sequence_number"])
 				} else {
 					require.NotContains(t, w.Body.String(), "event:error")
@@ -94,7 +94,7 @@ func TestResponsesStream_Policy_when_Interrupted(t *testing.T) {
 				h.writeSSEStream(c, stream)
 				// Then redaction preserves the transport classification.
 				event := parseSSEErrorEvent(t, w.Body.String())
-				require.Equal(t, "error", event["type"])
+				require.Equal(t, "response.failed", event["type"])
 				require.Equal(t, orchestrator.ErrCodeUpstreamStreamInterrupted, event["code"])
 				expected := biz.DefaultUpstreamErrorMessage
 				if mode == biz.UpstreamErrorModeCustom {

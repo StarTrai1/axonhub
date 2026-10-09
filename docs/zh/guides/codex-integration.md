@@ -22,7 +22,7 @@ AxonHub 可以作为 OpenAI 接口的直接替代方案，使 Codex 能够通过
    model_provider = "axonhub-responses"
 
    [model_providers.axonhub-responses]
-   name = "AxonHub using Chat Completions"
+   name = "AxonHub Responses"
    base_url = "http://127.0.0.1:8090/v1"
    env_key = "AXONHUB_API_KEY"
    wire_api = "responses"
@@ -55,7 +55,7 @@ server:
 **提示**：开启此功能后，AxonHub 会将同一个 Trace 的请求优先转发到同一个上游渠道，从而大幅提高提供商端的缓存命中率（例如 Anthropic 的 Prompt Caching）。
 
 #### 验证
-- 发送测试 Prompt，AxonHub 日志中应出现 `/v1/chat/completions` 调用。
+- 发送测试 Prompt，AxonHub 日志中应出现 `/v1/responses` 调用。
 - 启用 AxonHub 的追踪功能可查看提示词、回复及延迟信息。
 
 ### 使用模型配置文件
@@ -101,6 +101,24 @@ Codex 的 5 小时、7 天及上游已报告的 GPT-Reserve 窗口显示浏览�
 网关原位保留 `configuration_update`，不为其补造消息 ID，并保留客户端传入的 `client_metadata.parent_response_id` 和 `guardian_credits_requested`。没有 Codex 身份信息的请求默认使用 0.154.0；客户端明确传入的身份信息仍优先。
 
 附加配额数据保留上游报告的 `normal_model_slug` 元数据，不据此重映射请求模型。被动配额查询不声明 `x-openai-codex-luna-reserve: 1`；该能力头适用于能执行 Reserve 选择的客户端，见 [Codex 0.154.0 配额客户端](https://github.com/openai/codex/blob/rust-v0.154.0/codex-rs/backend-client/src/client/rate_limit_resets.rs)。
+
+### Codex 0.162.0 兼容
+
+网关在 Responses 转换和流聚合中保留 `partial_answer` 阶段及显式的 `end_turn: false`。一次推理完成不等于 Codex 当前轮次结束。放在 developer 输入消息中的基础指令、增量 `additional_tools` 声明和工具移除通知保持原有历史顺序。
+
+网关生成的流终止错误使用 `response.failed`，合法重试时间位于 `response.error.headers`，也保留 WebSocket 嵌套错误中的重试提示。原有重试预算和硬额度处理继续生效。正常 Responses 错误转换保留提供商的 misalignment 详情及不透明 `review_target`；隐藏/自定义错误策略继续省略这些详情。
+
+Codex 0.162.0 新增自定义提供商能力覆盖。如果所选 AxonHub 渠道支持原生压缩或已启用本地压缩桥接，可选用以下客户端配置启用 V2 `compaction_trigger` 协议：
+
+```toml
+[model_providers.axonhub-responses.capabilities]
+remote_compaction = "v2"
+external_web_access = true
+```
+
+`remote_compaction = "unsupported"` 表示在客户端执行压缩。`external_web_access` 控制 Codex 是否可以请求实时网页搜索，不授予上游搜索能力或账户权限；省略字段时保留客户端的提供商默认值。详见[官方能力定义](https://github.com/openai/codex/blob/rust-v0.162.0/codex-rs/model-provider-info/src/capabilities.rs)。
+
+缺省 Codex 身份版本为 0.162.0，显式客户端身份和动态稳定版刷新继续优先。托管检查使用 0.161.0 / 0.162.0 × gpt-6-sol / gpt-6.1-sol 回环矩阵，包含网关自身生成的失败帧，不代表真实提供商账户可用性验证。
 
 ### 常见问题
 - **Codex 认证失败**：确保在启动 Codex 的同一 shell 会话中设置了 `AXONHUB_API_KEY`。

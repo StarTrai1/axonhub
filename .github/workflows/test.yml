@@ -55,10 +55,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        codex: ['0.160.1', '0.161.0']
+        codex: ['0.161.0', '0.162.0']
         model: [gpt-6-sol, gpt-6.1-sol]
     env:
       PROBE_TEST_MODEL: ${{ matrix.model }}
+      PROBE_TEST_CODEX_VERSION: ${{ matrix.codex }}
+      AXONHUB_CODEX_RETRY_FIXTURE: /tmp/codex-retry-failure.sse
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -78,6 +80,13 @@ jobs:
           codex_binary=$(find "$RUNNER_TEMP/codex-fixture" -type f -path '*/bin/codex' -print -quit)
           test -n "$codex_binary"
           echo "PROBE_TEST_CODEX=$codex_binary" >> "$GITHUB_ENV"
+      - uses: actions/setup-go@v7
+        if: matrix.codex == '0.162.0'
+        with:
+          go-version: stable
+      - name: Export the gateway retry failure for the real CLI
+        if: matrix.codex == '0.162.0'
+        run: go test ./internal/server/api -run '^TestCodex162RetryFixture$' -count=1
       - name: Verify real CLI concurrency against a local mock
         run: python -m unittest discover -s scripts/codex-probes -p 'test_cli_integration.py' -v
 

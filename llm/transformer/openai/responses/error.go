@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 
+	"golang.org/x/net/http/httpguts"
+
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 )
@@ -21,6 +23,7 @@ func responseErrorFromResponse(response *Response) *llm.ResponseError {
 
 	detail := llm.ErrorDetail{RequestID: response.RequestID}
 	if response.Error != nil {
+		detail.Misalignment = cloneRaw(response.Error.Misalignment)
 		detail.LimitWindowMinutes = response.Error.LimitWindowMinutes
 		detail.Code = response.Error.Code
 		detail.Message = response.Error.Message
@@ -59,6 +62,7 @@ func responseErrorFromStreamEvent(event *StreamEvent) *llm.ResponseError {
 		detail.Param = *event.Param
 	}
 	if event.Error != nil {
+		detail.Misalignment = cloneRaw(event.Error.Misalignment)
 		detail.LimitWindowMinutes = event.Error.LimitWindowMinutes
 		if event.Error.Code != "" {
 			detail.Code = event.Error.Code
@@ -120,8 +124,20 @@ func responseErrorCause(result *llm.ResponseError, source *Error, headers http.H
 		wire.StatusCode = source.StatusCode
 		wire.ResetsAt = source.ResetsAt
 		wire.ResetsInSeconds = source.ResetsInSeconds
+		wire.Misalignment = cloneRaw(source.Misalignment)
+		var nested map[string]json.RawMessage
+		if json.Unmarshal(source.Headers, &nested) == nil {
+			if headers == nil {
+				headers = make(http.Header)
+			}
+			// Valid nested advice wins over the event envelope. Invalid optional
+			// values leave the outer advice intact, as in Codex 0.162.0.
+			for name, values := range httpclient.RetryAdviceHeaders(responseErrorHeaders(nested)) {
+				headers[name] = values
+			}
+		}
 	}
-	if len(headers) == 0 && len(wire.ResetsAt) == 0 && len(wire.ResetsInSeconds) == 0 {
+	if len(headers) == 0 && len(wire.ResetsAt) == 0 && len(wire.ResetsInSeconds) == 0 && len(wire.Misalignment) == 0 {
 		return nil
 	}
 	body, err := json.Marshal(struct {
@@ -136,7 +152,7 @@ func responseErrorCause(result *llm.ResponseError, source *Error, headers http.H
 func responseErrorHeaders(values map[string]json.RawMessage) http.Header {
 	headers := make(http.Header)
 	for name, raw := range values {
-		if name == "" || len(name) > 128 || len(raw) > 4096 || strings.ContainsAny(name, "\r\n:\t ") || strings.TrimSpace(string(raw)) == "null" {
+		if !httpguts.ValidHeaderFieldName(name) || len(name) > 128 || len(raw) > 4096 || strings.TrimSpace(string(raw)) == "null" {
 			continue
 		}
 		var value string
@@ -152,8 +168,8 @@ func responseErrorHeaders(values map[string]json.RawMessage) http.Header {
 				value = number.String()
 			}
 		}
-		if !strings.ContainsAny(value, "\r\n") {
-			headers.Set(name, value)
+		if httpguts.ValidHeaderFieldValue(value) {
+			headers.Add(name, value)
 		}
 	}
 	return headers

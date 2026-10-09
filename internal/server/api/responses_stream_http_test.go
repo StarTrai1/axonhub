@@ -125,10 +125,7 @@ func TestResponsesStream_HTTPReset_when_ContentDelivered(t *testing.T) {
 				// Then content is preserved, there is one failure and no replay.
 				require.Contains(t, string(body), "hello")
 				require.Equal(t, int32(1), attempts.Load())
-				terminal := "error"
-				if conversion {
-					terminal = "response.failed"
-				}
+				terminal := "response.failed"
 				require.Equal(t, 1, strings.Count(string(body), "event:"+terminal+"\n"))
 				decoder := httpclient.NewDefaultSSEDecoder(context.Background(), io.NopCloser(strings.NewReader(string(body))))
 				sequence := int64(-1)

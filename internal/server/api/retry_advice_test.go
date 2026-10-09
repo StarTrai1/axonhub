@@ -35,6 +35,7 @@ func TestUpstreamRetryAdviceValidation(t *testing.T) {
 		{"nan", []string{"NaN"}, ""},
 		{"infinite", []string{"+Inf"}, ""},
 		{"injection", []string{"12\r\nX-Secret: value"}, ""},
+		{"surrounding line breaks", []string{"\n12\n"}, ""},
 		{"duplicate", []string{"1", "2"}, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -96,6 +97,11 @@ func TestRetryAdviceSurvivesErrorPolicyAndDownstreamTransports(t *testing.T) {
 					require.NoError(t, err)
 					require.Equal(t, int64(status), gjson.GetBytes(event.Data, "status").Int())
 					require.Equal(t, "12", gjson.GetBytes(event.Data, "headers.retry-after").String())
+					require.Equal(t, "response.failed", event.Type)
+					require.Equal(t, "failed", gjson.GetBytes(event.Data, "response.status").String())
+					require.Equal(t, "12", gjson.GetBytes(event.Data, "response.error.headers.retry-after").String())
+					require.Equal(t, "13000", gjson.GetBytes(event.Data, "response.error.headers.x-ms-retry-after-ms").String())
+					require.Equal(t, expectedMessage, gjson.GetBytes(event.Data, "response.error.message").String())
 					require.Equal(t, "server_is_overloaded", gjson.GetBytes(event.Data, "code").String())
 					require.Equal(t, expectedMessage, gjson.GetBytes(event.Data, "message").String())
 					require.NotContains(t, string(event.Data), "private-cookie")

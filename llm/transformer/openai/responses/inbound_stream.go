@@ -262,6 +262,9 @@ func (s *responsesInboundStream) Next() bool {
 	if len(chunk.ResponsesAccessPrograms) > 0 {
 		s.aggregator.accessPrograms = cloneRaw(chunk.ResponsesAccessPrograms)
 	}
+	if chunk.ResponsesEndTurn != nil {
+		s.aggregator.endTurn = chunk.ResponsesEndTurn
+	}
 
 	if len(chunk.TransformerMetadata) > 0 {
 		s.mergeTransformerMetadata(chunk.TransformerMetadata)
@@ -1470,34 +1473,29 @@ func (s *responsesInboundStream) closeCurrentOutputItem() error {
 
 func (s *responsesInboundStream) emitStreamErrorEvent(err error) error {
 	code, message := classifyStreamError(err)
-	var providerError *Error
+	response := s.buildFailedResponse(code, message)
 	if responseErr, ok := errors.AsType[*llm.ResponseError](err); ok {
-		providerError = &Error{
+		response.Error = &Error{
 			Type: responseErr.Detail.Type, Code: code, Message: message,
 			LimitWindowMinutes: responseErr.Detail.LimitWindowMinutes,
+			Misalignment: cloneRaw(responseErr.Detail.Misalignment),
+			Param: responseErr.Detail.Param, RequestID: responseErr.Detail.RequestID,
 		}
 	}
-
-	if s.hasResponseCreated {
-		response := s.buildFailedResponse(code, message)
-		if providerError != nil {
-			response.Error = providerError
+	if raw, ok := errors.AsType[*httpclient.Error](err); ok && (raw.StatusCode == 429 || raw.StatusCode == 503) {
+		if advice := httpclient.RetryAdviceHeaders(raw.Headers); len(advice) > 0 {
+			values := make(map[string]string, len(advice))
+			for name := range advice {
+				values[strings.ToLower(name)] = advice.Get(name)
+			}
+			response.Error.Headers, _ = json.Marshal(values)
 		}
-		if err := s.enqueueEvent(&StreamEvent{
-			Type:     StreamEventTypeResponseFailed,
-			Response: response,
-		}); err != nil {
-			return err
-		}
-	} else {
-		if err := s.enqueueEvent(&StreamEvent{
-			Type:    StreamEventTypeError,
-			Error:   providerError,
-			Code:    code,
-			Message: message,
-		}); err != nil {
-			return err
-		}
+	}
+	if err := s.enqueueEvent(&StreamEvent{
+		Type: StreamEventTypeResponseFailed, Response: response,
+		Code: code, Message: message,
+	}); err != nil {
+		return err
 	}
 
 	s.errorEventEmitted = true

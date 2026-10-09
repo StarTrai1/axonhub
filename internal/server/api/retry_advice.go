@@ -3,9 +3,7 @@ package api
 import (
 	"encoding/json"
 	"errors"
-	"math"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -45,32 +43,7 @@ func upstreamRetryAdvice(err error, status int) http.Header {
 		}
 	}
 
-	result := make(http.Header)
-	for name, values := range raw.Headers {
-		switch strings.ToLower(name) {
-		case "retry-after", "retry-after-ms", "x-ms-retry-after-ms":
-		default:
-			continue
-		}
-		if len(values) != 1 {
-			continue
-		}
-		value := strings.TrimSpace(values[0])
-		if len(value) == 0 || len(value) > 128 {
-			continue
-		}
-		if strings.EqualFold(name, "Retry-After") {
-			if date, parseErr := http.ParseTime(value); parseErr == nil {
-				result.Set(name, date.UTC().Format(http.TimeFormat))
-				continue
-			}
-		}
-		amount, parseErr := strconv.ParseFloat(value, 64)
-		if parseErr == nil && !math.IsNaN(amount) && !math.IsInf(amount, 0) && amount >= 0 {
-			result.Set(name, strconv.FormatFloat(amount, 'f', -1, 64))
-		}
-	}
-	return result
+	return httpclient.RetryAdviceHeaders(raw.Headers)
 }
 
 func retryAdviceEventHeaders(headers http.Header) map[string]string {

@@ -724,6 +724,8 @@ type Response struct {
 	// ResponsesAccessPrograms preserves the upstream selection, including an
 	// explicit null, only when converting back to the Responses protocol.
 	ResponsesAccessPrograms json.RawMessage `json:"-"`
+	// ResponsesEndTurn distinguishes a completed inference from a completed turn.
+	ResponsesEndTurn *bool `json:"-"`
 
 	// A list of chat completion choices. Can be more than one if `n` is greater
 	// than 1.
@@ -1017,6 +1019,8 @@ func (e ResponseError) Error() string {
 type ErrorDetail struct {
 	// LimitWindowMinutes is provider quota metadata consumed by Codex 0.159.
 	LimitWindowMinutes json.RawMessage `json:"limit_window_minutes,omitempty"`
+	// Misalignment retains the provider's opaque review target and continuation details.
+	Misalignment json.RawMessage `json:"misalignment,omitempty"`
 
 	Code      string `json:"code,omitempty"`
 	Message   string `json:"message"`

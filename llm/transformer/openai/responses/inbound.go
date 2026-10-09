@@ -120,6 +120,7 @@ type ResponseError struct {
 type ResponseErrorDetail struct {
 	// LimitWindowMinutes is provider quota metadata consumed by Codex 0.159.
 	LimitWindowMinutes json.RawMessage `json:"limit_window_minutes,omitempty"`
+	Misalignment json.RawMessage `json:"misalignment,omitempty"`
 
 	Message string `json:"message"`
 	Type    string `json:"type"`
@@ -149,6 +150,7 @@ func (t *InboundTransformer) TransformError(ctx context.Context, rawErr error) *
 		errResp := ResponseError{
 			Error: ResponseErrorDetail{
 				LimitWindowMinutes: llmErr.Detail.LimitWindowMinutes,
+				Misalignment: cloneRaw(llmErr.Detail.Misalignment),
 
 				Message: llmErr.Detail.Message,
 				Type:    llmErr.Detail.Type,
@@ -1328,6 +1330,7 @@ func attachAnnotationsToFirstTextItem(items []Item, annotations []llm.Annotation
 func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 	resp := &Response{
 		AccessPrograms:     cloneRaw(chatResp.ResponsesAccessPrograms),
+		EndTurn: chatResp.ResponsesEndTurn,
 		Object:             "response",
 		ID:                 chatResp.ID,
 		Model:              chatResp.Model,

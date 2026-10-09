@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import tempfile
 import unittest
+from unittest import mock
 
 from probe_common import OwnedState, Runner
 from test_probes import args_for
@@ -14,7 +15,19 @@ from test_probes import args_for
 @unittest.skipUnless(os.environ.get("PROBE_TEST_CODEX"), "real CLI fixture runs only in hosted CI")
 class CLIIntegrationTest(unittest.IsolatedAsyncioTestCase):
     async def test_completed_turn_preserves_jsonl_usage(self):
+        await self.completed_turn()
+
+    @unittest.skipUnless(os.environ.get("PROBE_TEST_CODEX_VERSION") == "0.162.0", "requires partial_answer support")
+    async def test_partial_answer_continues_before_final_answer(self):
+        await self.completed_turn(partial=True)
+
+    @unittest.skipUnless(os.environ.get("PROBE_TEST_CODEX_VERSION") == "0.162.0", "requires streamed Retry-After support")
+    async def test_gateway_retry_failure_obeys_server_delay(self):
+        await self.completed_turn(retry=True)
+
+    async def completed_turn(self, *, retry=False, partial=False):
         requests = []
+        arrivals = []
         errors = []
         model = os.environ.get("PROBE_TEST_MODEL", "gpt-6-sol")
         message = {"id": "msg_fixture", "type": "message", "role": "assistant", "status": "completed",
@@ -37,6 +50,19 @@ class CLIIntegrationTest(unittest.IsolatedAsyncioTestCase):
         ]
         payload = "".join(f"event: {event['type']}\ndata: {json.dumps({**event, 'sequence_number': index})}\n\n"
                           for index, event in enumerate(events)).encode()
+        first_payload = payload
+        if retry:
+            first_payload = Path(os.environ["AXONHUB_CODEX_RETRY_FIXTURE"]).read_bytes()
+        elif partial:
+            partial_events = json.loads(json.dumps(events))
+            for event in partial_events:
+                if event.get("item", {}).get("type") == "message":
+                    event["item"]["phase"] = "partial_answer"
+                if event["type"] == "response.completed":
+                    event["response"]["end_turn"] = False
+                    event["response"]["output"][0]["phase"] = "partial_answer"
+            first_payload = "".join(f"event: {event['type']}\ndata: {json.dumps({**event, 'sequence_number': index})}\n\n"
+                                    for index, event in enumerate(partial_events)).encode()
 
         async def respond(reader, writer):
             try:
@@ -46,8 +72,10 @@ class CLIIntegrationTest(unittest.IsolatedAsyncioTestCase):
                 body = await reader.readexactly(int(parsed.get("content-length", "0")))
                 if lines[0].startswith("POST /v1/responses "):
                     requests.append((parsed, json.loads(body)))
+                    arrivals.append(asyncio.get_running_loop().time())
+                    current_payload = first_payload if len(requests) == 1 else payload
                     writer.write(b"HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nConnection: close\r\nContent-Length: "
-                                 + str(len(payload)).encode() + b"\r\n\r\n" + payload)
+                                 + str(len(current_payload)).encode() + b"\r\n\r\n" + current_payload)
                 else:
                     writer.write(b"HTTP/1.1 404 Not Found\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}")
                 await writer.drain()
@@ -69,14 +97,27 @@ class CLIIntegrationTest(unittest.IsolatedAsyncioTestCase):
                     args.timeout = 90
                     runner = Runner(args, state, "synthetic-test-key")
                     await runner.check_codex()
-                    outcome = await runner.run({"id": "completed", "prompt": "Reply OK."}, "low")
+                    from probe_common import config_text
+                    def retry_config(*values):
+                        return config_text(*values).replace("stream_max_retries = 0", "stream_max_retries = 1")
+                    with mock.patch("probe_common.config_text", side_effect=retry_config if retry else config_text):
+                        outcome = await runner.run({"id": "completed", "prompt": "Reply OK."}, "low")
                     self.assertEqual(outcome.status, "success", outcome.error)
                     self.assertEqual(outcome.returncode, 0)
                     self.assertTrue(outcome.thread_id)
-                    self.assertEqual(outcome.usage.get("input_tokens"), 11)
-                    self.assertEqual(outcome.usage.get("cached_input_tokens"), 3)
-                    self.assertEqual(outcome.usage.get("output_tokens"), 2)
-                    self.assertEqual(len(requests), 1)
+                    multiplier = 2 if partial else 1
+                    self.assertEqual(outcome.usage.get("input_tokens"), 11 * multiplier)
+                    self.assertEqual(outcome.usage.get("cached_input_tokens"), 3 * multiplier)
+                    self.assertEqual(outcome.usage.get("output_tokens"), 2 * multiplier)
+                    self.assertEqual(len(requests), 2 if retry or partial else 1)
+                    if retry:
+                        self.assertGreaterEqual(arrivals[1] - arrivals[0], 2.7)
+                    if partial:
+                        history = requests[1][1]["input"]
+                        self.assertTrue(any(item.get("phase") == "partial_answer" for item in history))
+                    if os.environ.get("PROBE_TEST_CODEX_VERSION") == "0.162.0":
+                        self.assertNotIn("instructions", requests[0][1])
+                        self.assertTrue(any(item.get("role") == "developer" for item in requests[0][1]["input"]))
                     self.assertEqual(requests[0][0]["authorization"].lower(), "bearer synthetic-test-key")
                     self.assertEqual(requests[0][1]["model"], model)
                     self.assertNotIn("access_programs", requests[0][1])

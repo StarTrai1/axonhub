@@ -306,7 +306,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		if ext.Request == nil {
 			ext.Request = &llm.OpenAIResponsesRequestExtensions{}
 		}
-		if len(reqCopy.Tools) == 0 && len(ext.Request.RawInputItems) == 0 {
+		if len(reqCopy.Tools) == 0 && len(ext.Request.RawInputItems) == 0 && reqCopy.PreviousResponseID == nil {
 			// Codex 0.151.0 hashes synthesized Responses Lite prefix items within
 			// the thread so retries and resumed sessions preserve their identity.
 			itemNamespace := uuid.NewSHA1(uuid.NameSpaceOID, []byte(requestThreadID))
