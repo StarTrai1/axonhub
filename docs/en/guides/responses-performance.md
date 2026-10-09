@@ -82,11 +82,41 @@ The rule is scoped to the current request and channel; it does not disable
 encrypted reasoning for later requests. Generic validation errors do not trigger
 it, and it consumes the existing same-channel retry budget.
 
-Native or local compaction does not convert encrypted agent messages generated afterward.
-Visible delivery labels are not substitutes for encrypted message bodies, and later final
-reports do not prove that every interim message is covered. When a destination explicitly
-rejects those bodies, the gateway retains them and returns the error. A complete migration
-requires a source resource that can read the ciphertext or an explicitly agreed content recovery.
+### Portable agent messages
+
+For authenticated Codex requests, the dedicated `message` parameter of `agents` and
+`collaboration` messaging tools uses gateway encryption. AxonHub requests that parameter
+as plaintext, then seals the exact returned text with AES-GCM before delivering the tool
+call to the client. Argument fragments are withheld until the complete sealed call is ready.
+Receiving agent messages and replayed sender calls are opened before upstream execution,
+including native compaction and local compaction recovery. Other tools and encrypted reasoning
+keep their existing behavior. This supports switching channels within the same installation,
+project and API key without depending on the original upstream's encryption keys.
+
+The installation secret must remain stable, as with sealed local compaction. Accepted tool
+transport state is retained for the upstream conversation, credential/account and model, so
+a resumed native checkpoint can omit tool definitions without changing message delivery.
+HTTP compaction and WebSocket continuation share that state; client session identities are
+preserved. New messages carry their encrypted body and do not need one database row per message.
+
+Older provider-encrypted messages require separately recovered original text. Delivery labels
+and later final reports do not replace intermediate messages. An operator can import an
+installation-encrypted recovery bundle bound to the exact message ID, author, recipient and
+original ciphertext hash. Unmatched messages remain intact. The runtime reads these entries
+without probing a source provider, enabling disabled channels or editing original history.
+
+The SQLite maintenance command defaults to read-only validation and opens no server or
+migrations. Run the native binary on the database's host OS, after reviewing the private bundle:
+
+```sh
+axonhub agent-recovery --database axonhub.db --file recovery.encrypted.json
+axonhub agent-recovery --database axonhub.db --file recovery.encrypted.json --apply
+```
+
+An import authenticates the bundle for the existing installation and API-key owner, then adds
+only missing recovery entries in one transaction. Conflicting entries stop the entire import.
+Keep the encrypted bundle for rollback: the same command with `--remove --apply` removes only
+the exact matching imported entries. Neither operation alters requests, executions or history.
 
 ## Overloaded relay affinity in old conversations
 

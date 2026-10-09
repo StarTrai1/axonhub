@@ -36,6 +36,8 @@ jobs:
       - name: Verify SOCKS aliases and cancellation on Windows
         working-directory: llm
         run: go test ./transformer/openai/responses -run '^(TestWebSocketProxyAliasesDialThroughSOCKS|TestWebSocketSOCKSCancellation)$' -count=1 -v
+      - name: Verify native SQLite recovery import and rollback
+        run: go test ./cmd/axonhub -run '^TestAgentRecoveryCLI$' -count=1 -v
 
   test-codex-probe-scripts:
     name: Test Codex probe scripts (offline)
@@ -147,7 +149,7 @@ jobs:
 
       - name: Responses concurrency regression
         run: |
-          go test -race ./internal/server/orchestrator -run 'TestWebSocketSOCKSChannelRetry|TestCaptureRawProviderStream|TestPassThroughAnthropicStream|TestRawStreamBacklog|TestResponsesSession|TestResponsesRejected|TestResponsesCompactionRecovery|TestChannelRejectsFailedStreamEvenAfterText|TestSealedLocalCompaction|TestLegacyLocalCompaction' -count=1
+          go test -race ./internal/server/orchestrator -run 'TestWebSocketSOCKSChannelRetry|TestCaptureRawProviderStream|TestPassThroughAnthropicStream|TestRawStreamBacklog|TestResponsesSession|TestResponsesRejected|TestResponsesAgent|TestResponsesCompactionRecovery|TestChannelRejectsFailedStreamEvenAfterText|TestSealedLocalCompaction|TestLegacyLocalCompaction' -count=1
           go test -race ./internal/server/biz -run '^TestSystemServiceResponsesMetadata|^TestChannelMetrics_ConcurrentReadsAndWrites$' -count=1
           go test -race ./internal/server/api -run '^TestResponsesWebSocket(Warmup|Heartbeat|Auth|Interrupt)' -count=1
           cd llm

@@ -1104,6 +1104,7 @@ func (a *remoteCompactionAdapter) generateLocalSummaryWithCandidate(
 		applyUserAgentPassThrough(outbound, a.systemService),
 		applyOverrideRequestHeaders(outbound),
 		applyCodexIdentityPolicy(outbound),
+		recoverResponsesAgentMessages(outbound, a.systemService),
 		affinity,
 		compatibility,
 		finalizeTransportRequest(outbound),

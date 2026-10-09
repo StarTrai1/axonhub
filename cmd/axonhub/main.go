@@ -34,6 +34,9 @@ import (
 func main() {
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
+		case "agent-recovery":
+			handleAgentRecovery()
+			return
 		case "reload":
 			handleReload()
 			return
@@ -357,6 +360,7 @@ func showHelp() {
 	fmt.Println("  axonhub config preview     Preview configuration")
 	fmt.Println("  axonhub config validate    Validate configuration")
 	fmt.Println("  axonhub config get <key>   Get a specific config value")
+	fmt.Println("  axonhub agent-recovery     Validate/import recovered agent messages")
 	fmt.Println("  axonhub version            Show version")
 	fmt.Println("  axonhub help               Show this help message")
 	fmt.Println("")
