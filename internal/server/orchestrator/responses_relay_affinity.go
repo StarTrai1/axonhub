@@ -55,6 +55,28 @@ func recoverResponsesRelayAffinity(outbound *PersistentOutboundTransformer) pipe
 	return &responsesRelayAffinityMiddleware{outbound: outbound}
 }
 
+// Apply a previously completed migration before checkpoint recovery computes
+// its destination scope. A new migration remains after checkpoint expansion,
+// where its full-history precondition can be checked without losing context.
+func prepareResponsesRelayAffinity(outbound *PersistentOutboundTransformer) pipeline.Middleware {
+	middleware := &responsesRelayAffinityMiddleware{outbound: outbound}
+	return pipeline.OnRawRequest("responses-confirmed-relay-affinity", func(_ context.Context, request *httpclient.Request) (*httpclient.Request, error) {
+		key, ok := middleware.scope(request)
+		if !ok {
+			return request, nil
+		}
+		affinity, found := responsesRelayAffinities.Get(key)
+		if !found || !time.Now().Before(affinity.expiresAt) {
+			return request, nil
+		}
+		updated, err := applyResponsesRelayAffinity(request, affinity.id)
+		if err == nil {
+			outbound.state.responsesRelayAffinityApplied = true
+		}
+		return updated, err
+	})
+}
+
 type responsesRelayAffinityMiddleware struct {
 	pipeline.DummyMiddleware
 
@@ -125,14 +147,14 @@ func responsesRelayAffinityHistory(body []byte) bool {
 
 func (m *responsesRelayAffinityMiddleware) OnOutboundRawRequest(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error) {
 	m.applied = nil
-	if m.outbound != nil && m.outbound.state != nil {
-		m.outbound.state.responsesRelayAffinityApplied = false
-	}
 	key, ok := m.scope(request)
-	if !ok || !responsesRelayAffinityReplayable(request.Body) {
+	if !ok {
 		return request, nil
 	}
 	affinity, found := m.pending[key]
+	if found && !responsesRelayAffinityReplayable(request.Body) {
+		return request, nil
+	}
 	if !found {
 		affinity, found = responsesRelayAffinities.Get(key)
 		if found && !time.Now().Before(affinity.expiresAt) {
@@ -143,6 +165,8 @@ func (m *responsesRelayAffinityMiddleware) OnOutboundRawRequest(ctx context.Cont
 	if !found {
 		return request, nil
 	}
+	// A confirmed alias keeps the already established upstream session for
+	// later native checkpoints or deltas; it is not a fresh history migration.
 	rewritten, err := applyResponsesRelayAffinity(request, affinity.id)
 	if err != nil {
 		return nil, err

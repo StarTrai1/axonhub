@@ -313,12 +313,13 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		applyCodexIdentityPolicy(outbound),
 		// Compatibility rewrites must run after explicit body overrides so a
 		// retry cannot reintroduce the precise field the upstream rejected.
+		prepareResponsesRelayAffinity(outbound),
 		recoverRejectedRemoteCompaction(outbound, processor.remoteCompactionAdapter, processor.PipelineFactory.Executor),
+		recoverResponsesRelayAffinity(outbound),
 		// A checkpoint must be expanded before complete-history checks can apply
 		// already confirmed ID/reasoning corrections to its retained messages.
 		applyResponsesHistoryPortability(outbound),
 		applyResponsesRejectedStatusCompatibility(outbound),
-		recoverResponsesRelayAffinity(outbound),
 		// Remove transport-incompatible fields after pass-through and overrides,
 		// so persistence and execution observe the same provider request.
 		finalizeTransportRequest(outbound),

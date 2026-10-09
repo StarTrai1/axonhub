@@ -1104,8 +1104,8 @@ func (a *remoteCompactionAdapter) generateLocalSummaryWithCandidate(
 		applyUserAgentPassThrough(outbound, a.systemService),
 		applyOverrideRequestHeaders(outbound),
 		applyCodexIdentityPolicy(outbound),
-		compatibility,
 		affinity,
+		compatibility,
 		finalizeTransportRequest(outbound),
 	}
 	for _, middleware := range requestMiddlewares {
@@ -1123,7 +1123,7 @@ func (a *remoteCompactionAdapter) generateLocalSummaryWithCandidate(
 		Stream:    true,
 	}
 	attemptState.Perf = perf
-	stream, executionRecord, err := a.startLocalCompactionStream(ctx, outbound, providerRequest, customizedExecutor, compatibility, affinity)
+	stream, executionRecord, err := a.startLocalCompactionStream(ctx, outbound, providerRequest, customizedExecutor, affinity, compatibility)
 	if err != nil {
 		return "", err
 	}

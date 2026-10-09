@@ -367,6 +367,7 @@ func TestResponsesRejectedRelayAffinityPreservesUnknownMetadata(t *testing.T) {
 func TestResponsesRejectedRelayAffinityLocalCompaction(t *testing.T) {
 	for _, exhausted := range []bool{false, true} {
 		t.Run(fmt.Sprint(exhausted), func(t *testing.T) {
+			ctx := shared.WithSessionScope(t.Context(), t.Name())
 			outbound := newCodexResponsesPassThroughOutbound()
 			outbound.wrapped = new(responses.OutboundTransformer)
 			outbound.state.CurrentCandidate.Channel.ID = 95071
@@ -385,11 +386,17 @@ func TestResponsesRejectedRelayAffinityLocalCompaction(t *testing.T) {
 			executor := &responsesReasoningPipelineExecutor{failures: []error{relayAffinityOverload()}, events: rejectedReasoningCompactionEvents()}
 			if exhausted {
 				executor.failures = append(executor.failures, relayAffinityOverload())
+			} else {
+				executor.failures = append(executor.failures, agentRecoveryError("The encrypted content for item rs_source could not be verified. Reason: Encrypted content could not be decrypted or parsed."))
 			}
 			adapter := newRemoteCompactionAdapter(nil, nil, nil)
-			stream, _, err := adapter.startLocalCompactionStream(t.Context(), outbound, request, executor,
-				applyResponsesRejectedStatusCompatibility(outbound), middleware)
-			require.Len(t, executor.requests, 2)
+			stream, _, err := adapter.startLocalCompactionStream(ctx, outbound, request, executor,
+				middleware, applyResponsesRejectedStatusCompatibility(outbound))
+			wantCalls := 3
+			if exhausted {
+				wantCalls = 2
+			}
+			require.Len(t, executor.requests, wantCalls)
 			require.Equal(t, gjson.GetBytes(executor.requests[0].Body, "input").Raw, gjson.GetBytes(executor.requests[1].Body, "input").Raw)
 			require.NotEqual(t, executor.requests[0].Headers.Get("Thread-Id"), executor.requests[1].Headers.Get("Thread-Id"))
 			if exhausted {
@@ -398,6 +405,8 @@ func TestResponsesRejectedRelayAffinityLocalCompaction(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
+			require.Equal(t, executor.requests[1].Headers.Get("Thread-Id"), executor.requests[2].Headers.Get("Thread-Id"))
+			require.Empty(t, encryptedResponsesReasoningHashes(executor.requests[2].Body))
 			for stream.Next() {
 				_ = stream.Current()
 			}
@@ -407,6 +416,70 @@ func TestResponsesRejectedRelayAffinityLocalCompaction(t *testing.T) {
 				_, confirmed := responsesRelayAffinities.Get(key)
 				require.True(t, confirmed)
 			}
+		})
+	}
+}
+
+func TestResponsesRejectedRelayAffinityThenReasoning(t *testing.T) {
+	for _, raw := range []bool{false, true} {
+		t.Run(fmt.Sprint(raw), func(t *testing.T) {
+			ctx := shared.WithSessionScope(t.Context(), t.Name())
+			request := relayAffinityRequest(t)
+			executor := &responsesReasoningPipelineExecutor{
+				failures: []error{relayAffinityOverload(), agentRecoveryError("The encrypted content for item rs_source could not be verified. Reason: Encrypted content could not be decrypted or parsed.")},
+				events: rejectedReasoningCompactionEvents(),
+			}
+			state, result, err := runRejectedReasoningPipeline(t, ctx, request, executor, "affinity-reasoning-combination", raw, 3,
+				func(*PersistenceState, *PersistentOutboundTransformer) pipeline.Middleware {
+					return &relayReplayTestDestination{}
+				},
+				relayAffinityMiddleware(t, nil),
+			)
+			require.NoError(t, err)
+			drainRejectedReasoningPipeline(t, result)
+			require.Len(t, executor.requests, 3)
+			affinity := executor.requests[1].Headers.Get("Thread-Id")
+			require.Equal(t, affinity, executor.requests[2].Headers.Get("Thread-Id"))
+			require.Equal(t, gjson.GetBytes(executor.requests[0].Body, "input").Raw, gjson.GetBytes(executor.requests[1].Body, "input").Raw)
+			require.Empty(t, encryptedResponsesReasoningHashes(executor.requests[2].Body))
+			scope, ok := responsesReasoningScope(ctx, state.CurrentCandidate.Channel, executor.requests[1])
+			require.True(t, ok)
+			t.Cleanup(func() { responsesReasoningRecoveries.Remove(scope) })
+			require.Eventually(t, func() bool { _, found := rememberedResponsesReasoningRule(scope, executor.requests[1].Body); return found }, time.Second, time.Millisecond)
+
+			// A checkpoint created on the recovered session must keep that alias.
+			// Full-history admission only gates a new migration, not this reuse.
+			request.Body, err = sjson.SetRawBytes(request.Body, "input.8", []byte(`{"type":"compaction","id":"cmp_recovered_session","encrypted_content":"keep-native-checkpoint"}`))
+			require.NoError(t, err)
+			adapter := newRemoteCompactionAdapter(nil, nil, nil)
+			ref, _, _, err := parseRemoteCompactionRequest(request.Body)
+			require.NoError(t, err)
+			owner := &PersistenceState{APIKey: &ent.APIKey{ID: 1, ProjectID: 1}}
+			adapter.summaries.SetDefault(remoteCompactionOwnerCacheKey(owner, remoteCompactionCacheKey(ref)), "summary retained on the recovered session")
+			next := &responsesReasoningPipelineExecutor{
+				failures: []error{agentRecoveryError("The encrypted content for item cmp_recovered_session could not be verified. Reason: Encrypted content could not be decrypted or parsed.")},
+				events: rejectedReasoningCompactionEvents(),
+			}
+			_, result, err = runRejectedReasoningPipeline(t, ctx, request, next, "affinity-reasoning-combination", raw, 1,
+				func(*PersistenceState, *PersistentOutboundTransformer) pipeline.Middleware {
+					return &relayReplayTestDestination{}
+				},
+				func(_ *PersistenceState, outbound *PersistentOutboundTransformer) pipeline.Middleware {
+					return prepareResponsesRelayAffinity(outbound)
+				},
+				func(_ *PersistenceState, outbound *PersistentOutboundTransformer) pipeline.Middleware {
+					return recoverRejectedRemoteCompaction(outbound, adapter, next)
+				},
+				relayAffinityMiddleware(t, nil),
+			)
+			require.NoError(t, err)
+			drainRejectedReasoningPipeline(t, result)
+			require.Len(t, next.requests, 2)
+			require.Equal(t, affinity, next.requests[0].Headers.Get("Thread-Id"))
+			require.Equal(t, "keep-native-checkpoint", gjson.GetBytes(next.requests[0].Body, `input.#(type=="compaction").encrypted_content`).String())
+			require.Equal(t, affinity, next.requests[1].Headers.Get("Thread-Id"))
+			require.Contains(t, string(next.requests[1].Body), "summary retained on the recovered session")
+			require.False(t, gjson.GetBytes(next.requests[1].Body, `input.#(type=="compaction")`).Exists())
 		})
 	}
 }
