@@ -13,13 +13,14 @@ type OpenAIResponsesProviderExtensions struct {
 }
 
 type OpenAIResponsesRequestExtensions struct {
-	NumericReasoningEffort string                       `json:"-"`
-	ReasoningContext       string                       `json:"-"`
-	RawFields              map[string]json.RawMessage   `json:"-"`
-	RawTools               []OpenAIResponsesRawFragment `json:"-"`
-	ToolSignatures         []string                     `json:"-"`
-	RawToolChoice          json.RawMessage              `json:"-"`
-	RawInputItems          []OpenAIResponsesRawFragment `json:"-"`
+	NumericReasoningEffort string `json:"-"`
+	ReasoningContext        string                       `json:"-"`
+	RawFields               map[string]json.RawMessage   `json:"-"`
+	RawTools                []OpenAIResponsesRawFragment `json:"-"`
+	ToolSignatures          []string                     `json:"-"`
+	RawToolChoice           json.RawMessage              `json:"-"`
+	RawInputItems           []OpenAIResponsesRawFragment `json:"-"`
+	OmittedInputItemIndices []int                        `json:"-"`
 }
 
 type OpenAIResponsesRawFragment struct {
@@ -65,6 +66,7 @@ func CloneProviderExtensions(src *ProviderExtensions) *ProviderExtensions {
 				ToolSignatures:         append([]string(nil), src.OpenAIResponses.Request.ToolSignatures...),
 				RawToolChoice:          cloneRawMessage(src.OpenAIResponses.Request.RawToolChoice),
 				RawInputItems:          cloneOpenAIResponsesRawFragments(src.OpenAIResponses.Request.RawInputItems),
+				OmittedInputItemIndices: append([]int(nil), src.OpenAIResponses.Request.OmittedInputItemIndices...),
 			}
 		}
 	}
