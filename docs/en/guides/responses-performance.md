@@ -93,7 +93,7 @@ requires a source resource that can read the ciphertext or an explicitly agreed 
 Some relays pin conversations to internal upstream routes, so old conversations can remain
 overloaded while new ones succeed. For non-OAuth Codex relays, a 500/503 must explicitly report
 model capacity or high demand and include repeated `(channel,channel)` sticky-route entries in
-`X-New-Api-Routed-Channel-Id` before the gateway tries one fresh upstream session identity.
+`X-New-Api-Routed-Channel-Id` before the gateway starts recovering the upstream session identity.
 The request must contain replayable full history without unresolved response references or
 opaque compaction checkpoints.
 
@@ -104,10 +104,14 @@ Only a completed response confirms the alias for later requests. The in-memory c
 to project, API key, channel configuration, destination, upstream credential, model and client
 thread, with a two-hour lifetime and at most 2,048 entries. Failed aliases are not confirmed.
 
-Recovery consumes the existing same-channel retry budget. If the replacement identity is also
-explicitly overloaded, identical same-channel replay stops and the existing alternate-channel
-path applies. This also covers a fresh selection reporting plain route IDs or omitting the
-route header; the sticky-pair requirement only admits the initial migration. Exhausted quota,
+Recovery consumes the existing same-channel retry budget and allows at most three distinct
+replacement identities per request. A new selection can still be exhausted: a repeated explicit
+capacity error selects a different identity instead of replaying the failed one. This also covers
+plain route IDs or an omitted route header after migration, including an alias previously confirmed
+for this owner. Once the bound is reached, the existing alternate-channel path applies. If a selected
+resource instead returns the supported opaque 400 rejection, the existing complete-history replay
+detaches optional item IDs on that same identity while preserving all ciphertext and tool linkage.
+The sticky-pair requirement only admits the initial migration. Exhausted quota,
 wait hints longer than one minute, user cancellation, official
 endpoints and already-committed output do not trigger this recovery. It neither decrypts history
 nor guarantees that the relay can supply a healthy upstream route.

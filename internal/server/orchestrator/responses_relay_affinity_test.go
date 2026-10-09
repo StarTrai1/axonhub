@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -130,6 +131,25 @@ func TestResponsesRejectedRelayAffinityPreservesHistory(t *testing.T) {
 			drainRejectedReasoningPipeline(t, result)
 			require.Len(t, next.requests, 1)
 			require.Equal(t, affinity, next.requests[0].Headers.Get("Thread-Id"))
+
+			// A confirmed alias can later become overloaded without sticky-pair
+			// diagnostics. It is still a known migration, scoped to this owner.
+			later := &responsesReasoningPipelineExecutor{
+				failures: []error{relayAffinityFailure(http.StatusInternalServerError,
+					"We're currently experiencing high demand, which may cause temporary errors", "33,22")},
+				events:   rejectedReasoningCompactionEvents(),
+			}
+			_, result, err = runRejectedReasoningPipeline(t, t.Context(), request, later, t.Name(), raw, 1,
+				func(*PersistenceState, *PersistentOutboundTransformer) pipeline.Middleware {
+					return &relayReplayTestDestination{}
+				},
+				relayAffinityMiddleware(t, nil),
+			)
+			require.NoError(t, err)
+			drainRejectedReasoningPipeline(t, result)
+			require.Len(t, later.requests, 2)
+			require.Equal(t, affinity, later.requests[0].Headers.Get("Thread-Id"))
+			require.NotEqual(t, affinity, later.requests[1].Headers.Get("Thread-Id"))
 		})
 	}
 }
@@ -137,7 +157,7 @@ func TestResponsesRejectedRelayAffinityPreservesHistory(t *testing.T) {
 func TestResponsesRejectedRelayAffinitySharesBudget(t *testing.T) {
 	for _, retries := range []int{0, 1, 5} {
 		t.Run(fmt.Sprint(retries), func(t *testing.T) {
-			executor := &responsesReasoningPipelineExecutor{failures: []error{relayAffinityOverload(), relayAffinityOverload()}}
+			executor := &responsesReasoningPipelineExecutor{failures: []error{relayAffinityOverload(), relayAffinityOverload(), relayAffinityOverload(), relayAffinityOverload()}}
 			var middleware *responsesRelayAffinityMiddleware
 			_, _, err := runRejectedReasoningPipeline(t, t.Context(), relayAffinityRequest(t), executor, t.Name(), true, retries,
 				func(*PersistenceState, *PersistentOutboundTransformer) pipeline.Middleware {
@@ -146,9 +166,9 @@ func TestResponsesRejectedRelayAffinitySharesBudget(t *testing.T) {
 				relayAffinityMiddleware(t, &middleware),
 			)
 			require.Error(t, err)
-			want := 2
-			if retries == 0 {
-				want = 1
+			want := responsesRelayAffinityMaxMigrations + 1
+			if retries < responsesRelayAffinityMaxMigrations {
+				want = retries + 1
 			}
 			require.Len(t, executor.requests, want)
 			for key := range middleware.pending {
@@ -159,13 +179,13 @@ func TestResponsesRejectedRelayAffinitySharesBudget(t *testing.T) {
 	}
 }
 
-func TestResponsesRejectedRelayAffinityStopsPlainRouteOverload(t *testing.T) {
+func TestResponsesRejectedRelayAffinityBoundsPlainRouteOverload(t *testing.T) {
 	for _, raw := range []bool{false, true} {
 		t.Run(fmt.Sprintf("raw=%t", raw), func(t *testing.T) {
 			const demand = "We’re currently experiencing high demand, which may cause temporary errors"
 			first := relayAffinityFailure(http.StatusInternalServerError, demand, "(70605,70605),(411041,411041)")
 			next := relayAffinityFailure(http.StatusInternalServerError, demand, "108877,411041")
-			executor := &responsesReasoningPipelineExecutor{failures: []error{first, next}, events: rejectedReasoningCompactionEvents()}
+			executor := &responsesReasoningPipelineExecutor{failures: []error{first, next, next, next}, events: rejectedReasoningCompactionEvents()}
 			var middleware *responsesRelayAffinityMiddleware
 			_, _, err := runRejectedReasoningPipeline(t, t.Context(), relayAffinityRequest(t), executor, t.Name(), raw, 5,
 				func(*PersistenceState, *PersistentOutboundTransformer) pipeline.Middleware {
@@ -174,9 +194,14 @@ func TestResponsesRejectedRelayAffinityStopsPlainRouteOverload(t *testing.T) {
 				relayAffinityMiddleware(t, &middleware),
 			)
 			require.Error(t, err)
-			require.Len(t, executor.requests, 2, "a failed migration must not repeat merely because the relay changed its route diagnostic format")
-			require.NotEqual(t, executor.requests[0].Headers.Get("Thread-Id"), executor.requests[1].Headers.Get("Thread-Id"))
-			require.Equal(t, gjson.GetBytes(executor.requests[0].Body, "input").Raw, gjson.GetBytes(executor.requests[1].Body, "input").Raw)
+			require.Len(t, executor.requests, responsesRelayAffinityMaxMigrations+1)
+			seen := make(map[string]bool)
+			for _, request := range executor.requests {
+				identity := request.Headers.Get("Thread-Id")
+				require.False(t, seen[identity], "a failed migration must not repeat merely because the relay changed its route diagnostic format")
+				seen[identity] = true
+				require.Equal(t, gjson.GetBytes(executor.requests[0].Body, "input").Raw, gjson.GetBytes(request.Body, "input").Raw)
+			}
 			for key := range middleware.pending {
 				_, cached := responsesRelayAffinities.Get(key)
 				require.False(t, cached)
@@ -269,19 +294,28 @@ func TestResponsesRejectedRelayAffinityHTTP(t *testing.T) {
 	request := relayAffinityRequest(t)
 	originalThread := request.Headers.Get("Thread-Id")
 	var attempts atomic.Int32
+	var firstSelection atomic.Value
+	var recoveredSelection atomic.Value
+	var replayedInput []map[string]any
+	require.NoError(t, json.Unmarshal([]byte(gjson.GetBytes(request.Body, "input").Raw), &replayedInput))
+	for _, item := range replayedInput {
+		delete(item, "id")
+	}
+	writeFailure := func(w http.ResponseWriter, failure *httpclient.Error) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("X-New-Api-Routed-Channel-Id", failure.Headers.Get("X-New-Api-Routed-Channel-Id"))
+		w.WriteHeader(failure.StatusCode)
+		_, _ = w.Write(failure.Body)
+	}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		attempts.Add(1)
+		attempt := attempts.Add(1)
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
 			t.Error(err)
 			return
 		}
 		if r.Header.Get("Thread-Id") == originalThread {
-			failure := relayAffinityOverload()
-			w.Header().Set("Content-Type", "application/json")
-			w.Header().Set("X-New-Api-Routed-Channel-Id", failure.Headers.Get("X-New-Api-Routed-Channel-Id"))
-			w.WriteHeader(http.StatusInternalServerError)
-			_, _ = w.Write(failure.Body)
+			writeFailure(w, relayAffinityOverload())
 			return
 		}
 		if r.Header.Get("Thread-Id") == "" || gjson.GetBytes(body, "prompt_cache_key").String() != r.Header.Get("Thread-Id") {
@@ -289,10 +323,29 @@ func TestResponsesRejectedRelayAffinityHTTP(t *testing.T) {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		if gjson.GetBytes(body, "input").Raw != gjson.GetBytes(request.Body, "input").Raw {
-			t.Error("history changed while recovering affinity")
-			w.WriteHeader(http.StatusBadRequest)
+		if attempt < 4 {
+			if gjson.GetBytes(body, "input").Raw != gjson.GetBytes(request.Body, "input").Raw {
+				t.Error("history changed before an explicit replay rejection")
+			}
+			if attempt == 2 {
+				firstSelection.Store(r.Header.Get("Thread-Id"))
+				writeFailure(w, relayAffinityFailure(http.StatusInternalServerError,
+					"We're currently experiencing high demand, which may cause temporary errors", "33,22"))
+				return
+			}
+			if firstSelection.Load() == r.Header.Get("Thread-Id") {
+				t.Error("repeated the failed relay selection")
+			}
+			recoveredSelection.Store(r.Header.Get("Thread-Id"))
+			writeFailure(w, relayAffinityFailure(http.StatusBadRequest, "bad response status code 400 (request id: synthetic-replay)", "44,55"))
 			return
+		}
+		var actualInput []map[string]any
+		if err := json.Unmarshal([]byte(gjson.GetBytes(body, "input").Raw), &actualInput); err != nil || !reflect.DeepEqual(replayedInput, actualInput) {
+			t.Error("replay must only detach optional item IDs and retain every ciphertext, message, tool result and call_id")
+		}
+		if recoveredSelection.Load() != r.Header.Get("Thread-Id") {
+			t.Error("history replay changed the recovered upstream session")
 		}
 		w.Header().Set("Content-Type", "text/event-stream")
 		for _, event := range rejectedReasoningCompactionEvents() {
@@ -312,7 +365,7 @@ func TestResponsesRejectedRelayAffinityHTTP(t *testing.T) {
 	)
 	require.NoError(t, err)
 	require.Contains(t, drainRejectedReasoningPipeline(t, result), "response.completed")
-	require.Equal(t, int32(2), attempts.Load())
+	require.Equal(t, int32(4), attempts.Load(), "sticky overload, fresh selection overload, explicit 400, then lossless replay")
 }
 
 func TestResponsesRejectedRelayAffinityScopeIsolation(t *testing.T) {
@@ -411,7 +464,7 @@ func TestResponsesRejectedRelayAffinityLocalCompaction(t *testing.T) {
 			})
 			executor := &responsesReasoningPipelineExecutor{failures: []error{relayAffinityOverload()}, events: rejectedReasoningCompactionEvents()}
 			if exhausted {
-				executor.failures = append(executor.failures, relayAffinityOverload())
+				executor.failures = append(executor.failures, relayAffinityOverload(), relayAffinityOverload(), relayAffinityOverload())
 			} else {
 				executor.failures = append(executor.failures, agentRecoveryError("The encrypted content for item rs_source could not be verified. Reason: Encrypted content could not be decrypted or parsed."))
 			}
@@ -420,7 +473,7 @@ func TestResponsesRejectedRelayAffinityLocalCompaction(t *testing.T) {
 				middleware, applyResponsesRejectedStatusCompatibility(outbound))
 			wantCalls := 3
 			if exhausted {
-				wantCalls = 2
+				wantCalls = responsesRelayAffinityMaxMigrations + 1
 			}
 			require.Len(t, executor.requests, wantCalls)
 			require.Equal(t, gjson.GetBytes(executor.requests[0].Body, "input").Raw, gjson.GetBytes(executor.requests[1].Body, "input").Raw)

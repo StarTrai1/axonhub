@@ -27,7 +27,10 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
-const responsesRelayAffinityTTL = 2 * time.Hour
+const (
+	responsesRelayAffinityTTL           = 2 * time.Hour
+	responsesRelayAffinityMaxMigrations = 3
+)
 
 type responsesRelayAffinityKey struct {
 	provider  responsesMetadataCapabilityKey
@@ -39,8 +42,9 @@ type responsesRelayAffinityKey struct {
 }
 
 type responsesRelayAffinity struct {
-	id        string
-	expiresAt time.Time
+	id         string
+	expiresAt  time.Time
+	migrations int
 }
 
 var responsesRelayAffinities = lo.Must(lru.New[responsesRelayAffinityKey, responsesRelayAffinity](2048))
@@ -49,7 +53,7 @@ var responsesRelayStickyRoutePattern = regexp.MustCompile(`\(([0-9]+),([0-9]+)\)
 
 // A relay may keep sending an old conversation to an exhausted internal route
 // while new conversations succeed. A failed, explicitly sticky route permits
-// one new upstream affinity, not removal of any conversation content. The
+// a bounded selection of new affinities without removing conversation content. The
 // ordinary retry budget and downstream thread identity remain authoritative.
 func recoverResponsesRelayAffinity(outbound *PersistentOutboundTransformer) pipeline.Middleware {
 	return &responsesRelayAffinityMiddleware{outbound: outbound}
@@ -178,6 +182,7 @@ func (m *responsesRelayAffinityMiddleware) OnOutboundRawRequest(ctx context.Cont
 }
 
 func (m *responsesRelayAffinityMiddleware) OnOutboundRawError(ctx context.Context, err error) {
+	applied := m.applied
 	m.applied = nil
 	if ctx.Err() != nil || m.outbound == nil || m.outbound.state == nil {
 		return
@@ -189,25 +194,31 @@ func (m *responsesRelayAffinityMiddleware) OnOutboundRawError(ctx context.Contex
 	if !ok || !responsesRelayAffinityHistory(state.RawProviderRequest.Body) {
 		return
 	}
-	if _, attempted := m.pending[key]; attempted {
+	migrations := 0
+	if previous, attempted := m.pending[key]; attempted {
 		// A fresh selection may report plain route IDs instead of sticky pairs.
 		// It is still a failed migration when the same explicit capacity error
-		// returns. Do not spend the remaining budget replaying that identity.
-		if responsesRelayCapacityOverload(err, key.provider.model) {
-			state.responsesRelayAffinityExhaustedChannel = key.provider.channelID
+		// returns. Try a distinct identity within the existing retry budget,
+		// rather than repeatedly sending the known failed selection.
+		if !responsesRelayCapacityOverload(err, key.provider.model) {
+			return
 		}
-		return
-	}
-	if !responsesRelayStickyOverload(err, key.provider.model) {
+		if previous.migrations >= responsesRelayAffinityMaxMigrations {
+			state.responsesRelayAffinityExhaustedChannel = key.provider.channelID
+			return
+		}
+		migrations = previous.migrations
+	} else if !(applied != nil && *applied == key && responsesRelayCapacityOverload(err, key.provider.model)) &&
+		!responsesRelayStickyOverload(err, key.provider.model) {
 		return
 	}
 	if m.pending == nil {
 		m.pending = make(map[responsesRelayAffinityKey]responsesRelayAffinity)
 	}
-	m.pending[key] = responsesRelayAffinity{id: uuid.NewString()}
+	m.pending[key] = responsesRelayAffinity{id: uuid.NewString(), migrations: migrations + 1}
 	state.responsesRelayAffinityRetryChannel = key.provider.channelID
-	log.Info(ctx, "sticky relay route overloaded; scheduling one Responses affinity recovery",
-		log.Int("channel_id", key.provider.channelID))
+	log.Info(ctx, "relay route overloaded; scheduling a distinct Responses affinity recovery",
+		log.Int("channel_id", key.provider.channelID), log.Int("migration", migrations+1))
 }
 
 func responsesRelayStickyOverload(err error, model string) bool {
