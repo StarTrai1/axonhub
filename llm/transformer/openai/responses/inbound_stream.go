@@ -1478,8 +1478,8 @@ func (s *responsesInboundStream) emitStreamErrorEvent(err error) error {
 		response.Error = &Error{
 			Type: responseErr.Detail.Type, Code: code, Message: message,
 			LimitWindowMinutes: responseErr.Detail.LimitWindowMinutes,
-			Misalignment: cloneRaw(responseErr.Detail.Misalignment),
-			Param: responseErr.Detail.Param, RequestID: responseErr.Detail.RequestID,
+			Misalignment:       cloneRaw(responseErr.Detail.Misalignment),
+			Param:              responseErr.Detail.Param, RequestID: responseErr.Detail.RequestID,
 		}
 	}
 	if raw, ok := errors.AsType[*httpclient.Error](err); ok && (raw.StatusCode == 429 || raw.StatusCode == 503) {

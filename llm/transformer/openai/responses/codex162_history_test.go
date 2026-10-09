@@ -26,7 +26,7 @@ func TestCodex162IncrementalHistoryPreservesOrder(t *testing.T) {
 		{"type":"reasoning","id":"rs_retained","encrypted_content":"opaque-retained","summary":[]},
 		{"type":"message","role":"user","content":[{"type":"input_text","text":"Continue."}]}
 	]`
-	request := &httpclient.Request{Body: []byte(`{"model":"gpt-6.1-sol","stream":true,"input":`+input+`}`)}
+	request := &httpclient.Request{Body: []byte(`{"model":"gpt-6.1-sol","stream":true,"input":` + input + `}`)}
 	before := string(request.Body)
 	unified, err := NewInboundTransformer().TransformRequest(t.Context(), request)
 	require.NoError(t, err)
@@ -56,7 +56,7 @@ func TestCodex162IncrementalHistoryPreservesOrder(t *testing.T) {
 
 func TestCodex162PartialAnswerDoesNotEndTurn(t *testing.T) {
 	item := `{"type":"message","id":"msg_partial","role":"assistant","phase":"partial_answer","status":"completed","content":[{"type":"output_text","text":"First result."}]}`
-	terminal := `{"id":"resp_partial","object":"response","model":"gpt-6.1-sol","status":"completed","end_turn":false,"output":[`+item+`]}`
+	terminal := `{"id":"resp_partial","object":"response","model":"gpt-6.1-sol","status":"completed","end_turn":false,"output":[` + item + `]}`
 	outbound, err := NewOutboundTransformer("https://api.example/v1", "synthetic-key")
 	require.NoError(t, err)
 	unified, err := outbound.TransformResponse(t.Context(), &httpclient.Response{StatusCode: 200, Body: []byte(terminal)})
@@ -73,8 +73,8 @@ func TestCodex162PartialAnswerDoesNotEndTurn(t *testing.T) {
 		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_partial","model":"gpt-6.1-sol","status":"in_progress","output":[]}}`)},
 		{Type: "response.output_item.added", Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"type":"message","id":"msg_partial","role":"assistant","phase":"partial_answer","content":[]}}`)},
 		{Type: "response.output_text.delta", Data: []byte(`{"type":"response.output_text.delta","item_id":"msg_partial","output_index":0,"content_index":0,"delta":"First result."}`)},
-		{Type: "response.output_item.done", Data: []byte(`{"type":"response.output_item.done","output_index":0,"item":`+item+`}`)},
-		{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":`+terminal+`}`)},
+		{Type: "response.output_item.done", Data: []byte(`{"type":"response.output_item.done","output_index":0,"item":` + item + `}`)},
+		{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":` + terminal + `}`)},
 	}
 	converted, err := outbound.TransformStream(t.Context(), &httpclient.Request{}, streams.SliceStream(events))
 	require.NoError(t, err)

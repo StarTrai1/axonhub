@@ -80,7 +80,7 @@ func TestCodex162FailedResponseAdviceSurvivesConversion(t *testing.T) {
 func TestCodex162MisalignmentReviewTargetSurvivesConversion(t *testing.T) {
 	detail := `{"error_type":"unauthorized_data_transfer","review_target":" RB/opaque== ","detailed_explanation":"provider explanation","steer":{"message":"keep files local"}}`
 	var response Response
-	require.NoError(t, json.Unmarshal([]byte(`{"status":"failed","error":{"code":"misalignment_policy_violation","message":"blocked","status":403,"misalignment":`+detail+`}}`), &response))
+	require.NoError(t, json.Unmarshal([]byte(`{"status":"failed","error":{"code":"misalignment_policy_violation","message":"blocked","misalignment":`+detail+`}}`), &response))
 	failure := responseErrorFromResponse(&response)
 	require.Equal(t, 403, failure.StatusCode)
 	require.JSONEq(t, detail, string(failure.Detail.Misalignment))

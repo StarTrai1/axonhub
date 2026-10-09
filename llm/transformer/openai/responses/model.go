@@ -856,7 +856,7 @@ type ReasoningContent struct {
 
 type Response struct {
 	AccessPrograms json.RawMessage `json:"access_programs,omitempty"`
-	EndTurn *bool `json:"end_turn,omitempty"`
+	EndTurn        *bool           `json:"end_turn,omitempty"`
 
 	// The object type of this resource - always set to "response".
 	Object string `json:"object"`
@@ -1109,7 +1109,7 @@ type Error struct {
 	// LimitWindowMinutes is provider quota metadata consumed by Codex 0.159.
 	LimitWindowMinutes json.RawMessage `json:"limit_window_minutes,omitempty"`
 	// Headers stays raw so malformed optional advice cannot hide the error.
-	Headers json.RawMessage `json:"headers,omitempty"`
+	Headers      json.RawMessage `json:"headers,omitempty"`
 	Misalignment json.RawMessage `json:"misalignment,omitempty"`
 
 	Type      string `json:"type,omitempty"`

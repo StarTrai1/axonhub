@@ -20,8 +20,8 @@ func TestCodex162RetryFixture(t *testing.T) {
 	_, encode := newResponsesStreamAdapter(context.Background(), &errorAfterStream{}, nil)
 	event, err := encode(t.Context(), &llm.ResponseError{
 		StatusCode: 503,
-		Detail: llm.ErrorDetail{Code: "server_is_overloaded", Type: "server_error", Message: "synthetic overload"},
-		Cause: &httpclient.Error{StatusCode: 503, Headers: http.Header{"Retry-After": {"3"}, "Authorization": {"must-not-escape"}}},
+		Detail:     llm.ErrorDetail{Code: "server_is_overloaded", Type: "server_error", Message: "synthetic overload"},
+		Cause:      &httpclient.Error{StatusCode: 503, Headers: http.Header{"Retry-After": {"3"}, "Authorization": {"must-not-escape"}}},
 	})
 	require.NoError(t, err)
 	require.Equal(t, "response.failed", event.Type)

@@ -46,7 +46,7 @@ func TestUpstreamRetryAdviceValidation(t *testing.T) {
 			require.Empty(t, got.Get("Set-Cookie"))
 		})
 	}
-	for _, code := range []string{"quota_exhausted", "insufficient_quota", "usage_limit_reached", "billing_hard_limit_reached", "policy_violation"} {
+	for _, code := range []string{"quota_exhausted", "insufficient_quota", "usage_limit_reached", "billing_hard_limit_reached", "policy_violation", "misalignment_policy_violation", "cyber_policy", "bio_policy", "flex_unavailable"} {
 		raw := &httpclient.Error{StatusCode: 429, Headers: http.Header{"Retry-After": {"3"}}, Body: []byte(fmt.Sprintf(`{"error":{"code":%q}}`, code))}
 		require.Empty(t, upstreamRetryAdvice(raw, 429), code)
 	}

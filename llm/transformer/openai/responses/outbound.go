@@ -503,7 +503,7 @@ func (t *OutboundTransformer) transformStandardResponse(
 
 	llmResp := &llm.Response{
 		ResponsesAccessPrograms: cloneRaw(resp.AccessPrograms),
-		ResponsesEndTurn: resp.EndTurn,
+		ResponsesEndTurn:        resp.EndTurn,
 		Object:                  "chat.completion",
 		ID:                      resp.ID,
 		Model:                   resp.Model,

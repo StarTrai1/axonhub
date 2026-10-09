@@ -63,7 +63,7 @@ type outboundStreamState struct {
 	responseModel      string
 	serviceTier        string
 	accessPrograms     json.RawMessage
-	endTurn *bool
+	endTurn            *bool
 	previousResponseID *string
 	usage              *llm.Usage
 	created            int64
@@ -273,7 +273,7 @@ func (s *responsesOutboundStream) transformStreamEvent(event *httpclient.StreamE
 	// Build base response
 	resp := &llm.Response{
 		ResponsesAccessPrograms: cloneRaw(s.state.accessPrograms),
-		ResponsesEndTurn: s.state.endTurn,
+		ResponsesEndTurn:        s.state.endTurn,
 		Object:                  "chat.completion.chunk",
 		ID:                      s.state.responseID,
 		Model:                   s.state.responseModel,
@@ -957,7 +957,7 @@ func (s *responsesOutboundStream) transformStreamEvent(event *httpclient.StreamE
 		s.state.usage = streamEvent.Response.Usage.ToUsage()
 		s.enqueue(&llm.Response{
 			ResponsesAccessPrograms: cloneRaw(s.state.accessPrograms),
-			ResponsesEndTurn: s.state.endTurn,
+			ResponsesEndTurn:        s.state.endTurn,
 			Object:                  "chat.completion.chunk",
 			ID:                      s.state.responseID,
 			Model:                   s.state.responseModel,

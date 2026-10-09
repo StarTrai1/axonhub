@@ -14,7 +14,7 @@ import (
 func TestCodex162LiteContinuationDoesNotInjectCatalog(t *testing.T) {
 	request := &httpclient.Request{
 		Headers: http.Header{},
-		Body: []byte(`{"model":"gpt-6.1-sol","stream":true,"previous_response_id":"resp_catalog","input":[{"type":"message","role":"user","content":[{"type":"input_text","text":"Continue."}]}]}`),
+		Body:    []byte(`{"model":"gpt-6.1-sol","stream":true,"previous_response_id":"resp_catalog","input":[{"type":"message","role":"user","content":[{"type":"input_text","text":"Continue."}]}]}`),
 	}
 	request.Headers.Set(responses.ResponsesLiteHeader, "true")
 	unified, err := responses.NewInboundTransformer().TransformRequest(t.Context(), request)

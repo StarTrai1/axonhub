@@ -8,6 +8,10 @@ import (
 // InferResponseErrorStatusCode restores an HTTP-like status for providers that
 // report failures inside an otherwise successful streaming response.
 func InferResponseErrorStatusCode(code, errorType, message string) int {
+	switch strings.ToLower(code) {
+	case "misalignment_policy_violation", "cyber_policy", "bio_policy":
+		return http.StatusForbidden
+	}
 	signal := strings.ToLower(strings.Join([]string{code, errorType}, " "))
 
 	switch {
