@@ -2,7 +2,6 @@ package biz
 
 import (
 	"context"
-	"net/http"
 	"testing"
 	"time"
 
@@ -165,7 +164,7 @@ func TestRequestServiceLoadCompletedResponsesSessionScopesByAPIKeyAndProject(t *
 		[]byte(`{"previous_response_id":"resp_ancestor","client_metadata":{"thread_id":"client-thread","root_turn_id":"keep-root","x-codex-window-id":"client-thread:7"},"input":[]}`),
 	} {
 		_, err = parent.Update().SetRequestBody(clientBody).
-			SetRequestHeaders(http.Header{"X-Codex-Window-Id": {"client-thread:7"}}).Save(ctx)
+			SetRequestHeaders([]byte(`{"X-Codex-Window-Id":["client-thread:7"]}`)).Save(ctx)
 		require.NoError(t, err)
 		requestBody, responseBody, found, err = service.LoadCompletedResponsesSession(ownerCtx, "resp_websocket")
 		require.NoError(t, err)
