@@ -318,6 +318,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		// already confirmed ID/reasoning corrections to its retained messages.
 		applyResponsesHistoryPortability(outbound),
 		applyResponsesRejectedStatusCompatibility(outbound),
+		recoverResponsesRelayAffinity(outbound),
 		// Remove transport-incompatible fields after pass-through and overrides,
 		// so persistence and execution observe the same provider request.
 		finalizeTransportRequest(outbound),
@@ -332,7 +333,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		persistRequestExecution(outbound),
 		pipeline.OnRawResponse("cache-native-responses-session", func(ctx context.Context, response *httpclient.Response) (*httpclient.Response, error) {
 			if preparedResponsesBody != nil && response != nil && state.RawProviderRequest != nil && state.RawProviderRequest.APIFormat == string(llm.APIFormatOpenAIResponse) {
-				processor.responsesSessions.record(ctx, state.RawProviderRequest.Body, response.Body)
+				processor.responsesSessions.record(ctx, responsesSessionProviderBody(state), response.Body)
 			}
 			return response, nil
 		}),

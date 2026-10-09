@@ -330,7 +330,7 @@ func cacheNativeResponsesSessionStream(
 		state.RawProviderRequest.APIFormat != string(llm.APIFormatOpenAIResponse) {
 		return stream
 	}
-	return state.responsesSessions.wrapStream(ctx, state.RawProviderRequest.Body, stream)
+	return state.responsesSessions.wrapStream(ctx, responsesSessionProviderBody(state), stream)
 }
 
 type responsesSessionStream struct {

@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"maps"
 	"net/http"
 	"strings"
 	"time"
@@ -221,11 +220,17 @@ func applyCodexIdentityBody(body []byte, values *codexIdentityValues) ([]byte, e
 }
 
 func rewriteCodexTurnMetadata(raw string, fields map[string]any) (string, bool) {
-	var metadata map[string]any
-	if err := json.Unmarshal([]byte(raw), &metadata); err != nil {
+	var metadata map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(raw), &metadata); err != nil || metadata == nil {
 		return "", false
 	}
-	maps.Copy(metadata, fields)
+	for key, value := range fields {
+		encoded, err := json.Marshal(value)
+		if err != nil {
+			return "", false
+		}
+		metadata[key] = encoded
+	}
 	rewritten, err := json.Marshal(metadata)
 	if err != nil {
 		return "", false

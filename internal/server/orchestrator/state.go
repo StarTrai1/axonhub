@@ -49,6 +49,11 @@ type PersistenceState struct {
 	// types whose status field was explicitly rejected by that upstream.
 	responsesRejectedStatusRules        map[int][]responsesRejectedStatusRule
 	responsesRejectedStatusRetryChannel int
+	// A relay affinity recovery consumes the existing same-channel budget and
+	// stops if the replacement affinity is also explicitly overloaded.
+	responsesRelayAffinityRetryChannel     int
+	responsesRelayAffinityExhaustedChannel int
+	responsesRelayAffinityApplied         bool
 
 	// OriginalRequestStream stores the client's original stream intent before any
 	// candidate-specific forcing to provider-side streaming happens.

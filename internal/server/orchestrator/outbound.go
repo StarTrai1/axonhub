@@ -775,6 +775,8 @@ func (p *PersistentOutboundTransformer) NextChannel(ctx context.Context) error {
 	p.state.responsesLiteWebSearchInjectedChannel = 0
 	p.state.responsesLiteWebSearchRetryChannel = 0
 	p.state.responsesRejectedStatusRetryChannel = 0
+	p.state.responsesRelayAffinityRetryChannel = 0
+	p.state.responsesRelayAffinityExhaustedChannel = 0
 
 	candidate := p.state.ChannelModelsCandidates[p.state.CurrentCandidateIndex]
 	p.state.CurrentCandidate = candidate
@@ -855,6 +857,14 @@ func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
 		// The bridge already used its own bounded opening-stream retry budget.
 		return false
 	}
+	if current := p.state.CurrentCandidate.Channel; current != nil && current.ID > 0 {
+		if p.state.responsesRelayAffinityExhaustedChannel == current.ID {
+			return false
+		}
+		if p.state.responsesRelayAffinityRetryChannel == current.ID {
+			return true
+		}
+	}
 	if p.state.CurrentCandidate.Channel != nil &&
 		(hasResponsesLiteWebSearchCompatibilityRetry(p.state, p.state.CurrentCandidate.Channel.ID) ||
 			hasResponsesRejectedStatusCompatibilityRetry(p.state, p.state.CurrentCandidate.Channel.ID)) {
@@ -918,6 +928,11 @@ func (p *PersistentOutboundTransformer) PrepareForRetry(ctx context.Context) err
 	// so it exits promptly and releases its upstream HTTP connection.
 	p.resetPassThroughStreamState()
 	p.trackCurrentChannelSelection()
+
+	if candidate != nil && candidate.Channel != nil && candidate.Channel.ID > 0 && p.state.responsesRelayAffinityRetryChannel == candidate.Channel.ID {
+		p.state.responsesRelayAffinityRetryChannel = 0
+		return nil
+	}
 
 	if candidate != nil && candidate.Channel != nil &&
 		hasResponsesRejectedStatusCompatibilityRetry(p.state, candidate.Channel.ID) {

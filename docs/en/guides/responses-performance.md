@@ -69,15 +69,46 @@ decryption or lossless recovery of hidden reasoning.
 Recovery requires user history and correctly paired function/custom-tool results.
 Named standalone function results without a `call_id` remain valid; an unmatched
 nonempty `call_id` still fails closed.
-It refuses unresolved `previous_response_id`, compaction or item references,
-encrypted agent messages/arguments, and unknown input types. Only encrypted
+Generic encryption errors refuse unresolved `previous_response_id`, compaction or item references,
+encrypted agent messages/arguments, and unknown input types. A complete rejection naming
+one reasoning item may preserve other known native checkpoints and agent messages unchanged;
+this does not establish that the destination can decrypt them. Only encrypted
 reasoning items are replaced: visible summaries and reasoning text become
-assistant text, while messages, tool inputs/results, native tool IDs and cache
-keys remain intact. Unsupported summary/content types fail closed.
+assistant text, while messages, tool inputs/results and cache keys remain intact.
+Optional item IDs dependent on rebuilt reasoning are detached, preserving `call_id`.
+Unsupported summary/content types fail closed.
 
 The rule is scoped to the current request and channel; it does not disable
 encrypted reasoning for later requests. Generic validation errors do not trigger
 it, and it consumes the existing same-channel retry budget.
+
+Native or local compaction does not convert encrypted agent messages generated afterward.
+Visible delivery labels are not substitutes for encrypted message bodies, and later final
+reports do not prove that every interim message is covered. When a destination explicitly
+rejects those bodies, the gateway retains them and returns the error. A complete migration
+requires a source resource that can read the ciphertext or an explicitly agreed content recovery.
+
+## Overloaded relay affinity in old conversations
+
+Some relays pin conversations to internal upstream routes, so old conversations can remain
+overloaded while new ones succeed. For non-OAuth Codex relays, a 500/503 must explicitly report
+model capacity or high demand and include repeated `(channel,channel)` sticky-route entries in
+`X-New-Api-Routed-Channel-Id` before the gateway tries one fresh upstream session identity.
+The request must contain replayable full history without unresolved response references or
+opaque compaction checkpoints.
+
+Recovery updates upstream session, thread and window identities and `prompt_cache_key` together,
+and clears old turn-state/routing hints. Input history, item IDs, every ciphertext, tool results,
+model and credentials remain intact. Downstream thread and turn ownership remain unchanged.
+Only a completed response confirms the alias for later requests. The in-memory cache is scoped
+to project, API key, channel configuration, destination, upstream credential, model and client
+thread, with a two-hour lifetime and at most 2,048 entries. Failed aliases are not confirmed.
+
+Recovery consumes the existing same-channel retry budget. If the replacement identity is also
+explicitly overloaded, identical same-channel replay stops and the existing alternate-channel
+path applies. Exhausted quota, wait hints longer than one minute, user cancellation, official
+endpoints and already-committed output do not trigger this recovery. It neither decrypts history
+nor guarantees that the relay can supply a healthy upstream route.
 
 ## Replay cache
 
