@@ -7,7 +7,8 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
-// routeInterrupt binds a Codex interrupt to an active response on this connection.
+// routeInterrupt binds a Codex interrupt to a response on this connection.
+// A late interrupt for a recently finished response is an idempotent no-op.
 func (d *responsesWebSocketDispatcher) routeInterrupt(message []byte) *httpclient.Error {
 	var raw map[string]json.RawMessage
 	if err := json.Unmarshal(message, &raw); err != nil || raw == nil {
@@ -32,20 +33,35 @@ func (d *responsesWebSocketDispatcher) routeInterrupt(message []byte) *httpclien
 		return invalidResponsesWebSocketRequest("response.interrupt requires mode discard_partial_items", "mode")
 	}
 	d.mu.Lock()
+	defer d.mu.Unlock()
 	lane := d.responseLanes[payload.ResponseID]
-	d.mu.Unlock()
 	if lane == nil {
+		if d.terminalResponses.Contains(payload.ResponseID) {
+			return nil
+		}
 		return responsesWebSocketRequestError("response not found on this WebSocket connection", "response_id", "response_not_found")
 	}
 	lane.mu.Lock()
 	defer lane.mu.Unlock()
 	if !lane.active {
+		if d.terminalResponses.Contains(payload.ResponseID) {
+			return nil
+		}
 		return responsesWebSocketRequestError("response not found on this WebSocket connection", "response_id", "response_not_found")
 	}
+	if lane.steer.IsTerminalResponse(payload.ResponseID) {
+		return nil
+	}
 	if !lane.steer.Ready() {
+		if lane.steer.IsTerminalResponse(payload.ResponseID) {
+			return nil
+		}
 		return responsesWebSocketRequestError("response.interrupt requires an active upstream Responses WebSocket", "response_id", "interrupt_not_supported")
 	}
 	if !lane.steer.Send(append([]byte(nil), message...)) {
+		if lane.steer.IsTerminalResponse(payload.ResponseID) {
+			return nil
+		}
 		return responsesWebSocketRequestError("Responses WebSocket control queue is full or no longer active", "response_id", "interrupt_not_available")
 	}
 	return nil

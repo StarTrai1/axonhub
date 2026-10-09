@@ -180,6 +180,7 @@ type responsesWebSocketDispatcher struct {
 	pending        chan struct{}
 	lanes          map[string]*responsesWebSocketLane
 	responseLanes  map[string]*responsesWebSocketLane
+	terminalResponses shared.ResponsesWebSocketTerminals
 	mu             sync.Mutex
 	namedStreams   int
 	wg             sync.WaitGroup
@@ -436,6 +437,9 @@ func (d *responsesWebSocketDispatcher) processMessage(lane *responsesWebSocketLa
 
 	return writeResponsesWebSocketResult(requestCtx, d.writer, result, d.transformError, streamID, func(id string) {
 		d.registerResponseID(id, lane)
+	}, func(id string) {
+		steers.RememberTerminalResponse(id)
+		d.terminalResponses.Remember(id)
 	}, func() {
 		lane.session.completeRequest(message)
 	})
@@ -794,6 +798,7 @@ func writeResponsesWebSocketResult(
 	transformError responsesWebSocketErrorFunc,
 	streamID string,
 	registerResponseID func(string),
+	responseTerminal func(string),
 	responseCompleted func(),
 ) error {
 	if result.ChatCompletionStream != nil {
@@ -812,6 +817,12 @@ func writeResponsesWebSocketResult(
 			}
 			if registerResponseID != nil && event.Type == "response.created" {
 				registerResponseID(responseIDFromWebSocketEvent(event.Data))
+			}
+			if responseTerminal != nil {
+				switch event.Type {
+				case "response.completed", "response.incomplete", "response.failed", "response.cancelled":
+					responseTerminal(responseIDFromWebSocketEvent(event.Data))
+				}
 			}
 			data, err := withResponsesWebSocketStreamID(event.Data, streamID)
 			if err != nil {
@@ -841,6 +852,9 @@ func writeResponsesWebSocketResult(
 
 		if registerResponseID != nil {
 			registerResponseID(responseIDFromResponseBody(response))
+		}
+		if responseTerminal != nil {
+			responseTerminal(responseIDFromResponseBody(response))
 		}
 		if err := writeResponsesWebSocketJSON(writer, responsesWebSocketEvent(streamID, gin.H{
 			"type":            "response.completed",

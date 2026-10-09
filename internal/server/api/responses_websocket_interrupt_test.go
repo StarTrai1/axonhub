@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -18,6 +19,7 @@ import (
 	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
+	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 	"github.com/looplj/axonhub/llm/transformer/shared"
 )
@@ -111,6 +113,9 @@ func testResponsesWebSocketInterruptDrainsAndContinues(t *testing.T, model strin
 	}
 	require.True(t, seen["response.interrupt.accepted"])
 	require.True(t, seen["response.output_item.interrupted"])
+	// An instant interrupt can arrive again after its terminal event. It must
+	// neither reject the next turn nor leak onto the retained upstream socket.
+	require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.interrupt","response_id":"resp_interrupt","mode":"discard_partial_items"}`)))
 	require.NoError(t, conn.WriteMessage(websocket.TextMessage, fixture(`{"type":"response.create","model":"gpt-6-sol","previous_response_id":"resp_interrupt","input":"second"}`)))
 	for {
 		_, event, err := conn.ReadMessage()
@@ -146,4 +151,69 @@ func TestResponsesWebSocketInterruptOwnershipAndValidation(t *testing.T) {
 	require.NotNil(t, d.routeInterrupt(interrupt))
 	d.unregisterLane(lane)
 	require.NotNil(t, d.routeInterrupt(interrupt))
+}
+
+func TestResponsesWebSocketInterruptBeforeTerminalDelivery(t *testing.T) {
+	d := &responsesWebSocketDispatcher{responseLanes: make(map[string]*responsesWebSocketLane)}
+	lane := &responsesWebSocketLane{}
+	control := lane.begin("gpt-6.1-sol")
+	control.Activate()
+	d.registerResponseID("owned", lane)
+	// The upstream reader has finished, but its terminal frame is still in
+	// the pipeline. No downstream terminal cache entry exists yet.
+	control.RememberTerminalResponse("owned")
+	control.Deactivate()
+	interrupt := []byte(`{"type":"response.interrupt","response_id":"owned","mode":"discard_partial_items"}`)
+	require.Nil(t, d.routeInterrupt(interrupt))
+	require.Empty(t, control.Events())
+	require.NotNil(t, d.routeInterrupt([]byte(`{"type":"response.interrupt","response_id":"foreign","mode":"discard_partial_items"}`)))
+	require.NotNil(t, d.routeInterrupt([]byte(`{"type":"response.interrupt","response_id":"owned","mode":"unknown"}`)))
+	// Ending without a delivered terminal does not authorize arbitrary IDs.
+	lane.end()
+	d.unregisterLane(lane)
+	require.NotNil(t, d.routeInterrupt(interrupt))
+}
+
+func TestResponsesWebSocketInterruptAfterCompletion(t *testing.T) {
+	for _, streaming := range []bool{false, true} {
+		t.Run(fmt.Sprint(streaming), func(t *testing.T) {
+			var calls atomic.Int32
+			process := func(context.Context, *httpclient.Request) (orchestrator.ChatCompletionResult, error) {
+				id := fmt.Sprintf("resp_%d", calls.Add(1))
+				body := []byte(fmt.Sprintf(`{"id":%q,"model":"gpt-6.1-sol","status":"completed","output":[]}`, id))
+				if !streaming {
+					return orchestrator.ChatCompletionResult{ChatCompletion: &httpclient.Response{Body: body}}, nil
+				}
+				return orchestrator.ChatCompletionResult{ChatCompletionStream: streams.SliceStream([]*httpclient.StreamEvent{
+					{Type: "response.completed", Data: []byte(fmt.Sprintf(`{"type":"response.completed","response":%s}`, body))},
+				})}, nil
+			}
+			server := newResponsesWebSocketTestServer(t, process, nil)
+			conn := dialResponsesWebSocket(t, server.URL, nil)
+			defer conn.Close()
+			require.NoError(t, conn.SetReadDeadline(time.Now().Add(10*time.Second)))
+			create := []byte(`{"type":"response.create","model":"gpt-6.1-sol","input":"hello"}`)
+			for turn := 1; turn <= 3; turn++ {
+				require.NoError(t, conn.WriteMessage(websocket.TextMessage, create))
+				_, completed, err := conn.ReadMessage()
+				require.NoError(t, err)
+				require.Equal(t, "response.completed", gjson.GetBytes(completed, "type").String(), string(completed))
+				require.Equal(t, fmt.Sprintf("resp_%d", turn), gjson.GetBytes(completed, "response.id").String())
+				// Repeated late controls remain bound to the first response even
+				// after the same lane has been reused for another turn.
+				require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.interrupt","response_id":"resp_1","mode":"discard_partial_items"}`)))
+			}
+			require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.interrupt","response_id":"foreign","mode":"discard_partial_items"}`)))
+			_, rejected, err := conn.ReadMessage()
+			require.NoError(t, err)
+			require.Equal(t, "response_not_found", gjson.GetBytes(rejected, "error.code").String())
+			other := dialResponsesWebSocket(t, server.URL, nil)
+			defer other.Close()
+			require.NoError(t, other.SetReadDeadline(time.Now().Add(10*time.Second)))
+			require.NoError(t, other.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.interrupt","response_id":"resp_1","mode":"discard_partial_items"}`)))
+			_, rejected, err = other.ReadMessage()
+			require.NoError(t, err)
+			require.Equal(t, "response_not_found", gjson.GetBytes(rejected, "error.code").String())
+		})
+	}
 }

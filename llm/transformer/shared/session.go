@@ -24,6 +24,7 @@ type responsesWebSocketSteerContextKey struct{}
 type ResponsesWebSocketSteering struct {
 	events chan []byte
 	ready  atomic.Bool
+	terminals ResponsesWebSocketTerminals
 }
 
 // responsesAPIContextKey marks requests using the OpenAI Responses API.

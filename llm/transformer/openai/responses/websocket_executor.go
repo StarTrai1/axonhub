@@ -1244,6 +1244,14 @@ func (s *webSocketStream) Next() bool {
 	}
 
 	typ := streamEventType(msg)
+	switch typ {
+	case "response.completed", "response.incomplete", "response.failed", "response.cancelled":
+		// Serialize this with control writes, before releasing the lease or
+		// exposing the terminal frame to a buffered downstream consumer.
+		s.mu.Lock()
+		s.steering.RememberTerminalResponse(responseIDFromWebSocketEvent(msg))
+		s.mu.Unlock()
+	}
 	s.setCurrent(&httpclient.StreamEvent{
 		Type: typ,
 		Data: normalizeWebSocketEvent(msg),
@@ -1295,6 +1303,15 @@ func (s *webSocketStream) writeSteer(lease *webSocketLease, message []byte) (boo
 	defer s.mu.Unlock()
 	if s.closed {
 		return false, nil
+	}
+	var control struct {
+		Type string `json:"type"`
+		ResponseID string `json:"response_id"`
+	}
+	if json.Unmarshal(message, &control) == nil && control.Type == "response.interrupt" && s.steering.IsTerminalResponse(control.ResponseID) {
+		// A queued interrupt can lose the race to completion while a steered
+		// successor is still active. Keep its worker and upstream socket intact.
+		return true, nil
 	}
 	return true, lease.writeJSON(json.RawMessage(message))
 }

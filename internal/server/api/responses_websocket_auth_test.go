@@ -215,10 +215,15 @@ func TestResponsesWebSocketAuthRechecksCredentialProjectAndIP(t *testing.T) {
 			_, _, err := conn.ReadMessage()
 			require.NoError(t, err)
 			require.NoError(t, scenario.change(fixture))
-			require.NoError(t, conn.WriteMessage(websocket.TextMessage, create))
-			_, rejected, err := conn.ReadMessage()
-			require.NoError(t, err)
-			require.Equal(t, int64(scenario.status), gjson.GetBytes(rejected, "status").Int())
+			for _, message := range [][]byte{
+				create,
+				[]byte(`{"type":"response.interrupt","response_id":"resp_initial","mode":"discard_partial_items"}`),
+			} {
+				require.NoError(t, conn.WriteMessage(websocket.TextMessage, message))
+				_, rejected, err := conn.ReadMessage()
+				require.NoError(t, err)
+				require.Equal(t, int64(scenario.status), gjson.GetBytes(rejected, "status").Int())
+			}
 			require.Equal(t, int32(1), calls.Load())
 		})
 	}
