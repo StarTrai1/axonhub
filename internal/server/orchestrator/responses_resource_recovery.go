@@ -93,11 +93,13 @@ func responsesResourceHistorySupportsRecoveryWithAgents(body []byte, preserveAge
 			}
 		case "additional_tools", "reasoning", "configuration_update", "compaction_trigger", "compaction", "compaction_summary":
 		case "agent_message":
-			if !preserveAgentMessages || !responsesAgentMessageSupportsPreservation(item) {
+			if !responsesAgentMessageSupportsPreservation(item) {
 				return false, false
 			}
-			// The whole agent item, including its ID and encrypted content, stays
-			// unchanged. It is not a candidate for resource-ID detachment.
+			// Plaintext agent messages are already materialized, including those
+			// restored by the preceding agent-message middleware. The history
+			// guard above still requires preserveAgentMessages for ciphertext.
+			// Keep the entire agent item and its delivery ID unchanged.
 			continue
 		default:
 			return false, false

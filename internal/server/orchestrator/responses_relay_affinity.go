@@ -249,7 +249,8 @@ func responsesRelayStickyOverload(err error, model string) bool {
 func responsesRelayCapacityOverload(err error, model string) bool {
 	var failure *httpclient.Error
 	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || !canRetryTransientRateLimit(err) ||
-		!errors.As(err, &failure) || (failure.StatusCode != http.StatusInternalServerError && failure.StatusCode != http.StatusServiceUnavailable) {
+		!errors.As(err, &failure) || (failure.StatusCode != http.StatusInternalServerError &&
+			failure.StatusCode != http.StatusServiceUnavailable && failure.StatusCode != http.StatusTooManyRequests) {
 		return false
 	}
 	// Some relays use 500 for capacity errors, but their explicit wait hint has
@@ -262,6 +263,12 @@ func responsesRelayCapacityOverload(err error, model string) bool {
 	message := strings.TrimSpace(gjson.GetBytes(failure.Body, "error.message").String())
 	if prefix, _, found := strings.Cut(message, " (request id: "); found {
 		message = prefix
+	}
+	if failure.StatusCode == http.StatusTooManyRequests {
+		// A provisioned deployment can exhaust one sticky route while another
+		// route behind the same relay credential still has capacity. Ordinary
+		// token/RPM limits retain their existing wait-and-retry behavior.
+		return message == "Requests have exceeded the throughput limit on your Provisioned-Managed deployment. If you continue to exceed your limit, consider increasing the number of provisioned throughput units deployed."
 	}
 	return message == "当前模型 "+model+" 负载已经达到上限，请稍后重试" ||
 		strings.TrimSuffix(strings.ReplaceAll(message, "’", "'"), ".") == "We're currently experiencing high demand, which may cause temporary errors"

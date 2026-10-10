@@ -36,6 +36,8 @@ func relayAffinityOverload() *httpclient.Error {
 		"当前模型 gpt-6-astra 负载已经达到上限，请稍后重试 (request id: synthetic-overload)", "(11,11),(22,22)")
 }
 
+const relayProvisionedThroughputMessage = "Requests have exceeded the throughput limit on your Provisioned-Managed deployment. If you continue to exceed your limit, consider increasing the number of provisioned throughput units deployed."
+
 func relayAffinityRequest(t *testing.T) *httpclient.Request {
 	t.Helper()
 	request := rejectedReasoningPipelineRequest(t, llm.APIFormatOpenAIResponse)
@@ -221,6 +223,13 @@ func TestResponsesRejectedRelayAffinityOverloadGuards(t *testing.T) {
 		{500, demand, "(11,11),(22,22)", true},
 		{503, demand + ".", "(22,22)", true},
 		{429, demand, "(22,22)", false},
+		{429, relayProvisionedThroughputMessage, "(11,11),(22,22)", true},
+		{429, relayProvisionedThroughputMessage + " (request id: synthetic-capacity)", "(22,22)", true},
+		{429, relayProvisionedThroughputMessage, "11,22", false},
+		{429, relayProvisionedThroughputMessage + " Invalid model.", "(22,22)", false},
+		{429, "Your requests to gpt-6-astra for gpt-6-astra in eastus2 have exceeded token rate limit.", "(22,22)", false},
+		{400, relayProvisionedThroughputMessage, "(22,22)", false},
+		{500, relayProvisionedThroughputMessage, "(22,22)", false},
 		{400, demand, "(22,22)", false},
 		{500, "insufficient_quota", "(22,22)", false},
 		{500, demand, "", false},
@@ -241,6 +250,89 @@ func TestResponsesRejectedRelayAffinityOverloadGuards(t *testing.T) {
 	cooldown := relayAffinityOverload()
 	cooldown.Headers.Set("Retry-After", "120")
 	require.False(t, responsesRelayStickyOverload(cooldown, "gpt-6-astra"))
+	for _, header := range []string{"Retry-After", "Retry-After-Ms", "X-Ms-Retry-After-Ms"} {
+		provisioned := relayAffinityFailure(http.StatusTooManyRequests, relayProvisionedThroughputMessage, "(22,22)")
+		value := "120000"
+		if header == "Retry-After" {
+			value = "120"
+		}
+		provisioned.Headers.Set(header, value)
+		require.False(t, responsesRelayStickyOverload(provisioned, "gpt-6-astra"), "long cooldown: %s", header)
+	}
+	provisionedQuota := relayAffinityFailure(http.StatusTooManyRequests, relayProvisionedThroughputMessage, "(22,22)")
+	provisionedQuota.Body, err = sjson.SetBytes(provisionedQuota.Body, "error.code", "insufficient_quota")
+	require.NoError(t, err)
+	require.False(t, responsesRelayStickyOverload(provisionedQuota, "gpt-6-astra"))
+}
+
+func TestResponsesRejectedRelayProvisionedThroughputRecovery(t *testing.T) {
+	for _, raw := range []bool{false, true} {
+		t.Run(fmt.Sprintf("raw=%t", raw), func(t *testing.T) {
+			request := relayAffinityRequest(t)
+			var err error
+			request.Body, err = sjson.SetRawBytes(request.Body, "input.-1", []byte(preservedPlainAgentMessage))
+			require.NoError(t, err)
+			original := append([]byte(nil), request.Body...)
+			executor := &responsesReasoningPipelineExecutor{
+				failures: []error{
+					relayAffinityFailure(http.StatusTooManyRequests, relayProvisionedThroughputMessage, "(11,11),(22,22)"),
+					relayAffinityFailure(http.StatusTooManyRequests, relayProvisionedThroughputMessage, "33,22"),
+					opaqueRelayReplayError(),
+				},
+				events: rejectedReasoningCompactionEvents(),
+			}
+			var middleware *responsesRelayAffinityMiddleware
+			_, result, err := runRejectedReasoningPipeline(t, t.Context(), request, executor, t.Name(), raw, 3,
+				func(*PersistenceState, *PersistentOutboundTransformer) pipeline.Middleware {
+					return &relayReplayTestDestination{}
+				},
+				relayAffinityMiddleware(t, &middleware),
+			)
+			require.NoError(t, err)
+			require.Contains(t, drainRejectedReasoningPipeline(t, result), "response.completed")
+			require.Len(t, executor.requests, 4, "two capacity migrations and one ID replay share the original three retries")
+			first, second, third, replay := executor.requests[0], executor.requests[1], executor.requests[2], executor.requests[3]
+			require.NotEqual(t, first.Headers.Get("Thread-Id"), second.Headers.Get("Thread-Id"))
+			require.NotEqual(t, second.Headers.Get("Thread-Id"), third.Headers.Get("Thread-Id"))
+			require.Equal(t, third.Headers.Get("Thread-Id"), replay.Headers.Get("Thread-Id"), "400 replay must retain the selected replacement session")
+			for _, attempt := range executor.requests[:3] {
+				require.Equal(t, gjson.GetBytes(first.Body, "input").Raw, gjson.GetBytes(attempt.Body, "input").Raw)
+			}
+			var expected map[string]any
+			require.NoError(t, json.Unmarshal(third.Body, &expected))
+			for _, input := range expected["input"].([]any) {
+				item := input.(map[string]any)
+				if item["type"] != "agent_message" {
+					delete(item, "id")
+				}
+			}
+			encoded, err := json.Marshal(expected)
+			require.NoError(t, err)
+			require.JSONEq(t, string(encoded), string(replay.Body))
+			for _, attempt := range executor.requests {
+				require.Equal(t, first.URL, attempt.URL)
+				require.Equal(t, first.Headers.Get("Authorization"), attempt.Headers.Get("Authorization"))
+			}
+			require.Equal(t, original, request.Body)
+			for key := range middleware.pending {
+				require.Eventually(t, func() bool {
+					cached, found := responsesRelayAffinities.Get(key)
+					return found && cached.id == replay.Headers.Get("Thread-Id")
+				}, time.Second, time.Millisecond)
+			}
+			next := &responsesReasoningPipelineExecutor{events: rejectedReasoningCompactionEvents()}
+			_, result, err = runRejectedReasoningPipeline(t, t.Context(), request, next, t.Name(), raw, 0,
+				func(*PersistenceState, *PersistentOutboundTransformer) pipeline.Middleware {
+					return &relayReplayTestDestination{}
+				},
+				relayAffinityMiddleware(t, nil),
+			)
+			require.NoError(t, err)
+			drainRejectedReasoningPipeline(t, result)
+			require.Len(t, next.requests, 1)
+			require.Equal(t, replay.Headers.Get("Thread-Id"), next.requests[0].Headers.Get("Thread-Id"))
+		})
+	}
 }
 
 func TestResponsesRejectedRelayAffinityHistoryGuards(t *testing.T) {
