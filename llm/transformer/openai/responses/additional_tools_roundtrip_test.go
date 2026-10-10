@@ -194,7 +194,7 @@ func TestAdditionalToolsNativeSearchReplacesBridgeInCreateAndCompact(t *testing.
 	}
 }
 
-func TestAdditionalToolsHistoryOrderSurvivesChatConversion(t *testing.T) {
+func TestAdditionalToolsHistoryOrderAcrossOutboundAttempts(t *testing.T) {
 	const body = `{"model":"gpt-6.1-sol","input":[
 		{"type":"function_call","call_id":"call_order","name":"run","arguments":"{}"},
 		{"type":"additional_tools","id":"at_order","role":"developer","tools":[]},
@@ -211,9 +211,18 @@ func TestAdditionalToolsHistoryOrderSurvivesChatConversion(t *testing.T) {
 			require.NoError(t, err)
 			before, err := json.Marshal(req)
 			require.NoError(t, err)
-			chat := openai.RequestFromLLM(t.Context(), req, openai.ReasoningFieldContent)
-			require.Equal(t, "tool", chat.Messages[1].Role)
-			require.Equal(t, "call_order", *chat.Messages[1].ToolCallID)
+			if req.RequestType == llm.RequestTypeCompact {
+				chat, err := openai.NewOutboundTransformer("https://example.com", "test")
+				require.NoError(t, err)
+				_, err = chat.TransformRequest(t.Context(), req)
+				require.ErrorIs(t, err, transformer.ErrInvalidRequest)
+			} else {
+				chat := openai.RequestFromLLM(t.Context(), req, openai.ReasoningFieldContent)
+				require.GreaterOrEqual(t, len(chat.Messages), 2)
+				require.Equal(t, "tool", chat.Messages[1].Role)
+				require.NotNil(t, chat.Messages[1].ToolCallID)
+				require.Equal(t, "call_order", *chat.Messages[1].ToolCallID)
+			}
 			after, err := json.Marshal(req)
 			require.NoError(t, err)
 			require.Equal(t, before, after)
