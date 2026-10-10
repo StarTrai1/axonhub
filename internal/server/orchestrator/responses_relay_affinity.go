@@ -250,7 +250,7 @@ func responsesRelayCapacityOverload(err error, model string) bool {
 	var failure *httpclient.Error
 	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || !canRetryTransientRateLimit(err) ||
 		!errors.As(err, &failure) || (failure.StatusCode != http.StatusInternalServerError &&
-			failure.StatusCode != http.StatusServiceUnavailable && failure.StatusCode != http.StatusTooManyRequests) {
+		failure.StatusCode != http.StatusServiceUnavailable && failure.StatusCode != http.StatusTooManyRequests) {
 		return false
 	}
 	// Some relays use 500 for capacity errors, but their explicit wait hint has
