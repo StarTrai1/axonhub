@@ -11,6 +11,7 @@ import (
 	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer"
+	"github.com/looplj/axonhub/llm/transformer/openai"
 )
 
 // additionalToolsLiteRequest is the shape Codex CLI sends for a model it marks as
@@ -188,6 +189,49 @@ func TestAdditionalToolsNativeSearchReplacesBridgeInCreateAndCompact(t *testing.
 				require.Equal(t, "client_call", input[6].Get("call_id").String())
 				require.Equal(t, "client_call", input[7].Get("call_id").String())
 				require.Contains(t, input[9].Raw, "after")
+			}
+		})
+	}
+}
+
+func TestAdditionalToolsHistoryOrderSurvivesChatConversion(t *testing.T) {
+	const body = `{"model":"gpt-6.1-sol","input":[
+		{"type":"function_call","call_id":"call_order","name":"run","arguments":"{}"},
+		{"type":"additional_tools","id":"at_order","role":"developer","tools":[]},
+		{"type":"message","role":"user","content":"interjection"},
+		{"type":"web_search_call","id":"ws_order","status":"completed","action":{"type":"search","query":"kept"}},
+		{"type":"function_call_output","call_id":"call_order","output":"result stays with its original item"},
+		{"type":"message","role":"assistant","phase":"partial_answer","content":[{"type":"output_text","text":"continue"}]}
+	]}`
+	for name, inbound := range map[string]transformer.Inbound{
+		"create": NewInboundTransformer(), "compact": NewCompactInboundTransformer(),
+	} {
+		t.Run(name, func(t *testing.T) {
+			req, err := inbound.TransformRequest(t.Context(), &httpclient.Request{Body: []byte(body)})
+			require.NoError(t, err)
+			before, err := json.Marshal(req)
+			require.NoError(t, err)
+			chat := openai.RequestFromLLM(t.Context(), req, openai.ReasoningFieldContent)
+			require.Equal(t, "tool", chat.Messages[1].Role)
+			require.Equal(t, "call_order", *chat.Messages[1].ToolCallID)
+			after, err := json.Marshal(req)
+			require.NoError(t, err)
+			require.Equal(t, before, after)
+			for range 2 {
+				wire, err := additionalToolsOutbound(t).TransformRequest(t.Context(), req)
+				require.NoError(t, err)
+				items := gjson.GetBytes(wire.Body, "input").Array()
+				require.Len(t, items, 6)
+				for i, typ := range []string{"function_call", "additional_tools", "message", "web_search_call", "function_call_output", "message"} {
+					require.Equal(t, typ, items[i].Get("type").String())
+				}
+				original := gjson.Get(body, "input").Array()
+				for _, i := range []int{1, 3} {
+					require.JSONEq(t, original[i].Raw, items[i].Raw)
+				}
+				require.Equal(t, "call_order", items[4].Get("call_id").String())
+				require.Equal(t, "result stays with its original item", items[4].Get("output").String())
+				require.Equal(t, "partial_answer", items[5].Get("phase").String())
 			}
 		})
 	}

@@ -56,6 +56,11 @@ func RequestFromLLM(ctx context.Context, r *llm.Request, reasoningField Reasonin
 	req.Messages = lo.Map(r.Messages, func(m llm.Message, _ int) Message {
 		return MessageFromLLMWithConfig(m, reasoningField)
 	})
+	if r.APIFormat == llm.APIFormatOpenAIResponse || r.APIFormat == llm.APIFormatOpenAIResponseWebSocket {
+		// Apply Chat's adjacency requirement at this boundary. Reordering the
+		// shared inbound would corrupt positional raw-item replay to Responses.
+		req.Messages = adjacentToolResults(req.Messages)
+	}
 
 	// Some OpenAI-compatible upstreams reject multiple system messages. Retain
 	// the existing Chat compatibility policy for Claude Code's system arrays.
