@@ -102,7 +102,7 @@ The gateway preserves `configuration_update` items without inventing message IDs
 
 Additional quota data retains the reported `normal_model_slug` as metadata, without remapping requests. The passive quota checker does not advertise `x-openai-codex-luna-reserve: 1`: that capability is for clients able to apply a Reserve selection, as specified in the [Codex 0.154.0 usage client](https://github.com/openai/codex/blob/rust-v0.154.0/codex-rs/backend-client/src/client/rate_limit_resets.rs).
 
-### Codex 0.162.0 compatibility
+### Codex 0.162.x compatibility
 
 The gateway preserves `partial_answer` message phases and explicit `end_turn: false` through Responses conversion and stream aggregation. Completing one inference does not imply that Codex should end the turn. Base instructions supplied as developer input messages and incremental `additional_tools` declarations retain their history order, including tool-removal notices.
 
@@ -118,7 +118,9 @@ external_web_access = true
 
 `remote_compaction = "unsupported"` keeps compaction in the client. `external_web_access` controls whether Codex may request live web search; it does not grant upstream search or account access. Omitted values retain the client's provider defaults. See the [official capability schema](https://github.com/openai/codex/blob/rust-v0.162.0/codex-rs/model-provider-info/src/capabilities.rs).
 
-The fallback Codex identity is 0.162.0. Explicit client identity and dynamic stable-version refresh remain authoritative. Hosted checks compare 0.161.0 and 0.162.0 with gpt-6-sol and gpt-6.1-sol against loopback fixtures, including a failure frame produced by the gateway itself. They do not establish provider account availability.
+The fallback Codex identity is 0.162.1. Explicit client identity and dynamic stable-version refresh remain authoritative. Hosted checks compare 0.162.0 and 0.162.1 with gpt-6-sol and gpt-6.1-sol against loopback fixtures. Both versions exercise partial-answer continuation, developer input instructions, retry timing from a gateway-generated failure frame, encrypted agent-message delivery, usage, concurrency, and cancellation. They do not establish provider account availability.
+
+The [0.162.1 patch release](https://github.com/openai/codex/releases/tag/rust-v0.162.1) fixes multiline asynchronous-question rendering and restricts daemon feature compatibility checks to explicit CLI overrides, subject to managed configuration. The exact tag differences introduce no Responses HTTP/WebSocket, model-catalog, or compaction/encryption contract changes. These two client fixes require upgrading Codex; they do not require a new gateway route or field.
 
 #### Instant steering
 

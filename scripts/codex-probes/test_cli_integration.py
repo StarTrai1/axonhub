@@ -12,16 +12,23 @@ from probe_common import OwnedState, Runner
 from test_probes import args_for
 
 
+# Hosted fixtures pin stable versions. Keep patch upgrades in the feature
+# checks instead of silently skipping them when the matrix advances.
+CODEX_162_OR_NEWER = tuple(int(part) for part in (
+    os.environ.get("PROBE_TEST_CODEX_VERSION") or "0.0.0"
+).split(".")) >= (0, 162, 0)
+
+
 @unittest.skipUnless(os.environ.get("PROBE_TEST_CODEX"), "real CLI fixture runs only in hosted CI")
 class CLIIntegrationTest(unittest.IsolatedAsyncioTestCase):
     async def test_completed_turn_preserves_jsonl_usage(self):
         await self.completed_turn()
 
-    @unittest.skipUnless(os.environ.get("PROBE_TEST_CODEX_VERSION") == "0.162.0", "requires partial_answer support")
+    @unittest.skipUnless(CODEX_162_OR_NEWER, "requires partial_answer support")
     async def test_partial_answer_continues_before_final_answer(self):
         await self.completed_turn(partial=True)
 
-    @unittest.skipUnless(os.environ.get("PROBE_TEST_CODEX_VERSION") == "0.162.0", "requires streamed Retry-After support")
+    @unittest.skipUnless(CODEX_162_OR_NEWER, "requires streamed Retry-After support")
     async def test_gateway_retry_failure_obeys_server_delay(self):
         await self.completed_turn(retry=True)
 
@@ -115,7 +122,7 @@ class CLIIntegrationTest(unittest.IsolatedAsyncioTestCase):
                     if partial:
                         history = requests[1][1]["input"]
                         self.assertTrue(any(item.get("phase") == "partial_answer" for item in history))
-                    if os.environ.get("PROBE_TEST_CODEX_VERSION") == "0.162.0":
+                    if CODEX_162_OR_NEWER:
                         self.assertNotIn("instructions", requests[0][1])
                         self.assertTrue(any(item.get("role") == "developer" for item in requests[0][1]["input"]))
                     self.assertEqual(requests[0][0]["authorization"].lower(), "bearer synthetic-test-key")
@@ -128,7 +135,7 @@ class CLIIntegrationTest(unittest.IsolatedAsyncioTestCase):
                 server.close()
                 await server.wait_closed()
 
-    @unittest.skipUnless(os.environ.get("PROBE_TEST_CODEX_VERSION") == "0.162.0", "requires current agent-message protocol")
+    @unittest.skipUnless(CODEX_162_OR_NEWER, "requires current agent-message protocol")
     async def test_gateway_agent_envelope_reaches_child_intact(self):
         # No model or external service is called. The real CLI executes one
         # synthetic spawn in its isolated scratch directory against this mock.

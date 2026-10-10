@@ -2,7 +2,7 @@
 
 两个 Python 入口直接调度**本机安装的官方 Codex CLI**。每次均为新 `codex exec --json --ephemeral`，不用 resume，不拼装/伪造 Codex 的 User-Agent、身份、会话头或 TLS 指纹。协议由所安装的 CLI 生成；这保证使用真实客户端，**不代表与交互式 Codex 的工具列表、指令或配置逐字节相同，也不保证不被渠道封禁**。
 
-运行要求：Linux（使用 `/proc`、进程组和 `flock`），Python 3.11+，Codex CLI 0.155.1+。本实现已核对官方 `rust-v0.155.1` → `rust-v0.162.0` 源码，兼容 0.156.1、0.157.0、0.157.1、0.158.0、0.159.0、0.159.2、0.159.3 、0.160.0、0.160.1 、0.161.0 和 0.162.0。升级后先运行 `--check` 并检查官方变更。Python 仅使用标准库。
+运行要求：Linux（使用 `/proc`、进程组和 `flock`），Python 3.11+，Codex CLI 0.155.1+。本实现已核对官方 `rust-v0.155.1` → `rust-v0.162.1` 源码，兼容 0.156.1、0.157.0、0.157.1、0.158.0、0.159.0、0.159.2、0.159.3 、0.160.0、0.160.1 、0.161.0、0.162.0 和 0.162.1。升级后先运行 `--check` 并检查官方变更。Python 仅使用标准库。
 
 ## 准备
 
@@ -154,7 +154,7 @@ python3 scripts/codex-probes/keepalive.py \
 - 官方 [non-interactive 模式](https://developers.openai.com/codex/noninteractive)：`exec`、JSONL 完成事件与 `--ephemeral`。
 - [Codex 配置](https://developers.openai.com/codex/config-reference) 与 [0.155.1 exec CLI](https://github.com/openai/codex/blob/rust-v0.155.1/codex-rs/exec/src/cli.rs)、[JSONL 事件](https://github.com/openai/codex/blob/rust-v0.155.1/codex-rs/exec/src/exec_events.rs)、[配置 schema](https://github.com/openai/codex/blob/rust-v0.155.1/codex-rs/core/config.schema.json)。检索日期 2026-09-19。
 - 简单题主题参考 NASA [天空为什么是蓝色](https://spaceplace.nasa.gov/blue-sky/) 与 USGS [水循环](https://www.usgs.gov/water-science-school/water-cycle)，问题为重新编写，没有复制“十万个为什么”书籍内容。
-- GitHub Actions 用 fake CLI 验证新会话、清理、超时/中断、错误分类、阶段切换、计数、定时去重和不触碰外部文件；hosted matrix 固定下载官方 0.161.0 和 0.162.0，分别使用 gpt-6-sol、gpt-6.1-sol，仅连接 loopback 模拟服务器验证真实 CLI 五并发、取消及完成事件与用量，不调用真实上游。离线测试不能证明提供方额度窗口行为或封禁策略。
+- GitHub Actions 用 fake CLI 验证新会话、清理、超时/中断、错误分类、阶段切换、计数、定时去重和不触碰外部文件；hosted matrix 固定下载官方 0.162.0 和 0.162.1，分别使用 gpt-6-sol、gpt-6.1-sol，仅连接 loopback 模拟服务器验证真实 CLI 五并发、取消、完成事件与用量、部分回答续传、网关失败帧的重试等待和加密 agent-message 传递，不调用真实上游。离线测试不能证明提供方额度窗口行为或封禁策略。
 
 ### Codex 0.157.0
 
@@ -219,3 +219,9 @@ API key 模型发现默认开启，但仅支持官方默认端点或显式 `mode
 已核对两个精确官方 tag：前向 227 个提交、反向 2 个提交，完整树差异 1,657 个文件。基础指令改为 developer input 消息；增量工具目录使用多个 additional_tools 与普通 developer 移除通知；新增 partial_answer 阶段并保留 end_turn=false 的继续推理语义。
 
 网关补齐 end_turn 的双向转换和聚合，生成 response.failed 终态，保留嵌套 Retry-After，并透传正常错误策略下的 misalignment review_target。缺省身份为 0.162.0。真实 CLI 0.162.0 检查额外覆盖部分回答续传，以及读取网关 Go 测试导出的失败帧后至少等待 3 秒再重试；测试临时将 stream_max_retries 设为 1，不改变日常探测器的零重试预算。所有推理连接仅指向回环模拟服务。
+
+### Codex 0.162.1
+
+已核对官方 [0.162.1 发布说明](https://github.com/openai/codex/releases/tag/rust-v0.162.1)及双向 tag 差异：前向 3 个提交、反向 1 个版本号提交，涉及 10 个文件。两项修复分别为多行异步问题的换行/链接渲染，以及仅对显式 CLI 覆盖执行 daemon 特性兼容检查；托管配置与要求仍优先。Responses HTTP/WebSocket、模型目录、压缩/加密与 exec JSONL 契约没有变化，探测脚本继续使用隔离的 `codex exec` 路径。
+
+网关缺省身份更新为 0.162.1，托管矩阵为 0.162.0 / 0.162.1 × gpt-6-sol / gpt-6.1-sol。0.162.0 引入的回归按最低功能版本启用，补丁升级不会跳过部分回答续传、developer 输入指令、重试等待或加密子任务消息检查。两个 CLI 版本均读取网关 Go 测试导出的失败帧，保留相同重试预算与回环隔离。

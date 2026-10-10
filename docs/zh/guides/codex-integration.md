@@ -102,7 +102,7 @@ Codex 的 5 小时、7 天及上游已报告的 GPT-Reserve 窗口显示浏览�
 
 附加配额数据保留上游报告的 `normal_model_slug` 元数据，不据此重映射请求模型。被动配额查询不声明 `x-openai-codex-luna-reserve: 1`；该能力头适用于能执行 Reserve 选择的客户端，见 [Codex 0.154.0 配额客户端](https://github.com/openai/codex/blob/rust-v0.154.0/codex-rs/backend-client/src/client/rate_limit_resets.rs)。
 
-### Codex 0.162.0 兼容
+### Codex 0.162.x 兼容
 
 网关在 Responses 转换和流聚合中保留 `partial_answer` 阶段及显式的 `end_turn: false`。一次推理完成不等于 Codex 当前轮次结束。放在 developer 输入消息中的基础指令、增量 `additional_tools` 声明和工具移除通知保持原有历史顺序。
 
@@ -118,7 +118,9 @@ external_web_access = true
 
 `remote_compaction = "unsupported"` 表示在客户端执行压缩。`external_web_access` 控制 Codex 是否可以请求实时网页搜索，不授予上游搜索能力或账户权限；省略字段时保留客户端的提供商默认值。详见[官方能力定义](https://github.com/openai/codex/blob/rust-v0.162.0/codex-rs/model-provider-info/src/capabilities.rs)。
 
-缺省 Codex 身份版本为 0.162.0，显式客户端身份和动态稳定版刷新继续优先。托管检查使用 0.161.0 / 0.162.0 × gpt-6-sol / gpt-6.1-sol 回环矩阵，包含网关自身生成的失败帧，不代表真实提供商账户可用性验证。
+缺省 Codex 身份版本为 0.162.1，显式客户端身份和动态稳定版刷新继续优先。托管检查使用 0.162.0 / 0.162.1 × gpt-6-sol / gpt-6.1-sol 回环矩阵；两个版本均检查部分回答续传、developer 输入指令、网关失败帧的重试等待、加密 agent-message 传递、用量、并发和取消，不代表真实提供商账户可用性验证。
+
+[0.162.1 补丁版本](https://github.com/openai/codex/releases/tag/rust-v0.162.1)修复多行异步问题的渲染，并将 daemon 特性兼容检查限制为受托管配置约束的显式 CLI 覆盖。精确 tag 差异没有引入 Responses HTTP/WebSocket、模型目录或压缩/加密契约变化。这两项客户端修复通过升级 Codex 获得，无需新增网关路由或字段。
 
 #### Instant steering
 
