@@ -48,6 +48,7 @@ func (e *canceledQuotaExecutor) DoStream(context.Context, *httpclient.Request) (
 
 type cancelQuotaOnReadStream struct {
 	streams.Stream[*httpclient.StreamEvent]
+
 	cancel context.CancelFunc
 }
 
@@ -58,8 +59,10 @@ func (s *cancelQuotaOnReadStream) Next() bool {
 }
 
 func TestCanceledResponsesStreamPreservesQuotaCooldown(t *testing.T) {
-	quota := &httpclient.Error{StatusCode: http.StatusTooManyRequests,
-		Body: []byte(`{"error":{"type":"usage_limit_reached","resets_in_seconds":600}}`)}
+	quota := &httpclient.Error{
+		StatusCode: http.StatusTooManyRequests,
+		Body:       []byte(`{"error":{"type":"usage_limit_reached","resets_in_seconds":600}}`),
+	}
 	for _, test := range []struct {
 		name    string
 		frame   string
