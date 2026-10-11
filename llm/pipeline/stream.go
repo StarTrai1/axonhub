@@ -311,6 +311,13 @@ func nextLlmStreamEvent(
 		return false, ErrStreamFirstEventTimeout
 	}
 
+	// An upstream error already read from the stream remains authoritative
+	// when the client cancels concurrently. In particular, error middleware
+	// still needs the provider's quota reset or Retry-After information.
+	if err := llmStream.Err(); err != nil {
+		return false, err
+	}
+
 	if ctx.Err() != nil {
 		firstEventGuard.cancelStream()
 		llmStream.Close()

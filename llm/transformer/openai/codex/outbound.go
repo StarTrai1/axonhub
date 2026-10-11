@@ -368,6 +368,12 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	if err != nil {
 		return nil, err
 	}
+	if llmReq.APIFormat == llm.APIFormatOpenAIChatCompletion {
+		hreq, err = shortenChatToolCallIDs(hreq)
+		if err != nil {
+			return nil, err
+		}
+	}
 	if !t.isOfficialCodex() {
 		// Memgen marks OpenAI's internal memory workload. Do not let the
 		// generic header merge forward it to a compatible Responses relay.
