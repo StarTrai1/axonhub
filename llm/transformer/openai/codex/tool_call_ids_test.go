@@ -99,7 +99,9 @@ func TestCodexChatToolCallIDsPreservePairingAcrossAttempts(t *testing.T) {
 
 func TestCodexNativeHistoryKeepsLongCallIDs(t *testing.T) {
 	longID := strings.Repeat("native", 16)
-	body := []byte(fmt.Sprintf(`{"model":"gpt-6.1-sol","input":[{"type":"reasoning","id":"rs_native","encrypted_content":"opaque","summary":[]},{"type":"function_call","call_id":%q,"name":"tool","arguments":"{}"},{"type":"function_call_output","call_id":%q,"output":"result"}]}`, longID, longID))
+	// Match the recognized OpenAI envelope shape used by the existing
+	// synthetic history fixtures; unrelated provider signatures are filtered.
+	body := []byte(fmt.Sprintf(`{"model":"gpt-6.1-sol","input":[{"type":"reasoning","id":"rs_native","encrypted_content":"gAAAA_NATIVE_SYNTHETIC_BLOB","summary":[]},{"type":"function_call","call_id":%q,"name":"tool","arguments":"{}"},{"type":"function_call_output","call_id":%q,"output":"result"}]}`, longID, longID))
 	for _, inbound := range []transformer.Inbound{responses.NewInboundTransformer(), responses.NewCompactInboundTransformer()} {
 		for _, transport := range []string{responses.TransportHTTP, responses.TransportWebSocket} {
 			t.Run(fmt.Sprintf("%T/%s", inbound, transport), func(t *testing.T) {
@@ -110,7 +112,7 @@ func TestCodexNativeHistoryKeepsLongCallIDs(t *testing.T) {
 				wire, err := outbound.TransformRequest(t.Context(), request)
 				require.NoError(t, err)
 				wire = outbound.FinalizeTransportRequest(wire)
-				require.Equal(t, "opaque", gjson.GetBytes(wire.Body, "input.0.encrypted_content").String())
+				require.Equal(t, "gAAAA_NATIVE_SYNTHETIC_BLOB", gjson.GetBytes(wire.Body, "input.0.encrypted_content").String())
 				require.Equal(t, longID, gjson.GetBytes(wire.Body, "input.1.call_id").String())
 				require.Equal(t, longID, gjson.GetBytes(wire.Body, "input.2.call_id").String())
 			})
