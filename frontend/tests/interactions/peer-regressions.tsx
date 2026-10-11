@@ -11,6 +11,9 @@ import { PriceScheduleEditor } from '@/components/price-schedule-editor';
 import { BrandSettings } from '@/features/system/components/brand-settings';
 import SystemProvider from '@/features/system/context/system-context';
 import ProfileForm from '@/features/settings/profile/profile-form';
+import Playground from '@/features/playground';
+import { useAuthStore } from '@/stores/authStore';
+import { useProjectStore } from '@/stores/projectStore';
 
 type ModelValues = ComponentProps<typeof ModelPriceEditor>['control'] extends Control<infer Values> ? Values : never;
 type ScheduleValues = ComponentProps<typeof PriceScheduleEditor>['control'] extends Control<infer Values> ? Values : never;
@@ -69,7 +72,26 @@ function UploadFixture() {
   </>;
 }
 
-const fixture = new URLSearchParams(window.location.search).get('case') === 'uploads' ? <UploadFixture /> : <PriceFixture />;
+function PlaygroundFixture() {
+  return <>
+    <button data-testid='switch-playground-user' onClick={() => {
+      const current = useAuthStore.getState().auth.user!;
+      useAuthStore.getState().auth.setUser({ ...current, id: 'second-user' });
+    }}>Switch user</button>
+    <button data-testid='switch-playground-project' onClick={() => useProjectStore.getState().setSelectedProjectId('second-project')}>Switch project</button>
+    <Playground />
+  </>;
+}
+
+const fixtureCase = new URLSearchParams(window.location.search).get('case');
+if (fixtureCase === 'playground') {
+  useAuthStore.getState().auth.setUser({
+    id: 'first-user', email: 'my@example.com', firstName: 'Offline', lastName: 'User',
+    isOwner: false, preferLanguage: 'en', scopes: [], roles: [], projects: [],
+  });
+  useProjectStore.getState().setSelectedProjectId('first-project');
+}
+const fixture = fixtureCase === 'uploads' ? <UploadFixture /> : fixtureCase === 'playground' ? <PlaygroundFixture /> : <PriceFixture />;
 createRoot(document.getElementById('root')!).render(
   <StrictMode><QueryClientProvider client={queryClient}>{fixture}</QueryClientProvider></StrictMode>
 );

@@ -91,18 +91,24 @@ function PlaygroundSubmit({ input, status, onStop }: { input: string; status: Ch
 }
 
 export default function Playground() {
-  const { t } = useTranslation();
   const selectedProjectId = useSelectedProjectId();
+  const userId = useAuthStore((state) => state.auth.user?.id ?? null);
+  // The chat, draft, attachments and settings belong to this user and project.
+  return <PlaygroundSession key={JSON.stringify([userId, selectedProjectId])} selectedProjectId={selectedProjectId} userId={userId} />;
+}
+
+function PlaygroundSession({ selectedProjectId, userId }: { selectedProjectId: string | null; userId: string | null }) {
+  const { t } = useTranslation();
   const [selectionState, setSelectionState] = useState(() => ({
     projectId: selectedProjectId,
-    ...readSelection(selectedProjectId),
+    ...readSelection(selectedProjectId, userId),
     ready: false,
   }));
   // Reset during render so a project switch never renders or saves the prior project's choice.
   const selection =
     selectionState.projectId === selectedProjectId
       ? selectionState
-      : { projectId: selectedProjectId, ...readSelection(selectedProjectId), ready: false };
+      : { projectId: selectedProjectId, ...readSelection(selectedProjectId, userId), ready: false };
   if (selectionState.projectId !== selectedProjectId) setSelectionState(selection);
   const { modelSource, selectedChannel, model } = selection;
   const setModel = (nextModel: string) => setSelectionState((current) => ({ ...current, model: nextModel }));
@@ -257,6 +263,7 @@ export default function Playground() {
       }
     },
   });
+  useEffect(() => () => { void stop(); }, [stop]);
   const isLoading = status === 'submitted' || status === 'streaming';
   const hasUserMessage = useMemo(() => messages.some((m) => m.role === 'user'), [messages]);
 
@@ -357,9 +364,9 @@ export default function Playground() {
 
   useEffect(() => {
     if (selection.ready && selection.projectId === selectedProjectId) {
-      writeSelection(selectedProjectId, { modelSource, selectedChannel, model });
+      writeSelection(selectedProjectId, { modelSource, selectedChannel, model }, userId);
     }
-  }, [model, modelSource, selectedChannel, selectedProjectId, selection.projectId, selection.ready]);
+  }, [model, modelSource, selectedChannel, selectedProjectId, selection.projectId, selection.ready, userId]);
 
   // 根据选中渠道过滤出模型列表（渠道已关闭时不展示其模型）
   const modelOptions = useMemo(() => {
@@ -544,6 +551,7 @@ export default function Playground() {
                 </Label>
                 <Textarea
                   id='systemPrompt'
+                  data-testid='playground-system-prompt'
                   placeholder={t('playground.settings.defaultSystemPrompt')}
                   value={systemPrompt}
                   onChange={(e) => setSystemPrompt(e.target.value)}
@@ -674,6 +682,7 @@ export default function Playground() {
             >
               <PlaygroundAttachments />
               <PromptInputTextarea
+                data-testid='playground-draft'
                 value={input}
                 placeholder={t('playground.chat.typeMessage')}
                 onChange={(e) => setInput(e.currentTarget.value)}

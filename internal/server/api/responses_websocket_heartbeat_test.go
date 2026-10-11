@@ -38,7 +38,7 @@ func TestResponsesWebSocketHeartbeatFailureCancelsSessionAndClosesConnection(t *
 	// A sent close frame makes subsequent ping writes fail without requiring
 	// the peer to close its TCP connection or waiting for the idle timeout.
 	require.NoError(t, conn.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""), time.Now().Add(time.Second)))
-	go runResponsesWebSocketPings(ctx, conn, make(chan struct{}), cancel, time.Millisecond)
+	go runResponsesWebSocketPings(ctx, &responsesWebSocketWriter{conn: conn}, make(chan struct{}), cancel, time.Millisecond)
 	select {
 	case <-ctx.Done():
 	case <-time.After(time.Second):
@@ -54,7 +54,7 @@ func TestResponsesWebSocketHeartbeatStopKeepsHealthyConnection(t *testing.T) {
 	defer cancel()
 	done := make(chan struct{})
 	close(done)
-	runResponsesWebSocketPings(ctx, conn, done, cancel, time.Hour)
+	runResponsesWebSocketPings(ctx, &responsesWebSocketWriter{conn: conn}, done, cancel, time.Hour)
 	require.NoError(t, ctx.Err())
 	require.NoError(t, client.WriteMessage(websocket.TextMessage, []byte("still open")))
 	require.NoError(t, conn.SetReadDeadline(time.Now().Add(time.Second)))

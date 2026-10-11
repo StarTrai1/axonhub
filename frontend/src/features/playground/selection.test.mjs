@@ -19,18 +19,18 @@ function storage() {
 test('stores only the selection for its project', () => {
   const values = storage();
   const selected = { modelSource: 'channel', selectedChannel: 'second', model: 'model-b' };
-  writeSelection('project-a', selected);
-  assert.deepEqual(readSelection('project-a'), selected);
-  assert.deepEqual(readSelection('project-b'), defaultSelection);
-  assert.deepEqual(JSON.parse(values.get('axonhub_playground_selection_project-a')), selected);
+  writeSelection('project-a', selected, 'user-a');
+  assert.deepEqual(readSelection('project-a', 'user-a'), selected);
+  assert.deepEqual(readSelection('project-b', 'user-a'), defaultSelection);
+  assert.deepEqual(JSON.parse(values.get('axonhub_playground_selection_v2_["user-a","project-a"]')), selected);
 });
 
 test('corrupt and unavailable storage fall back without throwing', () => {
   const values = storage();
-  values.set('axonhub_playground_selection_project-a', '{broken');
-  assert.deepEqual(readSelection('project-a'), defaultSelection);
-  values.set('axonhub_playground_selection_project-a', JSON.stringify({ modelSource: 'unknown', model: 'a' }));
-  assert.deepEqual(readSelection('project-a'), defaultSelection);
+  values.set('axonhub_playground_selection_v2_["user-a","project-a"]', '{broken');
+  assert.deepEqual(readSelection('project-a', 'user-a'), defaultSelection);
+  values.set('axonhub_playground_selection_v2_["user-a","project-a"]', JSON.stringify({ modelSource: 'unknown', model: 'a' }));
+  assert.deepEqual(readSelection('project-a', 'user-a'), defaultSelection);
   globalThis.localStorage = {
     getItem: () => {
       throw new Error('denied');
@@ -39,8 +39,8 @@ test('corrupt and unavailable storage fall back without throwing', () => {
       throw new Error('denied');
     },
   };
-  assert.deepEqual(readSelection('project-a'), defaultSelection);
-  assert.doesNotThrow(() => writeSelection('project-a', defaultSelection));
+  assert.deepEqual(readSelection('project-a', 'user-a'), defaultSelection);
+  assert.doesNotThrow(() => writeSelection('project-a', defaultSelection, 'user-a'));
 });
 
 const channels = [
@@ -69,4 +69,20 @@ test('gateway model survives with access and falls back without access', () => {
     selectedChannel: 'second',
     model: 'second-a',
   });
+});
+
+
+test('isolates accounts in the same project and ignores ownerless legacy state', () => {
+  const values = storage();
+  const selected = { modelSource: 'channel', selectedChannel: 'private', model: 'model-a' };
+  values.set('axonhub_playground_selection_project-a', JSON.stringify(selected));
+  assert.deepEqual(readSelection('project-a', 'user-b'), defaultSelection);
+  writeSelection('project-a', selected, 'user-a');
+  assert.deepEqual(readSelection('project-a', 'user-b'), defaultSelection);
+  assert.deepEqual(readSelection('project-a', 'user-a'), selected);
+  assert.deepEqual(readSelection('project-a', null), defaultSelection);
+  const count = values.size;
+  writeSelection('project-a', selected, null);
+  writeSelection(null, selected, 'user-a');
+  assert.equal(values.size, count);
 });

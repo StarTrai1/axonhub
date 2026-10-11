@@ -102,7 +102,7 @@ func getThinkingBudgetTokensWithConfig(reasoningEffort string, config *Config) i
 // https://platform.claude.com/docs/en/build-with-claude/effort
 func defaultAnthropicReasoningEffort(model string) string {
 	model = strings.ToLower(strings.TrimSpace(model))
-	if model == "claude-opus-5-5" || strings.HasPrefix(model, "claude-opus-5-5-") {
+	if claudeModelMatches(model, "claude-opus-5-5") || claudeModelMatches(model, "claude-haiku-5-5") {
 		return llm.ReasoningEffortMedium
 	}
 	return llm.ReasoningEffortHigh

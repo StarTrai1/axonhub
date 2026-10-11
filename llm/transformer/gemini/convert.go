@@ -424,10 +424,45 @@ func shouldUseThinkingLevelForBudget(model string, budget int64) bool {
 
 // defaultReasoningEffortMapping returns the default mapping from ReasoningEffort to thinking budget tokens.
 var defaultGeminiReasoningEffortMapping = map[string]int64{
+	"none":   0,
+	"minimal": 1024,
 	"low":    1024,
 	"medium": 8192,
 	"high":   32768,
 	"xhigh":  32768,
+	"max":    32768,
+}
+
+func geminiModelName(model string) string {
+	model = strings.ToLower(strings.TrimSpace(model))
+	if index := strings.LastIndexByte(model, '/'); index >= 0 {
+		model = model[index+1:]
+	}
+	return model
+}
+
+func maxGeminiThinkingBudget(model string) int64 {
+	model = geminiModelName(model)
+	if model == "gemini-2.5-pro" || strings.HasPrefix(model, "gemini-2.5-pro-") {
+		return 32768
+	}
+	return 24576
+}
+
+func gemini25EffortBudget(model, effort string, config *Config) int64 {
+	budget := reasoningEffortToThinkingBudgetWithConfig(effort, config)
+	overridden := false
+	if config != nil {
+		_, overridden = config.ReasoningEffortToBudget[effort]
+	}
+	if effort == "high" && !overridden {
+		budget = 24576
+	}
+	// Pro cannot disable thinking. Preserve the native -1 auto sentinel.
+	if budget >= 0 && maxGeminiThinkingBudget(model) == 32768 {
+		budget = max(budget, 128)
+	}
+	return min(budget, maxGeminiThinkingBudget(model))
 }
 
 func reasoningEffortToThinkingBudget(effort string) int64 {

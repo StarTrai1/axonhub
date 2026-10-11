@@ -12,13 +12,14 @@ export const defaultSelection: PlaygroundSelection = {
   model: '',
 };
 
-const storageKey = (projectId: string) => `axonhub_playground_selection_${projectId}`;
+const storageKey = (projectId: string, userId: string) => `axonhub_playground_selection_v2_${JSON.stringify([userId, projectId])}`;
 
-export function readSelection(projectId: string | null): PlaygroundSelection {
-  if (!projectId) return { ...defaultSelection };
+export function readSelection(projectId: string | null, userId: string | null): PlaygroundSelection {
+  if (!projectId || !userId) return { ...defaultSelection };
 
   try {
-    const stored = localStorage.getItem(storageKey(projectId));
+    // Legacy selections have no owner and must not be adopted by a new login.
+    const stored = localStorage.getItem(storageKey(projectId, userId));
     if (!stored) return { ...defaultSelection };
     const value: unknown = JSON.parse(stored);
     if (
@@ -43,10 +44,10 @@ export function readSelection(projectId: string | null): PlaygroundSelection {
   }
 }
 
-export function writeSelection(projectId: string | null, selection: PlaygroundSelection): void {
-  if (!projectId) return;
+export function writeSelection(projectId: string | null, selection: PlaygroundSelection, userId: string | null): void {
+  if (!projectId || !userId) return;
   try {
-    localStorage.setItem(storageKey(projectId), JSON.stringify(selection));
+    localStorage.setItem(storageKey(projectId, userId), JSON.stringify(selection));
   } catch {
     // Storage can be disabled or full; the in-memory selection still works.
   }

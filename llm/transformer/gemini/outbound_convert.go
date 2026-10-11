@@ -137,8 +137,7 @@ func convertLLMToGeminiRequestWithConfig(chatReq *llm.Request, config *Config) *
 				// Use ThinkingBudget for non-standard values
 				gc.ThinkingConfig = &ThinkingConfig{
 					IncludeThoughts: true,
-					// Gemini max thinking budget is 24576
-					ThinkingBudget: lo.ToPtr(min(*chatReq.ReasoningBudget, 24576)),
+					ThinkingBudget: lo.ToPtr(min(*chatReq.ReasoningBudget, maxGeminiThinkingBudget(chatReq.Model))),
 				}
 			}
 
@@ -151,17 +150,23 @@ func convertLLMToGeminiRequestWithConfig(chatReq *llm.Request, config *Config) *
 				IncludeThoughts: true,
 			}
 
-			// For standard effort levels, use ThinkingLevel
-			switch strings.ToLower(chatReq.ReasoningEffort) {
+			// GenerateContent on Gemini 2.5 uses numeric budgets. Gemini 3
+			// keeps the level representation, including xhigh/max -> high.
+			effort := strings.ToLower(chatReq.ReasoningEffort)
+			if strings.HasPrefix(geminiModelName(chatReq.Model), "gemini-2.5-") {
+				thinkingConfig.ThinkingBudget = lo.ToPtr(gemini25EffortBudget(chatReq.Model, effort, config))
+			} else {
+			switch effort {
 			case "none", "low", "medium", "high":
 				thinkingConfig.ThinkingLevel = chatReq.ReasoningEffort
-			case "xhigh":
+			case "xhigh", "max":
 				// "xhigh" comes from Anthropic "max"; Gemini's highest level is "high".
 				thinkingConfig.ThinkingLevel = "high"
 			default:
 				// For non-standard effort values, convert to budget
 				thinkingBudget := reasoningEffortToThinkingBudgetWithConfig(chatReq.ReasoningEffort, config)
-				thinkingConfig.ThinkingBudget = lo.ToPtr(min(thinkingBudget, 24576))
+				thinkingConfig.ThinkingBudget = lo.ToPtr(min(thinkingBudget, maxGeminiThinkingBudget(chatReq.Model)))
+			}
 			}
 
 			gc.ThinkingConfig = thinkingConfig

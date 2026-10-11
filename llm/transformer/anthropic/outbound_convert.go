@@ -300,6 +300,7 @@ func buildBaseRequest(chatReq *llm.Request, config *Config) *MessageRequest {
 			req.CacheControl = cc
 		}
 	}
+	normalizeConvertedClaudeThinking(chatReq, req, config)
 
 	return req
 }

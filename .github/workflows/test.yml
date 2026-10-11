@@ -158,7 +158,7 @@ jobs:
         run: |
           go test -race ./internal/server/orchestrator -run 'TestWebSocketSOCKSChannelRetry|TestCaptureRawProviderStream|TestPassThroughAnthropicStream|TestRawStreamBacklog|TestResponsesSession|TestResponsesRejected|TestResponsesAgent|TestResponsesCompactionRecovery|TestChannelRejectsFailedStreamEvenAfterText|TestSealedLocalCompaction|TestLegacyLocalCompaction' -count=1
           go test -race ./internal/server/biz -run '^TestSystemServiceResponsesMetadata|^TestChannelMetrics_ConcurrentReadsAndWrites$' -count=1
-          go test -race ./internal/server/api -run '^TestResponsesWebSocket(Warmup|Heartbeat|Auth|Interrupt)' -count=1
+          go test -race ./internal/server/api -run '^TestResponsesWebSocket(Warmup|Heartbeat|Auth|Interrupt|Close)' -count=1
           cd llm
           go test -race ./pipeline -run 'TestFirstOutput' -count=1
           go test -race ./transformer/openai/responses -run 'TestWebSocketSOCKSCancellation|TestWebSocketExecutorSeparatesCodexExecutionScopes|TestWebSocketExecutorInterrupt|TestCodexExecutionPoolIdentity' -count=1

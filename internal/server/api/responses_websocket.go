@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"maps"
+	"net"
 	"net/http"
 	"strings"
 	"sync"
@@ -33,6 +34,7 @@ const (
 	responsesWebSocketPingInterval      = responsesWebSocketIdleTimeout / 2
 	responsesWebSocketPingWriteTimeout  = 10 * time.Second
 	responsesWebSocketWriteTimeout      = 10 * time.Second
+	responsesWebSocketCloseTimeout      = time.Second
 	responsesWebSocketMaxActive         = 16
 	responsesWebSocketMaxPending        = 64
 	responsesWebSocketMaxNamedStreams   = 32
@@ -68,8 +70,8 @@ func serveResponsesWebSocket(
 		log.Warn(ctx, "Failed to upgrade Responses WebSocket", log.Cause(err))
 		return
 	}
-	defer conn.Close()
 	writer := &responsesWebSocketWriter{conn: conn}
+	defer writer.close(websocket.CloseNormalClosure)
 
 	conn.SetReadLimit(responsesWebSocketMaxMessageSize)
 	if err := conn.SetReadDeadline(time.Now().Add(responsesWebSocketIdleTimeout)); err != nil {
@@ -82,13 +84,19 @@ func serveResponsesWebSocket(
 
 	pingDone := make(chan struct{})
 	defer close(pingDone)
-	go runResponsesWebSocketPings(ctx, conn, pingDone, cancelSession, responsesWebSocketPingInterval)
+	go runResponsesWebSocketPings(ctx, writer, pingDone, cancelSession, responsesWebSocketPingInterval)
 
 	dispatcher := newResponsesWebSocketDispatcher(ctx, cancelSession, conn, writer, c.Request, requestTimeout, process, transformError)
 	defer dispatcher.wait()
 	for {
 		messageType, message, readErr := conn.ReadMessage()
 		if readErr != nil {
+			var networkErr net.Error
+			if errors.As(readErr, &networkErr) && networkErr.Timeout() && len(dispatcher.active) == 0 {
+				writer.close(websocket.CloseNormalClosure)
+			} else if !websocket.IsCloseError(readErr, websocket.CloseNormalClosure, websocket.CloseGoingAway) && ctx.Err() == nil {
+				writer.close(websocket.CloseInternalServerErr)
+			}
 			if !websocket.IsCloseError(readErr, websocket.CloseNormalClosure, websocket.CloseGoingAway) &&
 				!errors.Is(readErr, io.EOF) && ctx.Err() == nil {
 				log.Warn(ctx, "Failed to read Responses WebSocket message", log.Cause(readErr))
@@ -156,6 +164,16 @@ func serveResponsesWebSocket(
 type responsesWebSocketWriter struct {
 	conn *websocket.Conn
 	mu   sync.Mutex
+	closeOnce sync.Once
+}
+
+// Control frames are safe alongside a data writer. Never wait for the data
+// mutex to close a session: a stalled stream must not prevent shutdown.
+func (w *responsesWebSocketWriter) close(code int) {
+	w.closeOnce.Do(func() {
+		_ = w.conn.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(code, ""), time.Now().Add(responsesWebSocketCloseTimeout))
+		_ = w.conn.Close()
+	})
 }
 
 type responsesWebSocketLane struct {
@@ -365,8 +383,8 @@ func (d *responsesWebSocketDispatcher) dispatch(lane *responsesWebSocketLane, st
 			if recovered := recover(); recovered != nil {
 				log.Error(d.ctx, "Panic while processing Responses WebSocket request", log.Any("panic", recovered))
 				d.closeOnce.Do(func() {
+					d.writer.close(websocket.CloseInternalServerErr)
 					d.cancel()
-					_ = d.conn.Close()
 				})
 			}
 		}()
@@ -388,8 +406,8 @@ func (d *responsesWebSocketDispatcher) dispatch(lane *responsesWebSocketLane, st
 				log.Warn(d.ctx, "Failed to write Responses WebSocket result", log.Cause(err))
 			}
 			d.closeOnce.Do(func() {
+				d.writer.close(websocket.CloseInternalServerErr)
 				d.cancel()
-				_ = d.conn.Close()
 			})
 		}
 	})
@@ -453,12 +471,12 @@ func (d *responsesWebSocketDispatcher) wait() {
 	d.mu.Unlock()
 }
 
-func runResponsesWebSocketPings(ctx context.Context, conn *websocket.Conn, done <-chan struct{}, cancel context.CancelFunc, interval time.Duration) {
+func runResponsesWebSocketPings(ctx context.Context, writer *responsesWebSocketWriter, done <-chan struct{}, cancel context.CancelFunc, interval time.Duration) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			log.Error(ctx, "Panic while sending Responses WebSocket pings", log.Any("panic", recovered))
 			cancel()
-			_ = conn.Close()
+			writer.close(websocket.CloseInternalServerErr)
 		}
 	}()
 
@@ -469,17 +487,18 @@ func runResponsesWebSocketPings(ctx context.Context, conn *websocket.Conn, done 
 		select {
 		case <-ticker.C:
 			deadline := time.Now().Add(responsesWebSocketPingWriteTimeout)
-			if err := conn.WriteControl(websocket.PingMessage, nil, deadline); err != nil {
+			if err := writer.conn.WriteControl(websocket.PingMessage, nil, deadline); err != nil {
 				log.Debug(ctx, "Responses WebSocket heartbeat failed", log.Cause(err))
 				// Closing also releases the read loop; cancellation stops every
 				// active turn while the downstream connection is unavailable.
 				cancel()
-				_ = conn.Close()
+				writer.close(websocket.CloseInternalServerErr)
 				return
 			}
 		case <-done:
 			return
 		case <-ctx.Done():
+			writer.close(websocket.CloseGoingAway)
 			return
 		}
 	}

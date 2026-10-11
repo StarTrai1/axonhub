@@ -18,6 +18,22 @@ test.beforeEach(async ({ page }) => {
   await page.route('**/admin/graphql', (route) => route.abort());
 });
 
+test('Playground resets private drafts and settings when the user or project changes', async ({ page }) => {
+  await page.route('**/admin/playground/**', (route) => route.abort());
+  await page.goto('/tests/interactions/peer-regressions.html?case=playground');
+  const draft = page.getByTestId('playground-draft');
+  const system = page.getByTestId('playground-system-prompt');
+  await expect(draft).toBeVisible();
+  const initialSystem = await system.inputValue();
+  for (const target of ['switch-playground-user', 'switch-playground-project']) {
+    await draft.fill('Private draft belonging to the previous session');
+    await system.fill('Private system instructions');
+    await page.getByTestId(target).click();
+    await expect(draft).toHaveValue('');
+    await expect(system).toHaveValue(initialSystem);
+  }
+});
+
 test('scientific notation reaches all pricing tier form values without truncating the exponent', async ({ page }) => {
   await page.goto('/tests/interactions/peer-regressions.html');
   const modelBounds = page.getByTestId('model-prices').locator('[data-testid="pricing-tier-upper-bound"]:enabled');
