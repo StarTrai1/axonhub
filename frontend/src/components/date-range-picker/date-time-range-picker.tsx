@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { enUS, zhCN } from 'date-fns/locale'
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react'
 import { DayPicker, type DateRange } from 'react-day-picker'
 import { useTranslation } from 'react-i18next'
@@ -13,7 +14,7 @@ import {
   isSameTime,
   normalizeDateTimeRangeValue,
 } from '@/utils/date-range'
-import { dayPickerClassNames, dayPickerComponents, dayPickerFormatters } from './day-picker-config'
+import { dayPickerClassNames } from './day-picker-config'
 import { TimeField } from './time-field'
 import { addMonthsSafe, formatRange } from './utils'
 
@@ -27,7 +28,7 @@ export interface DateTimeRangePickerProps {
 
 export function DateTimeRangePicker(props: DateTimeRangePickerProps) {
   const { value, onChange, onCancel, onConfirm, className } = props
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const isControlled = Object.prototype.hasOwnProperty.call(props, 'value')
   const normalizedValue = React.useMemo(() => normalizeDateTimeRangeValue(value), [value])
   const [internal, setInternal] = React.useState<DateTimeRangeValue>(() => normalizedValue)
@@ -139,8 +140,7 @@ export function DateTimeRangePicker(props: DateTimeRangePickerProps) {
             fixedWeeks
             weekStartsOn={0}
             classNames={dayPickerClassNames}
-            formatters={dayPickerFormatters}
-            components={dayPickerComponents}
+            locale={i18n.language.startsWith('zh') ? zhCN : enUS}
           />
         </div>
       </div>
