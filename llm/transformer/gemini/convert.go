@@ -424,13 +424,13 @@ func shouldUseThinkingLevelForBudget(model string, budget int64) bool {
 
 // defaultReasoningEffortMapping returns the default mapping from ReasoningEffort to thinking budget tokens.
 var defaultGeminiReasoningEffortMapping = map[string]int64{
-	"none":   0,
+	"none":    0,
 	"minimal": 1024,
-	"low":    1024,
-	"medium": 8192,
-	"high":   32768,
-	"xhigh":  32768,
-	"max":    32768,
+	"low":     1024,
+	"medium":  8192,
+	"high":    32768,
+	"xhigh":   32768,
+	"max":     32768,
 }
 
 func geminiModelName(model string) string {

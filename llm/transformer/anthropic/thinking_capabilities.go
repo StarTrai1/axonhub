@@ -59,6 +59,9 @@ func normalizeConvertedClaudeThinking(src *llm.Request, dst *MessageRequest, con
 			dst.OutputConfig = &OutputConfig{Effort: "low"}
 		case dst.Thinking.Type == "disabled" && is("claude-sonnet-5-5"):
 			dst.Thinking = &Thinking{Type: "between_tools"}
+			if dst.OutputConfig == nil {
+				dst.OutputConfig = &OutputConfig{Effort: "low"}
+			}
 		case dst.Thinking.Type == "enabled" && adaptiveOnly:
 			budget := dst.Thinking.BudgetTokens
 			dst.Thinking = &Thinking{Type: "adaptive"}

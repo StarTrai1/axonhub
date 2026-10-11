@@ -71,7 +71,7 @@ func serveResponsesWebSocket(
 		return
 	}
 	writer := &responsesWebSocketWriter{conn: conn}
-	defer writer.close(websocket.CloseNormalClosure)
+	defer writer.close(websocket.CloseInternalServerErr)
 
 	conn.SetReadLimit(responsesWebSocketMaxMessageSize)
 	if err := conn.SetReadDeadline(time.Now().Add(responsesWebSocketIdleTimeout)); err != nil {
@@ -92,7 +92,10 @@ func serveResponsesWebSocket(
 		messageType, message, readErr := conn.ReadMessage()
 		if readErr != nil {
 			var networkErr net.Error
-			if errors.As(readErr, &networkErr) && networkErr.Timeout() && len(dispatcher.active) == 0 {
+			if ctx.Err() != nil {
+				writer.close(websocket.CloseGoingAway)
+			} else if websocket.IsCloseError(readErr, websocket.CloseNormalClosure, websocket.CloseGoingAway) ||
+				(errors.As(readErr, &networkErr) && networkErr.Timeout() && len(dispatcher.pending) == 0) {
 				writer.close(websocket.CloseNormalClosure)
 			} else if !websocket.IsCloseError(readErr, websocket.CloseNormalClosure, websocket.CloseGoingAway) && ctx.Err() == nil {
 				writer.close(websocket.CloseInternalServerErr)
@@ -162,8 +165,8 @@ func serveResponsesWebSocket(
 }
 
 type responsesWebSocketWriter struct {
-	conn *websocket.Conn
-	mu   sync.Mutex
+	conn      *websocket.Conn
+	mu        sync.Mutex
 	closeOnce sync.Once
 }
 

@@ -532,9 +532,10 @@ func TestReasoningEffortFallback(t *testing.T) {
 	require.NotNil(t, geminiReq.GenerationConfig)
 	require.NotNil(t, geminiReq.GenerationConfig.ThinkingConfig)
 	require.True(t, geminiReq.GenerationConfig.ThinkingConfig.IncludeThoughts)
-	// Should use ThinkingLevel for standard "medium" reasoning effort
-	require.Equal(t, "medium", geminiReq.GenerationConfig.ThinkingConfig.ThinkingLevel)
-	require.Nil(t, geminiReq.GenerationConfig.ThinkingConfig.ThinkingBudget)
+	// Gemini 2.5 GenerateContent expresses medium effort as a numeric budget.
+	require.Empty(t, geminiReq.GenerationConfig.ThinkingConfig.ThinkingLevel)
+	require.NotNil(t, geminiReq.GenerationConfig.ThinkingConfig.ThinkingBudget)
+	require.Equal(t, int64(8192), *geminiReq.GenerationConfig.ThinkingConfig.ThinkingBudget)
 }
 
 func TestOutboundTransformer_TransformResponse_MultipleFunctionCalls(t *testing.T) {

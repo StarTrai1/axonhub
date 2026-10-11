@@ -263,7 +263,12 @@ function PlaygroundSession({ selectedProjectId, userId }: { selectedProjectId: s
       }
     },
   });
-  useEffect(() => () => { void stop(); }, [stop]);
+  useEffect(
+    () => () => {
+      void stop();
+    },
+    [stop]
+  );
   const isLoading = status === 'submitted' || status === 'streaming';
   const hasUserMessage = useMemo(() => messages.some((m) => m.role === 'user'), [messages]);
 

@@ -71,7 +71,6 @@ test('gateway model survives with access and falls back without access', () => {
   });
 });
 
-
 test('isolates accounts in the same project and ignores ownerless legacy state', () => {
   const values = storage();
   const selected = { modelSource: 'channel', selectedChannel: 'private', model: 'model-a' };
