@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -122,4 +123,23 @@ func newAlphaSearchTestTransformer(t *testing.T) *OutboundTransformer {
 	require.NoError(t, err)
 
 	return outbound
+}
+
+func TestAlphaSearchFiltersFingerprintWithoutMutatingInbound(t *testing.T) {
+	raw := &httpclient.Request{Headers: http.Header{
+		"Version": {"0.162.1"}, "User-Agent": {"Editor/1.0"},
+		"http-referer": {"https://editor.example"}, "x-title": {"Editor"}, "x-ZcOdE-private": {"private"},
+	}}
+	original := raw.Headers.Clone()
+	wire, err := newAlphaSearchTestTransformer(t).TransformRequest(t.Context(), &llm.Request{
+		Model: "gpt-6.1-sol", RequestType: llm.RequestTypeAlphaSearch, APIFormat: llm.APIFormatOpenAIAlphaSearch,
+		RawRequest: raw, AlphaSearch: &llm.AlphaSearchRequest{Body: []byte(`{"commands":{"search_query":[]}}`)},
+	})
+	require.NoError(t, err)
+	merged := httpclient.MergeInboundRequest(wire, raw)
+	require.Equal(t, "codex_cli_rs/0.162.1", merged.Headers.Get("User-Agent"))
+	for name := range merged.Headers {
+		require.False(t, strings.EqualFold(name, "Http-Referer") || strings.EqualFold(name, "X-Title") || strings.HasPrefix(strings.ToLower(name), "x-zcode-"))
+	}
+	require.Equal(t, original, raw.Headers)
 }

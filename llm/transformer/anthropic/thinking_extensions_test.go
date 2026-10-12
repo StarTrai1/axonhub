@@ -3,6 +3,7 @@ package anthropic
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -30,8 +31,9 @@ func TestThinkingExtensionsSurviveNativeTranslation(t *testing.T) {
 				require.JSONEq(t, `["fast-mode-2026-02-01","thinking-binding-controls-2026-08-01"]`, string(body["anthropic_beta"]))
 			} else {
 				merged := httpclient.MergeInboundRequest(wire, raw)
-				require.Contains(t, merged.Headers.Get("Anthropic-Beta"), "fast-mode-2026-02-01")
-				require.Contains(t, merged.Headers.Get("Anthropic-Beta"), "thinking-binding-controls-2026-08-01")
+				betas := strings.Join(merged.Headers.Values("Anthropic-Beta"), ",")
+				require.Contains(t, betas, "fast-mode-2026-02-01")
+				require.Contains(t, betas, "thinking-binding-controls-2026-08-01")
 			}
 			require.Len(t, raw.Headers.Values("Anthropic-Beta"), 2)
 		})

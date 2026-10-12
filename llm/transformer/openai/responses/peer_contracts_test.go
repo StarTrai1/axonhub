@@ -66,6 +66,23 @@ func TestResponsesServiceTierAndCacheWriteRoundTrip(t *testing.T) {
 	require.Equal(t, int64(1000), converted.Usage.InputTokenDetails.CacheWriteTokens)
 }
 
+func TestSolUltrafastPreservesServiceTierAndHistory(t *testing.T) {
+	const body = `{"model":"gpt-6.1-sol","service_tier":"ultrafast","reasoning":{"effort":"max"},"input":[{"type":"reasoning","id":"rs_history","encrypted_content":"opaque"},{"role":"user","content":"continue"}]}`
+	request, err := NewInboundTransformer().TransformRequest(t.Context(), &httpclient.Request{Body: []byte(body)})
+	require.NoError(t, err)
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-key")
+	require.NoError(t, err)
+	wire, err := outbound.TransformRequest(t.Context(), request)
+	require.NoError(t, err)
+	require.Equal(t, "ultrafast", gjson.GetBytes(wire.Body, "service_tier").String())
+	require.Equal(t, "max", gjson.GetBytes(wire.Body, "reasoning.effort").String())
+	require.Equal(t, "opaque", gjson.GetBytes(wire.Body, "input.0.encrypted_content").String())
+	response, err := outbound.TransformResponse(t.Context(), &httpclient.Response{Body: []byte(`{"id":"resp_sol","model":"gpt-6.1-sol","status":"completed","service_tier":"ultrafast","output":[],"usage":{"input_tokens":300000,"output_tokens":1,"total_tokens":300001}}`)})
+	require.NoError(t, err)
+	require.Equal(t, "ultrafast", response.ServiceTier)
+	require.Equal(t, "ultrafast", lo.FromPtr(convertToResponsesAPIResponse(response).ServiceTier))
+}
+
 func TestAstraPreservesAllowedToolsAndIndependentReasoningMode(t *testing.T) {
 	body := []byte(`{"model":"gpt-6-astra","input":[{"type":"configuration_update","reasoning":{"effort":"high"}},{"role":"user","content":"hello"}],"reasoning":{"effort":"low","mode":"pro"},"tools":[{"type":"function","name":"lookup","parameters":{"type":"object","properties":{}}}],"tool_choice":{"type":"allowed_tools","mode":"required","tools":[{"type":"function","name":"lookup"}]}}`)
 	request, err := NewInboundTransformer().TransformRequest(t.Context(), &httpclient.Request{Body: body})
