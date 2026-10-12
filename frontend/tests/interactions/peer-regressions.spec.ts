@@ -30,7 +30,9 @@ for (const kind of ['free', 'strict']) {
         const allowed = await input.evaluate((element, { key, legacy }) => element.dispatchEvent(new KeyboardEvent('keydown', {
           key, bubbles: true, cancelable: true, isComposing: !legacy, keyCode: legacy ? 229 : 0,
         })), { key, legacy });
-        expect(allowed).toBe(true);
+        // Radix captures Escape at the document before the input handler;
+        // preventing its dismissal is required to keep the IME session open.
+        expect(allowed, `${key}, legacy=${legacy}`).toBe(key !== 'Escape');
         await expect(selected).toHaveText('First');
         await expect(page.getByTestId(`composition-${kind}-value`)).toHaveText('');
       }
@@ -47,7 +49,7 @@ test('Markdown renders math and diagrams with the patched dependency graph', asy
   await page.goto('/tests/interactions/peer-regressions.html?case=rendering');
   const response = page.getByTestId('rendering-response');
   await expect(response.getByRole('heading', { name: 'Formula' })).toBeVisible();
-  await expect(response.locator('.katex').first()).toBeVisible();
+  await expect(response.locator('annotation[encoding="application/x-tex"]').first()).toHaveText('E = mc^2');
   await expect(response.locator('svg[id^="mermaid"]').first()).toBeVisible();
   await expect(response.locator('script, [onerror]')).toHaveCount(0);
   expect(await page.evaluate(() => Reflect.get(window, 'renderingInjected'))).toBeUndefined();

@@ -144,6 +144,9 @@ export function AutoComplete<T extends string>({
           </PopoverAnchor>
           {!open && <CommandList aria-hidden='true' className='hidden' />}
           <PopoverContent
+            onEscapeKeyDown={(e) => {
+              if (e.isComposing || e.keyCode === 229) e.preventDefault();
+            }}
             onOpenAutoFocus={(e) => e.preventDefault()}
             onInteractOutside={(e) => {
               if (e.target instanceof Element && e.target.hasAttribute('cmdk-input')) {
