@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/tidwall/gjson"
+
+	"github.com/looplj/axonhub/llm/httpclient"
 )
 
 const (
@@ -54,6 +56,50 @@ var PassthroughHeaders = []string{
 	BetaFeaturesHeader,
 	ThreadIDHeader,
 	ResponsesLiteHeader,
+}
+
+// clientFingerprintHeaders lists client-private attribution headers that no
+// Codex upstream consumes. They are exact-name matches.
+//
+// Http-Referer is the non-standard spelling of Referer used by several coding
+// clients (the canonical Referer is already blocked globally in httpclient).
+// X-Title and X-Platform are OpenRouter-style attribution headers: legitimate on
+// the channels that consume them, but pure client fingerprint on the ChatGPT
+// Codex backend, which is why they are scrubbed here rather than blocked
+// globally for every channel.
+var clientFingerprintHeaders = []string{
+	"Http-Referer",
+	"X-Title",
+	"X-Platform",
+}
+
+// clientFingerprintHeaderPrefixes lists client-private header families that no
+// Codex upstream consumes.
+var clientFingerprintHeaderPrefixes = []string{
+	"X-Zcode-",
+	"X-Os-",
+}
+
+// skipClientFingerprintHeaders filters this attempt without mutating the original
+// inbound headers, which a later OpenRouter-style candidate may need.
+func skipClientFingerprintHeaders(request *httpclient.Request, headers http.Header) {
+	request.SkipInboundHeaders = append(request.SkipInboundHeaders, clientFingerprintHeaders...)
+	for name := range headers {
+		for _, prefix := range clientFingerprintHeaderPrefixes {
+			if strings.HasPrefix(strings.ToLower(name), strings.ToLower(prefix)) {
+				request.SkipInboundHeaders = append(request.SkipInboundHeaders, name)
+				break
+			}
+		}
+	}
+	for name := range request.Headers {
+		for _, skipped := range request.SkipInboundHeaders {
+			if strings.EqualFold(name, skipped) {
+				delete(request.Headers, name)
+				break
+			}
+		}
+	}
 }
 
 func ExtractSessionIDFromTurnMetadata(raw string) string {

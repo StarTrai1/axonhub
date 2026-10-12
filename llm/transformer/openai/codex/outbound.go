@@ -388,6 +388,8 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		hreq.RequestType = originalRequestType.String()
 	}
 
+	skipClientFingerprintHeaders(hreq, rawHeaders)
+
 	// Overwrite auth.
 	hreq.Auth = &httpclient.AuthConfig{Type: httpclient.AuthTypeBearer, APIKey: creds.AccessToken}
 	// Compact requests expect JSON response, others expect SSE stream.
@@ -397,6 +399,12 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		hreq.Headers.Set("Accept", "text/event-stream")
 	}
 
+	// The transformer owns the outbound User-Agent. The inbound client UA must
+	// not be copied here: client-UA forwarding is owned solely by the
+	// orchestrator's user-agent pass-through middleware, which runs after this
+	// transformer and overwrites this default when the switch is enabled. When
+	// the switch is off the upstream sees this Codex-client-like fingerprint
+	// instead of the client's private identity.
 	hreq.Headers.Del("User-Agent")
 	identityVersion := rawVersion
 	if identityVersion == "" {
@@ -408,11 +416,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 
 	if rawOriginator != "" {
 		hreq.Headers.Set("Originator", rawOriginator)
-		if rawUserAgent != "" {
-			hreq.Headers.Set("User-Agent", rawUserAgent)
-		} else {
-			hreq.Headers.Set("User-Agent", codexUserAgent(identityVersion))
-		}
+		hreq.Headers.Set("User-Agent", codexUserAgent(identityVersion))
 	} else {
 		// Requests not produced by Codex still need a coherent first-party
 		// identity for ChatGPT's private Codex endpoint. Real Codex identity

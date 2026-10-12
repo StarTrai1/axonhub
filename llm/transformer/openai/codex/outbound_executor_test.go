@@ -198,8 +198,8 @@ func TestCodexOutbound_StreamAllowsDownstreamIdentityOverrides(t *testing.T) {
 	}
 
 	assert.Equal(t, legacyCodexOriginator(), headers.Get("Originator"))
-	assert.Equal(t, legacyCodexUserAgent(), headers.Get("User-Agent"))
-	assert.Contains(t, strings.ToLower(headers.Get("User-Agent")), legacyCodexOriginator())
+	assert.Equal(t, codexUserAgent(headers.Get("Version")), headers.Get("User-Agent"))
+	assert.NotEqual(t, legacyCodexUserAgent(), headers.Get("User-Agent"))
 	assert.Equal(t, testChatAccountID, headers.Get("Chatgpt-Account-Id"))
 	assert.Equal(t, "Bearer "+accessToken, headers.Get("Authorization"))
 }

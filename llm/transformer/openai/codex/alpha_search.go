@@ -64,11 +64,19 @@ func (t *OutboundTransformer) transformAlphaSearchRequest(ctx context.Context, l
 	if originator := rawHeaders.Get("Originator"); originator != "" {
 		headers.Set("Originator", originator)
 	} else {
-		headers.Set("Originator", AxonHubOriginator)
+		headers.Set("Originator", CodexCLIOriginator)
 	}
-	if userAgent := rawHeaders.Get("User-Agent"); userAgent != "" {
-		headers.Set("User-Agent", userAgent)
+	// The transformer owns the outbound User-Agent (see TransformRequest):
+	// the client UA is never copied, and the orchestrator's user-agent
+	// pass-through middleware overwrites this default when the switch is on.
+	identityVersion := rawHeaders.Get("Version")
+	if identityVersion == "" {
+		identityVersion, _ = codexVersionFromUserAgent(rawHeaders.Get("User-Agent"))
 	}
+	if identityVersion == "" {
+		identityVersion = currentCodexVersion()
+	}
+	headers.Set("User-Agent", codexUserAgent(identityVersion))
 	if headers.Get(SessionHeaderHyphen) == "" {
 		headers.Set(SessionHeaderHyphen, sessionID)
 	}
@@ -107,11 +115,11 @@ func (t *OutboundTransformer) transformAlphaSearchRequest(ctx context.Context, l
 		headers.Set("Chatgpt-Account-Id", accountID)
 	}
 	if headers.Get("Version") == "" {
-		headers.Set("Version", codexDefaultVersion)
+		headers.Set("Version", identityVersion)
 	}
 
 	baseURL := strings.TrimRight(t.baseURL, "#/")
-	return &httpclient.Request{
+	request := &httpclient.Request{
 		Method:      http.MethodPost,
 		URL:         baseURL + t.alphaSearchPath,
 		Headers:     headers,
@@ -119,7 +127,9 @@ func (t *OutboundTransformer) transformAlphaSearchRequest(ctx context.Context, l
 		Auth:        &httpclient.AuthConfig{Type: httpclient.AuthTypeBearer, APIKey: creds.AccessToken},
 		RequestType: llm.RequestTypeAlphaSearch.String(),
 		APIFormat:   llm.APIFormatOpenAIAlphaSearch.String(),
-	}, nil
+	}
+	skipClientFingerprintHeaders(request, rawHeaders)
+	return request, nil
 }
 
 func (t *OutboundTransformer) transformAlphaSearchResponse(ctx context.Context, resp *httpclient.Response) (*llm.Response, error) {

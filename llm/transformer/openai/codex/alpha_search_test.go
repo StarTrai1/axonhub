@@ -66,8 +66,8 @@ func TestAlphaSearchRequestSessionIDPrecedence(t *testing.T) {
 			require.Equal(t, tt.expectedSession+":0", request.Headers.Get(WindowIDHeader))
 			require.NotEmpty(t, request.Headers.Get(ClientRequestIDHeader))
 			require.Equal(t, fabricatedBetaFeatures, request.Headers.Get(BetaFeaturesHeader))
-			require.Equal(t, AxonHubOriginator, request.Headers.Get("Originator"))
-			require.Equal(t, codexDefaultVersion, request.Headers.Get("Version"))
+			require.Equal(t, CodexCLIOriginator, request.Headers.Get("Originator"))
+			require.NotEmpty(t, request.Headers.Get("Version"))
 			require.Equal(t, testChatAccountID, request.Headers.Get("Chatgpt-Account-Id"))
 			require.Equal(t, "application/json", request.Headers.Get("Content-Type"))
 			require.Equal(t, "application/json", request.Headers.Get("Accept"))
@@ -83,6 +83,30 @@ func TestAlphaSearchRequestSessionIDPrecedence(t *testing.T) {
 			require.Equal(t, "mapped-model", body["model"])
 		})
 	}
+}
+
+// TestAlphaSearchDoesNotForwardInboundUserAgent mirrors the Response path:
+// the alpha-search request presents the Codex default UA and never copies the
+// inbound client UA (issue #2635).
+func TestAlphaSearchDoesNotForwardInboundUserAgent(t *testing.T) {
+	ctx := context.Background()
+	outbound := newAlphaSearchTestTransformer(t)
+
+	const clientUA = "ZCode/3.14.4 (darwin arm64)"
+
+	request, err := outbound.TransformRequest(ctx, &llm.Request{
+		Model:       "mapped-model",
+		RequestType: llm.RequestTypeAlphaSearch,
+		APIFormat:   llm.APIFormatOpenAIAlphaSearch,
+		RawRequest: &httpclient.Request{Headers: http.Header{
+			"User-Agent": []string{clientUA},
+		}},
+		AlphaSearch: &llm.AlphaSearchRequest{Body: []byte(`{"model":"client-model","commands":{"search_query":[]}}`)},
+	})
+	require.NoError(t, err)
+
+	require.Equal(t, codexUserAgent(request.Headers.Get("Version")), request.Headers.Get("User-Agent"))
+	require.NotEqual(t, clientUA, request.Headers.Get("User-Agent"))
 }
 
 func newAlphaSearchTestTransformer(t *testing.T) *OutboundTransformer {
