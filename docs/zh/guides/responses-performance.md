@@ -163,6 +163,15 @@ axonhub agent-recovery --database axonhub.db --file recovery.encrypted.json --ap
 本地取消及协议错误不当作这类临时重置。WebSocket 错误支持 `status_code` 别名及标量请求头值，
 流式和同步错误转换都保留 `Retry-After`。新增余额、支出与用量耗尽错误映射为 429，但不会进行无效同渠道重试。
 
+自动协议协商遇到对端 `INTERNAL_ERROR` 或 `HTTP_1_1_REQUIRED` 复位后，会在十分钟内
+对该 HTTPS 目标使用 HTTP/1.1，包括读取响应体期间发生的复位。此策略保存在客户端/代理
+连接池的有界内存中，不修改渠道设置，也不影响其他目标及 WebSocket 连接；显式 HTTP/1.1
+设置始终优先。TLS 验证、代理认证、请求正文和加密历史保持原有语义。
+
+传输层不会自行重放 POST。有效输出前，已有管线可在原重试预算内使用新协议恢复；
+文本、推理或工具输出后，本次请求仍记录失败，仅后续请求使用 HTTP/1.1。
+此机制缓解协议相关复位，不能修复 HTTP/1.1 下同样失败的上游，也不能补回已中断的响应。
+
 ## GPT-6 Astra 流式兼容
 
 Steering 的 `response.steer.accepted` 只表示更新已排队。原响应即使先发出

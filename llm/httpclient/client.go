@@ -60,10 +60,21 @@ type HttpClient struct {
 type ClientOption func(*clientOptions)
 
 type clientOptions struct {
+	tlsConfig             *tls.Config
 	insecureSkipVerify     bool
 	httpProtocol          HTTPProtocol
 	http2ConnectionShards int
 	rejectHTTPSDowngrade   bool
+}
+
+// WithTLSConfig configures upstream trust and client certificates. The config
+// is cloned for each transport, including HTTP/1.1 fallback connections.
+func WithTLSConfig(config *tls.Config) ClientOption {
+	return func(o *clientOptions) {
+		if config != nil {
+			o.tlsConfig = config.Clone()
+		}
+	}
 }
 
 // WithInsecureSkipVerify disables TLS certificate verification.
@@ -132,12 +143,21 @@ func configureHTTPTransport(
 	transport.IdleConnTimeout = 90 * time.Second
 	transport.TLSHandshakeTimeout = 10 * time.Second
 	transport.ExpectContinueTimeout = 1 * time.Second
+	if options.tlsConfig != nil {
+		transport.TLSClientConfig = options.tlsConfig.Clone()
+	}
 
 	protocol, _ := normalizeHTTPTransport(options, disableConnectionReuse)
 	transport.ForceAttemptHTTP2 = protocol != HTTPProtocolHTTP1 && !disableConnectionReuse
 	if protocol == HTTPProtocolHTTP1 {
 		// An empty TLSNextProto map prevents automatic HTTP/2 negotiation.
 		transport.TLSNextProto = make(map[string]func(string, *tls.Conn) http.RoundTripper)
+		transport.Protocols = new(http.Protocols)
+		transport.Protocols.SetHTTP1(true)
+		if transport.TLSClientConfig != nil {
+			transport.TLSClientConfig = transport.TLSClientConfig.Clone()
+			transport.TLSClientConfig.NextProtos = []string{"http/1.1"}
+		}
 	}
 
 	if options.insecureSkipVerify {
@@ -239,18 +259,27 @@ func buildHTTPRoundTripper(proxyConfig *ProxyConfig, options clientOptions, clon
 	disableConnectionReuse := proxyConfig != nil &&
 		proxyConfig.Type == ProxyTypeURL &&
 		proxyConfig.DisableConnectionReuse
-	_, shards := normalizeHTTPTransport(options, disableConnectionReuse)
+	protocol, shards := normalizeHTTPTransport(options, disableConnectionReuse)
 
-	if shards == 1 {
+	if protocol == HTTPProtocolHTTP1 || disableConnectionReuse {
 		return buildHTTPTransport(proxyConfig, options, cloneDefault)
 	}
 
-	transports := make([]*http.Transport, 0, shards)
-	for range shards {
-		transports = append(transports, buildHTTPTransport(proxyConfig, options, cloneDefault))
+	var primary http.RoundTripper
+	if shards == 1 {
+		primary = buildHTTPTransport(proxyConfig, options, cloneDefault)
+	} else {
+		transports := make([]*http.Transport, 0, shards)
+		for range shards {
+			transports = append(transports, buildHTTPTransport(proxyConfig, options, cloneDefault))
+		}
+		primary = &shardedRoundTripper{transports: transports}
 	}
 
-	return &shardedRoundTripper{transports: transports}
+	http1Options := options
+	http1Options.httpProtocol = HTTPProtocolHTTP1
+	http1Options.http2ConnectionShards = 1
+	return newHTTP2FallbackTransport(primary, buildHTTPTransport(proxyConfig, http1Options, cloneDefault))
 }
 
 // WithRejectHTTPSDowngrade rejects redirects from HTTPS to HTTP.
@@ -329,6 +358,23 @@ func (hc *HttpClient) WithHTTPTransport(protocol HTTPProtocol, shards int) *Http
 // GetNativeClient returns the underlying *http.Client for advanced use cases.
 func (hc *HttpClient) GetNativeClient() *http.Client {
 	return hc.client
+}
+
+// TLSConfig returns an independent copy of the upstream TLS configuration.
+// WebSocket dialers must inherit trust settings even when HTTP uses a wrapper
+// or a sharded connection pool.
+func (hc *HttpClient) TLSConfig() *tls.Config {
+	transport := hc.client.Transport
+	if fallback, ok := transport.(*http2FallbackTransport); ok {
+		transport = fallback.primary
+	}
+	if sharded, ok := transport.(*shardedRoundTripper); ok && len(sharded.transports) > 0 {
+		transport = sharded.transports[0]
+	}
+	if native, ok := transport.(*http.Transport); ok && native.TLSClientConfig != nil {
+		return native.TLSClientConfig.Clone()
+	}
+	return nil
 }
 
 // CloseIdleConnections closes idle connections held by the underlying HTTP transport.

@@ -230,6 +230,20 @@ WebSocket error `status_code` aliases and scalar header values are accepted, so
 credit/spend/usage exhaustion codes map to 429 but do not trigger futile
 same-channel retries.
 
+Automatic HTTP negotiation remembers a peer `INTERNAL_ERROR` or
+`HTTP_1_1_REQUIRED` reset for ten minutes and uses HTTP/1.1 for subsequent
+requests to that HTTPS origin. This also covers resets while reading the response
+body. The bounded, in-memory policy belongs to the client/proxy pool and does not
+change channel settings; unrelated origins and WebSocket connections are unaffected.
+Explicit HTTP/1.1 settings remain authoritative. TLS verification, proxy
+credentials, request bodies and encrypted history are preserved.
+
+The transport never replays a POST itself. Before output, the existing pipeline
+may retry within its configured budget using the learned protocol. After text,
+reasoning or tool output, the failed attempt remains failed; only a subsequent
+request uses HTTP/1.1. This mitigates protocol-specific resets, but cannot repair
+an upstream that also fails over HTTP/1.1 or restore a partially delivered response.
+
 ## GPT-6 Astra stream compatibility
 
 `response.steer.accepted` only acknowledges queued input. Even if the initial

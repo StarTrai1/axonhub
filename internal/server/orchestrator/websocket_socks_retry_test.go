@@ -48,17 +48,16 @@ func TestWebSocketSOCKSChannelRetry(t *testing.T) {
 			certServer := httptest.NewTLSServer(nil)
 			t.Cleanup(certServer.Close)
 			fixture := newSOCKSRetryFixture(t, certServer.TLS, tc.failure)
-			client := httpclient.NewHttpClientWithProxy(&httpclient.ProxyConfig{
-				Type: httpclient.ProxyTypeURL, URL: tc.scheme + "://" + fixture.listener.Addr().String(),
-				Username: "fixture-user", Password: "fixture-pass",
-			})
 			roots := x509.NewCertPool()
 			roots.AddCert(certServer.Certificate())
 			// Trust only the local fixture certificate; production TLS verification
 			// remains enabled even though SOCKS resolves a synthetic hostname.
-			client.GetNativeClient().Transport.(*http.Transport).TLSClientConfig = &tls.Config{
+			client := httpclient.NewHttpClientWithProxy(&httpclient.ProxyConfig{
+				Type: httpclient.ProxyTypeURL, URL: tc.scheme + "://" + fixture.listener.Addr().String(),
+				Username: "fixture-user", Password: "fixture-pass",
+			}, httpclient.WithTLSConfig(&tls.Config{
 				RootCAs: roots, ServerName: "127.0.0.1", MinVersion: tls.VersionTLS12,
-			}
+			}))
 			out, err := responses.NewOutboundTransformerWithConfig(&responses.Config{
 				BaseURL: "https://unresolvable.invalid/v1", Transport: responses.TransportWebSocket,
 				APIKeyProvider: auth.NewStaticKeyProvider("synthetic-api-key"),

@@ -22,6 +22,15 @@ import (
 	"github.com/tmaxmax/go-sse"
 )
 
+// Inspect the configured primary pool independently of protocol recovery.
+func primaryTestTransport(client *HttpClient) http.RoundTripper {
+	transport := client.GetNativeClient().Transport
+	if fallback, ok := transport.(*http2FallbackTransport); ok {
+		return fallback.primary
+	}
+	return transport
+}
+
 func TestHttpClientImpl_DoStream_DetachedContextContinuesAfterClientCancel(t *testing.T) {
 	releaseTerminal := make(chan struct{})
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -505,7 +514,7 @@ func TestHttpClientImpl_DoStream(t *testing.T) {
 func TestNewHttpClient_WithInsecureSkipVerify_PreservesDefaultTransportSettings(t *testing.T) {
 	hc := NewHttpClient(WithInsecureSkipVerify(true))
 
-	tr, ok := hc.GetNativeClient().Transport.(*http.Transport)
+	tr, ok := primaryTestTransport(hc).(*http.Transport)
 	require.True(t, ok)
 	require.NotNil(t, tr.Proxy)
 	require.NotNil(t, tr.TLSClientConfig)
@@ -516,7 +525,7 @@ func TestNewHttpClient_WithInsecureSkipVerify_PreservesDefaultTransportSettings(
 func TestNewHttpClient_ConfiguresPerHostIdlePool(t *testing.T) {
 	hc := NewHttpClient()
 
-	tr, ok := hc.GetNativeClient().Transport.(*http.Transport)
+	tr, ok := primaryTestTransport(hc).(*http.Transport)
 	require.True(t, ok)
 	require.Equal(t, maxIdleConnsPerHost, tr.MaxIdleConnsPerHost)
 }
@@ -524,14 +533,14 @@ func TestNewHttpClient_ConfiguresPerHostIdlePool(t *testing.T) {
 func TestNewHttpClient_HTTPTransportPolicy(t *testing.T) {
 	t.Run("default preserves automatic HTTP2", func(t *testing.T) {
 		hc := NewHttpClient()
-		transport, ok := hc.GetNativeClient().Transport.(*http.Transport)
+		transport, ok := primaryTestTransport(hc).(*http.Transport)
 		require.True(t, ok)
 		require.True(t, transport.ForceAttemptHTTP2)
 	})
 
 	t.Run("http1 disables HTTP2 negotiation", func(t *testing.T) {
 		hc := NewHttpClient(WithHTTPTransport(HTTPProtocolHTTP1, 1))
-		transport, ok := hc.GetNativeClient().Transport.(*http.Transport)
+		transport, ok := primaryTestTransport(hc).(*http.Transport)
 		require.True(t, ok)
 		require.False(t, transport.ForceAttemptHTTP2)
 		require.NotNil(t, transport.TLSNextProto)
@@ -539,7 +548,7 @@ func TestNewHttpClient_HTTPTransportPolicy(t *testing.T) {
 
 	t.Run("http2 shards use independent reusable transports", func(t *testing.T) {
 		hc := NewHttpClient(WithHTTPTransport(HTTPProtocolAuto, 4))
-		transport, ok := hc.GetNativeClient().Transport.(*shardedRoundTripper)
+		transport, ok := primaryTestTransport(hc).(*shardedRoundTripper)
 		require.True(t, ok)
 		require.Len(t, transport.transports, 4)
 		for _, shard := range transport.transports {
@@ -553,7 +562,7 @@ func TestNewHttpClient_HTTPTransportPolicy(t *testing.T) {
 			&ProxyConfig{Type: ProxyTypeURL, URL: "http://127.0.0.1:8080", DisableConnectionReuse: true},
 			WithHTTPTransport(HTTPProtocolAuto, 4),
 		)
-		transport, ok := hc.GetNativeClient().Transport.(*http.Transport)
+		transport, ok := primaryTestTransport(hc).(*http.Transport)
 		require.True(t, ok)
 		require.True(t, transport.DisableKeepAlives)
 	})
@@ -567,12 +576,12 @@ func TestNewHttpClient_HTTPSProxyForcesHTTP1OnProxyTLSLeg(t *testing.T) {
 	require.Equal(t, []string{"http/1.1"}, tlsConfig.NextProtos)
 
 	httpsClient := NewHttpClientWithProxy(&ProxyConfig{Type: ProxyTypeURL, URL: "https://proxy.example.com:8443"})
-	httpsTransport, ok := httpsClient.GetNativeClient().Transport.(*http.Transport)
+	httpsTransport, ok := primaryTestTransport(httpsClient).(*http.Transport)
 	require.True(t, ok)
 	require.NotNil(t, httpsTransport.DialTLSContext)
 
 	httpClient := NewHttpClientWithProxy(&ProxyConfig{Type: ProxyTypeURL, URL: "http://proxy.example.com:8080"})
-	httpTransport, ok := httpClient.GetNativeClient().Transport.(*http.Transport)
+	httpTransport, ok := primaryTestTransport(httpClient).(*http.Transport)
 	require.True(t, ok)
 	require.Nil(t, httpTransport.DialTLSContext)
 }
@@ -642,7 +651,7 @@ func TestNewHttpClientWithProxy_ConnectionReuse(t *testing.T) {
 				DisableConnectionReuse: tt.disableConnectionReuse,
 			})
 			defer client.GetNativeClient().CloseIdleConnections()
-			transport, ok := client.GetNativeClient().Transport.(*http.Transport)
+			transport, ok := primaryTestTransport(client).(*http.Transport)
 			require.True(t, ok)
 			require.Equal(t, tt.disableConnectionReuse, transport.DisableKeepAlives)
 			require.Equal(t, !tt.disableConnectionReuse, transport.ForceAttemptHTTP2)
@@ -677,7 +686,7 @@ func TestNewHttpClientWithProxy_DisableConnectionReuseOnlyAppliesToURLProxy(t *t
 			})
 			defer client.CloseIdleConnections()
 
-			transport, ok := client.GetNativeClient().Transport.(*http.Transport)
+			transport, ok := primaryTestTransport(client).(*http.Transport)
 			require.True(t, ok)
 			require.False(t, transport.DisableKeepAlives)
 			require.True(t, transport.ForceAttemptHTTP2)

@@ -33,6 +33,8 @@ jobs:
           go-version-file: .go-version
       - name: Verify Winsock classification and real WSS through SOCKS
         run: go test ./internal/server/orchestrator -run '^(TestWindowsWebSocketConnectionReset|TestWebSocketSOCKSChannelRetry|TestRetryTransportClassification|TestRetryTransportPipeline)$' -count=1 -v
+      - name: Verify HTTP2 reset fallback on Windows
+        run: go test ./internal/server/orchestrator -run '^TestHTTP2FallbackPipeline$' -count=1 -v
       - name: Verify SOCKS aliases and cancellation on Windows
         working-directory: llm
         run: go test ./transformer/openai/responses -run '^(TestWebSocketProxyAliasesDialThroughSOCKS|TestWebSocketSOCKSCancellation)$' -count=1 -v
@@ -156,10 +158,11 @@ jobs:
 
       - name: Responses concurrency regression
         run: |
-          go test -race ./internal/server/orchestrator -run 'TestWebSocketSOCKSChannelRetry|TestCaptureRawProviderStream|TestPassThroughAnthropicStream|TestRawStreamBacklog|TestResponsesSession|TestResponsesRejected|TestResponsesAgent|TestResponsesCompactionRecovery|TestChannelRejectsFailedStreamEvenAfterText|TestSealedLocalCompaction|TestLegacyLocalCompaction' -count=1
+          go test -race ./internal/server/orchestrator -run 'TestHTTP2FallbackPipeline|TestWebSocketSOCKSChannelRetry|TestCaptureRawProviderStream|TestPassThroughAnthropicStream|TestRawStreamBacklog|TestResponsesSession|TestResponsesRejected|TestResponsesAgent|TestResponsesCompactionRecovery|TestChannelRejectsFailedStreamEvenAfterText|TestSealedLocalCompaction|TestLegacyLocalCompaction' -count=1
           go test -race ./internal/server/biz -run '^TestSystemServiceResponsesMetadata|^TestChannelMetrics_ConcurrentReadsAndWrites$' -count=1
           go test -race ./internal/server/api -run '^TestResponsesWebSocket(Warmup|Heartbeat|Auth|Interrupt|Close)' -count=1
           cd llm
+          go test -race ./httpclient -run '^TestHTTP2Fallback' -count=1
           go test -race ./pipeline -run 'TestFirstOutput' -count=1
           go test -race ./transformer/openai/responses -run 'TestWebSocketSOCKSCancellation|TestWebSocketExecutorSeparatesCodexExecutionScopes|TestWebSocketExecutorInterrupt|TestCodexExecutionPoolIdentity' -count=1
 
