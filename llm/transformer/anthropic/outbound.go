@@ -183,6 +183,15 @@ func (t *OutboundTransformer) TransformRequest(
 
 	// Convert to Anthropic request format
 	anthropicReq := convertToAnthropicRequestWithConfig(llmReq, t.config)
+	if t.config.Type == PlatformBedrock && llmReq.RawRequest != nil {
+		for _, line := range llmReq.RawRequest.Headers.Values("Anthropic-Beta") {
+			for beta := range strings.SplitSeq(line, ",") {
+				if beta = strings.TrimSpace(beta); beta != "" {
+					anthropicReq.AnthropicBeta = append(anthropicReq.AnthropicBeta, beta)
+				}
+			}
+		}
+	}
 
 	// System and developer messages are extracted into the top-level system
 	// prompt. When the request carries nothing else there is no conversation
@@ -233,12 +242,6 @@ func (t *OutboundTransformer) TransformRequest(
 		headers.Set("Anthropic-Version", "2023-06-01")
 	}
 
-	// Apply platform-specific transformations
-	body, err := json.Marshal(anthropicReq)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal anthropic request: %w", err)
-	}
-
 	// Add beta header for web search feature only when:
 	// 1. Native web search tool is present, AND
 	// 2. Platform is direct Anthropic API or Bedrock (not Vertex which may not support this beta)
@@ -250,6 +253,12 @@ func (t *OutboundTransformer) TransformRequest(
 		case PlatformBedrock:
 			anthropicReq.AnthropicBeta = append(anthropicReq.AnthropicBeta, "web-search-2025-03-05")
 		}
+	}
+
+	// Serialize after platform-specific beta fields have been added.
+	body, err := json.Marshal(anthropicReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal anthropic request: %w", err)
 	}
 
 	// Prepare authentication

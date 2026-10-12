@@ -39,7 +39,12 @@ test('GPT-6.1 Sol and Astra modes preserve official prices across both catalogs'
   assert.equal(sol.cost.output, 10);
   assert.equal(sol.cost.tiers[0].tier.size, 272000);
   assert.equal(sol.experimental.modes.fast.cost.tiers[0].output, 30);
-  assert.equal(sol.experimental.modes.ultrafast, undefined);
+  assert.deepEqual(sol.limit, { context: 1050000, input: 922000, output: 128000 });
+  assert.equal(sol.experimental.modes.ultrafast.provider.body.service_tier, 'ultrafast');
+  assert.deepEqual(sol.experimental.modes.ultrafast.cost, {
+    input: 12, cache_read: 0.6, cache_write: 15, output: 60,
+    tiers: [{ input: 24, cache_read: 1.2, cache_write: 30, output: 90, tier: { size: 272000, type: 'context' } }],
+  });
   const astra = frontend.providers.openai.models.find((model) => model.id === 'gpt-6-astra');
   assert.equal(astra.experimental.modes.ultrafast.provider.body.service_tier, 'ultrafast');
   assert.equal(astra.experimental.modes.ultrafast.cost.input, 60);

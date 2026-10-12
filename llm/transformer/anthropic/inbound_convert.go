@@ -360,6 +360,9 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 
 	// Convert thinking configuration to reasoning effort and preserve budget
 	if anthropicReq.Thinking != nil {
+		if len(anthropicReq.Thinking.BlockBinding) > 0 || len(anthropicReq.Thinking.Extra) > 0 {
+			chatReq.TransformerMetadata[transformerMetadataThinkingExtensions] = anthropicReq.Thinking
+		}
 		switch anthropicReq.Thinking.Type {
 		case "enabled":
 			// budget_tokens is the client's native expression here: mark it so the

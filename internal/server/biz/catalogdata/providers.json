@@ -15315,7 +15315,19 @@
                   "cache_read": 0.6,
                   "cache_write": 15,
                   "input": 12,
-                  "output": 60
+                  "output": 60,
+                  "tiers": [
+                    {
+                      "cache_read": 1.2,
+                      "cache_write": 30,
+                      "input": 24,
+                      "output": 90,
+                      "tier": {
+                        "size": 272000,
+                        "type": "context"
+                      }
+                    }
+                  ]
                 },
                 "provider": {
                   "body": {

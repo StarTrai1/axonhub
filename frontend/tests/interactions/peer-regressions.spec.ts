@@ -43,6 +43,16 @@ for (const kind of ['free', 'strict']) {
   });
 }
 
+test('Markdown renders math and diagrams with the patched dependency graph', async ({ page }) => {
+  await page.goto('/tests/interactions/peer-regressions.html?case=rendering');
+  const response = page.getByTestId('rendering-response');
+  await expect(response.getByRole('heading', { name: 'Formula' })).toBeVisible();
+  await expect(response.locator('.katex').first()).toBeVisible();
+  await expect(response.locator('svg[id^="mermaid"]').first()).toBeVisible();
+  await expect(response.locator('script, [onerror]')).toHaveCount(0);
+  expect(await page.evaluate(() => Reflect.get(window, 'renderingInjected'))).toBeUndefined();
+});
+
 test('Playground resets private drafts and settings when the user or project changes', async ({ page }) => {
   await page.route('**/admin/playground/**', (route) => route.abort());
   await page.goto('/tests/interactions/peer-regressions.html?case=playground');

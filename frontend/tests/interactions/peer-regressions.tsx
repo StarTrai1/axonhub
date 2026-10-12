@@ -7,6 +7,7 @@ import '@/lib/i18n';
 import { Form } from '@/components/ui/form';
 import { AutoComplete } from '@/components/auto-complete';
 import { AutoCompleteSelect } from '@/components/auto-complete-select';
+import { Response } from '@/components/ai-elements/response';
 import { FilePreview } from '@/components/ui/file-preview';
 import { ModelPriceEditor } from '@/components/model-price-editor';
 import { PriceScheduleEditor } from '@/components/price-schedule-editor';
@@ -105,6 +106,9 @@ function CompositionFixture() {
     </section>
   </>;
 }
+function RenderingFixture() {
+  return <section data-testid='rendering-response'><Response>{'## Formula\n\n$$E = mc^2$$\n\n<script>window.renderingInjected = true</script>\n\n<img src="invalid:" onerror="window.renderingInjected = true">\n\n```mermaid\nflowchart LR\nA[Input] --> B[Output]\n```'}</Response></section>;
+}
 if (fixtureCase === 'playground') {
   useAuthStore.getState().auth.setUser({
     id: 'first-user', email: 'my@example.com', firstName: 'Offline', lastName: 'User',
@@ -112,7 +116,7 @@ if (fixtureCase === 'playground') {
   });
   useProjectStore.getState().setSelectedProjectId('first-project');
 }
-const fixture = fixtureCase === 'composition' ? <CompositionFixture /> : fixtureCase === 'uploads' ? <UploadFixture /> : fixtureCase === 'playground' ? <PlaygroundFixture /> : <PriceFixture />;
+const fixture = fixtureCase === 'rendering' ? <RenderingFixture /> : fixtureCase === 'composition' ? <CompositionFixture /> : fixtureCase === 'uploads' ? <UploadFixture /> : fixtureCase === 'playground' ? <PlaygroundFixture /> : <PriceFixture />;
 createRoot(document.getElementById('root')!).render(
   <StrictMode><QueryClientProvider client={queryClient}>{fixture}</QueryClientProvider></StrictMode>
 );

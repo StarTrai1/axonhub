@@ -301,6 +301,13 @@ func buildBaseRequest(chatReq *llm.Request, config *Config) *MessageRequest {
 		}
 	}
 	normalizeConvertedClaudeThinking(chatReq, req, config)
+	if original, ok := chatReq.TransformerMetadata[transformerMetadataThinkingExtensions].(*Thinking); ok && original != nil && req.Thinking != nil {
+		req.Thinking.BlockBinding = append(json.RawMessage(nil), original.BlockBinding...)
+		if len(original.Extra) > 0 {
+			req.Thinking.Extra = make(map[string]json.RawMessage, len(original.Extra))
+			for key, value := range original.Extra { req.Thinking.Extra[key] = append(json.RawMessage(nil), value...) }
+		}
+	}
 
 	return req
 }

@@ -183,6 +183,10 @@ const TransformerMetadataKeyCacheControl = "anthropic_cache_control"
 const TransformerMetadataKeyAnthropicResponseContent = "anthropic_response_content"
 
 type Thinking struct {
+	// BlockBinding and Extra preserve caller-owned conversation controls and
+	// future native thinking options without inventing a recovery policy.
+	BlockBinding json.RawMessage `json:"block_binding,omitempty"`
+	Extra map[string]json.RawMessage `json:"-"`
 	Type         string `json:"type"          validate:"required,oneof=enabled disabled adaptive between_tools"`
 	BudgetTokens int64  `json:"budget_tokens,omitempty" validate:"required_if=Type enabled"`
 	// Display is an optional display name for the thinking, enum: summarized, omitted.
