@@ -5,11 +5,11 @@ import { createContext, memo, useContext, useEffect, useState } from 'react';
 import type { FileUIPart, UIMessage } from 'ai';
 import { ChevronLeftIcon, ChevronRightIcon, PaperclipIcon, XIcon } from 'lucide-react';
 import { Streamdown } from 'streamdown';
-import { markdownRehypePlugins } from './markdown-plugins';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ButtonGroup, ButtonGroupText } from '@/components/ui/button-group';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { markdownRehypePlugins } from './markdown-plugins';
 
 export type MessageProps = HTMLAttributes<HTMLDivElement> & {
   from: UIMessage['role'];
@@ -20,7 +20,7 @@ export const Message = ({ className, from, fullWidth, ...props }: MessageProps) 
   <div
     className={cn(
       'group flex w-full gap-2',
-      from === 'user' ? 'is-user ml-auto justify-end max-w-[80%]' : 'is-assistant',
+      from === 'user' ? 'is-user ml-auto max-w-[80%] justify-end' : 'is-assistant',
       !fullWidth && from !== 'user' && 'max-w-[80%]',
       className
     )}
@@ -239,7 +239,11 @@ export type MessageResponseProps = ComponentProps<typeof Streamdown>;
 
 export const MessageResponse = memo(
   ({ className, ...props }: MessageResponseProps) => (
-    <Streamdown rehypePlugins={markdownRehypePlugins} className={cn('size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0', className)} {...props} />
+    <Streamdown
+      rehypePlugins={markdownRehypePlugins}
+      className={cn('size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0', className)}
+      {...props}
+    />
   ),
   (prevProps, nextProps) => prevProps.children === nextProps.children
 );
