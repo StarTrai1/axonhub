@@ -29,7 +29,9 @@ test('bundled providers.json matches providersDataSchema', () => {
 
 test('GPT-6.1 Sol and Astra modes preserve official prices across both catalogs', () => {
   const frontend = providersDataSchema.parse(JSON.parse(readFileSync(providersJsonPath, 'utf8')));
-  const backend = JSON.parse(readFileSync(join(import.meta.dirname, '../../../../../internal/server/biz/catalogdata/providers.json'), 'utf8'));
+  const backend = JSON.parse(
+    readFileSync(join(import.meta.dirname, '../../../../../internal/server/biz/catalogdata/providers.json'), 'utf8')
+  );
   const sol = frontend.providers.openai.models.find((model) => model.id === 'gpt-6.1-sol');
   assert.ok(sol);
   assert.deepEqual(sol.reasoning_options[0].values, ['low', 'medium', 'high', 'xhigh', 'max']);
@@ -42,7 +44,10 @@ test('GPT-6.1 Sol and Astra modes preserve official prices across both catalogs'
   assert.deepEqual(sol.limit, { context: 1050000, input: 922000, output: 128000 });
   assert.equal(sol.experimental.modes.ultrafast.provider.body.service_tier, 'ultrafast');
   assert.deepEqual(sol.experimental.modes.ultrafast.cost, {
-    input: 12, cache_read: 0.6, cache_write: 15, output: 60,
+    input: 12,
+    cache_read: 0.6,
+    cache_write: 15,
+    output: 60,
     tiers: [{ input: 24, cache_read: 1.2, cache_write: 30, output: 90, tier: { size: 272000, type: 'context' } }],
   });
   const astra = frontend.providers.openai.models.find((model) => model.id === 'gpt-6-astra');
@@ -51,6 +56,9 @@ test('GPT-6.1 Sol and Astra modes preserve official prices across both catalogs'
   assert.equal(astra.experimental.modes.ultrafast.cost.tiers[0].output, 450);
   for (const model of [sol, astra]) {
     const source = backend.providers.openai.models.find((entry) => entry.id === model.id);
-    assert.deepEqual(model, providersDataSchema.parse({ providers: { openai: { ...backend.providers.openai, models: [source] } } }).providers.openai.models[0]);
+    assert.deepEqual(
+      model,
+      providersDataSchema.parse({ providers: { openai: { ...backend.providers.openai, models: [source] } } }).providers.openai.models[0]
+    );
   }
 });

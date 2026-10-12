@@ -33,7 +33,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@hookform/resolvers": "^5.1.1",
     "@lobehub/fluent-emoji": "^4.1.1",
-    "@lobehub/icons": "^5.22.0",
+    "@lobehub/icons": "5.22.0",
     "@lobehub/ui": "^5.39.0",
     "@radix-ui/react-alert-dialog": "^1.1.14",
     "@radix-ui/react-avatar": "^1.1.10",

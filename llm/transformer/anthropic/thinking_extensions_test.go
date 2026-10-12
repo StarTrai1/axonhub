@@ -16,7 +16,7 @@ func TestThinkingExtensionsSurviveNativeTranslation(t *testing.T) {
 	for _, platform := range []PlatformType{PlatformDirect, PlatformBedrock} {
 		t.Run(string(platform), func(t *testing.T) {
 			const thinking = `{"type":"adaptive","display":"summarized","block_binding":{"prefix_mismatch_behavior":"drop_block"},"future_field":{"count":9007199254740993}}`
-			raw := &httpclient.Request{Headers: http.Header{"Content-Type": {"application/json"}, "Anthropic-Beta": {"fast-mode-2026-02-01", " thinking-binding-controls-2026-08-01, "}}, Body: []byte(`{"model":"claude-opus-5-5","max_tokens":128,"messages":[{"role":"user","content":"hello"}],"thinking":`+thinking+`}`)}
+			raw := &httpclient.Request{Headers: http.Header{"Content-Type": {"application/json"}, "Anthropic-Beta": {"fast-mode-2026-02-01", " thinking-binding-controls-2026-08-01, "}}, Body: []byte(`{"model":"claude-opus-5-5","max_tokens":128,"messages":[{"role":"user","content":"hello"}],"thinking":` + thinking + `}`)}
 			request, err := NewInboundTransformer().TransformRequest(t.Context(), raw)
 			require.NoError(t, err)
 			request.RawRequest = raw
