@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	http2FallbackDuration = 10 * time.Minute
+	http2FallbackDuration   = 10 * time.Minute
 	maxHTTP2FallbackOrigins = 128
 )
 
@@ -27,18 +27,18 @@ var http2FallbackReset = regexp.MustCompile(`^stream error: stream ID [1-9][0-9]
 // A reset after output only changes the transport used by subsequent requests.
 type http2FallbackTransport struct {
 	primary http.RoundTripper
-	http1 http.RoundTripper
-	mu sync.Mutex
-	until map[string]time.Time
-	now func() time.Time
+	http1   http.RoundTripper
+	mu      sync.Mutex
+	until   map[string]time.Time
+	now     func() time.Time
 }
 
 func newHTTP2FallbackTransport(primary, http1 http.RoundTripper) *http2FallbackTransport {
 	return &http2FallbackTransport{
 		primary: primary,
-		http1: http1,
-		until: make(map[string]time.Time),
-		now: time.Now,
+		http1:   http1,
+		until:   make(map[string]time.Time),
+		now:     time.Now,
 	}
 }
 
@@ -116,7 +116,7 @@ func (t *http2FallbackTransport) RoundTrip(req *http.Request) (*http.Response, e
 	if err == nil && resp != nil && resp.ProtoMajor == 2 && resp.Body != nil && origin != "" {
 		resp.Body = &http2FallbackBody{
 			ReadCloser: resp.Body,
-			onError: func(err error) { t.observe(req, origin, err) },
+			onError:    func(err error) { t.observe(req, origin, err) },
 		}
 	}
 	return resp, err
@@ -133,7 +133,7 @@ func (t *http2FallbackTransport) CloseIdleConnections() {
 type http2FallbackBody struct {
 	io.ReadCloser
 	onError func(error)
-	once sync.Once
+	once    sync.Once
 }
 
 func (b *http2FallbackBody) Read(p []byte) (int, error) {

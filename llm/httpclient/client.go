@@ -61,10 +61,10 @@ type ClientOption func(*clientOptions)
 
 type clientOptions struct {
 	tlsConfig             *tls.Config
-	insecureSkipVerify     bool
+	insecureSkipVerify    bool
 	httpProtocol          HTTPProtocol
 	http2ConnectionShards int
-	rejectHTTPSDowngrade   bool
+	rejectHTTPSDowngrade  bool
 }
 
 // WithTLSConfig configures upstream trust and client certificates. The config

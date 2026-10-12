@@ -25,16 +25,23 @@ func TestHTTP2FallbackRealReset(t *testing.T) {
 	for _, throughProxy := range []bool{false, true} {
 		for _, beforeHeaders := range []bool{false, true} {
 			t.Run(fmt.Sprintf("proxy=%v/before_headers=%v", throughProxy, beforeHeaders), func(t *testing.T) {
-				type received struct { proto int; body, auth string }
+				type received struct {
+					proto      int
+					body, auth string
+				}
 				requests := make(chan received, 8)
 				upstream := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					body, _ := io.ReadAll(r.Body)
 					requests <- received{r.ProtoMajor, string(body), r.Header.Get("Authorization")}
-					if r.ProtoMajor == 2 && beforeHeaders { panic(http.ErrAbortHandler) }
+					if r.ProtoMajor == 2 && beforeHeaders {
+						panic(http.ErrAbortHandler)
+					}
 					w.Header().Set("Content-Type", "text/event-stream")
 					_, _ = fmt.Fprint(w, "event: response.output_text.delta\ndata: {\"delta\":\"partial\"}\n\n")
 					w.(http.Flusher).Flush()
-					if r.ProtoMajor == 2 { panic(http.ErrAbortHandler) }
+					if r.ProtoMajor == 2 {
+						panic(http.ErrAbortHandler)
+					}
 					_, _ = fmt.Fprint(w, "event: response.completed\ndata: {\"type\":\"response.completed\"}\n\n")
 				}))
 				upstream.EnableHTTP2 = true
@@ -58,7 +65,9 @@ func TestHTTP2FallbackRealReset(t *testing.T) {
 				} else {
 					require.NoError(t, err)
 					var events []string
-					for stream.Next() { events = append(events, stream.Current().Type) }
+					for stream.Next() {
+						events = append(events, stream.Current().Type)
+					}
 					require.ErrorContains(t, stream.Err(), "INTERNAL_ERROR; received from peer")
 					require.Equal(t, []string{"response.output_text.delta"}, events)
 					require.NoError(t, stream.Close())
@@ -69,7 +78,9 @@ func TestHTTP2FallbackRealReset(t *testing.T) {
 				stream, err = client.DoStream(ctx, request)
 				require.NoError(t, err)
 				var events []string
-				for stream.Next() { events = append(events, stream.Current().Type) }
+				for stream.Next() {
+					events = append(events, stream.Current().Type)
+				}
 				require.NoError(t, stream.Err())
 				require.NoError(t, stream.Close())
 				require.Equal(t, []string{"response.output_text.delta", "response.completed"}, events)
@@ -92,17 +103,24 @@ func newHTTP2FallbackProxy(t *testing.T, upstream string) *httptest.Server {
 			return
 		}
 		dst, err := net.DialTimeout("tcp", upstream, 2*time.Second)
-		if err != nil { http.Error(w, "fixture unavailable", http.StatusBadGateway); return }
+		if err != nil {
+			http.Error(w, "fixture unavailable", http.StatusBadGateway)
+			return
+		}
 		defer dst.Close()
 		src, buffered, err := w.(http.Hijacker).Hijack()
-		if err != nil { return }
+		if err != nil {
+			return
+		}
 		defer src.Close()
 		_, _ = buffered.WriteString("HTTP/1.1 200 Connection Established\r\n\r\n")
 		_ = buffered.Flush()
 		done := make(chan struct{})
 		go func() {
 			defer func() {
-				if recovered := recover(); recovered != nil { slog.Error("fixture tunnel panic", "panic", recovered) }
+				if recovered := recover(); recovered != nil {
+					slog.Error("fixture tunnel panic", "panic", recovered)
+				}
 				close(done)
 			}()
 			_, _ = io.Copy(dst, buffered)
@@ -169,7 +187,9 @@ func TestHTTP2FallbackConcurrentOrigins(t *testing.T) {
 	for i := range 32 {
 		workers.Go(func() {
 			defer func() {
-				if recovered := recover(); recovered != nil { slog.Error("fixture worker panic", "panic", recovered) }
+				if recovered := recover(); recovered != nil {
+					slog.Error("fixture worker panic", "panic", recovered)
+				}
 			}()
 			for n := range 100 {
 				origin := fmt.Sprintf("host-%d:443", (i+n)%8)
@@ -212,7 +232,9 @@ func TestHTTP2FallbackDoesNotInspectPayloads(t *testing.T) {
 	t.Cleanup(client.CloseIdleConnections)
 	stream, err := client.DoStream(t.Context(), &Request{Method: http.MethodPost, URL: upstream.URL})
 	require.NoError(t, err)
-	for stream.Next() { require.True(t, strings.Contains(string(stream.Current().Data), "INTERNAL_ERROR")) }
+	for stream.Next() {
+		require.True(t, strings.Contains(string(stream.Current().Data), "INTERNAL_ERROR"))
+	}
 	require.NoError(t, stream.Err())
 	require.NoError(t, stream.Close())
 	require.Empty(t, client.GetNativeClient().Transport.(*http2FallbackTransport).until)
