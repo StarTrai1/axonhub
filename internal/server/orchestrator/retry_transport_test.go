@@ -50,6 +50,7 @@ func TestHTTP2PeerResetRetryClassification(t *testing.T) {
 	}{
 		{name: "internal reset", err: fmt.Errorf("failed to stream request: %w", errors.New("stream error: stream ID 65; INTERNAL_ERROR; received from peer")), want: true},
 		{name: "refused stream", err: errors.New("stream error: stream ID 1; REFUSED_STREAM; received from peer"), want: true},
+		{name: "peer requires HTTP1", err: errors.New("stream error: stream ID 1; HTTP_1_1_REQUIRED; received from peer"), want: true},
 		{name: "local protocol violation", err: errors.New("stream error: stream ID 1; PROTOCOL_ERROR; received from peer")},
 		{name: "local reset", err: errors.New("stream error: stream ID 1; INTERNAL_ERROR; local failure")},
 		{name: "unrelated message", err: errors.New("provider says INTERNAL_ERROR")},

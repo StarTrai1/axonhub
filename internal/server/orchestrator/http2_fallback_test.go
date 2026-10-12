@@ -90,7 +90,11 @@ func TestHTTP2FallbackPipeline(t *testing.T) {
 			}
 			data, err := process()
 			if scenario.committed {
-				require.ErrorContains(t, err, "INTERNAL_ERROR; received from peer")
+				// The Responses encoder emits one failed terminal event and consumes
+				// the Go error so the handler does not append a second error event.
+				require.NoError(t, err)
+				require.Contains(t, data, "INTERNAL_ERROR; received from peer")
+				require.Equal(t, 1, strings.Count(data, `"type":"response.failed"`))
 				require.EqualValues(t, 1, attempts.Load(), "never replay committed text/reasoning/tool output")
 				require.NotContains(t, data, "response.completed")
 				data, err = process()

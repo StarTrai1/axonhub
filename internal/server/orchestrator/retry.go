@@ -16,7 +16,7 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
-var retryableHTTP2StreamError = regexp.MustCompile(`^stream error: stream ID [1-9][0-9]*; (INTERNAL_ERROR|REFUSED_STREAM); received from peer$`)
+var retryableHTTP2StreamError = regexp.MustCompile(`^stream error: stream ID [1-9][0-9]*; (INTERNAL_ERROR|REFUSED_STREAM|HTTP_1_1_REQUIRED); received from peer$`)
 
 func isRetryableError(err error) bool {
 	if err == nil || errors.Is(err, context.Canceled) {
