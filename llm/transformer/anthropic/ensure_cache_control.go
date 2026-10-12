@@ -130,8 +130,13 @@ func normalizeMessageContents(req *MessageRequest) {
 func ensureStructuralCacheControls(req *MessageRequest, remaining int) {
 	oneHourSection := lastOneHourCacheControlSection(req)
 	if remaining > 0 && oneHourSection <= cacheControlSectionTools && len(req.Tools) > 0 && !anyToolHasCacheControl(req) {
-		req.Tools[len(req.Tools)-1].CacheControl = &CacheControl{Type: "ephemeral"}
-		remaining--
+		for i := len(req.Tools) - 1; i >= 0; i-- {
+			if req.Tools[i].DeferLoading == nil || !*req.Tools[i].DeferLoading {
+				req.Tools[i].CacheControl = &CacheControl{Type: "ephemeral"}
+				remaining--
+				break
+			}
+		}
 	}
 
 	if remaining <= 0 || oneHourSection > cacheControlSectionSystem || req.System == nil {
@@ -209,8 +214,17 @@ func lastOneHourCacheControlSection(req *MessageRequest) int {
 // Anthropic 不允许在 thinking 类型和空 text 块上设置 cache_control。
 // 在 strict mode 下用作最终安全检查，防止注入逻辑意外命中不可缓存块。
 func sanitizeUnsupportedCacheControls(req *MessageRequest) {
+	sanitizeDeferredToolCacheControls(req)
 	for i := range req.Messages {
 		sanitizeContentCacheControls(&req.Messages[i].Content)
+	}
+}
+
+func sanitizeDeferredToolCacheControls(req *MessageRequest) {
+	for i := range req.Tools {
+		if req.Tools[i].DeferLoading != nil && *req.Tools[i].DeferLoading {
+			req.Tools[i].CacheControl = nil
+		}
 	}
 }
 

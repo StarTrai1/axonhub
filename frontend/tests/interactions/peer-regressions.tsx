@@ -5,6 +5,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import '@/index.css';
 import '@/lib/i18n';
 import { Form } from '@/components/ui/form';
+import { AutoComplete } from '@/components/auto-complete';
+import { AutoCompleteSelect } from '@/components/auto-complete-select';
 import { FilePreview } from '@/components/ui/file-preview';
 import { ModelPriceEditor } from '@/components/model-price-editor';
 import { PriceScheduleEditor } from '@/components/price-schedule-editor';
@@ -84,6 +86,25 @@ function PlaygroundFixture() {
 }
 
 const fixtureCase = new URLSearchParams(window.location.search).get('case');
+function CompositionFixture() {
+  const [selected, setSelected] = useState('');
+  const [strictSelected, setStrictSelected] = useState('');
+  const [search, setSearch] = useState('');
+  const [keys, setKeys] = useState(0);
+  const items = [{ value: 'first', label: 'First' }, { value: 'second', label: 'Second' }];
+  return <>
+    <section data-testid='composition-free'>
+      <AutoComplete selectedValue={selected} onSelectedValueChange={setSelected} searchValue={search}
+        onSearchValueChange={setSearch} items={items} onKeyDown={() => setKeys((n) => n + 1)} />
+      <output data-testid='composition-free-value'>{selected}</output>
+      <output data-testid='composition-key-count'>{keys}</output>
+    </section>
+    <section data-testid='composition-strict'>
+      <AutoCompleteSelect selectedValue={strictSelected} onSelectedValueChange={setStrictSelected} items={items} />
+      <output data-testid='composition-strict-value'>{strictSelected}</output>
+    </section>
+  </>;
+}
 if (fixtureCase === 'playground') {
   useAuthStore.getState().auth.setUser({
     id: 'first-user', email: 'my@example.com', firstName: 'Offline', lastName: 'User',
@@ -91,7 +112,7 @@ if (fixtureCase === 'playground') {
   });
   useProjectStore.getState().setSelectedProjectId('first-project');
 }
-const fixture = fixtureCase === 'uploads' ? <UploadFixture /> : fixtureCase === 'playground' ? <PlaygroundFixture /> : <PriceFixture />;
+const fixture = fixtureCase === 'composition' ? <CompositionFixture /> : fixtureCase === 'uploads' ? <UploadFixture /> : fixtureCase === 'playground' ? <PlaygroundFixture /> : <PriceFixture />;
 createRoot(document.getElementById('root')!).render(
   <StrictMode><QueryClientProvider client={queryClient}>{fixture}</QueryClientProvider></StrictMode>
 );

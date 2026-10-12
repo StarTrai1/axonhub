@@ -129,6 +129,10 @@ export function AutoComplete<T extends string>({
               value={searchValue}
               onValueChange={onSearchValueChange}
               onKeyDown={(e) => {
+                if (e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) {
+                  e.stopPropagation();
+                  return;
+                }
                 setOpen(e.key !== 'Escape');
                 onKeyDown?.(e);
               }}

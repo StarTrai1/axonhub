@@ -106,7 +106,13 @@ export function AutoCompleteSelect<T extends string>({
               asChild
               value={searchValue}
               onValueChange={setSearchValue}
-              onKeyDown={(e) => handleOpenChange(e.key !== 'Escape')}
+              onKeyDown={(e) => {
+                if (e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) {
+                  e.stopPropagation();
+                  return;
+                }
+                handleOpenChange(e.key !== 'Escape');
+              }}
               onMouseDown={() => {
                 if (!open) {
                   setSearchValue('');

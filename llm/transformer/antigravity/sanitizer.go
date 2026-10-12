@@ -67,6 +67,7 @@ var unsupportedKeywords = []string{
 	"propertyNames", "title", "$id", "$comment", "id",
 	"$anchor", "$vocabulary", "$dynamicRef", "$dynamicAnchor",
 	"additionalItems", "unevaluatedProperties", "unevaluatedItems", "contentSchema",
+	"dependentRequired", "dependentSchemas", "dependencies",
 }
 
 // emptySchemaPlaceholderName is the name of the placeholder field.

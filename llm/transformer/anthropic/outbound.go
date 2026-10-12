@@ -199,6 +199,9 @@ func (t *OutboundTransformer) TransformRequest(
 	//      and intentionally skip our own breakpoint optimization pipeline.
 	//   2. Explicit cache breakpoints: per-block cache_control fields. We run
 	//      our optimization pipeline only in this mode.
+	// Deferred tool definitions cannot be prompt-cache breakpoints, including
+	// requests using automatic (top-level) cache control.
+	sanitizeDeferredToolCacheControls(anthropicReq)
 	if anthropicReq.CacheControl == nil && countCacheControls(anthropicReq) > 0 {
 		optimizeCacheControl(anthropicReq)
 	}

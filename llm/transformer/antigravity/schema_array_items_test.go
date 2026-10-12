@@ -80,3 +80,26 @@ func TestTupleSchemasAreSanitizedOnlyAtAntigravityBoundary(t *testing.T) {
 	require.Empty(t, converted.GenerationConfig.ResponseJsonSchema)
 	require.Equal(t, raw, string(request.Tools[0].Function.Parameters))
 }
+
+func TestDependencySchemasAreSanitizedOnlyAtAntigravityBoundary(t *testing.T) {
+	const raw = `{"type":"object","dependentRequired":{"a":["b"]},"dependentSchemas":{"a":{"required":["b"]}},"dependencies":{"a":["b"]},"properties":{"dependencies":{"type":"string"},"dependentRequired":{"type":"string"},"dependentSchemas":{"type":"array","items":{"type":"object","dependentRequired":{"x":["y"]},"properties":{"x":{"type":"string"}}}}}}`
+	request := &llm.Request{
+		Model: "gemini-2.5-flash",
+		Messages: []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("inspect")}}},
+		Tools: []llm.Tool{{Type: "function", Function: llm.Function{Name: "inspect", Parameters: json.RawMessage(raw)}}},
+	}
+	native, err := gemini.NewOutboundTransformer("https://example.com", "test-key")
+	require.NoError(t, err)
+	wire, err := native.TransformRequest(t.Context(), request)
+	require.NoError(t, err)
+	var converted gemini.GenerateContentRequest
+	require.NoError(t, json.Unmarshal(wire.Body, &converted))
+	require.JSONEq(t, raw, string(converted.Tools[0].FunctionDeclarations[0].ParametersJsonSchema))
+	require.NoError(t, json.Unmarshal([]byte(`{"responseJsonSchema":`+raw+`}`), &converted.GenerationConfig))
+	adapter := &Transformer{}
+	require.NoError(t, adapter.patchGeminiRequest(t.Context(), &converted, request))
+	const want = `{"type":"OBJECT","properties":{"dependencies":{"type":"STRING"},"dependentRequired":{"type":"STRING"},"dependentSchemas":{"type":"ARRAY","items":{"type":"OBJECT","properties":{"x":{"type":"STRING"}}}}}}`
+	require.JSONEq(t, want, string(converted.Tools[0].FunctionDeclarations[0].Parameters))
+	require.JSONEq(t, want, string(converted.GenerationConfig.ResponseSchema))
+	require.Equal(t, raw, string(request.Tools[0].Function.Parameters))
+}

@@ -18,6 +18,31 @@ test.beforeEach(async ({ page }) => {
   await page.route('**/admin/graphql', (route) => route.abort());
 });
 
+for (const kind of ['free', 'strict']) {
+  test(`autocomplete ${kind} leaves IME keys to composition`, async ({ page }) => {
+    await page.goto('/tests/interactions/peer-regressions.html?case=composition');
+    const input = page.getByTestId(`composition-${kind}`).getByRole('combobox');
+    await input.click();
+    const selected = page.locator('[cmdk-item][aria-selected="true"]');
+    await expect(selected).toHaveText('First');
+    for (const key of ['ArrowDown', 'ArrowUp', 'Enter', 'Escape']) {
+      for (const legacy of [false, true]) {
+        const allowed = await input.evaluate((element, { key, legacy }) => element.dispatchEvent(new KeyboardEvent('keydown', {
+          key, bubbles: true, cancelable: true, isComposing: !legacy, keyCode: legacy ? 229 : 0,
+        })), { key, legacy });
+        expect(allowed).toBe(true);
+        await expect(selected).toHaveText('First');
+        await expect(page.getByTestId(`composition-${kind}-value`)).toHaveText('');
+      }
+    }
+    await expect(page.getByTestId('composition-key-count')).toHaveText('0');
+    await input.press('ArrowDown');
+    await expect(selected).toHaveText('Second');
+    await input.press('Enter');
+    await expect(page.getByTestId(`composition-${kind}-value`)).toHaveText('second');
+  });
+}
+
 test('Playground resets private drafts and settings when the user or project changes', async ({ page }) => {
   await page.route('**/admin/playground/**', (route) => route.abort());
   await page.goto('/tests/interactions/peer-regressions.html?case=playground');

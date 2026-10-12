@@ -255,6 +255,12 @@ func (t *Transformer) TransformRequest(ctx context.Context, llmReq *llm.Request)
 func (t *Transformer) patchGeminiRequest(ctx context.Context, req *gemini.GenerateContentRequest, llmReq *llm.Request) error {
 	if strings.Contains(strings.ToLower(llmReq.Model), "claude") {
 		normalizeClaudeToolIDs(req.Contents)
+	} else {
+		// A replayed trailing reasoning item is not a user turn. Antigravity
+		// rejects it even when followed by a synthetic empty user message.
+		for len(req.Contents) > 1 && thoughtOnlyModelTurn(req.Contents[len(req.Contents)-1]) {
+			req.Contents = req.Contents[:len(req.Contents)-1]
+		}
 	}
 
 	// Claude attribution is client metadata, not a Google system instruction.
