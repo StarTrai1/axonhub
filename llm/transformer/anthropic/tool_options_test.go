@@ -67,8 +67,12 @@ func TestDeferredToolsNeverCarryPromptCacheBreakpoints(t *testing.T) {
 				last := sent.Tools[len(sent.Tools)-1]
 				require.True(t, *last.DeferLoading)
 				require.Nil(t, last.CacheControl)
-				if eager && !automatic { require.NotNil(t, sent.Tools[0].CacheControl) }
-				if automatic { require.NotNil(t, sent.CacheControl) }
+				if eager && !automatic {
+					require.NotNil(t, sent.Tools[0].CacheControl)
+				}
+				if automatic {
+					require.NotNil(t, sent.CacheControl)
+				}
 				after, err := json.Marshal(request)
 				require.NoError(t, err)
 				require.JSONEq(t, string(before), string(after))

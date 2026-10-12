@@ -94,7 +94,6 @@ export function AutoComplete<T extends string>({
     }
   };
 
-
   const filtered = useMemo(() => {
     if (!searchValue) return items.slice(0, MAX_DISPLAY);
     const q = searchValue.toLowerCase();

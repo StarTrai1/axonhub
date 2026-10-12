@@ -84,9 +84,9 @@ func TestTupleSchemasAreSanitizedOnlyAtAntigravityBoundary(t *testing.T) {
 func TestDependencySchemasAreSanitizedOnlyAtAntigravityBoundary(t *testing.T) {
 	const raw = `{"type":"object","dependentRequired":{"a":["b"]},"dependentSchemas":{"a":{"required":["b"]}},"dependencies":{"a":["b"]},"properties":{"dependencies":{"type":"string"},"dependentRequired":{"type":"string"},"dependentSchemas":{"type":"array","items":{"type":"object","dependentRequired":{"x":["y"]},"properties":{"x":{"type":"string"}}}}}}`
 	request := &llm.Request{
-		Model: "gemini-2.5-flash",
+		Model:    "gemini-2.5-flash",
 		Messages: []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("inspect")}}},
-		Tools: []llm.Tool{{Type: "function", Function: llm.Function{Name: "inspect", Parameters: json.RawMessage(raw)}}},
+		Tools:    []llm.Tool{{Type: "function", Function: llm.Function{Name: "inspect", Parameters: json.RawMessage(raw)}}},
 	}
 	native, err := gemini.NewOutboundTransformer("https://example.com", "test-key")
 	require.NoError(t, err)
