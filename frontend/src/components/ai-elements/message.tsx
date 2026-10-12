@@ -5,6 +5,7 @@ import { createContext, memo, useContext, useEffect, useState } from 'react';
 import type { FileUIPart, UIMessage } from 'ai';
 import { ChevronLeftIcon, ChevronRightIcon, PaperclipIcon, XIcon } from 'lucide-react';
 import { Streamdown } from 'streamdown';
+import { markdownRehypePlugins } from './markdown-plugins';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ButtonGroup, ButtonGroupText } from '@/components/ui/button-group';
@@ -238,7 +239,7 @@ export type MessageResponseProps = ComponentProps<typeof Streamdown>;
 
 export const MessageResponse = memo(
   ({ className, ...props }: MessageResponseProps) => (
-    <Streamdown className={cn('size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0', className)} {...props} />
+    <Streamdown rehypePlugins={markdownRehypePlugins} className={cn('size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0', className)} {...props} />
   ),
   (prevProps, nextProps) => prevProps.children === nextProps.children
 );

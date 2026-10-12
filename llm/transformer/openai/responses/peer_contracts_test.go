@@ -67,7 +67,7 @@ func TestResponsesServiceTierAndCacheWriteRoundTrip(t *testing.T) {
 }
 
 func TestSolUltrafastPreservesServiceTierAndHistory(t *testing.T) {
-	const body = `{"model":"gpt-6.1-sol","service_tier":"ultrafast","reasoning":{"effort":"max"},"input":[{"type":"reasoning","id":"rs_history","encrypted_content":"opaque"},{"role":"user","content":"continue"}]}`
+	const body = `{"model":"gpt-6.1-sol","service_tier":"ultrafast","reasoning":{"effort":"max"},"input":[{"type":"reasoning","id":"rs_history","encrypted_content":"gAAAA_RETAINED_SYNTHETIC_BLOB"},{"role":"user","content":"continue"}]}`
 	request, err := NewInboundTransformer().TransformRequest(t.Context(), &httpclient.Request{Body: []byte(body)})
 	require.NoError(t, err)
 	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-key")
@@ -76,7 +76,7 @@ func TestSolUltrafastPreservesServiceTierAndHistory(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "ultrafast", gjson.GetBytes(wire.Body, "service_tier").String())
 	require.Equal(t, "max", gjson.GetBytes(wire.Body, "reasoning.effort").String())
-	require.Equal(t, "opaque", gjson.GetBytes(wire.Body, "input.0.encrypted_content").String())
+	require.Equal(t, "gAAAA_RETAINED_SYNTHETIC_BLOB", gjson.GetBytes(wire.Body, "input.0.encrypted_content").String())
 	response, err := outbound.TransformResponse(t.Context(), &httpclient.Response{Body: []byte(`{"id":"resp_sol","model":"gpt-6.1-sol","status":"completed","service_tier":"ultrafast","output":[],"usage":{"input_tokens":300000,"output_tokens":1,"total_tokens":300001}}`)})
 	require.NoError(t, err)
 	require.Equal(t, "ultrafast", response.ServiceTier)

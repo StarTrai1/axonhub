@@ -50,6 +50,7 @@ test('Markdown renders math and diagrams with the patched dependency graph', asy
   const response = page.getByTestId('rendering-response');
   await expect(response.getByRole('heading', { name: 'Formula' })).toBeVisible();
   await expect(response.locator('annotation[encoding="application/x-tex"]').first()).toHaveText('E = mc^2');
+  await expect(response.locator('.katex').first()).toBeVisible();
   await expect(response.locator('svg[id^="mermaid"]').first()).toBeVisible();
   await expect(response.locator('script, [onerror]')).toHaveCount(0);
   expect(await page.evaluate(() => Reflect.get(window, 'renderingInjected'))).toBeUndefined();

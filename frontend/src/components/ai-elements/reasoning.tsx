@@ -5,6 +5,7 @@ import { createContext, memo, useContext, useEffect, useState } from 'react';
 import { useControllableState } from '@radix-ui/react-use-controllable-state';
 import { BrainIcon, ChevronDownIcon } from 'lucide-react';
 import { Streamdown } from 'streamdown';
+import { markdownRehypePlugins } from './markdown-plugins';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Shimmer } from './shimmer';
@@ -144,7 +145,7 @@ export const ReasoningContent = memo(({ className, children, ...props }: Reasoni
     )}
     {...props}
   >
-    <Streamdown shikiTheme={['one-light', 'one-dark-pro']} {...props}>{children}</Streamdown>
+    <Streamdown rehypePlugins={markdownRehypePlugins} shikiTheme={['one-light', 'one-dark-pro']} {...props}>{children}</Streamdown>
   </CollapsibleContent>
 ));
 
