@@ -216,7 +216,6 @@ func (handlers *PlaygroundHandlers) ChatCompletion(c *gin.Context) {
 
 	genericReq, err := readClientRequest(c.Request)
 	if err != nil {
-		log.Error(ctx, "Error reading HTTP request", log.Cause(err))
 		var bodyError *llm.ResponseError
 		status := http.StatusBadRequest
 		if errors.As(err, &bodyError) {
@@ -227,7 +226,7 @@ func (handlers *PlaygroundHandlers) ChatCompletion(c *gin.Context) {
 				Code    int    `json:"code,omitempty"`
 				Message string `json:"message"`
 			}{
-				Code:    http.StatusBadRequest,
+				Code:    status,
 				Message: err.Error(),
 			},
 		})

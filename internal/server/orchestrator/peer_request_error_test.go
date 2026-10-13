@@ -15,7 +15,7 @@ func TestMissingGeminiCacheDoesNotOpenModelCircuit(t *testing.T) {
 	cb := biz.NewModelCircuitBreaker()
 	out := &PersistentOutboundTransformer{state: &PersistenceState{OriginalModel: "gemini-3-pro", RoutingPolicy: EffectiveRoutingPolicy{LoadBalancerStrategy: biz.LoadBalancerStrategyCircuitBreaker}, CurrentCandidate: &ChannelModelsCandidate{Channel: &biz.Channel{Channel: &ent.Channel{ID: 42}}}}}
 	tracker := withModelCircuitBreaker(out, cb)
-	for i := 0; i < 20; i++ {
+	for range 20 {
 		tracker.OnOutboundRawError(t.Context(), &httpclient.Error{StatusCode: 403, Body: []byte(`{"error":{"message":"CachedContent not found (or permission denied)"}}`)})
 	}
 	stats := cb.GetModelCircuitBreakerStats(t.Context(), 42, "gemini-3-pro")

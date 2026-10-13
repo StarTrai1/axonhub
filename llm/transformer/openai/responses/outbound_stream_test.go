@@ -1837,3 +1837,16 @@ func TestOutboundTransformer_TransformStream_PreservesOfficialWebSocketError(t *
 		})
 	}
 }
+
+func TestHostedSearchChunkRetainsResponseHeaders(t *testing.T) {
+ stream := newResponsesOutboundStream(streams.SliceStream([]*httpclient.StreamEvent{{Type: "response.output_item.done", Data: []byte(`{"type":"response.output_item.done","output_index":0,"item":{"id":"ws_headers","type":"web_search_call","status":"completed"}}`)}}))
+ stream.state.responseHeaders = http.Header{"X-Request-Id": {"request-fixture"}}
+ require.True(t,stream.Next())
+ chunk := stream.Current()
+ require.NotNil(t,chunk)
+ require.True(t,llm.HasTerminalHostedSearch(chunk.TransformerMetadata))
+ headers,ok:=chunk.TransformerMetadata[responseHeadersTransformerMetadataKey].(http.Header)
+ require.True(t,ok)
+ require.Equal(t,"request-fixture",headers.Get("X-Request-Id"))
+ require.NoError(t,stream.Close())
+}

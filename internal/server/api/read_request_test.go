@@ -37,6 +37,7 @@ func TestClientBodyFailureStopsBeforeProvider(t *testing.T) {
   {"/v1beta/models/gemini:generateContent", handlers(gemini.NewInboundTransformer()).ChatCompletion},
   {"/v1/audio/speech", speech.CreateSpeech},
   {"/v1/videos", video.CreateVideo},
+  {"/playground/chat/completions", (&PlaygroundHandlers{}).ChatCompletion},
   {"/api/v3/contents/generations/tasks", task.CreateTask},
  }
  for _, route := range routes {
