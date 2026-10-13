@@ -57,6 +57,17 @@ budgets and failed-attempt audit records are unchanged. Generic HTTP 400 and
 encrypted-reasoning errors never become persistent global capabilities; the latter
 retain the per-request guarded recovery described below.
 
+## Native compaction source retention
+
+Before returning a native compaction checkpoint, AxonHub saves its complete source
+history, encrypted and bound to the API key, project and native checkpoint. This
+allows later recovery without depending on request-log retention. Source history
+has a 64 MiB limit; its compressed, Base64-encoded storage uses a separate size
+budget from the 4 MiB local text summary limit. Older saved sources remain readable.
+Incompressible encrypted history can therefore cross the old 4 MiB storage boundary
+without being truncated or discarded. A real storage or size-limit failure still
+prevents publishing a checkpoint whose source cannot be recovered.
+
 ## Rejected encrypted reasoning
 
 Encrypted reasoning is preserved by default, following the

@@ -19,7 +19,15 @@ import (
 	"github.com/looplj/axonhub/llm/streams"
 )
 
-const nativeCompactionMaxSourceBytes = 64 << 20
+const (
+	nativeCompactionMaxSourceBytes = 64 << 20
+	// Allow the checkpoint wrapper and zstd framing to accompany a full source.
+	nativeCompactionMaxCheckpointBytes = nativeCompactionMaxSourceBytes + (1 << 20)
+)
+
+func nativeCompactionMaxSealedTextBytes() int {
+	return base64.RawStdEncoding.EncodedLen(nativeCompactionMaxCheckpointBytes)
+}
 
 type nativeCompactionSourceCheckpoint struct {
 	Version int             `json:"version"`
@@ -43,12 +51,18 @@ func (a *remoteCompactionAdapter) retainNativeCompactionSource(ctx context.Conte
 	if err != nil {
 		return err
 	}
+	if len(encoded) > nativeCompactionMaxCheckpointBytes {
+		return errors.New("native compaction source checkpoint exceeds limit")
+	}
 	compressor, err := zstd.NewWriter(nil, zstd.WithEncoderConcurrency(1))
 	if err != nil {
 		return err
 	}
 	compressed := compressor.EncodeAll(encoded, nil)
 	_ = compressor.Close()
+	if len(compressed) > nativeCompactionMaxCheckpointBytes {
+		return errors.New("compressed native compaction source exceeds limit")
+	}
 	associatedData, err := nativeCompactionSourceAAD(ref, state)
 	if err != nil {
 		return err
@@ -57,7 +71,7 @@ func (a *remoteCompactionAdapter) retainNativeCompactionSource(ctx context.Conte
 	if err != nil {
 		return err
 	}
-	sealed, err := sealLocalCompactionSummary(aead, associatedData, base64.RawStdEncoding.EncodeToString(compressed))
+	sealed, err := sealCompactionText(aead, associatedData, base64.RawStdEncoding.EncodeToString(compressed), nativeCompactionMaxSealedTextBytes())
 	if err != nil {
 		return fmt.Errorf("seal native compaction source: %w", err)
 	}
@@ -80,7 +94,7 @@ func (a *remoteCompactionAdapter) loadNativeCompactionSource(ctx context.Context
 	if err != nil {
 		return nil, err
 	}
-	packed, err := openLocalCompactionSummary(aead, associatedData, sealed)
+	packed, err := openCompactionText(aead, associatedData, sealed, nativeCompactionMaxSealedTextBytes())
 	if err != nil {
 		return nil, err
 	}
@@ -88,13 +102,13 @@ func (a *remoteCompactionAdapter) loadNativeCompactionSource(ctx context.Context
 	if err != nil {
 		return nil, err
 	}
-	decoder, err := zstd.NewReader(nil, zstd.WithDecoderConcurrency(1), zstd.WithDecoderMaxMemory(nativeCompactionMaxSourceBytes+(1<<20)))
+	decoder, err := zstd.NewReader(nil, zstd.WithDecoderConcurrency(1), zstd.WithDecoderMaxMemory(nativeCompactionMaxCheckpointBytes))
 	if err != nil {
 		return nil, err
 	}
 	defer decoder.Close()
 	decoded, err := decoder.DecodeAll(compressed, nil)
-	if err != nil || len(decoded) > nativeCompactionMaxSourceBytes+(1<<20) {
+	if err != nil || len(decoded) > nativeCompactionMaxCheckpointBytes {
 		return nil, errors.New("invalid or oversized native compaction source")
 	}
 	var checkpoint nativeCompactionSourceCheckpoint

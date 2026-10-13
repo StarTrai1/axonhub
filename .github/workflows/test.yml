@@ -35,6 +35,8 @@ jobs:
         run: go test ./internal/server/orchestrator -run '^(TestWindowsWebSocketConnectionReset|TestWebSocketSOCKSChannelRetry|TestRetryTransportClassification|TestRetryTransportPipeline)$' -count=1 -v
       - name: Verify HTTP2 reset fallback on Windows
         run: go test ./internal/server/orchestrator -run '^TestHTTP2FallbackPipeline$' -count=1 -v
+      - name: Verify large native compaction checkpoints on Windows
+        run: go test ./internal/server/orchestrator -run '^(TestResponsesRejectedNativeSource|TestSealedLocalCompactionSizeLimit)' -count=1 -v
       - name: Verify SOCKS aliases and cancellation on Windows
         working-directory: llm
         run: go test ./transformer/openai/responses -run '^(TestWebSocketProxyAliasesDialThroughSOCKS|TestWebSocketSOCKSCancellation)$' -count=1 -v

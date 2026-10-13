@@ -56,26 +56,36 @@ func localCompactionAssociatedData(ref *remoteCompactionReference, state *Persis
 }
 
 func sealLocalCompactionSummary(aead cipher.AEAD, associatedData []byte, summary string) (string, error) {
+	return sealCompactionText(aead, associatedData, summary, localCompactionMaxSummaryBytes)
+}
+
+// The summary and native source share encryption, not a payload size budget.
+// Keep the wire format stable so persisted native sources remain readable.
+func sealCompactionText(aead cipher.AEAD, associatedData []byte, text string, maxBytes int) (string, error) {
 	if aead == nil || len(associatedData) == 0 {
 		return "", errors.New("local compaction encryption was not initialized")
 	}
-	if strings.TrimSpace(summary) == "" || len(summary) > localCompactionMaxSummaryBytes || !utf8.ValidString(summary) {
-		return "", errors.New("local compaction summary is empty or exceeds the supported size")
+	if strings.TrimSpace(text) == "" || len(text) > maxBytes || !utf8.ValidString(text) {
+		return "", fmt.Errorf("compaction payload is empty, invalid UTF-8 or exceeds the supported size (%d bytes; limit %d bytes)", len(text), maxBytes)
 	}
 	nonce := make([]byte, aead.NonceSize())
 	if _, err := rand.Read(nonce); err != nil {
 		return "", fmt.Errorf("create local compaction nonce: %w", err)
 	}
-	sealed := aead.Seal(nonce, nonce, []byte(summary), associatedData)
+	sealed := aead.Seal(nonce, nonce, []byte(text), associatedData)
 	return localCompactionSealedReferencePrefix + base64.RawURLEncoding.EncodeToString(sealed), nil
 }
 
 func openLocalCompactionSummary(aead cipher.AEAD, associatedData []byte, sealed string) (string, error) {
+	return openCompactionText(aead, associatedData, sealed, localCompactionMaxSummaryBytes)
+}
+
+func openCompactionText(aead cipher.AEAD, associatedData []byte, sealed string, maxTextBytes int) (string, error) {
 	if aead == nil || len(associatedData) == 0 || !strings.HasPrefix(sealed, localCompactionSealedReferencePrefix) {
 		return "", invalidLocalCompactionReference()
 	}
 	encoded := strings.TrimPrefix(sealed, localCompactionSealedReferencePrefix)
-	maxBytes := localCompactionMaxSummaryBytes + aead.NonceSize() + aead.Overhead()
+	maxBytes := maxTextBytes + aead.NonceSize() + aead.Overhead()
 	if len(encoded) > base64.RawURLEncoding.EncodedLen(maxBytes) {
 		return "", invalidLocalCompactionReference()
 	}
@@ -85,7 +95,7 @@ func openLocalCompactionSummary(aead cipher.AEAD, associatedData []byte, sealed 
 	}
 	nonce := payload[:aead.NonceSize()]
 	plaintext, err := aead.Open(nil, nonce, payload[aead.NonceSize():], associatedData)
-	if err != nil || !utf8.Valid(plaintext) || len(bytes.TrimSpace(plaintext)) == 0 {
+	if err != nil || len(plaintext) > maxTextBytes || !utf8.Valid(plaintext) || len(bytes.TrimSpace(plaintext)) == 0 {
 		return "", invalidLocalCompactionReference()
 	}
 	return string(plaintext), nil
