@@ -216,9 +216,8 @@ func (handlers *PlaygroundHandlers) ChatCompletion(c *gin.Context) {
 
 	genericReq, err := readClientRequest(c.Request)
 	if err != nil {
-		var bodyError *llm.ResponseError
 		status := http.StatusBadRequest
-		if errors.As(err, &bodyError) {
+		if bodyError, ok := errors.AsType[*llm.ResponseError](err); ok {
 			status = bodyError.StatusCode
 		}
 		c.JSON(status, PlaygroundResponseError{
