@@ -7,8 +7,8 @@ import (
 	"strings"
 )
 
-// Gemini uses 403 for a missing/expired account-bound cache reference as well
-// as real authorization failures. Changing credentials cannot restore it.
+// IsMissingGeminiCachedContentMessage identifies a missing or expired
+// account-bound cache reference. Changing credentials cannot restore it.
 func IsMissingGeminiCachedContentMessage(status int, message string) bool {
 	return status == http.StatusForbidden && strings.Contains(strings.ToLower(message), "cachedcontent not found")
 }

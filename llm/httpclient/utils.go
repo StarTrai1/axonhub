@@ -140,7 +140,7 @@ func readLimited(r io.Reader, maxSize int) ([]byte, error) {
 		return nil, err
 	}
 	if len(body) > maxSize {
-		return nil, ErrRequestBodyTooLarge
+		return nil, fmt.Errorf("%w: limit is %d bytes", ErrRequestBodyTooLarge, maxSize)
 	}
 	return body, nil
 }

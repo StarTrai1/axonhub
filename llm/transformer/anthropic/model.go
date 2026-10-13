@@ -505,6 +505,7 @@ func (b *MessageContentBlock) UnmarshalJSON(data []byte) error {
 	if isAnthropicSpecialToolResultBlock(header.Type) {
 		var result struct {
 			blockAlias
+
 			Content json.RawMessage `json:"content"`
 		}
 		if err := json.Unmarshal(data, &result); err != nil {

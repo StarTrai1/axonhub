@@ -214,10 +214,15 @@ func (handlers *PlaygroundHandlers) HandleError(rawErr error) *PlaygroundRespons
 func (handlers *PlaygroundHandlers) ChatCompletion(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	genericReq, err := httpclient.ReadHTTPRequest(c.Request)
+	genericReq, err := readClientRequest(c.Request)
 	if err != nil {
 		log.Error(ctx, "Error reading HTTP request", log.Cause(err))
-		c.JSON(http.StatusBadRequest, PlaygroundResponseError{
+		var bodyError *llm.ResponseError
+		status := http.StatusBadRequest
+		if errors.As(err, &bodyError) {
+			status = bodyError.StatusCode
+		}
+		c.JSON(status, PlaygroundResponseError{
 			Error: struct {
 				Code    int    `json:"code,omitempty"`
 				Message string `json:"message"`

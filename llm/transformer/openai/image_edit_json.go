@@ -90,8 +90,9 @@ func (t *OutboundTransformer) buildImageEditJSONRequest(req *llm.Request, apiKey
 		return nil, fmt.Errorf("%w: partial_images, response_format and style are unsupported for JSON image edits", transformer.ErrInvalidRequest)
 	}
 	body, err := json.Marshal(struct {
-		Model string `json:"model"`
 		*llm.ImageRequest
+
+		Model string `json:"model"`
 	}{Model: req.Model, ImageRequest: &img})
 	if err != nil {
 		return nil, fmt.Errorf("marshal JSON image edit: %w", err)

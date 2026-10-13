@@ -25,6 +25,7 @@ type ImageParams struct {
 
 type imageOutbound struct {
 	transformer.Outbound
+
 	tokens oauth.TokenGetter
 }
 

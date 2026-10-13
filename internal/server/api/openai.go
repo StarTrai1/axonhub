@@ -441,7 +441,7 @@ func (handlers *OpenAIHandlers) CreateAlphaSearch(c *gin.Context) {
 func (handlers *OpenAIHandlers) CreateSpeech(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	genericReq, err := httpclient.ReadHTTPRequest(c.Request)
+	genericReq, err := readClientRequest(c.Request)
 	if err != nil {
 		httpErr := handlers.SpeechHandlers.ChatCompletionOrchestrator.Inbound.TransformError(ctx, err)
 		c.JSON(httpErr.StatusCode, json.RawMessage(httpErr.Body))
@@ -512,7 +512,7 @@ func (handlers *OpenAIHandlers) CreateImageVariation(c *gin.Context) {
 func (handlers *OpenAIHandlers) CreateVideo(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	genericReq, err := httpclient.ReadHTTPRequest(c.Request)
+	genericReq, err := readClientRequest(c.Request)
 	if err != nil {
 		httpErr := handlers.VideoHandlers.ChatCompletionOrchestrator.Inbound.TransformError(ctx, err)
 		c.JSON(httpErr.StatusCode, json.RawMessage(httpErr.Body))

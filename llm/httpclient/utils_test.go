@@ -293,6 +293,7 @@ func TestReadHTTPRequest_RejectsOversizedRawBody(t *testing.T) {
 	_, err := ReadHTTPRequest(req)
 
 	require.ErrorIs(t, err, ErrRequestBodyTooLarge)
+	require.Contains(t, err.Error(), "limit is 32 bytes")
 }
 
 func TestReadHTTPRequest_RejectsOversizedDecodedBody(t *testing.T) {
@@ -313,6 +314,7 @@ func TestReadHTTPRequest_RejectsOversizedDecodedBody(t *testing.T) {
 	_, err = ReadHTTPRequest(req)
 
 	require.ErrorIs(t, err, ErrRequestBodyTooLarge)
+	require.Contains(t, err.Error(), "limit is 32 bytes")
 }
 
 func TestDecodeRequestBody_NoEncoding(t *testing.T) {
