@@ -52,6 +52,12 @@ In short: **API Key Profile renames → Model Association selects channel → Ch
 | API Key | sk-your-deepseek-key |
 | Supported Models | deepseek-chat, deepseek-reasoner |
 
+## Updating Channels
+
+When channel settings refresh, unchanged channels retain their WebSocket sessions and HTTP connection pools. Editing one channel therefore does not close another channel's connections. A changed, disabled, or deleted channel retires its previous connections; changing credentials still creates a new provider connection.
+
+For Claude models served by Antigravity, schema-constrained responses returned through the provider's internal `json_mode` tool are converted to JSON answer text. A caller-defined tool named `json_mode` remains a tool call. This applies to ordinary responses, streaming responses, and stored stream aggregation; it does not relax required tool choices.
+
 ## Multiple API Keys
 
 When an account has multiple API Keys, you can configure them all in the same channel. AxonHub will automatically rotate between them for better stability.

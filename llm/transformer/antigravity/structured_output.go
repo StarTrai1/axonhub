@@ -51,7 +51,9 @@ func (s structuredOutputState) rewrite(body []byte) ([]byte, error) {
 	for position, candidate := range candidates {
 		index := position
 		if raw := candidate["index"]; len(raw) > 0 {
-			if err := json.Unmarshal(raw, &index); err != nil { return nil, err }
+			if err := json.Unmarshal(raw, &index); err != nil {
+				return nil, err
+			}
 		}
 		var content map[string]json.RawMessage
 		_ = json.Unmarshal(candidate["content"], &content)
@@ -60,7 +62,7 @@ func (s structuredOutputState) rewrite(body []byte) ([]byte, error) {
 		converted := make(map[int]bool)
 		for n, part := range parts {
 			var call struct {
-				Name string `json:"name"`
+				Name string          `json:"name"`
 				Args json.RawMessage `json:"args"`
 			}
 			if json.Unmarshal(part["functionCall"], &call) != nil || call.Name != "json_mode" {
@@ -69,14 +71,18 @@ func (s structuredOutputState) rewrite(body []byte) ([]byte, error) {
 			args := call.Args
 			if len(args) > 0 && args[0] == '"' {
 				var encoded string
-				if err := json.Unmarshal(args, &encoded); err != nil { return nil, err }
+				if err := json.Unmarshal(args, &encoded); err != nil {
+					return nil, err
+				}
 				args = []byte(encoded)
 			}
 			if !json.Valid(args) {
 				return nil, fmt.Errorf("Antigravity structured output contains invalid json_mode arguments")
 			}
 			text, err := json.Marshal(string(args))
-			if err != nil { return nil, err }
+			if err != nil {
+				return nil, err
+			}
 			parts[n] = map[string]json.RawMessage{"text": text}
 			converted[n] = true
 			s[index] = true
@@ -86,7 +92,9 @@ func (s structuredOutputState) rewrite(body []byte) ([]byte, error) {
 			for n, part := range parts {
 				// Keep signed thought and real tools, but not commentary mixed
 				// into the frame containing the structured JSON answer.
-				if len(part["text"]) > 0 && string(part["thought"]) != "true" && !converted[n] { continue }
+				if len(part["text"]) > 0 && string(part["thought"]) != "true" && !converted[n] {
+					continue
+				}
 				kept = append(kept, part)
 			}
 			content["parts"], _ = json.Marshal(kept)
@@ -98,7 +106,9 @@ func (s structuredOutputState) rewrite(body []byte) ([]byte, error) {
 			changed = true
 		}
 	}
-	if !changed { return body, nil }
+	if !changed {
+		return body, nil
+	}
 	response["candidates"], _ = json.Marshal(candidates)
 	return json.Marshal(response)
 }

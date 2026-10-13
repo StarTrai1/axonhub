@@ -483,7 +483,9 @@ func (t *Transformer) TransformResponse(ctx context.Context, httpResp *httpclien
 	if claudeStructuredOutput(httpResp.Request) {
 		var err error
 		envelope.Response, err = make(structuredOutputState).rewrite(envelope.Response)
-		if err != nil { return nil, err }
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Create a fake HTTP response with the unwrapped body
@@ -558,7 +560,9 @@ func (t *Transformer) AggregateStreamChunks(ctx context.Context, req *httpclient
 		if structured {
 			var err error
 			unwrappedChunks[i].Data, err = state.rewrite(unwrappedChunks[i].Data)
-			if err != nil { return nil, llm.ResponseMeta{}, err }
+			if err != nil {
+				return nil, llm.ResponseMeta{}, err
+			}
 		}
 	}
 
@@ -598,7 +602,9 @@ func (t *Transformer) TransformStream(ctx context.Context, req *httpclient.Reque
 		if structured {
 			var err error
 			newEvent.Data, err = state.rewrite(newEvent.Data)
-			if err != nil { return nil, err }
+			if err != nil {
+				return nil, err
+			}
 		}
 		return &newEvent, nil
 	})

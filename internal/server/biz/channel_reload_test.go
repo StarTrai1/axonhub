@@ -24,7 +24,11 @@ func TestChannelReloadRetainsUnchangedPools(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, changed)
 	find := func(channels []*Channel, id int) *Channel {
-		for _, ch := range channels { if ch.ID == id { return ch } }
+		for _, ch := range channels {
+			if ch.ID == id {
+				return ch
+			}
+		}
 		return nil
 	}
 	oldFirst, oldSecond := find(current, first.ID), find(current, second.ID)
@@ -69,7 +73,8 @@ func TestChannelSwapCleansOnlyRetiredPools(t *testing.T) {
 	svc.onEnabledChannelsSwap([]*Channel{retained, removed}, []*Channel{retained, added})
 	select {
 	case <-removedDone:
-	case <-time.After(5 * time.Second): t.Fatal("retired channel was not cleaned")
+	case <-time.After(5 * time.Second):
+		t.Fatal("retired channel was not cleaned")
 	}
 	require.EqualValues(t, 1, starts.Load(), "retained token provider must not restart")
 	require.Zero(t, stops.Load(), "retained token provider must remain active")

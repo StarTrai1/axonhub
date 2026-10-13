@@ -63,7 +63,9 @@ func TestClaudeStructuredOutputAllResponsePaths(t *testing.T) {
 		for _, choice := range stream.Current().Choices {
 			if choice.Delta != nil {
 				require.Empty(t, choice.Delta.ToolCalls)
-				if choice.Delta.Content.Content != nil { text.WriteString(*choice.Delta.Content.Content) }
+				if choice.Delta.Content.Content != nil {
+					text.WriteString(*choice.Delta.Content.Content)
+				}
 			}
 		}
 	}
@@ -87,7 +89,9 @@ func TestClaudeStructuredOutputAllResponsePaths(t *testing.T) {
 func TestClaudeStructuredOutputInvalidArgumentsFail(t *testing.T) {
 	for _, args := range []string{`"not json"`, ``} {
 		call := `{"name":"json_mode"}`
-		if args != "" { call = `{"name":"json_mode","args":` + args + `}` }
+		if args != "" {
+			call = `{"name":"json_mode","args":` + args + `}`
+		}
 		body := []byte(`{"candidates":[{"content":{"parts":[{"functionCall":` + call + `}]}}]}`)
 		require.True(t, json.Valid(body))
 		_, err := make(structuredOutputState).rewrite(body)
