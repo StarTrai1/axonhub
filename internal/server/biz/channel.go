@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"regexp"
 	"slices"
 	"strings"
@@ -249,8 +250,21 @@ func (svc *ChannelService) reloadEnabledChannels(ctx context.Context, current []
 	}
 
 	var channels []*Channel
+	currentByID := make(map[int]*Channel, len(current))
+	for _, ch := range current {
+		if ch != nil && ch.Channel != nil {
+			currentByID[ch.ID] = ch
+		}
+	}
 
 	for _, c := range entities {
+		// A change to one channel must not close sibling WebSocket sessions or
+		// discard their learned HTTP transport policy. Entity updates (including
+		// credentials, model prices and routing policy) advance UpdatedAt.
+		if existing := currentByID[c.ID]; canReuseChannel(existing, c) {
+			channels = append(channels, existing)
+			continue
+		}
 		channel, err := svc.buildChannelWithOutbounds(c)
 		if err != nil {
 			log.Warn(ctx, "failed to build channel",
@@ -288,11 +302,39 @@ func (svc *ChannelService) reloadEnabledChannels(ctx context.Context, current []
 	return channels, updateTime, true, nil
 }
 
+func canReuseChannel(existing *Channel, next *ent.Channel) bool {
+	if existing == nil || existing.Channel == nil || next == nil || !existing.UpdatedAt.Equal(next.UpdatedAt) {
+		return false
+	}
+	// Explicit comparisons also protect manual imports or timestamp collisions.
+	// Credentials are excluded from ent.Channel's JSON representation.
+	return existing.ID == next.ID && existing.Type == next.Type && existing.BaseURL == next.BaseURL &&
+		existing.CreatedAt.Equal(next.CreatedAt) &&
+		existing.Status == next.Status && existing.DeletedAt == next.DeletedAt &&
+		existing.Name == next.Name && existing.DefaultTestModel == next.DefaultTestModel &&
+		reflect.DeepEqual(existing.Remark, next.Remark) && reflect.DeepEqual(existing.ErrorMessage, next.ErrorMessage) &&
+		reflect.DeepEqual(existing.AutoDisabledAt, next.AutoDisabledAt) && reflect.DeepEqual(existing.AutoDisableExpiresAt, next.AutoDisableExpiresAt) &&
+		reflect.DeepEqual(existing.Credentials, next.Credentials) &&
+		reflect.DeepEqual(existing.DisabledAPIKeys, next.DisabledAPIKeys) &&
+		reflect.DeepEqual(existing.Settings, next.Settings) && reflect.DeepEqual(existing.Policies, next.Policies) &&
+		reflect.DeepEqual(existing.Endpoints, next.Endpoints) &&
+		reflect.DeepEqual(existing.SupportedModels, next.SupportedModels) && reflect.DeepEqual(existing.ManualModels, next.ManualModels) &&
+		reflect.DeepEqual(existing.Tags, next.Tags) && existing.OrderingWeight == next.OrderingWeight &&
+		existing.AutoSyncSupportedModels == next.AutoSyncSupportedModels && existing.AutoSyncModelPattern == next.AutoSyncModelPattern
+}
+
 func (svc *ChannelService) onEnabledChannelsSwap(old, new []*Channel) {
 	svc.cacheVersion.Add(1)
+	previous := make(map[*Channel]struct{}, len(old))
+	for _, ch := range old {
+		previous[ch] = struct{}{}
+	}
+	retained := make(map[*Channel]struct{}, len(new))
 
 	for _, ch := range new {
-		if ch != nil && ch.startTokenProvider != nil {
+		retained[ch] = struct{}{}
+		_, existed := previous[ch]
+		if !existed && ch != nil && ch.startTokenProvider != nil {
 			ch.startTokenProvider()
 		}
 	}
@@ -301,8 +343,15 @@ func (svc *ChannelService) onEnabledChannelsSwap(old, new []*Channel) {
 		return
 	}
 
-	oldChannels := append([]*Channel(nil), old...)
-	go svc.cleanupSwappedChannels(oldChannels)
+	var retired []*Channel
+	for _, ch := range old {
+		if _, keep := retained[ch]; !keep {
+			retired = append(retired, ch)
+		}
+	}
+	if len(retired) > 0 {
+		go svc.cleanupSwappedChannels(retired)
+	}
 }
 
 func (svc *ChannelService) cleanupSwappedChannels(channels []*Channel) {

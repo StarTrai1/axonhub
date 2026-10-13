@@ -480,12 +480,18 @@ func (t *Transformer) TransformResponse(ctx context.Context, httpResp *httpclien
 	if len(envelope.Response) == 0 {
 		return nil, fmt.Errorf("empty response field in antigravity response")
 	}
+	if claudeStructuredOutput(httpResp.Request) {
+		var err error
+		envelope.Response, err = make(structuredOutputState).rewrite(envelope.Response)
+		if err != nil { return nil, err }
+	}
 
 	// Create a fake HTTP response with the unwrapped body
 	fakeResp := &httpclient.Response{
 		StatusCode: httpResp.StatusCode,
 		Headers:    httpResp.Headers,
 		Body:       envelope.Response,
+		Request:    httpResp.Request,
 	}
 
 	// Use Gemini transformer to convert response
@@ -514,6 +520,8 @@ func (t *Transformer) SetBaseURL(baseURL string) {
 
 // AggregateStreamChunks implements transformer.Outbound.
 func (t *Transformer) AggregateStreamChunks(ctx context.Context, req *httpclient.Request, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
+	structured := claudeStructuredOutput(req)
+	state := make(structuredOutputState)
 	// We need to unwrap the chunks before delegating to Gemini transformer.
 	// Since we shouldn't modify the input chunks in place (they might be used elsewhere),
 	// we create a new slice of chunks with modified data.
@@ -547,6 +555,11 @@ func (t *Transformer) AggregateStreamChunks(ctx context.Context, req *httpclient
 		if err := json.Unmarshal(chunk.Data, &wrapper); err == nil && len(wrapper.Response) > 0 {
 			unwrappedChunks[i].Data = wrapper.Response
 		}
+		if structured {
+			var err error
+			unwrappedChunks[i].Data, err = state.rewrite(unwrappedChunks[i].Data)
+			if err != nil { return nil, llm.ResponseMeta{}, err }
+		}
 	}
 
 	return t.geminiTransformer.AggregateStreamChunks(ctx, req, unwrappedChunks)
@@ -554,6 +567,8 @@ func (t *Transformer) AggregateStreamChunks(ctx context.Context, req *httpclient
 
 // TransformStream implements transformer.Outbound.
 func (t *Transformer) TransformStream(ctx context.Context, req *httpclient.Request, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
+	structured := claudeStructuredOutput(req)
+	state := make(structuredOutputState)
 	// We need to intercept the stream events to unwrap the "response" envelope
 	// before Gemini transformer processes them.
 
@@ -576,15 +591,16 @@ func (t *Transformer) TransformStream(ctx context.Context, req *httpclient.Reque
 		var wrapper struct {
 			Response json.RawMessage `json:"response"`
 		}
+		newEvent := *event
 		if err := json.Unmarshal(event.Data, &wrapper); err == nil && len(wrapper.Response) > 0 {
-			// Create a copy of the event to avoid mutating the original stream (though safe here)
-			newEvent := *event
 			newEvent.Data = wrapper.Response
-
-			return &newEvent, nil
 		}
-
-		return event, nil
+		if structured {
+			var err error
+			newEvent.Data, err = state.rewrite(newEvent.Data)
+			if err != nil { return nil, err }
+		}
+		return &newEvent, nil
 	})
 
 	return t.geminiTransformer.TransformStream(ctx, req, unwrappedStream)
