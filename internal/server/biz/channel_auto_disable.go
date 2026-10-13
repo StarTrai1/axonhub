@@ -9,14 +9,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/looplj/axonhub/llm/httpclient"
-
 	"github.com/aptible/supercronic/cronexpr"
 
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcontext"
+	"github.com/looplj/axonhub/llm/httpclient"
 )
 
 var compiledAPIKeyRuleRegexes sync.Map

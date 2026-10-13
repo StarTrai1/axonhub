@@ -19,7 +19,7 @@ func TestMergeInboundRequestSkipsSelectedHeadersWithoutMutatingSource(t *testing
 		"user-agent": {"original-client"}, "X-Client-Request-Id": {"trace"},
 	}}
 	destination := &Request{
-		Headers: http.Header{"User-Agent": {"provider-client"}},
+		Headers:            http.Header{"User-Agent": {"provider-client"}},
 		SkipInboundHeaders: []string{"USER-AGENT"},
 	}
 	merged := MergeInboundRequest(destination, source)

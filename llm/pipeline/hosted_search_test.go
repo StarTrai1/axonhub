@@ -3,8 +3,9 @@ package pipeline
 import (
 	"testing"
 
-	"github.com/looplj/axonhub/llm"
 	"github.com/stretchr/testify/require"
+
+	"github.com/looplj/axonhub/llm"
 )
 
 func TestTerminalHostedSearchIsNotEmpty(t *testing.T) {

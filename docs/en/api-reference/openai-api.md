@@ -585,6 +585,8 @@ if err := completion.Err(); err != nil {
 
 ## Error Handling
 
+When the gateway cannot read or decode an incoming API request body, it returns HTTP 400 with the cause. Bodies larger than the 64 MiB gateway limit (before or after decompression) return HTTP 413 and the byte limit; endpoint-specific upload limits can be lower. These failures end the request before provider dispatch.
+
 OpenAI format error responses:
 
 ```json

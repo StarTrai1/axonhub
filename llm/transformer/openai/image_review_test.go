@@ -9,6 +9,8 @@ import (
 	"net/textproto"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer"
@@ -17,7 +19,6 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/modelscope"
 	"github.com/looplj/axonhub/llm/transformer/openai"
 	"github.com/looplj/axonhub/llm/transformer/openrouter"
-	"github.com/stretchr/testify/require"
 )
 
 func TestImageReferencesRejectUnresolvedInputsBeforeUpstream(t *testing.T) {
