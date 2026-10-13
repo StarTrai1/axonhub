@@ -175,17 +175,19 @@ Anthropic format error responses:
 
 ## Tool Support
 
-AxonHub supports **function tools** (custom function calling) through the Anthropic API format. However, provider-specific tools are **not supported**:
+AxonHub supports function tools across providers and hosted web search through compatible Anthropic and Responses channels.
 
 | Tool Type | Support Status | Notes |
 | --------- | -------------- | ----- |
 | **Function Tools** | ✅ Supported | Custom function definitions work across all providers |
-| **Web Search** | ❌ Not Supported | Provider-specific (OpenAI, Anthropic, etc.) |
+| **Web Search** | ✅ Supported | Hosted search on compatible Anthropic/Responses channels |
 | **Code Interpreter** | ❌ Not Supported | Provider-specific (OpenAI, Anthropic, etc.) |
 | **File Search** | ❌ Not Supported | Provider-specific |
 | **Computer Use** | ❌ Not Supported | Anthropic-specific |
 
-> **Note**: Only generic function tools that can be translated across providers are supported. Provider-specific tools like web search, code interpreter, and computer use require direct access to the provider's infrastructure and cannot be proxied through AxonHub.
+> Native `web_search_20250305` and `web_search_20260209` declarations map to Responses `web_search`. Named search selection remains mandatory even when other function tools are present. A client function named `web_search` keeps its function identity. Search terminal events become paired `server_tool_use` and `web_search_tool_result` blocks; failures retain a tool error result, and absent encrypted results remain an empty list. Other provider-specific tools still require a supported native channel.
+
+For OpenAI requests converted to Claude Haiku 5.5, `reasoning.effort: none` maps to disabled thinking with low effort. Adaptive thinking, forced tool selection, signed history and the existing 100k-token pricing tier remain supported. Native Anthropic parameters retain their explicit values; this translation does not rewrite stored thinking blocks. See the [Haiku 5.5 migration guide](https://platform.claude.com/docs/en/models/haiku-5-5/migration-guide).
 
 ## Best Practices
 

@@ -899,11 +899,13 @@ func assertCitationsDeltaBeforeContentBlockStop(t *testing.T, events []StreamEve
 		citationEventIndexes  []int
 		contentBlockStopIndex = -1
 		actualCitations       []TextCitation
-		textIndex int64 = -1
+		textIndex             int64 = -1
 	)
 
 	for i, event := range events {
-		if event.Type == "content_block_start" && event.ContentBlock != nil && event.ContentBlock.Type == "text" && event.Index != nil { textIndex = *event.Index }
+		if event.Type == "content_block_start" && event.ContentBlock != nil && event.ContentBlock.Type == "text" && event.Index != nil {
+			textIndex = *event.Index
+		}
 		if event.Type == "content_block_delta" && event.Delta != nil && event.Delta.Type != nil && *event.Delta.Type == "citations_delta" {
 			citationEventIndexes = append(citationEventIndexes, i)
 			require.NotNil(t, event.Delta.Citation)

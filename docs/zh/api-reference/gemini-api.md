@@ -212,3 +212,5 @@ client, err := genai.NewClient(ctx, &genai.ClientConfig{
 })
 // 您的现有代码继续工作！
 ```
+
+Gemini 的结构化错误以 HTTP 403 报告 `CachedContent not found` 时，网关将其视为当前请求引用的缓存失效，返回该错误，并跳过换渠道重试、自动停用密钥和模型熔断。其他鉴权错误沿用原有处理。这一修复不负责创建或重建上游缓存资源。

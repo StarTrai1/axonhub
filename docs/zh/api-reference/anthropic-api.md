@@ -180,12 +180,14 @@ AxonHub 通过 Anthropic API 格式支持**函数工具**（自定义函数调�
 | 工具类型 | 支持状态 | 说明 |
 | -------- | -------- | ---- |
 | **函数工具（Function Tools）** | ✅ 支持 | 自定义函数定义可跨所有提供商使用 |
-| **网页搜索（Web Search）** | ❌ 不支持 | 提供商特有功能（OpenAI、Anthropic 等） |
+| **网页搜索（Web Search）** | ✅ 支持 | 兼容 Anthropic/Responses 渠道的服务端搜索 |
 | **代码解释器（Code Interpreter）** | ❌ 不支持 | 提供商特有功能（OpenAI、Anthropic 等） |
 | **文件搜索（File Search）** | ❌ 不支持 | 提供商特有功能 |
 | **计算机使用（Computer Use）** | ❌ 不支持 | Anthropic 特有功能 |
 
-> **注意**：仅支持可跨提供商转换的通用函数工具。网页搜索、代码解释器、计算机使用等提供商特有工具需要直接访问提供商的基础设施，无法通过 AxonHub 代理。
+> 原生 `web_search_20250305` 和 `web_search_20260209` 声明转换为 Responses `web_search`。即使同时声明其他函数，具名搜索选择仍强制使用搜索；名为 `web_search` 的客户端函数保留函数身份。搜索终态转换为配对的 `server_tool_use` 和 `web_search_tool_result`，失败保留工具错误结果，缺少加密结果时返回空列表。其他提供商专用工具仍需使用支持对应能力的原生渠道。
+
+OpenAI 请求转换到 Claude Haiku 5.5 时，`reasoning.effort: none` 映射为 disabled 思考和 low 努力级别。继续支持 adaptive 思考、强制工具选择、签名历史及已有的 100k token 价格阶梯。原生 Anthropic 参数保留显式值，此转换不改写已保存的思考块。参见 [Haiku 5.5 迁移指南](https://platform.claude.com/docs/en/models/haiku-5-5/migration-guide)。
 
 ## 最佳实践
 

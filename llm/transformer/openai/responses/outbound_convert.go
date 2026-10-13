@@ -748,6 +748,14 @@ func appendResponseWebSearchCallMetadata(transformerMetadata map[string]any, out
 	}
 
 	existing, _ := transformerMetadata[responsesWebSearchCallsTransformerMetadataKey].([]Item)
+	for i := range existing {
+		if call.ID != "" && existing[i].ID == call.ID {
+			updated := append([]Item(nil), existing...)
+			updated[i] = call
+			transformerMetadata[responsesWebSearchCallsTransformerMetadataKey] = updated
+			return
+		}
+	}
 	transformerMetadata[responsesWebSearchCallsTransformerMetadataKey] = append(existing, call)
 }
 

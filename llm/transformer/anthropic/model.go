@@ -1,7 +1,7 @@
 package anthropic
 
 import (
-"bytes"
+	"bytes"
 	"encoding/json"
 	"fmt"
 
@@ -507,7 +507,9 @@ func (b *MessageContentBlock) UnmarshalJSON(data []byte) error {
 			blockAlias
 			Content json.RawMessage `json:"content"`
 		}
-		if err := json.Unmarshal(data, &result); err != nil { return err }
+		if err := json.Unmarshal(data, &result); err != nil {
+			return err
+		}
 		if trimmed := bytes.TrimSpace(result.Content); len(trimmed) > 0 && trimmed[0] == '{' {
 			*b = MessageContentBlock(result.blockAlias)
 			b.Content = &MessageContent{Raw: append(json.RawMessage(nil), result.Content...)}

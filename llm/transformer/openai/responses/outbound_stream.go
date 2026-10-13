@@ -296,6 +296,15 @@ func (s *responsesOutboundStream) transformStreamEvent(event *httpclient.StreamE
 		return nil
 	}
 
+	if streamEvent.Response != nil {
+		switch streamEvent.Type {
+		case StreamEventTypeResponseCompleted, StreamEventTypeResponseIncomplete, StreamEventTypeResponseFailed:
+			for _, item := range streamEvent.Response.Output {
+				appendResponseWebSearchCallMetadata(s.state.transformerMetadata, item)
+			}
+		}
+	}
+
 	//nolint:exhaustive //Only process events we care about.
 	switch streamEvent.Type {
 	case StreamEventTypeResponseCreated:
@@ -939,6 +948,11 @@ func (s *responsesOutboundStream) transformStreamEvent(event *httpclient.StreamE
 	default:
 		// Unknown event type - skip
 		return nil // Intentionally skip this event
+	}
+
+	if s.responseCompleted && llm.HasTerminalHostedSearch(s.state.transformerMetadata) {
+		if resp.TransformerMetadata == nil { resp.TransformerMetadata = make(map[string]any) }
+		resp.TransformerMetadata[responsesWebSearchCallsTransformerMetadataKey] = s.state.transformerMetadata[responsesWebSearchCallsTransformerMetadataKey]
 	}
 
 	if s.responseCompleted && streamEvent.Response != nil &&

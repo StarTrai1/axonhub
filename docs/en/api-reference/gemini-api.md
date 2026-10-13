@@ -212,3 +212,5 @@ client, err := genai.NewClient(ctx, &genai.ClientConfig{
 })
 // Your existing code continues to work!
 ```
+
+A Gemini HTTP 403 whose structured error reports `CachedContent not found` is treated as a request-specific cache failure. AxonHub returns that failure without switching channels or evaluating automatic key-disable/model-circuit-breaker rules. Other authorization failures retain their existing handling. This does not create or recreate upstream cache resources.
