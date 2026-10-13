@@ -1980,14 +1980,14 @@ func TestConvertToAnthropicResponse_NormalizesOpenAIWebSearchCitationType(t *tes
 
 	resp := convertToAnthropicResponse(chatResp)
 	require.NotNil(t, resp)
-	require.Len(t, resp.Content, 1)
-	require.Equal(t, "text", resp.Content[0].Type)
-	require.Len(t, resp.Content[0].Citations, 1)
+	require.Len(t, resp.Content, 3)
+	require.Equal(t, "text", resp.Content[2].Type)
+	require.Len(t, resp.Content[2].Citations, 1)
 	require.Equal(t, TextCitation{
 		Type:  "web_search_result_location",
 		URL:   "https://example.com/search",
 		Title: "Search Result",
-	}, resp.Content[0].Citations[0])
+	}, resp.Content[2].Citations[0])
 }
 
 func TestInboundTransformer_ValidationEdgeCases(t *testing.T) {

@@ -697,7 +697,9 @@ func (s *responsesOutboundStream) transformStreamEvent(event *httpclient.StreamE
 		}
 		if streamEvent.Item.Type == "web_search_call" {
 			appendResponseWebSearchCallMetadata(s.state.transformerMetadata, *streamEvent.Item)
-			return nil // Intentionally skip this event
+			resp.TransformerMetadata = make(map[string]any)
+			appendResponseWebSearchCallMetadata(resp.TransformerMetadata, *streamEvent.Item)
+			break
 		}
 		if streamEvent.Item.Type == "reasoning" {
 			if streamEvent.Item.ID == "" {

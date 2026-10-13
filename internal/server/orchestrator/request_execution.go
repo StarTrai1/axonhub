@@ -26,6 +26,7 @@ import (
 var (
 	tokenRegex  = regexp.MustCompile(`(?i)(bearer[\s:=]+)[a-zA-Z0-9_\-\.]+`)
 	apiKeyRegex = regexp.MustCompile(`(api[keyK]ey|API[keyK]ey)["']?\s*[:=]\s*["']?([a-zA-Z0-9_\-\.]{8,})["']?`)
+	googleKeyRegex = regexp.MustCompile(`(?:AIza[0-9A-Za-z_-]{35}|AQ\.Ab[0-9A-Za-z_-]{40,})`)
 	emailRegex  = regexp.MustCompile(`[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}`)
 )
 
@@ -42,6 +43,8 @@ func sanitizeResponseBody(body []byte, maxLen int) []byte {
 
 	// Redact API keys (common patterns)
 	str = apiKeyRegex.ReplaceAllString(str, "$1=[REDACTED]")
+
+	str = googleKeyRegex.ReplaceAllString(str, "[REDACTED]")
 
 	// Redact email addresses
 	str = emailRegex.ReplaceAllString(str, "[EMAIL REDACTED]")

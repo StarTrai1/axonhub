@@ -37,6 +37,13 @@ func NewSearchOutboundTransformer(params SearchParams) (*SearchOutboundTransform
 		return nil, errors.New("token provider is required")
 	}
 
+	if params.BaseURL == "" || params.BaseURL == "https://api.openai.com/v1" {
+		params.BaseURL = codexBaseURL
+	}
+	if params.ResponsesBaseURL == "https://api.openai.com/v1" {
+		params.ResponsesBaseURL = codexBaseURL
+	}
+
 	delegate, err := responses.NewSearchOutboundTransformerWithConfig(&responses.SearchConfig{
 		BaseURL:               params.BaseURL,
 		EndpointPath:          params.EndpointPath,

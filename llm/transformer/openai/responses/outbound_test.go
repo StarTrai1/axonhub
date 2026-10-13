@@ -462,8 +462,8 @@ func TestOutboundTransformer_TransformRequest_GPT6AstraDropsAsyncFromUnsupported
 	httpReq, err := transformer.TransformRequest(context.Background(), &llm.Request{
 		Model: "gpt-6-astra",
 		Tools: []llm.Tool{{
-			Type:  llm.ToolTypeWebSearch,
-			Async: lo.ToPtr(true),
+			Type:      llm.ToolTypeWebSearch,
+			Async:     lo.ToPtr(true),
 			WebSearch: &llm.WebSearch{},
 		}},
 		Messages: []llm.Message{{

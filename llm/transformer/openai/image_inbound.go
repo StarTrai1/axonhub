@@ -30,8 +30,10 @@ const (
 	maxImageCount           = 16
 )
 
-var maxImageFileSize = initMaxImageFileSize()
-var maxImageBodySize = maxImageFileSize*maxImageCount + 16*1024*1024
+var (
+	maxImageFileSize = initMaxImageFileSize()
+	maxImageBodySize = maxImageFileSize*maxImageCount + 16*1024*1024
+)
 
 func initMaxImageFileSize() int {
 	if v := os.Getenv("AXONHUB_MAX_IMAGE_FILE_SIZE"); v != "" {

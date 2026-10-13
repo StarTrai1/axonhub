@@ -356,7 +356,7 @@ func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*R
 		}
 
 		lastErr = err
-		if errors.Is(lastErr, transformer.ErrUnsupportedConversion) {
+		if errors.Is(lastErr, transformer.ErrUnsupportedConversion) || httpclient.IsMissingGeminiCachedContent(lastErr) {
 			return nil, lastErr
 		}
 		if errors.Is(lastErr, ErrPreCommitBufferExceeded) || errors.Is(lastErr, httpclient.ErrStreamEventTooLarge) {

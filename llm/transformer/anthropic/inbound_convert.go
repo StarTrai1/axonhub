@@ -352,6 +352,18 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 	// Convert tool_choice
 	if anthropicReq.ToolChoice != nil {
 		chatReq.ToolChoice = convertAnthropicToolChoiceToLLM(anthropicReq.ToolChoice)
+		// A named hosted tool must remain hosted when converted to Responses.
+		// A client function also named web_search keeps its function identity.
+		if choice := chatReq.ToolChoice; choice != nil && choice.NamedToolChoice != nil {
+			for _, tool := range anthropicReq.Tools {
+				if (tool.Type == ToolTypeWebSearch20250305 || tool.Type == "web_search_20260209" || tool.Type == WebSearchFunctionName) &&
+					tool.Name == choice.NamedToolChoice.Function.Name {
+					choice.NamedToolChoice.Type = llm.ToolTypeWebSearch
+					break
+				}
+			}
+		}
+
 
 		if disable := anthropicReq.ToolChoice.DisableParallelToolUse; disable != nil {
 			chatReq.ParallelToolCalls = lo.ToPtr(!*disable)
@@ -594,7 +606,7 @@ func getAnthropicResponseContentFromMetadata(metadata map[string]any) []MessageC
 func mergeAnthropicResponseContentBlocks(contentBlocks []MessageContentBlock, metadata map[string]any, annotations []llm.Annotation) []MessageContentBlock {
 	providerBlocks := getAnthropicResponseContentFromMetadata(metadata)
 	if len(providerBlocks) == 0 {
-		return attachCitationsToFirstAnthropicTextBlock(contentBlocks, annotations, metadata)
+		return append(responsesWebSearchBlocks(metadata, make(map[string]bool)), attachCitationsToFirstAnthropicTextBlock(contentBlocks, annotations, metadata)...)
 	}
 
 	providerBlocks = attachCitationsToFirstAnthropicTextBlock(providerBlocks, annotations, metadata)
@@ -794,7 +806,7 @@ func convertToAnthropicResponse(chatResp *llm.Response) *Message {
 // For regular function tools, it converts to llm.ToolTypeFunction type.
 func convertToolToLLM(tool Tool) (llm.Tool, bool) {
 	switch tool.Type {
-	case ToolTypeWebSearch20250305, WebSearchFunctionName:
+	case ToolTypeWebSearch20250305, "web_search_20260209", WebSearchFunctionName:
 		return llm.Tool{
 			Type:           llm.ToolTypeWebSearch,
 			CacheControl:   convertToLLMCacheControl(tool.CacheControl),

@@ -215,7 +215,7 @@ type ToolChoice struct {
 
 type ToolOption struct {
 	Type string `json:"type"`
-	Name string `json:"name"`
+	Name string `json:"name,omitempty"`
 }
 
 type ToolChoiceAlias ToolChoice
@@ -618,6 +618,7 @@ type Item struct {
 	// the raw shape lets stateless clients replay a server-side search without
 	// fabricating or dropping provider-specific result fields.
 	Results json.RawMessage `json:"results,omitempty"`
+	Error *Error `json:"error,omitempty"`
 
 	// Compaction fields (for type="compaction")
 	// The identifier of the actor that created the item.

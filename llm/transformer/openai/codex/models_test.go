@@ -66,7 +66,9 @@ func TestCodexModelsIncludeImageModel(t *testing.T) {
 		require.Equal(t, "gpt-image-2", models[len(models)-1])
 		count := 0
 		for _, model := range models {
-			if model == "gpt-image-2" { count++ }
+			if model == "gpt-image-2" {
+				count++
+			}
 		}
 		require.Equal(t, 1, count)
 	})

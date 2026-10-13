@@ -1,6 +1,7 @@
 package biz
 
 import (
+"github.com/looplj/axonhub/llm/httpclient"
 	"context"
 	"fmt"
 	"regexp"
@@ -182,6 +183,9 @@ func (svc *ChannelService) EvaluateAPIKeyRulesForFailure(
 }
 
 func (svc *ChannelService) evaluateAutoDisableForFailure(ctx context.Context, perf *PerformanceRecord) (matched, acted bool) {
+	if httpclient.IsMissingGeminiCachedContentMessage(perf.ResponseStatusCode, perf.ErrorMessage) {
+		return false, false
+	}
 	ch := svc.GetEnabledChannel(perf.ChannelID)
 	if ch == nil {
 		return false, false

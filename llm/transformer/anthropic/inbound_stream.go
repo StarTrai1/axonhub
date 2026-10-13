@@ -72,6 +72,7 @@ type anthropicInboundStream struct {
 	// Buffered citations for the currently open text block. These are emitted as
 	// citations_delta events immediately before the text block is closed.
 	pendingTextCitations []TextCitation
+	emittedResponsesSearches map[string]bool
 }
 
 // generateSignature generates a random signature using base64(uuid).
@@ -629,6 +630,11 @@ func (s *anthropicInboundStream) Next() bool {
 			s.err = fmt.Errorf("failed to enqueue message_start event: %w", err)
 			return false
 		}
+	}
+
+	if err := s.emitResponsesWebSearch(chunk.TransformerMetadata); err != nil {
+		s.err = err
+		return false
 	}
 
 	// Process the current chunk

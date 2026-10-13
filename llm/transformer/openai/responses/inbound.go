@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+"encoding/hex"
 	"errors"
 	"fmt"
 	"maps"
@@ -1060,6 +1061,11 @@ func anthropicWebSearchCallItem(toolCall llm.ToolCall, inlineResults []llm.Inlin
 		if len(item.Results) == 0 && json.Valid([]byte(result.Output)) {
 			item.Results = append(json.RawMessage(nil), result.Output...)
 		}
+		var failure struct { Type string `json:"type"`; Code string `json:"error_code"` }
+		if json.Unmarshal(item.Results, &failure) == nil && failure.Type == "web_search_tool_result_error" {
+			item.Status = lo.ToPtr("failed")
+			item.Error = &Error{Code: failure.Code}
+		}
 		break
 	}
 
@@ -1072,6 +1078,11 @@ func isAnthropicWebSearchToolCall(toolCall llm.ToolCall) bool {
 }
 
 func responsesWebSearchCallID(toolUseID string) string {
+	if encoded, ok := strings.CutPrefix(toolUseID, "srvtoolu_oai_"); ok {
+		if decoded, err := hex.DecodeString(encoded); err == nil && len(decoded) > 0 {
+			return string(decoded)
+		}
+	}
 	if strings.HasPrefix(toolUseID, "ws_") {
 		return toolUseID
 	}

@@ -101,3 +101,13 @@ func TestCodexSearchPreservesDesktopIdentityAndVersion(t *testing.T) {
 		require.Equal(t, version, req.Headers.Get("Version"))
 	}
 }
+
+func TestCodexSearchDefaultBaseURL(t *testing.T) {
+ for _, base := range []string{"", "https://api.openai.com/v1"} {
+  out, err := NewSearchOutboundTransformer(SearchParams{BaseURL:base, ResponsesBaseURL:base, TokenProvider:staticTokenGetter{creds:&oauth.OAuthCredentials{AccessToken:"fixture"}}})
+  require.NoError(t,err)
+  req,err:=out.TransformRequest(t.Context(),&llm.Request{RequestType:llm.RequestTypeSearch,Search:&llm.SearchRequest{Raw:[]byte(`{"query":"test"}`)}})
+  require.NoError(t,err)
+  require.Equal(t,"https://chatgpt.com/backend-api/codex/alpha/search",req.URL)
+ }
+}

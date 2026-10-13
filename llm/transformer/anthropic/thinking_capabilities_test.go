@@ -25,7 +25,7 @@ func TestConvertedClaudeThinkingCapabilities(t *testing.T) {
 		{"claude-opus-5-5", "none", "adaptive", "low"},
 		{"claude-sonnet-5-5", "none", "between_tools", "low"},
 		{"claude-haiku-5-5", "max", "adaptive", "max"},
-		{"claude-haiku-5-5", "none", "disabled", ""},
+		{"claude-haiku-5-5", "none", "disabled", "low"},
 	} {
 		t.Run(tc.model+"/"+tc.effort, func(t *testing.T) {
 			src := &llm.Request{

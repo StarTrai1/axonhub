@@ -290,6 +290,10 @@ func convertAssistantMessage(msg llm.Message) []Item {
 
 	// Handle tool calls
 	for _, tc := range msg.ToolCalls {
+		if item, ok := anthropicWebSearchCallItem(tc, msg.InlineToolResults); ok {
+			toolCallItems = append(toolCallItems, item)
+			continue
+		}
 		if tc.ResponseCustomToolCall != nil {
 			toolCallItems = append(toolCallItems, Item{
 				Type:   "custom_tool_call",
@@ -581,6 +585,10 @@ func convertToolChoice(src *llm.ToolChoice) *ToolChoice {
 		return nil
 	}
 
+	if src.NamedToolChoice != nil && src.NamedToolChoice.Type == llm.ToolTypeWebSearch {
+		return &ToolChoice{Type: lo.ToPtr("allowed_tools"), Mode: lo.ToPtr("required"), Tools: []ToolOption{{Type: "web_search"}}}
+	}
+
 	result := &ToolChoice{}
 
 	if src.ToolChoice != nil {
@@ -720,6 +728,7 @@ func appendResponseWebSearchCallMetadata(transformerMetadata map[string]any, out
 		Type:    outputItem.Type,
 		Status:  outputItem.Status,
 		Results: append(json.RawMessage(nil), outputItem.Results...),
+		Error: sanitizedResponseError(outputItem.Error),
 	}
 	if outputItem.Action != nil && outputItem.Action.WebSearch != nil {
 		src := outputItem.Action.WebSearch

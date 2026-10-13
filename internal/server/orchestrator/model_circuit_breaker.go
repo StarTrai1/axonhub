@@ -95,7 +95,7 @@ func (m *modelCircuitBreakerTracker) OnOutboundRawError(ctx context.Context, err
 	wasProbe := m.probeActive
 	m.releaseProbeLease()
 
-	if errors.Is(err, context.Canceled) {
+	if errors.Is(err, context.Canceled) || httpclient.IsMissingGeminiCachedContent(err) {
 		return
 	}
 
