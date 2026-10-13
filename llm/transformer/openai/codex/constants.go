@@ -44,7 +44,7 @@ func DefaultModels() []string {
 	for _, pair := range fastModelPairs {
 		models = append(models, pair.alias)
 	}
-	return append(models, "codex-auto-review")
+	return append(models, "codex-auto-review", "gpt-image-2")
 }
 
 func fastModelBase(model string) (string, bool) {
@@ -58,8 +58,6 @@ func fastModelBase(model string) (string, bool) {
 }
 
 const (
-	defaultImageMainModel = "gpt-6-luna"
-
 	AxonHubOriginator  = "axonhub"
 	CodexCLIOriginator = "codex_cli_rs"
 	AuthorizeURL       = "https://auth.openai.com/oauth/authorize"

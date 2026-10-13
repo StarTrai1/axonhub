@@ -66,8 +66,15 @@ func ParseModelCatalog(body []byte) ([]string, error) {
 		return response.Models[i].Priority < response.Models[j].Priority
 	})
 	models := make([]string, 0, len(response.Models))
+	imageModelIncluded := false
 	for _, model := range response.Models {
 		if model.Visibility == "list" && strings.TrimSpace(model.Slug) != "" {
+			if model.Slug == "gpt-image-2" {
+				if imageModelIncluded {
+					continue
+				}
+				imageModelIncluded = true
+			}
 			models = append(models, model.Slug)
 		}
 	}
@@ -84,6 +91,9 @@ func ParseModelCatalog(body []byte) ([]string, error) {
 		if visible[pair.model] && !visible[pair.alias] {
 			models = append(models, pair.alias)
 		}
+	}
+	if !imageModelIncluded {
+		models = append(models, "gpt-image-2")
 	}
 	return models, nil
 }
