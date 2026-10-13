@@ -89,3 +89,20 @@ func TestConvertedClaudeBudgetAndSourceDefaults(t *testing.T) {
 	}
 	require.Equal(t, "high", defaultAnthropicReasoningEffort("claude-haiku-5-6"))
 }
+
+func TestHaiku55ConvertedForcedToolKeepsAdaptiveThinking(t *testing.T) {
+ src:=&llm.Request{APIFormat:llm.APIFormatOpenAIResponse,Model:"claude-haiku-5-5",ReasoningEffort:"max",ToolChoice:&llm.ToolChoice{ToolChoice:lo.ToPtr("required")},Tools:[]llm.Tool{{Type:"function",Function:llm.Function{Name:"calculate"}}}}
+ dst:=convertToAnthropicRequestWithConfig(src,&Config{Type:PlatformDirect})
+ require.Equal(t,"adaptive",dst.Thinking.Type)
+ require.Equal(t,"max",dst.OutputConfig.Effort)
+ require.Equal(t,"any",dst.ToolChoice.Type)
+}
+
+func TestHaiku55NativeSamplingAndThinkingStayExplicit(t *testing.T) {
+ src:=&llm.Request{APIFormat:llm.APIFormatAnthropicMessage,Model:"claude-haiku-5-5",TopP:lo.ToPtr(0.99),TransformerMetadata:map[string]any{TransformerMetadataKeyThinkingType:"disabled",TransformerMetadataKeyOutputConfigEffort:"high"}}
+ dst:=convertToAnthropicRequestWithConfig(src,&Config{Type:PlatformDirect})
+ require.Equal(t,"disabled",dst.Thinking.Type)
+ require.Equal(t,"high",dst.OutputConfig.Effort)
+ require.Equal(t,0.99,*dst.TopP)
+ require.Nil(t,dst.Temperature)
+}

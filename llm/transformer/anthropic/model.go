@@ -1,6 +1,7 @@
 package anthropic
 
 import (
+"bytes"
 	"encoding/json"
 	"fmt"
 
@@ -499,6 +500,20 @@ func (b *MessageContentBlock) UnmarshalJSON(data []byte) error {
 		return nil
 	}
 	type blockAlias MessageContentBlock
+	// Server tool failures use a single content object, unlike ordinary
+	// message content. Keep the raw object scoped to these result blocks.
+	if isAnthropicSpecialToolResultBlock(header.Type) {
+		var result struct {
+			blockAlias
+			Content json.RawMessage `json:"content"`
+		}
+		if err := json.Unmarshal(data, &result); err != nil { return err }
+		if trimmed := bytes.TrimSpace(result.Content); len(trimmed) > 0 && trimmed[0] == '{' {
+			*b = MessageContentBlock(result.blockAlias)
+			b.Content = &MessageContent{Raw: append(json.RawMessage(nil), result.Content...)}
+			return nil
+		}
+	}
 	var decoded blockAlias
 	if err := json.Unmarshal(data, &decoded); err != nil {
 		return err

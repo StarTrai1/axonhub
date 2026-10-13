@@ -389,6 +389,7 @@ func convertToolsAnthropic(tools []llm.Tool, config *Config) []Tool {
 			}
 			// Copy web search parameters if available
 			if tool.WebSearch != nil {
+				if tool.WebSearch.AnthropicType == "web_search_20260209" { anthropicTool.Type = tool.WebSearch.AnthropicType }
 				anthropicTool.MaxUses = tool.WebSearch.MaxUses
 				anthropicTool.Strict = tool.WebSearch.Strict
 				anthropicTool.AllowedDomains = tool.WebSearch.AllowedDomains

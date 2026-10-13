@@ -290,6 +290,8 @@ func FilterGoogleNativeTools(tools []Tool) []Tool {
 }
 
 type WebSearch struct {
+	// AnthropicType preserves the native search version on Messages round trips.
+	AnthropicType string `json:"anthropic_type,omitempty"`
 	MaxUses        *int64                    `json:"max_uses,omitempty"`
 	Strict         *bool                     `json:"strict,omitempty"`
 	AllowedDomains []string                  `json:"allowed_domains,omitzero"`

@@ -1026,7 +1026,7 @@ func (s *responsesOutboundStream) steeringEventEndsTurn(event StreamEvent) bool 
 }
 
 func (s *responsesOutboundStream) hasGeneratedOutput() bool {
-	return s.state.reasoningOutputEmitted || len(s.state.toolCalls) > 0 ||
+	return llm.HasTerminalHostedSearch(s.state.transformerMetadata) || s.state.reasoningOutputEmitted || len(s.state.toolCalls) > 0 ||
 		s.state.textDelivered || s.state.refusalDelivered ||
 		s.state.reasoningContent.Len() > 0 ||
 		len(s.state.pendingReasoningEncryptedContent) > 0

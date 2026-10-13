@@ -27,8 +27,8 @@ func TestCodexSearchOutboundUsesTokenAndIdentityHeaders(t *testing.T) {
 		RequestType: llm.RequestTypeSearch,
 		APIFormat:   llm.APIFormatOpenAISearch,
 		RawRequest: &httpclient.Request{Headers: http.Header{
-			"Originator":         []string{"codex_cli_rs"},
-			"User-Agent":         []string{"codex_cli_rs/0.144.5"},
+			"Originator":          []string{"codex_cli_rs"},
+			"User-Agent":          []string{"codex_cli_rs/0.144.5"},
 			TurnMetadataHeader:    []string{`{"session_id":"session-1"}`},
 			ClientRequestIDHeader: []string{"request-1"},
 		}},
@@ -103,11 +103,11 @@ func TestCodexSearchPreservesDesktopIdentityAndVersion(t *testing.T) {
 }
 
 func TestCodexSearchDefaultBaseURL(t *testing.T) {
- for _, base := range []string{"", "https://api.openai.com/v1"} {
-  out, err := NewSearchOutboundTransformer(SearchParams{BaseURL:base, ResponsesBaseURL:base, TokenProvider:staticTokenGetter{creds:&oauth.OAuthCredentials{AccessToken:"fixture"}}})
-  require.NoError(t,err)
-  req,err:=out.TransformRequest(t.Context(),&llm.Request{RequestType:llm.RequestTypeSearch,Search:&llm.SearchRequest{Raw:[]byte(`{"query":"test"}`)}})
-  require.NoError(t,err)
-  require.Equal(t,"https://chatgpt.com/backend-api/codex/alpha/search",req.URL)
- }
+	for _, base := range []string{"", "https://api.openai.com/v1"} {
+		out, err := NewSearchOutboundTransformer(SearchParams{BaseURL: base, ResponsesBaseURL: base, TokenProvider: staticTokenGetter{creds: &oauth.OAuthCredentials{AccessToken: "fixture"}}})
+		require.NoError(t, err)
+		req, err := out.TransformRequest(t.Context(), &llm.Request{Model: "gpt-6.1-sol", RequestType: llm.RequestTypeSearch, Search: &llm.SearchRequest{Raw: []byte(`{"model":"gpt-6.1-sol","query":"test"}`)}})
+		require.NoError(t, err)
+		require.Equal(t, "https://chatgpt.com/backend-api/codex/alpha/search", req.URL)
+	}
 }

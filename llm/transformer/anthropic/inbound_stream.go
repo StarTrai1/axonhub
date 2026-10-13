@@ -71,7 +71,7 @@ type anthropicInboundStream struct {
 
 	// Buffered citations for the currently open text block. These are emitted as
 	// citations_delta events immediately before the text block is closed.
-	pendingTextCitations []TextCitation
+	pendingTextCitations     []TextCitation
 	emittedResponsesSearches map[string]bool
 }
 

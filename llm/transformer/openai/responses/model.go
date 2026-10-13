@@ -431,9 +431,11 @@ type URLCitation struct {
 	Title string `json:"title,omitempty"`
 }
 
-const responsesWebSearchCallsTransformerMetadataKey = "openai_responses_web_search_calls"
-const responsesReasoningItemTransformerMetadataKey = "openai_responses_reasoning_item"
-const responsesTerminalDetailsTransformerMetadataKey = "openai_responses_terminal_details"
+const (
+	responsesWebSearchCallsTransformerMetadataKey  = "openai_responses_web_search_calls"
+	responsesReasoningItemTransformerMetadataKey   = "openai_responses_reasoning_item"
+	responsesTerminalDetailsTransformerMetadataKey = "openai_responses_terminal_details"
+)
 
 // Preserve details that cannot be represented by a Chat Completions finish_reason.
 type responsesTerminalDetails struct {
@@ -618,7 +620,7 @@ type Item struct {
 	// the raw shape lets stateless clients replay a server-side search without
 	// fabricating or dropping provider-specific result fields.
 	Results json.RawMessage `json:"results,omitempty"`
-	Error *Error `json:"error,omitempty"`
+	Error   *Error          `json:"error,omitempty"`
 
 	// Compaction fields (for type="compaction")
 	// The identifier of the actor that created the item.

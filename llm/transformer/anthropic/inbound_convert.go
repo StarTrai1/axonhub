@@ -364,7 +364,6 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 			}
 		}
 
-
 		if disable := anthropicReq.ToolChoice.DisableParallelToolUse; disable != nil {
 			chatReq.ParallelToolCalls = lo.ToPtr(!*disable)
 		}
@@ -814,6 +813,7 @@ func convertToolToLLM(tool Tool) (llm.Tool, bool) {
 			DeferLoading:   tool.DeferLoading,
 			InputExamples:  append([]json.RawMessage(nil), tool.InputExamples...),
 			WebSearch: &llm.WebSearch{
+				AnthropicType: lo.Ternary(tool.Type == "web_search_20260209", tool.Type, ""),
 				MaxUses:        tool.MaxUses,
 				Strict:         tool.Strict,
 				AllowedDomains: tool.AllowedDomains,

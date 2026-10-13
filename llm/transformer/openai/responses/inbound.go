@@ -3,8 +3,8 @@ package responses
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"encoding/json"
-"encoding/hex"
 	"errors"
 	"fmt"
 	"maps"
@@ -1061,7 +1061,10 @@ func anthropicWebSearchCallItem(toolCall llm.ToolCall, inlineResults []llm.Inlin
 		if len(item.Results) == 0 && json.Valid([]byte(result.Output)) {
 			item.Results = append(json.RawMessage(nil), result.Output...)
 		}
-		var failure struct { Type string `json:"type"`; Code string `json:"error_code"` }
+		var failure struct {
+			Type string `json:"type"`
+			Code string `json:"error_code"`
+		}
 		if json.Unmarshal(item.Results, &failure) == nil && failure.Type == "web_search_tool_result_error" {
 			item.Status = lo.ToPtr("failed")
 			item.Error = &Error{Code: failure.Code}

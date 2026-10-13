@@ -79,7 +79,7 @@ func hasResponseContent(resp *llm.Response) bool {
 		return false
 	}
 
-	if len(resp.RawResponsesEvent) > 0 {
+	if len(resp.RawResponsesEvent) > 0 || llm.HasTerminalHostedSearch(resp.TransformerMetadata) {
 		return true
 	}
 

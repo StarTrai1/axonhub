@@ -728,7 +728,7 @@ func appendResponseWebSearchCallMetadata(transformerMetadata map[string]any, out
 		Type:    outputItem.Type,
 		Status:  outputItem.Status,
 		Results: append(json.RawMessage(nil), outputItem.Results...),
-		Error: sanitizedResponseError(outputItem.Error),
+		Error:   sanitizedResponseError(outputItem.Error),
 	}
 	if outputItem.Action != nil && outputItem.Action.WebSearch != nil {
 		src := outputItem.Action.WebSearch
