@@ -1847,6 +1847,6 @@ func TestHostedSearchChunkRetainsResponseHeaders(t *testing.T) {
 	require.True(t, llm.HasTerminalHostedSearch(chunk.TransformerMetadata))
 	headers, ok := chunk.TransformerMetadata[responseHeadersTransformerMetadataKey].(http.Header)
 	require.True(t, ok)
-	require.Equal(t, "request-fixture", headers.Get("X-Request-Id"))
+	require.Equal(t, "request-fixture", headers.Get("X-Request-ID"))
 	require.NoError(t, stream.Close())
 }
