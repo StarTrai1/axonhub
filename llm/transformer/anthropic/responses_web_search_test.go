@@ -114,18 +114,20 @@ func TestResponsesHostedSearchEmptyAndUnknownFailure(t *testing.T) {
 }
 
 func TestResponsesHostedSearchOnlyTerminalEnvelope(t *testing.T) {
- out,err:=responses.NewOutboundTransformerWithConfig(&responses.Config{BaseURL:"https://relay.example/v1",APIKeyProvider:auth.NewStaticKeyProvider("fixture")})
- require.NoError(t,err)
- unified,err:=out.TransformStream(t.Context(),nil,streams.SliceStream([]*httpclient.StreamEvent{{Type:"response.completed",Data:[]byte(`{"type":"response.completed","response":{"id":"resp_search","model":"gpt-6.1-sol","status":"completed","output":[{"type":"web_search_call","id":"ws_only","status":"completed","action":{"type":"search","query":"fixture"}}]}}`)}}))
- require.NoError(t,err)
- encoded,err:=NewInboundTransformer().TransformStream(t.Context(),unified)
- require.NoError(t,err)
- var blocks []string
- for encoded.Next() {
-  result:=gjson.GetBytes(encoded.Current().Data,"content_block.type")
-  if result.Exists() {blocks=append(blocks,result.String())}
- }
- require.NoError(t,encoded.Err())
- require.Equal(t,[]string{"server_tool_use","web_search_tool_result"},blocks)
- require.NoError(t,encoded.Close())
+	out, err := responses.NewOutboundTransformerWithConfig(&responses.Config{BaseURL: "https://relay.example/v1", APIKeyProvider: auth.NewStaticKeyProvider("fixture")})
+	require.NoError(t, err)
+	unified, err := out.TransformStream(t.Context(), nil, streams.SliceStream([]*httpclient.StreamEvent{{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":{"id":"resp_search","model":"gpt-6.1-sol","status":"completed","output":[{"type":"web_search_call","id":"ws_only","status":"completed","action":{"type":"search","query":"fixture"}}]}}`)}}))
+	require.NoError(t, err)
+	encoded, err := NewInboundTransformer().TransformStream(t.Context(), unified)
+	require.NoError(t, err)
+	var blocks []string
+	for encoded.Next() {
+		result := gjson.GetBytes(encoded.Current().Data, "content_block.type")
+		if result.Exists() {
+			blocks = append(blocks, result.String())
+		}
+	}
+	require.NoError(t, encoded.Err())
+	require.Equal(t, []string{"server_tool_use", "web_search_tool_result"}, blocks)
+	require.NoError(t, encoded.Close())
 }
