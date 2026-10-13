@@ -951,7 +951,9 @@ func (s *responsesOutboundStream) transformStreamEvent(event *httpclient.StreamE
 	}
 
 	if s.responseCompleted && llm.HasTerminalHostedSearch(s.state.transformerMetadata) {
-		if resp.TransformerMetadata == nil { resp.TransformerMetadata = make(map[string]any) }
+		if resp.TransformerMetadata == nil {
+			resp.TransformerMetadata = make(map[string]any)
+		}
 		resp.TransformerMetadata[responsesWebSearchCallsTransformerMetadataKey] = s.state.transformerMetadata[responsesWebSearchCallsTransformerMetadataKey]
 	}
 
