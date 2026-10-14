@@ -223,14 +223,20 @@ func (svc *ChannelService) buildChannelWithOutbounds(c *ent.Channel, apiKeyOverr
 		return nil, err
 	}
 
-	defaultEndpoints := DefaultEndpointsForChannelType(c.Type)
-	userEndpoints := c.Endpoints
+	defaultEndpoints := ch.DefaultEndpoints()
+	rawUserEndpoints := c.Endpoints
+	userEndpoints := NormalizeEndpoints(c.Endpoints, c.BaseURL)
 
 	if len(defaultEndpoints) == 0 && len(userEndpoints) == 0 {
 		return ch, nil
 	}
 
 	outbounds := make(map[string]transformer.Outbound)
+	type outboundAlias struct {
+		format string
+		out    transformer.Outbound
+	}
+	var aliases []outboundAlias
 
 	for _, ep := range defaultEndpoints {
 		if ep.APIFormat == "" {
@@ -240,7 +246,7 @@ func (svc *ChannelService) buildChannelWithOutbounds(c *ent.Channel, apiKeyOverr
 		needsDedicatedOutbound := ep.APIFormat == llm.APIFormatOpenAISearch.String() ||
 			ep.APIFormat == llm.APIFormatOpenAIDecisions.String() ||
 			(c.Type == channel.TypeSiliconflow && ep.APIFormat == llm.APIFormatJinaRerank.String()) ||
-			(c.Type == channel.TypeCodex && isNativeImageFormat(ep.APIFormat)) ||
+			(c.Type == channel.TypeCodex && (isNativeImageFormat(ep.APIFormat) || (isResponsesEndpoint(ep.APIFormat) && ep.APIFormat != ch.Outbound.APIFormat().String()))) ||
 			(c.Type == channel.TypeXai && ep.APIFormat != ch.Outbound.APIFormat().String())
 		if !needsDedicatedOutbound {
 			outbounds[ep.APIFormat] = ch.Outbound
@@ -259,7 +265,7 @@ func (svc *ChannelService) buildChannelWithOutbounds(c *ent.Channel, apiKeyOverr
 		outbounds[ep.APIFormat] = out
 	}
 
-	for _, ep := range userEndpoints {
+	for i, ep := range userEndpoints {
 		if ep.APIFormat == "" {
 			continue
 		}
@@ -271,6 +277,14 @@ func (svc *ChannelService) buildChannelWithOutbounds(c *ent.Channel, apiKeyOverr
 			out = opencode.WithSessionHeader(out)
 		}
 		outbounds[ep.APIFormat] = out
+		if rawFormat := rawUserEndpoints[i].APIFormat; rawFormat != "" && rawFormat != ep.APIFormat {
+			aliases = append(aliases, outboundAlias{format: rawFormat, out: out})
+		}
+	}
+	for _, alias := range aliases {
+		if _, exists := outbounds[alias.format]; !exists {
+			outbounds[alias.format] = alias.out
+		}
 	}
 
 	if len(outbounds) == 0 {
@@ -283,6 +297,9 @@ func (svc *ChannelService) buildChannelWithOutbounds(c *ent.Channel, apiKeyOverr
 }
 
 func endpointTransport(ep objects.ChannelEndpoint) string {
+	if ep.APIFormat == llm.APIFormatOpenAIResponseWebSocket.String() {
+		return objects.ChannelEndpointTransportWebSocket
+	}
 	if ep.Transport != "" {
 		return ep.Transport
 	}
@@ -311,6 +328,13 @@ func primaryEndpointTransport(c *ent.Channel, apiFormat string) string {
 
 		return endpointTransport(ep)
 	}
+	if apiFormat == llm.APIFormatOpenAIResponse.String() {
+		for _, ep := range c.Endpoints {
+			if ep.APIFormat == llm.APIFormatOpenAIResponseWebSocket.String() {
+				return objects.ChannelEndpointTransportWebSocket
+			}
+		}
+	}
 
 	return endpointTransport(objects.ChannelEndpoint{BaseURL: c.BaseURL})
 }
@@ -322,6 +346,19 @@ func (svc *ChannelService) buildCodexOutbound(
 	transport string,
 	alphaSearchPath string,
 	httpClient *httpclient.HttpClient,
+	endpointPath ...string,
+) (transformer.Outbound, error) {
+	return svc.buildCodexOutboundWithRefresh(c, ch, baseURL, transport, alphaSearchPath, httpClient, svc.onTokenRefreshed(c), endpointPath...)
+}
+
+func (svc *ChannelService) buildCodexOutboundWithRefresh(
+	c *ent.Channel,
+	ch *Channel,
+	baseURL string,
+	transport string,
+	alphaSearchPath string,
+	httpClient *httpclient.HttpClient,
+	onRefreshed func(context.Context, *oauth.OAuthCredentials) error,
 	endpointPath ...string,
 ) (transformer.Outbound, error) {
 	path := ""
@@ -370,7 +407,7 @@ func (svc *ChannelService) buildCodexOutbound(
 		p := codex.NewTokenProvider(codex.TokenProviderParams{
 			Credentials: creds,
 			HTTPClient:  httpClient,
-			OnRefreshed: svc.onTokenRefreshed(c),
+			OnRefreshed: onRefreshed,
 		})
 
 		if ch != nil && ch.startTokenProvider == nil {
@@ -471,9 +508,11 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 			EndpointPath:   ep.Path,
 		})
 	case llm.APIFormatOpenAIResponse.String(),
+		llm.APIFormatOpenAIResponseWebSocket.String(),
 		llm.APIFormatOpenAIResponseCompact.String():
 		transport := endpointTransport(ep)
-		if (c.Type == channel.TypeCodex || c.Type == channel.TypeFenno) && ep.APIFormat == llm.APIFormatOpenAIResponse.String() {
+		if (c.Type == channel.TypeCodex || c.Type == channel.TypeFenno) &&
+			(ep.APIFormat == llm.APIFormatOpenAIResponse.String() || ep.APIFormat == llm.APIFormatOpenAIResponseWebSocket.String()) {
 			return svc.buildCodexOutbound(c, ch, baseURL, transport, "", ch.HTTPClient, ep.Path)
 		}
 

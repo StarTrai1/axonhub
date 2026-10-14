@@ -74,7 +74,7 @@ func (svc *ChannelService) onTokenRefreshed(ch *ent.Channel) func(ctx context.Co
 		defer mu.Unlock()
 		ctx = authz.WithSystemBypass(ctx, "channel-refresh-cache")
 		saved, err := svc.refreshOAuthToken(ctx, &snapshot, refreshed)
-		if err == nil {
+		if saved != nil {
 			snapshot = *saved
 		}
 		return err

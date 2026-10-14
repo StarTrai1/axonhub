@@ -55,6 +55,7 @@ type responsesOutboundStream struct {
 	steerAccepted     map[string]string
 	steerTerminals    map[string]struct{}
 	steerPassthrough  bool
+	contentCommitted  bool
 }
 
 // outboundStreamState holds the state for a streaming session.
@@ -109,7 +110,37 @@ func newResponsesOutboundStream(stream streams.Stream[*httpclient.StreamEvent]) 
 }
 
 func (s *responsesOutboundStream) enqueue(resp *llm.Response) {
+	if responseHasMeaningfulContent(resp) {
+		s.contentCommitted = true
+	}
 	s.eventQueue = append(s.eventQueue, resp)
+}
+
+func responseHasMeaningfulContent(resp *llm.Response) bool {
+	if resp == nil {
+		return false
+	}
+
+	for _, choice := range resp.Choices {
+		if choice.Delta == nil {
+			continue
+		}
+
+		message := choice.Delta
+		if message.Content.Content != nil && *message.Content.Content != "" {
+			return true
+		}
+		if len(message.Content.MultipleContent) > 0 || len(message.ToolCalls) > 0 || message.Refusal != "" {
+			return true
+		}
+		if (message.ReasoningContent != nil && *message.ReasoningContent != "") ||
+			(message.Reasoning != nil && *message.Reasoning != "") ||
+			(message.ReasoningSignature != nil && *message.ReasoningSignature != "") {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (s *responsesOutboundStream) Next() bool {
@@ -133,6 +164,9 @@ func (s *responsesOutboundStream) Next() bool {
 		}
 		return false
 	}
+	if s.err != nil {
+		return false
+	}
 
 	// Try to get the next chunk from source
 	if !s.stream.Next() {
@@ -147,7 +181,7 @@ func (s *responsesOutboundStream) Next() bool {
 	err := s.transformStreamChunk(event)
 	if err != nil {
 		s.err = err
-		return false
+		return s.Next()
 	}
 
 	// Continue to the next event if no events were enqueued
@@ -857,11 +891,19 @@ func (s *responsesOutboundStream) transformStreamEvent(event *httpclient.StreamE
 		}
 		if !s.hasGeneratedOutput() {
 			if streamEvent.Response == nil {
-				return responseErrorFromStreamEvent(&streamEvent)
+				if streamEvent.Response.Usage != nil {
+				s.state.usage = streamEvent.Response.Usage.ToUsage()
+				s.enqueue(&llm.Response{Usage: s.state.usage})
+			}
+			return responseErrorFromStreamEvent(&streamEvent)
 			}
 			responseErr := responseErrorFromResponse(streamEvent.Response)
 			if responseErr.Detail.RequestID == "" {
 				responseErr.Detail.RequestID = streamEvent.RequestID
+			}
+			if streamEvent.Response.Usage != nil {
+				s.state.usage = streamEvent.Response.Usage.ToUsage()
+				s.enqueue(&llm.Response{Usage: s.state.usage})
 			}
 			return responseErr
 		}
@@ -1048,6 +1090,33 @@ func (s *responsesOutboundStream) hasGeneratedOutput() bool {
 		s.state.textDelivered || s.state.refusalDelivered ||
 		s.state.reasoningContent.Len() > 0 ||
 		len(s.state.pendingReasoningEncryptedContent) > 0
+}
+
+func responseFailedError(streamEvent StreamEvent) *llm.ResponseError {
+	detail := llm.ErrorDetail{}
+	if streamEvent.Response != nil && streamEvent.Response.Error != nil {
+		detail = llm.ErrorDetail{
+			Code:    streamEvent.Response.Error.Code,
+			Message: streamEvent.Response.Error.Message,
+			Type:    streamEvent.Response.Error.Type,
+			Param:   streamEvent.Response.Error.Param,
+		}
+	}
+
+	return &llm.ResponseError{
+		StatusCode:         failedResponseStatus(streamEvent.Status),
+		Detail:             detail,
+		SuppressStatusText: true,
+		Cause:              llm.ErrEmptyResponse,
+	}
+}
+
+func failedResponseStatus(status int) int {
+	if status >= http.StatusBadRequest && status < 600 {
+		return status
+	}
+
+	return http.StatusBadGateway
 }
 
 func (s *responsesOutboundStream) reconcileCustomToolCallInput(

@@ -41,6 +41,7 @@ type Handlers struct {
 	RequestPreview *api.RequestPreviewHandlers
 	RequestSwitch  *api.RequestSwitchHandlers
 	ProbeQuota     *api.ProbeQuotaHandlers
+	CodexCompatibility *api.CodexCompatibilityHandlers
 }
 
 type Services struct {
@@ -196,6 +197,7 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 	probeQuotaGroup := server.Group("/v1/axonhub", middleware.WithTimeout(server.Config.RequestTimeout),
 		middleware.WithIPBlocklist(services.SystemService), middleware.WithAPIKeyAuth(services.AuthService))
 	probeQuotaGroup.GET("/quota-windows", handlers.ProbeQuota.Get)
+	registerCodexRoutes(server, handlers, services)
 
 	apiMiddlewares := []gin.HandlerFunc{
 		middleware.WithIPBlocklist(services.SystemService),

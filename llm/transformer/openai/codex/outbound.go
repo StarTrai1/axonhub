@@ -151,6 +151,9 @@ func (t *OutboundTransformer) SupportsCodexResponseHeaders() bool {
 }
 
 func (t *OutboundTransformer) APIFormat() llm.APIFormat {
+	if t != nil && t.transport == responses.TransportWebSocket {
+		return llm.APIFormatOpenAIResponseWebSocket
+	}
 	return llm.APIFormatOpenAIResponse
 }
 
@@ -163,7 +166,7 @@ func (t *OutboundTransformer) TokenProvider() oauth.TokenGetter {
 }
 
 func (t *OutboundTransformer) AllowPassThroughBody(_ context.Context, llmReq *llm.Request, _ *httpclient.Request) bool {
-	if llmReq == nil || llmReq.APIFormat != llm.APIFormatOpenAIResponse || llmReq.RawRequest == nil {
+	if llmReq == nil || (llmReq.APIFormat != llm.APIFormatOpenAIResponse && llmReq.APIFormat != llm.APIFormatOpenAIResponseWebSocket && llmReq.APIFormat != llm.APIFormatOpenAIResponseCompact) || llmReq.RawRequest == nil {
 		return true
 	}
 

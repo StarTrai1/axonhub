@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/llm"
@@ -23,8 +24,8 @@ const (
 	responsesSessionTTL         = 2 * time.Hour
 	responsesSessionMaxRecords  = 2048
 	responsesSessionMaxBytes    = 64 << 20
-	responsesSessionMaxResponse = 1 << 20
-	responsesSessionMaxReplay   = 16 << 20
+	responsesSessionMaxResponse = 16 << 20
+	responsesSessionMaxReplay = 16 << 20
 )
 
 type responsesSessionStore struct {
@@ -34,6 +35,7 @@ type responsesSessionStore struct {
 	positions  map[responsesSessionKey]*list.Element
 	totalBytes int
 	load       responsesSessionLoadFunc
+	known      func(context.Context, string) (bool, error)
 }
 
 type responsesSessionLoadFunc func(ctx context.Context, responseID string) (requestBody, responseBody []byte, found bool, err error)
@@ -50,6 +52,8 @@ type responsesSessionRecord struct {
 	windowID  string
 	updatedAt time.Time
 	size      int
+	complete  bool
+	origin    shared.ResponsesOrigin
 }
 
 func newResponsesSessionStore(loaders ...responsesSessionLoadFunc) *responsesSessionStore {
@@ -81,7 +85,7 @@ func (s *responsesSessionStore) prepare(ctx context.Context, body []byte) ([]byt
 	}
 
 	record := s.lookupOrLoad(ctx, previousID)
-	if record == nil {
+	if record == nil || !record.complete {
 		return encodePreparedResponsesBody(body, current, inputChanged), responseSessionID(sessionID)
 	}
 	windowID := shared.ReadCodexRequestMetadata(nil, body).WindowID
@@ -198,13 +202,19 @@ func decodeResponsesSessionRecord(requestBody, responseBody []byte) *responsesSe
 	if size > responsesSessionMaxReplay {
 		return nil
 	}
-	return &responsesSessionRecord{input: input, output: output, windowID: windowID, size: size}
+	return &responsesSessionRecord{input: input, output: output, windowID: windowID, size: size, complete: true}
 }
 
 func (s *responsesSessionStore) record(ctx context.Context, requestBody, responseBody []byte) {
 	record := decodeResponsesSessionRecord(requestBody, responseBody)
 	if record == nil {
-		return
+		if !json.Valid(responseBody) || gjson.GetBytes(responseBody, "status").String() != "completed" || gjson.GetBytes(responseBody, "id").String() == "" {
+			return
+		}
+		record = &responsesSessionRecord{}
+	}
+	if attempt := shared.GetResponsesAttempt(ctx); attempt != nil {
+		record.origin = attempt.Origin()
 	}
 	var response struct {
 		ID string `json:"id"`
@@ -259,6 +269,8 @@ func (s *responsesSessionStore) lookup(ctx context.Context, responseID string) *
 		windowID:  record.windowID,
 		updatedAt: record.updatedAt,
 		size:      record.size,
+		complete:  record.complete,
+		origin:    record.origin,
 	}
 }
 

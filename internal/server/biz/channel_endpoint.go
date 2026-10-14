@@ -36,14 +36,23 @@ var SupportedAPIFormats = map[string]struct{}{
 	llm.APIFormatJinaEmbedding.String():         {},
 	llm.APIFormatTypeSafeSystemOne.String():     {},
 	llm.APIFormatOpenAIDecisions.String():       {},
+	llm.APIFormatOpenAIResponseWebSocket.String(): {},
 }
 
 // ValidateEndpoints validates channel endpoint configurations.
 // Ensures api_format is non-empty, supported, and unique within the channel.
 // Ensures path is empty, starts with "/", and is not a full URL.
-func ValidateEndpoints(endpoints []objects.ChannelEndpoint) error {
+func ValidateEndpoints(endpoints []objects.ChannelEndpoint, baseURL ...string) error {
+	base := ""
+	if len(baseURL) > 0 {
+		base = baseURL[0]
+	}
 	seen := make(map[string]bool, len(endpoints))
 	for i, ep := range endpoints {
+		if ep.Transport != "" && ep.Transport != objects.ChannelEndpointTransportHTTP && ep.Transport != objects.ChannelEndpointTransportWebSocket {
+			return fmt.Errorf("endpoint[%d]: unsupported transport %q", i, ep.Transport)
+		}
+		ep = NormalizeEndpoints([]objects.ChannelEndpoint{ep}, base)[0]
 		if ep.APIFormat == "" {
 			return fmt.Errorf("endpoint[%d]: api_format is required", i)
 		}
@@ -57,10 +66,6 @@ func ValidateEndpoints(endpoints []objects.ChannelEndpoint) error {
 		}
 
 		seen[ep.APIFormat] = true
-
-		if ep.Transport != "" && ep.Transport != objects.ChannelEndpointTransportHTTP && ep.Transport != objects.ChannelEndpointTransportWebSocket {
-			return fmt.Errorf("endpoint[%d]: unsupported transport %q", i, ep.Transport)
-		}
 
 		if endpointTransport(ep) == objects.ChannelEndpointTransportWebSocket && !supportsWebSocketTransport(ep.APIFormat) {
 			return fmt.Errorf("endpoint[%d]: websocket transport only supports api_format %q", i, llm.APIFormatOpenAIResponse.String())
@@ -81,7 +86,7 @@ func ValidateEndpoints(endpoints []objects.ChannelEndpoint) error {
 }
 
 func supportsWebSocketTransport(apiFormat string) bool {
-	return apiFormat == llm.APIFormatOpenAIResponse.String()
+	return isResponsesEndpoint(apiFormat)
 }
 
 // ValidateModelProtocols validates the channel settings' per-model protocol overrides.
@@ -91,16 +96,17 @@ func supportsWebSocketTransport(apiFormat string) bool {
 // user-configured endpoints. A manually disabled entry for a model that still
 // exists may keep its protocol choices while inactive.
 func ValidateModelProtocols(settings *objects.ChannelSettings, channelType channel.Type, endpoints []objects.ChannelEndpoint) error {
+	source := &ent.Channel{Type: channelType, Endpoints: endpoints}
+	return validateModelProtocols(normalizeModelProtocols(settings, source), source)
+}
+
+func validateModelProtocols(settings *objects.ChannelSettings, source *ent.Channel) error {
 	if settings == nil || len(settings.ModelProtocols) == 0 {
 		return nil
 	}
 
 	available := make(map[string]struct{})
-	for _, ep := range DefaultEndpointsForChannelType(channelType) {
-		available[ep.APIFormat] = struct{}{}
-	}
-
-	for _, ep := range endpoints {
+	for _, ep := range (&Channel{Channel: source}).ResolveEndpoints() {
 		available[ep.APIFormat] = struct{}{}
 	}
 
@@ -245,6 +251,7 @@ var defaultEndpointsForChannelType = map[channel.Type][]objects.ChannelEndpoint{
 	channel.TypeCodex: {
 		{APIFormat: llm.APIFormatOpenAIResponse.String()},
 		{APIFormat: llm.APIFormatOpenAISearch.String()},
+		{APIFormat: llm.APIFormatOpenAIResponseWebSocket.String()},
 		{APIFormat: llm.APIFormatOpenAIAlphaSearch.String()},
 		{APIFormat: llm.APIFormatOpenAIImageGeneration.String()},
 		{APIFormat: llm.APIFormatOpenAIImageEdit.String()},
@@ -353,8 +360,8 @@ var defaultEndpointsForChannelType = map[channel.Type][]objects.ChannelEndpoint{
 	},
 }
 
-func validateEndpointsForChannelType(channelType channel.Type, endpoints []objects.ChannelEndpoint) error {
-	if err := ValidateEndpoints(endpoints); err != nil {
+func validateEndpointsForChannelType(channelType channel.Type, endpoints []objects.ChannelEndpoint, baseURL ...string) error {
+	if err := ValidateEndpoints(endpoints, baseURL...); err != nil {
 		return err
 	}
 
@@ -452,7 +459,7 @@ func (c *Channel) ResolveEndpoints() []objects.ChannelEndpoint {
 		return nil
 	}
 
-	return mergeEndpoints(DefaultEndpointsForChannelType(c.Type), c.Endpoints)
+	return mergeEndpoints(c.DefaultEndpoints(), NormalizeEndpoints(c.Endpoints, c.BaseURL))
 }
 
 // ForcedAPIFormats returns the api formats force-specified for the given request
@@ -463,7 +470,7 @@ func (c *Channel) ForcedAPIFormats(model string) []string {
 		return nil
 	}
 
-	for _, mp := range c.Settings.ModelProtocols {
+	for _, mp := range normalizeModelProtocols(c.Settings, c.Channel).ModelProtocols {
 		if mp.Model == model && mp.IsEnabled() {
 			return mp.APIFormats
 		}

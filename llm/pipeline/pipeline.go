@@ -13,6 +13,7 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // Retryable interface for transformers that support channel switching.
@@ -356,6 +357,9 @@ func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*R
 		}
 
 		lastErr = err
+		if shared.IsResponsesRecoveryError(lastErr) {
+			return nil, shared.ResponsesRecoveryError()
+		}
 		if errors.Is(lastErr, transformer.ErrUnsupportedConversion) || isMissingGeminiCachedContent(lastErr) {
 			return nil, lastErr
 		}

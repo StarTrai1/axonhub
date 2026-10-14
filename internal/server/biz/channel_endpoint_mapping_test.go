@@ -148,6 +148,7 @@ func TestDefaultEndpointsForChannelType_UseLLMAPIFormatValues(t *testing.T) {
 			expected: []string{
 				llm.APIFormatOpenAIResponse.String(),
 				llm.APIFormatOpenAISearch.String(),
+				llm.APIFormatOpenAIResponseWebSocket.String(),
 				llm.APIFormatOpenAIAlphaSearch.String(),
 				llm.APIFormatOpenAIImageGeneration.String(),
 				llm.APIFormatOpenAIImageEdit.String(),
