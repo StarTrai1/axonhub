@@ -16,7 +16,7 @@ func TestResponsesRelayTimeoutKeepsBoundedRetryStatus(t *testing.T) {
 	const message = "OpenAI Responses HTTP error [408]: The operation was timeout. [trace_id=synthetic]"
 	for _, test := range []struct {
 		name, code, message string
-		status, want int
+		status, want        int
 	}{
 		{"wrapped timeout", "", message, 400, 408},
 		{"bad request wrapper", "bad_request", message, 400, 408},

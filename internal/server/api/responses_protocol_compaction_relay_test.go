@@ -134,4 +134,3 @@ func TestResponsesProtocolCompactionRelayContinuation(t *testing.T) {
 }
 
 const relayResourceMismatchFixture = `{"error":{"type":"invalid_request_error","message":"The requested item was created under a different Azure OpenAI resource. Use the same resource that created the item to access it."}}`
-
