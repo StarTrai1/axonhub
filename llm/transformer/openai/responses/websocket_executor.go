@@ -74,6 +74,9 @@ func NewWebSocketExecutor(inner pipeline.Executor) *WebSocketExecutor {
 	if hc, ok := inner.(*httpclient.HttpClient); ok {
 		dialer.Proxy = normalizeWebSocketProxy(hc.ProxyFunc())
 		dialer.TLSClientConfig = hc.TLSConfig()
+		if dialer.TLSClientConfig != nil {
+			dialer.TLSClientConfig.NextProtos = []string{"http/1.1"}
+		}
 	}
 
 	return &WebSocketExecutor{
