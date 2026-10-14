@@ -113,7 +113,7 @@ func TestOutboundStreamRecoversTerminalText(t *testing.T) {
 					}
 				}
 				if result.Usage != nil {
-					require.Equal(t, []string{tc.wantFinish}, finishes)
+					if tc.wantError { require.Empty(t, finishes) } else { require.Equal(t, []string{tc.wantFinish}, finishes) }
 					require.EqualValues(t, 13, result.Usage.TotalTokens)
 					usageSeen = true
 				}
@@ -123,7 +123,7 @@ func TestOutboundStreamRecoversTerminalText(t *testing.T) {
 				require.Empty(t, finishes)
 			} else {
 				require.NoError(t, stream.Err())
-				require.Equal(t, []string{tc.wantFinish}, finishes)
+				if tc.wantError { require.Empty(t, finishes) } else { require.Equal(t, []string{tc.wantFinish}, finishes) }
 				require.True(t, usageSeen)
 			}
 			if tc.wantText {

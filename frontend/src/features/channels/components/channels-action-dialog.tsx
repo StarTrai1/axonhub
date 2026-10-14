@@ -2549,7 +2549,6 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                   } else if (isCodexType && codexThirdPartyBaseURLRef.current) {
                                     form.setValue('baseURL', codexThirdPartyBaseURLRef.current);
                                   }
-                                }
                               }}
                             >
                               <TabsList className={`grid w-full ${isCodexType ? 'grid-cols-3' : 'grid-cols-2'}`}>

@@ -105,7 +105,7 @@ func (m *responsesProviderCapture) OnOutboundRawResponse(ctx context.Context, re
 
 func (m *responsesProviderCapture) OnOutboundRawStream(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*httpclient.StreamEvent], error) {
 	if c := m.state.ResponsesContinuation; c != nil {
-		return httpclient.WithResponseHeaders(&responsesProviderStream{Stream: stream, completion: c.capture}, httpclient.GetResponseHeaders(stream)), nil
+		return &responsesProviderStream{Stream: stream, completion: c.capture}, nil
 	}
 	return stream, nil
 }

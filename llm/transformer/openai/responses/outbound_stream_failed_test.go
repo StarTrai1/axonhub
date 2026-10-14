@@ -17,13 +17,13 @@ func TestResponsesOutboundStreamResponseFailedStatus(t *testing.T) {
 		status string
 		want   int
 	}{
-		{"null", http.StatusBadGateway},
-		{"0", http.StatusBadGateway},
-		{"200", http.StatusBadGateway},
-		{"399", http.StatusBadGateway},
-		{"600", http.StatusBadGateway},
-		{"-1", http.StatusBadGateway},
-		{`"failed"`, http.StatusBadGateway},
+		{"null", http.StatusServiceUnavailable},
+		{"0", http.StatusServiceUnavailable},
+		{"200", http.StatusServiceUnavailable},
+		{"399", http.StatusServiceUnavailable},
+		{"600", http.StatusServiceUnavailable},
+		{"-1", http.StatusServiceUnavailable},
+		{`"failed"`, http.StatusServiceUnavailable},
 		{"400", 400},
 		{"429", 429},
 		{"500", 500},
@@ -43,7 +43,7 @@ func TestResponsesOutboundStreamResponseFailedStatus(t *testing.T) {
 			var responseErr *llm.ResponseError
 			require.ErrorAs(t, err, &responseErr)
 			require.Equal(t, tt.want, responseErr.StatusCode)
-			require.ErrorIs(t, err, llm.ErrEmptyResponse)
+			if tt.want >= 500 || tt.want == 429 { require.ErrorIs(t, err, llm.ErrEmptyResponse) } else { require.NotErrorIs(t, err, llm.ErrEmptyResponse) }
 		})
 	}
 }

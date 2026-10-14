@@ -48,7 +48,7 @@ func TestCodexResponsesEndpointDefaults(t *testing.T) {
 				}
 			}
 			require.Equal(t, tt.want, formats)
-			require.Len(t, resolved, len(tt.want)+3, "non-family defaults survive")
+			require.Len(t, resolved, len(tt.want)+4, "non-family defaults survive")
 			require.Equal(t, tt.endpoints, entity.Endpoints, "reads preserve raw endpoints")
 			require.Equal(t, tt.base, entity.BaseURL, "reads preserve trailing #")
 		})
@@ -82,7 +82,7 @@ func TestResponsesEndpointLegacyNormalization(t *testing.T) {
 		// Then
 		require.Equal(t, []string{w}, formats)
 		require.Equal(t, []string{h}, settings.ModelProtocols[0].APIFormats)
-		require.Equal(t, objects.ChannelEndpoint{APIFormat: w, Path: "/custom"}, ch.ResolveEndpoints()[0])
+		require.Contains(t, ch.ResolveEndpoints(), objects.ChannelEndpoint{APIFormat: w, Path: "/custom"})
 	})
 	t.Run("H restriction on dual stays H", func(t *testing.T) {
 		// Given

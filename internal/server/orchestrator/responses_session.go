@@ -167,7 +167,7 @@ func encodePreparedResponsesBody(original []byte, payload map[string]json.RawMes
 }
 
 func decodeResponsesSessionRecord(requestBody, responseBody []byte) *responsesSessionRecord {
-	if len(responseBody) == 0 || len(responseBody) > responsesSessionMaxReplay || len(requestBody) > responsesSessionMaxReplay {
+	if len(responseBody) == 0 || len(responseBody) > responsesSessionMaxReplay+1024 || len(requestBody) > responsesSessionMaxReplay+1024 {
 		return nil
 	}
 
@@ -237,8 +237,26 @@ func (s *responsesSessionStore) record(ctx context.Context, requestBody, respons
 	now = time.Now()
 	record.updatedAt = now
 	s.evictExpiredLocked(now)
-	s.insertLocked(key, record)
-	for len(s.byResponse) > responsesSessionMaxRecords || s.totalBytes > responsesSessionMaxBytes {
+ // The provider and portable-history captures may observe the same completion.
+ // A metadata-only or sparse terminal frame cannot replace a fuller snapshot.
+ if previous := s.byResponse[key]; previous != nil && previous.complete &&
+  (!record.complete || len(previous.output) > len(record.output)) {
+  preserved := *previous
+  preserved.updatedAt = record.updatedAt
+  if record.origin.ChannelID != 0 { preserved.origin = record.origin }
+  record = &preserved
+ }
+ s.insertLocked(key, record)
+	for oldest := s.order.Front(); s.totalBytes > responsesSessionMaxBytes && oldest != nil; oldest = oldest.Next() {
+  key := oldest.Value.(responsesSessionKey)
+  previous := s.byResponse[key]
+  if previous == nil || previous.size == 0 { continue }
+  metadata := *previous
+  metadata.input, metadata.output, metadata.complete, metadata.size = nil, nil, false, 0
+  s.totalBytes -= previous.size
+  s.byResponse[key] = &metadata
+ }
+ for len(s.byResponse) > responsesSessionMaxRecords {
 		if !s.evictOldestLocked() {
 			s.totalBytes = 0
 			break

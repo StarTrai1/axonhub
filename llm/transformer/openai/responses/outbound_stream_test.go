@@ -1896,6 +1896,6 @@ func TestResponsesOutboundStreamResponseFailedMalformed(t *testing.T) {
 	require.NoError(t, err)
 
 	events, err := streams.All(stream)
-	require.NoError(t, err)
-	require.NotEmpty(t, events)
+	require.Error(t, err)
+	require.Empty(t, events)
 }

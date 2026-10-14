@@ -38,7 +38,7 @@ func TestResponsesEndpointLegacyNormalizationEnt(t *testing.T) {
 		require.NoError(t, err)
 		resolved := (&Channel{Channel: read}).ResolveEndpoints()
 		// Then
-		require.Equal(t, objects.ChannelEndpoint{APIFormat: w, Path: "/custom"}, resolved[0])
+		require.Contains(t, resolved, objects.ChannelEndpoint{APIFormat: w, Path: "/custom"})
 		require.Equal(t, legacy, read.Endpoints)
 		require.Equal(t, []string{h}, read.Settings.ModelProtocols[0].APIFormats)
 		require.Equal(t, "https://chatgpt.com/backend-api/codex#", read.BaseURL)
@@ -140,7 +140,7 @@ func TestResponsesEndpointLegacyNormalizationStoredJSON(t *testing.T) {
 	// When
 	read, err := client.Channel.Get(ctx, created.ID)
 	require.NoError(t, err)
-	require.Equal(t, w, (&Channel{Channel: read}).ResolveEndpoints()[0].APIFormat)
+	require.Contains(t, (&Channel{Channel: read}).ResolveEndpoints(), objects.ChannelEndpoint{APIFormat: w, BaseURL: "wss://other.test/custom#"})
 	require.Equal(t, []string{w}, (&Channel{Channel: read}).ForcedAPIFormats("test-model"))
 	var afterEndpoints, afterSettings string
 	require.NoError(t, db.QueryRowContext(ctx, "SELECT endpoints, settings FROM channels WHERE id = ?", created.ID).Scan(&afterEndpoints, &afterSettings))

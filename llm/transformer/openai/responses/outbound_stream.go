@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+ "errors"
 	"errors"
 	"fmt"
 	"io"
@@ -893,10 +894,7 @@ func (s *responsesOutboundStream) transformStreamEvent(event *httpclient.StreamE
 			if streamEvent.Response == nil {
 				return responseErrorFromStreamEvent(&streamEvent)
 			}
-			responseErr := responseErrorFromResponse(streamEvent.Response)
-			if responseErr.Detail.RequestID == "" {
-				responseErr.Detail.RequestID = streamEvent.RequestID
-			}
+			responseErr := responseFailedError(streamEvent)
 			if streamEvent.Response.Usage != nil {
 				s.state.usage = streamEvent.Response.Usage.ToUsage()
 				s.enqueue(&llm.Response{Usage: s.state.usage})
@@ -1088,31 +1086,22 @@ func (s *responsesOutboundStream) hasGeneratedOutput() bool {
 		len(s.state.pendingReasoningEncryptedContent) > 0
 }
 
-func responseFailedError(streamEvent StreamEvent) *llm.ResponseError {
-	detail := llm.ErrorDetail{}
-	if streamEvent.Response != nil && streamEvent.Response.Error != nil {
-		detail = llm.ErrorDetail{
-			Code:    streamEvent.Response.Error.Code,
-			Message: streamEvent.Response.Error.Message,
-			Type:    streamEvent.Response.Error.Type,
-			Param:   streamEvent.Response.Error.Param,
-		}
-	}
-
-	return &llm.ResponseError{
-		StatusCode:         failedResponseStatus(streamEvent.Status),
-		Detail:             detail,
-		SuppressStatusText: true,
-		Cause:              llm.ErrEmptyResponse,
-	}
-}
-
-func failedResponseStatus(status int) int {
-	if status >= http.StatusBadRequest && status < 600 {
-		return status
-	}
-
-	return http.StatusBadGateway
+func responseFailedError(event StreamEvent) *llm.ResponseError {
+ result := responseErrorFromResponse(event.Response)
+ if result.Detail.RequestID == "" { result.Detail.RequestID = event.RequestID }
+ status := event.Status
+ if status == 0 { status = event.StatusCode }
+ if status >= 400 && status <= 599 { result.StatusCode = status }
+ if event.Response != nil {
+  result.StatusCode = responseErrorStatusCode(event.Response.Error, result.StatusCode)
+  result.Cause = responseErrorCause(result, event.Response.Error, responseErrorHeaders(event.Headers))
+ }
+ result.SuppressStatusText = true
+ // Auth, context and encrypted-content rejections must retain their dedicated recovery paths.
+ if result.StatusCode >= 500 || result.StatusCode == 429 {
+  result.Cause = errors.Join(result.Cause, llm.ErrEmptyResponse)
+ }
+ return result
 }
 
 func (s *responsesOutboundStream) reconcileCustomToolCallInput(

@@ -649,7 +649,7 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 func searchFallbackResponsesEndpoint(c *ent.Channel, ch *Channel) (string, string) {
 	baseURL := c.BaseURL
 	for _, endpoint := range ch.ResolveEndpoints() {
-		if endpoint.APIFormat != llm.APIFormatOpenAIResponse.String() {
+		if !responses.IsResponsesFormat(llm.APIFormat(endpoint.APIFormat)) {
 			continue
 		}
 		if endpoint.BaseURL != "" {

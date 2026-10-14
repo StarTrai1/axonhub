@@ -80,7 +80,8 @@ func isRetryableTransportError(err error) bool {
 		if cause.Error() == "local error: tls: bad record MAC" || cause.Error() == "remote error: tls: bad record MAC" {
 			return true
 		}
-		if retryableHTTP2StreamError.MatchString(cause.Error()) {
+		if cause.Error() == "http2: client connection force closed via ClientConn.Close" ||
+   cause.Error() == "http2: client conn is closed" || retryableHTTP2StreamError.MatchString(cause.Error()) {
 			return true
 		}
 	}
