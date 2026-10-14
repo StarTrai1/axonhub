@@ -115,4 +115,3 @@ func TestResponsesProtocolCompactionRelayLocalToNative(t *testing.T) {
 		}
 	}
 }
-

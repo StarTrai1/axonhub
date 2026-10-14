@@ -85,7 +85,7 @@ func TestResponsesProtocolCompactionRelayContinuation(t *testing.T) {
 					status, checkpoint := responsesIntegrationPost(t, gateway, "/v1/responses", root)
 					require.Equal(t, http.StatusOK, status, string(checkpoint))
 					require.Equal(t, "cmp_relay", gjson.GetBytes(checkpoint, "output.0.id").String(), string(checkpoint))
-					continuation := fmt.Sprintf(`{"model":%q,"stream":false,"client_metadata":{"thread_id":"relay-thread","x-codex-window-id":"relay-window"},"input":[{"type":"message","id":"msg_before","role":"user","content":"retained-user-canary"},{"type":"compaction","id":"cmp_relay","encrypted_content":"native-source-ciphertext"},{"type":"reasoning","id":"rs_old","encrypted_content":"old-reasoning-ciphertext","summary":[{"type":"summary_text","text":"visible-reasoning-canary"}]},{"type":"custom_tool_call","id":"ct_old","call_id":"call_retained","name":"inspect","input":"tool-input-canary"},{"type":"custom_tool_call_output","id":"cto_old","call_id":"call_retained","output":"tool-output-canary"},{"type":"message","id":"msg_continue","role":"user","content":"continue-canary"}]}`, model)
+					continuation := fmt.Sprintf(`{"model":%q,"stream":false,"client_metadata":{"thread_id":"relay-thread","x-codex-window-id":"relay-window"},"input":[{"type":"message","id":"msg_before","role":"user","content":"retained-user-canary"},{"type":"compaction","id":"cmp_relay","encrypted_content":"native-source-ciphertext"},{"type":"reasoning","id":"rs_old","encrypted_content":"gAAAAABsynthetic_old_reasoning_ciphertext_0123456789abcdef0123456789abcdef","summary":[{"type":"summary_text","text":"visible-reasoning-canary"}]},{"type":"custom_tool_call","id":"ct_old","call_id":"call_retained","name":"inspect","input":"tool-input-canary"},{"type":"custom_tool_call_output","id":"cto_old","call_id":"call_retained","output":"tool-output-canary"},{"type":"message","id":"msg_continue","role":"user","content":"continue-canary"}]}`, model)
 					if downstream == "http" {
 						status, response := responsesIntegrationPost(t, gateway, "/v1/responses", continuation)
 						require.Equal(t, http.StatusOK, status, string(response))
@@ -122,9 +122,9 @@ func TestResponsesProtocolCompactionRelayContinuation(t *testing.T) {
 						require.NotContains(t, string(body), "native-source-ciphertext")
 						require.False(t, gjson.GetBytes(body, "previous_response_id").Exists())
 					}
-					require.Contains(t, string(bodies[2]), "old-reasoning-ciphertext")
-					require.Contains(t, string(bodies[3]), "old-reasoning-ciphertext")
-					require.NotContains(t, string(bodies[4]), "old-reasoning-ciphertext")
+					require.Contains(t, string(bodies[2]), "gAAAAABsynthetic_old_reasoning_ciphertext_0123456789abcdef0123456789abcdef")
+					require.Contains(t, string(bodies[3]), "gAAAAABsynthetic_old_reasoning_ciphertext_0123456789abcdef0123456789abcdef")
+					require.NotContains(t, string(bodies[4]), "gAAAAABsynthetic_old_reasoning_ciphertext_0123456789abcdef0123456789abcdef")
 					require.Contains(t, string(bodies[4]), "visible-reasoning-canary")
 					require.Contains(t, string(bodies[5]), "next-turn-canary")
 				})
