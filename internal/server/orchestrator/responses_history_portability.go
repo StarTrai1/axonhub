@@ -1,6 +1,7 @@
 package orchestrator
 
 import (
+ "github.com/looplj/axonhub/llm/transformer/openai/responses"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -57,7 +58,7 @@ func (m *responsesHistoryPortabilityMiddleware) Name() string {
 }
 
 func (m *responsesHistoryPortabilityMiddleware) OnOutboundRawRequest(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error) {
-	if m.outbound == nil || m.outbound.state == nil || request == nil || request.APIFormat != string(llm.APIFormatOpenAIResponse) {
+	if m.outbound == nil || m.outbound.state == nil || request == nil || !responses.IsResponsesFormat(llm.APIFormat(request.APIFormat)) {
 		return request, nil
 	}
 	state := m.outbound.state

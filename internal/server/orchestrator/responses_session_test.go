@@ -28,7 +28,7 @@ func TestResponsesSessionReplayRemovesOnlyGatewayGeneratedIDs(t *testing.T) {
 
 func TestResponsesSessionRestoresHistoryLargerThanHotCacheLimit(t *testing.T) {
 	ctx := shared.WithSessionScope(context.Background(), "api-key:large")
-	request := []byte(`{"input":[{"role":"user","content":"` + strings.Repeat("x", responsesSessionMaxResponse+1) + `"}]}`)
+	request := []byte(`{"input":[{"role":"user","content":"` + strings.Repeat("x", (1<<20)+1) + `"}]}`)
 	response := []byte(`{"id":"resp_large","status":"completed","output":[{"type":"function_call","id":"fc_native","call_id":"call_native","name":"exec","arguments":"{}"}]}`)
 	store := newResponsesSessionStore(func(context.Context, string) ([]byte, []byte, bool, error) {
 		return request, response, true, nil
@@ -41,7 +41,7 @@ func TestResponsesSessionRestoresHistoryLargerThanHotCacheLimit(t *testing.T) {
 	require.NoError(t, json.Unmarshal(prepared, &payload))
 	require.Empty(t, payload.Previous)
 	require.Len(t, payload.Input, 3)
-	require.Greater(t, len(payload.Input[0]), responsesSessionMaxResponse)
+	require.Greater(t, len(payload.Input[0]), 1<<20)
 	require.Contains(t, string(payload.Input[1]), "fc_native")
 	require.NotNil(t, store.lookup(ctx, "resp_large"))
 }

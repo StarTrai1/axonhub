@@ -29,11 +29,13 @@ func TestOutboundStreamRecoversTextDone(t *testing.T) {
 		{name: "shorter done", events: []string{delta, `{"type":"response.output_text.done","item_id":"msg_1","text":"He"}`}, chunks: []string{"Hello"}},
 		{name: "different item", events: []string{delta, `{"type":"response.output_text.done","item_id":"msg_2","text":"Hello 世界"}`}, chunks: []string{"Hello"}},
 		{name: "different index", events: []string{delta, `{"type":"response.output_text.done","item_id":"msg_1","output_index":1,"content_index":0,"text":"Hello 世界"}`}, chunks: []string{"Hello"}},
-		{name: "known second part", events: []string{delta, done,
+		{name: "known second part", events: []string{
+			delta, done,
 			`{"type":"response.content_part.added","item_id":"msg_1","output_index":0,"content_index":1,"part":{"type":"output_text","text":""}}`,
 			`{"type":"response.output_text.done","item_id":"msg_1","output_index":0,"content_index":1,"text":"!"}`,
 		}, chunks: []string{"Hello", " 世界", "!"}},
-		{name: "multiple streamed parts", events: []string{delta, done,
+		{name: "multiple streamed parts", events: []string{
+			delta, done,
 			`{"type":"response.output_text.delta","item_id":"msg_2","output_index":1,"content_index":0,"delta":"Bye"}`,
 			`{"type":"response.output_text.done","item_id":"msg_2","output_index":1,"content_index":0,"text":"Bye!"}`,
 		}, chunks: []string{"Hello", " 世界", "Bye", "!"}},
@@ -113,7 +115,11 @@ func TestOutboundStreamRecoversTerminalText(t *testing.T) {
 					}
 				}
 				if result.Usage != nil {
-					if tc.wantError { require.Empty(t, finishes) } else { require.Equal(t, []string{tc.wantFinish}, finishes) }
+					if tc.wantError {
+						require.Empty(t, finishes)
+					} else {
+						require.Equal(t, []string{tc.wantFinish}, finishes)
+					}
 					require.EqualValues(t, 13, result.Usage.TotalTokens)
 					usageSeen = true
 				}
@@ -123,7 +129,11 @@ func TestOutboundStreamRecoversTerminalText(t *testing.T) {
 				require.Empty(t, finishes)
 			} else {
 				require.NoError(t, stream.Err())
-				if tc.wantError { require.Empty(t, finishes) } else { require.Equal(t, []string{tc.wantFinish}, finishes) }
+				if tc.wantError {
+					require.Empty(t, finishes)
+				} else {
+					require.Equal(t, []string{tc.wantFinish}, finishes)
+				}
 				require.True(t, usageSeen)
 			}
 			if tc.wantText {

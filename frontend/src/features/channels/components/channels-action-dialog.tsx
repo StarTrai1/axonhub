@@ -2575,7 +2575,6 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                     <p className='text-muted-foreground text-xs'>{t('channels.dialogs.codexAuthJson.description')}</p>
                                   </div>
                                 </div>
-                              </div>
                             )}
                           </div>
 
@@ -2591,6 +2590,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                 renderOAuthSection(claudecodeOAuth, t('channels.dialogs.fields.apiFormat.claudecode.description'))}
                             </div>
                           )}
+                          </div>
                         </div>
                       )}
 

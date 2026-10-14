@@ -5,6 +5,8 @@ import { zhCN, enUS } from 'date-fns/locale';
 import { Copy, Clock, Key, Database, FileText, Layers, Download, Terminal, CircleDollarSign } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { getTokenFromStorage } from '@/stores/authStore';
+import { ensureFreshAccessToken } from '@/lib/auth-session';
 import { copyTextToClipboard } from '@/lib/clipboard';
 import { extractNumberID } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -14,20 +16,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { JsonViewer } from '@/components/json-tree-view';
 import { useGeneralSettings } from '@/features/system/data/system';
-import { getTokenFromStorage } from '@/stores/authStore';
-import { ensureFreshAccessToken } from '@/lib/auth-session';
-import { useUsageLogs } from '../data/usage-logs';
 import { type Request, useRequest, useRequestExecutions } from '../data';
+import { useUsageLogs } from '../data/usage-logs';
+import { generateRequestCurl, generateExecutionCurl } from '../utils/curl-generator';
+import { parseRequestConversation } from '../utils/request-conversation';
+import { parseResponse } from '../utils/response-parser';
+import { getExecutionModelAuditVerdict, MODEL_AUDIT_VERDICT_CLASS } from '../utils/upstream-model-audit';
+import { getVideoLastFrameURL, isVideoRequestFormat } from '../utils/video-display';
 import { ChunksDialog } from './chunks-dialog';
 import { CurlPreviewDialog } from './curl-preview-dialog';
 import { getStatusColor } from './help';
 import { RequestConversationViewer } from './request-conversation-viewer';
 import { ResponseFlow } from './response-flow';
-import { parseResponse } from '../utils/response-parser';
-import { parseRequestConversation } from '../utils/request-conversation';
-import { generateRequestCurl, generateExecutionCurl } from '../utils/curl-generator';
-import { getVideoLastFrameURL, isVideoRequestFormat } from '../utils/video-display';
-import { getExecutionModelAuditVerdict, MODEL_AUDIT_VERDICT_CLASS } from '../utils/upstream-model-audit';
 
 // The detail page renders whole request and response payloads. Expanding every
 // level eagerly produces hundreds of thousands of characters of DOM for a large
@@ -121,9 +121,11 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
     }
     if (toolCalls.length > 0) {
       if (result) result += '\n\n';
-      result += toolCalls.map(tc => {
-        return `Tool Call: ${tc.function?.name}\nArguments: ${tc.function?.arguments}`;
-      }).join('\n\n');
+      result += toolCalls
+        .map((tc) => {
+          return `Tool Call: ${tc.function?.name}\nArguments: ${tc.function?.arguments}`;
+        })
+        .join('\n\n');
     }
 
     return result.trim();
@@ -318,11 +320,14 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
     setShowCurlPreview(true);
   }, []);
 
-  const showExecutionCurlPreview = useCallback((headers: any, body: any, channel?: { baseURL?: string; type?: string }, apiFormat?: string, requestURL?: string) => {
-    const curl = generateExecutionCurl(headers, body, channel as any, apiFormat as any, requestURL);
-    setCurlCommand(curl);
-    setShowCurlPreview(true);
-  }, []);
+  const showExecutionCurlPreview = useCallback(
+    (headers: any, body: any, channel?: { baseURL?: string; type?: string }, apiFormat?: string, requestURL?: string) => {
+      const curl = generateExecutionCurl(headers, body, channel as any, apiFormat as any, requestURL);
+      setCurlCommand(curl);
+      setShowCurlPreview(true);
+    },
+    []
+  );
 
   const calculateLatency = (createdAt: string | Date, updatedAt: string | Date) => {
     if (!createdAt || !updatedAt) return null;
@@ -427,7 +432,9 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
           // explicit price for this model (see computeUsageCost fallback).
           const isModelLibraryPrice = (usage.costPriceReferenceID ?? '').startsWith('model_library:');
 
-          const promptCost = usage.costItems?.find((i: any) => i.itemCode === 'prompt_tokens' || i.itemCode === 'decisions_input_tokens')?.subtotal;
+          const promptCost = usage.costItems?.find(
+            (i: any) => i.itemCode === 'prompt_tokens' || i.itemCode === 'decisions_input_tokens'
+          )?.subtotal;
           const completionCost = usage.costItems?.find((i: any) => i.itemCode === 'completion_tokens')?.subtotal;
           const cacheReadCost = usage.costItems?.find((i: any) => i.itemCode === 'prompt_cached_tokens')?.subtotal;
           const cacheWriteCost = usage.costItems?.find((i: any) => i.itemCode === 'prompt_write_cached_tokens')?.subtotal;
@@ -520,7 +527,9 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
                           {t('requests.columns.writeCache')}: {writeCachedTokens.toLocaleString()}
                         </p>
                       )}
-                      <p className='text-muted-foreground text-xs'>{renderCost(cost > 0 ? (cacheReadCost || 0) + (cacheWriteCost || 0) : null)}</p>
+                      <p className='text-muted-foreground text-xs'>
+                        {renderCost(cost > 0 ? (cacheReadCost || 0) + (cacheWriteCost || 0) : null)}
+                      </p>
                     </div>
                   </div>
                   <div className='bg-muted/30 flex flex-col justify-center rounded-lg border px-2.5 py-2'>
@@ -573,18 +582,35 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
                       {t('requests.columns.requestHeaders')}
                     </h4>
                     <div className='flex gap-2'>
-                      <Button variant='outline' size='sm' onClick={() => copyToClipboard(formatJson(request.requestHeaders))} className='hover:bg-primary hover:text-primary-foreground'>
+                      <Button
+                        variant='outline'
+                        size='sm'
+                        onClick={() => copyToClipboard(formatJson(request.requestHeaders))}
+                        className='hover:bg-primary hover:text-primary-foreground'
+                      >
                         <Copy className='mr-2 h-4 w-4' />
                         {t('requests.dialogs.jsonViewer.copy')}
                       </Button>
-                      <Button variant='outline' size='sm' onClick={() => downloadFile(formatJson(request.requestHeaders), `request-headers-${request.id}.json`)} className='hover:bg-primary hover:text-primary-foreground'>
+                      <Button
+                        variant='outline'
+                        size='sm'
+                        onClick={() => downloadFile(formatJson(request.requestHeaders), `request-headers-${request.id}.json`)}
+                        className='hover:bg-primary hover:text-primary-foreground'
+                      >
                         <Download className='mr-2 h-4 w-4' />
                         {t('requests.dialogs.jsonViewer.download')}
                       </Button>
                     </div>
                   </div>
                   <div className='bg-muted/20 h-[300px] w-full overflow-auto rounded-lg border p-4'>
-                    <JsonViewer data={request.requestHeaders} rootName='' defaultExpanded={true} expandDepth={JSON_VIEWER_EXPAND_DEPTH} hideArrayIndices={true} className='text-sm' />
+                    <JsonViewer
+                      data={request.requestHeaders}
+                      rootName=''
+                      defaultExpanded={true}
+                      expandDepth={JSON_VIEWER_EXPAND_DEPTH}
+                      hideArrayIndices={true}
+                      className='text-sm'
+                    />
                   </div>
                 </div>
               )}
@@ -602,11 +628,21 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
                       </TabsList>
                     </Tabs>
                     <div className='flex gap-2'>
-                      <Button variant='outline' size='sm' onClick={() => copyToClipboard(formatJson(request.requestBody))} className='hover:bg-primary hover:text-primary-foreground'>
+                      <Button
+                        variant='outline'
+                        size='sm'
+                        onClick={() => copyToClipboard(formatJson(request.requestBody))}
+                        className='hover:bg-primary hover:text-primary-foreground'
+                      >
                         <Copy className='mr-2 h-4 w-4' />
                         {t('requests.dialogs.jsonViewer.copy')}
                       </Button>
-                      <Button variant='outline' size='sm' onClick={() => downloadFile(formatJson(request.requestBody), `request-body-${request.id}.json`)} className='hover:bg-primary hover:text-primary-foreground'>
+                      <Button
+                        variant='outline'
+                        size='sm'
+                        onClick={() => downloadFile(formatJson(request.requestBody), `request-body-${request.id}.json`)}
+                        className='hover:bg-primary hover:text-primary-foreground'
+                      >
                         <Download className='mr-2 h-4 w-4' />
                         {t('requests.dialogs.jsonViewer.download')}
                       </Button>
@@ -617,7 +653,14 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
                   <RequestConversationViewer body={request.requestBody} format={request.format} />
                 ) : (
                   <div className='bg-muted/20 h-[500px] w-full overflow-auto rounded-lg border p-4'>
-                    <JsonViewer data={request.requestBody} rootName='' defaultExpanded={true} expandDepth={JSON_VIEWER_EXPAND_DEPTH} hideArrayIndices={true} className='text-sm' />
+                    <JsonViewer
+                      data={request.requestBody}
+                      rootName=''
+                      defaultExpanded={true}
+                      expandDepth={JSON_VIEWER_EXPAND_DEPTH}
+                      hideArrayIndices={true}
+                      className='text-sm'
+                    />
                   </div>
                 )}
               </div>
@@ -632,18 +675,35 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
                       {t('requests.columns.responseHeaders')}
                     </h4>
                     <div className='flex gap-2'>
-                      <Button variant='outline' size='sm' onClick={() => copyToClipboard(formatJson(request.responseHeaders))} className='hover:bg-primary hover:text-primary-foreground'>
+                      <Button
+                        variant='outline'
+                        size='sm'
+                        onClick={() => copyToClipboard(formatJson(request.responseHeaders))}
+                        className='hover:bg-primary hover:text-primary-foreground'
+                      >
                         <Copy className='mr-2 h-4 w-4' />
                         {t('requests.dialogs.jsonViewer.copy')}
                       </Button>
-                      <Button variant='outline' size='sm' onClick={() => downloadFile(formatJson(request.responseHeaders), `response-headers-${request.id}.json`)} className='hover:bg-primary hover:text-primary-foreground'>
+                      <Button
+                        variant='outline'
+                        size='sm'
+                        onClick={() => downloadFile(formatJson(request.responseHeaders), `response-headers-${request.id}.json`)}
+                        className='hover:bg-primary hover:text-primary-foreground'
+                      >
                         <Download className='mr-2 h-4 w-4' />
                         {t('requests.dialogs.jsonViewer.download')}
                       </Button>
                     </div>
                   </div>
                   <div className='bg-muted/20 h-[240px] w-full overflow-auto rounded-lg border p-4'>
-                    <JsonViewer data={request.responseHeaders} rootName='' defaultExpanded={true} expandDepth='all' hideArrayIndices={true} className='text-sm' />
+                    <JsonViewer
+                      data={request.responseHeaders}
+                      rootName=''
+                      defaultExpanded={true}
+                      expandDepth='all'
+                      hideArrayIndices={true}
+                      className='text-sm'
+                    />
                   </div>
                 </div>
               )}
@@ -782,7 +842,14 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
                   <TabsContent value='json' className='mt-0 focus-visible:outline-none'>
                     {hasResponseBody ? (
                       <div className='bg-muted/20 h-[500px] w-full overflow-auto rounded-lg border p-4'>
-                        <JsonViewer data={request.responseBody} rootName='' defaultExpanded={true} expandDepth={JSON_VIEWER_EXPAND_DEPTH} hideArrayIndices={true} className='text-sm' />
+                        <JsonViewer
+                          data={request.responseBody}
+                          rootName=''
+                          defaultExpanded={true}
+                          expandDepth={JSON_VIEWER_EXPAND_DEPTH}
+                          hideArrayIndices={true}
+                          className='text-sm'
+                        />
                       </div>
                     ) : request.status === 'processing' ? (
                       <div className='bg-muted/20 flex h-[500px] w-full items-center justify-center rounded-lg border'>
@@ -855,15 +922,13 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
                                 {execution.channel?.name || t('requests.columns.unknown')}
                               </p>
                               {(execution.channelAPIKeySuffix || execution.channelAPIKeyIndex != null) && (
-                                <div className='flex items-center gap-1.5 text-xs text-muted-foreground pt-0.5'>
+                                <div className='text-muted-foreground flex items-center gap-1.5 pt-0.5 text-xs'>
                                   <Key className='h-3.5 w-3.5 shrink-0' />
                                   <span>{t('requests.columns.upstreamApiKey')}</span>
                                   {execution.channelAPIKeyIndex != null && (
                                     <span className='font-mono'>key{execution.channelAPIKeyIndex}</span>
                                   )}
-                                  {execution.channelAPIKeySuffix && (
-                                    <span className='font-mono'>••••{execution.channelAPIKeySuffix}</span>
-                                  )}
+                                  {execution.channelAPIKeySuffix && <span className='font-mono'>••••{execution.channelAPIKeySuffix}</span>}
                                 </div>
                               )}
                             </div>
@@ -875,11 +940,11 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
                               <dl className='space-y-2 text-xs'>
                                 <div>
                                   <dt className='text-muted-foreground'>{t('requests.detail.routedModel')}</dt>
-                                  <dd className='break-all font-mono'>{execution.modelID || t('requests.columns.unknown')}</dd>
+                                  <dd className='font-mono break-all'>{execution.modelID || t('requests.columns.unknown')}</dd>
                                 </div>
                                 <div>
                                   <dt className='text-muted-foreground'>{t('requests.detail.upstreamModels')}</dt>
-                                  <dd className='break-all font-mono'>{execution.upstreamModelID || t('requests.columns.unknown')}</dd>
+                                  <dd className='font-mono break-all'>{execution.upstreamModelID || t('requests.columns.unknown')}</dd>
                                 </div>
                               </dl>
                               <p className={MODEL_AUDIT_VERDICT_CLASS[modelVerdict.tone]}>{modelVerdict.message}</p>
@@ -890,7 +955,9 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
                                 {t('requests.dialogs.requestDetail.fields.startTime')}
                               </span>
                               <p className='text-muted-foreground font-mono text-sm'>
-                                {execution.createdAt ? format(new Date(execution.createdAt), 'yyyy-MM-dd HH:mm:ss', { locale }) : t('requests.columns.unknown')}
+                                {execution.createdAt
+                                  ? format(new Date(execution.createdAt), 'yyyy-MM-dd HH:mm:ss', { locale })
+                                  : t('requests.columns.unknown')}
                               </p>
                             </div>
                             <div className='bg-background space-y-2 rounded-lg border p-3'>
@@ -912,7 +979,9 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
                                 {t('requests.columns.latency')}
                               </span>
                               <p className='text-muted-foreground font-mono text-sm'>
-                                {execution.status === 'completed' || execution.status === 'failed' ? formatLatency(calculateLatency(execution.createdAt, execution.updatedAt)) : '-'}
+                                {execution.status === 'completed' || execution.status === 'failed'
+                                  ? formatLatency(calculateLatency(execution.createdAt, execution.updatedAt))
+                                  : '-'}
                               </p>
                             </div>
                             <div className='bg-background space-y-2 rounded-lg border p-3'>
@@ -921,7 +990,10 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
                                 {t('requests.columns.firstTokenLatency')}
                               </span>
                               <p className='text-muted-foreground font-mono text-sm'>
-                                {(execution.status === 'completed' || execution.status === 'failed') && execution.metricsFirstTokenLatencyMs != null ? formatLatency(execution.metricsFirstTokenLatencyMs) : '-'}
+                                {(execution.status === 'completed' || execution.status === 'failed') &&
+                                execution.metricsFirstTokenLatencyMs != null
+                                  ? formatLatency(execution.metricsFirstTokenLatencyMs)
+                                  : '-'}
                               </p>
                             </div>
                           </div>
@@ -933,15 +1005,32 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
                                   <FileText className='h-4 w-4' />
                                   {t('common.messages.errorMessage')}
                                 </span>
-                                {execution.status === 'failed' && execution.responseStatusCode && <Badge variant='destructive'>HTTP {execution.responseStatusCode}</Badge>}
+                                {execution.status === 'failed' && execution.responseStatusCode && (
+                                  <Badge variant='destructive'>HTTP {execution.responseStatusCode}</Badge>
+                                )}
                               </div>
-                              {execution.errorMessage && <p className='text-destructive bg-destructive/10 rounded border p-3 text-sm'>{execution.errorMessage}</p>}
+                              {execution.errorMessage && (
+                                <p className='text-destructive bg-destructive/10 rounded border p-3 text-sm'>{execution.errorMessage}</p>
+                              )}
                             </div>
                           )}
 
                           {(execution.requestHeaders || execution.requestBody) && (
                             <div className='flex justify-end'>
-                              <Button variant='outline' size='sm' onClick={() => showExecutionCurlPreview(execution.requestHeaders, execution.requestBody, execution.channel, execution.format, execution.requestURL)} className='hover:bg-primary hover:text-primary-foreground'>
+                              <Button
+                                variant='outline'
+                                size='sm'
+                                onClick={() =>
+                                  showExecutionCurlPreview(
+                                    execution.requestHeaders,
+                                    execution.requestBody,
+                                    execution.channel,
+                                    execution.format,
+                                    execution.requestURL
+                                  )
+                                }
+                                className='hover:bg-primary hover:text-primary-foreground'
+                              >
                                 <Terminal className='mr-2 h-4 w-4' />
                                 {t('requests.actions.copyCurl')}
                               </Button>
@@ -956,18 +1045,36 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
                                   {t('requests.columns.requestHeaders')}
                                 </span>
                                 <div className='flex gap-2'>
-                                  <Button variant='outline' size='sm' onClick={() => copyToClipboard(formatJson(execution.requestHeaders))} className='hover:bg-primary hover:text-primary-foreground'>
+                                  <Button
+                                    variant='outline'
+                                    size='sm'
+                                    onClick={() => copyToClipboard(formatJson(execution.requestHeaders))}
+                                    className='hover:bg-primary hover:text-primary-foreground'
+                                  >
                                     <Copy className='mr-2 h-4 w-4' />
                                     {t('requests.dialogs.jsonViewer.copy')}
                                   </Button>
-                                  <Button variant='outline' size='sm' onClick={() => downloadFile(formatJson(execution.requestHeaders), `execution-${execution.id}-request-headers.json`)} className='hover:bg-primary hover:text-primary-foreground'>
+                                  <Button
+                                    variant='outline'
+                                    size='sm'
+                                    onClick={() =>
+                                      downloadFile(formatJson(execution.requestHeaders), `execution-${execution.id}-request-headers.json`)
+                                    }
+                                    className='hover:bg-primary hover:text-primary-foreground'
+                                  >
                                     <Download className='mr-2 h-4 w-4' />
                                     {t('requests.dialogs.jsonViewer.download')}
                                   </Button>
                                 </div>
                               </div>
                               <div className='bg-background h-64 w-full overflow-auto rounded-lg border p-3'>
-                                <JsonViewer data={execution.requestHeaders} rootName='' defaultExpanded={false} hideArrayIndices={true} className='text-xs' />
+                                <JsonViewer
+                                  data={execution.requestHeaders}
+                                  rootName=''
+                                  defaultExpanded={false}
+                                  hideArrayIndices={true}
+                                  className='text-xs'
+                                />
                               </div>
                             </div>
                           )}
@@ -980,18 +1087,36 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
                                   {t('requests.columns.responseHeaders')}
                                 </span>
                                 <div className='flex gap-2'>
-                                  <Button variant='outline' size='sm' onClick={() => copyToClipboard(formatJson(execution.responseHeaders))} className='hover:bg-primary hover:text-primary-foreground'>
+                                  <Button
+                                    variant='outline'
+                                    size='sm'
+                                    onClick={() => copyToClipboard(formatJson(execution.responseHeaders))}
+                                    className='hover:bg-primary hover:text-primary-foreground'
+                                  >
                                     <Copy className='mr-2 h-4 w-4' />
                                     {t('requests.dialogs.jsonViewer.copy')}
                                   </Button>
-                                  <Button variant='outline' size='sm' onClick={() => downloadFile(formatJson(execution.responseHeaders), `execution-${execution.id}-response-headers.json`)} className='hover:bg-primary hover:text-primary-foreground'>
+                                  <Button
+                                    variant='outline'
+                                    size='sm'
+                                    onClick={() =>
+                                      downloadFile(formatJson(execution.responseHeaders), `execution-${execution.id}-response-headers.json`)
+                                    }
+                                    className='hover:bg-primary hover:text-primary-foreground'
+                                  >
                                     <Download className='mr-2 h-4 w-4' />
                                     {t('requests.dialogs.jsonViewer.download')}
                                   </Button>
                                 </div>
                               </div>
                               <div className='bg-background h-64 w-full overflow-auto rounded-lg border p-3'>
-                                <JsonViewer data={execution.responseHeaders} rootName='' defaultExpanded={false} hideArrayIndices={true} className='text-xs' />
+                                <JsonViewer
+                                  data={execution.responseHeaders}
+                                  rootName=''
+                                  defaultExpanded={false}
+                                  hideArrayIndices={true}
+                                  className='text-xs'
+                                />
                               </div>
                             </div>
                           )}
@@ -1004,18 +1129,36 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
                                   {t('requests.columns.requestBody')}
                                 </span>
                                 <div className='flex gap-2'>
-                                  <Button variant='outline' size='sm' onClick={() => copyToClipboard(formatJson(execution.requestBody))} className='hover:bg-primary hover:text-primary-foreground'>
+                                  <Button
+                                    variant='outline'
+                                    size='sm'
+                                    onClick={() => copyToClipboard(formatJson(execution.requestBody))}
+                                    className='hover:bg-primary hover:text-primary-foreground'
+                                  >
                                     <Copy className='mr-2 h-4 w-4' />
                                     {t('requests.dialogs.jsonViewer.copy')}
                                   </Button>
-                                  <Button variant='outline' size='sm' onClick={() => downloadFile(formatJson(execution.requestBody), `execution-${execution.id}-request-body.json`)} className='hover:bg-primary hover:text-primary-foreground'>
+                                  <Button
+                                    variant='outline'
+                                    size='sm'
+                                    onClick={() =>
+                                      downloadFile(formatJson(execution.requestBody), `execution-${execution.id}-request-body.json`)
+                                    }
+                                    className='hover:bg-primary hover:text-primary-foreground'
+                                  >
                                     <Download className='mr-2 h-4 w-4' />
                                     {t('requests.dialogs.jsonViewer.download')}
                                   </Button>
                                 </div>
                               </div>
                               <div className='bg-background h-80 w-full overflow-auto rounded-lg border p-3'>
-                                <JsonViewer data={execution.requestBody} rootName='' defaultExpanded={false} hideArrayIndices={true} className='text-xs' />
+                                <JsonViewer
+                                  data={execution.requestBody}
+                                  rootName=''
+                                  defaultExpanded={false}
+                                  hideArrayIndices={true}
+                                  className='text-xs'
+                                />
                               </div>
                             </div>
                           )}
@@ -1028,22 +1171,46 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
                                   {t('requests.columns.responseBody')}
                                 </span>
                                 <div className='flex gap-2'>
-                                  <Button variant='outline' size='sm' onClick={() => copyToClipboard(formatJson(execution.responseBody))} className='hover:bg-primary hover:text-primary-foreground'>
+                                  <Button
+                                    variant='outline'
+                                    size='sm'
+                                    onClick={() => copyToClipboard(formatJson(execution.responseBody))}
+                                    className='hover:bg-primary hover:text-primary-foreground'
+                                  >
                                     <Copy className='mr-2 h-4 w-4' />
                                     {t('requests.dialogs.jsonViewer.copy')}
                                   </Button>
-                                  <Button variant='outline' size='sm' onClick={() => downloadFile(formatJson(execution.responseBody), `execution-${execution.id}-response-body.json`)} className='hover:bg-primary hover:text-primary-foreground'>
+                                  <Button
+                                    variant='outline'
+                                    size='sm'
+                                    onClick={() =>
+                                      downloadFile(formatJson(execution.responseBody), `execution-${execution.id}-response-body.json`)
+                                    }
+                                    className='hover:bg-primary hover:text-primary-foreground'
+                                  >
                                     <Download className='mr-2 h-4 w-4' />
                                     {t('requests.dialogs.jsonViewer.download')}
                                   </Button>
-                                  <Button variant='outline' size='sm' onClick={() => showExecutionChunksModal(execution.responseChunks || [])} disabled={!execution.responseChunks || execution.responseChunks.length === 0} className='hover:bg-primary hover:text-primary-foreground'>
+                                  <Button
+                                    variant='outline'
+                                    size='sm'
+                                    onClick={() => showExecutionChunksModal(execution.responseChunks || [])}
+                                    disabled={!execution.responseChunks || execution.responseChunks.length === 0}
+                                    className='hover:bg-primary hover:text-primary-foreground'
+                                  >
                                     <Layers className='mr-2 h-4 w-4' />
                                     {t('requests.columns.responseChunks')}
                                   </Button>
                                 </div>
                               </div>
                               <div className='bg-background h-80 w-full overflow-auto rounded-lg border p-3'>
-                                <JsonViewer data={execution.responseBody} rootName='' defaultExpanded={false} hideArrayIndices={true} className='text-xs' />
+                                <JsonViewer
+                                  data={execution.responseBody}
+                                  rootName=''
+                                  defaultExpanded={false}
+                                  hideArrayIndices={true}
+                                  className='text-xs'
+                                />
                               </div>
                             </div>
                           )}

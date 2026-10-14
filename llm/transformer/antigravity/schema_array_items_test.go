@@ -34,11 +34,11 @@ func TestSanitizeArrayItemsPreservesSchemaBoundaries(t *testing.T) {
 		{"concrete items take precedence", `{"type":"array","prefixItems":[{"type":"string"}],"items":{"type":"number"}}`, `{"type":"array","items":{"type":"number"}}`},
 		{"non-array drops prefix", `{"type":"string","prefixItems":[{"type":"integer"}]}`, `{"type":"string"}`},
 		{"prefix selects nullable array", `{"type":["string","ARRAY","null"],"prefixItems":[{"type":"integer"}]}`, `{"type":"ARRAY","items":{"type":"integer"},"description":"Accepts: string | ARRAY (nullable)"}`},
-		{"tuple inside union", `{"anyOf":[{"type":"array","prefixItems":[{"type":"number"}]},{"type":"null"}]}`, `{"type":"array","items":{"type":"number"},"description":"Accepts: array | null"}`},
+		{"tuple inside union", `{"anyOf":[{"type":"array","prefixItems":[{"type":"number"}]},{"type":"null"}]}`, `{"type":"array","items":{"type":"number"},"nullable":true}`},
 		{"constant tuple item", `{"type":"array","prefixItems":[{"type":"null"},{"const":true}]}`, `{"type":"array","items":{"type":"boolean","enum":[true]}}`},
 		{"nested tuple", `{"type":"array","items":{"prefixItems":[{"type":"integer"}]}}`, `{"type":"array","items":{"type":"array","items":{"type":"integer"}}}`},
 		{"uppercase array tuple member", `{"type":"array","items":[{"type":"STRING"},{"type":"ARRAY"}]}`, `{"type":"array","items":{"type":"ARRAY","items":{"type":"string"}}}`},
-		{"prefix-only union member", `{"anyOf":[{"type":"string"},{"prefixItems":[{"type":"number"}]}]}`, `{"type":"array","items":{"type":"number"},"description":"Accepts: string | array"}`},
+		{"prefix-only union member", `{"anyOf":[{"type":"string"},{"prefixItems":[{"type":"number"}]}]}`, `{"anyOf":[{"type":"string"},{"type":"array","items":{"type":"number"}}]}`},
 		{"keyword property names in tuple", `{"type":"array","prefixItems":[{"type":"object","properties":{"prefixItems":{"type":"string"},"items":{"type":"integer"},"type":{"type":"boolean"}}}]}`, `{"type":"array","items":{"type":"object","properties":{"prefixItems":{"type":"string"},"items":{"type":"integer"},"type":{"type":"boolean"}}}}`},
 		{"property names", `{"type":"object","properties":{"type":{"type":"string"},"items":{"type":"string"},"rows":{"items":{"type":"object","properties":{"items":{"type":"integer"}}}}}}`, `{"type":"object","properties":{"type":{"type":"string"},"items":{"type":"string"},"rows":{"type":"array","items":{"type":"object","properties":{"items":{"type":"integer"}}}}}}`},
 	} {

@@ -575,6 +575,7 @@ type responsesWebSocketSession struct {
 	warmupPayload map[string]json.RawMessage
 	budget        *shared.ResponsesBudget
 	warmupBytes   int
+ mergedWarmupBytes int
 }
 
 type responsesWebSocketWarmup struct {
@@ -622,12 +623,7 @@ func (s *responsesWebSocketSession) prepareRequest(
 			}
 			return nil, nil, invalidResponsesWebSocketRequest(err.Error(), "input")
 		}
-		s.warmupID = ""
-		s.warmupPayload = nil
-		if s.budget != nil {
-			s.budget.Replace(s.warmupBytes, 0)
-		}
-		s.warmupBytes = mergedBytes
+  s.mergedWarmupBytes = mergedBytes
 	}
 
 	if !generate {
@@ -688,9 +684,8 @@ func (s *responsesWebSocketSession) completeRequest(message []byte) {
 		PreviousResponseID string `json:"previous_response_id"`
 	}
 	if json.Unmarshal(message, &request) == nil && request.PreviousResponseID == s.warmupID {
-		s.warmupID = ""
-		s.warmupPayload = nil
-	}
+  s.releaseWarmup()
+ }
 }
 
 func mergeResponsesWebSocketWarmup(

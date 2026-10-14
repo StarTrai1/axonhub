@@ -3,6 +3,7 @@ package responses
 import (
 	"context"
 	"encoding/json"
+ "net/http"
 
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer/shared"
@@ -10,7 +11,7 @@ import (
 
 func ContinuationAuthIdentity(request *httpclient.Request) string {
 	headers := request.Headers
-	return hashSecret(authPoolIdentity(request.Auth, headers) + "\x00" + headerPoolIdentity(headers) + "\x00" + headers.Get(webSocketAccountIDHeader) + "\x00" + headers.Get(webSocketOrgHeader) + "\x00" + headers.Get(webSocketProjectHeader))
+	return hashSecret(authPoolIdentity(request.Auth, headers) + "\x00" + headerPoolIdentity(headers) + "\x00" + headers.Get(webSocketAccountIDHeader) + "\x00" + headers.Get(http.CanonicalHeaderKey(webSocketOrgHeader)) + "\x00" + headers.Get(webSocketProjectHeader))
 }
 
 func isWebSocketRecoveryEvent(raw []byte) bool {
@@ -34,5 +35,5 @@ func (l *webSocketLease) write(ctx context.Context, payload map[string]any) erro
 			return shared.ResponsesRecoveryError()
 		}
 	}
- return l.writeJSONContext(ctx, payload)
+	return l.writeJSONContext(ctx, payload)
 }

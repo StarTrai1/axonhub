@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { useTranslation } from 'react-i18next';
 import { graphqlRequest } from '@/gql/graphql';
+import { useTranslation } from 'react-i18next';
 import { useSelectedProjectId } from '@/stores/projectStore';
 import { useErrorHandler } from '@/hooks/use-error-handler';
 import { useUsageLogPermissions } from '../../../gql/useUsageLogPermissions';
@@ -106,19 +106,22 @@ function buildUsageLogDetailQuery(permissions: { canViewChannels: boolean }) {
 }
 
 // Query hooks
-export function useUsageLogs(variables?: {
-  first?: number;
-  after?: string;
-  orderBy?: { field: 'CREATED_AT'; direction: 'ASC' | 'DESC' };
-  where?: {
-    source?: string;
-    modelID?: string;
-    channelID?: string;
-    projectID?: string;
-    requestID?: string;
-    [key: string]: any;
-  };
-}, options?: { projectId?: string | null; enabled?: boolean }) {
+export function useUsageLogs(
+  variables?: {
+    first?: number;
+    after?: string;
+    orderBy?: { field: 'CREATED_AT'; direction: 'ASC' | 'DESC' };
+    where?: {
+      source?: string;
+      modelID?: string;
+      channelID?: string;
+      projectID?: string;
+      requestID?: string;
+      [key: string]: any;
+    };
+  },
+  options?: { projectId?: string | null; enabled?: boolean }
+) {
   const { handleError } = useErrorHandler();
   const { t } = useTranslation();
   const permissions = useUsageLogPermissions();

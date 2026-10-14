@@ -58,7 +58,8 @@ func TestResponsesCodexHTTPCompleteHistoryExpandsBeforeDispatch(t *testing.T) {
 	require.False(t, gjson.GetBytes(sent, "previous_response_id").Exists())
 	require.Equal(t, "call_canary", gjson.GetBytes(sent, "input.1.call_id").String())
 	require.Equal(t, toolOutput, gjson.GetBytes(sent, "input.1.output").String())
-	require.Equal(t, "item_canary", gjson.GetBytes(sent, "input.2.id").String())
+	require.False(t, gjson.GetBytes(sent, "input.2.id").Exists(), "detach synthetic item IDs during replay")
+ require.Equal(t, "done", gjson.GetBytes(sent, "input.2.content.0.text").String())
 	require.Equal(t, clientBody, p.state.RawRequest.JSONBody)
 }
 

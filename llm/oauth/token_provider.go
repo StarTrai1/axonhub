@@ -217,8 +217,7 @@ func (p *TokenProvider) Get(ctx context.Context) (*OAuthCredentials, error) {
 			retryExpired := false
 			if onRefreshed != nil {
 				if err := onRefreshed(refreshCtx, fresh); err != nil {
-					var conflict *CredentialConflictError
-					if errors.As(err, &conflict) {
+					if conflict, ok := errors.AsType[*CredentialConflictError](err); ok {
 						fresh = conflict.Credentials
 						retryExpired = fresh != nil
 					} else {
@@ -311,8 +310,7 @@ func (p *TokenProvider) EnsureFresh(ctx context.Context, refreshBefore time.Dura
 			retryExpired := false
 			if onRefreshed != nil {
 				if err := onRefreshed(refreshCtx, fresh); err != nil {
-					var conflict *CredentialConflictError
-					if errors.As(err, &conflict) {
+					if conflict, ok := errors.AsType[*CredentialConflictError](err); ok {
 						fresh = conflict.Credentials
 						retryExpired = fresh != nil
 					} else {

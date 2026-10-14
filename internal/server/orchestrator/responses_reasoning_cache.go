@@ -53,7 +53,7 @@ var (
 )
 
 func isResponsesReasoningRecoveryFormat(format string) bool {
-	return format == string(llm.APIFormatOpenAIResponse) || format == string(llm.APIFormatOpenAIResponseCompact)
+	return format == string(llm.APIFormatOpenAIResponse) || format == string(llm.APIFormatOpenAIResponseWebSocket) || format == string(llm.APIFormatOpenAIResponseCompact)
 }
 
 func responsesReasoningScope(ctx context.Context, channel *biz.Channel, request *httpclient.Request) (responsesReasoningRecoveryScope, bool) {

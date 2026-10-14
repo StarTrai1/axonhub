@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
- "errors"
 	"errors"
 	"fmt"
 	"io"
@@ -1087,21 +1086,27 @@ func (s *responsesOutboundStream) hasGeneratedOutput() bool {
 }
 
 func responseFailedError(event StreamEvent) *llm.ResponseError {
- result := responseErrorFromResponse(event.Response)
- if result.Detail.RequestID == "" { result.Detail.RequestID = event.RequestID }
- status := event.Status
- if status == 0 { status = event.StatusCode }
- if status >= 400 && status <= 599 { result.StatusCode = status }
- if event.Response != nil {
-  result.StatusCode = responseErrorStatusCode(event.Response.Error, result.StatusCode)
-  result.Cause = responseErrorCause(result, event.Response.Error, responseErrorHeaders(event.Headers))
- }
- result.SuppressStatusText = true
- // Auth, context and encrypted-content rejections must retain their dedicated recovery paths.
- if result.StatusCode >= 500 || result.StatusCode == 429 {
-  result.Cause = errors.Join(result.Cause, llm.ErrEmptyResponse)
- }
- return result
+	result := responseErrorFromResponse(event.Response)
+	if result.Detail.RequestID == "" {
+		result.Detail.RequestID = event.RequestID
+	}
+	status := event.Status
+	if status == 0 {
+		status = event.StatusCode
+	}
+	if status >= 400 && status <= 599 {
+		result.StatusCode = status
+	}
+	if event.Response != nil {
+		result.StatusCode = responseErrorStatusCode(event.Response.Error, result.StatusCode)
+		result.Cause = responseErrorCause(result, event.Response.Error, responseErrorHeaders(event.Headers))
+	}
+	result.SuppressStatusText = true
+	// Auth, context and encrypted-content rejections must retain their dedicated recovery paths.
+	if result.StatusCode >= 500 || result.StatusCode == http.StatusTooManyRequests {
+		result.Cause = errors.Join(result.Cause, llm.ErrEmptyResponse)
+	}
+	return result
 }
 
 func (s *responsesOutboundStream) reconcileCustomToolCallInput(

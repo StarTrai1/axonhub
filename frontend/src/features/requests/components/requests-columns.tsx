@@ -3,17 +3,23 @@
 import { useState, type MouseEvent } from 'react';
 import { format } from 'date-fns';
 import { ColumnDef } from '@tanstack/react-table';
-import { IconAlertTriangle, IconArrowsExchange, IconArrowsJoin2, IconCheck, IconCoin, IconQuestionMark, IconRoute } from '@tabler/icons-react';
-import { Ban, FileText, LoaderCircle, Shuffle } from 'lucide-react';
+import {
+  IconAlertTriangle,
+  IconArrowsExchange,
+  IconArrowsJoin2,
+  IconCheck,
+  IconCoin,
+  IconQuestionMark,
+  IconRoute,
+} from '@tabler/icons-react';
 import { zhCN, enUS } from 'date-fns/locale';
+import { Ban, FileText, LoaderCircle, Shuffle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { extractNumberID, formatUserName } from '@/lib/utils';
 import { formatDuration } from '@/utils/format-duration';
 import { usePaginationSearch } from '@/hooks/use-pagination-search';
 import { usePermissions } from '@/hooks/usePermissions';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,6 +30,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { DataTableColumnHeader } from '@/components/data-table-column-header';
 import { useGeneralSettings, useSecuritySettings, useUpdateSecuritySettings } from '@/features/system/data/system';
@@ -83,9 +91,7 @@ function SwitchChannelAction({ requestId, channelName }: { requestId: string; ch
         <AlertDialogContent onClick={(event) => event.stopPropagation()}>
           <AlertDialogHeader>
             <AlertDialogTitle>{t('requests.dialogs.switchChannel.title')}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t('requests.dialogs.switchChannel.description', { channel: channelName })}
-            </AlertDialogDescription>
+            <AlertDialogDescription>{t('requests.dialogs.switchChannel.description', { channel: channelName })}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={switchChannel.isPending}>{t('common.buttons.cancel')}</AlertDialogCancel>
@@ -316,7 +322,9 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
                     <IconRoute className='h-3.5 w-3.5' />
                   </span>
                 </TooltipTrigger>
-                <TooltipContent>{t(passThroughApplied ? 'requests.tooltips.passThroughApplied' : 'requests.tooltips.passThroughNotApplied')}</TooltipContent>
+                <TooltipContent>
+                  {t(passThroughApplied ? 'requests.tooltips.passThroughApplied' : 'requests.tooltips.passThroughNotApplied')}
+                </TooltipContent>
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -499,7 +507,9 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
                                 key={exe.id || idx}
                                 className='hover:bg-muted/50 flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors'
                               >
-                                <Badge className={`${getStatusColor(exe.status || '')} h-5 shrink-0 px-1.5 text-[10px] font-bold uppercase`}>
+                                <Badge
+                                  className={`${getStatusColor(exe.status || '')} h-5 shrink-0 px-1.5 text-[10px] font-bold uppercase`}
+                                >
                                   {exe.status ? t(`requests.status.${exe.status}`) : t('requests.columns.unknown')}
                                 </Badge>
                                 <div className='flex min-w-0 flex-col'>
@@ -729,18 +739,25 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
         }
 
         if (!request.stream) {
-          return <span className='font-mono text-xs'>{t('requests.duration.total', { duration: formatDuration(requestLatencyMs) })} · {t('requests.stream.nonStreaming')}</span>;
+          return (
+            <span className='font-mono text-xs'>
+              {t('requests.duration.total', { duration: formatDuration(requestLatencyMs) })} · {t('requests.stream.nonStreaming')}
+            </span>
+          );
         }
 
         return (
           <div className='min-w-[128px] font-mono text-xs'>
-            {request.metricsFirstTokenLatencyMs != null && <div>{t('requests.duration.firstToken', { duration: formatDuration(request.metricsFirstTokenLatencyMs) })}</div>}
-            <div className='text-muted-foreground'>{t('requests.duration.total', { duration: formatDuration(requestLatencyMs) })} · {t('requests.stream.streaming')}</div>
+            {request.metricsFirstTokenLatencyMs != null && (
+              <div>{t('requests.duration.firstToken', { duration: formatDuration(request.metricsFirstTokenLatencyMs) })}</div>
+            )}
+            <div className='text-muted-foreground'>
+              {t('requests.duration.total', { duration: formatDuration(requestLatencyMs) })} · {t('requests.stream.streaming')}
+            </div>
           </div>
         );
       },
-      sortingFn: (rowA, rowB) =>
-        (getEffectiveRequestLatencyMs(rowA.original) ?? 0) - (getEffectiveRequestLatencyMs(rowB.original) ?? 0),
+      sortingFn: (rowA, rowB) => (getEffectiveRequestLatencyMs(rowA.original) ?? 0) - (getEffectiveRequestLatencyMs(rowB.original) ?? 0),
     },
     {
       id: 'tokensPerSecond',
@@ -780,9 +797,7 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
       enableSorting: true,
       enableHiding: true,
       cell: ({ row }) => (
-        <span className='text-xs whitespace-nowrap'>
-          {format(new Date(row.original.createdAt), 'yyyy-MM-dd HH:mm:ss', { locale })}
-        </span>
+        <span className='text-xs whitespace-nowrap'>{format(new Date(row.original.createdAt), 'yyyy-MM-dd HH:mm:ss', { locale })}</span>
       ),
     },
     {

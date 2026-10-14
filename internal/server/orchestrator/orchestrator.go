@@ -1,6 +1,7 @@
 package orchestrator
 
 import (
+ "github.com/looplj/axonhub/llm/transformer/openai/responses"
 	"context"
 	"errors"
 	"net/http"
@@ -356,7 +357,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		// to ensure that the request execution is created with the correct request bodys.
 		persistRequestExecution(outbound),
 		pipeline.OnRawResponse("cache-native-responses-session", func(ctx context.Context, response *httpclient.Response) (*httpclient.Response, error) {
-			if continuation != nil && response != nil && state.RawProviderRequest != nil && state.RawProviderRequest.APIFormat == string(llm.APIFormatOpenAIResponse) {
+			if continuation != nil && response != nil && state.RawProviderRequest != nil && responses.IsResponsesFormat(llm.APIFormat(state.RawProviderRequest.APIFormat)) {
 				processor.responsesSessions.record(ctx, responsesSessionProviderBody(state), response.Body)
 			}
 			return response, nil

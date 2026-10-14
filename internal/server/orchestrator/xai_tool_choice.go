@@ -1,6 +1,7 @@
 package orchestrator
 
 import (
+ "github.com/looplj/axonhub/llm/transformer/openai/responses"
 	"context"
 	"fmt"
 
@@ -19,7 +20,7 @@ import (
 func applyXAIHostedToolChoice(outbound *PersistentOutboundTransformer) pipeline.Middleware {
 	return pipeline.OnRawRequest("xai-hosted-tool-choice", func(_ context.Context, request *httpclient.Request) (*httpclient.Request, error) {
 		selected := outbound.GetCurrentChannel()
-		if request == nil || request.APIFormat != string(llm.APIFormatOpenAIResponse) ||
+		if request == nil || !responses.IsResponsesFormat(llm.APIFormat(request.APIFormat)) ||
 			selected == nil || selected.Type != channel.TypeXaiSubscription {
 			return request, nil
 		}

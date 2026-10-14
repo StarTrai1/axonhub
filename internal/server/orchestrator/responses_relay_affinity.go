@@ -1,6 +1,7 @@
 package orchestrator
 
 import (
+ "github.com/looplj/axonhub/llm/transformer/openai/responses"
 	"context"
 	"errors"
 	"fmt"
@@ -94,7 +95,7 @@ func (m *responsesRelayAffinityMiddleware) Name() string { return "responses-rel
 
 func (m *responsesRelayAffinityMiddleware) scope(request *httpclient.Request) (responsesRelayAffinityKey, bool) {
 	if m.outbound == nil || m.outbound.state == nil || request == nil ||
-		request.APIFormat != string(llm.APIFormatOpenAIResponse) {
+		!responses.IsResponsesFormat(llm.APIFormat(request.APIFormat)) {
 		return responsesRelayAffinityKey{}, false
 	}
 	state := m.outbound.state

@@ -20,7 +20,7 @@ func TestResponsesSessionPublishesLargeHistoryBeforePersistence(t *testing.T) {
 		t.Fatal("a just-completed large history must not depend on database persistence")
 		return nil, nil, false, nil
 	})
-	history := strings.Repeat("x", responsesSessionMaxResponse+4096)
+	history := strings.Repeat("x", (1<<20)+4096)
 	requestBody := []byte(`{"model":"gpt-6-astra","input":[{"role":"user","content":"` + history + `"}]}`)
 	terminal := &httpclient.StreamEvent{Data: []byte(`{"type":"response.completed","response":{"id":"resp_large_live","status":"completed","output":[{"type":"function_call","id":"fc_native","call_id":"call_native","name":"exec","arguments":"{}"}]}}`)}
 	wrapped := store.wrapStream(ctx, requestBody, streams.SliceStream([]*httpclient.StreamEvent{terminal}))
@@ -74,7 +74,8 @@ func TestResponsesSessionRejectsRecordsAboveReplayLimit(t *testing.T) {
 	store := newResponsesSessionStore()
 	body := []byte(`{"input":"` + strings.Repeat("x", responsesSessionMaxReplay) + `"}`)
 	store.record(ctx, body, []byte(`{"id":"resp_oversized","status":"completed","output":[]}`))
-	require.Nil(t, store.lookup(ctx, "resp_oversized"))
+	require.NotNil(t, store.lookup(ctx, "resp_oversized"))
+ require.False(t, store.lookup(ctx, "resp_oversized").complete)
 	require.Zero(t, store.totalBytes)
 }
 
@@ -121,5 +122,6 @@ func TestResponsesSessionRejectsUnexpandedLiveDelta(t *testing.T) {
 	ctx := shared.WithSessionScope(context.Background(), "owner")
 	store := newResponsesSessionStore()
 	store.record(ctx, []byte(`{"previous_response_id":"resp_ancestor","input":[]}`), []byte(`{"id":"resp_delta","status":"completed","output":[]}`))
-	require.Nil(t, store.lookup(ctx, "resp_delta"))
+	require.NotNil(t, store.lookup(ctx, "resp_delta"))
+ require.False(t, store.lookup(ctx, "resp_delta").complete)
 }

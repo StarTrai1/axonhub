@@ -126,7 +126,7 @@ func shouldInjectResponsesLiteWebSearch(outbound *PersistentOutboundTransformer,
 	}
 
 	llmRequest := outbound.state.LlmRequest
-	if llmRequest == nil || llmRequest.APIFormat != llm.APIFormatOpenAIResponse ||
+	if llmRequest == nil || !responses.IsResponsesFormat(llmRequest.APIFormat) ||
 		llmRequest.RequestType != llm.RequestTypeChat || llmRequest.RawRequest == nil {
 		return false
 	}

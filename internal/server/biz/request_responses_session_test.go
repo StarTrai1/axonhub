@@ -110,9 +110,9 @@ func TestRequestServiceLoadCompletedResponsesSessionScopesByAPIKeyAndProject(t *
 
 	requestBody, responseBody, found, err = service.LoadCompletedResponsesSession(ownerCtx, "resp_websocket")
 	require.NoError(t, err)
- require.False(t, found, "delta-only storage is not a complete portable snapshot")
- require.Empty(t, requestBody)
- require.Empty(t, responseBody)
+	require.False(t, found, "delta-only storage is not a complete portable snapshot")
+	require.Empty(t, requestBody)
+	require.Empty(t, responseBody)
 
 	_, _, found, err = service.LoadCompletedResponsesSession(otherCtx, "resp_websocket")
 	require.NoError(t, err)

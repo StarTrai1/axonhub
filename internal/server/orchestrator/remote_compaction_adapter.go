@@ -141,7 +141,7 @@ func (m *remoteCompactionMiddleware) OnInboundLlmRequest(ctx context.Context, re
 
 	candidates := m.inbound.state.ChannelModelsCandidates
 	if req.RawRequest != nil && len(rawRequestPayload(req.RawRequest)) > 0 &&
-		(req.APIFormat == llm.APIFormatOpenAIResponse || req.RequestType == llm.RequestTypeCompact) {
+		(responses.IsResponsesFormat(req.APIFormat) || req.RequestType == llm.RequestTypeCompact) {
 		ref, threadID, rawModel, err := parseRemoteCompactionRequest(rawRequestPayload(req.RawRequest))
 		if err != nil {
 			return nil, err

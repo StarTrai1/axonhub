@@ -55,10 +55,7 @@ export function getApiFormatsForProvider(provider: string, configs: ProtocolConf
  * Codex Responses endpoints are managed by the WebSocket checkbox instead.
  * Other custom endpoint formats remain available everywhere.
  */
-export function getConfigurableApiFormatsForChannelType(
-  channelType: ChannelType,
-  configurableFormats: readonly string[]
-): string[] {
+export function getConfigurableApiFormatsForChannelType(channelType: ChannelType, configurableFormats: readonly string[]): string[] {
   if (channelType === 'typesafe') {
     return ['typesafe/systemone'];
   }
@@ -134,7 +131,6 @@ export function getInitialApiFormatForChannel(
   return defaultApiFormat;
 }
 
-
 const OPENAI_RESPONSES_FORMAT = 'openai/responses';
 const OPENAI_RESPONSES_WEBSOCKET_FORMAT = 'openai/responses-ws';
 
@@ -202,7 +198,9 @@ export function hasCodexResponsesWebSocketOverrideReplacement(channel?: CodexRes
   if (!channel) return false;
 
   const http = channel.endpoints?.find((endpoint) => resolveResponsesFormat(endpoint, channel.baseURL) === OPENAI_RESPONSES_FORMAT);
-  const webSocket = channel.endpoints?.find((endpoint) => resolveResponsesFormat(endpoint, channel.baseURL) === OPENAI_RESPONSES_WEBSOCKET_FORMAT);
+  const webSocket = channel.endpoints?.find(
+    (endpoint) => resolveResponsesFormat(endpoint, channel.baseURL) === OPENAI_RESPONSES_WEBSOCKET_FORMAT
+  );
   if (!http || !webSocket) return false;
 
   return http.baseURL !== webSocket.baseURL || http.path !== webSocket.path;

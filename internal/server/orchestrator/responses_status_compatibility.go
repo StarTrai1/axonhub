@@ -1,6 +1,7 @@
 package orchestrator
 
 import (
+ "github.com/looplj/axonhub/llm/transformer/openai/responses"
 	"context"
 	"crypto/sha256"
 	"encoding/json"
@@ -128,7 +129,7 @@ func (m *responsesRejectedStatusCompatibilityMiddleware) OnOutboundRawRequest(
 		return request, nil
 	}
 	var metadataKey responsesMetadataCapabilityKey
-	if request.URL != "" && request.APIFormat == string(llm.APIFormatOpenAIResponse) {
+	if request.URL != "" && responses.IsResponsesFormat(llm.APIFormat(request.APIFormat)) {
 		metadataKey = responsesMetadataKey(channel.ID, request)
 		if m.hasMetadataRejection(ctx, metadataKey, request.Body) {
 			rememberResponsesRejectedStatusRule(m.outbound.state, channel.ID, responsesRejectedStatusRule{
@@ -188,7 +189,7 @@ func (m *responsesRejectedStatusCompatibilityMiddleware) OnOutboundRawError(ctx 
 
 	rule, ok := responsesRejectedStatusRuleFromError(err, state.RawProviderRequest.Body)
 	if !ok && ctx.Err() == nil && channel.Type == entchannel.TypeCodex && !channel.Credentials.IsOAuth() &&
-		state.RawProviderRequest.APIFormat == string(llm.APIFormatOpenAIResponse) {
+		responses.IsResponsesFormat(llm.APIFormat(state.RawProviderRequest.APIFormat)) {
 		destination, parseErr := url.Parse(state.RawProviderRequest.URL)
 		if parseErr == nil && destination.Hostname() != "" && !strings.EqualFold(destination.Hostname(), "chatgpt.com") &&
 			!strings.EqualFold(destination.Hostname(), "api.openai.com") {
@@ -212,7 +213,7 @@ func (m *responsesRejectedStatusCompatibilityMiddleware) OnOutboundRawError(ctx 
 		// Keep this correction within the current request and exact destination.
 		// A resource mismatch is not a global channel capability declaration.
 		rule.resourceScope = lo.ToPtr(responsesMetadataKey(channel.ID, state.RawProviderRequest))
-	} else if state.RawProviderRequest.APIFormat != string(llm.APIFormatOpenAIResponse) {
+	} else if !responses.IsResponsesFormat(llm.APIFormat(state.RawProviderRequest.APIFormat)) {
 		return
 	}
 	if rule.fieldName() == "internal_chat_message_metadata_passthrough" && state.RawProviderRequest.URL != "" {

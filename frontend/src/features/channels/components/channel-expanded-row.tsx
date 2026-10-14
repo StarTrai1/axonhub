@@ -2,8 +2,8 @@ import { memo } from 'react';
 import { format } from 'date-fns';
 import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui/badge';
-import { CHANNEL_CONFIGS } from '../data/config_channels';
 import { useChannelDetails } from '../data/channels';
+import { CHANNEL_CONFIGS } from '../data/config_channels';
 import { getEffectiveResponsesFormats } from '../data/protocol-options';
 import { Channel } from '../data/schema';
 
@@ -21,7 +21,7 @@ export const ChannelExpandedRow = memo(({ channel: listChannel, columnsLength, g
   const responsesFormats = config?.apiFormat === 'openai/responses' ? getEffectiveResponsesFormats(channel) : [];
 
   return (
-    <div className='bg-muted/30 p-6 hover:bg-muted/50'>
+    <div className='bg-muted/30 hover:bg-muted/50 p-6'>
       <div className='space-y-6'>
         <div className='grid grid-cols-1 gap-6 md:grid-cols-2'>
           <div className='space-y-3'>
@@ -84,7 +84,6 @@ export const ChannelExpandedRow = memo(({ channel: listChannel, columnsLength, g
                 </div>
               </div>
             </div>
-
           </div>
         </div>
 

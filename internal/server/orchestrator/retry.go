@@ -81,7 +81,7 @@ func isRetryableTransportError(err error) bool {
 			return true
 		}
 		if cause.Error() == "http2: client connection force closed via ClientConn.Close" ||
-   cause.Error() == "http2: client conn is closed" || retryableHTTP2StreamError.MatchString(cause.Error()) {
+			cause.Error() == "http2: client conn is closed" || retryableHTTP2StreamError.MatchString(cause.Error()) {
 			return true
 		}
 	}

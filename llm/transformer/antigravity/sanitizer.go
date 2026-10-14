@@ -387,92 +387,72 @@ func mergeAllOf(schema map[string]any) map[string]any {
 	return schema
 }
 
+// Gemini's native Schema supports anyOf. Preserve alternatives instead of
+// selecting a single branch and silently losing the other accepted input types.
 func flattenAnyOfOneOf(schema map[string]any) map[string]any {
-	if schema == nil {
-		return nil
-	}
-
-	for _, unionKey := range []string{"anyOf", "oneOf"} {
-		if options, ok := schema[unionKey].([]any); ok && len(options) > 0 {
-			parentDesc, _ := schema["description"].(string)
-
-			// Check for enum pattern
-			mergedEnum := tryMergeEnumFromUnion(options)
-			if mergedEnum != nil {
-				delete(schema, unionKey)
-				schema["type"] = "string"
-
-				schema["enum"] = mergedEnum
-				if parentDesc != "" {
-					schema["description"] = parentDesc
-				}
-
-				continue
-			}
-
-			// Flatten logic
-			bestIdx := 0
-			bestScore := -1
-
-			var allTypes []string
-
-			for i, opt := range options {
-				if optMap, ok := opt.(map[string]any); ok {
-					score, typeName := scoreSchemaOption(optMap)
-					if typeName != "" {
-						allTypes = append(allTypes, typeName)
-					}
-
-					if score > bestScore {
-						bestScore = score
-						bestIdx = i
-					}
-				}
-			}
-
-			if bestIdx < len(options) {
-				if selected, ok := options[bestIdx].(map[string]any); ok {
-					// Recursively flatten selected
-					selected = flattenAnyOfOneOf(selected)
-
-					// Merge selected into schema
-					delete(schema, unionKey)
-					// delete(schema, "description") // Handle description merge below
-
-					// Description merge
-					childDesc, _ := selected["description"].(string)
-					if parentDesc != "" {
-						if childDesc != "" && childDesc != parentDesc {
-							selected["description"] = fmt.Sprintf("%s (%s)", parentDesc, childDesc)
-						} else {
-							selected["description"] = parentDesc
-						}
-					}
-
-					// Type hints
-					uniqueTypes := lo.Uniq[string](allTypes)
-					if len(uniqueTypes) > 1 {
-						hint := fmt.Sprintf("Accepts: %s", strings.Join(uniqueTypes, " | "))
-						selected = appendDescriptionHint(selected, hint)
-					}
-
-					// Copy selected fields to schema
-					maps.Copy(schema, selected)
-				}
-			}
-		}
-	}
-
-	// Recursion
-	for key, value := range schema {
-		if subSchema, ok := value.(map[string]any); ok {
-			schema[key] = flattenAnyOfOneOf(subSchema)
-		} else if subArray, ok := value.([]any); ok {
-			schema[key] = processArray(subArray, flattenAnyOfOneOf)
-		}
-	}
-
-	return schema
+ if schema == nil { return nil }
+ if one, ok := schema["oneOf"].([]any); ok && schema["anyOf"] != nil {
+  raw, _ := json.Marshal(one)
+  appendDescriptionHint(schema, "oneOf: " + string(raw))
+  delete(schema, "oneOf")
+ }
+ for _, unionKey := range []string{"anyOf", "oneOf"} {
+  options, ok := schema[unionKey].([]any)
+  if !ok || len(options) == 0 { continue }
+  if unionKey == "anyOf" {
+   if merged := tryMergeEnumFromUnion(options); merged != nil {
+    delete(schema, unionKey)
+    schema["type"], schema["enum"] = "string", merged
+    continue
+   }
+  }
+  nonNull := make([]any, 0, len(options))
+  nullable := false
+  for _, value := range options {
+   branch, ok := value.(map[string]any)
+   if !ok { continue }
+   if branch["type"] == "null" { nullable = true; continue }
+   if branch["type"] == nil && branch["properties"] == nil {
+    if required, ok := branch["required"].([]any); ok {
+     parent, _ := schema["properties"].(map[string]any)
+     properties := make(map[string]any)
+     for _, name := range required {
+      if key, ok := name.(string); ok && parent[key] != nil { properties[key] = parent[key] }
+     }
+     if len(properties) == len(required) && len(properties) > 0 {
+      branch["type"], branch["properties"] = "object", properties
+     }
+    }
+   }
+   nonNull = append(nonNull, flattenAnyOfOneOf(branch))
+  }
+  delete(schema, unionKey)
+  if nullable { schema["nullable"] = true }
+  switch len(nonNull) {
+  case 0:
+   if nullable { schema["type"] = "null" }
+  case 1:
+   for key, value := range nonNull[0].(map[string]any) {
+    if _, exists := schema[key]; !exists { schema[key] = value }
+   }
+  default:
+   schema["anyOf"] = nonNull
+   if unionKey == "oneOf" { appendDescriptionHint(schema, "Exactly one alternative must match") }
+  }
+ }
+ // Visit schema positions only; property names and example values are data.
+ for _, key := range []string{"properties", "patternProperties", "$defs", "definitions", "dependentSchemas"} {
+  if children, ok := schema[key].(map[string]any); ok {
+   for _, value := range children { if child, ok := value.(map[string]any); ok { flattenAnyOfOneOf(child) } }
+  }
+ }
+ for _, key := range []string{"items", "additionalProperties", "contains", "not", "if", "then", "else", "propertyNames"} {
+  if child, ok := schema[key].(map[string]any); ok { flattenAnyOfOneOf(child) }
+ }
+ for _, key := range []string{"anyOf", "allOf", "prefixItems"} {
+  if children, ok := schema[key].([]any); ok { schema[key] = processArray(children, flattenAnyOfOneOf) }
+ }
+ return schema
 }
 
 func flattenTypeArrays(schema map[string]any, nullableFields map[string][]string, currentPath string) map[string]any {

@@ -1,6 +1,7 @@
 package orchestrator
 
 import (
+ "github.com/looplj/axonhub/llm/transformer/openai/responses"
 	"context"
 
 	"github.com/samber/lo"
@@ -94,7 +95,7 @@ func isRemoteCompactionGenerationRequest(req *llm.Request) bool {
 	if req.RequestType == llm.RequestTypeCompact {
 		return true
 	}
-	if req.APIFormat != llm.APIFormatOpenAIResponse ||
+	if !responses.IsResponsesFormat(req.APIFormat) ||
 		req.ProviderExtensions == nil ||
 		req.ProviderExtensions.OpenAIResponses == nil ||
 		req.ProviderExtensions.OpenAIResponses.Request == nil {
@@ -124,7 +125,7 @@ func isRemoteCompactionRequest(req *llm.Request) bool {
 	// compaction_trigger item, then installs the returned opaque compaction item
 	// into subsequent turns. The inbound transformer normalizes the latter into
 	// message content, so both representations must be checked.
-	if req.APIFormat != llm.APIFormatOpenAIResponse {
+	if !responses.IsResponsesFormat(req.APIFormat) {
 		return false
 	}
 

@@ -17,12 +17,10 @@ func IsResponsesRecoveryError(err error) bool {
 	if errors.Is(err, ErrResponsesContinuationUnavailable) {
 		return true
 	}
-	var response *llm.ResponseError
-	if errors.As(err, &response) {
+	if response, ok := errors.AsType[*llm.ResponseError](err); ok {
 		return response.Detail.Code == "previous_response_not_found"
 	}
-	var wire *httpclient.Error
-	if errors.As(err, &wire) {
+	if wire, ok := errors.AsType[*httpclient.Error](err); ok {
 		var body struct {
 			Error struct {
 				Code string `json:"code"`

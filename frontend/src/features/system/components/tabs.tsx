@@ -2,21 +2,21 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useHorizontalScroll } from '@/hooks/use-horizontal-scroll';
+import { usePermissions } from '@/hooks/usePermissions';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { AboutSettings } from './about-settings';
+import { BackupSettings } from './backup-settings';
 import { BrandSettings } from './brand-settings';
 import { CodexCompatibilitySettings } from './codex-compatibility-settings';
 import { DiagnosticsSettings } from './diagnostics-settings';
 import { GeneralSettings } from './general-settings';
+import { ProxyPresetsSettings } from './proxy-presets-settings';
 import { QuotaSettings } from './quota-settings';
 import { RetrySettings } from './retry-settings';
 import { SecuritySettings } from './security-settings';
 import { StorageSettings } from './storage-settings';
-import { BackupSettings } from './backup-settings';
-import { ProxyPresetsSettings } from './proxy-presets-settings';
 import { WebhookSettings } from './webhook-settings';
-import { usePermissions } from '@/hooks/usePermissions';
 
 export type SystemTabKey =
   | 'general'
@@ -74,10 +74,7 @@ export function SystemSettingsTabs({ initialTab }: SystemSettingsTabsProps) {
       return;
     }
 
-    if (
-      !isSystemTabKey(initialTab) ||
-      (!isOwner && (initialTab === 'backup' || initialTab === 'diagnostics'))
-    ) {
+    if (!isSystemTabKey(initialTab) || (!isOwner && (initialTab === 'backup' || initialTab === 'diagnostics'))) {
       setActiveTab('general');
       return;
     }

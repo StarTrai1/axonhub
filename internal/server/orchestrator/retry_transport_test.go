@@ -49,9 +49,9 @@ func TestHTTP2PeerResetRetryClassification(t *testing.T) {
 		want bool
 	}{
 		{name: "HTTP2 retired pool", err: fmt.Errorf("upstream: %w", errors.New("http2: client conn is closed")), want: true},
-  {name: "HTTP2 forced close", err: errors.New("http2: client connection force closed via ClientConn.Close"), want: true},
-  {name: "HTTP2 body is not transport", err: &httpclient.Error{StatusCode: 400, Body: []byte(`{"error":"http2: client conn is closed"}`)}},
-  {name: "internal reset", err: fmt.Errorf("failed to stream request: %w", errors.New("stream error: stream ID 65; INTERNAL_ERROR; received from peer")), want: true},
+		{name: "HTTP2 forced close", err: errors.New("http2: client connection force closed via ClientConn.Close"), want: true},
+		{name: "HTTP2 body is not transport", err: &httpclient.Error{StatusCode: 400, Body: []byte(`{"error":"http2: client conn is closed"}`)}},
+		{name: "internal reset", err: fmt.Errorf("failed to stream request: %w", errors.New("stream error: stream ID 65; INTERNAL_ERROR; received from peer")), want: true},
 		{name: "refused stream", err: errors.New("stream error: stream ID 1; REFUSED_STREAM; received from peer"), want: true},
 		{name: "peer requires HTTP1", err: errors.New("stream error: stream ID 1; HTTP_1_1_REQUIRED; received from peer"), want: true},
 		{name: "local protocol violation", err: errors.New("stream error: stream ID 1; PROTOCOL_ERROR; received from peer")},

@@ -94,11 +94,13 @@ func TestRawStreamBacklog_ExactBudgets(t *testing.T) {
 	})
 	t.Run("bytes include type and ID", func(t *testing.T) {
 		backlog := &rawStreamBacklog{}
-		_, err := backlog.hold(&httpclient.StreamEvent{Type: "ping", LastEventID: "1", Data: make([]byte, 64*1024*1024-5)})
+		_, err := backlog.hold(&httpclient.StreamEvent{Type: "ping", LastEventID: "1", Data: make([]byte, 32*1024*1024-5)})
 		require.NoError(t, err)
-		_, err = backlog.hold(&httpclient.StreamEvent{Data: []byte("x")})
+  _, err = backlog.hold(&httpclient.StreamEvent{Data: make([]byte, 32*1024*1024)})
+  require.NoError(t, err)
+  _, err = backlog.hold(&httpclient.StreamEvent{Data: []byte("x")})
 		require.ErrorIs(t, err, pipeline.ErrPreCommitBufferExceeded)
-		require.Len(t, backlog.attach(), 1)
+		require.Len(t, backlog.attach(), 2)
 	})
 }
 

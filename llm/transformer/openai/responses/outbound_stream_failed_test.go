@@ -43,7 +43,11 @@ func TestResponsesOutboundStreamResponseFailedStatus(t *testing.T) {
 			var responseErr *llm.ResponseError
 			require.ErrorAs(t, err, &responseErr)
 			require.Equal(t, tt.want, responseErr.StatusCode)
-			if tt.want >= 500 || tt.want == 429 { require.ErrorIs(t, err, llm.ErrEmptyResponse) } else { require.NotErrorIs(t, err, llm.ErrEmptyResponse) }
+			if tt.want >= 500 || tt.want == 429 {
+				require.ErrorIs(t, err, llm.ErrEmptyResponse)
+			} else {
+				require.NotErrorIs(t, err, llm.ErrEmptyResponse)
+			}
 		})
 	}
 }

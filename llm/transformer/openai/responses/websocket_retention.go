@@ -3,6 +3,7 @@ package responses
 import (
 	"encoding/json"
 	"strings"
+ "slices"
 )
 
 func (pc *pooledWebSocketConn) rememberTurn(input []json.RawMessage, responseID string, maxInputBytes int) bool {
@@ -42,6 +43,6 @@ func (l *webSocketLease) rememberTurn(responseID string, output []json.RawMessag
 	if maxInputBytes > 0 && rawMessagesSize(l.nextFullInput)+rawMessagesSize(output) > maxInputBytes {
 		return l.pooled.rememberTurn(nil, responseID, maxInputBytes)
 	}
-	input := append(l.nextFullInput[:len(l.nextFullInput):len(l.nextFullInput)], output...)
+	input := append(slices.Clip(l.nextFullInput), output...)
 	return l.pooled.rememberTurn(input, responseID, maxInputBytes)
 }

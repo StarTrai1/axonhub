@@ -1,6 +1,7 @@
 package orchestrator
 
 import (
+ "github.com/looplj/axonhub/llm/transformer/openai/responses"
 	"bytes"
 	"context"
 	"crypto/aes"
@@ -101,7 +102,7 @@ func responsesAgentMessageRecoveryDigest(item gjson.Result, ciphertext string) s
 func recoverResponsesAgentMessages(outbound *PersistentOutboundTransformer, service *biz.SystemService) pipeline.Middleware {
 	return pipeline.OnRawRequest("responses-agent-message-recovery", func(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error) {
 		if outbound == nil || outbound.state == nil || service == nil || request == nil ||
-			(request.APIFormat != string(llm.APIFormatOpenAIResponse) && request.APIFormat != string(llm.APIFormatOpenAIResponseCompact)) {
+			(!responses.IsResponsesFormat(llm.APIFormat(request.APIFormat)) && request.APIFormat != string(llm.APIFormatOpenAIResponseCompact)) {
 			return request, nil
 		}
 		channel := outbound.GetCurrentChannel()

@@ -410,7 +410,7 @@ func stripUnsupportedCodexPromptCacheOptions(outbound *PersistentOutboundTransfo
 func repairInvalidOpenAIToolSchemas() pipeline.Middleware {
 	return pipeline.OnRawRequest("repair-openai-tool-schemas", func(_ context.Context, request *httpclient.Request) (*httpclient.Request, error) {
 		switch llm.APIFormat(request.APIFormat) {
-		case llm.APIFormatOpenAIChatCompletion, llm.APIFormatOpenAIResponse, llm.APIFormatAnthropicMessage:
+		case llm.APIFormatOpenAIChatCompletion, llm.APIFormatOpenAIResponse, llm.APIFormatOpenAIResponseWebSocket, llm.APIFormatAnthropicMessage:
 		default:
 			return request, nil
 		}
@@ -990,7 +990,7 @@ func shouldRepairDelayedCodexResponsesTerminal(outbound *PersistentOutboundTrans
 	if currentChannel == nil || currentChannel.Type != channel.TypeCodex || request == nil {
 		return false
 	}
-	if request.APIFormat != string(llm.APIFormatOpenAIResponse) {
+	if !responses.IsResponsesFormat(llm.APIFormat(request.APIFormat)) {
 		return false
 	}
 

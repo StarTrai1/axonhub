@@ -1,77 +1,114 @@
 package codex
 
 import (
- "bytes"
- "encoding/json"
- "errors"
- "strconv"
- "strings"
+	"bytes"
+	"encoding/json"
+	"errors"
+	"strconv"
+	"strings"
 
- "github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/httpclient"
 )
 
 // Based on CLIProxyAPI 57d005fe: Codex rejects integer numeric bounds outside int64.
 // Only schema keywords are changed; examples, defaults, enum values and tool inputs remain opaque.
 func normalizeNumericToolBounds(request *httpclient.Request) *httpclient.Request {
- if request == nil || (!bytes.Contains(request.Body, []byte("inimum")) && !bytes.Contains(request.Body, []byte("aximum"))) { return request }
- var payload map[string]any
- decoder := json.NewDecoder(bytes.NewReader(request.Body))
- decoder.UseNumber()
- if decoder.Decode(&payload) != nil { return request }
- changed := normalizeToolBoundList(payload["tools"])
- if input, ok := payload["input"].([]any); ok {
-  for _, value := range input {
-   item, ok := value.(map[string]any)
-   if !ok { continue }
-   if item["type"] == "additional_tools" || item["type"] == "tool_search_output" {
-    if normalizeToolBoundList(item["tools"]) { changed = true }
-   }
-  }
- }
- if !changed { return request }
- body, err := json.Marshal(payload)
- if err != nil { return request }
- cloned := *request
- cloned.Body = body
- return &cloned
+	if request == nil || (!bytes.Contains(request.Body, []byte("inimum")) && !bytes.Contains(request.Body, []byte("aximum"))) {
+		return request
+	}
+	var payload map[string]any
+	decoder := json.NewDecoder(bytes.NewReader(request.Body))
+	decoder.UseNumber()
+	if decoder.Decode(&payload) != nil {
+		return request
+	}
+	changed := normalizeToolBoundList(payload["tools"])
+	if input, ok := payload["input"].([]any); ok {
+		for _, value := range input {
+			item, ok := value.(map[string]any)
+			if !ok {
+				continue
+			}
+			if item["type"] == "additional_tools" || item["type"] == "tool_search_output" {
+				if normalizeToolBoundList(item["tools"]) {
+					changed = true
+				}
+			}
+		}
+	}
+	if !changed {
+		return request
+	}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return request
+	}
+	cloned := *request
+	cloned.Body = body
+	return &cloned
 }
 
 func normalizeToolBoundList(value any) bool {
- tools, ok := value.([]any)
- if !ok { return false }
- changed := false
- for _, value := range tools {
-  tool, ok := value.(map[string]any)
-  if !ok { continue }
-  if tool["type"] == "namespace" {
-   if normalizeToolBoundList(tool["tools"]) { changed = true }
-  }
-  if tool["type"] != "function" { continue }
-  if nested, ok := tool["function"].(map[string]any); ok { tool = nested }
-  if schema, ok := tool["parameters"].(map[string]any); ok && normalizeSchemaBounds(schema) { changed = true }
- }
- return changed
+	tools, ok := value.([]any)
+	if !ok {
+		return false
+	}
+	changed := false
+	for _, value := range tools {
+		tool, ok := value.(map[string]any)
+		if !ok {
+			continue
+		}
+		if tool["type"] == "namespace" {
+			if normalizeToolBoundList(tool["tools"]) {
+				changed = true
+			}
+		}
+		if tool["type"] != "function" {
+			continue
+		}
+		if nested, ok := tool["function"].(map[string]any); ok {
+			tool = nested
+		}
+		if schema, ok := tool["parameters"].(map[string]any); ok && normalizeSchemaBounds(schema) {
+			changed = true
+		}
+	}
+	return changed
 }
 
 func normalizeSchemaBounds(schema map[string]any) bool {
- changed := false
- for _, keyword := range []string{"minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum"} {
-  if number, ok := schema[keyword].(json.Number); ok && isNumericBoundOutOfInt64(number) { delete(schema, keyword); changed = true }
- }
- for _, key := range []string{"properties", "patternProperties", "$defs", "definitions", "dependentSchemas"} {
-  if children, ok := schema[key].(map[string]any); ok {
-   for _, value := range children { if child, ok := value.(map[string]any); ok && normalizeSchemaBounds(child) { changed = true } }
-  }
- }
- for _, key := range []string{"items", "prefixItems", "allOf", "anyOf", "oneOf", "additionalProperties", "additionalItems", "contains", "not", "if", "then", "else", "propertyNames", "unevaluatedProperties", "unevaluatedItems", "contentSchema"} {
-  switch value := schema[key].(type) {
-  case map[string]any:
-   if normalizeSchemaBounds(value) { changed = true }
-  case []any:
-   for _, element := range value { if child, ok := element.(map[string]any); ok && normalizeSchemaBounds(child) { changed = true } }
-  }
- }
- return changed
+	changed := false
+	for _, keyword := range []string{"minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum"} {
+		if number, ok := schema[keyword].(json.Number); ok && isNumericBoundOutOfInt64(number) {
+			delete(schema, keyword)
+			changed = true
+		}
+	}
+	for _, key := range []string{"properties", "patternProperties", "$defs", "definitions", "dependentSchemas"} {
+		if children, ok := schema[key].(map[string]any); ok {
+			for _, value := range children {
+				if child, ok := value.(map[string]any); ok && normalizeSchemaBounds(child) {
+					changed = true
+				}
+			}
+		}
+	}
+	for _, key := range []string{"items", "prefixItems", "allOf", "anyOf", "oneOf", "additionalProperties", "additionalItems", "contains", "not", "if", "then", "else", "propertyNames", "unevaluatedProperties", "unevaluatedItems", "contentSchema"} {
+		switch value := schema[key].(type) {
+		case map[string]any:
+			if normalizeSchemaBounds(value) {
+				changed = true
+			}
+		case []any:
+			for _, element := range value {
+				if child, ok := element.(map[string]any); ok && normalizeSchemaBounds(child) {
+					changed = true
+				}
+			}
+		}
+	}
+	return changed
 }
 
 func isNumericBoundOutOfInt64(number json.Number) bool {
@@ -120,12 +157,12 @@ func isNumericBoundOutOfInt64(number json.Number) bool {
 	if intPart == "" && fracPart == "" {
 		return false
 	}
-	for i := 0; i < len(intPart); i++ {
+	for i := range len(intPart) {
 		if intPart[i] < '0' || intPart[i] > '9' {
 			return false
 		}
 	}
-	for i := 0; i < len(fracPart); i++ {
+	for i := range len(fracPart) {
 		if fracPart[i] < '0' || fracPart[i] > '9' {
 			return false
 		}
@@ -159,4 +196,3 @@ func isNumericBoundOutOfInt64(number json.Number) bool {
 	_, errParse := strconv.ParseInt(intStr, 10, 64)
 	return errors.Is(errParse, strconv.ErrRange)
 }
-

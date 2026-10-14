@@ -127,7 +127,7 @@ func TestSanitizeJSONSchema(t *testing.T) {
 			}`,
 		},
 		{
-			name: "Flatten anyOf",
+			name: "Preserve anyOf",
 			input: `{
 				"anyOf": [
 					{ "type": "string" },
@@ -135,8 +135,7 @@ func TestSanitizeJSONSchema(t *testing.T) {
 				]
 			}`,
 			expected: `{
-				"type": "string",
-				"description": "Accepts: string | integer"
+				"anyOf": [{"type":"string"},{"type":"integer"}]
 			}`,
 		},
 		{

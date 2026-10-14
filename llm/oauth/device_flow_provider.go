@@ -360,8 +360,7 @@ func (p *DeviceFlowProvider) getAccessTokenWithRefresh(ctx context.Context) (str
 			retryExpired := false
 			if onRefreshed != nil {
 				if err := onRefreshed(refreshCtx, fresh); err != nil {
-					var conflict *CredentialConflictError
-					if errors.As(err, &conflict) {
+					if conflict, ok := errors.AsType[*CredentialConflictError](err); ok {
 						fresh = conflict.Credentials
 						retryExpired = fresh != nil
 					} else {

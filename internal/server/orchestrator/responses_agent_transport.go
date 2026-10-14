@@ -1,6 +1,7 @@
 package orchestrator
 
 import (
+ "github.com/looplj/axonhub/llm/transformer/openai/responses"
 	"context"
 	"crypto/cipher"
 	"crypto/sha256"
@@ -85,7 +86,7 @@ func (m *responsesAgentTransport) OnOutboundRawRequest(ctx context.Context, requ
 	m.scope = ""
 	m.dirty = false
 	if m.outbound == nil || m.outbound.state == nil || m.service == nil || request == nil ||
-		(request.APIFormat != string(llm.APIFormatOpenAIResponse) && request.APIFormat != string(llm.APIFormatOpenAIResponseCompact)) {
+		(!responses.IsResponsesFormat(llm.APIFormat(request.APIFormat)) && request.APIFormat != string(llm.APIFormatOpenAIResponseCompact)) {
 		return request, nil
 	}
 	state := m.outbound.state

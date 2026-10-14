@@ -418,20 +418,28 @@ type webSocketLease struct {
 }
 
 func (l *webSocketLease) writeJSON(value any) error {
- return l.writeJSONContext(context.Background(), value)
+	return l.writeJSONContext(context.Background(), value)
 }
 
 func (l *webSocketLease) writeJSONContext(ctx context.Context, value any) error {
- if l == nil || l.conn == nil { return fmt.Errorf("websocket lease is nil") }
- if l.pooled != nil {
-  l.pooled.writeMu.Lock()
-  defer l.pooled.writeMu.Unlock()
- }
- if err := ctx.Err(); err != nil { return err }
- deadline := time.Now().Add(30 * time.Second)
- if expires, ok := ctx.Deadline(); ok && expires.Before(deadline) { deadline = expires }
- if err := l.conn.SetWriteDeadline(deadline); err != nil { return err }
- return l.conn.WriteJSON(value)
+	if l == nil || l.conn == nil {
+		return fmt.Errorf("websocket lease is nil")
+	}
+	if l.pooled != nil {
+		l.pooled.writeMu.Lock()
+		defer l.pooled.writeMu.Unlock()
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	deadline := time.Now().Add(30 * time.Second)
+	if expires, ok := ctx.Deadline(); ok && expires.Before(deadline) {
+		deadline = expires
+	}
+	if err := l.conn.SetWriteDeadline(deadline); err != nil {
+		return err
+	}
+	return l.conn.WriteJSON(value)
 }
 
 func runWebSocketSteers(ctx context.Context, lease *webSocketLease, stream *webSocketStream) {
