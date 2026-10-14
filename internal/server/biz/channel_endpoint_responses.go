@@ -8,6 +8,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/transformer/openai/codex"
 )
 
 func isResponsesEndpoint(format string) bool {
@@ -70,8 +71,11 @@ func (c *Channel) DefaultEndpoints() []objects.ChannelEndpoint {
 		}
 	}
 	if len(allowed) == 0 {
-		allowed[llm.APIFormatOpenAIResponseWebSocket.String()] = true
-		allowed[llm.APIFormatOpenAIResponse.String()] = endpointTransport(objects.ChannelEndpoint{BaseURL: c.BaseURL}) != objects.ChannelEndpointTransportWebSocket
+		websocketBase := endpointTransport(objects.ChannelEndpoint{BaseURL: c.BaseURL}) == objects.ChannelEndpointTransportWebSocket
+		// Third-party Codex-compatible HTTP relays need not implement the WS
+		// handshake. Preserve their existing transport unless explicitly enabled.
+		allowed[llm.APIFormatOpenAIResponseWebSocket.String()] = websocketBase || codex.SupportsModelCatalog(c.BaseURL)
+		allowed[llm.APIFormatOpenAIResponse.String()] = !websocketBase
 	}
 	return slices.DeleteFunc(defaults, func(ep objects.ChannelEndpoint) bool {
 		return isResponsesEndpoint(ep.APIFormat) && !allowed[ep.APIFormat]

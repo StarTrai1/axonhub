@@ -192,6 +192,13 @@ func (t *OutboundTransformer) TransformError(ctx context.Context, rawErr *httpcl
 
 	err := json.Unmarshal(rawErr.Body, &openaiError)
 	if err == nil && openaiError.Error.Message != "" {
+		if rawErr.StatusCode == http.StatusBadRequest && isRelayResponsesTimeout(openaiError.Error) {
+			// Some relays wrap a provider 408 in a generic 400 envelope. Restore
+			// only this exact timeout contract for the existing bounded retry path.
+			cause := *rawErr
+			cause.StatusCode = http.StatusRequestTimeout
+			return &llm.ResponseError{StatusCode: cause.StatusCode, Detail: openaiError.Error, Cause: &cause}
+		}
 		return &llm.ResponseError{
 			StatusCode: rawErr.StatusCode,
 			Detail:     openaiError.Error,

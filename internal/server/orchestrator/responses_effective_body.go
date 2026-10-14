@@ -12,6 +12,19 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
 
+// Inbound compaction can replace an opaque checkpoint with a verified summary,
+// or replace compaction_trigger with a local generation prompt. Freeze that
+// prepared source once, before any outbound attempt or compatibility retry.
+func syncResponsesContinuationSource(state *PersistenceState) pipeline.Middleware {
+	return pipeline.OnLlmRequest("sync_responses_continuation_source", func(_ context.Context, request *llm.Request) (*llm.Request, error) {
+		if c := state.ResponsesContinuation; c != nil && request.RawRequest != nil {
+			c.original = rawRequestPayload(request.RawRequest)
+			c.previous = gjson.GetBytes(c.original, "previous_response_id").String()
+		}
+		return request, nil
+	})
+}
+
 func applyResponsesContinuationBody(p *PersistentOutboundTransformer) pipeline.Middleware {
 	return pipeline.OnRawRequest("apply_responses_continuation_body", func(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error) {
 		c := p.state.ResponsesContinuation

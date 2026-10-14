@@ -3,6 +3,7 @@ package responses
 import (
 	"encoding/json"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -11,6 +12,16 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 )
+
+var relayResponsesTimeoutMessage = regexp.MustCompile(`^OpenAI Responses HTTP error \[408\]: The operation was timeout\.(?: \[trace_id=[A-Za-z0-9_-]+\])?$`)
+
+func isRelayResponsesTimeout(detail llm.ErrorDetail) bool {
+	if detail.Code != "" && detail.Code != "bad_request" && detail.Code != "invalid_request_error" {
+		return false
+	}
+	return (detail.Type == "" || detail.Type == "error" || detail.Type == "invalid_request_error") &&
+		relayResponsesTimeoutMessage.MatchString(detail.Message)
+}
 
 func responseErrorFromResponse(response *Response) *llm.ResponseError {
 	if response == nil {
@@ -199,6 +210,9 @@ func responseErrorHeaders(values map[string]json.RawMessage) http.Header {
 
 func newProtocolResponseError(detail llm.ErrorDetail) *llm.ResponseError {
 	statusCode := llm.InferResponseErrorStatusCode(detail.Code, detail.Type, detail.Message)
+	if isRelayResponsesTimeout(detail) {
+		statusCode = http.StatusRequestTimeout
+	}
 	if statusCode == 0 {
 		statusCode = 502
 	}

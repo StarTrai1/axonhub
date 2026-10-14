@@ -295,6 +295,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		adaptRemoteCompactionForUnsupportedChannels(inbound, processor.remoteCompactionAdapter, processor.PipelineFactory.Executor),
 		injectPrompts(inbound),
 		protectPrompts(inbound),
+		syncResponsesContinuationSource(state),
 		// Response pass-through middlewares run before persistRequest so the raw provider
 		// response is saved when pass-through is enabled.
 		applyPassThroughResponse(outbound, processor.SystemService),

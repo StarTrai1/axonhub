@@ -20,7 +20,10 @@ func TestCodexResponsesEndpointDefaults(t *testing.T) {
 		want      []string
 	}{
 		{"unconfigured HTTPS", "https://chatgpt.com/backend-api/codex#", nil, []string{h, w}},
-		{"unconfigured HTTP", "http://example.test:8080/base#", nil, []string{h, w}},
+		{"unconfigured HTTP relay", "http://example.test:8080/base#", nil, []string{h}},
+		{"unconfigured HTTPS relay", "https://example.test/v1", nil, []string{h}},
+		{"hostname lookalike relay", "https://chatgpt.com.example.test/backend-api/codex#", nil, []string{h}},
+		{"official default", "", nil, []string{h, w}},
 		{"legacy WSS base", "wss://example.test/base#", nil, []string{w}},
 		{"legacy WS base", "ws://example.test/base#", nil, []string{w}},
 		{"explicit H", "https://example.test/base#", []objects.ChannelEndpoint{{APIFormat: h}}, []string{h}},
@@ -31,7 +34,7 @@ func TestCodexResponsesEndpointDefaults(t *testing.T) {
 		{"explicit W", "https://example.test/base#", []objects.ChannelEndpoint{{APIFormat: w}}, []string{w}},
 		{"canonical dual", "https://example.test/base#", []objects.ChannelEndpoint{{APIFormat: h}, {APIFormat: w}}, []string{h, w}},
 		{"legacy dual", "https://example.test/base#", []objects.ChannelEndpoint{{APIFormat: h, Transport: "http"}, {APIFormat: h, Transport: "websocket"}}, []string{h, w}},
-		{"unrelated override", "https://example.test/base#", []objects.ChannelEndpoint{{APIFormat: llm.APIFormatOpenAIImageEdit.String(), Path: "/edit"}}, []string{h, w}},
+		{"unrelated override", "https://example.test/base#", []objects.ChannelEndpoint{{APIFormat: llm.APIFormatOpenAIImageEdit.String(), Path: "/edit"}}, []string{h}},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			// Given
