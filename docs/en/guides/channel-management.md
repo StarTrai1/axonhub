@@ -264,6 +264,12 @@ transport. A WebSocket scheme in a legacy endpoint is normalized to
 `openai/responses`. Existing explicit HTTP-only and WebSocket-only endpoint
 sets remain single-mode until they are saved with a new configuration.
 
+An unconfigured third-party Codex HTTP relay keeps HTTP as its default transport.
+Enable `openai/responses-ws` explicitly when the relay supports WebSocket;
+connecting a Codex client over WebSocket does not establish that capability.
+The official Codex backend retains both defaults, and a `ws://` or `wss://`
+base URL continues to select WebSocket.
+
 For a request whose inbound format matches an allowed endpoint on the selected
 channel, AxonHub selects that exact format first. If no same-format endpoint is
 available, it selects the first allowed endpoint using the configured endpoint

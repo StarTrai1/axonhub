@@ -261,6 +261,10 @@ Responses 有两种独立的端点格式：
 `openai/responses`。已经明确配置为仅 HTTP 或仅 WebSocket 的端点集合，在使用新配置
 保存前仍保持单模式。
 
+未配置端点的第三方 Codex HTTP 中转默认沿用 HTTP。确认中转支持 WebSocket 后，
+再显式启用 `openai/responses-ws`；客户端使用 WebSocket 并不代表上游也支持。
+官方 Codex 后端仍保留双端点默认值，`ws://` 或 `wss://` Base URL 仍选择 WebSocket。
+
 对于入站格式与所选渠道中允许的端点格式相同的请求，AxonHub 会先选择完全匹配的
 格式。如果没有同格式端点，则按配置顺序选择第一个允许的端点，并在 HTTP 与
 WebSocket 之间转换 Responses 请求、响应或事件封装。此回退不会改变渠道排序，也不会

@@ -125,6 +125,7 @@ func TestResponsesRejectedLocalCompactionRetriesTransientOpeningFailures(t *test
 		{"zero retry budget", bridgeOverloadError(), 1, 0, false, 1, false},
 		{"disabled retries", bridgeOverloadError(), 1, 2, true, 1, false},
 		{"opening EOF", io.ErrUnexpectedEOF, 1, 2, false, 2, true},
+		{"relay wrapped upstream timeout", &httpclient.Error{StatusCode: 400, Body: []byte(`{"error":{"type":"invalid_request_error","message":"OpenAI Responses HTTP error [408]: The operation was timeout. [trace_id=synthetic]"}}`)}, 1, 2, false, 2, true},
 		{"ordinary validation", &httpclient.Error{StatusCode: 400, Body: []byte(`{"error":{"message":"invalid input"}}`)}, 1, 2, false, 1, false},
 		{"authorization rejection", &httpclient.Error{StatusCode: 401}, 1, 2, false, 1, false},
 		{"budget exhausted", &httpclient.Error{StatusCode: 402, Body: []byte(`{"error":{"message":"Budget pool quota has been exhausted"}}`)}, 1, 2, false, 1, false},
