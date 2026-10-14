@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -85,6 +86,17 @@ func TestResponsesProtocolCompactionRelayLocalToNative(t *testing.T) {
 					turn = func(body string) gjson.Result {
 						status, response := responsesIntegrationPost(t, gateway, "/v1/responses", body)
 						require.Equal(t, http.StatusOK, status, string(response))
+						// Inline compaction uses the existing streaming bridge even
+						// when the HTTP caller did not set stream explicitly.
+						if !gjson.ValidBytes(response) {
+							for _, line := range strings.Split(string(response), "\n") {
+								event := gjson.Parse(strings.TrimSpace(strings.TrimPrefix(line, "data:")))
+								if event.Get("type").String() == "response.completed" {
+									return event.Get("response")
+								}
+							}
+							t.Fatalf("missing completed compaction event: %s", response)
+						}
 						return gjson.ParseBytes(response)
 					}
 				}
