@@ -89,7 +89,7 @@ func TestResponsesProtocolCompactionRelayLocalToNative(t *testing.T) {
 						// Inline compaction uses the existing streaming bridge even
 						// when the HTTP caller did not set stream explicitly.
 						if !gjson.ValidBytes(response) {
-							for _, line := range strings.Split(string(response), "\n") {
+							for line := range strings.SplitSeq(string(response), "\n") {
 								event := gjson.Parse(strings.TrimSpace(strings.TrimPrefix(line, "data:")))
 								if event.Get("type").String() == "response.completed" {
 									return event.Get("response")
