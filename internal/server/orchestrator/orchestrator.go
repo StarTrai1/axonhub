@@ -1,7 +1,6 @@
 package orchestrator
 
 import (
- "github.com/looplj/axonhub/llm/transformer/openai/responses"
 	"context"
 	"errors"
 	"net/http"
@@ -20,6 +19,7 @@ import (
 	"github.com/looplj/axonhub/llm/pipeline/stream"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
+	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 

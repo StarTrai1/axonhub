@@ -25,7 +25,7 @@ const codexFixtureEvents = "event: response.created\ndata: {\"type\":\"response.
 func setupCodexResponsesUpstream(t *testing.T, h *codexRouteHarness) *atomic.Int32 {
 	t.Helper()
 	h.db.System.Create().SetKey(biz.SystemKeySecretKey).SetValue("synthetic-compaction-key").SaveX(h.ctx)
- calls := new(atomic.Int32)
+	calls := new(atomic.Int32)
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
 		assert.NoError(t, err)

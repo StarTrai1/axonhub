@@ -1,7 +1,6 @@
 package orchestrator
 
 import (
- "github.com/looplj/axonhub/llm/transformer/openai/responses"
 	"context"
 	"crypto/sha256"
 	"encoding/json"
@@ -26,6 +25,7 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
+	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
 
 var (

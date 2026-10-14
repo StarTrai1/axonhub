@@ -23,8 +23,10 @@ func (s *responsesWebSocketSession) releaseWarmup() {
 }
 
 func (s *responsesWebSocketSession) releaseConsumedWarmup() {
- if s.budget != nil { s.budget.Replace(s.mergedWarmupBytes, 0) }
- s.mergedWarmupBytes = 0
+	if s.budget != nil {
+		s.budget.Replace(s.mergedWarmupBytes, 0)
+	}
+	s.mergedWarmupBytes = 0
 }
 
 func responsesWebSocketRetentionLimitError() *httpclient.Error {

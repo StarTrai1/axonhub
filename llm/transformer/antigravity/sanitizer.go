@@ -390,69 +390,98 @@ func mergeAllOf(schema map[string]any) map[string]any {
 // Gemini's native Schema supports anyOf. Preserve alternatives instead of
 // selecting a single branch and silently losing the other accepted input types.
 func flattenAnyOfOneOf(schema map[string]any) map[string]any {
- if schema == nil { return nil }
- if one, ok := schema["oneOf"].([]any); ok && schema["anyOf"] != nil {
-  raw, _ := json.Marshal(one)
-  appendDescriptionHint(schema, "oneOf: " + string(raw))
-  delete(schema, "oneOf")
- }
- for _, unionKey := range []string{"anyOf", "oneOf"} {
-  options, ok := schema[unionKey].([]any)
-  if !ok || len(options) == 0 { continue }
-  if unionKey == "anyOf" {
-   if merged := tryMergeEnumFromUnion(options); merged != nil {
-    delete(schema, unionKey)
-    schema["type"], schema["enum"] = "string", merged
-    continue
-   }
-  }
-  nonNull := make([]any, 0, len(options))
-  nullable := false
-  for _, value := range options {
-   branch, ok := value.(map[string]any)
+	if schema == nil {
+		return nil
+	}
+	if one, ok := schema["oneOf"].([]any); ok && schema["anyOf"] != nil {
+		raw, _ := json.Marshal(one)
+		appendDescriptionHint(schema, "oneOf: "+string(raw))
+		delete(schema, "oneOf")
+	}
+	for _, unionKey := range []string{"anyOf", "oneOf"} {
+		options, ok := schema[unionKey].([]any)
+		if !ok || len(options) == 0 {
+			continue
+		}
+		if unionKey == "anyOf" {
+			if merged := tryMergeEnumFromUnion(options); merged != nil {
+				delete(schema, unionKey)
+				schema["type"], schema["enum"] = "string", merged
+				continue
+			}
+		}
+		nonNull := make([]any, 0, len(options))
+		nullable := false
+		for _, value := range options {
+			branch, ok := value.(map[string]any)
+			if !ok {
+				continue
+			}
+			if branch["type"] == "null" {
+				nullable = true
+				continue
+			}
+			if branch["type"] == nil && branch["properties"] == nil {
+				if required, ok := branch["required"].([]any); ok {
+					parent, _ := schema["properties"].(map[string]any)
+					properties := make(map[string]any)
+					for _, name := range required {
+						if key, ok := name.(string); ok && parent[key] != nil {
+							properties[key] = parent[key]
+						}
+					}
+					if len(properties) == len(required) && len(properties) > 0 {
+						branch["type"], branch["properties"] = "object", properties
+					}
+				}
+			}
+			nonNull = append(nonNull, flattenAnyOfOneOf(branch))
+		}
+		delete(schema, unionKey)
+		if nullable {
+			schema["nullable"] = true
+		}
+		switch len(nonNull) {
+		case 0:
+			if nullable {
+				schema["type"] = "null"
+			}
+		case 1:
+			branch, ok := nonNull[0].(map[string]any)
    if !ok { continue }
-   if branch["type"] == "null" { nullable = true; continue }
-   if branch["type"] == nil && branch["properties"] == nil {
-    if required, ok := branch["required"].([]any); ok {
-     parent, _ := schema["properties"].(map[string]any)
-     properties := make(map[string]any)
-     for _, name := range required {
-      if key, ok := name.(string); ok && parent[key] != nil { properties[key] = parent[key] }
-     }
-     if len(properties) == len(required) && len(properties) > 0 {
-      branch["type"], branch["properties"] = "object", properties
-     }
-    }
-   }
-   nonNull = append(nonNull, flattenAnyOfOneOf(branch))
-  }
-  delete(schema, unionKey)
-  if nullable { schema["nullable"] = true }
-  switch len(nonNull) {
-  case 0:
-   if nullable { schema["type"] = "null" }
-  case 1:
-   for key, value := range nonNull[0].(map[string]any) {
-    if _, exists := schema[key]; !exists { schema[key] = value }
-   }
-  default:
-   schema["anyOf"] = nonNull
-   if unionKey == "oneOf" { appendDescriptionHint(schema, "Exactly one alternative must match") }
-  }
- }
- // Visit schema positions only; property names and example values are data.
- for _, key := range []string{"properties", "patternProperties", "$defs", "definitions", "dependentSchemas"} {
-  if children, ok := schema[key].(map[string]any); ok {
-   for _, value := range children { if child, ok := value.(map[string]any); ok { flattenAnyOfOneOf(child) } }
-  }
- }
- for _, key := range []string{"items", "additionalProperties", "contains", "not", "if", "then", "else", "propertyNames"} {
-  if child, ok := schema[key].(map[string]any); ok { flattenAnyOfOneOf(child) }
- }
- for _, key := range []string{"anyOf", "allOf", "prefixItems"} {
-  if children, ok := schema[key].([]any); ok { schema[key] = processArray(children, flattenAnyOfOneOf) }
- }
- return schema
+   for key, value := range branch {
+				if _, exists := schema[key]; !exists {
+					schema[key] = value
+				}
+			}
+		default:
+			schema["anyOf"] = nonNull
+			if unionKey == "oneOf" {
+				appendDescriptionHint(schema, "Exactly one alternative must match")
+			}
+		}
+	}
+	// Visit schema positions only; property names and example values are data.
+	for _, key := range []string{"properties", "patternProperties", "$defs", "definitions", "dependentSchemas"} {
+		if children, ok := schema[key].(map[string]any); ok {
+			for _, value := range children {
+				if child, ok := value.(map[string]any); ok {
+					flattenAnyOfOneOf(child)
+				}
+			}
+		}
+	}
+	for _, key := range []string{"items", "additionalProperties", "contains", "not", "if", "then", "else", "propertyNames"} {
+		if child, ok := schema[key].(map[string]any); ok {
+			flattenAnyOfOneOf(child)
+		}
+	}
+	for _, key := range []string{"anyOf", "allOf", "prefixItems"} {
+		if children, ok := schema[key].([]any); ok {
+			schema[key] = processArray(children, flattenAnyOfOneOf)
+		}
+	}
+	return schema
 }
 
 func flattenTypeArrays(schema map[string]any, nullableFields map[string][]string, currentPath string) map[string]any {
@@ -717,7 +746,10 @@ func arrayItemSchema(value any) map[string]any {
 		return item
 	}
 	switch {
-	case item["properties"] != nil:
+	case item["anyOf"] != nil:
+  // A union already describes the accepted item types. Do not synthesize STRING.
+  return item
+ case item["properties"] != nil:
 		item["type"] = "object"
 	case item["items"] != nil || item["prefixItems"] != nil:
 		item["type"] = "array"

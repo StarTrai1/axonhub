@@ -11,8 +11,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/samber/lo"
-
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/build"
 	"github.com/looplj/axonhub/internal/contexts"
@@ -21,6 +19,7 @@ import (
 	"github.com/looplj/axonhub/internal/scopes"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/gc"
+	"github.com/samber/lo"
 )
 
 // UpdateCodexCompatibilitySettings is the resolver for the updateCodexCompatibilitySettings field.

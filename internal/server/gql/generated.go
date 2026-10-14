@@ -16,11 +16,6 @@ import (
 	"entgo.io/contrib/entgql"
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/introspection"
-	"github.com/shopspring/decimal"
-	"github.com/vektah/gqlparser/v2/ast"
-
-	gqlparser "github.com/vektah/gqlparser/v2"
-
 	"github.com/looplj/axonhub/internal/build"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
@@ -46,6 +41,9 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/oauth"
+	"github.com/shopspring/decimal"
+	gqlparser "github.com/vektah/gqlparser/v2"
+	"github.com/vektah/gqlparser/v2/ast"
 )
 
 // region    ************************** generated!.gotpl **************************
@@ -101,7 +99,8 @@ type ResolverRoot interface {
 	UserRole() UserRoleResolver
 }
 
-type DirectiveRoot struct{}
+type DirectiveRoot struct {
+}
 
 type ComplexityRoot struct {
 	APIKey struct {
@@ -92956,7 +92955,7 @@ func (ec *executionContext) unmarshalInputWebhookTargetInput(ctx context.Context
 // region    ************************** interface.gotpl ***************************
 
 func (ec *executionContext) _Node(ctx context.Context, sel ast.SelectionSet, obj ent.Noder) graphql.Marshaler {
-	switch obj := obj.(type) {
+	switch obj := (obj).(type) {
 	case nil:
 		return graphql.Null
 	case *ent.UserRole:
@@ -114083,7 +114082,7 @@ func (ec *executionContext) marshalNAPIKeyConnection2ᚖgithubᚗcomᚋloopljᚋ
 }
 
 func (ec *executionContext) unmarshalNAPIKeyOrderField2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAPIKeyOrderField(ctx context.Context, v any) (*ent.APIKeyOrderField, error) {
-	res := new(ent.APIKeyOrderField)
+	var res = new(ent.APIKeyOrderField)
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -114190,7 +114189,7 @@ func (ec *executionContext) marshalNAPIKeyProfileTemplateConnection2ᚖgithubᚗ
 }
 
 func (ec *executionContext) unmarshalNAPIKeyProfileTemplateOrderField2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAPIKeyProfileTemplateOrderField(ctx context.Context, v any) (*ent.APIKeyProfileTemplateOrderField, error) {
-	res := new(ent.APIKeyProfileTemplateOrderField)
+	var res = new(ent.APIKeyProfileTemplateOrderField)
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -115133,7 +115132,7 @@ func (ec *executionContext) marshalNChannelModelPrice2ᚖgithubᚗcomᚋlooplj�
 }
 
 func (ec *executionContext) unmarshalNChannelModelPriceOrderField2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelModelPriceOrderField(ctx context.Context, v any) (*ent.ChannelModelPriceOrderField, error) {
-	res := new(ent.ChannelModelPriceOrderField)
+	var res = new(ent.ChannelModelPriceOrderField)
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -115159,7 +115158,7 @@ func (ec *executionContext) marshalNChannelModelPriceVersion2ᚖgithubᚗcomᚋl
 }
 
 func (ec *executionContext) unmarshalNChannelModelPriceVersionOrderField2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelModelPriceVersionOrderField(ctx context.Context, v any) (*ent.ChannelModelPriceVersionOrderField, error) {
-	res := new(ent.ChannelModelPriceVersionOrderField)
+	var res = new(ent.ChannelModelPriceVersionOrderField)
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -115195,7 +115194,7 @@ func (ec *executionContext) unmarshalNChannelModelPriceWhereInput2ᚖgithubᚗco
 }
 
 func (ec *executionContext) unmarshalNChannelOrderField2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelOrderField(ctx context.Context, v any) (*ent.ChannelOrderField, error) {
-	res := new(ent.ChannelOrderField)
+	var res = new(ent.ChannelOrderField)
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -115259,7 +115258,7 @@ func (ec *executionContext) marshalNChannelOverrideTemplateConnection2ᚖgithub�
 }
 
 func (ec *executionContext) unmarshalNChannelOverrideTemplateOrderField2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelOverrideTemplateOrderField(ctx context.Context, v any) (*ent.ChannelOverrideTemplateOrderField, error) {
-	res := new(ent.ChannelOverrideTemplateOrderField)
+	var res = new(ent.ChannelOverrideTemplateOrderField)
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -116145,7 +116144,7 @@ func (ec *executionContext) marshalNDataStorageConnection2ᚖgithubᚗcomᚋloop
 }
 
 func (ec *executionContext) unmarshalNDataStorageOrderField2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐDataStorageOrderField(ctx context.Context, v any) (*ent.DataStorageOrderField, error) {
-	res := new(ent.DataStorageOrderField)
+	var res = new(ent.DataStorageOrderField)
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -116791,7 +116790,7 @@ func (ec *executionContext) marshalNID2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋi
 }
 
 func (ec *executionContext) unmarshalNID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx context.Context, v any) (*objects.GUID, error) {
-	res := new(objects.GUID)
+	var res = new(objects.GUID)
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -117246,7 +117245,7 @@ func (ec *executionContext) unmarshalNModelMappingInput2githubᚗcomᚋloopljᚋ
 }
 
 func (ec *executionContext) unmarshalNModelOrderField2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐModelOrderField(ctx context.Context, v any) (*ent.ModelOrderField, error) {
-	res := new(ent.ModelOrderField)
+	var res = new(ent.ModelOrderField)
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -117602,7 +117601,7 @@ func (ec *executionContext) marshalNOIDCIdentityInfo2ᚖgithubᚗcomᚋloopljᚋ
 }
 
 func (ec *executionContext) unmarshalNOIDCIdentityOrderField2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐOIDCIdentityOrderField(ctx context.Context, v any) (*ent.OIDCIdentityOrderField, error) {
-	res := new(ent.OIDCIdentityOrderField)
+	var res = new(ent.OIDCIdentityOrderField)
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -117980,7 +117979,7 @@ func (ec *executionContext) marshalNProjectConnection2ᚖgithubᚗcomᚋlooplj�
 }
 
 func (ec *executionContext) unmarshalNProjectOrderField2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐProjectOrderField(ctx context.Context, v any) (*ent.ProjectOrderField, error) {
-	res := new(ent.ProjectOrderField)
+	var res = new(ent.ProjectOrderField)
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -118109,7 +118108,7 @@ func (ec *executionContext) marshalNPromptConnection2ᚖgithubᚗcomᚋloopljᚋ
 }
 
 func (ec *executionContext) unmarshalNPromptOrderField2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐPromptOrderField(ctx context.Context, v any) (*ent.PromptOrderField, error) {
-	res := new(ent.PromptOrderField)
+	var res = new(ent.PromptOrderField)
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -118170,7 +118169,7 @@ func (ec *executionContext) marshalNPromptProtectionRuleConnection2ᚖgithubᚗc
 }
 
 func (ec *executionContext) unmarshalNPromptProtectionRuleOrderField2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐPromptProtectionRuleOrderField(ctx context.Context, v any) (*ent.PromptProtectionRuleOrderField, error) {
-	res := new(ent.PromptProtectionRuleOrderField)
+	var res = new(ent.PromptProtectionRuleOrderField)
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -118434,7 +118433,7 @@ func (ec *executionContext) marshalNProviderQuotaCollectionSettings2ᚖgithubᚗ
 }
 
 func (ec *executionContext) unmarshalNProviderQuotaStatusOrderField2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐProviderQuotaStatusOrderField(ctx context.Context, v any) (*ent.ProviderQuotaStatusOrderField, error) {
-	res := new(ent.ProviderQuotaStatusOrderField)
+	var res = new(ent.ProviderQuotaStatusOrderField)
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -118642,7 +118641,7 @@ func (ec *executionContext) marshalNRequestExecutionConnection2ᚖgithubᚗcom�
 }
 
 func (ec *executionContext) unmarshalNRequestExecutionOrderField2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐRequestExecutionOrderField(ctx context.Context, v any) (*ent.RequestExecutionOrderField, error) {
-	res := new(ent.RequestExecutionOrderField)
+	var res = new(ent.RequestExecutionOrderField)
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -118673,7 +118672,7 @@ func (ec *executionContext) unmarshalNRequestExecutionWhereInput2ᚖgithubᚗcom
 }
 
 func (ec *executionContext) unmarshalNRequestOrderField2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐRequestOrderField(ctx context.Context, v any) (*ent.RequestOrderField, error) {
-	res := new(ent.RequestOrderField)
+	var res = new(ent.RequestOrderField)
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -119018,7 +119017,7 @@ func (ec *executionContext) marshalNRoleLevel2githubᚗcomᚋloopljᚋaxonhubᚋ
 }
 
 func (ec *executionContext) unmarshalNRoleOrderField2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐRoleOrderField(ctx context.Context, v any) (*ent.RoleOrderField, error) {
-	res := new(ent.RoleOrderField)
+	var res = new(ent.RoleOrderField)
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -119281,7 +119280,7 @@ func (ec *executionContext) marshalNSystemModelSettings2ᚖgithubᚗcomᚋlooplj
 }
 
 func (ec *executionContext) unmarshalNSystemOrderField2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐSystemOrderField(ctx context.Context, v any) (*ent.SystemOrderField, error) {
-	res := new(ent.SystemOrderField)
+	var res = new(ent.SystemOrderField)
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -119435,7 +119434,7 @@ func (ec *executionContext) marshalNThreadConnection2ᚖgithubᚗcomᚋloopljᚋ
 }
 
 func (ec *executionContext) unmarshalNThreadOrderField2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐThreadOrderField(ctx context.Context, v any) (*ent.ThreadOrderField, error) {
-	res := new(ent.ThreadOrderField)
+	var res = new(ent.ThreadOrderField)
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -119735,7 +119734,7 @@ func (ec *executionContext) marshalNTraceConnection2ᚖgithubᚗcomᚋloopljᚋa
 }
 
 func (ec *executionContext) unmarshalNTraceOrderField2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐTraceOrderField(ctx context.Context, v any) (*ent.TraceOrderField, error) {
-	res := new(ent.TraceOrderField)
+	var res = new(ent.TraceOrderField)
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -120062,7 +120061,7 @@ func (ec *executionContext) marshalNUsageLogConnection2ᚖgithubᚗcomᚋlooplj�
 }
 
 func (ec *executionContext) unmarshalNUsageLogOrderField2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐUsageLogOrderField(ctx context.Context, v any) (*ent.UsageLogOrderField, error) {
-	res := new(ent.UsageLogOrderField)
+	var res = new(ent.UsageLogOrderField)
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -120203,7 +120202,7 @@ func (ec *executionContext) marshalNUserInfo2ᚖgithubᚗcomᚋloopljᚋaxonhub�
 }
 
 func (ec *executionContext) unmarshalNUserOrderField2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐUserOrderField(ctx context.Context, v any) (*ent.UserOrderField, error) {
-	res := new(ent.UserOrderField)
+	var res = new(ent.UserOrderField)
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -120281,7 +120280,7 @@ func (ec *executionContext) marshalNUserProjectInfo2ᚕgithubᚗcomᚋloopljᚋa
 }
 
 func (ec *executionContext) unmarshalNUserProjectOrderField2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐUserProjectOrderField(ctx context.Context, v any) (*ent.UserProjectOrderField, error) {
-	res := new(ent.UserProjectOrderField)
+	var res = new(ent.UserProjectOrderField)
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -120312,7 +120311,7 @@ func (ec *executionContext) marshalNUserRole2ᚖgithubᚗcomᚋloopljᚋaxonhub�
 }
 
 func (ec *executionContext) unmarshalNUserRoleOrderField2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐUserRoleOrderField(ctx context.Context, v any) (*ent.UserRoleOrderField, error) {
-	res := new(ent.UserRoleOrderField)
+	var res = new(ent.UserRoleOrderField)
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -121181,7 +121180,7 @@ func (ec *executionContext) unmarshalOAPIKeyStatus2ᚖgithubᚗcomᚋloopljᚋax
 	if v == nil {
 		return nil, nil
 	}
-	res := new(apikey.Status)
+	var res = new(apikey.Status)
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -121270,7 +121269,7 @@ func (ec *executionContext) unmarshalOAPIKeyType2ᚖgithubᚗcomᚋloopljᚋaxon
 	if v == nil {
 		return nil, nil
 	}
-	res := new(apikey.Type)
+	var res = new(apikey.Type)
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -121838,7 +121837,7 @@ func (ec *executionContext) unmarshalOChannelModelPriceVersionStatus2ᚖgithub�
 	if v == nil {
 		return nil, nil
 	}
-	res := new(channelmodelpriceversion.Status)
+	var res = new(channelmodelpriceversion.Status)
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -122226,7 +122225,7 @@ func (ec *executionContext) unmarshalOChannelStatus2ᚖgithubᚗcomᚋloopljᚋa
 	if v == nil {
 		return nil, nil
 	}
-	res := new(channel.Status)
+	var res = new(channel.Status)
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -122350,7 +122349,7 @@ func (ec *executionContext) unmarshalOChannelType2ᚖgithubᚗcomᚋloopljᚋaxo
 	if v == nil {
 		return nil, nil
 	}
-	res := new(channel.Type)
+	var res = new(channel.Type)
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -122672,7 +122671,7 @@ func (ec *executionContext) unmarshalODataStorageStatus2ᚖgithubᚗcomᚋlooplj
 	if v == nil {
 		return nil, nil
 	}
-	res := new(datastorage.Status)
+	var res = new(datastorage.Status)
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -122753,7 +122752,7 @@ func (ec *executionContext) unmarshalODataStorageType2ᚖgithubᚗcomᚋlooplj�
 	if v == nil {
 		return nil, nil
 	}
-	res := new(datastorage.Type)
+	var res = new(datastorage.Type)
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -123277,7 +123276,7 @@ func (ec *executionContext) unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋin
 	if v == nil {
 		return nil, nil
 	}
-	res := new(objects.GUID)
+	var res = new(objects.GUID)
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -123853,7 +123852,7 @@ func (ec *executionContext) unmarshalOModelStatus2ᚖgithubᚗcomᚋloopljᚋaxo
 	if v == nil {
 		return nil, nil
 	}
-	res := new(model.Status)
+	var res = new(model.Status)
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -123934,7 +123933,7 @@ func (ec *executionContext) unmarshalOModelType2ᚖgithubᚗcomᚋloopljᚋaxonh
 	if v == nil {
 		return nil, nil
 	}
-	res := new(model.Type)
+	var res = new(model.Type)
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -124109,7 +124108,7 @@ func (ec *executionContext) unmarshalOOverrideApplyMode2ᚖgithubᚗcomᚋlooplj
 	if v == nil {
 		return nil, nil
 	}
-	res := new(OverrideApplyMode)
+	var res = new(OverrideApplyMode)
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -124420,7 +124419,7 @@ func (ec *executionContext) unmarshalOProjectStatus2ᚖgithubᚗcomᚋloopljᚋa
 	if v == nil {
 		return nil, nil
 	}
-	res := new(project.Status)
+	var res = new(project.Status)
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -124783,7 +124782,7 @@ func (ec *executionContext) unmarshalOPromptProtectionRuleStatus2ᚖgithubᚗcom
 	if v == nil {
 		return nil, nil
 	}
-	res := new(promptprotectionrule.Status)
+	var res = new(promptprotectionrule.Status)
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -124971,7 +124970,7 @@ func (ec *executionContext) unmarshalOPromptStatus2ᚖgithubᚗcomᚋloopljᚋax
 	if v == nil {
 		return nil, nil
 	}
-	res := new(prompt.Status)
+	var res = new(prompt.Status)
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -125168,7 +125167,7 @@ func (ec *executionContext) unmarshalOProviderQuotaStatusProviderType2ᚖgithub�
 	if v == nil {
 		return nil, nil
 	}
-	res := new(providerquotastatus.ProviderType)
+	var res = new(providerquotastatus.ProviderType)
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -125249,7 +125248,7 @@ func (ec *executionContext) unmarshalOProviderQuotaStatusStatus2ᚖgithubᚗcom�
 	if v == nil {
 		return nil, nil
 	}
-	res := new(providerquotastatus.Status)
+	var res = new(providerquotastatus.Status)
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -125306,7 +125305,7 @@ func (ec *executionContext) unmarshalOQuotaRoutingMode2ᚖgithubᚗcomᚋlooplj�
 	if v == nil {
 		return nil, nil
 	}
-	res := new(objects.QuotaRoutingMode)
+	var res = new(objects.QuotaRoutingMode)
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -125598,7 +125597,7 @@ func (ec *executionContext) unmarshalORequestExecutionStatus2ᚖgithubᚗcomᚋl
 	if v == nil {
 		return nil, nil
 	}
-	res := new(requestexecution.Status)
+	var res = new(requestexecution.Status)
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -125720,7 +125719,7 @@ func (ec *executionContext) unmarshalORequestSource2ᚖgithubᚗcomᚋloopljᚋa
 	if v == nil {
 		return nil, nil
 	}
-	res := new(request.Source)
+	var res = new(request.Source)
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -125801,7 +125800,7 @@ func (ec *executionContext) unmarshalORequestStatus2ᚖgithubᚗcomᚋloopljᚋa
 	if v == nil {
 		return nil, nil
 	}
-	res := new(request.Status)
+	var res = new(request.Status)
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -126028,7 +126027,7 @@ func (ec *executionContext) unmarshalORoleLevel2ᚖgithubᚗcomᚋloopljᚋaxonh
 	if v == nil {
 		return nil, nil
 	}
-	res := new(role.Level)
+	var res = new(role.Level)
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -126560,7 +126559,7 @@ func (ec *executionContext) unmarshalOThreadStatus2ᚖgithubᚗcomᚋloopljᚋax
 	if v == nil {
 		return nil, nil
 	}
-	res := new(thread.Status)
+	var res = new(thread.Status)
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -126876,7 +126875,7 @@ func (ec *executionContext) unmarshalOTraceStatus2ᚖgithubᚗcomᚋloopljᚋaxo
 	if v == nil {
 		return nil, nil
 	}
-	res := new(trace.Status)
+	var res = new(trace.Status)
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -127086,7 +127085,7 @@ func (ec *executionContext) unmarshalOUsageLogSource2ᚖgithubᚗcomᚋloopljᚋ
 	if v == nil {
 		return nil, nil
 	}
-	res := new(usagelog.Source)
+	var res = new(usagelog.Source)
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -127409,7 +127408,7 @@ func (ec *executionContext) unmarshalOUserStatus2ᚖgithubᚗcomᚋloopljᚋaxon
 	if v == nil {
 		return nil, nil
 	}
-	res := new(user.Status)
+	var res = new(user.Status)
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }

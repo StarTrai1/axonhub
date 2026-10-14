@@ -17,8 +17,8 @@ function parseLocale(locale) {
 test('channel policy controls keep hidden radio focus inside the visible option', () => {
   const source = read('features/channels/components/channels-action-dialog.tsx');
   const controls = source.slice(source.indexOf('function CompactPolicyRadioGroup'), source.indexOf('function PolicyFieldHeader'));
-  assert.match(controls, /className=\{`relative flex min-h-11/);
-  assert.match(controls, /className='sr-only top-1\/2 left-1\/2'/);
+  assert.match(controls, /className=\{`[^`]*\brelative flex min-h-11/);
+  assert.match(controls, /className='[^']*\bsr-only\b[^']*'/);
   assert.match(controls, /max-w-64 text-wrap leading-relaxed/);
   assert.match(source, /max-w-72 text-wrap leading-relaxed/);
 });

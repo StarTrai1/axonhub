@@ -251,7 +251,9 @@ func (s *responsesSessionStore) record(ctx context.Context, requestBody, respons
 	s.insertLocked(key, record)
 	for oldest := s.order.Front(); s.totalBytes > responsesSessionMaxBytes && oldest != nil; oldest = oldest.Next() {
 		key, ok := oldest.Value.(responsesSessionKey)
-  if !ok { break }
+		if !ok {
+			break
+		}
 		previous := s.byResponse[key]
 		if previous == nil || previous.size == 0 {
 			continue

@@ -1,7 +1,6 @@
 package orchestrator
 
 import (
- "github.com/looplj/axonhub/llm/transformer/openai/responses"
 	"context"
 	"fmt"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/looplj/axonhub/llm/transformer"
+	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
 
 // applyXAIHostedToolChoice adapts singleton hosted selections for the xAI CLI

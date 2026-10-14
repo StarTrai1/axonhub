@@ -1,7 +1,6 @@
 package orchestrator
 
 import (
- "github.com/looplj/axonhub/llm/transformer/openai/responses"
 	"context"
 
 	"github.com/samber/lo"
@@ -9,6 +8,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
 
 const (

@@ -29,6 +29,7 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { copyTextToClipboard } from '@/lib/clipboard';
 import { useHorizontalScroll } from '@/hooks/use-horizontal-scroll';
+import { usePermissions } from '@/hooks/usePermissions';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -52,7 +53,6 @@ import {
   useSaveProxyPreset,
   useUserAgentPassThroughSettings,
 } from '@/features/system/data/system';
-import { usePermissions } from '@/hooks/usePermissions';
 import { antigravityOAuthExchange, antigravityOAuthStart } from '../data/antigravity';
 import {
   useCreateChannel,
@@ -68,7 +68,6 @@ import {
 } from '../data/channels';
 import { claudecodeOAuthExchange, claudecodeOAuthStart } from '../data/claudecode';
 import { codexDecodeAuthJSON, codexOAuthExchange, codexOAuthStart } from '../data/codex';
-import { xaiDecodeSSO, xaiOAuthExchange, xaiOAuthStart } from '../data/xai';
 import {
   getDefaultBaseURL,
   getDefaultModels,
@@ -108,6 +107,7 @@ import {
   createChannelInputSchema,
   updateChannelInputSchema,
 } from '../data/schema';
+import { xaiDecodeSSO, xaiOAuthExchange, xaiOAuthStart } from '../data/xai';
 import { ProxyConfig, useOAuthFlow } from '../hooks/use-oauth-flow';
 import { mergeChannelSettingsForUpdate } from '../utils/merge';
 import { isValidModelPattern, matchesModelPattern } from '../utils/pattern';
@@ -140,36 +140,19 @@ const HTTP2_CONNECTION_SHARD_OPTIONS = [1, 2, 4, 8] as const;
 
 const ROUTING_TIER_OPTIONS: ReadonlyArray<{
   value: RoutingTier;
-}> = [
-  { value: 'preferred' },
-  { value: 'standard' },
-  { value: 'fallback' },
-];
+}> = [{ value: 'preferred' }, { value: 'standard' }, { value: 'fallback' }];
 
 const WEB_SEARCH_POLICY_OPTIONS: ReadonlyArray<{
   value: WebSearchPolicy;
-}> = [
-  { value: 'native' },
-  { value: 'auto' },
-  { value: 'mcp_only' },
-];
+}> = [{ value: 'native' }, { value: 'auto' }, { value: 'mcp_only' }];
 
 const REMOTE_COMPACTION_POLICY_OPTIONS: ReadonlyArray<{
   value: RemoteCompactionPolicy;
-}> = [
-  { value: 'native' },
-  { value: 'auto' },
-  { value: 'local_bridge' },
-];
+}> = [{ value: 'native' }, { value: 'auto' }, { value: 'local_bridge' }];
 
 const CODEX_IDENTITY_POLICY_OPTIONS: ReadonlyArray<{
   value: CodexIdentityPolicy;
-}> = [
-  { value: 'off' },
-  { value: 'device' },
-  { value: 'session' },
-  { value: 'full' },
-];
+}> = [{ value: 'off' }, { value: 'device' }, { value: 'session' }, { value: 'full' }];
 
 function CompactPolicyRadioGroup<T extends string>({
   value,
@@ -190,7 +173,7 @@ function CompactPolicyRadioGroup<T extends string>({
     <RadioGroup
       value={value}
       onValueChange={(nextValue) => onValueChange(nextValue as T)}
-      className={`grid gap-1.5 rounded-md border bg-muted/40 p-1.5 ${options.length === 4 ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-1 sm:grid-cols-3'}`}
+      className={`bg-muted/40 grid gap-1.5 rounded-md border p-1.5 ${options.length === 4 ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-1 sm:grid-cols-3'}`}
       data-testid={testId}
     >
       {options.map((option) => {
@@ -204,9 +187,9 @@ function CompactPolicyRadioGroup<T extends string>({
             <TooltipTrigger asChild>
               <label
                 htmlFor={id}
-                className={`relative flex min-h-11 min-w-0 cursor-pointer items-center justify-center rounded-sm px-3 py-2 text-center text-sm font-medium leading-snug transition-colors focus-within:ring-[3px] focus-within:ring-ring/50 ${
+                className={`focus-within:ring-ring/50 relative flex min-h-11 min-w-0 cursor-pointer items-center justify-center rounded-sm px-3 py-2 text-center text-sm leading-snug font-medium transition-colors focus-within:ring-[3px] ${
                   selected
-                    ? 'bg-background text-foreground shadow-xs ring-1 ring-primary'
+                    ? 'bg-background text-foreground ring-primary shadow-xs ring-1'
                     : 'text-muted-foreground hover:bg-background/60 hover:text-foreground'
                 }`}
               >
@@ -220,7 +203,7 @@ function CompactPolicyRadioGroup<T extends string>({
                 <span className='min-w-0 whitespace-normal'>{label}</span>
               </label>
             </TooltipTrigger>
-            <TooltipContent side='top' className='max-w-64 text-wrap leading-relaxed'>
+            <TooltipContent side='top' className='max-w-64 leading-relaxed text-wrap'>
               <p>{description}</p>
             </TooltipContent>
           </Tooltip>
@@ -245,7 +228,7 @@ function PolicyFieldHeader({ label, description, testId }: { label: string; desc
             <Info className='h-3.5 w-3.5' />
           </button>
         </TooltipTrigger>
-        <TooltipContent className='max-w-72 text-wrap leading-relaxed'>
+        <TooltipContent className='max-w-72 leading-relaxed text-wrap'>
           <p>{description}</p>
         </TooltipContent>
       </Tooltip>
@@ -791,8 +774,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       const container = providerListRef.current;
       if (target && container) {
         const isHorizontal =
-          (window.getComputedStyle(container).overflowX === 'auto' ||
-            window.getComputedStyle(container).overflowX === 'scroll') &&
+          (window.getComputedStyle(container).overflowX === 'auto' || window.getComputedStyle(container).overflowX === 'scroll') &&
           container.scrollWidth > container.clientWidth;
         if (isHorizontal) {
           const targetCenter = target.offsetLeft + target.clientWidth / 2;
@@ -911,11 +893,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               routingTier: currentRow.policies?.routingTier ?? 'standard',
               stream: currentRow.policies?.stream ?? 'unlimited',
               remoteCompaction:
-                currentRow.policies?.remoteCompaction ??
-                (currentRow.policies?.supportsRemoteCompaction ? 'native' : 'auto'),
+                currentRow.policies?.remoteCompaction ?? (currentRow.policies?.supportsRemoteCompaction ? 'native' : 'auto'),
               supportsRemoteCompaction: currentRow.policies?.supportsRemoteCompaction ?? false,
-              webSearch:
-                currentRow.policies?.webSearch ?? (currentRow.policies?.supportsWebSearch === false ? 'auto' : 'native'),
+              webSearch: currentRow.policies?.webSearch ?? (currentRow.policies?.supportsWebSearch === false ? 'auto' : 'native'),
               supportsWebSearch: currentRow.policies?.supportsWebSearch ?? true,
               codexIdentity: currentRow.policies?.codexIdentity ?? 'off',
             },
@@ -948,12 +928,10 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                 routingTier: duplicateFromRow.policies?.routingTier ?? 'standard',
                 stream: duplicateFromRow.policies?.stream ?? 'unlimited',
                 remoteCompaction:
-                  duplicateFromRow.policies?.remoteCompaction ??
-                  (duplicateFromRow.policies?.supportsRemoteCompaction ? 'native' : 'auto'),
+                  duplicateFromRow.policies?.remoteCompaction ?? (duplicateFromRow.policies?.supportsRemoteCompaction ? 'native' : 'auto'),
                 supportsRemoteCompaction: duplicateFromRow.policies?.supportsRemoteCompaction ?? false,
                 webSearch:
-                  duplicateFromRow.policies?.webSearch ??
-                  (duplicateFromRow.policies?.supportsWebSearch === false ? 'auto' : 'native'),
+                  duplicateFromRow.policies?.webSearch ?? (duplicateFromRow.policies?.supportsWebSearch === false ? 'auto' : 'native'),
                 supportsWebSearch: duplicateFromRow.policies?.supportsWebSearch ?? true,
                 codexIdentity: duplicateFromRow.policies?.codexIdentity ?? 'off',
               },
@@ -1493,9 +1471,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
     try {
       if (values.credentials?.apiKeys) {
-        values.credentials.apiKeys = [
-          ...new Set(values.credentials.apiKeys.map((key) => key.trim()).filter((key) => key.length > 0)),
-        ];
+        values.credentials.apiKeys = [...new Set(values.credentials.apiKeys.map((key) => key.trim()).filter((key) => key.length > 0))];
       }
 
       const retryableStatusCodes = parseRetryableStatusCodesInput(retryableStatusCodesText);
@@ -1524,14 +1500,10 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         credentials: valuesForSubmit.credentials,
       };
       const effectiveChannelType = dataWithModels.type ?? currentRow?.type ?? derivedChannelType;
-      const remoteCompactionPolicy =
-        effectiveChannelType === 'codex' ? (dataWithModels.policies?.remoteCompaction ?? 'auto') : 'auto';
-      const webSearchPolicy =
-        effectiveChannelType === 'codex' ? (dataWithModels.policies?.webSearch ?? 'native') : 'native';
+      const remoteCompactionPolicy = effectiveChannelType === 'codex' ? (dataWithModels.policies?.remoteCompaction ?? 'auto') : 'auto';
+      const webSearchPolicy = effectiveChannelType === 'codex' ? (dataWithModels.policies?.webSearch ?? 'native') : 'native';
       const codexIdentityPolicy =
-        effectiveChannelType === 'codex' && authMode !== 'third-party'
-          ? (dataWithModels.policies?.codexIdentity ?? 'off')
-          : 'off';
+        effectiveChannelType === 'codex' && authMode !== 'third-party' ? (dataWithModels.policies?.codexIdentity ?? 'off') : 'off';
       dataWithModels.policies = {
         ...dataWithModels.policies,
         remoteCompaction: remoteCompactionPolicy,
@@ -1545,22 +1517,14 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       // duplicate/type-switch flow attach it to an unrelated channel type.
       // Clearing it explicitly sends providerQuota: null so the backend
       // removes the stored cookie.
-      const isCommandCodeSubmit =
-        valuesForSubmit.type === 'commandcode' || valuesForSubmit.type === 'commandcode_anthropic';
-      const commandCodeAuthCookie = isCommandCodeSubmit
-        ? values.settings?.providerQuota?.commandCode?.authCookie?.trim()
-        : undefined;
-      const isOllamaSubmit =
-        valuesForSubmit.type === 'ollama' || valuesForSubmit.type === 'ollama_anthropic';
-      const ollamaAuthCookie = isOllamaSubmit
-        ? values.settings?.providerQuota?.ollama?.authCookie?.trim()
-        : undefined;
+      const isCommandCodeSubmit = valuesForSubmit.type === 'commandcode' || valuesForSubmit.type === 'commandcode_anthropic';
+      const commandCodeAuthCookie = isCommandCodeSubmit ? values.settings?.providerQuota?.commandCode?.authCookie?.trim() : undefined;
+      const isOllamaSubmit = valuesForSubmit.type === 'ollama' || valuesForSubmit.type === 'ollama_anthropic';
+      const ollamaAuthCookie = isOllamaSubmit ? values.settings?.providerQuota?.ollama?.authCookie?.trim() : undefined;
       const settingsForSubmit = values.settings
         ? {
             ...values.settings,
-            ...((isCommandCodeSubmit && commandCodeAuthCookie) || (isOllamaSubmit && ollamaAuthCookie)
-              ? {}
-              : { providerQuota: null }),
+            ...((isCommandCodeSubmit && commandCodeAuthCookie) || (isOllamaSubmit && ollamaAuthCookie) ? {} : { providerQuota: null }),
           }
         : undefined;
 
@@ -1625,13 +1589,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         delete updateInput.settings;
 
         const finalChannelType = updateInput.type || currentRow.type;
-        const keepsManagementApiKey = [
-          'zenmux',
-          'zenmux_responses',
-          'zenmux_anthropic',
-          'zenmux_gemini',
-          'zenmux_video',
-        ].includes(finalChannelType);
+        const keepsManagementApiKey = ['zenmux', 'zenmux_responses', 'zenmux_anthropic', 'zenmux_gemini', 'zenmux_video'].includes(
+          finalChannelType
+        );
         if (!keepsManagementApiKey && updateInput.credentials) {
           delete updateInput.credentials.managementApiKey;
         }
@@ -1681,11 +1641,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           ...(selectedApiFormat === 'zenmux/video' ||
           settingsForSubmit?.modelProtocols?.some((protocol) => protocol.apiFormats.includes('zenmux/video'))
             ? {
-                modelProtocols: getModelProtocolsForApiFormat(
-                  selectedApiFormat,
-                  supportedModels,
-                  settingsForSubmit?.modelProtocols
-                ),
+                modelProtocols: getModelProtocolsForApiFormat(selectedApiFormat, supportedModels, settingsForSubmit?.modelProtocols),
               }
             : {}),
           ...(codexModelProtocols ? { modelProtocols: codexModelProtocols } : {}),
@@ -2013,9 +1969,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     (keysToRemove: string[]) => {
       const currentKeys = form.getValues('credentials.apiKeys') || [];
       const keysToRemoveSet = new Set(keysToRemove.map((key) => key.trim()));
-      const validNextKeys = currentKeys
-        .map((key) => key.trim())
-        .filter((key) => key.length > 0 && !keysToRemoveSet.has(key));
+      const validNextKeys = currentKeys.map((key) => key.trim()).filter((key) => key.length > 0 && !keysToRemoveSet.has(key));
       if (validNextKeys.length === 0) {
         toast.error(t('channels.dialogs.fields.apiKey.mustKeepOne'));
         setConfirmRemoveSelectedOpen(false);
@@ -2178,7 +2132,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                         <FormLabel className='text-base font-semibold'>{t('channels.dialogs.fields.provider.label')}</FormLabel>
                         <div
                           ref={setProviderListRef}
-                          className={`flex-1 overflow-x-auto overflow-y-hidden pb-2 md:overflow-x-hidden md:overflow-y-auto md:pb-0 md:pr-2 ${isOAuthChannel ? 'cursor-not-allowed opacity-60' : ''}`}
+                          className={`flex-1 overflow-x-auto overflow-y-hidden pb-2 md:overflow-x-hidden md:overflow-y-auto md:pr-2 md:pb-0 ${isOAuthChannel ? 'cursor-not-allowed opacity-60' : ''}`}
                         >
                           <RadioGroup
                             value={selectedProvider}
@@ -2197,7 +2151,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                   ref={(el) => {
                                     providerRefs.current[provider.key] = el;
                                   }}
-                                  className={`flex items-center space-x-3 rounded-lg border p-3 transition-colors shrink-0 md:w-full ${
+                                  className={`flex shrink-0 items-center space-x-3 rounded-lg border p-3 transition-colors md:w-full ${
                                     isProviderDisabled
                                       ? isSelected
                                         ? 'border-primary bg-muted/80 cursor-not-allowed shadow-sm'
@@ -2212,7 +2166,10 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                     data-testid={`provider-${provider.key}`}
                                   />
                                   {Icon && <Icon size={20} className='flex-shrink-0' />}
-                                  <FormLabel htmlFor={`provider-${provider.key}`} className='flex-1 cursor-pointer whitespace-nowrap font-normal'>
+                                  <FormLabel
+                                    htmlFor={`provider-${provider.key}`}
+                                    className='flex-1 cursor-pointer font-normal whitespace-nowrap'
+                                  >
                                     {provider.label}
                                   </FormLabel>
                                 </div>
@@ -2226,7 +2183,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                     </div>
 
                     {/* Right Side - Form Fields */}
-                    <div className='@container/channel-fields min-w-0 flex-1 space-y-6 overflow-y-auto pb-2 md:pr-4 [&_[data-slot=select-trigger]]:min-w-0 [&_[data-slot=select-trigger]]:w-full [&_[data-slot=select-value]]:min-w-0 [&_[data-slot=select-value]]:truncate'>
+                    <div className='@container/channel-fields min-w-0 flex-1 space-y-6 overflow-y-auto pb-2 md:pr-4 [&_[data-slot=select-trigger]]:w-full [&_[data-slot=select-trigger]]:min-w-0 [&_[data-slot=select-value]]:min-w-0 [&_[data-slot=select-value]]:truncate'>
                       <div className='flex items-start gap-2'>
                         <SlidersHorizontal className='text-muted-foreground mt-0.5 h-4 w-4 shrink-0' />
                         <div className='min-w-0'>
@@ -2235,68 +2192,71 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                         </div>
                       </div>
 
-                      {selectedProvider !== 'jina' && selectedProvider !== 'codex' && selectedProvider !== 'claudecode' && selectedProvider !== 'typesafe' && (
-                        <FormItem className='space-y-2'>
-                          <FormLabel className='font-medium'>{t('channels.dialogs.fields.apiFormat.label')}</FormLabel>
-                          <div className='space-y-1'>
-                            <SelectDropdown
-                              key={selectedProvider}
-                              defaultValue={selectedApiFormatOption}
-                              onValueChange={(value) => handleApiFormatChange(value as ApiFormatOption)}
-                              disabled={!!isOAuthChannel}
-                              placeholder={t('channels.dialogs.fields.apiFormat.placeholder')}
-                              data-testid='api-format-select'
-                              isControlled={true}
-                              items={availableApiFormatOptions.map((format) => ({
-                                value: format,
-                                label: getApiFormatOptionLabel(format),
-                              }))}
-                            />
-                            {selectedApiFormat === 'gemini/contents' && (
-                              <div className='mt-3'>
-                                <label
-                                  className={`flex items-center gap-2 text-sm ${isOAuthChannel ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
-                                >
-                                  <Checkbox
-                                    checked={useGeminiVertex}
-                                    onCheckedChange={(checked) => handleGeminiVertexChange(checked === true)}
-                                    disabled={!!isOAuthChannel}
-                                  />
-                                  <span>{t('channels.dialogs.fields.apiFormat.geminiVertex.label')}</span>
-                                </label>
-                              </div>
-                            )}
-                            {selectedApiFormat === 'anthropic/messages' && selectedProvider === 'anthropic' && (
-                              <div className='mt-3 space-y-2'>
-                                <label
-                                  className={`flex items-center gap-2 text-sm ${isOAuthChannel ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
-                                >
-                                  <Checkbox
-                                    checked={useAnthropicAws}
-                                    onCheckedChange={(checked) => handleAnthropicAwsChange(checked === true)}
-                                    disabled={!!isOAuthChannel}
-                                  />
-                                  <span>{t('channels.dialogs.fields.apiFormat.anthropicAWS.label')}</span>
-                                </label>
-                              </div>
-                            )}
-                            {selectedApiFormat === 'anthropic/messages' && selectedProvider === 'moonshot' && (
-                              <div className='mt-3 space-y-2'>
-                                <label
-                                  className={`flex items-center gap-2 text-sm ${isOAuthChannel ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
-                                >
-                                  <Checkbox
-                                    checked={useKimiCoding}
-                                    onCheckedChange={(checked) => handleKimiCodingChange(checked === true)}
-                                    disabled={!!isOAuthChannel}
-                                  />
-                                  <span>{t('channels.dialogs.fields.apiFormat.kimiCoding.label')}</span>
-                                </label>
-                              </div>
-                            )}
-                          </div>
-                        </FormItem>
-                      )}
+                      {selectedProvider !== 'jina' &&
+                        selectedProvider !== 'codex' &&
+                        selectedProvider !== 'claudecode' &&
+                        selectedProvider !== 'typesafe' && (
+                          <FormItem className='space-y-2'>
+                            <FormLabel className='font-medium'>{t('channels.dialogs.fields.apiFormat.label')}</FormLabel>
+                            <div className='space-y-1'>
+                              <SelectDropdown
+                                key={selectedProvider}
+                                defaultValue={selectedApiFormatOption}
+                                onValueChange={(value) => handleApiFormatChange(value as ApiFormatOption)}
+                                disabled={!!isOAuthChannel}
+                                placeholder={t('channels.dialogs.fields.apiFormat.placeholder')}
+                                data-testid='api-format-select'
+                                isControlled={true}
+                                items={availableApiFormatOptions.map((format) => ({
+                                  value: format,
+                                  label: getApiFormatOptionLabel(format),
+                                }))}
+                              />
+                              {selectedApiFormat === 'gemini/contents' && (
+                                <div className='mt-3'>
+                                  <label
+                                    className={`flex items-center gap-2 text-sm ${isOAuthChannel ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                                  >
+                                    <Checkbox
+                                      checked={useGeminiVertex}
+                                      onCheckedChange={(checked) => handleGeminiVertexChange(checked === true)}
+                                      disabled={!!isOAuthChannel}
+                                    />
+                                    <span>{t('channels.dialogs.fields.apiFormat.geminiVertex.label')}</span>
+                                  </label>
+                                </div>
+                              )}
+                              {selectedApiFormat === 'anthropic/messages' && selectedProvider === 'anthropic' && (
+                                <div className='mt-3 space-y-2'>
+                                  <label
+                                    className={`flex items-center gap-2 text-sm ${isOAuthChannel ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                                  >
+                                    <Checkbox
+                                      checked={useAnthropicAws}
+                                      onCheckedChange={(checked) => handleAnthropicAwsChange(checked === true)}
+                                      disabled={!!isOAuthChannel}
+                                    />
+                                    <span>{t('channels.dialogs.fields.apiFormat.anthropicAWS.label')}</span>
+                                  </label>
+                                </div>
+                              )}
+                              {selectedApiFormat === 'anthropic/messages' && selectedProvider === 'moonshot' && (
+                                <div className='mt-3 space-y-2'>
+                                  <label
+                                    className={`flex items-center gap-2 text-sm ${isOAuthChannel ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                                  >
+                                    <Checkbox
+                                      checked={useKimiCoding}
+                                      onCheckedChange={(checked) => handleKimiCodingChange(checked === true)}
+                                      disabled={!!isOAuthChannel}
+                                    />
+                                    <span>{t('channels.dialogs.fields.apiFormat.kimiCoding.label')}</span>
+                                  </label>
+                                </div>
+                              )}
+                            </div>
+                          </FormItem>
+                        )}
                       {selectedProvider === 'codex' && (
                         <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
                           <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
@@ -2319,13 +2279,19 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                 {t('channels.dialogs.fields.apiFormat.codexWebSocket.derivedURL', { url: codexResponsesWebSocketURL })}
                               </p>
                             )}
-                            {codexResponsesWebSocket && (initialCodexResponses.webSocketOnly || hasCodexResponsesWebSocketOverrideReplacement(initialRow)) && (
-                              <p className='text-xs text-amber-600 dark:text-amber-400' data-testid='codex-responses-websocket-upgrade-note'>
-                                {t(initialCodexResponses.webSocketOnly
-                                  ? 'channels.dialogs.fields.apiFormat.codexWebSocket.legacyUpgrade'
-                                  : 'channels.dialogs.fields.apiFormat.codexWebSocket.overrideReplacement')}
-                              </p>
-                            )}
+                            {codexResponsesWebSocket &&
+                              (initialCodexResponses.webSocketOnly || hasCodexResponsesWebSocketOverrideReplacement(initialRow)) && (
+                                <p
+                                  className='text-xs text-amber-600 dark:text-amber-400'
+                                  data-testid='codex-responses-websocket-upgrade-note'
+                                >
+                                  {t(
+                                    initialCodexResponses.webSocketOnly
+                                      ? 'channels.dialogs.fields.apiFormat.codexWebSocket.legacyUpgrade'
+                                      : 'channels.dialogs.fields.apiFormat.codexWebSocket.overrideReplacement'
+                                  )}
+                                </p>
+                              )}
                           </div>
                         </FormItem>
                       )}
@@ -2549,14 +2515,14 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                   } else if (isCodexType && codexThirdPartyBaseURLRef.current) {
                                     form.setValue('baseURL', codexThirdPartyBaseURLRef.current);
                                   }
-                              }}
-                            >
-                              <TabsList className={`grid w-full ${isCodexType ? 'grid-cols-3' : 'grid-cols-2'}`}>
-                                <TabsTrigger value='official'>{t('channels.dialogs.authMode.official')}</TabsTrigger>
-                                {isCodexType && <TabsTrigger value='auth-json'>{t('channels.dialogs.authMode.authJson')}</TabsTrigger>}
-                                <TabsTrigger value='third-party'>{t('channels.dialogs.authMode.thirdParty')}</TabsTrigger>
-                              </TabsList>
-                            </Tabs>
+                                }}
+                              >
+                                <TabsList className={`grid w-full ${isCodexType ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                                  <TabsTrigger value='official'>{t('channels.dialogs.authMode.official')}</TabsTrigger>
+                                  {isCodexType && <TabsTrigger value='auth-json'>{t('channels.dialogs.authMode.authJson')}</TabsTrigger>}
+                                  <TabsTrigger value='third-party'>{t('channels.dialogs.authMode.thirdParty')}</TabsTrigger>
+                                </TabsList>
+                              </Tabs>
 
                               {isCodexType && authMode === 'auth-json' && (
                                 <div className='rounded-md border p-3'>
@@ -2569,27 +2535,33 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                       className='min-h-[160px] resize-y font-mono text-xs'
                                       data-testid='codex-auth-json-input'
                                     />
-                                    <Button type='button' variant='secondary' onClick={applyCodexAuthJSON} data-testid='codex-auth-json-apply'>
+                                    <Button
+                                      type='button'
+                                      variant='secondary'
+                                      onClick={applyCodexAuthJSON}
+                                      data-testid='codex-auth-json-apply'
+                                    >
                                       {t('channels.dialogs.codexAuthJson.applyButton')}
                                     </Button>
                                     <p className='text-muted-foreground text-xs'>{t('channels.dialogs.codexAuthJson.description')}</p>
                                   </div>
                                 </div>
+                              )}
+                            </div>
+
+                            {isCodexType && (
+                              <div className='space-y-2'>
+                                {authMode === 'official' &&
+                                  renderOAuthSection(codexOAuth, t('channels.dialogs.fields.apiFormat.codex.description'))}
+                              </div>
                             )}
-                          </div>
 
-                          {isCodexType && (
-                            <div className='space-y-2'>
-                              {authMode === 'official' && renderOAuthSection(codexOAuth, t('channels.dialogs.fields.apiFormat.codex.description'))}
-                            </div>
-                          )}
-
-                          {isClaudeCodeType && (
-                            <div className='space-y-2'>
-                              {authMode === 'official' &&
-                                renderOAuthSection(claudecodeOAuth, t('channels.dialogs.fields.apiFormat.claudecode.description'))}
-                            </div>
-                          )}
+                            {isClaudeCodeType && (
+                              <div className='space-y-2'>
+                                {authMode === 'official' &&
+                                  renderOAuthSection(claudecodeOAuth, t('channels.dialogs.fields.apiFormat.claudecode.description'))}
+                              </div>
+                            )}
                           </div>
                         </div>
                       )}
@@ -2793,9 +2765,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                   {...field}
                                   value={field.value ?? ''}
                                 />
-                                <p className='text-muted-foreground text-xs'>
-                                  {t('channels.dialogs.fields.managementApiKey.hint')}
-                                </p>
+                                <p className='text-muted-foreground text-xs'>{t('channels.dialogs.fields.managementApiKey.hint')}</p>
                               </div>
                             </FormItem>
                           )}
@@ -2928,24 +2898,27 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                           {t('channels.dialogs.fields.quotaRoutingMode.label')}
                         </FormLabel>
                         <div className='space-y-1 md:col-span-6'>
-                          <Select
-                            value={quotaRoutingMode}
-                            onValueChange={(value) => setQuotaRoutingMode(value as ChannelQuotaRoutingMode)}
-                          >
+                          <Select value={quotaRoutingMode} onValueChange={(value) => setQuotaRoutingMode(value as ChannelQuotaRoutingMode)}>
                             <SelectTrigger>
                               <SelectValue placeholder={t('channels.dialogs.fields.quotaRoutingMode.options.INHERIT')} />
                             </SelectTrigger>
                             <SelectContent>
-                               <SelectItem value='INHERIT'>
-                                 {quotaRoutingSettings?.defaultMode
-                                   ? t('channels.dialogs.fields.quotaRoutingMode.options.INHERIT_WITH_MODE', {
-                                       mode: t(`channels.dialogs.fields.quotaRoutingMode.options.${quotaRoutingSettings.defaultMode}`),
-                                     })
-                                   : t('channels.dialogs.fields.quotaRoutingMode.options.INHERIT')}
-                               </SelectItem>
-                              <SelectItem value='IGNORE_QUOTA'>{t('channels.dialogs.fields.quotaRoutingMode.options.IGNORE_QUOTA')}</SelectItem>
-                              <SelectItem value='REMOVE_ON_EXHAUSTED'>{t('channels.dialogs.fields.quotaRoutingMode.options.REMOVE_ON_EXHAUSTED')}</SelectItem>
-                              <SelectItem value='BACKPRESSURE'>{t('channels.dialogs.fields.quotaRoutingMode.options.BACKPRESSURE')}</SelectItem>
+                              <SelectItem value='INHERIT'>
+                                {quotaRoutingSettings?.defaultMode
+                                  ? t('channels.dialogs.fields.quotaRoutingMode.options.INHERIT_WITH_MODE', {
+                                      mode: t(`channels.dialogs.fields.quotaRoutingMode.options.${quotaRoutingSettings.defaultMode}`),
+                                    })
+                                  : t('channels.dialogs.fields.quotaRoutingMode.options.INHERIT')}
+                              </SelectItem>
+                              <SelectItem value='IGNORE_QUOTA'>
+                                {t('channels.dialogs.fields.quotaRoutingMode.options.IGNORE_QUOTA')}
+                              </SelectItem>
+                              <SelectItem value='REMOVE_ON_EXHAUSTED'>
+                                {t('channels.dialogs.fields.quotaRoutingMode.options.REMOVE_ON_EXHAUSTED')}
+                              </SelectItem>
+                              <SelectItem value='BACKPRESSURE'>
+                                {t('channels.dialogs.fields.quotaRoutingMode.options.BACKPRESSURE')}
+                              </SelectItem>
                             </SelectContent>
                           </Select>
                           <FormDescription className='text-xs'>
@@ -3330,9 +3303,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                           </FormItem>
 
                           <FormItem className='min-w-0 space-y-1.5'>
-                            <FormLabel className='min-h-5 text-sm font-medium'>
-                              {t('channels.dialogs.bodyPassThrough.label')}
-                            </FormLabel>
+                            <FormLabel className='min-h-5 text-sm font-medium'>{t('channels.dialogs.bodyPassThrough.label')}</FormLabel>
                             <Select
                               value={passThroughBody === null ? 'inherit' : passThroughBody ? 'enabled' : 'disabled'}
                               onValueChange={(value) => setPassThroughBody(value === 'inherit' ? null : value === 'enabled')}
@@ -3763,7 +3734,13 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                     <Tooltip>
                                       <TooltipTrigger asChild>
                                         <span className='inline-flex'>
-                                          <Button type='button' variant='ghost' size='sm' className='text-muted-foreground h-7 w-7 p-0' disabled>
+                                          <Button
+                                            type='button'
+                                            variant='ghost'
+                                            size='sm'
+                                            className='text-muted-foreground h-7 w-7 p-0'
+                                            disabled
+                                          >
                                             <Ban className='h-4 w-4' />
                                           </Button>
                                         </span>
@@ -3778,7 +3755,13 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                       onOpenChange={(isOpen) => setConfirmDisableKey(isOpen ? key : null)}
                                     >
                                       <PopoverTrigger asChild>
-                                        <Button type='button' variant='ghost' size='sm' className='text-orange-500 h-7 w-7 p-0' disabled={disableAPIKey.isPending || isFetchingDisabledKeys}>
+                                        <Button
+                                          type='button'
+                                          variant='ghost'
+                                          size='sm'
+                                          className='h-7 w-7 p-0 text-orange-500'
+                                          disabled={disableAPIKey.isPending || isFetchingDisabledKeys}
+                                        >
                                           <Ban className='h-4 w-4' />
                                         </Button>
                                       </PopoverTrigger>

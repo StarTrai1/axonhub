@@ -10,8 +10,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/samber/lo"
-
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
@@ -25,6 +23,7 @@ import (
 	"github.com/looplj/axonhub/internal/scopes"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/samber/lo"
 )
 
 // LinkedProfilesCount is the resolver for the linkedProfilesCount field.
@@ -1062,8 +1061,6 @@ func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 // Segment returns SegmentResolver implementation.
 func (r *Resolver) Segment() SegmentResolver { return &segmentResolver{r} }
 
-type (
-	channelSettingsResolver struct{ *Resolver }
-	mutationResolver        struct{ *Resolver }
-	segmentResolver         struct{ *Resolver }
-)
+type channelSettingsResolver struct{ *Resolver }
+type mutationResolver struct{ *Resolver }
+type segmentResolver struct{ *Resolver }

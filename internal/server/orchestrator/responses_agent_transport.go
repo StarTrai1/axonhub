@@ -1,7 +1,6 @@
 package orchestrator
 
 import (
- "github.com/looplj/axonhub/llm/transformer/openai/responses"
 	"context"
 	"crypto/cipher"
 	"crypto/sha256"
@@ -23,6 +22,7 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/looplj/axonhub/llm/streams"
+	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 

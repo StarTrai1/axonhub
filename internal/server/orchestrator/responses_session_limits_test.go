@@ -75,7 +75,7 @@ func TestResponsesSessionRejectsRecordsAboveReplayLimit(t *testing.T) {
 	body := []byte(`{"input":"` + strings.Repeat("x", responsesSessionMaxReplay) + `"}`)
 	store.record(ctx, body, []byte(`{"id":"resp_oversized","status":"completed","output":[]}`))
 	require.NotNil(t, store.lookup(ctx, "resp_oversized"))
- require.False(t, store.lookup(ctx, "resp_oversized").complete)
+	require.False(t, store.lookup(ctx, "resp_oversized").complete)
 	require.Zero(t, store.totalBytes)
 }
 
@@ -123,5 +123,5 @@ func TestResponsesSessionRejectsUnexpandedLiveDelta(t *testing.T) {
 	store := newResponsesSessionStore()
 	store.record(ctx, []byte(`{"previous_response_id":"resp_ancestor","input":[]}`), []byte(`{"id":"resp_delta","status":"completed","output":[]}`))
 	require.NotNil(t, store.lookup(ctx, "resp_delta"))
- require.False(t, store.lookup(ctx, "resp_delta").complete)
+	require.False(t, store.lookup(ctx, "resp_delta").complete)
 }

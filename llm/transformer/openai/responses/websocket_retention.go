@@ -2,8 +2,8 @@ package responses
 
 import (
 	"encoding/json"
+	"slices"
 	"strings"
- "slices"
 )
 
 func (pc *pooledWebSocketConn) rememberTurn(input []json.RawMessage, responseID string, maxInputBytes int) bool {
