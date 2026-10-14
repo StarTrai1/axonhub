@@ -18,29 +18,29 @@ import (
 type Handlers struct {
 	fx.In
 
-	Graphql        *gql.GraphqlHandler
-	OpenAPIGraphql *openapi.GraphqlHandler
-	OpenAI         *api.OpenAIHandlers
-	Doubao         *api.DoubaoHandlers
-	Anthropic      *api.AnthropicHandlers
-	Gemini         *api.GeminiHandlers
-	AiSDK          *api.AiSDKHandlers
-	Playground     *api.PlaygroundHandlers
-	System         *api.SystemHandlers
-	Auth           *api.AuthHandlers
-	Invitation     *api.InvitationHandlers
-	Jina           *api.JinaHandlers
-	TypeSafe       *api.TypeSafeHandlers
-	Codex          *api.CodexHandlers
-	XAI            *api.XAIHandlers
-	ClaudeCode     *api.ClaudeCodeHandlers
-	Antigravity    *api.AntigravityHandlers
-	Copilot        *api.CopilotHandlers
-	RequestContent *api.RequestContentHandlers
-	OIDC           *api.OIDCHandlers
-	RequestPreview *api.RequestPreviewHandlers
-	RequestSwitch  *api.RequestSwitchHandlers
-	ProbeQuota     *api.ProbeQuotaHandlers
+	Graphql            *gql.GraphqlHandler
+	OpenAPIGraphql     *openapi.GraphqlHandler
+	OpenAI             *api.OpenAIHandlers
+	Doubao             *api.DoubaoHandlers
+	Anthropic          *api.AnthropicHandlers
+	Gemini             *api.GeminiHandlers
+	AiSDK              *api.AiSDKHandlers
+	Playground         *api.PlaygroundHandlers
+	System             *api.SystemHandlers
+	Auth               *api.AuthHandlers
+	Invitation         *api.InvitationHandlers
+	Jina               *api.JinaHandlers
+	TypeSafe           *api.TypeSafeHandlers
+	Codex              *api.CodexHandlers
+	XAI                *api.XAIHandlers
+	ClaudeCode         *api.ClaudeCodeHandlers
+	Antigravity        *api.AntigravityHandlers
+	Copilot            *api.CopilotHandlers
+	RequestContent     *api.RequestContentHandlers
+	OIDC               *api.OIDCHandlers
+	RequestPreview     *api.RequestPreviewHandlers
+	RequestSwitch      *api.RequestSwitchHandlers
+	ProbeQuota         *api.ProbeQuotaHandlers
 	CodexCompatibility *api.CodexCompatibilityHandlers
 }
 

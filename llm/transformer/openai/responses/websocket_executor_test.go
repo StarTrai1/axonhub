@@ -137,7 +137,7 @@ func TestWebSocketExecutorDoStreamForwardsGPT6AstraSteering(t *testing.T) {
 		require.NoError(t, conn.ReadJSON(&create))
 		require.Equal(t, "response.create", create["type"])
 		require.NoError(t, conn.WriteJSON(map[string]any{
-			"type": "response.created",
+			"type":     "response.created",
 			"response": map[string]any{"id": "resp_initial", "model": "gpt-6-astra", "status": "in_progress"},
 		}))
 
@@ -146,19 +146,19 @@ func TestWebSocketExecutorDoStreamForwardsGPT6AstraSteering(t *testing.T) {
 		require.Equal(t, "response.steer", steer["type"])
 		require.Equal(t, "resp_initial", steer["previous_response_id"])
 		require.NoError(t, conn.WriteJSON(map[string]any{
-			"type": "response.steer.accepted",
+			"type":  "response.steer.accepted",
 			"steer": map[string]any{"id": "steer_1", "previous_response_id": "resp_initial"},
 		}))
 		require.NoError(t, conn.WriteJSON(map[string]any{
-			"type": "response.incomplete",
+			"type":     "response.incomplete",
 			"response": map[string]any{"id": "resp_initial", "model": "gpt-6-astra", "status": "incomplete", "incomplete_details": map[string]any{"reason": "steered"}},
 		}))
 		require.NoError(t, conn.WriteJSON(map[string]any{
-			"type": "response.created",
+			"type":     "response.created",
 			"response": map[string]any{"id": "resp_successor", "model": "gpt-6-astra", "status": "in_progress"},
 		}))
 		require.NoError(t, conn.WriteJSON(map[string]any{
-			"type": "response.completed",
+			"type":     "response.completed",
 			"response": map[string]any{"id": "resp_successor", "model": "gpt-6-astra", "status": "completed", "output": []any{}},
 		}))
 	}))

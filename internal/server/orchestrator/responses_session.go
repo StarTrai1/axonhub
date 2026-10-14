@@ -25,7 +25,7 @@ const (
 	responsesSessionMaxRecords  = 2048
 	responsesSessionMaxBytes    = 64 << 20
 	responsesSessionMaxResponse = 16 << 20
-	responsesSessionMaxReplay = 16 << 20
+	responsesSessionMaxReplay   = 16 << 20
 )
 
 type responsesSessionStore struct {

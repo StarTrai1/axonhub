@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"maps"
 	"net"
 	"net/http"
 	"strings"
@@ -182,7 +181,7 @@ func (w *responsesWebSocketWriter) close(code int) {
 type responsesWebSocketLane struct {
 	session responsesWebSocketSession
 	tail    <-chan struct{}
-	owner *shared.ResponsesLane
+	owner   *shared.ResponsesLane
 	mu      sync.Mutex
 	active  bool
 	gpt6    bool
@@ -207,8 +206,8 @@ type responsesWebSocketDispatcher struct {
 	namedStreams      int
 	wg                sync.WaitGroup
 	closeOnce         sync.Once
-	queueBudget *shared.ResponsesBudget
-	retainedBudget *shared.ResponsesBudget
+	queueBudget       *shared.ResponsesBudget
+	retainedBudget    *shared.ResponsesBudget
 }
 
 func newResponsesWebSocketDispatcher(

@@ -72,8 +72,10 @@ func (a *ResponsesAttempt) SetOrigin(origin ResponsesOrigin) {
 	a.mu.Unlock()
 }
 
-type responsesAttemptKey struct{}
-type responsesLaneKey struct{}
+type (
+	responsesAttemptKey struct{}
+	responsesLaneKey    struct{}
+)
 
 func WithResponsesAttempt(ctx context.Context, attempt *ResponsesAttempt) context.Context {
 	return context.WithValue(ctx, responsesAttemptKey{}, attempt)

@@ -734,7 +734,7 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 		}
 		// Function call output - convert to tool message
 		msg := &llm.Message{
-			ID: item.ID,
+			ID:      item.ID,
 			Role:    "tool",
 			Content: convertToMessageContent(*item.Output),
 		}
@@ -756,7 +756,7 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 		}
 		// Custom tool call output - convert to tool message
 		msg := &llm.Message{
-			ID: item.ID,
+			ID:      item.ID,
 			Role:    "tool",
 			Content: convertToMessageContent(*item.Output),
 		}

@@ -370,8 +370,8 @@ func (e *WebSocketExecutor) Close() error {
 }
 
 type webSocketPoolKey struct {
-	ChannelID int
-	Model string
+	ChannelID      int
+	Model          string
 	URL            string
 	SessionID      string
 	ExecutionScope string
@@ -1339,7 +1339,7 @@ func (s *webSocketStream) Next() bool {
 		// non-streaming Do path can aggregate their response object.
 		evict := terminalWebSocketEventEvicts(typ) && !interrupted
 		if typ == "response.completed" || interrupted {
-			if responseIDFromWebSocketEvent(msg) == "" {
+			if responseID := responseIDFromWebSocketEvent(msg); responseID == "" {
 				evict = true
 			} else {
 				// Retaining the full input is a local cache optimization for

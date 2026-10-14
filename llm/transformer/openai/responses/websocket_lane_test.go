@@ -8,9 +8,10 @@ import (
 	"testing"
 
 	"github.com/gorilla/websocket"
+	"github.com/stretchr/testify/require"
+
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer/shared"
-	"github.com/stretchr/testify/require"
 )
 
 func TestResponsesDisconnectReleasesOwnedLeases(t *testing.T) {

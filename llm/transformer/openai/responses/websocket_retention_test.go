@@ -2,10 +2,12 @@ package responses
 
 import (
 	"encoding/json"
-	"github.com/looplj/axonhub/llm/transformer/shared"
-	"github.com/stretchr/testify/require"
 	"strconv"
 	"testing"
+
+	"github.com/stretchr/testify/require"
+
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 func TestResponsesWebSocketRetentionBoundaries(t *testing.T) {

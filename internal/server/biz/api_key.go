@@ -933,7 +933,6 @@ func (s *APIKeyService) GetAPIKey(ctx context.Context, key string) (*ent.APIKey,
 	cacheKey := buildAPIKeyCacheKey(key)
 
 	cached, err := s.APIKeyCache.Get(ctx, cacheKey)
-
 	if err != nil {
 		if errors.Is(err, live.ErrKeyNotFound) {
 			return nil, fmt.Errorf("%w: failed to get api key: %w", ErrInvalidAPIKey, err)

@@ -891,11 +891,7 @@ func (s *responsesOutboundStream) transformStreamEvent(event *httpclient.StreamE
 		}
 		if !s.hasGeneratedOutput() {
 			if streamEvent.Response == nil {
-				if streamEvent.Response.Usage != nil {
-				s.state.usage = streamEvent.Response.Usage.ToUsage()
-				s.enqueue(&llm.Response{Usage: s.state.usage})
-			}
-			return responseErrorFromStreamEvent(&streamEvent)
+				return responseErrorFromStreamEvent(&streamEvent)
 			}
 			responseErr := responseErrorFromResponse(streamEvent.Response)
 			if responseErr.Detail.RequestID == "" {

@@ -54,7 +54,7 @@ type PersistenceState struct {
 	responsesRelayAffinityRetryChannel     int
 	responsesRelayAffinityExhaustedChannel int
 	responsesRelayAffinityApplied          bool
-	ResponsesContinuation *responsesContinuation
+	ResponsesContinuation                  *responsesContinuation
 
 	// OriginalRequestStream stores the client's original stream intent before any
 	// candidate-specific forcing to provider-side streaming happens.

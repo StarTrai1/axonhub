@@ -9,12 +9,13 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/shopspring/decimal"
+
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm/httpclient"
-	"github.com/shopspring/decimal"
 )
 
 type APIKeyProfileQuotaUsage struct {

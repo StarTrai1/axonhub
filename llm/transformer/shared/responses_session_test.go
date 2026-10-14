@@ -4,8 +4,9 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/stretchr/testify/require"
+
+	"github.com/looplj/axonhub/llm/httpclient"
 )
 
 func TestResponsesRecoveryPreservesHTTPError(t *testing.T) {

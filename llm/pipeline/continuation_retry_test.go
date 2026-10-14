@@ -2,11 +2,13 @@ package pipeline
 
 import (
 	"context"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer/shared"
-	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestResponsesRecoveryStopsBothRetryBranches(t *testing.T) {

@@ -60,7 +60,9 @@ func prepareResponsesAttemptBodyWithRequest(ctx context.Context, p *PersistentOu
 		payload["input"] = normalized
 		var err error
 		body, err = json.Marshal(payload)
-		if err != nil { return nil, err }
+		if err != nil {
+			return nil, err
+		}
 	}
 	if c.previous != "" && c.store != nil {
 		if record := c.store.lookupOrLoad(ctx, c.previous); record != nil {
@@ -69,7 +71,9 @@ func prepareResponsesAttemptBodyWithRequest(ctx context.Context, p *PersistentOu
 				delete(payload, "previous_response_id")
 				var err error
 				body, err = json.Marshal(payload)
-				if err != nil { return nil, err }
+				if err != nil {
+					return nil, err
+				}
 				c.previous, c.original, c.owner = "", body, nil
 			}
 		}

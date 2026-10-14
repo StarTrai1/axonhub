@@ -4,20 +4,20 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"slices"
 	"fmt"
+	"slices"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/log"
- "github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm/oauth"
 )
 
 func (svc *ChannelService) refreshOAuthToken(ctx context.Context, ch *ent.Channel, refreshed *oauth.OAuthCredentials) (*ent.Channel, error) {
- snapshot := *ch
- err := svc.refreshOAuthTokenWithClient(ctx, svc.entFromContext(ctx), &snapshot, refreshed)
- return &snapshot, err
+	snapshot := *ch
+	err := svc.refreshOAuthTokenWithClient(ctx, svc.entFromContext(ctx), &snapshot, refreshed)
+	return &snapshot, err
 }
 
 func (svc *ChannelService) refreshOAuthTokenWithClient(ctx context.Context, db *ent.Client, ch *ent.Channel, refreshed *oauth.OAuthCredentials) error {
@@ -133,6 +133,7 @@ func gcpCredentialsEqual(a, b *objects.GCPCredential) bool {
 // WARNING: The returned map is internal cached state.
 // DO NOT modify the returned map or its ChannelModelEntry values.
 // Modifications will not persist and may cause data inconsistency.
+//
 //nolint:gosec // G117: serialized credentials are compared only in memory; never logged, persisted or returned.
 func sameOAuthRefreshCredentials(current, snapshot *ent.Channel) bool {
 	currentJSON, currentErr := json.Marshal(current.Credentials)

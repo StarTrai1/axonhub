@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/looplj/axonhub/llm/httpclient"
-
 	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
