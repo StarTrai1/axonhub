@@ -125,7 +125,7 @@ func responsesTransportAdaptationEnabled(_ context.Context, outbound *Persistent
 }
 
 func responsesIdentityPreservationEnabled(outbound *PersistentOutboundTransformer) bool {
-	if outbound == nil || outbound.state == nil || outbound.state.LlmRequest == nil || outbound.state.RawProviderRequest == nil {
+	if outbound == nil || outbound.state == nil || outbound.state.DisableResponsePassThrough || outbound.state.LlmRequest == nil || outbound.state.RawProviderRequest == nil {
 		return false
 	}
 
@@ -133,6 +133,11 @@ func responsesIdentityPreservationEnabled(outbound *PersistentOutboundTransforme
 	target := llm.APIFormat(outbound.state.RawProviderRequest.APIFormat)
 
 	return source == target && responses.IsResponsesFormat(source)
+}
+
+func responsesResponseTransportAdaptationEnabled(ctx context.Context, outbound *PersistentOutboundTransformer, systemService *biz.SystemService) bool {
+	return outbound != nil && outbound.state != nil && !outbound.state.DisableResponsePassThrough &&
+		responsesTransportAdaptationEnabled(ctx, outbound, systemService)
 }
 
 func responsesClientModel(outbound *PersistentOutboundTransformer) string {
@@ -730,7 +735,7 @@ func applyUserAgentPassThrough(outbound *PersistentOutboundTransformer, systemSe
 // captureRawProviderResponse stores the raw provider response on state for response pass-through.
 func captureRawProviderResponse(outbound *PersistentOutboundTransformer, systemService *biz.SystemService) pipeline.Middleware {
 	return pipeline.OnRawResponse("capture-raw-provider-response", func(ctx context.Context, response *httpclient.Response) (*httpclient.Response, error) {
-		if outbound.isResponsePassThroughEnabled(ctx, systemService) || responsesTransportAdaptationEnabled(ctx, outbound, systemService) || responsesIdentityPreservationEnabled(outbound) {
+		if outbound.isResponsePassThroughEnabled(ctx, systemService) || responsesResponseTransportAdaptationEnabled(ctx, outbound, systemService) || responsesIdentityPreservationEnabled(outbound) {
 			outbound.state.RawProviderResponse = response
 		}
 
@@ -742,7 +747,7 @@ func captureRawProviderResponse(outbound *PersistentOutboundTransformer, systemS
 // when PassThroughBody is enabled and the inbound/outbound API formats match.
 func applyPassThroughResponse(outbound *PersistentOutboundTransformer, systemService *biz.SystemService) pipeline.Middleware {
 	return pipeline.OnInboundRawResponse("pass-through-response", func(ctx context.Context, response *httpclient.Response) (*httpclient.Response, error) {
-		if !outbound.isResponsePassThroughEnabled(ctx, systemService) && !responsesTransportAdaptationEnabled(ctx, outbound, systemService) && !responsesIdentityPreservationEnabled(outbound) {
+		if !outbound.isResponsePassThroughEnabled(ctx, systemService) && !responsesResponseTransportAdaptationEnabled(ctx, outbound, systemService) && !responsesIdentityPreservationEnabled(outbound) {
 			return response, nil
 		}
 
@@ -795,7 +800,7 @@ func captureRawProviderStreamWithTerminalGrace(
 	terminalGracePeriod time.Duration,
 ) pipeline.Middleware {
 	return pipeline.OnRawStream("capture-raw-provider-stream", func(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*httpclient.StreamEvent], error) {
-		adaptResponses := responsesTransportAdaptationEnabled(ctx, outbound, systemService)
+		adaptResponses := responsesResponseTransportAdaptationEnabled(ctx, outbound, systemService)
 		preserveResponses := responsesIdentityPreservationEnabled(outbound)
 		if !outbound.isResponsePassThroughEnabled(ctx, systemService) && !adaptResponses && !preserveResponses {
 			if shouldRepairDelayedCodexResponsesTerminal(outbound) {
@@ -1401,7 +1406,7 @@ func stringPtr(value string) *string {
 // performance recording, rate limit tracking) still process events.
 func applyPassThroughStream(outbound *PersistentOutboundTransformer, systemService *biz.SystemService) pipeline.Middleware {
 	return pipeline.OnInboundRawStream("pass-through-response-stream", func(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*httpclient.StreamEvent], error) {
-		adaptResponses := responsesTransportAdaptationEnabled(ctx, outbound, systemService)
+		adaptResponses := responsesResponseTransportAdaptationEnabled(ctx, outbound, systemService)
 		preserveResponses := responsesIdentityPreservationEnabled(outbound)
 		if !outbound.isResponsePassThroughEnabled(ctx, systemService) && !adaptResponses && !preserveResponses {
 			return stream, nil
