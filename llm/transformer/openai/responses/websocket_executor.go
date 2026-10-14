@@ -32,8 +32,8 @@ const (
 	webSocketAccountIDHeader  = "Chatgpt-Account-Id"
 	webSocketOriginatorHeader = "Originator"
 	webSocketUserAgentHeader  = "User-Agent"
-	webSocketOrgHeader        = "OpenAI-Organization"
-	webSocketProjectHeader    = "OpenAI-Project"
+	webSocketOrgHeader        = "Openai-Organization"
+	webSocketProjectHeader    = "Openai-Project"
 	// OpenAI limits Responses WebSocket connections to 60 minutes. The
 	// Codex store=false path depends on connection-local state: real upstream
 	// probes show reconnecting loses previous_response_id recovery, and

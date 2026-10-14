@@ -44,7 +44,7 @@ func TestResponsesProtocolNativeContinuationRetainsCompletedConnection(t *testin
 					frames <- body
 					response := `{"type":"response.completed","response":{"id":"provider-tool","status":"completed","output":[{"type":"function_call","id":"fc-tool","call_id":"call-tool","name":"payload","arguments":"{}"}]}}`
 					if turn > 0 {
-						response = `{"type":"response.completed","response":{"id":"provider-final","status":"completed","output":[]}}`
+						response = `{"type":"response.completed","response":{"id":"provider-final","status":"completed","output":[{"type":"message","role":"assistant","content":[{"type":"output_text","text":"complete"}]}]}}`
 					}
 					if err := conn.WriteMessage(websocket.TextMessage, []byte(response)); err != nil {
 						t.Error(err)

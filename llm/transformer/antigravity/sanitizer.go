@@ -448,8 +448,10 @@ func flattenAnyOfOneOf(schema map[string]any) map[string]any {
 			}
 		case 1:
 			branch, ok := nonNull[0].(map[string]any)
-   if !ok { continue }
-   for key, value := range branch {
+			if !ok {
+				continue
+			}
+			for key, value := range branch {
 				if _, exists := schema[key]; !exists {
 					schema[key] = value
 				}
@@ -747,9 +749,9 @@ func arrayItemSchema(value any) map[string]any {
 	}
 	switch {
 	case item["anyOf"] != nil:
-  // A union already describes the accepted item types. Do not synthesize STRING.
-  return item
- case item["properties"] != nil:
+		// A union already describes the accepted item types. Do not synthesize STRING.
+		return item
+	case item["properties"] != nil:
 		item["type"] = "object"
 	case item["items"] != nil || item["prefixItems"] != nil:
 		item["type"] = "array"

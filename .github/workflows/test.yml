@@ -162,7 +162,7 @@ jobs:
         run: |
           go test -race ./internal/server/orchestrator -run 'TestHTTP2FallbackPipeline|TestWebSocketSOCKSChannelRetry|TestCaptureRawProviderStream|TestPassThroughAnthropicStream|TestRawStreamBacklog|TestResponsesSession|TestResponsesRejected|TestResponsesAgent|TestResponsesCompactionRecovery|TestChannelRejectsFailedStreamEvenAfterText|TestSealedLocalCompaction|TestLegacyLocalCompaction' -count=1
           go test -race ./internal/server/biz -run '^TestChannelReload|^TestChannelSwap|^TestSystemServiceResponsesMetadata|^TestChannelMetrics_ConcurrentReadsAndWrites$' -count=1
-          go test -race ./internal/server/api -run '^TestResponsesWebSocket(Warmup|Heartbeat|Auth|Interrupt|Close)' -count=1
+          go test -race ./internal/server/api -run '^TestResponses(WebSocket(Warmup|Heartbeat|Auth|Interrupt|Close)|ProtocolNativeContinuation)' -count=1
           cd llm
           go test -race ./httpclient -run '^TestHTTP2Fallback' -count=1
           go test -race ./transformer/antigravity -run '^TestClaudeStructuredOutput' -count=1
