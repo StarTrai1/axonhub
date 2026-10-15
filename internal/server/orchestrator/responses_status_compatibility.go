@@ -267,6 +267,9 @@ func responsesBadRequestDetails(err error) (code, message, param string, ok bool
 }
 
 func responsesRejectedStatusRuleForDetails(requestBody []byte, code, message, param string) (responsesRejectedStatusRule, bool) {
+	if responsesRejectedCiphertextMessagePattern.MatchString(message) {
+		return responsesRejectedCiphertextReasoningRule(requestBody, code, message, param)
+	}
 	if responsesRejectedReasoningMessagePattern.MatchString(message) {
 		// The named item is authoritative, including when param is "input".
 		// A conflicting indexed parameter must not fall through to generic

@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -24,13 +25,20 @@ import (
 
 func TestResponsesRejectedAgentHistoryWebSocketCompactionSwitch(t *testing.T) {
 	for _, raw := range []bool{true, false} {
-		for _, scenario := range []string{"sealed local to native", "native to local", "foreign native to native"} {
+		for _, scenario := range []string{"sealed local to native", "native to local", "foreign native to native", "redacted sealed local to native", "redacted native to local", "redacted foreign native to native"} {
 			name := scenario + map[bool]string{true: "/raw", false: "/converted"}[raw]
 			t.Run(name, func(t *testing.T) {
+				redacted := strings.HasPrefix(scenario, "redacted ")
+				scenario = strings.TrimPrefix(scenario, "redacted ")
 				ctx, _, apiKey, adapter := rejectedCompactionStorage(t)
 				ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 				defer cancel()
 				req := agentRecoveryRequest(t, llm.APIFormatOpenAIResponse)
+				if redacted {
+					var err error
+					req.Body, err = sjson.DeleteBytes(req.Body, "input.11")
+					require.NoError(t, err)
+				}
 				ref, _, _, err := parseRemoteCompactionRequest(req.Body)
 				require.NoError(t, err)
 				owner := &PersistenceState{APIKey: apiKey}
@@ -85,6 +93,7 @@ func TestResponsesRejectedAgentHistoryWebSocketCompactionSwitch(t *testing.T) {
 						message = rejectedNativeCompactionMessage
 					}
 					if message != "" {
+						if redacted { message = rejectedRedactedCiphertextMessage }
 						if writeErr := conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"error","status":400,"error":{"type":"invalid_request_error","code":"invalid_encrypted_content","param":"input","message":"`+message+`"}}`)); writeErr != nil {
 							t.Errorf("error frame: %v", writeErr)
 						}
@@ -131,7 +140,9 @@ func TestResponsesRejectedAgentHistoryWebSocketCompactionSwitch(t *testing.T) {
 					}
 					// WebSocket serialization orders object keys. Compare every
 					// field, including exact ciphertext strings and array order.
-					require.JSONEq(t, preservedEncryptedAgentMessage, gjson.GetBytes(last, `input.#(id=="am_private")`).Raw)
+					if !redacted {
+						require.JSONEq(t, preservedEncryptedAgentMessage, gjson.GetBytes(last, `input.#(id=="am_private")`).Raw)
+					}
 					require.JSONEq(t, preservedPlainAgentMessage, gjson.GetBytes(last, `input.#(id=="am_public")`).Raw)
 					require.NotContains(t, string(last), localCompactionSealedReferencePrefix)
 					if scenario != "foreign native to native" {
