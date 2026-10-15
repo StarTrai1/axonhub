@@ -17,7 +17,7 @@ import (
 )
 
 func TestGeminiPartlessRefusalToAnthropic(t *testing.T) {
-	for _, reason := range []string{"SAFETY", "RECITATION", "PROHIBITED_CONTENT", "SPII", "BLOCKLIST", "MALFORMED_FUNCTION_CALL", "IMAGE_SAFETY", "IMAGE_PROHIBITED_CONTENT", "IMAGE_RECITATION"} {
+	for _, reason := range []string{"SAFETY", "RECITATION", "PROHIBITED_CONTENT", "SPII", "BLOCKLIST", "IMAGE_SAFETY", "IMAGE_PROHIBITED_CONTENT", "IMAGE_RECITATION"} {
 		t.Run(reason, func(t *testing.T) {
 			payload, err := json.Marshal(map[string]any{"responseId": "refusal", "candidates": []any{map[string]any{"finishReason": reason}}, "usageMetadata": map[string]any{"promptTokenCount": 20, "candidatesTokenCount": 1}})
 			require.NoError(t, err)

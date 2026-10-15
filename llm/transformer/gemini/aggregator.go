@@ -232,6 +232,11 @@ func buildGeminiResponse(
 		Candidates:    candidates,
 		UsageMetadata: usage,
 	}
+	if geminiMalformedToolError(response, nil) != nil {
+		// Preserve the raw failure and reported usage for persistence without
+		// granting completion evidence to a failed generation.
+		completed = false
+	}
 
 	data, err := json.Marshal(response)
 	if err != nil {

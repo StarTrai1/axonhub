@@ -41,7 +41,7 @@ jobs:
         run: go test ./internal/server/api -run '^TestResponsesProtocolCompactionRelay' -count=1 -v
       - name: Verify SOCKS aliases and cancellation on Windows
         working-directory: llm
-        run: go test ./transformer/openai/responses -run '^(TestWebSocketProxyAliasesDialThroughSOCKS|TestWebSocketSOCKSCancellation)$' -count=1 -v
+        run: go test ./transformer/openai/responses -run '^(TestWebSocketProxyAliasesDialThroughSOCKS|TestWebSocketSOCKSCancellation|TestWebSocketStreamCloseWhileNextBlockedReportsClosedBeforeResponse|TestWebSocketExecutorDoesNotReplayAfterReusedSession.*|TestWebSocketStreamDoesNotRetryFreshConnectionFailure)$' -count=1 -v
       - name: Verify native SQLite recovery import and rollback
         run: go test ./cmd/axonhub -run '^TestAgentRecoveryCLI$' -count=1 -v
       - name: Build native recovery maintenance tool
@@ -167,9 +167,10 @@ jobs:
           go test -race ./internal/server/api -run '^TestResponses(WebSocket(Warmup|Heartbeat|Auth|Interrupt|Close)|ProtocolNativeContinuation|ProtocolCompactionRelay)' -count=1
           cd llm
           go test -race ./httpclient -run '^TestHTTP2Fallback' -count=1
-          go test -race ./transformer/antigravity -run '^TestClaudeStructuredOutput' -count=1
+          go test -race ./transformer/antigravity -run '^TestClaudeStructuredOutput|^TestClaudeToolUnions' -count=1
+          go test -race ./transformer/gemini -run '^TestGeminiMalformedTool' -count=1
           go test -race ./pipeline -run 'TestFirstOutput' -count=1
-          go test -race ./transformer/openai/responses -run 'TestWebSocketSOCKSCancellation|TestWebSocketExecutorSeparatesCodexExecutionScopes|TestWebSocketExecutorInterrupt|TestCodexExecutionPoolIdentity' -count=1
+          go test -race ./transformer/openai/responses -run 'TestWebSocketSOCKSCancellation|TestWebSocketExecutorSeparatesCodexExecutionScopes|TestWebSocketExecutorInterrupt|TestCodexExecutionPoolIdentity|TestWebSocketStreamCloseWhileNextBlocked|TestWebSocketExecutorDoesNotReplay|TestWebSocketStreamDoesNotRetryFresh' -count=1
 
       - name: Responses cache benchmarks
         run: go test ./internal/server/orchestrator -run '^$' -bench '^BenchmarkResponsesSession' -benchmem -count=3 | tee responses-cache-benchmarks.txt

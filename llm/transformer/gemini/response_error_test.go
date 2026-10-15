@@ -53,7 +53,7 @@ func TestGeminiStreamAndAggregationDoNotCompleteAfterErrorEnvelope(t *testing.T)
 
 func TestGeminiModelFinishReasonsRemainProtocolResults(t *testing.T) {
 	outbound := &OutboundTransformer{}
-	for _, reason := range []string{"STOP", "MAX_TOKENS", "SAFETY", "MALFORMED_FUNCTION_CALL", "UNEXPECTED_TOOL_CALL"} {
+	for _, reason := range []string{"STOP", "MAX_TOKENS", "SAFETY", "UNEXPECTED_TOOL_CALL"} {
 		t.Run(reason, func(t *testing.T) {
 			body := []byte(fmt.Sprintf(`{"candidates":[{"content":{"parts":[{"text":"model result"}]},"finishReason":%q}]}`, reason))
 			response, err := outbound.TransformResponse(t.Context(), &httpclient.Response{StatusCode: http.StatusOK, Body: body})

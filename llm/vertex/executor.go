@@ -51,9 +51,12 @@ func NewExecutor(region, projectID string, creds *google.Credentials) (*Executor
 
 	// Determine base URL based on region
 	var baseURL string
-	if region == "global" {
+	switch region {
+	case "global":
 		baseURL = "https://aiplatform.googleapis.com/"
-	} else {
+	case "us", "eu":
+		baseURL = fmt.Sprintf("https://aiplatform.%s.rep.googleapis.com/", region)
+	default:
 		baseURL = fmt.Sprintf("https://%s-aiplatform.googleapis.com/", region)
 	}
 

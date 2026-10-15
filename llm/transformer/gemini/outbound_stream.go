@@ -16,6 +16,7 @@ type streamState struct {
 	toolCallIndex int
 	responseID    string
 	usage         *UsageMetadata
+	toolCandidates map[int64]bool
 }
 
 // TransformStream transforms the HTTP stream response to the unified response format.
@@ -65,6 +66,12 @@ func (t *OutboundTransformer) transformStreamChunkWithState(
 	}
 	state.usage = resp.UsageMetadata
 	if err := geminiInBandError(resp.Error); err != nil {
+		return nil, err
+	}
+	if state.toolCandidates == nil {
+		state.toolCandidates = make(map[int64]bool)
+	}
+	if err := geminiMalformedToolError(&resp, state.toolCandidates); err != nil {
 		return nil, err
 	}
 

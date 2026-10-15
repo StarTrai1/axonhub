@@ -79,6 +79,16 @@ const emptySchemaPlaceholderDescription = "Placeholder. Always pass true."
 // SanitizeJSONSchema cleans a JSON schema for Antigravity API compatibility.
 // It transforms unsupported features into description hints while preserving semantic information.
 func SanitizeJSONSchema(schema map[string]any) map[string]any {
+	return sanitizeJSONSchema(schema, false)
+}
+
+// sanitizeClaudeToolSchema limits union flattening to Claude tool parameters.
+// Gemini tools and response schemas retain their supported alternatives.
+func sanitizeClaudeToolSchema(schema map[string]any) map[string]any {
+	return sanitizeJSONSchema(schema, true)
+}
+
+func sanitizeJSONSchema(schema map[string]any, flattenToolUnions bool) map[string]any {
 	if schema == nil {
 		return nil
 	}
@@ -94,7 +104,7 @@ func SanitizeJSONSchema(schema map[string]any) map[string]any {
 
 	// Phase 2: Flatten complex structures
 	result = mergeAllOf(result)
-	result = flattenAnyOfOneOf(result)
+	result = flattenSchemaUnions(result, flattenToolUnions)
 	result = flattenTypeArrays(result, nil, "")
 
 	// Phase 3: Cleanup
@@ -389,11 +399,11 @@ func mergeAllOf(schema map[string]any) map[string]any {
 
 // Gemini's native Schema supports anyOf. Preserve alternatives instead of
 // selecting a single branch and silently losing the other accepted input types.
-func flattenAnyOfOneOf(schema map[string]any) map[string]any {
+func flattenSchemaUnions(schema map[string]any, flattenToolUnions bool) map[string]any {
 	if schema == nil {
 		return nil
 	}
-	if one, ok := schema["oneOf"].([]any); ok && schema["anyOf"] != nil {
+	if one, ok := schema["oneOf"].([]any); ok && schema["anyOf"] != nil && !flattenToolUnions {
 		raw, _ := json.Marshal(one)
 		appendDescriptionHint(schema, "oneOf: "+string(raw))
 		delete(schema, "oneOf")
@@ -411,13 +421,13 @@ func flattenAnyOfOneOf(schema map[string]any) map[string]any {
 			}
 		}
 		nonNull := make([]any, 0, len(options))
-		nullable := false
+		nullable, _ := schema["nullable"].(bool)
 		for _, value := range options {
 			branch, ok := value.(map[string]any)
 			if !ok {
 				continue
 			}
-			if branch["type"] == "null" {
+			if typeName, _ := branch["type"].(string); strings.EqualFold(typeName, "null") {
 				nullable = true
 				continue
 			}
@@ -435,7 +445,7 @@ func flattenAnyOfOneOf(schema map[string]any) map[string]any {
 					}
 				}
 			}
-			nonNull = append(nonNull, flattenAnyOfOneOf(branch))
+			nonNull = append(nonNull, flattenSchemaUnions(branch, flattenToolUnions))
 		}
 		delete(schema, unionKey)
 		if nullable {
@@ -457,6 +467,26 @@ func flattenAnyOfOneOf(schema map[string]any) map[string]any {
 				}
 			}
 		default:
+			if flattenToolUnions {
+				var selected map[string]any
+				best := -1
+				var types []string
+				for _, value := range nonNull {
+					branch := value.(map[string]any)
+					score, name := scoreSchemaOption(branch)
+					if score > best {
+						selected, best = branch, score
+					}
+					types = append(types, name)
+				}
+				for key, value := range selected {
+					if _, exists := schema[key]; !exists {
+						schema[key] = value
+					}
+				}
+				appendDescriptionHint(schema, "Accepts: "+strings.Join(types, " | "))
+				continue
+			}
 			schema["anyOf"] = nonNull
 			if unionKey == "oneOf" {
 				appendDescriptionHint(schema, "Exactly one alternative must match")
@@ -468,19 +498,21 @@ func flattenAnyOfOneOf(schema map[string]any) map[string]any {
 		if children, ok := schema[key].(map[string]any); ok {
 			for _, value := range children {
 				if child, ok := value.(map[string]any); ok {
-					flattenAnyOfOneOf(child)
+					flattenSchemaUnions(child, flattenToolUnions)
 				}
 			}
 		}
 	}
 	for _, key := range []string{"items", "additionalProperties", "contains", "not", "if", "then", "else", "propertyNames"} {
 		if child, ok := schema[key].(map[string]any); ok {
-			flattenAnyOfOneOf(child)
+			flattenSchemaUnions(child, flattenToolUnions)
 		}
 	}
 	for _, key := range []string{"anyOf", "allOf", "prefixItems"} {
 		if children, ok := schema[key].([]any); ok {
-			schema[key] = processArray(children, flattenAnyOfOneOf)
+			schema[key] = processArray(children, func(child map[string]any) map[string]any {
+				return flattenSchemaUnions(child, flattenToolUnions)
+			})
 		}
 	}
 	return schema

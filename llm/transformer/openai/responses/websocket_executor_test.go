@@ -987,6 +987,11 @@ func TestWebSocketStreamCloseWhileNextBlockedReportsClosedBeforeResponse(t *test
 	nextDone := make(chan struct{})
 	go func() {
 		defer close(nextDone)
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				t.Errorf("WebSocket reader panicked: %v", recovered)
+			}
+		}()
 		assert.False(t, stream.Next())
 	}()
 	select {

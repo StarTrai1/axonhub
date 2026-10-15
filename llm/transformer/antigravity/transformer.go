@@ -331,7 +331,7 @@ func (t *Transformer) patchGeminiRequest(ctx context.Context, req *gemini.Genera
 				var schema map[string]any
 				if err := json.Unmarshal(schemaData, &schema); err == nil {
 					// Apply sanitization transformations
-					sanitized := SanitizeJSONSchema(schema)
+					sanitized := sanitizeJSONSchema(schema, strings.Contains(strings.ToLower(llmReq.Model), "claude"))
 					// CRITICAL: Uppercase all type values (object -> OBJECT, string -> STRING)
 					// Antigravity API expects uppercase types per protobuf spec
 					// Reference: opencode-antigravity-auth/src/plugin/transform/gemini.ts toGeminiSchema()
