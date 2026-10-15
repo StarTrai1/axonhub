@@ -56,8 +56,8 @@ func geminiMalformedToolError(response *GenerateContentResponse, seen map[int64]
 			return &llm.ResponseError{
 				StatusCode: http.StatusBadGateway,
 				Detail: llm.ErrorDetail{
-					Code: "MALFORMED_FUNCTION_CALL",
-					Type: "api_error",
+					Code:    "MALFORMED_FUNCTION_CALL",
+					Type:    "api_error",
 					Message: "Gemini response finished with MALFORMED_FUNCTION_CALL",
 				},
 			}

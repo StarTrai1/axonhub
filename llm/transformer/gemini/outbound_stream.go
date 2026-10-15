@@ -13,9 +13,9 @@ import (
 
 // streamState tracks state across streaming events.
 type streamState struct {
-	toolCallIndex int
-	responseID    string
-	usage         *UsageMetadata
+	toolCallIndex  int
+	responseID     string
+	usage          *UsageMetadata
 	toolCandidates map[int64]bool
 }
 
