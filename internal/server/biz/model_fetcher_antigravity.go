@@ -118,7 +118,7 @@ func (f *ModelFetcher) fetchAntigravityModels(ctx context.Context, input FetchMo
 	antigravity.SetClientHeaders(headers)
 	headers.Set("Authorization", "Bearer "+refreshed.AccessToken)
 	response, err := httpClient.Do(ctx, &httpclient.Request{
-		Method:  http.MethodPost,
+		Method: http.MethodPost,
 		// Use the executor's first generation endpoint so catalog entries are
 		// available on the route used for the initial inference attempt.
 		URL:     antigravity.GetInitialEndpoint(antigravity.QuotaAntigravity) + "/v1internal:fetchAvailableModels",
