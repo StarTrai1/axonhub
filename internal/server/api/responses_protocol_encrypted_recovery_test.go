@@ -30,8 +30,12 @@ func TestResponsesProtocolRedactedEncryptionContinuation(t *testing.T) {
 					var summaries, rejections int
 					upstream := responsesIntegrationServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 						body, err := readRequestBody(r)
-						if err != nil { t.Error(err); return }
-						mu.Lock(); defer mu.Unlock()
+						if err != nil {
+							t.Error(err)
+							return
+						}
+						mu.Lock()
+						defer mu.Unlock()
 						attempts = append(attempts, body)
 						if gjson.GetBytes(body, `input.#(type=="compaction")`).Exists() || gjson.GetBytes(body, `input.#(type=="reasoning").encrypted_content`).String() != "" {
 							rejections++
@@ -66,8 +70,8 @@ func TestResponsesProtocolRedactedEncryptionContinuation(t *testing.T) {
 					root := fmt.Sprintf(`{"model":%q,"stream":false,"client_metadata":{"thread_id":"iceberg-thread","x-codex-window-id":"iceberg-window"},"input":[{"role":"user","content":"complete-source-canary"},{"type":"compaction_trigger"}]}`, model)
 					status, checkpoint := responsesIntegrationPost(t, gateway, "/v1/responses", root)
 					require.Equal(t, http.StatusOK, status, string(checkpoint))
-					require.Equal(t, "cmp_iceberg", gjson.GetBytes(checkpoint,"output.0.id").String())
-					continuation := fmt.Sprintf(`{"model":%q,"stream":false,"client_metadata":{"thread_id":"iceberg-thread","x-codex-window-id":"iceberg-window"},"input":[{"type":"message","role":"user","content":"retained-user-canary"},{"type":"compaction","id":"cmp_iceberg","encrypted_content":"checkpoint-cipher"},{"type":"reasoning","id":"rs_old","encrypted_content":"old-reasoning-cipher","summary":[{"type":"summary_text","text":"visible-reasoning-canary"}]},{"type":"custom_tool_call","id":"ct_old","call_id":"call_retained","name":"inspect","input":"tool-input-canary"},{"type":"custom_tool_call_output","call_id":"call_retained","output":"tool-output-canary"},{"role":"user","content":"continue-canary"}]}`, model)
+					require.Equal(t, "cmp_iceberg", gjson.GetBytes(checkpoint, "output.0.id").String())
+					continuation := fmt.Sprintf(`{"model":%q,"stream":false,"client_metadata":{"thread_id":"iceberg-thread","x-codex-window-id":"iceberg-window"},"input":[{"type":"message","role":"user","content":"retained-user-canary"},{"type":"compaction","id":"cmp_iceberg","encrypted_content":"checkpoint-cipher"},{"type":"reasoning","id":"rs_old","encrypted_content":"gAAAAABsynthetic_old_reasoning_ciphertext_0123456789abcdef0123456789abcdef","summary":[{"type":"summary_text","text":"visible-reasoning-canary"}]},{"type":"custom_tool_call","id":"ct_old","call_id":"call_retained","name":"inspect","input":"tool-input-canary"},{"type":"custom_tool_call_output","call_id":"call_retained","output":"tool-output-canary"},{"role":"user","content":"continue-canary"}]}`, model)
 					if downstream == "http" {
 						status, response := responsesIntegrationPost(t, gateway, "/v1/responses", continuation)
 						require.Equal(t, http.StatusOK, status, string(response))
@@ -77,26 +81,33 @@ func TestResponsesProtocolRedactedEncryptionContinuation(t *testing.T) {
 						conn := responsesIntegrationDial(t, gateway)
 						var payload map[string]any
 						require.NoError(t, json.Unmarshal([]byte(continuation), &payload))
-						delete(payload, "stream"); payload["type"] = "response.create"
-						encoded, err := json.Marshal(payload); require.NoError(t, err)
+						delete(payload, "stream")
+						payload["type"] = "response.create"
+						encoded, err := json.Marshal(payload)
+						require.NoError(t, err)
 						response := responsesIntegrationTurn(t, conn, string(encoded))
-						require.Equal(t,"resp_iceberg",gjson.GetBytes(response,"response.id").String(),string(response))
+						require.Equal(t, "resp_iceberg", gjson.GetBytes(response, "response.id").String(), string(response))
 						response = responsesIntegrationTurn(t, conn, fmt.Sprintf(`{"type":"response.create","model":%q,"previous_response_id":"resp_iceberg","input":"next-turn-canary"}`, model))
-						require.Equal(t,"response.completed",gjson.GetBytes(response,"type").String(),string(response))
+						require.Equal(t, "response.completed", gjson.GetBytes(response, "type").String(), string(response))
 					}
-					mu.Lock(); defer mu.Unlock()
-					require.Equal(t,2,rejections); require.Equal(t,1,summaries)
-					require.Len(t,attempts,6)
-					require.Contains(t,string(attempts[1]),"old-reasoning-cipher")
-					require.Contains(t,string(attempts[2]),"checkpoint-cipher")
-					require.NotContains(t,string(attempts[2]),"old-reasoning-cipher")
-					require.Contains(t,string(attempts[3]),"complete-source-canary")
+					mu.Lock()
+					defer mu.Unlock()
+					require.Equal(t, 2, rejections)
+					require.Equal(t, 1, summaries)
+					require.Len(t, attempts, 6)
+					require.Contains(t, string(attempts[1]), "gAAAAABsynthetic_old_reasoning_ciphertext_0123456789abcdef0123456789abcdef")
+					require.Contains(t, string(attempts[2]), "checkpoint-cipher")
+					require.NotContains(t, string(attempts[2]), "gAAAAABsynthetic_old_reasoning_ciphertext_0123456789abcdef0123456789abcdef")
+					require.Contains(t, string(attempts[3]), "complete-source-canary")
 					for _, body := range attempts[4:] {
-						for _, text := range []string{"retained-source-summary-canary","retained-user-canary","visible-reasoning-canary","tool-input-canary","tool-output-canary","call_retained","continue-canary"} { require.Contains(t,string(body),text) }
-						require.NotContains(t,string(body),"checkpoint-cipher"); require.NotContains(t,string(body),"old-reasoning-cipher")
-						require.False(t,gjson.GetBytes(body,"previous_response_id").Exists())
+						for _, text := range []string{"retained-source-summary-canary", "retained-user-canary", "visible-reasoning-canary", "tool-input-canary", "tool-output-canary", "call_retained", "continue-canary"} {
+							require.Contains(t, string(body), text)
+						}
+						require.NotContains(t, string(body), "checkpoint-cipher")
+						require.NotContains(t, string(body), "gAAAAABsynthetic_old_reasoning_ciphertext_0123456789abcdef0123456789abcdef")
+						require.False(t, gjson.GetBytes(body, "previous_response_id").Exists())
 					}
-					require.Contains(t,string(attempts[5]),"next-turn-canary")
+					require.Contains(t, string(attempts[5]), "next-turn-canary")
 				})
 			}
 		}

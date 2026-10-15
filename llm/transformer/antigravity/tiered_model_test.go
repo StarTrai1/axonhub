@@ -18,7 +18,7 @@ import (
 func TestAntigravityTieredCatalogRequests(t *testing.T) {
 	client := httpclient.NewHttpClientWithClient(&http.Client{Transport: &mockRoundTripper{roundTrip: func(req *http.Request) (*http.Response, error) {
 		require.Equal(t, TokenURL, req.URL.String())
-		return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"access_token":"synthetic-token","expires_in":3600}`))}, nil
+		return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"access_token":"synthetic-token","expires_in":3600}`))}, nil
 	}}})
 	adapter, err := NewTransformer(Config{BaseURL: EndpointDaily, APIKey: "synthetic-refresh|synthetic-project"}, WithHTTPClient(client))
 	require.NoError(t, err)
