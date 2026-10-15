@@ -88,6 +88,11 @@ func (t *OutboundTransformer) transformStreamChunkWithState(
 	// Convert to unified response format (streaming) with tool call index tracking
 	llmResp, nextIndex := convertGeminiToLLMResponseWithState(&resp, true, state.toolCallIndex)
 	state.toolCallIndex = nextIndex
+	for i, candidate := range resp.Candidates {
+		if candidate != nil && candidate.FinishReason == "MALFORMED_FUNCTION_CALL" && state.toolCandidates[candidate.Index] {
+			llmResp.Choices[i].FinishReason = lo.ToPtr("tool_calls")
+		}
+	}
 
 	return llmResp, nil
 }

@@ -60,7 +60,11 @@ func TestGeminiMalformedToolKeepsDeliveredCallsPerCandidate(t *testing.T) {
    defer stream.Close()
    require.True(t,stream.Next())
    require.Len(t,stream.Current().Choices[0].Delta.ToolCalls,1)
-   for stream.Next() {}
+   for stream.Next() {
+    if response:=stream.Current(); response!=nil && len(response.Choices)>0 && response.Choices[0].FinishReason!=nil {
+     require.Equal(t,"tool_calls",*response.Choices[0].FinishReason)
+    }
+   }
    if index=="0" { require.NoError(t,stream.Err()) } else { require.ErrorContains(t,stream.Err(),"MALFORMED_FUNCTION_CALL") }
   })
  }
