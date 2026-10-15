@@ -184,7 +184,17 @@ func (t *Transformer) TransformRequest(ctx context.Context, llmReq *llm.Request)
 	// 4. Transform model name for Antigravity API compatibility
 	// Antigravity API requires tier suffixes for gemini-3-pro (e.g., gemini-3-pro-low)
 	// Store the original model name in metadata for the executor to use for routing
-	transformedModel := transformModelForAntigravity(llmReq.Model)
+	effort := llmReq.ReasoningEffort
+	if geminiReq.GenerationConfig != nil && geminiReq.GenerationConfig.ThinkingConfig != nil && geminiReq.GenerationConfig.ThinkingConfig.ThinkingLevel != "" {
+		effort = geminiReq.GenerationConfig.ThinkingConfig.ThinkingLevel
+	}
+	transformedModel, tier := resolveAntigravityTieredModel(llmReq.Model, effort)
+	if tier != "" && strings.HasPrefix(transformedModel, "gemini-4-argon-") {
+		if geminiReq.GenerationConfig == nil { geminiReq.GenerationConfig = &gemini.GenerationConfig{} }
+		if geminiReq.GenerationConfig.ThinkingConfig == nil { geminiReq.GenerationConfig.ThinkingConfig = &gemini.ThinkingConfig{IncludeThoughts: true} }
+		geminiReq.GenerationConfig.ThinkingConfig.ThinkingBudget = nil
+		geminiReq.GenerationConfig.ThinkingConfig.ThinkingLevel = tier
+	}
 
 	// 5. Wrap in Antigravity Envelope
 	envelope := NewAntigravityEnvelope(t.config.Project, transformedModel, geminiReq)

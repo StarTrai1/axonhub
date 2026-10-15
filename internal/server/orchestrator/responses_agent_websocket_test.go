@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
-"strings"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -93,7 +93,9 @@ func TestResponsesRejectedAgentHistoryWebSocketCompactionSwitch(t *testing.T) {
 						message = rejectedNativeCompactionMessage
 					}
 					if message != "" {
-						if redacted { message = rejectedRedactedCiphertextMessage }
+						if redacted {
+							message = rejectedRedactedCiphertextMessage
+						}
 						if writeErr := conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"error","status":400,"error":{"type":"invalid_request_error","code":"invalid_encrypted_content","param":"input","message":"`+message+`"}}`)); writeErr != nil {
 							t.Errorf("error frame: %v", writeErr)
 						}

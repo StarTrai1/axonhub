@@ -154,3 +154,20 @@ func transformModelForAntigravity(modelName string) string {
 
 	return normalized
 }
+
+// Tiered catalog entries have no bare generation endpoint. Resolve only these
+// known families, and leave explicit or unknown upstream IDs untouched.
+func resolveAntigravityTieredModel(model, effort string) (string, string) {
+	normalized := NormalizeModelName(model)
+	for _, base := range []string{"gemini-4-argon", "claude-opus-5-5", "claude-sonnet-5-5"} {
+		if normalized == base {
+			tier := strings.ToLower(effort)
+			if tier != "low" && tier != "medium" { tier = "high" }
+			return base + "-" + tier, tier
+		}
+		for _, tier := range []string{"low", "medium", "high"} {
+			if normalized == base + "-" + tier { return normalized, tier }
+		}
+	}
+	return transformModelForAntigravity(model), ""
+}
