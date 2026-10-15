@@ -472,7 +472,10 @@ func flattenSchemaUnions(schema map[string]any, flattenToolUnions bool) map[stri
 				best := -1
 				var types []string
 				for _, value := range nonNull {
-					branch := value.(map[string]any)
+					branch, ok := value.(map[string]any)
+					if !ok {
+						continue
+					}
 					score, name := scoreSchemaOption(branch)
 					if score > best {
 						selected, best = branch, score
