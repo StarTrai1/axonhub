@@ -22,7 +22,7 @@ func TestAntigravityTieredCatalogRequests(t *testing.T) {
 	}}})
 	adapter, err := NewTransformer(Config{BaseURL: EndpointDaily, APIKey: "synthetic-refresh|synthetic-project"}, WithHTTPClient(client))
 	require.NoError(t, err)
-	for _, tc := range []struct { model, effort, want, tier string }{
+	for _, tc := range []struct{ model, effort, want, tier string }{
 		{"gemini-4-argon", "", "gemini-4-argon-high", "high"},
 		{"gemini-4-argon", "medium", "gemini-4-argon-medium", "medium"},
 		{"gemini-4-argon", "low", "gemini-4-argon-low", "low"},
@@ -36,14 +36,18 @@ func TestAntigravityTieredCatalogRequests(t *testing.T) {
 	} {
 		t.Run(tc.model+"/"+tc.effort, func(t *testing.T) {
 			req := &llm.Request{Model: tc.model, ReasoningEffort: tc.effort, Messages: []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("keep request")}}}}
-			original, err := json.Marshal(req); require.NoError(t, err)
-			wire, err := adapter.TransformRequest(t.Context(), req); require.NoError(t, err)
-			require.Equal(t, tc.want, gjson.GetBytes(wire.Body,"model").String())
+			original, err := json.Marshal(req)
+			require.NoError(t, err)
+			wire, err := adapter.TransformRequest(t.Context(), req)
+			require.NoError(t, err)
+			require.Equal(t, tc.want, gjson.GetBytes(wire.Body, "model").String())
 			if tc.tier != "" {
-				require.Equal(t, tc.tier, gjson.GetBytes(wire.Body,"request.generationConfig.thinkingConfig.thinkingLevel").String())
-				require.False(t, gjson.GetBytes(wire.Body,"request.generationConfig.thinkingConfig.thinkingBudget").Exists())
+				require.Equal(t, tc.tier, gjson.GetBytes(wire.Body, "request.generationConfig.thinkingConfig.thinkingLevel").String())
+				require.False(t, gjson.GetBytes(wire.Body, "request.generationConfig.thinkingConfig.thinkingBudget").Exists())
 			}
-			after, err := json.Marshal(req); require.NoError(t, err); require.Equal(t, original, after)
+			after, err := json.Marshal(req)
+			require.NoError(t, err)
+			require.Equal(t, original, after)
 		})
 	}
 }

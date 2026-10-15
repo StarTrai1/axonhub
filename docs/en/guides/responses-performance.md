@@ -72,8 +72,8 @@ prevents publishing a checkpoint whose source cannot be recovered.
 
 Encrypted reasoning is preserved by default, following the
 [official stateless handoff guidance](https://developers.openai.com/api/docs/guides/deployment-checklist#use-reasoningencrypted_content).
-If a Codex channel explicitly returns HTTP or pre-output streaming 400 with
-`error.code: invalid_encrypted_content`, a same-channel retry can instead rebuild
+If a Codex channel explicitly returns HTTP or pre-output streaming 400 whose
+code or complete error message confirms an encrypted-content rejection, a same-channel retry can instead rebuild
 reasoning from retained explicit history. This is a degraded recovery, not
 decryption or lossless recovery of hidden reasoning.
 
@@ -92,6 +92,20 @@ Unsupported summary/content types fail closed.
 The rule is scoped to the current request and channel; it does not disable
 encrypted reasoning for later requests. Generic validation errors do not trigger
 it, and it consumes the existing same-channel retry budget.
+
+When the provider redacts the encrypted item identity to `gAAA...AA==`, the gateway
+cannot distinguish reasoning from a native checkpoint. This complete decryption
+rejection uses staged recovery: first rebuild reasoning from complete explicit
+history while preserving the sole native checkpoint. If the same rejection
+continues after no encrypted reasoning remains, restore the checkpoint from its
+retained source bound to the current API key, project and checkpoint identity.
+Each stage schedules at most one changed retry within the existing retry budget.
+Missing source history fails explicitly; checkpoints are never simply deleted.
+Explicit item IDs, full ciphertext and indexed parameters must agree with the
+request; conflicts cannot fall through to generic recovery. Unresolved history,
+orphan tool results and ambiguous encrypted agent messages still prevent recovery.
+Only completed recoveries remember scoped hashes of old reasoning. New reasoning,
+other conversations and other destination credentials remain unaffected.
 
 ### Portable agent messages
 

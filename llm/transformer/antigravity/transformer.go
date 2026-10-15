@@ -190,8 +190,12 @@ func (t *Transformer) TransformRequest(ctx context.Context, llmReq *llm.Request)
 	}
 	transformedModel, tier := resolveAntigravityTieredModel(llmReq.Model, effort)
 	if tier != "" && strings.HasPrefix(transformedModel, "gemini-4-argon-") {
-		if geminiReq.GenerationConfig == nil { geminiReq.GenerationConfig = &gemini.GenerationConfig{} }
-		if geminiReq.GenerationConfig.ThinkingConfig == nil { geminiReq.GenerationConfig.ThinkingConfig = &gemini.ThinkingConfig{IncludeThoughts: true} }
+		if geminiReq.GenerationConfig == nil {
+			geminiReq.GenerationConfig = &gemini.GenerationConfig{}
+		}
+		if geminiReq.GenerationConfig.ThinkingConfig == nil {
+			geminiReq.GenerationConfig.ThinkingConfig = &gemini.ThinkingConfig{IncludeThoughts: true}
+		}
 		geminiReq.GenerationConfig.ThinkingConfig.ThinkingBudget = nil
 		geminiReq.GenerationConfig.ThinkingConfig.ThinkingLevel = tier
 	}

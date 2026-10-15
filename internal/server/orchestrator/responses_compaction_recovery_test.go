@@ -132,7 +132,9 @@ func assertRejectedCompactionWindowPreserved(t *testing.T, before, after []byte)
 		require.JSONEq(t, item.Raw, adapted[index].Raw, "retained item %d", index)
 	}
 	for _, field := range []string{"model", "reasoning", "prompt_cache_key", "client_metadata", "store"} {
-		require.JSONEq(t, gjson.GetBytes(before, field).Raw, gjson.GetBytes(after, field).Raw, field)
+		prior, recovered := gjson.GetBytes(before, field), gjson.GetBytes(after, field)
+		require.Equal(t, prior.Exists(), recovered.Exists(), field)
+		if prior.Exists() { require.JSONEq(t, prior.Raw, recovered.Raw, field) }
 	}
 }
 

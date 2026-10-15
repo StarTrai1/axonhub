@@ -100,7 +100,9 @@ func TestResponsesRedactedEncryptionStagedPipeline(t *testing.T) {
 					if stage == "missing source" || stage == "budget" || stage == "repeated rejection" {
 						require.Error(t, processErr)
 						require.Nil(t, result)
-						if stage == "missing source" { require.ErrorContains(t, processErr, "request history is unavailable") }
+						if stage == "missing source" {
+							require.ErrorContains(t, processErr, "request history is unavailable")
+						}
 					} else {
 						require.NoError(t, processErr)
 						if result.Stream {

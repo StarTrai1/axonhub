@@ -151,7 +151,7 @@ func TestFetchModelsAntigravityAccountCatalog(t *testing.T) {
 	calls := 0
 	transport := antigravityCatalogTransport(func(r *http.Request) (*http.Response, error) {
 		calls++
-		require.Equal(t, antigravity.EndpointProd+"/v1internal:fetchAvailableModels", r.URL.String())
+		require.Equal(t, antigravity.GetInitialEndpoint(antigravity.QuotaAntigravity)+"/v1internal:fetchAvailableModels", r.URL.String())
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "Bearer test-access", r.Header.Get("Authorization"))
 		expectedHeaders := http.Header{}
