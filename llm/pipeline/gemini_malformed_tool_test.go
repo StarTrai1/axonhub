@@ -51,7 +51,7 @@ func TestGeminiMalformedToolPipelineRetriesOnlyBeforeOutput(t *testing.T) {
 			}
 			outbound, err := gemini.NewOutboundTransformer("", "synthetic")
 			require.NoError(t, err)
-			wrapped := NewChannelRetryableWrapper(outbound, 1)
+			wrapped := pipeline.NewChannelRetryableWrapper(outbound, 1)
 			p := pipeline.NewFactory(executor).Pipeline(anthropic.NewInboundTransformer(), wrapped, pipeline.WithRetry(0, 1, 0))
 			result, err := p.Process(t.Context(), &httpclient.Request{Method: http.MethodPost, Headers: http.Header{"Content-Type": []string{"application/json"}}, Body: fmt.Appendf(nil, `{"model":"gemini-3.8-flash","max_tokens":128,"stream":%t,"messages":[{"role":"user","content":"inspect"}]}`, tc.stream)})
 			require.NoError(t, err)
