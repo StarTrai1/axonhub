@@ -1533,7 +1533,12 @@ func TestWebSocketExecutorDoesNotReplayAfterReusedSessionReadFailure(t *testing.
 			}
 		}
 
-		// Drop the peer without a close frame so the client only notices on read.
+		// Wait until the reused session accepts its second request before
+		// dropping the peer. Resetting immediately after the first completion
+		// can discard that unread response on Windows and fail the setup.
+		if !assert.NoError(t, conn.ReadJSON(&payload)) {
+			return
+		}
 		if tcpConn, ok := conn.UnderlyingConn().(*net.TCPConn); ok {
 			_ = tcpConn.SetLinger(0)
 		}
@@ -1559,8 +1564,6 @@ func TestWebSocketExecutorDoesNotReplayAfterReusedSessionReadFailure(t *testing.
 	require.False(t, first.Next())
 	require.NoError(t, first.Err())
 	require.NoError(t, first.Close())
-
-	time.Sleep(100 * time.Millisecond)
 
 	secondRequest := *request
 	secondRequest.Body = []byte(`{"model":"gpt-5","input":[{"id":"first","type":"message"},{"id":"second","type":"message"}]}`)
