@@ -26,7 +26,13 @@ func assertStreamDeliveryWire(t *testing.T, response *http.Response, heartbeat b
 
 	text := string(body)
 	require.Contains(t, text, "data:")
-	require.Contains(t, text, "[DONE]")
+	if strings.Contains(text, "event:error") {
+  // A provider failure after content is a terminal SSE error, not success.
+  // Each scenario also checks the persisted request state below.
+  require.Contains(t, text, `"error":`)
+ } else {
+  require.Contains(t, text, "[DONE]")
+ }
 	if heartbeat {
 		t.Log("heartbeat mode exercised; heartbeat framing is covered by TestStreamDeliverySSELoopback")
 	}

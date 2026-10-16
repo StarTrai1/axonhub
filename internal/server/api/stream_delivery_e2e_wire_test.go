@@ -1,6 +1,6 @@
 package api
 
-import "fmt"
+import ("fmt"; "strings")
 
 const streamDeliveryBlockingResponseMarker = "__stream_delivery_blocking_response__"
 
@@ -26,4 +26,11 @@ func streamDeliveryResponsesMissing() string {
 
 func streamDeliveryAnthropic(input, output int) string {
 	return fmt.Sprintf("event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"msg\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[],\"model\":\"claude\",\"usage\":{\"input_tokens\":%d,\"output_tokens\":0}}}\n\nevent: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\"},\"usage\":{\"input_tokens\":%d,\"output_tokens\":%d}}\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"}\n\n", input, input, output)
+}
+
+// The gateway retries empty Responses and pre-output provider failures. These
+// fixtures exercise delivery/accounting after actual text commits the stream.
+func streamDeliveryWithText(payload string) string {
+ const text = "event: response.output_item.added\ndata: {\"type\":\"response.output_item.added\",\"output_index\":0,\"item\":{\"type\":\"message\",\"id\":\"msg_delivery\",\"role\":\"assistant\",\"content\":[]}}\n\nevent: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"item_id\":\"msg_delivery\",\"output_index\":0,\"content_index\":0,\"delta\":\"ok\"}\n\n"
+ return strings.Replace(payload,"\n\n","\n\n"+text,1)
 }

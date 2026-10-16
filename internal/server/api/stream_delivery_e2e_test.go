@@ -55,12 +55,12 @@ func TestStreamDeliveryE2E(t *testing.T) {
 		{name: "direct_chat_ordinary", format: llm.APIFormatOpenAIChatCompletion, path: "/v1/chat/completions", upstream: streamDeliveryChat(12, 34, true), wantStatus: request.StatusCompleted, wantUsage: true},
 		{name: "direct_chat_heartbeat_raw_passthrough", format: llm.APIFormatOpenAIChatCompletion, path: "/v1/chat/completions", upstream: streamDeliveryChat(12, 34, true), heartbeat: true, wantStatus: request.StatusCompleted, wantUsage: true},
 		{name: "passthrough_chat", format: llm.APIFormatOpenAIChatCompletion, path: "/v1/chat/completions", upstream: streamDeliveryChat(12, 34, true), passthrough: true, wantStatus: request.StatusCompleted, wantUsage: true},
-		{name: "chat_to_responses", format: llm.APIFormatOpenAIResponse, path: "/v1/chat/completions", upstream: streamDeliveryResponses(12, 34, "completed"), wantStatus: request.StatusCompleted, wantUsage: true},
+		{name: "chat_to_responses", format: llm.APIFormatOpenAIResponse, path: "/v1/chat/completions", upstream: streamDeliveryWithText(streamDeliveryResponses(12, 34, "completed")), wantStatus: request.StatusCompleted, wantUsage: true},
 		{name: "chat_to_anthropic_message_stop_without_done", format: llm.APIFormatAnthropicMessage, path: "/v1/chat/completions", upstream: streamDeliveryAnthropic(12, 34), wantStatus: request.StatusCompleted, wantUsage: true},
 		{name: "2616_zero_placeholders_finish_zero_choices_less_final", format: llm.APIFormatOpenAIChatCompletion, path: "/v1/chat/completions", upstream: streamDeliveryChat2616(), wantStatus: request.StatusCompleted, wantUsage: true},
 		{name: "final_zero", format: llm.APIFormatOpenAIChatCompletion, path: "/v1/chat/completions", upstream: streamDeliveryChat(0, 0, true), wantStatus: request.StatusCompleted, wantUsage: true},
-		{name: "missing_stats", format: llm.APIFormatOpenAIResponse, path: "/v1/chat/completions", upstream: streamDeliveryResponsesMissing(), wantStatus: request.StatusCompleted, wantUsage: false},
-		{name: "provider_failure", format: llm.APIFormatOpenAIResponse, path: "/v1/chat/completions", upstream: streamDeliveryResponses(12, 34, "failed"), wantStatus: request.StatusFailed, wantUsage: true},
+		{name: "missing_stats", format: llm.APIFormatOpenAIResponse, path: "/v1/chat/completions", upstream: streamDeliveryWithText(streamDeliveryResponsesMissing()), wantStatus: request.StatusCompleted, wantUsage: false},
+		{name: "provider_failure", format: llm.APIFormatOpenAIResponse, path: "/v1/chat/completions", upstream: streamDeliveryWithText(streamDeliveryResponses(12, 34, "failed")), wantStatus: request.StatusFailed, wantUsage: true},
 		{name: "provider_incomplete", format: llm.APIFormatOpenAIResponse, path: "/v1/chat/completions", upstream: streamDeliveryResponses(12, 34, "incomplete"), wantStatus: request.StatusFailed, wantUsage: true},
 	}
 	for _, tc := range tests {
