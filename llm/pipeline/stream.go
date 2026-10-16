@@ -395,6 +395,8 @@ func (p *pipeline) stream(
 		return nil, WrapUpstreamError(err)
 	}
 
+	responseHeaders := httpclient.MergeForwardResponseHeaders(nil, httpclient.GetResponseHeaders(outboundStream))
+
 	// Apply raw stream middlewares
 	rawStream := outboundStream
 
@@ -521,5 +523,5 @@ func (p *pipeline) stream(
 		}
 	}
 
-	return inboundStream, nil
+	return httpclient.WithResponseHeaders(inboundStream, responseHeaders), nil
 }

@@ -73,6 +73,7 @@ type responseHeadersProvider interface {
 
 type responseHeadersStream struct {
 	streams.Stream[*StreamEvent]
+
 	headers         http.Header
 	observer        streams.DeliveryAcknowledger
 	waiter          streams.FinalizationWaiter

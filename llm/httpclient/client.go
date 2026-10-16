@@ -682,7 +682,7 @@ func (hc *HttpClient) DoStream(ctx context.Context, request *Request) (streams.S
 		return event
 	})
 
-	return stream, nil
+	return WithResponseHeaders(stream, rawResp.Header), nil
 }
 
 type requestContextStream struct {

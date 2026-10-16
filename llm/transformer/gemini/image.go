@@ -117,12 +117,7 @@ func (t *OutboundTransformer) buildImageRequestURL(ctx context.Context, llmReq *
 
 	// For Vertex AI platform
 	if t.config.PlatformType == PlatformVertex {
-		baseURL := strings.TrimSuffix(t.resolveBaseURL(ctx), "/")
-		if strings.Contains(baseURL, "/v1/") {
-			return fmt.Sprintf("%s/publishers/google/models/%s:generateContent", baseURL, llmReq.Model)
-		}
-
-		return fmt.Sprintf("%s/v1/publishers/google/models/%s:generateContent", baseURL, llmReq.Model)
+		return vertexModelURL(t.resolveBaseURL(ctx), llmReq.Model, "generateContent")
 	}
 
 	// Standard Gemini API format

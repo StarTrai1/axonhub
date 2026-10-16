@@ -157,11 +157,11 @@ func newManualSwitchCommittedStream(
 	cancel context.CancelCauseFunc,
 	control *ManualSwitchControl,
 ) streams.Stream[*httpclient.StreamEvent] {
-	return &manualSwitchCommittedStream{
+	return preserveStreamCapabilities(stream, &manualSwitchCommittedStream{
 		stream:  stream,
 		cancel:  cancel,
 		control: control,
-	}
+	})
 }
 
 func (s *manualSwitchCommittedStream) Next() bool {

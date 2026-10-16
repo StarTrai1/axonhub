@@ -170,6 +170,7 @@ type StreamEventContentPart struct {
 	Text string `json:"text"`
 	// The annotations of the output text part.
 	Annotations []Annotation `json:"annotations,omitzero"`
+	Logprobs json.RawMessage `json:"logprobs,omitempty"`
 	// The refusal reason, for refusal.
 	Refusal *string `json:"refusal,omitempty"`
 }

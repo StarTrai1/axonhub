@@ -168,12 +168,7 @@ func (t *OutboundTransformer) buildEmbeddingURL(ctx context.Context, model strin
 
 	// For Vertex AI platform
 	if t.config.PlatformType == PlatformVertex {
-		baseURL := strings.TrimSuffix(t.resolveBaseURL(ctx), "/")
-		if strings.Contains(baseURL, "/v1/") {
-			return fmt.Sprintf("%s/publishers/google/models/%s:%s", baseURL, model, action)
-		}
-
-		return fmt.Sprintf("%s/v1/publishers/google/models/%s:%s", baseURL, model, action)
+		return vertexModelURL(t.resolveBaseURL(ctx), model, action)
 	}
 
 	return fmt.Sprintf("%s/%s/models/%s:%s", t.resolveBaseURL(ctx), version, model, action)

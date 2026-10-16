@@ -257,12 +257,7 @@ func (t *OutboundTransformer) buildFullRequestURLWithContext(ctx context.Context
 	// https://${API_ENDPOINT}/v1/publishers/google/models/${MODEL_ID}:${ACTION}?key=${API_KEY}
 	// If base URL starts with Cloudflare gateway, don't add /v1 prefix
 	if t.config.PlatformType == PlatformVertex {
-		baseURL := strings.TrimSuffix(baseURL, "/")
-		if strings.Contains(baseURL, "/v1/") {
-			return fmt.Sprintf("%s/publishers/google/models/%s:%s", baseURL, llmReq.Model, action)
-		}
-
-		return fmt.Sprintf("%s/v1/publishers/google/models/%s:%s", baseURL, llmReq.Model, action)
+		return vertexModelURL(baseURL, llmReq.Model, action)
 	}
 
 	// Format: /base_url/{version}/models/{model}:generateContent

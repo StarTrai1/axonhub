@@ -431,7 +431,7 @@ func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*R
 			case <-timer.C:
 			case <-ctx.Done():
 				timer.Stop()
-				return nil, lastErr
+				return nil, errors.Join(lastErr, ctx.Err())
 			}
 		}
 
