@@ -445,8 +445,8 @@ func (d *responsesWebSocketDispatcher) processMessage(lane *responsesWebSocketLa
 	if d.requestTimeout > 0 {
 		requestCtx, cancel = context.WithTimeout(requestCtx, d.requestTimeout)
 	} else {
-  requestCtx, cancel = context.WithCancel(requestCtx)
- }
+		requestCtx, cancel = context.WithCancel(requestCtx)
+	}
 	defer cancel()
 	requestCtx, authErr := middleware.RefreshAPIKeyContext(requestCtx)
 	if authErr != nil {

@@ -1,6 +1,9 @@
 package api
 
-import ("fmt"; "strings")
+import (
+	"fmt"
+	"strings"
+)
 
 const streamDeliveryBlockingResponseMarker = "__stream_delivery_blocking_response__"
 
@@ -31,6 +34,6 @@ func streamDeliveryAnthropic(input, output int) string {
 // The gateway retries empty Responses and pre-output provider failures. These
 // fixtures exercise delivery/accounting after actual text commits the stream.
 func streamDeliveryWithText(payload string) string {
- const text = "event: response.output_item.added\ndata: {\"type\":\"response.output_item.added\",\"output_index\":0,\"item\":{\"type\":\"message\",\"id\":\"msg_delivery\",\"role\":\"assistant\",\"content\":[]}}\n\nevent: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"item_id\":\"msg_delivery\",\"output_index\":0,\"content_index\":0,\"delta\":\"ok\"}\n\n"
- return strings.Replace(payload,"\n\n","\n\n"+text,1)
+	const text = "event: response.output_item.added\ndata: {\"type\":\"response.output_item.added\",\"output_index\":0,\"item\":{\"type\":\"message\",\"id\":\"msg_delivery\",\"role\":\"assistant\",\"content\":[]}}\n\nevent: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"item_id\":\"msg_delivery\",\"output_index\":0,\"content_index\":0,\"delta\":\"ok\"}\n\n"
+	return strings.Replace(payload, "\n\n", "\n\n"+text, 1)
 }
