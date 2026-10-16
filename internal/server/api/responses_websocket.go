@@ -899,10 +899,13 @@ func writeResponsesWebSocketResult(
 				if terminal {
 					terminalSeen = true
 				}
-				return terminal && (event.Type == "response.completed" || eventType == "response.completed") &&
-					(event.Type == "response.completed" || event.Type == "") &&
-					(eventType == "response.completed" || eventType == "") &&
-					(status == "completed" || status == ""), nil
+				completed := (event.Type == "response.completed" || eventType == "response.completed") &&
+     (event.Type == "response.completed" || event.Type == "") &&
+     (eventType == "response.completed" || eventType == "") &&
+     (status == "completed" || status == "")
+    interrupted := isInterruptedResponsesTerminal(event) &&
+     (eventType == "response.incomplete" || eventType == "") && (status == "incomplete" || status == "")
+    return terminal && (completed || interrupted), nil
 			}); err != nil {
 				return err
 			}

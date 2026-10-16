@@ -28,7 +28,7 @@ func (w *responsesWebSocketDeliveryWriter) WriteMessage(_ int, data []byte) erro
 
 func TestStreamDeliveryWebSocketWriter(t *testing.T) {
 	for _, primed := range []bool{false, true} {
-		for _, mode := range []string{"success", "write_error", "deadline_error", "cancel_during_write", "queued_terminal_unwritten", "completed_with_failed_status", "completed_with_incomplete_status", "completed_with_cancelled_status"} {
+		for _, mode := range []string{"success", "write_error", "deadline_error", "cancel_during_write", "queued_terminal_unwritten", "completed_with_failed_status", "completed_with_incomplete_status", "completed_with_cancelled_status", "interrupted_response"} {
 			name := mode + "/unprimed"
 			if primed {
 				name = mode + "/primed"
@@ -43,7 +43,10 @@ func TestStreamDeliveryWebSocketWriter(t *testing.T) {
 				switch mode {
 				case "queued_terminal_unwritten":
 					events = append([]*httpclient.StreamEvent{{Type: "response.output_text.delta", Data: []byte(`{"type":"response.output_text.delta","delta":"hi"}`)}}, terminal)
-				case "completed_with_failed_status":
+				case "interrupted_response":
+      terminal.Type = "response.incomplete"
+      terminal.Data = []byte(`{"type":"response.incomplete","response":{"status":"incomplete","incomplete_details":{"reason":"interrupted"}}}`)
+     case "completed_with_failed_status":
 					terminal.Data = []byte(`{"type":"response.completed","response":{"status":"failed"}}`)
 				case "completed_with_incomplete_status":
 					terminal.Data = []byte(`{"type":"response.completed","response":{"status":"incomplete"}}`)
@@ -75,7 +78,7 @@ func TestStreamDeliveryWebSocketWriter(t *testing.T) {
 				// Then: a terminal frame that was written successfully is delivered,
 				// including when the client cancels during the write. Failed or
 				// short writes and unwritten queued terminals stay unacknowledged.
-				require.Equal(t, mode == "success" || mode == "cancel_during_write", source.DeliveryAcknowledged())
+				require.Equal(t, mode == "success" || mode == "cancel_during_write" || mode == "interrupted_response", source.DeliveryAcknowledged())
 				switch mode {
 				case "write_error", "queued_terminal_unwritten", "deadline_error":
 					require.ErrorIs(t, err, io.ErrClosedPipe)

@@ -83,6 +83,7 @@ type aggregatedContentPart struct {
 	Type        string
 	Text        *strings.Builder
 	Annotations []Annotation
+	Logprobs json.RawMessage
 }
 
 func newAggregatedItem() *aggregatedItem {
@@ -342,6 +343,7 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 					applyDoneText(contentPart.Text, ev.Part.Text)
 				}
 				contentPart.Annotations = append([]Annotation(nil), ev.Part.Annotations...)
+				contentPart.Logprobs = cloneRaw(ev.Part.Logprobs)
 			}
 		}
 
@@ -615,6 +617,7 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 						if contentItem.Type == "refusal" && contentItem.Refusal != nil {
 							applyDoneText(part.Text, *contentItem.Refusal)
 						}
+						if contentItem.Logprobs != nil { part.Logprobs = cloneRaw(contentItem.Logprobs) }
 						if contentItem.Annotations != nil {
 							part.Annotations = append([]Annotation(nil), contentItem.Annotations...)
 						}
@@ -780,6 +783,7 @@ func (a *streamAggregator) buildResponse() *Response {
 						Type:        cp.Type,
 						Text:        &text,
 						Annotations: append([]Annotation(nil), cp.Annotations...),
+						Logprobs: cloneRaw(cp.Logprobs),
 					})
 				}
 
@@ -788,6 +792,7 @@ func (a *streamAggregator) buildResponse() *Response {
 					Type:   item.Type,
 					Role:   item.Role,
 					Phase:  item.Phase,
+					EncryptedContent: item.EncryptedContent,
 					Status: lo.ToPtr(item.Status),
 					Content: &Input{
 						Items: contentItems,
@@ -803,6 +808,7 @@ func (a *streamAggregator) buildResponse() *Response {
 					Name:      item.Name,
 					Namespace: item.Namespace,
 					Arguments: item.Arguments.String(),
+					EncryptedContent: item.EncryptedContent,
 				})
 
 			case "custom_tool_call":
@@ -813,6 +819,7 @@ func (a *streamAggregator) buildResponse() *Response {
 					CallID: item.CallID,
 					Name:   item.Name,
 					Input:  item.Input,
+					EncryptedContent: item.EncryptedContent,
 				})
 
 			case "reasoning":
