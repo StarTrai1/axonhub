@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 )
 
-const responseMetadataTransformerMetadataKey = "openai_responses_raw_metadata_event"
-const responseHeadersTransformerMetadataKey = "openai_responses_transport_headers"
+const (
+	responseMetadataTransformerMetadataKey = "openai_responses_raw_metadata_event"
+	responseHeadersTransformerMetadataKey  = "openai_responses_transport_headers"
+)
 
 // StreamEventType defines the type of streaming events for the OpenAI Responses API.
 type StreamEventType string
@@ -169,8 +171,8 @@ type StreamEventContentPart struct {
 	// The text of the part, for output_text.
 	Text string `json:"text"`
 	// The annotations of the output text part.
-	Annotations []Annotation `json:"annotations,omitzero"`
-	Logprobs json.RawMessage `json:"logprobs,omitempty"`
+	Annotations []Annotation    `json:"annotations,omitzero"`
+	Logprobs    json.RawMessage `json:"logprobs,omitempty"`
 	// The refusal reason, for refusal.
 	Refusal *string `json:"refusal,omitempty"`
 }
