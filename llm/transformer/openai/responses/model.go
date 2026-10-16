@@ -540,8 +540,8 @@ type Item struct {
 	Type string `json:"type,omitempty"`
 
 	// The annotations of the text output.
-	Annotations []Annotation `json:"annotations,omitzero"`
-	Logprobs json.RawMessage `json:"logprobs,omitempty"`
+	Annotations []Annotation    `json:"annotations,omitzero"`
+	Logprobs    json.RawMessage `json:"logprobs,omitempty"`
 
 	// Any of "system", "user", "assistant", "developer".
 	Role string `json:"role,omitempty"`

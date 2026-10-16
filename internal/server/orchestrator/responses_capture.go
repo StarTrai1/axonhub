@@ -205,7 +205,9 @@ func (s *responsesAcceptedStream) Close() error {
 func (s *responsesAcceptedStream) AcknowledgeDelivery() {
 	if observer, ok := s.Stream.(streams.DeliveryAcknowledger); ok {
 		observer.AcknowledgeDelivery()
-  if observer.DeliveryAcknowledged() { s.continuation.accept(s.ctx) }
+		if observer.DeliveryAcknowledged() {
+			s.continuation.accept(s.ctx)
+		}
 	}
 }
 
@@ -224,8 +226,10 @@ func (s *responsesAcceptedStream) Deliver(ctx context.Context, write func() (boo
 	boundary, ok := s.Stream.(streams.DeliveryBoundary)
 	if ok {
 		err := boundary.Deliver(ctx, write)
-  if err == nil && s.DeliveryAcknowledged() { s.continuation.accept(s.ctx) }
-  return err
+		if err == nil && s.DeliveryAcknowledged() {
+			s.continuation.accept(s.ctx)
+		}
+		return err
 	}
 	terminal, err := write()
 	if err == nil && terminal {

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"strings"
 
- "github.com/tidwall/gjson"
+	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/llm/httpclient"
 )
@@ -34,14 +34,16 @@ func (d *responsesWebSocketDispatcher) routeInterrupt(message []byte) *httpclien
 	if payload.Mode != "discard_partial_items" {
 		return invalidResponsesWebSocketRequest("response.interrupt requires mode discard_partial_items", "mode")
 	}
- terminal, routeErr := d.queueInterrupt(payload.ResponseID, message)
- if routeErr != nil { return routeErr }
- if terminal {
-  if err := d.acknowledgeInterrupt(payload.ResponseID); err != nil {
-   return responsesWebSocketRequestError("failed to acknowledge interruption", "response_id", "interrupt_not_available")
-  }
- }
- return nil
+	terminal, routeErr := d.queueInterrupt(payload.ResponseID, message)
+	if routeErr != nil {
+		return routeErr
+	}
+	if terminal {
+		if err := d.acknowledgeInterrupt(payload.ResponseID); err != nil {
+			return responsesWebSocketRequestError("failed to acknowledge interruption", "response_id", "interrupt_not_available")
+		}
+	}
+	return nil
 }
 
 func (d *responsesWebSocketDispatcher) queueInterrupt(responseID string, message []byte) (bool, *httpclient.Error) {
@@ -77,9 +79,11 @@ func (d *responsesWebSocketDispatcher) queueInterrupt(responseID string, message
 		}
 		return false, responsesWebSocketRequestError("Responses WebSocket control queue is full or no longer active", "response_id", "interrupt_not_available")
 	}
- if d.pendingInterrupts == nil { d.pendingInterrupts = make(map[string]struct{}) }
- d.pendingInterrupts[responseID] = struct{}{}
- return false, nil
+	if d.pendingInterrupts == nil {
+		d.pendingInterrupts = make(map[string]struct{})
+	}
+	d.pendingInterrupts[responseID] = struct{}{}
+	return false, nil
 }
 
 func isInterruptedResponsesTerminal(event *httpclient.StreamEvent) bool {
@@ -97,26 +101,30 @@ func isInterruptedResponsesTerminal(event *httpclient.StreamEvent) bool {
 }
 
 func (d *responsesWebSocketDispatcher) acknowledgeInterrupt(responseID string) error {
- return writeResponsesWebSocketJSON(d.writer, map[string]string{"type":"response.interrupt.accepted", "response_id":responseID})
+	return writeResponsesWebSocketJSON(d.writer, map[string]string{"type": "response.interrupt.accepted", "response_id": responseID})
 }
 
 func (d *responsesWebSocketDispatcher) observeInterruptEvent(event *httpclient.StreamEvent) error {
- typ := event.Type
- if typ == "" { typ = gjson.GetBytes(event.Data, "type").String() }
- acknowledgement := typ == "response.interrupt.accepted" || typ == "response.interrupt.failed"
- id := gjson.GetBytes(event.Data, "response_id").String()
- if !acknowledgement {
-  switch typ {
-  case "response.completed", "response.incomplete", "response.failed", "response.cancelled":
-   id = responseIDFromWebSocketEvent(event.Data)
-  default:
-   return nil
-  }
- }
- d.mu.Lock()
- _, pending := d.pendingInterrupts[id]
- delete(d.pendingInterrupts, id)
- d.mu.Unlock()
- if pending && !acknowledgement { return d.acknowledgeInterrupt(id) }
- return nil
+	typ := event.Type
+	if typ == "" {
+		typ = gjson.GetBytes(event.Data, "type").String()
+	}
+	acknowledgement := typ == "response.interrupt.accepted" || typ == "response.interrupt.failed"
+	id := gjson.GetBytes(event.Data, "response_id").String()
+	if !acknowledgement {
+		switch typ {
+		case "response.completed", "response.incomplete", "response.failed", "response.cancelled":
+			id = responseIDFromWebSocketEvent(event.Data)
+		default:
+			return nil
+		}
+	}
+	d.mu.Lock()
+	_, pending := d.pendingInterrupts[id]
+	delete(d.pendingInterrupts, id)
+	d.mu.Unlock()
+	if pending && !acknowledgement {
+		return d.acknowledgeInterrupt(id)
+	}
+	return nil
 }

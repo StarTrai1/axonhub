@@ -734,9 +734,9 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 		}
 		// Function call output - convert to tool message
 		msg := &llm.Message{
-			ID:      item.ID,
-			Role:    "tool",
-			Content: convertToMessageContent(*item.Output),
+			ID:              item.ID,
+			Role:            "tool",
+			Content:         convertToMessageContent(*item.Output),
 			ToolCallIsError: incompleteToolOutput(item.Status),
 		}
 		if item.CallID != "" {
@@ -757,9 +757,9 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 		}
 		// Custom tool call output - convert to tool message
 		msg := &llm.Message{
-			ID:      item.ID,
-			Role:    "tool",
-			Content: convertToMessageContent(*item.Output),
+			ID:              item.ID,
+			Role:            "tool",
+			Content:         convertToMessageContent(*item.Output),
 			ToolCallIsError: incompleteToolOutput(item.Status),
 		}
 		if item.CallID != "" {
@@ -1615,8 +1615,8 @@ func buildReasoningItems(msg llm.Message) []Item {
 // incompleteToolOutput preserves unfinished tool output when translating to
 // protocols such as Anthropic, whose equivalent signal is tool_result.is_error.
 func incompleteToolOutput(status *string) *bool {
- if status != nil && strings.EqualFold(strings.TrimSpace(*status), "incomplete") {
-  return lo.ToPtr(true)
- }
- return nil
+	if status != nil && strings.EqualFold(strings.TrimSpace(*status), "incomplete") {
+		return lo.ToPtr(true)
+	}
+	return nil
 }

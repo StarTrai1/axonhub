@@ -26,9 +26,9 @@ type modelCircuitBreakerTracker struct {
 	modelCircuitBreaker *biz.ModelCircuitBreaker
 
 	attemptGeneration uint64
-	probeActive    bool
-	probeChannelID int
-	probeModelID   string
+	probeActive       bool
+	probeChannelID    int
+	probeModelID      string
 }
 
 func (m *modelCircuitBreakerTracker) Name() string {
@@ -139,7 +139,7 @@ func (m *modelCircuitBreakerTracker) OnOutboundLlmStream(ctx context.Context, st
 		released:            false,
 		recorded:            false,
 		modelCircuitBreaker: m.modelCircuitBreaker,
-		attemptGeneration: m.attemptGeneration,
+		attemptGeneration:   m.attemptGeneration,
 	}, nil
 }
 
@@ -173,7 +173,7 @@ type probeReleasingStream struct {
 	recorded bool
 
 	modelCircuitBreaker *biz.ModelCircuitBreaker
-	attemptGeneration uint64
+	attemptGeneration   uint64
 	channelID           int
 	modelID             string
 }

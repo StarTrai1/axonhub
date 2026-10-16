@@ -1099,9 +1099,7 @@ func (s *delayedCodexResponsesTerminalStream) Next() bool {
 			return false
 		}
 
-		s.currentMu.Lock()
 		s.current = event
-		s.currentMu.Unlock()
 		s.synthesized = true
 		s.done = true
 		if s.onUsage == nil {
@@ -1662,9 +1660,7 @@ func (s *responsesTransportStream) Next() bool {
 		s.err = err
 		return false
 	}
-	s.currentMu.Lock()
 	s.current = event
-	s.currentMu.Unlock()
 
 	return true
 }

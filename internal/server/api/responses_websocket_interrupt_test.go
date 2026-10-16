@@ -27,8 +27,8 @@ import (
 func TestResponsesWebSocketInterruptDrainsAndContinues(t *testing.T) {
 	for _, model := range []string{"gpt-6-sol", "gpt-6.1-sol"} {
 		for _, late := range []bool{false, true} {
- t.Run(fmt.Sprintf("%s/late_ack=%t", model, late), func(t *testing.T) { testResponsesWebSocketInterruptDrainsAndContinues(t, model, late) })
- }
+			t.Run(fmt.Sprintf("%s/late_ack=%t", model, late), func(t *testing.T) { testResponsesWebSocketInterruptDrainsAndContinues(t, model, late) })
+		}
 	}
 }
 
@@ -58,14 +58,18 @@ func testResponsesWebSocketInterruptDrainsAndContinues(t *testing.T, model strin
 		require.NoError(t, conn.ReadJSON(&interrupt))
 		require.JSONEq(t, `{"type":"response.interrupt","response_id":"resp_interrupt","mode":"discard_partial_items"}`, string(interrupt))
 		ack := `{"type":"response.interrupt.accepted","response_id":"resp_interrupt"}`
- if !lateAck { require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(ack))) }
- for _, event := range []string{
+		if !lateAck {
+			require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(ack)))
+		}
+		for _, event := range []string{
 			`{"type":"response.output_item.interrupted","response_id":"resp_interrupt","item_id":"rs_discard","output_index":1}`,
 			`{"type":"response.incomplete","response":{"id":"resp_interrupt","model":"gpt-6-sol","status":"incomplete","incomplete_details":{"reason":"interrupted"},"output":[{"type":"message","id":"msg_kept","role":"assistant","phase":"partial_answer","status":"completed","content":[{"type":"output_text","text":"Completed result."}]}],"usage":{"input_tokens":10,"output_tokens":3,"total_tokens":13}}}`,
 		} {
 			require.NoError(t, conn.WriteMessage(websocket.TextMessage, fixture(event)))
 		}
-  if lateAck { require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(ack))) }
+		if lateAck {
+			require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(ack)))
+		}
 		require.NoError(t, conn.ReadJSON(&create))
 		require.Equal(t, "resp_interrupt", create["previous_response_id"])
 		encoded, err := json.Marshal(create)
@@ -121,9 +125,9 @@ func testResponsesWebSocketInterruptDrainsAndContinues(t *testing.T, model strin
 	// neither reject the next turn nor leak onto the retained upstream socket.
 	require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.interrupt","response_id":"resp_interrupt","mode":"discard_partial_items"}`)))
 	_, lateConfirmation, err := conn.ReadMessage()
- require.NoError(t, err)
- require.JSONEq(t, `{"type":"response.interrupt.accepted","response_id":"resp_interrupt"}`, string(lateConfirmation))
- require.NoError(t, conn.WriteMessage(websocket.TextMessage, fixture(`{"type":"response.create","model":"gpt-6-sol","previous_response_id":"resp_interrupt","input":"second"}`)))
+	require.NoError(t, err)
+	require.JSONEq(t, `{"type":"response.interrupt.accepted","response_id":"resp_interrupt"}`, string(lateConfirmation))
+	require.NoError(t, conn.WriteMessage(websocket.TextMessage, fixture(`{"type":"response.create","model":"gpt-6-sol","previous_response_id":"resp_interrupt","input":"second"}`)))
 	for {
 		_, event, err := conn.ReadMessage()
 		require.NoError(t, err)
@@ -161,9 +165,11 @@ func TestResponsesWebSocketInterruptOwnershipAndValidation(t *testing.T) {
 }
 
 func TestResponsesWebSocketInterruptBeforeTerminalDelivery(t *testing.T) {
- var confirmation []byte
- d := &responsesWebSocketDispatcher{responseLanes: make(map[string]*responsesWebSocketLane), writer: &responsesWebSocketWriter{conn:&responsesWebSocketDeliveryWriter{write:func(raw []byte) error { confirmation = append([]byte(nil), raw...); return nil }}}}
- defer func() { require.JSONEq(t, `{"type":"response.interrupt.accepted","response_id":"owned"}`, string(confirmation)) }()
+	var confirmation []byte
+	d := &responsesWebSocketDispatcher{responseLanes: make(map[string]*responsesWebSocketLane), writer: &responsesWebSocketWriter{conn: &responsesWebSocketDeliveryWriter{write: func(raw []byte) error { confirmation = append([]byte(nil), raw...); return nil }}}}
+	defer func() {
+		require.JSONEq(t, `{"type":"response.interrupt.accepted","response_id":"owned"}`, string(confirmation))
+	}()
 	lane := &responsesWebSocketLane{}
 	control := lane.begin("gpt-6.1-sol")
 	control.Activate()

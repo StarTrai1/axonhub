@@ -519,7 +519,9 @@ func runResponsesWebSocketPings(ctx context.Context, writer *responsesWebSocketW
 		select {
 		case <-ticker.C:
 			deadline := time.Now().Add(responsesWebSocketPingWriteTimeout)
-			conn, ok := writer.conn.(interface { WriteControl(int, []byte, time.Time) error })
+			conn, ok := writer.conn.(interface {
+				WriteControl(int, []byte, time.Time) error
+			})
 			if !ok {
 				return
 			}
@@ -882,9 +884,11 @@ func writeResponsesWebSocketResult(
 					responseTerminal(responseIDFromWebSocketEvent(event.Data))
 				}
 			}
-   for _, observe := range observers {
-    if err := observe(event); err != nil { return err }
-   }
+			for _, observe := range observers {
+				if err := observe(event); err != nil {
+					return err
+				}
+			}
 			data, err := withResponsesWebSocketStreamID(event.Data, streamID)
 			if err != nil {
 				return err

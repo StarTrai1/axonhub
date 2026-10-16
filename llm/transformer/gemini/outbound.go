@@ -373,20 +373,22 @@ func clearFunctionIDsForVertexAI(req *GenerateContentRequest) {
 // Vertex rejects a replay ending in reasoning without a visible answer. Only
 // trim complete thought-only tail turns; keep interior thoughts and tool calls.
 func dropTrailingThoughtOnlyContents(contents []*Content) []*Content {
- for len(contents) > 1 {
-  tail := contents[len(contents)-1]
-  if tail == nil || tail.Role != "model" || len(tail.Parts) == 0 {
-   break
-  }
-  thoughtOnly := true
-  for _, part := range tail.Parts {
-   if part == nil || !part.Thought || part.FunctionCall != nil || part.FunctionResponse != nil || part.InlineData != nil || part.FileData != nil {
-    thoughtOnly = false
-    break
-   }
-  }
-  if !thoughtOnly { break }
-  contents = contents[:len(contents)-1]
- }
- return contents
+	for len(contents) > 1 {
+		tail := contents[len(contents)-1]
+		if tail == nil || tail.Role != "model" || len(tail.Parts) == 0 {
+			break
+		}
+		thoughtOnly := true
+		for _, part := range tail.Parts {
+			if part == nil || !part.Thought || part.FunctionCall != nil || part.FunctionResponse != nil || part.InlineData != nil || part.FileData != nil {
+				thoughtOnly = false
+				break
+			}
+		}
+		if !thoughtOnly {
+			break
+		}
+		contents = contents[:len(contents)-1]
+	}
+	return contents
 }
