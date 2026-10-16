@@ -896,6 +896,9 @@ func captureRawProviderStreamWithTerminalGrace(
 				}
 
 				event := stream.Current()
+				if event == nil {
+					continue
+				}
 				held, err := backlog.hold(event)
 				if err != nil {
 					rawStreamErr.store(err)
