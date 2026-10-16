@@ -441,10 +441,12 @@ func (d *responsesWebSocketDispatcher) dispatch(lane *responsesWebSocketLane, st
 
 func (d *responsesWebSocketDispatcher) processMessage(lane *responsesWebSocketLane, streamID string, message []byte) error {
 	requestCtx := shared.WithResponsesLane(d.ctx, lane.owner)
-	cancel := func() {}
+	var cancel context.CancelFunc
 	if d.requestTimeout > 0 {
 		requestCtx, cancel = context.WithTimeout(requestCtx, d.requestTimeout)
-	}
+	} else {
+  requestCtx, cancel = context.WithCancel(requestCtx)
+ }
 	defer cancel()
 	requestCtx, authErr := middleware.RefreshAPIKeyContext(requestCtx)
 	if authErr != nil {

@@ -922,9 +922,13 @@ func captureRawProviderStreamWithTerminalGrace(
 					}
 				}
 
-				if steering.isFinalTerminal(event) {
-					return
-				}
+    // Chat finish_reason can precede a separate usage frame and [DONE].
+    // Only Responses controls can end a persistent native turn here.
+    eventType := gjson.GetBytes(event.Data, "type").String()
+    if eventType == "" { eventType = event.Type }
+    if (strings.HasPrefix(eventType, "response.") || eventType == "error") && steering.isFinalTerminal(event) {
+     return
+    }
 			}
 		}()
 

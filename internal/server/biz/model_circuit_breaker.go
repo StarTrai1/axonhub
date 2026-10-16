@@ -76,8 +76,9 @@ func (p *ModelCircuitBreakerPolicy) Validate() error {
 
 // ModelCircuitBreakerStats represents the runtime health statistics for a model.
 type ModelCircuitBreakerStats struct {
+	sync.RWMutex // Read-write lock protection
+
 	failureGeneration uint64
-	sync.RWMutex      // Read-write lock protection
 
 	// Identification
 	ChannelID int

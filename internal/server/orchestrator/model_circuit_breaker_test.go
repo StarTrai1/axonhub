@@ -60,6 +60,8 @@ func TestModelCircuitBreakerTracker_StreamSuccessUsesCurrentChannel(t *testing.T
 		},
 	}
 	tracker := withModelCircuitBreaker(outbound, cb).(*modelCircuitBreakerTracker)
+	// This fixture enters at the stream hook; snapshot the prior dispatch.
+	tracker.attemptGeneration = cb.BeginAttempt(42, "gpt-4")
 
 	stream, err := tracker.OnOutboundLlmStream(ctx, &stubResponseStream{
 		events: []*llm.Response{{

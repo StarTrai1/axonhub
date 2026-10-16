@@ -15,7 +15,7 @@ func vertexModelURL(base, model, action string) string {
 	parsed, err := url.Parse(base)
 	hasVersion := false
 	if err == nil {
-		for _, segment := range strings.Split(parsed.Path, "/") {
+		for segment := range strings.SplitSeq(parsed.Path, "/") {
 			if len(segment) >= 2 && segment[0] == 'v' && segment[1] >= '0' && segment[1] <= '9' {
 				hasVersion = true
 				break
