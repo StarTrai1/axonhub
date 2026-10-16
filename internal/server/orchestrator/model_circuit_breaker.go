@@ -25,6 +25,7 @@ type modelCircuitBreakerTracker struct {
 	outbound            *PersistentOutboundTransformer
 	modelCircuitBreaker *biz.ModelCircuitBreaker
 
+	attemptGeneration uint64
 	probeActive    bool
 	probeChannelID int
 	probeModelID   string
@@ -47,6 +48,7 @@ func (m *modelCircuitBreakerTracker) OnOutboundRawRequest(ctx context.Context, r
 		return request, nil
 	}
 
+	m.attemptGeneration = m.modelCircuitBreaker.BeginAttempt(channel.ID, modelID)
 	stats := m.modelCircuitBreaker.GetModelCircuitBreakerStats(ctx, channel.ID, modelID)
 	if stats == nil || stats.State != biz.StateOpen {
 		return request, nil
@@ -80,7 +82,7 @@ func (m *modelCircuitBreakerTracker) OnOutboundLlmResponse(ctx context.Context, 
 	if channel == nil || modelID == "" {
 		return response, nil
 	}
-	m.modelCircuitBreaker.RecordSuccess(ctx, channel.ID, modelID)
+	m.modelCircuitBreaker.RecordAttemptSuccess(ctx, channel.ID, modelID, m.attemptGeneration)
 
 	return response, nil
 }
@@ -137,6 +139,7 @@ func (m *modelCircuitBreakerTracker) OnOutboundLlmStream(ctx context.Context, st
 		released:            false,
 		recorded:            false,
 		modelCircuitBreaker: m.modelCircuitBreaker,
+		attemptGeneration: m.attemptGeneration,
 	}, nil
 }
 
@@ -170,6 +173,7 @@ type probeReleasingStream struct {
 	recorded bool
 
 	modelCircuitBreaker *biz.ModelCircuitBreaker
+	attemptGeneration uint64
 	channelID           int
 	modelID             string
 }
@@ -191,7 +195,7 @@ func (s *probeReleasingStream) Current() *llm.Response {
 	if !s.recorded {
 		if tokenCount := event.Usage.GetCompletionTokens(); tokenCount != nil && *tokenCount > 0 {
 			if s.channelID != 0 && s.modelID != "" {
-				s.modelCircuitBreaker.RecordSuccess(s.ctx, s.channelID, s.modelID)
+				s.modelCircuitBreaker.RecordAttemptSuccess(s.ctx, s.channelID, s.modelID, s.attemptGeneration)
 			}
 			s.recorded = true
 		}

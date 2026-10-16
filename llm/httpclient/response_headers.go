@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+
+	"github.com/looplj/axonhub/llm/streams"
 )
 
 // ReasoningIncludedHeader tells Codex that upstream usage already includes
@@ -63,6 +65,85 @@ func (c *ResponseHeaderCapture) Headers() http.Header {
 	defer c.mu.RUnlock()
 
 	return c.headers.Clone()
+}
+
+type responseHeadersProvider interface {
+	responseHeaders() http.Header
+}
+
+type responseHeadersStream struct {
+	streams.Stream[*StreamEvent]
+	headers         http.Header
+	observer        streams.DeliveryAcknowledger
+	waiter          streams.FinalizationWaiter
+	expectedChoices int
+}
+
+func (s *responseHeadersStream) responseHeaders() http.Header {
+	return s.headers
+}
+
+// WithResponseHeaders attaches HTTP response metadata to a stream without
+// widening the generic streams.Stream interface.
+func WithResponseHeaders(stream streams.Stream[*StreamEvent], headers http.Header) streams.Stream[*StreamEvent] {
+	if stream == nil || len(headers) == 0 {
+		return stream
+	}
+
+	result := &responseHeadersStream{
+		Stream:  stream,
+		headers: headers.Clone(),
+	}
+	if observer, ok := stream.(streams.DeliveryAcknowledger); ok {
+		result.observer = observer
+	}
+	if waiter, ok := stream.(streams.FinalizationWaiter); ok {
+		result.waiter = waiter
+	}
+	if choices, ok := stream.(interface{ ExpectedStreamChoices() int }); ok {
+		result.expectedChoices = choices.ExpectedStreamChoices()
+	}
+	return result
+}
+
+func (s *responseHeadersStream) AcknowledgeDelivery() {
+	if s.observer != nil {
+		s.observer.AcknowledgeDelivery()
+	}
+}
+
+func (s *responseHeadersStream) DeliveryAcknowledged() bool {
+	return s.observer != nil && s.observer.DeliveryAcknowledged()
+}
+
+func (s *responseHeadersStream) WaitForFinalization() {
+	if s.waiter != nil {
+		s.waiter.WaitForFinalization()
+	}
+}
+
+func (s *responseHeadersStream) Deliver(ctx context.Context, write func() (bool, error)) error {
+	boundary, ok := s.Stream.(streams.DeliveryBoundary)
+	if ok {
+		return boundary.Deliver(ctx, write)
+	}
+	terminal, err := write()
+	if err == nil && terminal {
+		s.AcknowledgeDelivery()
+	}
+	return err
+}
+
+func (s *responseHeadersStream) ExpectedStreamChoices() int { return s.expectedChoices }
+
+// GetResponseHeaders returns a copy of response metadata attached to a stream.
+func GetResponseHeaders(stream streams.Stream[*StreamEvent]) http.Header {
+	provider, ok := stream.(responseHeadersProvider)
+	if !ok {
+		return nil
+	}
+
+	return provider.responseHeaders().Clone()
 }
 
 // MergeForwardResponseHeaders copies the small, explicit set of upstream

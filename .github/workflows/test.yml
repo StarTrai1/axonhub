@@ -70,7 +70,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        codex: ['0.162.0', '0.162.1']
+        codex: ['0.162.1', '0.163.0']
         model: [gpt-6-sol, gpt-6.1-sol]
     env:
       PROBE_TEST_MODEL: ${{ matrix.model }}

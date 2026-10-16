@@ -428,10 +428,10 @@ func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*R
 		if retryDelay > 0 {
 			timer := time.NewTimer(retryDelay)
 			select {
+			case <-timer.C:
 			case <-ctx.Done():
 				timer.Stop()
-				return nil, ctx.Err()
-			case <-timer.C:
+				return nil, lastErr
 			}
 		}
 

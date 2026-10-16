@@ -1286,6 +1286,9 @@ type webSocketStream struct {
 	steerMu        sync.Mutex
 	steerTargets   map[string]int
 	steerTerminals map[string]struct{}
+	interruptPending map[string]struct{}
+	bufferedTerminal []byte
+	retireAfterTerminal bool
 }
 
 func (s *webSocketStream) Next() bool {
@@ -1299,7 +1302,12 @@ func (s *webSocketStream) Next() bool {
 	s.mu.Lock()
 	lease := s.lease
 	s.mu.Unlock()
-	_, msg, err := lease.conn.ReadMessage()
+	msg := s.bufferedTerminal
+ s.bufferedTerminal = nil
+ var err error
+ if msg == nil {
+  _, msg, err = lease.conn.ReadMessage()
+ }
 	if err != nil {
 		s.mu.Lock()
 		closed := s.closed
@@ -1322,7 +1330,10 @@ func (s *webSocketStream) Next() bool {
 	}
 
 	typ := streamEventType(msg)
-	if typ == "error" && isWebSocketRecoveryEvent(msg) {
+ if typ == "response.interrupt.accepted" || typ == "response.interrupt.failed" {
+  s.observeInterruptAcknowledgement(msg)
+ }
+ if typ == "error" && isWebSocketRecoveryEvent(msg) {
 		s.setErr(shared.ResponsesRecoveryError())
 		s.finish(true)
 		return false
@@ -1365,6 +1376,14 @@ func (s *webSocketStream) Next() bool {
 		}
 	}
 	if isTerminalWebSocketEvent(typ) && !continueAfterSteer {
+  // Codex 0.163 waits for both cancellation acknowledgement and terminal
+  // usage. Retire a relay that omits the acknowledgement; never leave its
+  // late control frame on a socket that can be borrowed by the next turn.
+  if ack := s.drainTerminalInterrupt(lease, msg); ack != nil {
+   s.bufferedTerminal = msg
+   s.setCurrent(&httpclient.StreamEvent{Type: streamEventType(ack), Data: ack})
+   return true
+  }
 		s.markTerminal()
 		// Only top-level `error` events are transport failures. Response-level
 		// terminal events are yielded and then close the stream normally so the
@@ -1386,7 +1405,7 @@ func (s *webSocketStream) Next() bool {
 				}
 			}
 		}
-		s.finish(evict)
+		s.finish(evict || s.retireAfterTerminal)
 	}
 
 	return true
@@ -1407,7 +1426,12 @@ func (s *webSocketStream) writeSteer(lease *webSocketLease, message []byte) (boo
 		// successor is still active. Keep its worker and upstream socket intact.
 		return true, nil
 	}
-	return true, lease.writeJSON(json.RawMessage(message))
+	err := lease.writeJSON(json.RawMessage(message))
+ if err == nil && control.Type == "response.interrupt" && control.ResponseID != "" {
+  if s.interruptPending == nil { s.interruptPending = make(map[string]struct{}) }
+  s.interruptPending[control.ResponseID] = struct{}{}
+ }
+ return true, err
 }
 
 func (s *webSocketStream) markSteerSent(raw []byte) {

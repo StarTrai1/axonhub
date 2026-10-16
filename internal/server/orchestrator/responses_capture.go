@@ -188,7 +188,7 @@ func (s *responsesAcceptedStream) Next() bool {
 		return false
 	}
 	s.current = s.Stream.Current()
-	if classifyStreamTerminalEvent(s.current) == streamTerminalCompleted {
+	if _, deliveryTracked := s.Stream.(streams.DeliveryAcknowledger); !deliveryTracked && classifyStreamTerminalEvent(s.current) == streamTerminalCompleted {
 		s.continuation.accept(s.ctx)
 	}
 	return true
@@ -200,4 +200,44 @@ func (s *responsesAcceptedStream) Close() error {
 	defer s.continuation.releaseRetention()
 	defer s.continuation.releaseCapture()
 	return s.Stream.Close()
+}
+
+func (s *responsesAcceptedStream) AcknowledgeDelivery() {
+	if observer, ok := s.Stream.(streams.DeliveryAcknowledger); ok {
+		observer.AcknowledgeDelivery()
+  if observer.DeliveryAcknowledged() { s.continuation.accept(s.ctx) }
+	}
+}
+
+func (s *responsesAcceptedStream) DeliveryAcknowledged() bool {
+	observer, ok := s.Stream.(streams.DeliveryAcknowledger)
+	return ok && observer.DeliveryAcknowledged()
+}
+
+func (s *responsesAcceptedStream) WaitForFinalization() {
+	if waiter, ok := s.Stream.(streams.FinalizationWaiter); ok {
+		waiter.WaitForFinalization()
+	}
+}
+
+func (s *responsesAcceptedStream) Deliver(ctx context.Context, write func() (bool, error)) error {
+	boundary, ok := s.Stream.(streams.DeliveryBoundary)
+	if ok {
+		err := boundary.Deliver(ctx, write)
+  if err == nil && s.DeliveryAcknowledged() { s.continuation.accept(s.ctx) }
+  return err
+	}
+	terminal, err := write()
+	if err == nil && terminal {
+		s.AcknowledgeDelivery()
+	}
+	return err
+}
+
+func (s *responsesAcceptedStream) ExpectedStreamChoices() int {
+	choices, ok := s.Stream.(interface{ ExpectedStreamChoices() int })
+	if !ok {
+		return 0
+	}
+	return choices.ExpectedStreamChoices()
 }

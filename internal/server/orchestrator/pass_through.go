@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"mime"
 	"net/http"
@@ -927,7 +928,7 @@ func captureRawProviderStreamWithTerminalGrace(
 			}
 		}()
 
-		return &passThroughChannelStream{ctx: ctx, ch: pipelineCh, errRef: rawStreamErr, cancel: closeStream}, nil
+		return &passThroughChannelStream{ctx: ctx, ch: pipelineCh, errRef: rawStreamErr, cancel: closeStream, owner: true, detach: outbound.state.RawStreamDetach}, nil
 	})
 }
 
@@ -1098,7 +1099,9 @@ func (s *delayedCodexResponsesTerminalStream) Next() bool {
 			return false
 		}
 
+		s.currentMu.Lock()
 		s.current = event
+		s.currentMu.Unlock()
 		s.synthesized = true
 		s.done = true
 		if s.onUsage == nil {
@@ -1420,7 +1423,7 @@ func applyPassThroughStream(outbound *PersistentOutboundTransformer, systemServi
 		// Snapshot the current attempt's error reference. If a future retry replaces
 		// state.RawStreamErrRef, this stream still reads from the correct variable.
 		errRef := outbound.state.RawStreamErrRef
-		cancel := outbound.state.RawStreamCancel
+		detach := outbound.state.RawStreamDetach
 
 		// Events captured while the pipeline pre-read the attempt precede the channel.
 		var held []*httpclient.StreamEvent
@@ -1438,7 +1441,13 @@ func applyPassThroughStream(outbound *PersistentOutboundTransformer, systemServi
 			log.Int("held_events", len(held)),
 		)
 
+		observer := streamLifecycleFromContext(ctx)
+		drainDone := make(chan struct{})
 		go func() {
+			defer close(drainDone)
+			if observer == nil {
+				defer stream.Close()
+			}
 			defer func() {
 				if r := recover(); r != nil {
 					log.Warn(ctx, "pass-through pipeline drain goroutine panicked, recovering",
@@ -1447,14 +1456,12 @@ func applyPassThroughStream(outbound *PersistentOutboundTransformer, systemServi
 					)
 				}
 			}()
-			defer stream.Close()
-
 			for stream.Next() {
 				_ = stream.Current()
 			}
 		}()
 
-		rawStream := streams.Stream[*httpclient.StreamEvent](&passThroughChannelStream{ctx: ctx, ch: rawCh, queue: queue, errRef: errRef, cancel: cancel})
+		rawStream := streams.Stream[*httpclient.StreamEvent](&passThroughChannelStream{ctx: ctx, ch: rawCh, queue: queue, errRef: errRef, detach: detach})
 		if queue == nil {
 			rawStream = streams.PrependStream(rawStream, held...)
 		}
@@ -1471,6 +1478,10 @@ func applyPassThroughStream(outbound *PersistentOutboundTransformer, systemServi
 				stream:      rawStream,
 				clientModel: responsesClientModel(outbound),
 			}
+		}
+
+		if observer != nil {
+			return withPassThroughDeliveryGateAndDrain(rawStream, observer, stream.Close, drainDone), nil
 		}
 
 		return rawStream, nil
@@ -1497,6 +1508,111 @@ func (e *passThroughStreamError) load() error {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 	return e.err
+}
+
+type passThroughDeliveryStream struct {
+	streams.Stream[*httpclient.StreamEvent]
+
+	observer streams.DeliveryAcknowledger
+	boundary streams.DeliveryBoundary
+	close    func() error
+	done     <-chan struct{}
+}
+
+func withPassThroughDeliveryGate(
+	stream streams.Stream[*httpclient.StreamEvent],
+	observer streams.DeliveryAcknowledger,
+	closeFns ...func() error,
+) streams.Stream[*httpclient.StreamEvent] {
+	if observer == nil {
+		return stream
+	}
+
+	boundary, _ := observer.(streams.DeliveryBoundary)
+	var close func() error
+	if len(closeFns) > 0 {
+		close = closeFns[0]
+	}
+	return &passThroughDeliveryStream{Stream: stream, observer: observer, boundary: boundary, close: close}
+}
+
+func withPassThroughDeliveryGateAndDrain(
+	stream streams.Stream[*httpclient.StreamEvent],
+	observer streams.DeliveryAcknowledger,
+	close func() error,
+	done <-chan struct{},
+) streams.Stream[*httpclient.StreamEvent] {
+	if observer == nil {
+		return stream
+	}
+
+	boundary, _ := observer.(streams.DeliveryBoundary)
+	return &passThroughDeliveryStream{Stream: stream, observer: observer, boundary: boundary, close: close, done: done}
+}
+
+func (s *passThroughDeliveryStream) Close() error {
+	// Stop the producer before waiting on the drain. A failed downstream write
+	// stops the pass-through consumer, so nothing reads the raw queue, the
+	// producer blocks on it, and the drain blocks on the producer. Only s.close
+	// cancels the producer, so waiting first deadlocks. The drain still consumes
+	// everything already buffered, preserving the background reader's accounting.
+	var closeErr error
+	producerClosed := false
+	delivered := s.DeliveryAcknowledged()
+	if !delivered && s.close != nil {
+		closeErr = s.close()
+		producerClosed = true
+	}
+	if s.done != nil {
+		if delivered {
+			timer := time.NewTimer(streamTailTimeout)
+			select {
+			case <-s.done:
+			case <-timer.C:
+				if s.close != nil {
+					closeErr = s.close()
+					producerClosed = true
+				}
+			}
+			if !timer.Stop() {
+				select {
+				case <-timer.C:
+				default:
+				}
+			}
+		} else {
+			<-s.done
+		}
+	}
+	if delivered && !producerClosed && s.close != nil {
+		closeErr = s.close()
+	}
+	return errors.Join(closeErr, s.Stream.Close())
+}
+
+func (s *passThroughDeliveryStream) AcknowledgeDelivery() {
+	s.observer.AcknowledgeDelivery()
+}
+
+func (s *passThroughDeliveryStream) DeliveryAcknowledged() bool {
+	return s.observer.DeliveryAcknowledged()
+}
+
+func (s *passThroughDeliveryStream) Deliver(ctx context.Context, write func() (bool, error)) error {
+	if s.boundary != nil {
+		return s.boundary.Deliver(ctx, write)
+	}
+	terminal, err := write()
+	if err == nil && terminal {
+		s.AcknowledgeDelivery()
+	}
+	return err
+}
+
+func (s *passThroughDeliveryStream) WaitForFinalization() {
+	if waiter, ok := s.observer.(streams.FinalizationWaiter); ok {
+		waiter.WaitForFinalization()
+	}
 }
 
 type responsesTransportStream struct {
@@ -1546,7 +1662,9 @@ func (s *responsesTransportStream) Next() bool {
 		s.err = err
 		return false
 	}
+	s.currentMu.Lock()
 	s.current = event
+	s.currentMu.Unlock()
 
 	return true
 }
@@ -1674,14 +1792,17 @@ func (b *rawStreamBacklog) release(size int) {
 //
 //nolint:containedctx // Required so Next() can observe request cancellation.
 type passThroughChannelStream struct {
-	ctx     context.Context
-	ch      <-chan *httpclient.StreamEvent
-	queue   *rawStreamQueue
-	current *httpclient.StreamEvent
-	errRef  *passThroughStreamError
-	cancel  context.CancelFunc
-	once    sync.Once
-	ctxDone bool
+	ctx       context.Context
+	ch        <-chan *httpclient.StreamEvent
+	queue     *rawStreamQueue
+	current   *httpclient.StreamEvent
+	errRef    *passThroughStreamError
+	cancel    context.CancelFunc
+	owner     bool
+	detach    context.CancelFunc
+	once      sync.Once
+	currentMu sync.RWMutex
+	ctxDone   bool
 }
 
 func (s *passThroughChannelStream) Next() bool {
@@ -1696,7 +1817,9 @@ func (s *passThroughChannelStream) Next() bool {
 			_ = s.Close()
 			return false
 		}
+		s.currentMu.Lock()
 		s.current = event
+		s.currentMu.Unlock()
 		return true
 	}
 
@@ -1706,7 +1829,9 @@ func (s *passThroughChannelStream) Next() bool {
 			return false
 		}
 
+		s.currentMu.Lock()
 		s.current = ev
+		s.currentMu.Unlock()
 
 		return true
 	}
@@ -1723,7 +1848,9 @@ func (s *passThroughChannelStream) Next() bool {
 			return false
 		}
 
+		s.currentMu.Lock()
 		s.current = ev
+		s.currentMu.Unlock()
 
 		return true
 	case <-s.ctx.Done():
@@ -1744,7 +1871,9 @@ func (s *passThroughChannelStream) nextQueuedBuffered() bool {
 		_ = s.Close()
 		return false
 	}
+	s.currentMu.Lock()
 	s.current = event
+	s.currentMu.Unlock()
 	return true
 }
 
@@ -1760,7 +1889,9 @@ func (s *passThroughChannelStream) nextBuffered() bool {
 			return false
 		}
 
+		s.currentMu.Lock()
 		s.current = ev
+		s.currentMu.Unlock()
 
 		return true
 	default:
@@ -1770,7 +1901,12 @@ func (s *passThroughChannelStream) nextBuffered() bool {
 	}
 }
 
-func (s *passThroughChannelStream) Current() *httpclient.StreamEvent { return s.current }
+func (s *passThroughChannelStream) Current() *httpclient.StreamEvent {
+	s.currentMu.RLock()
+	defer s.currentMu.RUnlock()
+
+	return s.current
+}
 
 func (s *passThroughChannelStream) Err() error {
 	if err := s.errRef.load(); err != nil {
@@ -1785,8 +1921,11 @@ func (s *passThroughChannelStream) Err() error {
 
 func (s *passThroughChannelStream) Close() error {
 	s.once.Do(func() {
-		if s.cancel != nil {
+		if s.owner && s.cancel != nil {
 			s.cancel()
+		}
+		if s.detach != nil {
+			s.detach()
 		}
 	})
 

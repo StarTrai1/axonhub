@@ -76,6 +76,7 @@ func (p *ModelCircuitBreakerPolicy) Validate() error {
 
 // ModelCircuitBreakerStats represents the runtime health statistics for a model.
 type ModelCircuitBreakerStats struct {
+	failureGeneration uint64
 	sync.RWMutex // Read-write lock protection
 
 	// Identification
@@ -174,6 +175,7 @@ func (m *ModelCircuitBreaker) RecordError(ctx context.Context, channelID int, mo
 	}
 
 	// 2. Update counter
+	stats.failureGeneration++
 	stats.ConsecutiveFailures++
 	stats.LastFailureAt = now
 
@@ -226,12 +228,32 @@ func (m *ModelCircuitBreaker) RecordError(ctx context.Context, channelID int, mo
 
 // RecordSuccess records a successful request for the specified channel and model.
 func (m *ModelCircuitBreaker) RecordSuccess(ctx context.Context, channelID int, modelID string) {
+ m.recordSuccess(ctx, channelID, modelID, nil)
+}
+
+// BeginAttempt snapshots the failure generation before dispatching upstream.
+func (m *ModelCircuitBreaker) BeginAttempt(channelID int, modelID string) uint64 {
+ stats := m.getStats(channelID, modelID)
+ stats.RLock()
+ defer stats.RUnlock()
+ return stats.failureGeneration
+}
+
+// RecordAttemptSuccess ignores success from work dispatched before a newer failure.
+func (m *ModelCircuitBreaker) RecordAttemptSuccess(ctx context.Context, channelID int, modelID string, generation uint64) {
+ m.recordSuccess(ctx, channelID, modelID, &generation)
+}
+
+func (m *ModelCircuitBreaker) recordSuccess(ctx context.Context, channelID int, modelID string, generation *uint64) {
 	stats := m.getStats(channelID, modelID)
 
 	stats.Lock()
 	defer stats.Unlock()
 
-	stats.LastSuccessAt = time.Now()
+	if generation != nil && *generation != stats.failureGeneration {
+  return
+ }
+ stats.LastSuccessAt = time.Now()
 
 	// Reset all negative status immediately upon a single success
 	if stats.State != StateClosed {

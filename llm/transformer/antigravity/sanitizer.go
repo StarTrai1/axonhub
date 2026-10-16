@@ -64,7 +64,7 @@ var unsupportedKeywords = []string{
 	"default", "examples",
 	// Other unsupported keywords
 	"$schema", "$defs", "definitions", "const", "$ref", "additionalProperties",
-	"propertyNames", "title", "$id", "$comment", "id",
+	"propertyNames", "title", "$id", "$comment", "id", "discriminator",
 	"$anchor", "$vocabulary", "$dynamicRef", "$dynamicAnchor",
 	"additionalItems", "unevaluatedProperties", "unevaluatedItems", "contentSchema",
 	"dependentRequired", "dependentSchemas", "dependencies",

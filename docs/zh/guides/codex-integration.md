@@ -149,9 +149,9 @@ external_web_access = true
 
 `remote_compaction = "unsupported"` 表示在客户端执行压缩。`external_web_access` 控制 Codex 是否可以请求实时网页搜索，不授予上游搜索能力或账户权限；省略字段时保留客户端的提供商默认值。详见[官方能力定义](https://github.com/openai/codex/blob/rust-v0.162.0/codex-rs/model-provider-info/src/capabilities.rs)。
 
-缺省 Codex 身份版本为 0.162.1，显式客户端身份和动态稳定版刷新继续优先。托管检查使用 0.162.0 / 0.162.1 × gpt-6-sol / gpt-6.1-sol 回环矩阵；两个版本均检查部分回答续传、developer 输入指令、网关失败帧的重试等待、加密 agent-message 传递、用量、并发和取消，不代表真实提供商账户可用性验证。
+缺省 Codex 身份版本为 0.163.0，显式客户端身份和动态稳定版刷新继续优先。托管检查使用 0.162.0 / 0.163.0 × gpt-6-sol / gpt-6.1-sol 回环矩阵；两个版本均检查部分回答续传、developer 输入指令、网关失败帧的重试等待、加密 agent-message 传递、用量、并发和取消，不代表真实提供商账户可用性验证。
 
-[0.162.1 补丁版本](https://github.com/openai/codex/releases/tag/rust-v0.162.1)修复多行异步问题的渲染，并将 daemon 特性兼容检查限制为受托管配置约束的显式 CLI 覆盖。精确 tag 差异没有引入 Responses HTTP/WebSocket、模型目录或压缩/加密契约变化。这两项客户端修复通过升级 Codex 获得，无需新增网关路由或字段。
+[0.163.0 补丁版本](https://github.com/openai/codex/releases/tag/rust-v0.163.0)修复多行异步问题的渲染，并将 daemon 特性兼容检查限制为受托管配置约束的显式 CLI 覆盖。精确 tag 差异没有引入 Responses HTTP/WebSocket、模型目录或压缩/加密契约变化。这两项客户端修复通过升级 Codex 获得，无需新增网关路由或字段。
 
 #### Instant steering
 

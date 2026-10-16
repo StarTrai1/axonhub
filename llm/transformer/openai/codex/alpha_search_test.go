@@ -127,7 +127,7 @@ func newAlphaSearchTestTransformer(t *testing.T) *OutboundTransformer {
 
 func TestAlphaSearchFiltersFingerprintWithoutMutatingInbound(t *testing.T) {
 	raw := &httpclient.Request{Headers: http.Header{
-		"Version": {"0.162.1"}, "User-Agent": {"Editor/1.0"},
+		"Version": {"0.163.0"}, "User-Agent": {"Editor/1.0"},
 		"http-referer": {"https://editor.example"}, "x-title": {"Editor"}, "x-ZcOdE-private": {"private"},
 	}}
 	original := raw.Headers.Clone()
@@ -137,7 +137,7 @@ func TestAlphaSearchFiltersFingerprintWithoutMutatingInbound(t *testing.T) {
 	})
 	require.NoError(t, err)
 	merged := httpclient.MergeInboundRequest(wire, raw)
-	require.Equal(t, "codex_cli_rs/0.162.1", merged.Headers.Get("User-Agent"))
+	require.Equal(t, "codex_cli_rs/0.163.0", merged.Headers.Get("User-Agent"))
 	for name := range merged.Headers {
 		require.False(t, strings.EqualFold(name, "Http-Referer") || strings.EqualFold(name, "X-Title") || strings.HasPrefix(strings.ToLower(name), "x-zcode-"))
 	}

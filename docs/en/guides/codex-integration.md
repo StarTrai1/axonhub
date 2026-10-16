@@ -149,9 +149,9 @@ external_web_access = true
 
 `remote_compaction = "unsupported"` keeps compaction in the client. `external_web_access` controls whether Codex may request live web search; it does not grant upstream search or account access. Omitted values retain the client's provider defaults. See the [official capability schema](https://github.com/openai/codex/blob/rust-v0.162.0/codex-rs/model-provider-info/src/capabilities.rs).
 
-The fallback Codex identity is 0.162.1. Explicit client identity and dynamic stable-version refresh remain authoritative. Hosted checks compare 0.162.0 and 0.162.1 with gpt-6-sol and gpt-6.1-sol against loopback fixtures. Both versions exercise partial-answer continuation, developer input instructions, retry timing from a gateway-generated failure frame, encrypted agent-message delivery, usage, concurrency, and cancellation. They do not establish provider account availability.
+The fallback Codex identity is 0.163.0. Explicit client identity and dynamic stable-version refresh remain authoritative. Hosted checks compare 0.162.0 and 0.163.0 with gpt-6-sol and gpt-6.1-sol against loopback fixtures. Both versions exercise partial-answer continuation, developer input instructions, retry timing from a gateway-generated failure frame, encrypted agent-message delivery, usage, concurrency, and cancellation. They do not establish provider account availability.
 
-The [0.162.1 patch release](https://github.com/openai/codex/releases/tag/rust-v0.162.1) fixes multiline asynchronous-question rendering and restricts daemon feature compatibility checks to explicit CLI overrides, subject to managed configuration. The exact tag differences introduce no Responses HTTP/WebSocket, model-catalog, or compaction/encryption contract changes. These two client fixes require upgrading Codex; they do not require a new gateway route or field.
+The [0.163.0 patch release](https://github.com/openai/codex/releases/tag/rust-v0.163.0) fixes multiline asynchronous-question rendering and restricts daemon feature compatibility checks to explicit CLI overrides, subject to managed configuration. The exact tag differences introduce no Responses HTTP/WebSocket, model-catalog, or compaction/encryption contract changes. These two client fixes require upgrading Codex; they do not require a new gateway route or field.
 
 #### Instant steering
 

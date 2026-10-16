@@ -50,8 +50,17 @@ func ModelsRequest(ctx context.Context, tokens oauth.TokenGetter, baseURL string
 	}, nil
 }
 
+// ParseThirdPartyModelCatalog returns only models explicitly listed by a third-party catalog.
+func ParseThirdPartyModelCatalog(body []byte) ([]string, error) {
+	return parseModelCatalog(body, false, false)
+}
+
 // ParseModelCatalog returns only picker-visible models in upstream priority order.
 func ParseModelCatalog(body []byte) ([]string, error) {
+	return parseModelCatalog(body, true, true)
+}
+
+func parseModelCatalog(body []byte, supplementImageModel, requireListVisibility bool) ([]string, error) {
 	var response struct {
 		Models []struct {
 			Slug       string `json:"slug"`
@@ -68,7 +77,7 @@ func ParseModelCatalog(body []byte) ([]string, error) {
 	models := make([]string, 0, len(response.Models))
 	imageModelIncluded := false
 	for _, model := range response.Models {
-		if model.Visibility == "list" && strings.TrimSpace(model.Slug) != "" {
+		if (!requireListVisibility || model.Visibility == "list") && strings.TrimSpace(model.Slug) != "" {
 			if model.Slug == "gpt-image-2" {
 				if imageModelIncluded {
 					continue
@@ -92,7 +101,7 @@ func ParseModelCatalog(body []byte) ([]string, error) {
 			models = append(models, pair.alias)
 		}
 	}
-	if !imageModelIncluded {
+	if supplementImageModel && !imageModelIncluded {
 		models = append(models, "gpt-image-2")
 	}
 	return models, nil

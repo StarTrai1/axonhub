@@ -16,6 +16,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server/middleware"
@@ -164,7 +165,7 @@ func serveResponsesWebSocket(
 }
 
 type responsesWebSocketWriter struct {
-	conn      *websocket.Conn
+	conn      responsesWebSocketMessageWriter
 	mu        sync.Mutex
 	closeOnce sync.Once
 }
@@ -173,9 +174,19 @@ type responsesWebSocketWriter struct {
 // mutex to close a session: a stalled stream must not prevent shutdown.
 func (w *responsesWebSocketWriter) close(code int) {
 	w.closeOnce.Do(func() {
-		_ = w.conn.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(code, ""), time.Now().Add(responsesWebSocketCloseTimeout))
-		_ = w.conn.Close()
+		if conn, ok := w.conn.(interface {
+			WriteControl(int, []byte, time.Time) error
+			Close() error
+		}); ok {
+			_ = conn.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(code, ""), time.Now().Add(responsesWebSocketCloseTimeout))
+			_ = conn.Close()
+		}
 	})
+}
+
+type responsesWebSocketMessageWriter interface {
+	SetWriteDeadline(time.Time) error
+	WriteMessage(int, []byte) error
 }
 
 type responsesWebSocketLane struct {
@@ -202,6 +213,7 @@ type responsesWebSocketDispatcher struct {
 	lanes             map[string]*responsesWebSocketLane
 	responseLanes     map[string]*responsesWebSocketLane
 	terminalResponses shared.ResponsesWebSocketTerminals
+	pendingInterrupts map[string]struct{}
 	mu                sync.Mutex
 	namedStreams      int
 	wg                sync.WaitGroup
@@ -476,7 +488,7 @@ func (d *responsesWebSocketDispatcher) processMessage(lane *responsesWebSocketLa
 		d.terminalResponses.Remember(id)
 	}, func() {
 		lane.session.completeRequest(message)
-	})
+	}, d.observeInterruptEvent)
 }
 
 func (d *responsesWebSocketDispatcher) wait() {
@@ -507,7 +519,11 @@ func runResponsesWebSocketPings(ctx context.Context, writer *responsesWebSocketW
 		select {
 		case <-ticker.C:
 			deadline := time.Now().Add(responsesWebSocketPingWriteTimeout)
-			if err := writer.conn.WriteControl(websocket.PingMessage, nil, deadline); err != nil {
+			conn, ok := writer.conn.(interface { WriteControl(int, []byte, time.Time) error })
+			if !ok {
+				return
+			}
+			if err := conn.WriteControl(websocket.PingMessage, nil, deadline); err != nil {
 				log.Debug(ctx, "Responses WebSocket heartbeat failed", log.Cause(err))
 				// Closing also releases the read loop; cancellation stops every
 				// active turn while the downstream connection is unavailable.
@@ -838,20 +854,24 @@ func writeResponsesWebSocketResult(
 	registerResponseID func(string),
 	responseTerminal func(string),
 	responseCompleted func(),
+	observers ...func(*httpclient.StreamEvent) error,
 ) error {
 	if result.ChatCompletionStream != nil {
 		stream := result.ChatCompletionStream
 		defer stream.Close()
 
 		terminalSeen := false
-		steeringState := newResponsesWebSocketSteeringState()
+		terminalTracker := orchestrator.NewStreamTerminalTracker(streamExpectedChoices(stream))
 		for stream.Next() {
+			if err := ctx.Err(); err != nil {
+				if terminalSeen || errors.Is(err, context.Canceled) {
+					return nil
+				}
+				return writeResponsesWebSocketError(writer, transformResponsesWebSocketError(ctx, err, transformError), streamID)
+			}
 			event := stream.Current()
 			if event == nil || len(event.Data) == 0 {
 				continue
-			}
-			if steeringState.isFinalTerminal(event) {
-				terminalSeen = true
 			}
 			if registerResponseID != nil && event.Type == "response.created" {
 				registerResponseID(responseIDFromWebSocketEvent(event.Data))
@@ -862,11 +882,28 @@ func writeResponsesWebSocketResult(
 					responseTerminal(responseIDFromWebSocketEvent(event.Data))
 				}
 			}
+   for _, observe := range observers {
+    if err := observe(event); err != nil { return err }
+   }
 			data, err := withResponsesWebSocketStreamID(event.Data, streamID)
 			if err != nil {
 				return err
 			}
-			if err := writeResponsesWebSocketMessage(writer, websocket.TextMessage, data); err != nil {
+			eventType := gjson.GetBytes(event.Data, "type").String()
+			status := gjson.GetBytes(event.Data, "response.status").String()
+			if err := writeStreamDelivery(ctx, stream, func() (bool, error) {
+				if err := writeResponsesWebSocketMessage(writer, websocket.TextMessage, data); err != nil {
+					return false, err
+				}
+				terminal := !terminalSeen && terminalTracker.Observe(event)
+				if terminal {
+					terminalSeen = true
+				}
+				return terminal && (event.Type == "response.completed" || eventType == "response.completed") &&
+					(event.Type == "response.completed" || event.Type == "") &&
+					(eventType == "response.completed" || eventType == "") &&
+					(status == "completed" || status == ""), nil
+			}); err != nil {
 				return err
 			}
 			if (event.Type == "response.completed" || isInterruptedResponsesTerminal(event)) && responseCompleted != nil {

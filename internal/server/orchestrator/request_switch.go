@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"sync"
+ "context"
 
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
@@ -61,4 +62,41 @@ func (s *requestSwitchLifecycleStream) Close() error {
 	s.once.Do(func() { unregisterRequestSwitch(s.state) })
 
 	return err
+}
+
+func (s *requestSwitchLifecycleStream) AcknowledgeDelivery() {
+	if observer, ok := s.stream.(streams.DeliveryAcknowledger); ok {
+		observer.AcknowledgeDelivery()
+	}
+}
+
+func (s *requestSwitchLifecycleStream) DeliveryAcknowledged() bool {
+	observer, ok := s.stream.(streams.DeliveryAcknowledger)
+	return ok && observer.DeliveryAcknowledged()
+}
+
+func (s *requestSwitchLifecycleStream) WaitForFinalization() {
+	if waiter, ok := s.stream.(streams.FinalizationWaiter); ok {
+		waiter.WaitForFinalization()
+	}
+}
+
+func (s *requestSwitchLifecycleStream) Deliver(ctx context.Context, write func() (bool, error)) error {
+	boundary, ok := s.stream.(streams.DeliveryBoundary)
+	if ok {
+		return boundary.Deliver(ctx, write)
+	}
+	terminal, err := write()
+	if err == nil && terminal {
+		s.AcknowledgeDelivery()
+	}
+	return err
+}
+
+func (s *requestSwitchLifecycleStream) ExpectedStreamChoices() int {
+	choices, ok := s.stream.(interface{ ExpectedStreamChoices() int })
+	if !ok {
+		return 0
+	}
+	return choices.ExpectedStreamChoices()
 }

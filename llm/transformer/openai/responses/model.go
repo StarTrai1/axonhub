@@ -541,6 +541,7 @@ type Item struct {
 
 	// The annotations of the text output.
 	Annotations []Annotation `json:"annotations,omitzero"`
+	Logprobs json.RawMessage `json:"logprobs,omitempty"`
 
 	// Any of "system", "user", "assistant", "developer".
 	Role string `json:"role,omitempty"`
@@ -610,7 +611,7 @@ type Item struct {
 	Summary []ReasoningSummary `json:"summary,omitempty"`
 	// Reasoning text content - array of reasoning text items.
 	ReasoningContent *PolymorphicReasoningContent `json:"reasoning_content,omitempty"`
-	// The encrypted content of the reasoning item.
+	// Opaque provider replay content for reasoning and output items.
 	EncryptedContent *string `json:"encrypted_content,omitempty"`
 
 	// Action is the polymorphic "action" field: web_search_call uses an object,
