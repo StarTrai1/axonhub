@@ -44,9 +44,9 @@ func TestStreamDeliveryWebSocketWriter(t *testing.T) {
 				case "queued_terminal_unwritten":
 					events = append([]*httpclient.StreamEvent{{Type: "response.output_text.delta", Data: []byte(`{"type":"response.output_text.delta","delta":"hi"}`)}}, terminal)
 				case "interrupted_response":
-      terminal.Type = "response.incomplete"
-      terminal.Data = []byte(`{"type":"response.incomplete","response":{"status":"incomplete","incomplete_details":{"reason":"interrupted"}}}`)
-     case "completed_with_failed_status":
+					terminal.Type = "response.incomplete"
+					terminal.Data = []byte(`{"type":"response.incomplete","response":{"status":"incomplete","incomplete_details":{"reason":"interrupted"}}}`)
+				case "completed_with_failed_status":
 					terminal.Data = []byte(`{"type":"response.completed","response":{"status":"failed"}}`)
 				case "completed_with_incomplete_status":
 					terminal.Data = []byte(`{"type":"response.completed","response":{"status":"incomplete"}}`)

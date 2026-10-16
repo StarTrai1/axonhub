@@ -217,9 +217,9 @@ func TestResponsesWebSocketInterruptAfterCompletion(t *testing.T) {
 				// Repeated late controls remain bound to the first response even
 				// after the same lane has been reused for another turn.
 				require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.interrupt","response_id":"resp_1","mode":"discard_partial_items"}`)))
-    _, ack, ackErr := conn.ReadMessage()
-    require.NoError(t, ackErr)
-    require.JSONEq(t, `{"type":"response.interrupt.accepted","response_id":"resp_1"}`, string(ack))
+				_, ack, ackErr := conn.ReadMessage()
+				require.NoError(t, ackErr)
+				require.JSONEq(t, `{"type":"response.interrupt.accepted","response_id":"resp_1"}`, string(ack))
 			}
 			require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.interrupt","response_id":"foreign","mode":"discard_partial_items"}`)))
 			_, rejected, err := conn.ReadMessage()

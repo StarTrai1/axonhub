@@ -904,12 +904,12 @@ func writeResponsesWebSocketResult(
 					terminalSeen = true
 				}
 				completed := (event.Type == "response.completed" || eventType == "response.completed") &&
-     (event.Type == "response.completed" || event.Type == "") &&
-     (eventType == "response.completed" || eventType == "") &&
-     (status == "completed" || status == "")
-    interrupted := isInterruptedResponsesTerminal(event) &&
-     (eventType == "response.incomplete" || eventType == "") && (status == "incomplete" || status == "")
-    return terminal && (completed || interrupted), nil
+					(event.Type == "response.completed" || event.Type == "") &&
+					(eventType == "response.completed" || eventType == "") &&
+					(status == "completed" || status == "")
+				interrupted := isInterruptedResponsesTerminal(event) &&
+					(eventType == "response.incomplete" || eventType == "") && (status == "incomplete" || status == "")
+				return terminal && (completed || interrupted), nil
 			}); err != nil {
 				return err
 			}
