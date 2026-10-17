@@ -13,9 +13,9 @@ import { DataTableColumnHeader } from '@/components/data-table-column-header';
 import { useModels } from '../context/models-context';
 import { Model } from '../data/schema';
 import { DataTableRowActions } from './data-table-row-actions';
+import { ModelIcon } from './model-icon';
 import { ModelsStatusDialog } from './models-status-dialog';
 import { useDeveloperLabel } from './models-table';
-import { ModelIcon } from './model-icon';
 
 // Status Switch Cell Component to handle status toggle with confirmation dialog
 function StatusSwitchCell({ row }: { row: Row<Model> }) {
@@ -302,37 +302,39 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
     },
 
     {
-          accessorKey: 'createdAt',
-          header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.createdAt')} />,
-          cell: ({ row }) => {
-            const raw = row.getValue('createdAt') as unknown;
-            const date = raw instanceof Date ? raw : new Date(raw as string);
+      accessorKey: 'createdAt',
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.createdAt')} />,
+      cell: ({ row }) => {
+        const raw = row.getValue('createdAt') as unknown;
+        const date = raw instanceof Date ? raw : new Date(raw as string);
 
-            if (Number.isNaN(date.getTime())) {
-              return <span className='text-muted-foreground text-xs'>-</span>;
-            }
+        if (Number.isNaN(date.getTime())) {
+          return <span className='text-muted-foreground text-xs'>-</span>;
+        }
 
-            return (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className='text-muted-foreground cursor-help text-sm'>{format(date, 'yyyy-MM-dd')}</div>
-                </TooltipTrigger>
-                <TooltipContent>{format(date, 'yyyy-MM-dd HH:mm:ss')}</TooltipContent>
-              </Tooltip>
-            );
+        return (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className='text-muted-foreground cursor-help text-sm'>{format(date, 'yyyy-MM-dd')}</div>
+            </TooltipTrigger>
+            <TooltipContent>{format(date, 'yyyy-MM-dd HH:mm:ss')}</TooltipContent>
+          </Tooltip>
+        );
+      },
+      enableSorting: true,
+      enableHiding: false,
+    },
+    ...(canWrite
+      ? [
+          {
+            id: 'actions',
+            header: t('common.columns.actions'),
+            cell: DataTableRowActions,
+            meta: { className: 'w-[88px] min-w-[88px] pr-3 pl-0' },
+            enableSorting: false,
+            enableHiding: false,
           },
-          enableSorting: true,
-          enableHiding: false,
-        },
-        ...(canWrite
-          ? [{
-              id: 'actions',
-              header: t('common.columns.actions'),
-              cell: DataTableRowActions,
-              meta: { className: 'w-[88px] min-w-[88px] pr-3 pl-0' },
-              enableSorting: false,
-              enableHiding: false,
-            }]
-          : []),
+        ]
+      : []),
   ];
 };

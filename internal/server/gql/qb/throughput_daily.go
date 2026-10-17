@@ -18,16 +18,16 @@ const (
 
 // DailyQueryFragmentConfig holds the SQL fragments for daily throughput queries.
 type DailyQueryFragmentConfig struct {
-	IDColumn      string
+	IDColumn string
 }
 
 // AllowedDailyQueryConfigs maps each DailyThroughputQueryType to its SQL fragments.
 var AllowedDailyQueryConfigs = map[DailyThroughputQueryType]DailyQueryFragmentConfig{
 	DailyThroughputByChannel: {
-		IDColumn:      "se.channel_id",
+		IDColumn: "se.channel_id",
 	},
 	DailyThroughputByModel: {
-		IDColumn:      "r.model_id",
+		IDColumn: "r.model_id",
 	},
 }
 

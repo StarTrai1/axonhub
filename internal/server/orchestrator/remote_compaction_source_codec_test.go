@@ -42,7 +42,9 @@ func TestNativeCompactionBinaryEncodingCompatibility(t *testing.T) {
 
 func BenchmarkNativeCompactionSourceEncoding(b *testing.B) {
 	aead, err := newLocalCompactionCipher("synthetic-installation-key")
-	if err != nil { b.Fatal(err) }
+	if err != nil {
+		b.Fatal(err)
+	}
 	aad := []byte("synthetic-owner-checkpoint-and-ciphertext")
 	compressed := bytes.Repeat([]byte{0, 255, 128, 1}, 256*1024)
 	for _, variant := range []string{"legacy", "binary"} {
@@ -55,7 +57,9 @@ func BenchmarkNativeCompactionSourceEncoding(b *testing.B) {
 				} else {
 					_, err = sealNativeCompactionSource(aead, aad, compressed)
 				}
-				if err != nil { b.Fatal(err) }
+				if err != nil {
+					b.Fatal(err)
+				}
 			}
 		})
 	}

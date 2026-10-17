@@ -4,12 +4,15 @@ import (
 	"context"
 	"hash/fnv"
 	"math/rand/v2"
+	"slices"
+	"strconv"
 
 	lru "github.com/hashicorp/golang-lru/v2"
 
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/llm/auth"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // traceStickyLRUSize is the default LRU cache size for trace-to-key mappings.
@@ -31,7 +34,7 @@ func (p *channelAPIKeyContextProvider) Get(ctx context.Context) string {
 	return key
 }
 
-// TraceStickyKeyProvider selects an API key deterministically per traceID (if present),
+// TraceStickyKeyProvider selects an API key deterministically per trace or session,
 // using cached enabled keys from the channel snapshot.
 //
 // An LRU cache remembers previous traceID→key selections so that, as long as
@@ -66,17 +69,16 @@ func (p *TraceStickyKeyProvider) Get(ctx context.Context) string {
 
 	var selectedKey string
 
-	if trace, ok := contexts.GetTrace(ctx); ok && trace != nil {
-		if cached, ok := p.cache.Get(trace.TraceID); ok {
+	if seed := channelAPIKeyAffinitySeed(ctx); seed != "" {
+		if cached, ok := p.cache.Get(seed); ok && slices.Contains(enabled, cached) {
 			selectedKey = cached
 		} else {
-			selectedKey = rendezvousSelect(enabled, trace.TraceID)
-			p.cache.Add(trace.TraceID, selectedKey)
+			selectedKey = rendezvousSelect(enabled, seed)
+			p.cache.Add(seed, selectedKey)
 		}
 
 		if log.DebugEnabled(ctx) {
-			log.Debug(ctx, "Trace sticky key selected",
-				log.String("trace_id", trace.TraceID),
+			log.Debug(ctx, "Session sticky key selected",
 				log.String("key_prefix", safeAPIKeyPrefix(selectedKey)),
 			)
 		}
@@ -93,6 +95,25 @@ func (p *TraceStickyKeyProvider) Get(ctx context.Context) string {
 	contexts.WithChannelAPIKey(ctx, selectedKey)
 
 	return selectedKey
+}
+
+func channelAPIKeyAffinitySeed(ctx context.Context) string {
+	// Preserve existing trace assignments across upgrades. Tracing is optional;
+	// transport sessions must not rotate credentials merely because it is off.
+	if trace, ok := contexts.GetTrace(ctx); ok && trace.TraceID != "" {
+		return trace.TraceID
+	}
+	if thread, ok := contexts.GetThread(ctx); ok && thread.ID != 0 {
+		return "thread:" + strconv.Itoa(thread.ID)
+	}
+	if sessionID, ok := shared.GetSessionID(ctx); ok && sessionID != "" {
+		if scope, ok := shared.GetSessionScope(ctx); ok && scope != "" {
+			// A trusted owner separates equal client-supplied IDs. NUL separators
+			// keep scope/session pairs unambiguous without exposing credentials.
+			return "session:" + scope + "\x00" + sessionID
+		}
+	}
+	return ""
 }
 
 // rendezvousSelect picks a key using Highest Random Weight (Rendezvous) hashing.
