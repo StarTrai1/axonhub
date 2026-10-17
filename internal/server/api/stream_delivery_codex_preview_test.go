@@ -106,7 +106,7 @@ func runCodexPreviewDelivery(t *testing.T, model string, upstreamWS bool, downst
 		}
 	})
 	ctx := authz.WithTestBypass(ent.NewContext(t.Context(), client))
-	storage, err := client.DataStorage.Create().SetName("preview-storage").SetPrimary(true).
+	storage, err := client.DataStorage.Create().SetName("preview-storage").SetDescription("Synthetic delivery regression storage").SetPrimary(true).
 		SetType(datastorage.TypeDatabase).SetSettings(&objects.DataStorageSettings{}).SetStatus(datastorage.StatusActive).Save(ctx)
 	require.NoError(t, err)
 	require.NoError(t, handlers.SystemService.SetDefaultDataStorageID(ctx, storage.ID))

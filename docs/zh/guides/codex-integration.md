@@ -183,3 +183,11 @@ Codex 0.162.0 默认启用已有的 `instant_interrupt` 客户端功能。在 Re
 DevDay 的 Agents API 浏览器会话使用独立 `/v1/agents/sessions` 生命周期；Private Safety Processing 属于组织/项目开通配置，不会随 Responses 模型更新而启用。Decisions API 公告仍为有限预览，本次未找到稳定公开的请求契约。本次更新不宣称已支持这些独立服务。
 
 在上游 WebSocket 活跃期间，GPT-6 系列（包括 Sol 6.1 和本地 Fast 别名）可发送 `response.steer`。控制帧仍绑定同连接已注册的响应，并使用既有有界队列；GPT-5.6 及更早模型不开放该功能。参见[中途调整指令](https://developers.openai.com/api/docs/guides/steering)。
+
+## 搜索专用渠道
+
+在 Codex 渠道的编辑窗口开启 **仅搜索** 后，该渠道只接收 `openai/search`（`/v1/alpha/search`）请求，不再参与 Responses HTTP、Responses WebSocket、Chat Completions、压缩或其他生成路由。关闭后恢复原有路由方式。
+
+搜索专用渠道不要求请求模型与渠道支持模型同名。例如，来自 `gpt-6-astra` 的搜索可使用配置了 `gpt-6-sol` 的渠道。若有同名模型则优先使用；否则使用渠道默认测试模型，或按名称顺序选取已有模型。项目与 API Key 的渠道范围、标签及配额限制继续生效。
+
+该设置不会让不支持搜索的上游获得搜索能力。搜索专用渠道的 `/alpha/search` 不可用时会返回错误或按既有重试策略尝试其他渠道，禁止在该渠道回退到 `/responses` 模拟搜索。

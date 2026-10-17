@@ -237,3 +237,11 @@ A TLS `bad record MAC` before usable output is classified as an upstream transpo
 DevDay's Agents API browser sessions use a separate `/v1/agents/sessions` lifecycle, and Private Safety Processing is an organization/project provisioning feature. These are not enabled by a Responses model change. Decisions API was announced in limited preview; no stable public request contract was found during this update. This gateway update does not claim support for those separate services.
 
 Mid-turn `response.steer` is accepted for the GPT-6 family, including Sol 6.1 and local Fast aliases, while its upstream WebSocket is active. It remains bound to the registered response on the same connection and the existing bounded control queue. GPT-5.6 and older models remain unsupported. See [mid-turn steering](https://developers.openai.com/api/docs/guides/steering).
+
+## Search-only channels
+
+Enable **Search only** in a Codex channel's edit dialog to reserve it for `openai/search` (`/v1/alpha/search`). The channel is excluded from Responses HTTP, Responses WebSocket, Chat Completions, compaction, and other generation routes. Turning the setting off restores normal routing.
+
+Search-only channels do not require the requested model to match a supported model. For example, a search from `gpt-6-astra` can use a channel configured for `gpt-6-sol`. An exact model match takes precedence; otherwise routing uses the channel's default test model or an existing model in name order. Project and API key channel scopes, tags, and quota restrictions still apply.
+
+This setting does not grant upstream search capability. When `/alpha/search` is unavailable, the request fails or follows the existing retry policy to another channel. The search-only channel cannot fall back to `/responses` to emulate search.
