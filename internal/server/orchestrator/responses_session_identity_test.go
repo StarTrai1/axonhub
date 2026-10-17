@@ -17,7 +17,7 @@ func TestResponsesSessionIdentityRetainsScopeAndExpiry(t *testing.T) {
 	ctx := shared.WithSessionScope(t.Context(), "api-key:owner")
 	key := responsesSessionKey{scope: "api-key:owner", responseID: "response"}
 	store.insertLocked(key, &responsesSessionRecord{
-		input: []json.RawMessage{[]byte(`{"role":"user","content":"retained"}`)},
+		input:     []json.RawMessage{[]byte(`{"role":"user","content":"retained"}`)},
 		sessionID: "session", windowID: "window", updatedAt: time.Now(), complete: true,
 	})
 	session, window, found := store.lookupIdentity(ctx, "response")
@@ -72,17 +72,21 @@ func BenchmarkResponsesSessionIdentity(b *testing.B) {
 	store := newResponsesSessionStore()
 	ctx := shared.WithSessionScope(b.Context(), "owner")
 	store.insertLocked(responsesSessionKey{scope: "owner", responseID: "response"}, &responsesSessionRecord{
-		input: []json.RawMessage{bytes.Repeat([]byte("x"), 8<<20)},
-		sessionID: "session", windowID: "window", updatedAt: time.Now(), size: 8<<20, complete: true,
+		input:     []json.RawMessage{bytes.Repeat([]byte("x"), 8<<20)},
+		sessionID: "session", windowID: "window", updatedAt: time.Now(), size: 8 << 20, complete: true,
 	})
 	for _, variant := range []string{"full_snapshot_baseline", "identity"} {
 		b.Run(variant, func(b *testing.B) {
 			b.ReportAllocs()
 			for b.Loop() {
 				if variant == "full_snapshot_baseline" {
-					if record := store.lookup(ctx, "response"); record == nil || record.sessionID != "session" { b.Fatal("missing session") }
+					if record := store.lookup(ctx, "response"); record == nil || record.sessionID != "session" {
+						b.Fatal("missing session")
+					}
 				} else {
-					if session, _, found := store.lookupIdentity(ctx, "response"); !found || session != "session" { b.Fatal("missing session") }
+					if session, _, found := store.lookupIdentity(ctx, "response"); !found || session != "session" {
+						b.Fatal("missing session")
+					}
 				}
 			}
 		})

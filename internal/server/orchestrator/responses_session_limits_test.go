@@ -25,7 +25,7 @@ func TestResponsesSessionPublishesLargeHistoryBeforePersistence(t *testing.T) {
 	terminal := &httpclient.StreamEvent{Data: []byte(`{"type":"response.completed","response":{"id":"resp_large_live","status":"completed","output":[{"type":"function_call","id":"fc_native","call_id":"call_native","name":"exec","arguments":"{}"}]}}`)}
 	wrapped := store.wrapStream(ctx, requestBody, streams.SliceStream([]*httpclient.StreamEvent{terminal}))
 	require.True(t, wrapped.Next())
-	prepared, _ := store.prepare(ctx, []byte(`{"previous_response_id":"resp_large_live","input":[{"type":"function_call_output","call_id":"call_native","output":"ok"}]}`))
+	prepared, _ := prepareResponsesSessionForTest(t, store, ctx, []byte(`{"previous_response_id":"resp_large_live","input":[{"type":"function_call_output","call_id":"call_native","output":"ok"}]}`))
 	require.False(t, gjson.GetBytes(prepared, "previous_response_id").Exists())
 	require.Equal(t, history, gjson.GetBytes(prepared, "input.0.content").String())
 	require.Equal(t, "fc_native", gjson.GetBytes(prepared, "input.1.id").String())
@@ -59,7 +59,7 @@ func TestResponsesSessionRetainsTerminalStateAfterWireBufferOverflow(t *testing.
 				require.True(t, wrapped.Next())
 			}
 			require.True(t, wrapped.(*responsesSessionStream).overflow)
-			prepared, _ := store.prepare(ctx, []byte(`{"previous_response_id":"resp_overflow","input":[{"type":"custom_tool_call_output","call_id":"call_native","output":"ok"}]}`))
+			prepared, _ := prepareResponsesSessionForTest(t, store, ctx, []byte(`{"previous_response_id":"resp_overflow","input":[{"type":"custom_tool_call_output","call_id":"call_native","output":"ok"}]}`))
 			require.False(t, gjson.GetBytes(prepared, "previous_response_id").Exists())
 			require.Equal(t, "original", gjson.GetBytes(prepared, "input.0.content").String())
 			require.Equal(t, "complete input", gjson.GetBytes(prepared, "input.1.input").String())
@@ -110,7 +110,7 @@ func TestResponsesSessionRetainsDoneItemsMissingFromTerminal(t *testing.T) {
 	wrapped := store.wrapStream(ctx, []byte(`{"input":"original"}`), streams.SliceStream(events))
 	_, err := streams.All(wrapped)
 	require.NoError(t, err)
-	prepared, _ := store.prepare(ctx, []byte(`{"previous_response_id":"resp_partial","input":[{"type":"custom_tool_call_output","call_id":"call_native","output":"done"}]}`))
+	prepared, _ := prepareResponsesSessionForTest(t, store, ctx, []byte(`{"previous_response_id":"resp_partial","input":[{"type":"custom_tool_call_output","call_id":"call_native","output":"done"}]}`))
 	require.False(t, gjson.GetBytes(prepared, "previous_response_id").Exists())
 	require.Equal(t, int64(4), gjson.GetBytes(prepared, "input.#").Int())
 	require.Equal(t, "complete", gjson.GetBytes(prepared, "input.2.input").String())

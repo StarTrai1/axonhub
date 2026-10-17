@@ -372,7 +372,7 @@ func TestResponsesRejectedRelayAffinityKeepsClientSessionWindow(t *testing.T) {
 	require.NoError(t, err)
 	next, err = sjson.SetRawBytes(next, "input", []byte(`[{"type":"message","role":"user","content":"continue"}]`))
 	require.NoError(t, err)
-	prepared, session := store.prepare(ctx, next)
+	prepared, session := prepareResponsesSessionForTest(t, store, ctx, next)
 	require.Equal(t, "original-client", session)
 	require.False(t, gjson.GetBytes(prepared, "previous_response_id").Exists())
 	require.Equal(t, int64(11), gjson.GetBytes(prepared, "input.#").Int(), "same-window continuation must retain prior input and output")

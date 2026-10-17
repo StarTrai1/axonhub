@@ -201,13 +201,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 			}
 		}()
 		ctx = shared.WithResponsesAttempt(ctx, &shared.ResponsesAttempt{})
-		if shared.GetResponsesLane(ctx) == nil {
-			sessionID, _ := shared.GetSessionID(ctx)
-			if previousSessionID, _, found := processor.responsesSessions.lookupIdentity(ctx, continuation.previous); found && previousSessionID != "" {
-				sessionID = previousSessionID
-			}
-			ctx = shared.WithSessionID(ctx, responseSessionID(sessionID))
-		}
+		ctx = processor.responsesSessions.withContinuationSession(ctx, continuation.previous)
 	}
 
 	// API key providers cannot return a derived context, so install the shared

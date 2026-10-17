@@ -67,62 +67,15 @@ func newResponsesSessionStore(loaders ...responsesSessionLoadFunc) *responsesSes
 	return store
 }
 
-func (s *responsesSessionStore) prepare(ctx context.Context, body []byte) ([]byte, string) {
+func (s *responsesSessionStore) withContinuationSession(ctx context.Context, previousID string) context.Context {
+	if shared.GetResponsesLane(ctx) != nil {
+		return ctx
+	}
 	sessionID, _ := shared.GetSessionID(ctx)
-	var current map[string]json.RawMessage
-	if json.Unmarshal(body, &current) != nil || current == nil {
-		return body, responseSessionID(sessionID)
+	if previousSessionID, _, found := s.lookupIdentity(ctx, previousID); found && previousSessionID != "" {
+		sessionID = previousSessionID
 	}
-
-	normalizedInput, inputChanged := normalizeResponseSessionInput(current["input"])
-	if inputChanged {
-		current["input"] = normalizedInput
-	}
-
-	previousID := responseSessionString(current["previous_response_id"])
-	if previousID == "" {
-		return encodePreparedResponsesBody(body, current, inputChanged), responseSessionID(sessionID)
-	}
-
-	record := s.lookupOrLoad(ctx, previousID)
-	if record == nil || !record.complete {
-		return encodePreparedResponsesBody(body, current, inputChanged), responseSessionID(sessionID)
-	}
-	windowID := shared.ReadCodexRequestMetadata(nil, body).WindowID
-	if windowID != "" && record.windowID != "" && windowID != record.windowID {
-		// A new Codex context window supplies its own compacted root. Replaying
-		// the old response here would prepend the discarded history again.
-		delete(current, "previous_response_id")
-		return encodePreparedResponsesBody(body, current, true), responseSessionID(sessionID)
-	}
-	if record.sessionID != "" {
-		sessionID = record.sessionID
-	}
-	sessionID = responseSessionID(sessionID)
-
-	merged := cloneResponseSessionPayload(current)
-
-	baseItems, _ := normalizeResponseSessionItems(record.input)
-	normalizedOutput, _ := normalizeResponseSessionItems(record.output)
-	baseItems = append(baseItems, normalizedOutput...)
-	baseItems = append(baseItems, responseSessionInputItems(current["input"])...)
-	if len(baseItems) > 0 {
-		encoded, err := json.Marshal(baseItems)
-		if err != nil {
-			return body, sessionID
-		}
-		merged["input"] = encoded
-	} else {
-		delete(merged, "input")
-	}
-	delete(merged, "previous_response_id")
-
-	encoded, err := json.Marshal(merged)
-	if err != nil {
-		return body, sessionID
-	}
-
-	return encoded, sessionID
+	return shared.WithSessionID(ctx, responseSessionID(sessionID))
 }
 
 func (s *responsesSessionStore) lookupOrLoad(ctx context.Context, responseID string) *responsesSessionRecord {
@@ -152,18 +105,6 @@ func (s *responsesSessionStore) lookupOrLoad(ctx context.Context, responseID str
 	}
 	s.record(ctx, requestBody, responseBody)
 	return record
-}
-
-func encodePreparedResponsesBody(original []byte, payload map[string]json.RawMessage, changed bool) []byte {
-	if !changed {
-		return original
-	}
-
-	encoded, err := json.Marshal(payload)
-	if err != nil {
-		return original
-	}
-	return encoded
 }
 
 func decodeResponsesSessionRecord(requestBody, responseBody []byte) *responsesSessionRecord {
@@ -589,14 +530,6 @@ func (s *responsesSessionStream) terminalSnapshot() ([]byte, bool) {
 		return nil, false
 	}
 	return body, false
-}
-
-func cloneResponseSessionPayload(payload map[string]json.RawMessage) map[string]json.RawMessage {
-	cloned := make(map[string]json.RawMessage, len(payload))
-	for key, value := range payload {
-		cloned[key] = cloneResponseSessionValue(value)
-	}
-	return cloned
 }
 
 func cloneResponseSessionValue(value json.RawMessage) json.RawMessage {

@@ -63,7 +63,7 @@ func TestResponsesSessionPublishesNativeHistoryBeforePassThroughTerminal(t *test
 			require.True(t, terminal, "terminal event must reach the pass-through consumer")
 			require.NoError(t, rawStream.Err())
 
-			prepared, _ := store.prepare(ctx, []byte(`{"previous_response_id":"resp_native","input":[{"type":"function_call_output","call_id":"call_native","output":"done"}]}`))
+			prepared, _ := prepareResponsesSessionForTest(t, store, ctx, []byte(`{"previous_response_id":"resp_native","input":[{"type":"function_call_output","call_id":"call_native","output":"done"}]}`))
 			require.False(t, gjson.GetBytes(prepared, "previous_response_id").Exists())
 			require.Equal(t, int64(4), gjson.GetBytes(prepared, "input.#").Int())
 			require.Equal(t, "original history", gjson.GetBytes(prepared, "input.0.content").String())

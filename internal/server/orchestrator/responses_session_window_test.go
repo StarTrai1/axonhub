@@ -36,7 +36,7 @@ func TestResponsesSessionContextWindowRollover(t *testing.T) {
 					store.record(ctx, previous, completed)
 				}
 				body := []byte(fmt.Sprintf(`{"model":"gpt-6-sol","client_metadata":%s,"previous_response_id":"resp_old_window","input":[{"role":"user","content":"current context"}]}`, tc.metadata))
-				prepared, _ := store.prepare(ctx, body)
+				prepared, _ := prepareResponsesSessionForTest(t, store, ctx, body)
 				var payload struct {
 					Previous string            `json:"previous_response_id"`
 					Input    []json.RawMessage `json:"input"`

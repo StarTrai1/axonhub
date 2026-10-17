@@ -25,7 +25,7 @@ func TestResponsesSessionAccessProgramsUseCurrentTurn(t *testing.T) {
 			}
 			body, err := json.Marshal(payload)
 			require.NoError(t, err)
-			prepared, _ := store.prepare(ctx, body)
+			prepared, _ := prepareResponsesSessionForTest(t, store, ctx, body)
 			require.Equal(t, "gpt-6.1-sol", gjson.GetBytes(prepared, "model").String())
 			require.Equal(t, program, gjson.GetBytes(prepared, "access_programs").Raw)
 			require.False(t, gjson.GetBytes(prepared, "previous_response_id").Exists())
