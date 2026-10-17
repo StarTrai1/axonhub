@@ -19,8 +19,8 @@ import (
 )
 
 var (
-	_ transformer.Inbound                = (*SearchInboundTransformer)(nil)
-	_ transformer.Outbound               = (*SearchOutboundTransformer)(nil)
+	_ transformer.Inbound  = (*SearchInboundTransformer)(nil)
+	_ transformer.Outbound = (*SearchOutboundTransformer)(nil)
 )
 
 type searchRequestEnvelope struct {
@@ -107,15 +107,15 @@ func (t *SearchInboundTransformer) AggregateStreamChunks(
 
 // SearchConfig configures the standalone search outbound endpoint.
 type SearchConfig struct {
-	BaseURL                  string
-	EndpointPath             string
-	APIKeyProvider           auth.APIKeyProvider
+	BaseURL        string
+	EndpointPath   string
+	APIKeyProvider auth.APIKeyProvider
 }
 
 // SearchOutboundTransformer forwards standalone search JSON without coupling it
 // to the Responses WebSocket transport.
 type SearchOutboundTransformer struct {
-	config     *SearchConfig
+	config *SearchConfig
 }
 
 func NewSearchOutboundTransformer(baseURL, apiKey string) (*SearchOutboundTransformer, error) {

@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronRight, ChevronDown, Workflow, ChevronsDownUp, ExternalLink, Filter } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
 import { AnimatePresence, motion } from 'motion/react';
+import { useTranslation } from 'react-i18next';
 import { buildGUID, cn } from '@/lib/utils';
 import { formatNumber } from '@/utils/format-number';
 import { Badge } from '@/components/ui/badge';
@@ -161,15 +161,7 @@ interface SegmentRowProps {
   onToggleNode: (nodeId: string) => void;
 }
 
-function SegmentRow({
-  node,
-  totalDuration,
-  timeRange,
-  selectedSpanId,
-  onSelectSpan,
-  expandedNodes,
-  onToggleNode,
-}: SegmentRowProps) {
+function SegmentRow({ node, totalDuration, timeRange, selectedSpanId, onSelectSpan, expandedNodes, onToggleNode }: SegmentRowProps) {
   const { t } = useTranslation();
   const { segment, level, spans, children } = node;
   const hasContent = spans.length > 0 || children.length > 0;
@@ -206,7 +198,7 @@ function SegmentRow({
       {/* Segment Row */}
       <div className='border-border/40 border-b'>
         <div
-          className='flex cursor-default items-center gap-3 px-3 py-2.5 transition-colors hover:bg-accent/30'
+          className='hover:bg-accent/30 flex cursor-default items-center gap-3 px-3 py-2.5 transition-colors'
           style={{ paddingLeft: `${12 + indentPadding}px` }}
         >
           <button
@@ -220,9 +212,7 @@ function SegmentRow({
               'flex h-4 w-4 items-center justify-center rounded transition-colors',
               hasContent ? 'hover:bg-accent text-muted-foreground' : 'opacity-0'
             )}
-            aria-label={
-              hasContent ? (isExpanded ? t('traces.timeline.aria.collapseRow') : t('traces.timeline.aria.expandRow')) : undefined
-            }
+            aria-label={hasContent ? (isExpanded ? t('traces.timeline.aria.collapseRow') : t('traces.timeline.aria.expandRow')) : undefined}
           >
             {hasContent && (isExpanded ? <ChevronDown className='h-3 w-3' /> : <ChevronRight className='h-3 w-3' />)}
           </button>
@@ -361,10 +351,7 @@ function SpanRow({ span, kind, segment, totalDuration, timeRange, selectedSpanId
   return (
     <div className='border-border/40 border-b'>
       <div
-        className={cn(
-          'hover:bg-accent/30 flex cursor-pointer items-center gap-3 px-3 py-2 transition-colors',
-          isActive && 'bg-accent/40'
-        )}
+        className={cn('hover:bg-accent/30 flex cursor-pointer items-center gap-3 px-3 py-2 transition-colors', isActive && 'bg-accent/40')}
         style={{ paddingLeft: `${indentPadding}px` }}
         onClick={() => onSelectSpan(segment, span, kind)}
       >
@@ -375,9 +362,7 @@ function SpanRow({ span, kind, segment, totalDuration, timeRange, selectedSpanId
         </div>
 
         <div className='flex min-w-0 flex-1 items-center gap-3'>
-          {imageUrl && (
-            <img src={imageUrl} alt='' className='h-8 w-8 flex-shrink-0 rounded border object-cover' />
-          )}
+          {imageUrl && <img src={imageUrl} alt='' className='h-8 w-8 flex-shrink-0 rounded border object-cover' />}
           {!imageUrl && videoUrl && (
             <video src={videoUrl} className='h-8 w-8 flex-shrink-0 rounded border object-cover' muted preload='metadata' />
           )}
@@ -433,9 +418,7 @@ function collectSpanTypes(node: TreeNode, result: Map<string, number> = new Map(
 function filterTreeBySpanTypes(node: TreeNode, selectedTypes: Set<string>): TreeNode | null {
   const filteredSpans = node.spans.filter(({ span }) => selectedTypes.has(normalizeSpanType(span.type)));
 
-  const filteredChildren = node.children
-    .map((child) => filterTreeBySpanTypes(child, selectedTypes))
-    .filter(Boolean) as TreeNode[];
+  const filteredChildren = node.children.map((child) => filterTreeBySpanTypes(child, selectedTypes)).filter(Boolean) as TreeNode[];
 
   // Keep node if it has matching spans or any child has matching content
   if (filteredSpans.length > 0 || filteredChildren.length > 0 || selectedTypes.size === 0) {
@@ -593,9 +576,7 @@ export function TraceTreeTimeline(props: TraceTreeTimelineProps) {
 
   if (!timeRange) {
     return (
-      <div className='text-muted-foreground flex h-full items-center justify-center text-sm'>
-        {t('traces.timeline.emptyDescription')}
-      </div>
+      <div className='text-muted-foreground flex h-full items-center justify-center text-sm'>{t('traces.timeline.emptyDescription')}</div>
     );
   }
 
@@ -635,11 +616,7 @@ export function TraceTreeTimeline(props: TraceTreeTimelineProps) {
                   className={cn('h-7 gap-1.5 px-2 text-xs', activeFilterCount > 0 && 'text-primary')}
                 >
                   <Filter className='h-3.5 w-3.5' />
-                  {activeFilterCount > 0 ? (
-                    <span>{activeFilterCount}</span>
-                  ) : (
-                    <span>{t('traces.timeline.filter.spanType')}</span>
-                  )}
+                  {activeFilterCount > 0 ? <span>{activeFilterCount}</span> : <span>{t('traces.timeline.filter.spanType')}</span>}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className='w-64 p-0' align='end'>
@@ -669,16 +646,16 @@ export function TraceTreeTimeline(props: TraceTreeTimelineProps) {
                           >
                             <Checkbox checked={isChecked} onCheckedChange={() => handleToggleSpanType(spanType)} />
                             <SpanIcon className='text-muted-foreground h-4 w-4 flex-shrink-0' />
-                            <span className='flex-1 text-sm'>{t(`traces.timeline.spanTypes.${getSpanTypeTranslationKey(spanType)}`, spanType)}</span>
+                            <span className='flex-1 text-sm'>
+                              {t(`traces.timeline.spanTypes.${getSpanTypeTranslationKey(spanType)}`, spanType)}
+                            </span>
                             <span className='text-muted-foreground text-xs tabular-nums'>{spanTypeCounts.get(spanType) ?? 0}</span>
                           </label>
                         );
                       })}
                     </div>
                   ) : (
-                    <div className='text-muted-foreground px-2 py-4 text-center text-sm'>
-                      {t('traces.timeline.filter.noSpanTypes')}
-                    </div>
+                    <div className='text-muted-foreground px-2 py-4 text-center text-sm'>{t('traces.timeline.filter.noSpanTypes')}</div>
                   )}
                 </div>
               </PopoverContent>

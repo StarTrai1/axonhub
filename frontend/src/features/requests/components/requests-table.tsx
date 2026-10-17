@@ -16,6 +16,7 @@ import {
 } from '@tanstack/react-table';
 import { motion, AnimatePresence } from 'motion/react';
 import { useTranslation } from 'react-i18next';
+import { readColumnOrder, writeColumnOrder, reconcileColumnOrder, isReorderableColumn } from '@/lib/column-order';
 import type { DateTimeRangeValue } from '@/utils/date-range';
 import type { AutoRefreshInterval } from '@/hooks/use-auto-refresh-interval';
 import { useIsMobile, MOBILE_BREAKPOINT } from '@/hooks/use-mobile';
@@ -27,7 +28,6 @@ import { Request, RequestConnection } from '../data/schema';
 import { DataTableToolbar } from './data-table-toolbar';
 import { RequestBodyDrawer } from './request-body-drawer';
 import { DEFAULT_HIDDEN_COLUMN_IDS, DEFAULT_MOBILE_HIDDEN_COLUMN_IDS, useRequestsColumns } from './requests-columns';
-import { readColumnOrder, writeColumnOrder, reconcileColumnOrder, isReorderableColumn } from '@/lib/column-order';
 
 const COLUMN_VISIBILITY_STORAGE_KEY = 'requests-table-column-visibility';
 const COLUMN_VISIBILITY_STORAGE_VERSION = 6;
@@ -228,7 +228,7 @@ export function RequestsTable({
         reorderableColumnIds: reorderable,
         storedOrder: stored,
         pinnedLast: ['details'],
-      }),
+      })
     );
   }, []);
 

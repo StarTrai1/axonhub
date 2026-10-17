@@ -60,6 +60,7 @@ for (const width of [1280, 768, 390]) {
     expect(sizes).toHaveLength(2);
     expect(Math.abs(sizes[0].width - sizes[1].width)).toBeLessThan(2);
     expect(sizes.some((size) => size.overflow)).toBe(false);
+    expect(await cards.locator('label').evaluateAll((labels) => labels.every((label) => label.scrollWidth <= label.clientWidth + 1))).toBe(true);
     if (width === 1280) expect(Math.abs(sizes[0].height - sizes[1].height)).toBeLessThan(2);
     await page.screenshot({ path: testInfo.outputPath('codex-channel.png') });
     await page.getByTestId('channel-submit-button').click();

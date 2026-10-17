@@ -578,6 +578,7 @@ type ComplexityRoot struct {
 	ChannelSettings struct {
 		AutoTrimedModelPrefixes  func(childComplexity int) int
 		BodyOverrideOperations   func(childComplexity int) int
+		CodexSearchModel         func(childComplexity int) int
 		CodexSearchOnly          func(childComplexity int) int
 		ExtraModelPrefix         func(childComplexity int) int
 		HTTP2ConnectionShards    func(childComplexity int) int
@@ -4494,6 +4495,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelSettings.BodyOverrideOperations(childComplexity), true
+	case "ChannelSettings.codexSearchModel":
+		if e.complexity.ChannelSettings.CodexSearchModel == nil {
+			break
+		}
+
+		return e.complexity.ChannelSettings.CodexSearchModel(childComplexity), true
 	case "ChannelSettings.codexSearchOnly":
 		if e.complexity.ChannelSettings.CodexSearchOnly == nil {
 			break
@@ -21315,6 +21322,8 @@ func (ec *executionContext) fieldContext_Channel_settings(_ context.Context, fie
 			switch field.Name {
 			case "codexSearchOnly":
 				return ec.fieldContext_ChannelSettings_codexSearchOnly(ctx, field)
+			case "codexSearchModel":
+				return ec.fieldContext_ChannelSettings_codexSearchModel(ctx, field)
 			case "extraModelPrefix":
 				return ec.fieldContext_ChannelSettings_extraModelPrefix(ctx, field)
 			case "modelMappings":
@@ -25853,6 +25862,35 @@ func (ec *executionContext) fieldContext_ChannelSettings_codexSearchOnly(_ conte
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelSettings_codexSearchModel(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelSettings_codexSearchModel,
+		func(ctx context.Context) (any, error) {
+			return obj.CodexSearchModel, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelSettings_codexSearchModel(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -70932,7 +70970,7 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"codexSearchOnly", "extraModelPrefix", "modelMappings", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "lowercaseModelId", "proxy", "httpProtocol", "http2ConnectionShards", "transformOptions", "headerOverrideOperations", "bodyOverrideOperations", "passThroughUserAgent", "passThroughBody", "rateLimit", "retryableStatusCodes", "retryableErrorPatterns", "modelProtocols", "providerQuota", "quotaRoutingMode"}
+	fieldsInOrder := [...]string{"codexSearchOnly", "codexSearchModel", "extraModelPrefix", "modelMappings", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "lowercaseModelId", "proxy", "httpProtocol", "http2ConnectionShards", "transformOptions", "headerOverrideOperations", "bodyOverrideOperations", "passThroughUserAgent", "passThroughBody", "rateLimit", "retryableStatusCodes", "retryableErrorPatterns", "modelProtocols", "providerQuota", "quotaRoutingMode"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -70946,6 +70984,13 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 				return it, err
 			}
 			it.CodexSearchOnly = data
+		case "codexSearchModel":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("codexSearchModel"))
+			data, err := ec.unmarshalOString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CodexSearchModel = data
 		case "extraModelPrefix":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("extraModelPrefix"))
 			data, err := ec.unmarshalOString2string(ctx, v)
@@ -97785,6 +97830,8 @@ func (ec *executionContext) _ChannelSettings(ctx context.Context, sel ast.Select
 			out.Values[i] = graphql.MarshalString("ChannelSettings")
 		case "codexSearchOnly":
 			out.Values[i] = ec._ChannelSettings_codexSearchOnly(ctx, field, obj)
+		case "codexSearchModel":
+			out.Values[i] = ec._ChannelSettings_codexSearchModel(ctx, field, obj)
 		case "extraModelPrefix":
 			out.Values[i] = ec._ChannelSettings_extraModelPrefix(ctx, field, obj)
 		case "modelMappings":
@@ -127855,16 +127902,13 @@ func (ec *executionContext) unmarshalOWebDAVInput2ᚖgithubᚗcomᚋloopljᚋaxo
 }
 
 func (ec *executionContext) unmarshalOWebSearchPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐWebSearchPolicy(ctx context.Context, v any) (objects.WebSearchPolicy, error) {
-	tmp, err := graphql.UnmarshalString(v)
-	res := objects.WebSearchPolicy(tmp)
+	var res objects.WebSearchPolicy
+	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOWebSearchPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐWebSearchPolicy(ctx context.Context, sel ast.SelectionSet, v objects.WebSearchPolicy) graphql.Marshaler {
-	_ = sel
-	_ = ctx
-	res := graphql.MarshalString(string(v))
-	return res
+	return v
 }
 
 func (ec *executionContext) unmarshalOWebhookSubscriptionInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐWebhookSubscriptionᚄ(ctx context.Context, v any) ([]biz.WebhookSubscription, error) {

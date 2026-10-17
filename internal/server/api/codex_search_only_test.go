@@ -105,7 +105,11 @@ func TestCodexSearchOnlyFollowsRequestModel(t *testing.T) {
 func TestCodexNativeSearchDoesNotFallbackToResponses(t *testing.T) {
 	var searches, generations atomic.Int32
 	upstream := responsesIntegrationServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/v1/alpha/search" { searches.Add(1) } else { generations.Add(1) }
+		if r.URL.Path == "/v1/alpha/search" {
+			searches.Add(1)
+		} else {
+			generations.Add(1)
+		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
 		_, _ = w.Write([]byte(`{"error":{"message":"Unknown endpoint /alpha/search","type":"invalid_request_error"}}`))

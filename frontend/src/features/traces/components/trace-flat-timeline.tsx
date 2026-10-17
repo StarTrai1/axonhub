@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, ChevronRight, Workflow, ChevronsDownUp, ExternalLink, Filter } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
 import { AnimatePresence, motion } from 'motion/react';
+import { useTranslation } from 'react-i18next';
 import { buildGUID, cn } from '@/lib/utils';
 import { formatNumber } from '@/utils/format-number';
 import { Badge } from '@/components/ui/badge';
@@ -70,7 +70,7 @@ function hashStringToHue(value: string): number {
   }
 
   const hue = (hash + 360) % 360;
-  
+
   // LRU 缓存策略：超过限制时清除最早的
   if (segmentHueCache.size >= MAX_HUE_CACHE_SIZE) {
     const firstKey = segmentHueCache.keys().next().value;
@@ -78,7 +78,7 @@ function hashStringToHue(value: string): number {
       segmentHueCache.delete(firstKey);
     }
   }
-  
+
   segmentHueCache.set(value, hue);
   return hue;
 }
@@ -97,7 +97,7 @@ function getSegmentTimelineColor(segmentId: string, variant: ColorVariant): stri
 
 function safeTime(value?: Date | string | null): number | null {
   if (!value) return null;
-  
+
   try {
     const date = value instanceof Date ? value : new Date(value);
     const time = date.getTime();
@@ -284,7 +284,7 @@ function SegmentRow({
                 {segment.name}
               </Badge>
               <span className='text-muted-foreground text-[11px]'>
-              {t('traces.timeline.summary.duration', {
+                {t('traces.timeline.summary.duration', {
                   value: formatDuration(segment.duration),
                 })}
               </span>
@@ -395,20 +395,9 @@ function SpanRow({ span, totalDuration, segmentSequentialOffset, onSelectSpan, s
         </div>
 
         <div className='flex min-w-0 flex-1 items-center gap-3'>
-          {imageUrl && (
-            <img
-              src={imageUrl}
-              alt=''
-              className='h-8 w-8 flex-shrink-0 rounded border object-cover'
-            />
-          )}
+          {imageUrl && <img src={imageUrl} alt='' className='h-8 w-8 flex-shrink-0 rounded border object-cover' />}
           {!imageUrl && videoUrl && (
-            <video
-              src={videoUrl}
-              className='h-8 w-8 flex-shrink-0 rounded border object-cover'
-              muted
-              preload='metadata'
-            />
+            <video src={videoUrl} className='h-8 w-8 flex-shrink-0 rounded border object-cover' muted preload='metadata' />
           )}
           <span className='truncate text-sm font-medium'>{spanDisplay?.primary || span.name}</span>
           {spanKindLabel && (
@@ -709,17 +698,10 @@ export function TraceFlatTimeline({ trace, onSelectSpan, selectedSpanId }: Trace
                   type='button'
                   variant='ghost'
                   size='sm'
-                  className={cn(
-                    'h-7 gap-1.5 px-2 text-xs',
-                    activeFilterCount > 0 && 'text-primary'
-                  )}
+                  className={cn('h-7 gap-1.5 px-2 text-xs', activeFilterCount > 0 && 'text-primary')}
                 >
                   <Filter className='h-3.5 w-3.5' />
-                  {activeFilterCount > 0 ? (
-                    <span>{activeFilterCount}</span>
-                  ) : (
-                    <span>{t('traces.timeline.filter.spanType')}</span>
-                  )}
+                  {activeFilterCount > 0 ? <span>{activeFilterCount}</span> : <span>{t('traces.timeline.filter.spanType')}</span>}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className='w-64 p-0' align='end'>
@@ -727,21 +709,11 @@ export function TraceFlatTimeline({ trace, onSelectSpan, selectedSpanId }: Trace
                   <span className='text-sm font-medium'>{t('traces.timeline.filter.spanType')}</span>
                   <div className='flex gap-2'>
                     {activeFilterCount > 0 && (
-                      <Button
-                        variant='ghost'
-                        size='sm'
-                        className='h-7 px-2 text-xs'
-                        onClick={handleClearSpanTypeFilter}
-                      >
+                      <Button variant='ghost' size='sm' className='h-7 px-2 text-xs' onClick={handleClearSpanTypeFilter}>
                         {t('traces.timeline.filter.clear')}
                       </Button>
                     )}
-                    <Button
-                      variant='ghost'
-                      size='sm'
-                      className='h-7 px-2 text-xs'
-                      onClick={handleSelectAllSpanTypes}
-                    >
+                    <Button variant='ghost' size='sm' className='h-7 px-2 text-xs' onClick={handleSelectAllSpanTypes}>
                       {t('traces.timeline.filter.selectAll')}
                     </Button>
                   </div>
@@ -757,10 +729,7 @@ export function TraceFlatTimeline({ trace, onSelectSpan, selectedSpanId }: Trace
                             key={spanType}
                             className='hover:bg-accent flex cursor-pointer items-center gap-2 rounded-md px-2 py-2 transition-colors'
                           >
-                            <Checkbox
-                              checked={isChecked}
-                              onCheckedChange={() => handleToggleSpanType(spanType)}
-                            />
+                            <Checkbox checked={isChecked} onCheckedChange={() => handleToggleSpanType(spanType)} />
                             <SpanIcon className='text-muted-foreground h-4 w-4 flex-shrink-0' />
                             <span className='flex-1 text-sm'>
                               {t(`traces.timeline.spanTypes.${getSpanTypeTranslationKey(spanType)}`, spanType)}
@@ -771,9 +740,7 @@ export function TraceFlatTimeline({ trace, onSelectSpan, selectedSpanId }: Trace
                       })}
                     </div>
                   ) : (
-                    <div className='text-muted-foreground px-2 py-4 text-center text-sm'>
-                      {t('traces.timeline.filter.noSpanTypes')}
-                    </div>
+                    <div className='text-muted-foreground px-2 py-4 text-center text-sm'>{t('traces.timeline.filter.noSpanTypes')}</div>
                   )}
                 </div>
               </PopoverContent>

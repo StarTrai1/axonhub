@@ -102,4 +102,3 @@ func TestResponsesRejectedStatusCompatibilityIgnoresUnrelatedBadRequest(t *testi
 	require.False(t, hasResponsesRejectedStatusCompatibilityRetry(state, 9))
 	require.Empty(t, state.responsesRejectedStatusRules)
 }
-

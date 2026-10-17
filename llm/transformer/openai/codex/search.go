@@ -16,9 +16,9 @@ import (
 
 // SearchParams configures a standalone Codex search endpoint.
 type SearchParams struct {
-	TokenProvider            oauth.TokenGetter
-	BaseURL                  string
-	EndpointPath             string
+	TokenProvider oauth.TokenGetter
+	BaseURL       string
+	EndpointPath  string
 }
 
 // SearchOutboundTransformer applies Codex authentication to standalone search requests.
@@ -38,9 +38,9 @@ func NewSearchOutboundTransformer(params SearchParams) (*SearchOutboundTransform
 	}
 
 	delegate, err := responses.NewSearchOutboundTransformerWithConfig(&responses.SearchConfig{
-		BaseURL:                  params.BaseURL,
-		EndpointPath:             params.EndpointPath,
-		APIKeyProvider:           auth.NewStaticKeyProvider("dummy"),
+		BaseURL:        params.BaseURL,
+		EndpointPath:   params.EndpointPath,
+		APIKeyProvider: auth.NewStaticKeyProvider("dummy"),
 	})
 	if err != nil {
 		return nil, err

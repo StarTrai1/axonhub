@@ -1,16 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { ChevronDown, BarChart4, Activity, DollarSign } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useTranslation } from 'react-i18next';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import type { AnalyticsDimensionStat } from '../data/analytics';
 import { formatCurrencySimple } from '../utils/format-currency';
 
 function formatExactNumber(value: number): string {
   return Math.round(value).toLocaleString();
 }
-import type { AnalyticsDimensionStat } from '../data/analytics';
 
 interface CollapsibleSectionProps {
   title: string;
@@ -41,21 +41,16 @@ function CollapsibleSection({ title, icon, children, storageKey, defaultOpen = f
   return (
     <div className='space-y-4'>
       <button
-        type="button"
+        type='button'
         onClick={() => setIsOpen(!isOpen)}
-        className='flex w-full items-center justify-between rounded-lg border bg-card p-4 text-left transition-colors hover:bg-accent/50'
+        className='bg-card hover:bg-accent/50 flex w-full items-center justify-between rounded-lg border p-4 text-left transition-colors'
       >
         <div className='flex items-center gap-3'>
-          <div className='flex h-8 w-8 items-center justify-center rounded-md bg-primary/10'>
-            {icon}
-          </div>
+          <div className='bg-primary/10 flex h-8 w-8 items-center justify-center rounded-md'>{icon}</div>
           <span className='text-lg font-semibold'>{title}</span>
         </div>
-        <motion.div
-          animate={{ rotate: isOpen ? 180 : 0 }}
-          transition={{ duration: 0.2, ease: 'easeInOut' }}
-        >
-          <ChevronDown className='h-5 w-5 text-muted-foreground' />
+        <motion.div animate={{ rotate: isOpen ? 180 : 0 }} transition={{ duration: 0.2, ease: 'easeInOut' }}>
+          <ChevronDown className='text-muted-foreground h-5 w-5' />
         </motion.div>
       </button>
       <AnimatePresence initial={false}>
@@ -74,14 +69,7 @@ function CollapsibleSection({ title, icon, children, storageKey, defaultOpen = f
   );
 }
 
-const COLORS = [
-  'var(--chart-1)',
-  'var(--chart-2)',
-  'var(--chart-3)',
-  'var(--chart-4)',
-  'var(--chart-5)',
-  'var(--chart-6)',
-];
+const COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)', 'var(--chart-6)'];
 
 const MAX_ITEMS = 9;
 
@@ -130,7 +118,7 @@ function PieChartCard({ title, data, valueKey, valueFormatter, otherLabel }: Pie
           <CardTitle>{title}</CardTitle>
         </CardHeader>
         <CardContent className='flex h-[250px] items-center justify-center'>
-          <p className='text-xs text-muted-foreground'>{t('analytics.table.noData')}</p>
+          <p className='text-muted-foreground text-xs'>{t('analytics.table.noData')}</p>
         </CardContent>
       </Card>
     );
@@ -164,7 +152,7 @@ function PieChartCard({ title, data, valueKey, valueFormatter, otherLabel }: Pie
     const item = payload[0];
     const percentage = total > 0 ? ((item.value / total) * 100).toFixed(1) : '0';
     return (
-      <div className='rounded-md border bg-background p-2 shadow-md text-xs'>
+      <div className='bg-background rounded-md border p-2 text-xs shadow-md'>
         <p className='font-medium'>{item.name}</p>
         <p className='text-muted-foreground'>
           {valueFormatter(item.value)} ({percentage}%)
@@ -184,16 +172,7 @@ function PieChartCard({ title, data, valueKey, valueFormatter, otherLabel }: Pie
           <div className='h-[200px]'>
             <ResponsiveContainer width='100%' height='100%'>
               <PieChart>
-                <Pie
-                  data={chartData}
-                  cx='50%'
-                  cy='50%'
-                  innerRadius={40}
-                  outerRadius={80}
-                  paddingAngle={0}
-                  dataKey='value'
-                  nameKey='name'
-                >
+                <Pie data={chartData} cx='50%' cy='50%' innerRadius={40} outerRadius={80} paddingAngle={0} dataKey='value' nameKey='name'>
                   {chartData.map((_, index) => (
                     <Cell key={index} fill={COLORS[index % COLORS.length]} />
                   ))}
@@ -214,7 +193,11 @@ function PieChartCard({ title, data, valueKey, valueFormatter, otherLabel }: Pie
                   formatter={(value: string) => {
                     const item = chartData.find((d) => d.name === value);
                     const pct = item ? item.percentage.toFixed(1) : '0';
-                    return <span className='text-xs'>{value} ({pct}%)</span>;
+                    return (
+                      <span className='text-xs'>
+                        {value} ({pct}%)
+                      </span>
+                    );
                   }}
                 />
               </PieChart>
@@ -237,16 +220,7 @@ function PieChartCard({ title, data, valueKey, valueFormatter, otherLabel }: Pie
           <div className='h-[200px] w-[200px]'>
             <ResponsiveContainer width='100%' height='100%'>
               <PieChart>
-                <Pie
-                  data={chartData}
-                  cx='50%'
-                  cy='50%'
-                  innerRadius={40}
-                  outerRadius={80}
-                  paddingAngle={0}
-                  dataKey='value'
-                  nameKey='name'
-                >
+                <Pie data={chartData} cx='50%' cy='50%' innerRadius={40} outerRadius={80} paddingAngle={0} dataKey='value' nameKey='name'>
                   {chartData.map((_, index) => (
                     <Cell key={index} fill={COLORS[index % COLORS.length]} />
                   ))}
@@ -267,7 +241,11 @@ function PieChartCard({ title, data, valueKey, valueFormatter, otherLabel }: Pie
                   formatter={(value: string) => {
                     const item = chartData.find((d) => d.name === value);
                     const pct = item ? item.percentage.toFixed(1) : '0';
-                    return <span className='text-xs'>{value} ({pct}%)</span>;
+                    return (
+                      <span className='text-xs'>
+                        {value} ({pct}%)
+                      </span>
+                    );
                   }}
                 />
               </PieChart>
@@ -289,14 +267,7 @@ interface DimensionPieChartsProps {
   currencyCode: string;
 }
 
-export function DimensionPieCharts({
-  channelStats,
-  modelStats,
-  apiKeyStats,
-  userStats,
-  isLoading,
-  currencyCode,
-}: DimensionPieChartsProps) {
+export function DimensionPieCharts({ channelStats, modelStats, apiKeyStats, userStats, isLoading, currencyCode }: DimensionPieChartsProps) {
   const { t } = useTranslation();
 
   if (isLoading) {
@@ -321,21 +292,21 @@ export function DimensionPieCharts({
       key: 'totalTokens' as const,
       title: t('analytics.pie.tokenDistribution'),
       formatter: formatExactNumber,
-      icon: <BarChart4 className='h-4 w-4 text-primary' />,
+      icon: <BarChart4 className='text-primary h-4 w-4' />,
       storageKey: 'tokens',
     },
     {
       key: 'requestCount' as const,
       title: t('analytics.pie.requestDistribution'),
       formatter: formatExactNumber,
-      icon: <Activity className='h-4 w-4 text-primary' />,
+      icon: <Activity className='text-primary h-4 w-4' />,
       storageKey: 'requests',
     },
     {
       key: 'cost' as const,
       title: t('analytics.pie.costDistribution'),
       formatter: (val: number) => formatCurrencySimple(val, currencyCode),
-      icon: <DollarSign className='h-4 w-4 text-primary' />,
+      icon: <DollarSign className='text-primary h-4 w-4' />,
       storageKey: 'costs',
     },
   ];
@@ -343,13 +314,7 @@ export function DimensionPieCharts({
   return (
     <div className='space-y-4'>
       {metrics.map((metric) => (
-        <CollapsibleSection
-          key={metric.key}
-          title={metric.title}
-          icon={metric.icon}
-          storageKey={metric.storageKey}
-          defaultOpen={true}
-        >
+        <CollapsibleSection key={metric.key} title={metric.title} icon={metric.icon} storageKey={metric.storageKey} defaultOpen={true}>
           <div className='grid gap-4 md:grid-cols-2 xl:grid-cols-4'>
             {dimensions.map((dim) => (
               <PieChartCard

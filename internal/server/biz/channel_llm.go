@@ -532,16 +532,16 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 			}
 
 			return codex.NewSearchOutboundTransformer(codex.SearchParams{
-				TokenProvider:            primary.TokenProvider(),
-				BaseURL:                  baseURL,
-				EndpointPath:             ep.Path,
+				TokenProvider: primary.TokenProvider(),
+				BaseURL:       baseURL,
+				EndpointPath:  ep.Path,
 			})
 		}
 
 		return responses.NewSearchOutboundTransformerWithConfig(&responses.SearchConfig{
-			BaseURL:               baseURL,
-			APIKeyProvider:        apiKeyProvider(),
-			EndpointPath:          ep.Path,
+			BaseURL:        baseURL,
+			APIKeyProvider: apiKeyProvider(),
+			EndpointPath:   ep.Path,
 		})
 	case llm.APIFormatOpenAIAlphaSearch.String():
 		if c.Type == channel.TypeCodex {

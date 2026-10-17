@@ -13,7 +13,18 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table';
-import { IconArchive, IconBan, IconCheck, IconFlask, IconTag, IconTrash, IconTemplate, IconX, IconEraser, IconShieldOff } from '@tabler/icons-react';
+import {
+  IconArchive,
+  IconBan,
+  IconCheck,
+  IconFlask,
+  IconTag,
+  IconTrash,
+  IconTemplate,
+  IconX,
+  IconEraser,
+  IconShieldOff,
+} from '@tabler/icons-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
@@ -110,12 +121,15 @@ export function ChannelsTable({
       return;
     }
     const mutation = status === 'enabled' ? bulkEnableChannels : bulkDisableChannels;
-    mutation.mutate(selectedChannels.map((channel) => channel.id), {
-      onSuccess: () => {
-        setRowSelection({});
-        setSelectedChannels([]);
-      },
-    });
+    mutation.mutate(
+      selectedChannels.map((channel) => channel.id),
+      {
+        onSuccess: () => {
+          setRowSelection({});
+          setSelectedChannels([]);
+        },
+      }
+    );
   };
   const [expanded, setExpanded] = useState<ExpandedState>({});
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);

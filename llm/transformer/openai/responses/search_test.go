@@ -2,20 +2,15 @@ package responses
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
 	"net/http"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/llm"
-	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
-	"github.com/looplj/axonhub/llm/streams"
 )
 
 func TestSearchInboundTransformer_TransformRequest(t *testing.T) {

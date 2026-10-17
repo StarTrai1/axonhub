@@ -66,7 +66,6 @@ import {
   useEnableChannelAPIKey,
   useSyncChannelModels,
 } from '../data/channels';
-import { codexSearchModelOptions } from '../utils/codex-search';
 import { claudecodeOAuthExchange, claudecodeOAuthStart } from '../data/claudecode';
 import { codexDecodeAuthJSON, codexOAuthExchange, codexOAuthStart } from '../data/codex';
 import {
@@ -110,6 +109,7 @@ import {
 } from '../data/schema';
 import { xaiDecodeSSO, xaiOAuthExchange, xaiOAuthStart } from '../data/xai';
 import { ProxyConfig, useOAuthFlow } from '../hooks/use-oauth-flow';
+import { codexSearchModelOptions } from '../utils/codex-search';
 import { mergeChannelSettingsForUpdate } from '../utils/merge';
 import { isValidModelPattern, matchesModelPattern } from '../utils/pattern';
 import { ProxyType } from './channels-proxy-dialog';
@@ -161,12 +161,14 @@ function CompactPolicyRadioGroup<T extends string>({
   options,
   translationPrefix,
   testId,
+  stacked = false,
 }: {
   value: T;
   onValueChange: (value: T) => void;
   options: ReadonlyArray<{ value: T }>;
   translationPrefix: string;
   testId: string;
+  stacked?: boolean;
 }) {
   const { t } = useTranslation();
 
@@ -174,7 +176,7 @@ function CompactPolicyRadioGroup<T extends string>({
     <RadioGroup
       value={value}
       onValueChange={(nextValue) => onValueChange(nextValue as T)}
-      className={`bg-muted/40 grid flex-1 gap-1.5 rounded-md border p-1.5 ${options.length === 4 ? 'grid-cols-2 sm:grid-cols-4' : options.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}
+      className={`bg-muted/40 grid flex-1 gap-1.5 rounded-md border p-1.5 ${stacked ? 'auto-rows-fr grid-cols-1' : options.length === 4 ? 'grid-cols-2 sm:grid-cols-4' : options.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}
       data-testid={testId}
     >
       {options.map((option) => {
@@ -1021,8 +1023,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                 remoteCompaction:
                   duplicateFromRow.policies?.remoteCompaction ?? (duplicateFromRow.policies?.supportsRemoteCompaction ? 'native' : 'auto'),
                 supportsRemoteCompaction: duplicateFromRow.policies?.supportsRemoteCompaction ?? false,
-                webSearch:
-                  duplicateFromRow.policies?.webSearch ?? 'native',
+                webSearch: duplicateFromRow.policies?.webSearch ?? 'native',
                 supportsWebSearch: duplicateFromRow.policies?.supportsWebSearch ?? true,
                 codexIdentity: duplicateFromRow.policies?.codexIdentity ?? 'off',
               },
@@ -2437,9 +2438,14 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                       {isCodexType && (
                         <div className='min-w-0 space-y-3' data-testid='codex-search-only-setting'>
                           <div className='flex min-w-0 flex-col items-start gap-2 @sm/channel-fields:flex-row @sm/channel-fields:items-center @sm/channel-fields:gap-3'>
-                            <Button type='button' size='sm' variant={codexSearchOnly ? 'default' : 'outline'}
-                              aria-pressed={codexSearchOnly} onClick={() => setCodexSearchOnly((enabled) => !enabled)}
-                              data-testid='codex-search-only-toggle'>
+                            <Button
+                              type='button'
+                              size='sm'
+                              variant={codexSearchOnly ? 'default' : 'outline'}
+                              aria-pressed={codexSearchOnly}
+                              onClick={() => setCodexSearchOnly((enabled) => !enabled)}
+                              data-testid='codex-search-only-toggle'
+                            >
                               <Search className='mr-2 h-4 w-4' />
                               {t('channels.dialogs.fields.codexSearchOnly.label')}
                             </Button>
@@ -2452,12 +2458,19 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                               <label htmlFor='codex-search-model' className='text-sm font-medium'>
                                 {t('channels.dialogs.fields.codexSearchModel.label')}
                               </label>
-                              <Select value={codexSearchModel || 'request'} onValueChange={(value) => setCodexSearchModel(value === 'request' ? '' : value)}>
-                                <SelectTrigger id='codex-search-model' data-testid='codex-search-model-select'><SelectValue /></SelectTrigger>
+                              <Select
+                                value={codexSearchModel || 'request'}
+                                onValueChange={(value) => setCodexSearchModel(value === 'request' ? '' : value)}
+                              >
+                                <SelectTrigger id='codex-search-model' data-testid='codex-search-model-select'>
+                                  <SelectValue />
+                                </SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value='request'>{t('channels.dialogs.fields.codexSearchModel.followRequest')}</SelectItem>
                                   {codexSearchModelOptions(supportedModels, codexSearchModel).map((model) => (
-                                    <SelectItem key={model} value={model}>{model}</SelectItem>
+                                    <SelectItem key={model} value={model}>
+                                      {model}
+                                    </SelectItem>
                                   ))}
                                 </SelectContent>
                               </Select>
@@ -3366,53 +3379,58 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                             />
 
                             {isCodexType && (
-                              <div className='grid min-w-0 grid-cols-1 gap-4 @lg/channel-fields:grid-cols-2' data-testid='codex-policy-cards'>
-                              <FormField
-                                control={form.control}
-                                name='policies.remoteCompaction'
-                                render={({ field }) => (
-                                  <FormItem className='bg-muted/20 flex h-full min-w-0 flex-col gap-3 space-y-0 rounded-lg border p-3'>
-                                    <PolicyFieldHeader
-                                      label={t('channels.dialogs.fields.remoteCompactionPolicy.label')}
-                                      description={t('channels.dialogs.fields.remoteCompactionPolicy.description')}
-                                      testId='remote-compaction-policy-tip'
-                                    />
-                                    <FormControl>
-                                      <CompactPolicyRadioGroup
-                                        value={field.value ?? 'auto'}
-                                        onValueChange={field.onChange}
-                                        options={REMOTE_COMPACTION_POLICY_OPTIONS}
-                                        translationPrefix='channels.dialogs.fields.remoteCompactionPolicy.options'
-                                        testId='remote-compaction-policy'
+                              <div
+                                className='grid min-w-0 grid-cols-1 gap-4 @lg/channel-fields:grid-cols-2'
+                                data-testid='codex-policy-cards'
+                              >
+                                <FormField
+                                  control={form.control}
+                                  name='policies.remoteCompaction'
+                                  render={({ field }) => (
+                                    <FormItem className='bg-muted/20 flex h-full min-w-0 flex-col gap-3 space-y-0 rounded-lg border p-3'>
+                                      <PolicyFieldHeader
+                                        label={t('channels.dialogs.fields.remoteCompactionPolicy.label')}
+                                        description={t('channels.dialogs.fields.remoteCompactionPolicy.description')}
+                                        testId='remote-compaction-policy-tip'
                                       />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-                              <FormField
-                                control={form.control}
-                                name='policies.webSearch'
-                                render={({ field }) => (
-                                  <FormItem className='bg-muted/20 flex h-full min-w-0 flex-col gap-3 space-y-0 rounded-lg border p-3'>
-                                    <PolicyFieldHeader
-                                      label={t('channels.dialogs.fields.webSearchPolicy.label')}
-                                      description={t('channels.dialogs.fields.webSearchPolicy.description')}
-                                      testId='web-search-policy-tip'
-                                    />
-                                    <FormControl>
-                                      <CompactPolicyRadioGroup
-                                        value={field.value ?? 'native'}
-                                        onValueChange={field.onChange}
-                                        options={WEB_SEARCH_POLICY_OPTIONS}
-                                        translationPrefix='channels.dialogs.fields.webSearchPolicy.options'
-                                        testId='web-search-policy'
+                                      <FormControl>
+                                        <CompactPolicyRadioGroup
+                                          value={field.value ?? 'auto'}
+                                          onValueChange={field.onChange}
+                                          options={REMOTE_COMPACTION_POLICY_OPTIONS}
+                                        stacked
+                                          translationPrefix='channels.dialogs.fields.remoteCompactionPolicy.options'
+                                          testId='remote-compaction-policy'
+                                        />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                                <FormField
+                                  control={form.control}
+                                  name='policies.webSearch'
+                                  render={({ field }) => (
+                                    <FormItem className='bg-muted/20 flex h-full min-w-0 flex-col gap-3 space-y-0 rounded-lg border p-3'>
+                                      <PolicyFieldHeader
+                                        label={t('channels.dialogs.fields.webSearchPolicy.label')}
+                                        description={t('channels.dialogs.fields.webSearchPolicy.description')}
+                                        testId='web-search-policy-tip'
                                       />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
+                                      <FormControl>
+                                        <CompactPolicyRadioGroup
+                                          value={field.value ?? 'native'}
+                                          onValueChange={field.onChange}
+                                          options={WEB_SEARCH_POLICY_OPTIONS}
+                                        stacked
+                                          translationPrefix='channels.dialogs.fields.webSearchPolicy.options'
+                                          testId='web-search-policy'
+                                        />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
                               </div>
                             )}
 

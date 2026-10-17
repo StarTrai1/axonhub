@@ -1,9 +1,7 @@
 package orchestrator
 
 import (
-	"context"
 	"encoding/json"
-	"net/http"
 	"testing"
 
 	"github.com/samber/lo"
@@ -14,8 +12,6 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
-	"github.com/looplj/axonhub/llm/httpclient"
-	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
 
 func TestApplyWebSearchPolicy_MCPOnly(t *testing.T) {

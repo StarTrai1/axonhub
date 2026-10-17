@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent/channel"
@@ -161,8 +160,6 @@ func TestOpenAIResponsesEndpoint_InheritsWebSocketTransportFromBaseURL(t *testin
 	})
 	require.NoError(t, err)
 	require.Equal(t, "https://api.openai.com/v1/alpha/search", searchReq.URL)
-
-
 }
 
 func TestOpenAIResponsesCompactEndpoint_RejectsInheritedWebSocketTransport(t *testing.T) {
