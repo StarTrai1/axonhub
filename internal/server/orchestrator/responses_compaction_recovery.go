@@ -140,7 +140,7 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawError(ctx context.C
 		m.rejected = make(map[responsesCompactionRecoveryKey]struct{})
 	}
 	m.rejected[key] = struct{}{}
-	if !m.outbound.GetCurrentChannel().Policies.UsesLocalRemoteCompactionBridge() && m.outbound.HasAlternativeChannel() {
+	if !m.outbound.GetCurrentChannel().Policies.UsesLocalRemoteCompactionBridge() && m.canFailoverNativeCompaction(ctx) {
 		// Preserve native state for another candidate before paying for a local
 		// reconstruction on a destination that has just rejected the checkpoint.
 		m.outbound.state.responsesCompactionSkipChannel = key.scope.provider.channelID
@@ -150,6 +150,29 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawError(ctx context.C
 	log.Info(ctx, "native compaction rejected; scheduling retained-history recovery",
 		log.Int("channel_id", key.scope.provider.channelID),
 		log.String("thread_id", key.threadID))
+}
+
+// A retained candidate may exist only for an explicit operator switch. Do not
+// abandon same-channel recovery unless the automatic budget can reach another
+// physical channel. Manual jumps make this bound conservative, never larger.
+func (m *responsesCompactionRecoveryMiddleware) canFailoverNativeCompaction(ctx context.Context) bool {
+	state := m.outbound.state
+	if state.RetryPolicyProvider == nil {
+		return false
+	}
+	policy := state.RetryPolicyProvider.RetryPolicyOrDefault(ctx)
+	if !policy.Enabled {
+		return false
+	}
+	current := m.outbound.GetCurrentChannel()
+	limit := min(len(state.ChannelModelsCandidates)-1, policy.MaxChannelRetries)
+	for index := state.CurrentCandidateIndex + 1; index <= limit; index++ {
+		candidate := state.ChannelModelsCandidates[index]
+		if candidate != nil && candidate.Channel != nil && candidate.Channel.ID != current.ID {
+			return true
+		}
+	}
+	return false
 }
 
 func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawRequest(

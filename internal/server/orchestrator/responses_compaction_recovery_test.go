@@ -73,6 +73,33 @@ func TestResponsesRejectedResourcePreservesOpaqueCompaction(t *testing.T) {
 	require.False(t, accepted, "preserving a checkpoint does not permit reasoning deletion")
 }
 
+func TestResponsesRejectedCompactionManualCandidatePreservesRecovery(t *testing.T) {
+	ctx := shared.WithSessionScope(t.Context(), "manual-candidate-owner")
+	apiKey := &ent.APIKey{ID: 201, ProjectID: 202}
+	req := rejectedCompactionPipelineRequest(t, llm.APIFormatOpenAIResponse)
+	ref, _, _, err := parseRemoteCompactionRequest(req.Body)
+	require.NoError(t, err)
+	adapter := newRemoteCompactionAdapter(nil, nil, nil)
+	adapter.summaries.SetDefault(remoteCompactionOwnerCacheKey(&PersistenceState{APIKey: apiKey}, remoteCompactionCacheKey(ref)), "verified retained source summary")
+	executor := &responsesReasoningPipelineExecutor{
+		failures: []error{rejectedNativeCheckpointError()}, events: rejectedReasoningCompactionEvents(),
+	}
+	state, result, err := runRejectedReasoningPipeline(t, ctx, req, executor, "manual-candidate-key", true, 1,
+		func(state *PersistenceState, outbound *PersistentOutboundTransformer) pipeline.Middleware {
+			state.APIKey = apiKey
+			state.RetryPolicyProvider = &mockRetryPolicyProvider{policy: &biz.RetryPolicy{Enabled: true, MaxSingleChannelRetries: 1}}
+			state.ChannelModelsCandidates = append(state.ChannelModelsCandidates, &ChannelModelsCandidate{
+				Channel: &biz.Channel{Channel: &ent.Channel{ID: 98002}},
+			})
+			return recoverRejectedRemoteCompaction(outbound, adapter, executor)
+		})
+	require.NoError(t, err)
+	drainRejectedReasoningPipeline(t, result)
+	require.Equal(t, 0, state.CurrentCandidateIndex, "manual-only fallback cannot consume an automatic switch")
+	require.Len(t, executor.requests, 2)
+	assertRejectedCompactionWindowPreserved(t, executor.requests[0].Body, executor.requests[1].Body)
+}
+
 func TestResponsesRejectedCompactionPipelineUsesRetainedSummary(t *testing.T) {
 	for _, format := range []llm.APIFormat{llm.APIFormatOpenAIResponse, llm.APIFormatOpenAIResponseCompact} {
 		for _, passThrough := range []bool{true, false} {
