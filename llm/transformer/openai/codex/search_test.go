@@ -45,7 +45,7 @@ func TestCodexSearchOutboundUsesTokenAndIdentityHeaders(t *testing.T) {
 	require.Equal(t, "request-1", req.Headers.Get(ClientRequestIDHeader))
 	require.Equal(t, testChatAccountID, req.Headers.Get("Chatgpt-Account-Id"))
 	_, customized := any(outbound).(pipeline.ChannelCustomizedExecutor)
-	require.True(t, customized)
+	require.False(t, customized)
 }
 
 func TestCodexSearchOutboundSupportsPlainAPIKeyProvider(t *testing.T) {
@@ -70,7 +70,7 @@ func TestCodexSearchOutboundSupportsPlainAPIKeyProvider(t *testing.T) {
 	require.Equal(t, CodexCLIOriginator, req.Headers.Get("Originator"))
 	require.True(t, strings.HasPrefix(req.Headers.Get("User-Agent"), CodexCLIOriginator+"/"))
 	_, customized := any(outbound).(pipeline.ChannelCustomizedExecutor)
-	require.True(t, customized)
+	require.False(t, customized)
 }
 
 func TestCodexSearchPreservesDesktopIdentityAndVersion(t *testing.T) {
