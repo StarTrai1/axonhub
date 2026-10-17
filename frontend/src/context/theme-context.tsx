@@ -3,6 +3,25 @@ import { createContext, useContext, useEffect, useState } from 'react';
 type Theme = 'dark' | 'light' | 'system';
 type ColorScheme = 'blue' | 'green' | 'purple' | 'orange' | 'red' | 'black' | 'cream' | 'claude' | 'starry';
 
+// Keep the accepted values in sync with the pre-paint script in index.html.
+function readPreference<T extends string>(key: string, fallback: T, allowed: readonly T[]): T {
+  try {
+    const value = localStorage.getItem(key) as T | null;
+    if (value && allowed.includes(value)) return value;
+  } catch {
+    // Continue with defaults when storage is unavailable.
+  }
+  return fallback;
+}
+
+function writePreference(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // Theme switching still works for the current page.
+  }
+}
+
 type ThemeProviderProps = {
   children: React.ReactNode;
   defaultTheme?: Theme;
@@ -35,9 +54,9 @@ export function ThemeProvider({
   colorSchemeStorageKey = 'axonhub-ui-color-scheme',
   ...props
 }: ThemeProviderProps) {
-  const [theme, _setTheme] = useState<Theme>(() => (localStorage.getItem(storageKey) as Theme) || defaultTheme);
-  const [colorScheme, _setColorScheme] = useState<ColorScheme>(
-    () => (localStorage.getItem(colorSchemeStorageKey) as ColorScheme) || defaultColorScheme
+  const [theme, _setTheme] = useState<Theme>(() => readPreference(storageKey, defaultTheme, ['dark', 'light', 'system']));
+  const [colorScheme, _setColorScheme] = useState<ColorScheme>(() =>
+    readPreference(colorSchemeStorageKey, defaultColorScheme, ['blue', 'green', 'purple', 'orange', 'red', 'black', 'cream', 'claude', 'starry'])
   );
 
   useEffect(() => {
@@ -75,12 +94,12 @@ export function ThemeProvider({
   }, [theme, colorScheme]);
 
   const setTheme = (theme: Theme) => {
-    localStorage.setItem(storageKey, theme);
+    writePreference(storageKey, theme);
     _setTheme(theme);
   };
 
   const setColorScheme = (colorScheme: ColorScheme) => {
-    localStorage.setItem(colorSchemeStorageKey, colorScheme);
+    writePreference(colorSchemeStorageKey, colorScheme);
     _setColorScheme(colorScheme);
   };
 

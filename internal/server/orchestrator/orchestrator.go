@@ -346,8 +346,10 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		// Compatibility rewrites must run after explicit body overrides so a
 		// retry cannot reintroduce the precise field the upstream rejected.
 		prepareResponsesRelayAffinity(outbound),
-		recoverRejectedRemoteCompaction(outbound, processor.remoteCompactionAdapter, processor.PipelineFactory.Executor),
+		// Authenticate local agent tool arguments before checkpoint recovery checks
+		// complete history; sealed arguments would otherwise block cold and warm recovery.
 		recoverResponsesAgentMessages(outbound, processor.SystemService),
+		recoverRejectedRemoteCompaction(outbound, processor.remoteCompactionAdapter, processor.PipelineFactory.Executor),
 		recoverResponsesRelayAffinity(outbound),
 		// A checkpoint must be expanded before complete-history checks can apply
 		// already confirmed ID/reasoning corrections to its retained messages.

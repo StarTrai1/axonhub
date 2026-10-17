@@ -4,6 +4,7 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  color-scheme: light;
   --radius: 0.75rem;
   --logo-accent: #a8844e; /* AxonHub logo champagne gold */
   --background: oklch(0.95 0.005 90);
@@ -57,6 +58,7 @@
 }
 
 .dark {
+  color-scheme: dark;
   --logo-accent: #d4b98a;
   --background: oklch(0.16 0.03 264.695);
   --foreground: oklch(0.984 0.003 247.858);

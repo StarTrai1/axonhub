@@ -4,6 +4,25 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/x-icon" href="/favicon" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      // Match ThemeProvider defaults before the first stylesheet can paint.
+      (() => {
+        let theme = 'system';
+        let colorScheme = 'claude';
+        try {
+          const savedTheme = localStorage.getItem('axonhub-ui-theme');
+          const savedColorScheme = localStorage.getItem('axonhub-ui-color-scheme');
+          if (['light', 'dark', 'system'].includes(savedTheme)) theme = savedTheme;
+          if (['blue', 'green', 'purple', 'orange', 'red', 'black', 'cream', 'claude', 'starry'].includes(savedColorScheme)) {
+            colorScheme = savedColorScheme;
+          }
+        } catch {
+          // Storage can be unavailable in restricted browser contexts.
+        }
+        const effectiveTheme = theme === 'system' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme;
+        document.documentElement.classList.add(effectiveTheme, colorScheme);
+      })();
+    </script>
 
     <!-- Primary Meta Tags -->
     <title>AxonHub</title>
