@@ -1285,7 +1285,6 @@ func (a *remoteCompactionAdapter) finalizeCompactionGeneration(
 			log.Warn(persistCtx, "failed to persist local compaction bridge response", log.Cause(persistErr))
 		}
 	}
-
 }
 
 func collectLocalCompactionBridgeStream(
