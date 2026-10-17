@@ -6,12 +6,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/tidwall/gjson"
+	"github.com/tidwall/sjson"
 
 	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/pipeline"
+	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 const nativeCompactionMigrationHeader = "X-Axonhub-Native-Compaction-Migration"
@@ -97,7 +102,7 @@ func buildNativeCompactionMigrationRequest(body []byte)([]byte,error) {
 }
 
 func extractNativeCompactionMigration(body []byte)(string,error) {
-	if gjson.GetBytes(body,"status").String()!="completed" {return "",errNativeCompactionUnavailable}
+	if gjson.GetBytes(body,"status").String()!="completed" {return "",llm.ErrStreamIncomplete}
 	var checkpoint string
 	for _,item:=range gjson.GetBytes(body,"output").Array() {
 		if item.Get("type").String()!=remoteCompactionItemType {continue}
@@ -138,8 +143,10 @@ func (a *remoteCompactionAdapter) migrateNativeCompaction(ctx context.Context,ke
 	source,err:=a.loadNativeCompactionSource(ctx,ref,state)
 	if err!=nil || source==nil {return nil,err}
 	if !nativeMigrationSourceEligible(source.body,key.scope.provider.model) {return nil,nil}
+	source,err=bindNativeMigrationDestination(source,state.RawProviderRequest)
+	if err!=nil {return nil,err}
 	digest:=key.digest()
-	result,err,_:=a.nativeMigrationGenerator.Do(hex.EncodeToString(digest[:]),func()(any,error){
+	result,err:=waitForCompactionFlight(ctx,&a.nativeMigrationGenerator,hex.EncodeToString(digest[:]),func()(any,error){
 		cached,err:=a.loadNativeMigration(ctx,key)
 		if err!=nil {return nil,err}
 		if len(cached.Item)>0 || time.Now().Before(cached.RejectedUntil) {return cached.Item,nil}
@@ -166,6 +173,42 @@ func (a *remoteCompactionAdapter) migrateNativeCompaction(ctx context.Context,ke
 	item,ok:=result.(json.RawMessage)
 	if !ok {return nil,fmt.Errorf("invalid native migration result %T",result)}
 	return item,nil
+}
+
+func bindNativeMigrationDestination(source *remoteCompactionSource,destination *httpclient.Request)(*remoteCompactionSource,error) {
+	if destination==nil {return nil,errors.New("native migration requires an effective destination request")}
+	metadata:=shared.ReadCodexRequestMetadata(destination.Headers,destination.Body)
+	fields:=map[string]any{"session_id":metadata.SessionID,"thread_id":metadata.ThreadID,"window_id":metadata.WindowID}
+	for _,key:=range []string{"installation_id","turn_id","root_turn_id","context_window_id","window_number","agent_name"} {
+		if value:=gjson.Get(metadata.RawTurnMetadata,key);value.Exists() {fields[key]=value.Value()}
+	}
+	sourceMetadata:=gjson.GetBytes(source.body,"client_metadata.x-codex-turn-metadata").String()
+	rewritten,ok:=rewriteCodexTurnMetadata(sourceMetadata,fields)
+	if !ok {return nil,errors.New("native migration source metadata is malformed")}
+	headers:=destination.Headers.Clone()
+	if headers==nil {headers=make(http.Header)}
+	headers.Del("Authorization")
+	headers.Del("Content-Length")
+	headers.Del(codexTurnStateHeader)
+	headers.Set(codexTurnMetadataHeader,rewritten)
+	body:=source.body
+	patches:=map[string]string{
+		"client_metadata.session_id":metadata.SessionID,"client_metadata.thread_id":metadata.ThreadID,
+		"client_metadata.x-codex-window-id":metadata.WindowID,"client_metadata.x-codex-turn-metadata":rewritten,
+	}
+	if cacheKey:=gjson.GetBytes(destination.Body,"prompt_cache_key");cacheKey.Exists() {
+		patches["prompt_cache_key"]=cacheKey.String()
+	} else {
+		var err error
+		body,err=sjson.DeleteBytes(body,"prompt_cache_key")
+		if err!=nil {return nil,err}
+	}
+	for path,value:=range patches {
+		var err error
+		body,err=sjson.SetBytes(body,path,value)
+		if err!=nil {return nil,err}
+	}
+	return &remoteCompactionSource{body:body,headers:headers},nil
 }
 
 func nativeMigrationCanFallback(err error) bool {

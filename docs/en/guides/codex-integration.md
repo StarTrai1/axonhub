@@ -123,6 +123,11 @@ Each window retains its reported usage percentage. Account-wide exhaustion does 
 
 ### Local compaction checkpoints
 
+`auto` preserves native history until an actual rejection. Where possible, the
+gateway restores exact retained text or generates and retains a destination-native
+V2 checkpoint before using text summarization. See [continuation recovery and its
+quality limits](responses-performance.md#native-checkpoint-continuity-across-channels).
+
 An upstream `validation_error` / `invalid encrypted summary`, or an exact reasoning-item rejection containing `reasoning hydration failed: Encrypted content could not be decrypted or parsed.`, enters the existing bounded recovery flow. Recovery requires a complete encryption-rejection match, complete visible history, and the matching project/API key. It first repairs rejected reasoning while retaining the native checkpoint. If that checkpoint is also rejected, it uses authenticated retained source history or a saved summary. Missing history or an exhausted retry budget stops recovery instead of inventing context.
 
 Local encrypted agent messages and tool arguments are authenticated before checkpoint recovery checks the retained history. This ordering applies both to the initial recovery and to later requests using a confirmed recovery cache entry. The exact recovered tool arguments, call/output links, and agent-message prefixes are preserved; unknown ciphertext, tampered content, and a different project/API key still stop recovery before an upstream request is sent. Disabling body pass-through also preserves the encrypted-argument marker during conversion. Only the supported local `message` envelope can be opened; markers declaring other encrypted arguments are not discarded.

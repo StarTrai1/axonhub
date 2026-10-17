@@ -215,6 +215,7 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawRequest(
 	candidate.Models = candidate.Models[state.CurrentModelIndex : state.CurrentModelIndex+1]
 	candidate.APIFormat = string(llm.APIFormatOpenAIResponse)
 	bridgeState := &PersistenceState{
+		RawProviderRequest:      request,
 		APIKey:                  state.APIKey,
 		ChannelService:          state.ChannelService,
 		RetryPolicyProvider:     state.RetryPolicyProvider,

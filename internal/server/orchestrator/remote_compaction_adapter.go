@@ -746,6 +746,7 @@ func (a *remoteCompactionAdapter) summaryForCompactionChain(
 		}
 	}
 
+	sourceDepth := len(ancestors)
 	generate := func() (any, error) {
 		if cached, ok := a.summaries.Get(ownerKey); ok {
 			if summary, valid := cached.(string); valid && summary != "" {
@@ -753,26 +754,28 @@ func (a *remoteCompactionAdapter) summaryForCompactionChain(
 			}
 		}
 
-		if summary == "" {
+		generated := summary
+		if generated == "" {
 			log.Warn(ctx, "generating text compaction fallback from authenticated history",
 				log.String("compaction_id", ref.ID),
-				log.Int("source_depth", len(ancestors)),
+				log.Int("source_depth", sourceDepth),
 				log.String("recovery_kind", "text_summary"))
-			summary, err = a.generateLocalSummary(ctx, cacheKey, source, state, executor)
-			if err != nil {
-				return "", err
+			var generateErr error
+			generated, generateErr = a.generateLocalSummary(ctx, cacheKey, source, state, executor)
+			if generateErr != nil {
+				return "", generateErr
 			}
 		}
 		persistCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 		defer cancel()
-		if err := a.retainCompactionSummary(persistCtx, cacheKey, ref, state, summary); err != nil {
+		if err := a.retainCompactionSummary(persistCtx, cacheKey, ref, state, generated); err != nil {
 			return "", fmt.Errorf("retain compaction checkpoint: %w", err)
 		}
 
-		a.summaries.SetDefault(ownerKey, summary)
-		return summary, nil
+		a.summaries.SetDefault(ownerKey, generated)
+		return generated, nil
 	}
-	value, err, _ := a.summaryGenerator.Do(ownerKey, generate)
+	value, err := waitForCompactionFlight(ctx, &a.summaryGenerator, ownerKey, generate)
 	if rejected, ok := errors.AsType[*compactionSourceRejectedError](err); ok && source != nil && ctx.Err() == nil {
 		previous, _, _, parseErr := parseRemoteCompactionRequest(source.body)
 		if parseErr != nil {
@@ -786,7 +789,7 @@ func (a *remoteCompactionAdapter) summaryForCompactionChain(
 		if err != nil {
 			return "", err
 		}
-		value, err, _ = a.summaryGenerator.Do(ownerKey, generate)
+		value, err = waitForCompactionFlight(ctx, &a.summaryGenerator, ownerKey, generate)
 	}
 	if err != nil {
 		return "", err
@@ -1072,18 +1075,6 @@ func (a *remoteCompactionAdapter) generateCompaction(
 	return "", err
 }
 
-func (a *remoteCompactionAdapter) generateLocalSummaryWithCandidate(
-	ctx context.Context,
-	body []byte,
-	headers http.Header,
-	bridgeRecord *ent.Request,
-	candidate *ChannelModelsCandidate,
-	parentState *PersistenceState,
-	executor pipeline.Executor,
-) (string, error) {
-	return a.generateCompactionWithCandidate(ctx, body, headers, bridgeRecord, candidate, parentState, executor, false)
-}
-
 func (a *remoteCompactionAdapter) generateCompactionWithCandidate(
 	ctx context.Context,
 	body []byte,
@@ -1154,6 +1145,20 @@ func (a *remoteCompactionAdapter) generateCompactionWithCandidate(
 		compatibility,
 		finalizeTransportRequest(outbound),
 	}
+	if native && parentState.RawProviderRequest != nil {
+		// Both the retained content and destination headers are already effective
+		// wire values. Reapplying overrides or identity hashing would change them.
+		providerRequest.Body = append([]byte(nil),body...)
+		providerRequest.JSONBody = nil
+		providerRequest.Headers = headers.Clone()
+		providerRequest.Headers.Set("Authorization",parentState.RawProviderRequest.Headers.Get("Authorization"))
+		providerRequest.Auth = parentState.RawProviderRequest.Auth
+		providerRequest.Headers.Del(nativeCompactionMigrationHeader)
+		providerRequest.Headers.Del(codexTurnStateHeader)
+		requestMiddlewares = []pipeline.Middleware{
+			recoverResponsesAgentMessages(outbound,a.systemService),compatibility,finalizeTransportRequest(outbound),
+		}
+	}
 	for _, middleware := range requestMiddlewares {
 		providerRequest, err = middleware.OnOutboundRawRequest(ctx, providerRequest)
 		if err != nil {
@@ -1169,7 +1174,9 @@ func (a *remoteCompactionAdapter) generateCompactionWithCandidate(
 		Stream:    true,
 	}
 	attemptState.Perf = perf
-	stream, executionRecord, err := a.startLocalCompactionStream(ctx, outbound, providerRequest, customizedExecutor, affinity, compatibility)
+	retryCompatibility := []pipeline.Middleware{affinity,compatibility}
+	if native {retryCompatibility=[]pipeline.Middleware{compatibility}}
+	stream, executionRecord, err := a.startLocalCompactionStream(ctx, outbound, providerRequest, customizedExecutor, retryCompatibility...)
 	if err != nil {
 		return "", rejectedCompactionSourceError(attemptState.RawProviderRequest, err)
 	}

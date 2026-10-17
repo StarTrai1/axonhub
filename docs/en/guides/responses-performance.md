@@ -242,9 +242,10 @@ Hosted Test CI runs focused race tests and publishes `responses-cache-benchmarks
 
 With a channel's remote-compaction policy set to `local_bridge`, previously
 remote-compacted conversations can be reconstructed from retained source
-requests. If a source already contains an older compaction, AxonHub first
-generates or reuses that older summary, substitutes it into the source, and then
-generates the next summary. It does not simply remove opaque compaction items;
+requests. If a source contains an older native compaction, AxonHub first tries
+that source with the checkpoint intact. It only restores the ancestor after an
+explicit, matched rejection before summary output starts. Locally sealed ancestors
+are authenticated and expanded before sending. It does not remove opaque compaction items;
 those items carry conversation state in the
 [official compaction protocol](https://developers.openai.com/api/docs/guides/compaction).
 
@@ -358,3 +359,64 @@ official release discovery remains enabled.
 Release builds precompress text assets such as HTML, JavaScript and CSS before embedding them, while preserving Vite's original `frontend/dist`. Clients accepting gzip receive those bytes directly; other clients receive the restored content. Existing content-hashed `/assets/` files allow one year of immutable caching. Entry HTML remains uncached, and missing assets receive no long-lived cache policy. This reduces embedded size and browser transfer without changing model requests, context or token-cache keys.
 
 Standalone search reuses the candidate slice when no channel needs exclusion. The model-association cache is bounded to 1024 entries, with opportunistic eviction of expired entries and old channel snapshots. Reads still validate channel versions, association signatures, model update times and other existing conditions. These changes do not establish lower provider TTFT or a higher prompt-cache hit rate; those require separate measurements.
+
+## Native checkpoint continuity across channels
+
+`auto` tries native history first. Both `auto` and `native` remain eligible for
+normal routing and previous-channel affinity; a later local-bridge candidate does
+not rewrite an earlier native request. After a confirmed checkpoint rejection,
+another retained channel is tried before reconstructing the checkpoint locally.
+Configured routing tiers, retry budgets, model and reasoning effort still apply.
+
+Recovery first tries a small exact-history replay. This requires an authenticated
+source, uniquely matching retained items in order, complete tool pairs, matching
+model/instructions/tools, and text-only materialized history. Its conservative
+budget is the smaller of 64 KiB of serialized JSON and half the catalog context
+limit; an unknown context limit disables this path. No items are truncated. This
+restores the retained source, not information already removed by the client
+before that source was captured. Confirmed replay has its own versioned scope.
+
+For an authenticated source explicitly marked `responses_compaction_v2`, recovery
+can regenerate a **native checkpoint on the destination** instead of first
+converting the whole history into a generic text summary. It reuses the saved
+source input and current destination session/window identity. The completed
+result must contain one valid native compaction item. Only the matching checkpoint
+is replaced; surrounding messages, tool results and current request options stay
+intact. The source for the new native checkpoint is retained as well.
+
+An encrypted alias binds the original checkpoint to the project, API key, thread,
+window, target channel, endpoint, model and credential. It survives restart and
+request-log cleanup and reuses the same target checkpoint on later turns. A
+rejected target checkpoint disables that alias for six hours and falls back within
+the existing retry budget. Unsupported native compaction or a matched ancestor
+rejection can use the text fallback; overload, authentication failures and partial
+streams do not authorize an additional generation. Native reconstruction can
+still take time and tokens and cannot guarantee exact preservation of all semantic
+details. Hidden upstream account rotation can invalidate even a target-generated
+checkpoint. The gateway does not possess provider decryption keys.
+
+Compatibility remains the default: saved authenticated summaries remain usable,
+and new text summaries are generated only when earlier paths cannot continue.
+Ancestor recovery is lazy, each completed result is retained, and logs distinguish
+native migration (`X-Axonhub-Native-Compaction-Migration`) from text fallback
+(`X-Axonhub-Remote-Compaction-Cache`, `recovery_kind=text_summary`). Internal markers
+are not sent upstream. Text summarization is lossy; no synthetic test can prove
+unchanged answer quality. Cancellation stops pending generation and releases
+waiting callers; already completed checkpoints get a bounded persistence window.
+
+## Measuring actual cache reuse and user wait
+
+Report both `cached / current input` and how much of the preceding unchanged input
+was reused. A 30k cached prefix followed by 10k new tool output yields 75% while
+reusing nearly all reusable history. Never pad prompts or discard tool output to
+improve the ratio. Compare completed requests within the same model, thread,
+agent, channel and window, checking settings and identity before attributing a
+miss to the provider. Cache reuse across hidden accounts cannot be forced by
+changing the displayed percentage or adding public API fields to Codex endpoints.
+
+New request-level latency and TTFT include routing, checkpoint preparation and
+all retries from orchestrator admission. Execution-level metrics and channel
+health retain their per-attempt clocks. Historical records are not rewritten.
+A high cache ratio alone does not establish low latency: upstream throttling,
+queueing and generation can still dominate. Request `updated_at - created_at` is
+a useful historical approximation, but also includes persistence overhead.
