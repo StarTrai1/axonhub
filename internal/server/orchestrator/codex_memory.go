@@ -23,15 +23,15 @@ const codexMemoryPauseDuration = 5 * time.Minute
 var errCodexMemoryPaused = &llm.ResponseError{
 	StatusCode: http.StatusBadRequest,
 	Detail: llm.ErrorDetail{
-		Code: "codex_memory_paused",
-		Type: "invalid_request_error",
+		Code:    "codex_memory_paused",
+		Type:    "invalid_request_error",
 		Message: "Background memory consolidation is paused after a foreground failure in this conversation. It resumes after a successful new foreground request or after 5 minutes.",
 	},
 }
 
 type codexMemoryScope struct {
 	projectID, apiKeyID int
-	thread             [sha256.Size]byte
+	thread              [sha256.Size]byte
 }
 
 type codexMemoryPause struct {
@@ -63,7 +63,7 @@ func newCodexMemoryGuard() *codexMemoryGuard {
 	return &codexMemoryGuard{
 		active: make(map[codexMemoryScope]map[*codexMemoryLease]context.CancelCauseFunc),
 		paused: lo.Must(lru.New[codexMemoryScope, codexMemoryPause](1024)),
-		clock: time.Now,
+		clock:  time.Now,
 	}
 }
 

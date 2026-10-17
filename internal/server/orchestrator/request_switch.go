@@ -4,6 +4,8 @@ import (
 	"context"
 	"sync"
 
+	"github.com/tidwall/gjson"
+
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
 )
@@ -30,9 +32,9 @@ func unregisterRequestSwitch(state *PersistenceState) {
 }
 
 type requestSwitchLifecycleStream struct {
-	stream streams.Stream[*httpclient.StreamEvent]
-	state  *PersistenceState
-	once   sync.Once
+	stream         streams.Stream[*httpclient.StreamEvent]
+	state          *PersistenceState
+	once           sync.Once
 	memoryTerminal *StreamTerminalTracker
 }
 
@@ -61,7 +63,13 @@ func (s *requestSwitchLifecycleStream) Next() bool {
 func (s *requestSwitchLifecycleStream) Current() *httpclient.StreamEvent {
 	event := s.stream.Current()
 	if s.memoryTerminal != nil && event != nil && s.memoryTerminal.Observe(event) && classifyAcceptedTerminalEvent(event) != streamTerminalCompleted {
-		s.state.codexMemory.finish(false)
+		// Acknowledged Codex interrupts intentionally end this response before
+		// the next input. Let delivery/Close settle them instead of pausing memory.
+		interrupted := event.Type == "response.incomplete" &&
+			gjson.GetBytes(event.Data, "response.incomplete_details.reason").String() == "interrupted"
+		if !interrupted {
+			s.state.codexMemory.finish(false)
+		}
 	}
 	return event
 }

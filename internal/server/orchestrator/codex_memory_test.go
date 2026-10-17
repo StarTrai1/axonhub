@@ -8,11 +8,13 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
@@ -24,7 +26,7 @@ func codexMemoryTestContext(t *testing.T, key, project int) context.Context {
 func codexMemoryTestRequest(thread, kind string) *httpclient.Request {
 	return &httpclient.Request{
 		Headers: http.Header{"Thread-Id": {"handshake-thread"}, "X-Codex-Turn-Metadata": {`{"request_kind":"prewarm"}`}},
-		Body: []byte(fmt.Sprintf(`{"client_metadata":{"thread_id":%q,"x-codex-turn-metadata":%q},"input":"synthetic"}`, thread, `{"request_kind":"`+kind+`"}`)),
+		Body:    []byte(fmt.Sprintf(`{"client_metadata":{"thread_id":%q,"x-codex-turn-metadata":%q},"input":"synthetic"}`, thread, `{"request_kind":"`+kind+`"}`)),
 	}
 }
 
@@ -36,7 +38,7 @@ func TestCodexMemoryGuardCancelsAndPausesOnlyMatchingConversation(t *testing.T) 
 	for _, tc := range []struct {
 		name, thread string
 		key, project int
-		canceled bool
+		canceled     bool
 	}{
 		{"same conversation", "thread", 1, 2, true},
 		{"other thread", "other", 1, 2, false},
@@ -89,8 +91,8 @@ func TestCodexMemoryGuardExpiryAndStaleSuccess(t *testing.T) {
 
 func TestCodexMemoryGuardIgnoresUnrelatedRequests(t *testing.T) {
 	for _, tc := range []struct {
-		name, path string
-		value any
+		name, path   string
+		value        any
 		key, project int
 	}{
 		{name: "unauthenticated key", key: 0, project: 1},
@@ -126,4 +128,43 @@ func TestCodexMemoryGuardFailureCacheIsBounded(t *testing.T) {
 	}
 	require.Equal(t, 1024, guard.paused.Len())
 	require.Empty(t, guard.active)
+}
+
+func TestCodexMemoryGuardPreservesSteeringAndInterrupts(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		events []string
+	}{
+		{"interrupt", []string{`{"type":"response.incomplete","response":{"id":"resp_old","status":"incomplete","incomplete_details":{"reason":"interrupted"}}}`}},
+		{"steering", []string{
+			`{"type":"response.steer.accepted","steer":{"id":"steer_1","previous_response_id":"resp_old"}}`,
+			`{"type":"response.incomplete","response":{"id":"resp_old","status":"incomplete","incomplete_details":{"reason":"steered"}}}`,
+			`{"type":"response.completed","response":{"id":"resp_new","status":"completed"}}`,
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			guard := newCodexMemoryGuard()
+			ctx := codexMemoryTestContext(t, 1, 2)
+			foreground, err := guard.begin(ctx, codexMemoryTestRequest("thread", "turn"), func(error) {})
+			require.NoError(t, err)
+			memoryCtx, cancel := context.WithCancelCause(ctx)
+			defer cancel(nil)
+			memory, err := guard.begin(memoryCtx, codexMemoryTestRequest("thread", "memory"), cancel)
+			require.NoError(t, err)
+			defer memory.finish(true)
+			var events []*httpclient.StreamEvent
+			for _, raw := range tc.events {
+				events = append(events, &httpclient.StreamEvent{Type: gjson.Get(raw, "type").String(), Data: []byte(raw)})
+			}
+			state := &PersistenceState{codexMemory: foreground}
+			stream := withRequestSwitchLifecycle(streams.SliceStream(events), state)
+			for stream.Next() {
+				require.NotNil(t, stream.Current())
+				require.NoError(t, memoryCtx.Err(), "normal steering/interrupt must not cancel background work")
+			}
+			state.StreamCompleted = true // Model successful terminal delivery before Close.
+			require.NoError(t, stream.Close())
+			require.Zero(t, guard.paused.Len())
+		})
+	}
 }

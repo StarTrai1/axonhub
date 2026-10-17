@@ -14,7 +14,7 @@ import (
 // TODO: move the dependencies out of the state to make it a real state.
 type PersistenceState struct {
 	codexMemory *codexMemoryLease
-	APIKey *ent.APIKey
+	APIKey      *ent.APIKey
 
 	RequestService      *biz.RequestService
 	UsageLogService     *biz.UsageLogService
