@@ -444,6 +444,8 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 	// Return result based on stream type
 	if result.Stream {
 		if continuation != nil {
+			// responsesAcceptedStream forwards delivery itself so accepting the
+			// continuation remains coupled to a successful terminal write.
 			result.EventStream = &responsesAcceptedStream{Stream: result.EventStream, ctx: ctx, continuation: continuation}
 			continuation = nil
 		}
