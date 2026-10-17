@@ -1,0 +1,100 @@
+name: Prepare native compaction and cache continuity
+on:
+  push:
+    branches: [ci/cache-latency-20261018-v2]
+permissions:
+  contents: read
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: .go-version
+      - name: Prepare formatting and generation
+        env:
+          FORMAT_BASE: 3c2fef33aff672c0c1cbde37af1a6b3354208a76
+        run: |
+          go install golang.org/x/tools/cmd/goimports@latest
+          go install github.com/daixiang0/gci@latest
+          go install mvdan.cc/gofumpt@latest
+          git diff --name-only -z --diff-filter=ACMRT "$FORMAT_BASE" HEAD -- '*.go' | xargs -0 -r "$(go env GOPATH)/bin/goimports" -w
+          git diff --name-only -z --diff-filter=ACMRT "$FORMAT_BASE" HEAD -- '*.go' | xargs -0 -r "$(go env GOPATH)/bin/gci" write -s standard -s default -s blank -s dot -s alias -s localmodule --custom-order
+          git diff --name-only -z --diff-filter=ACMRT "$FORMAT_BASE" HEAD -- '*.go' | xargs -0 -r "$(go env GOPATH)/bin/gofumpt" -w
+          go mod tidy
+          (cd llm && go mod tidy)
+          (cd cmd/schema && go mod tidy)
+          make generate
+      - name: Preserve preparation patch
+        if: always()
+        run: git diff --binary > "$RUNNER_TEMP/prepared.patch"
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: peers-prepared-patch
+          path: ${{ runner.temp }}/prepared.patch
+      - name: Verify native compaction and latency races
+        if: success() || failure()
+        run: |
+          go test -race ./internal/server/orchestrator -run 'TestRemoteCompactionLazy|TestNativeCompactionExactReplay|TestResponsesCompactionExactReplay|TestRequestLatency|TestRemoteCompaction|TestResponsesRejectedCompaction|TestResponsesAgent|TestResponsesInvalidEncryptedSummary|TestResponsesRejectedReasoning|TestResponsesSession' -count=1 -v
+          go test -race ./internal/server/api -run 'TestResponsesProtocol(AutoCompaction|CompactionRelay|EncryptedAgentCompaction|InvalidEncryptedSummary|ReasoningHydration)' -count=1 -v
+      - name: Lint root changes
+        if: success() || failure()
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: latest
+          args: --timeout 10m --max-same-issues 50 --new-from-rev=3c2fef33aff672c0c1cbde37af1a6b3354208a76
+      - name: Lint Responses changes
+        if: success() || failure()
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: latest
+          working-directory: ./llm
+          args: --timeout 10m --max-same-issues 50 --new-from-rev=3c2fef33aff672c0c1cbde37af1a6b3354208a76
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: .go-version
+      - name: Verify Windows compaction and latency
+        run: go test ./internal/server/orchestrator ./internal/server/api -run 'TestRemoteCompactionLazy|TestNativeCompactionExactReplay|TestResponsesCompactionExactReplay|TestRequestLatency|TestResponsesProtocol(AutoCompaction|CompactionRelay|EncryptedAgentCompaction|InvalidEncryptedSummary|ReasoningHydration)' -count=1 -v
+  baseline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: .go-version
+      - name: Prove auto originally summarizes before any native attempt
+        run: |
+          git show 3c2fef33aff672c0c1cbde37af1a6b3354208a76:internal/server/orchestrator/remote_compaction_adapter.go > internal/server/orchestrator/remote_compaction_adapter.go
+          # Keep the added transient field needed by the new recovery reader.
+          python3 - <<'PYCODE'
+          from pathlib import Path
+          p=Path('internal/server/orchestrator/remote_compaction_adapter.go')
+          s=p.read_text().replace('recoveries       *lru.Cache[responsesCompactionRecoveryKey, time.Time]', 'recoveries       *lru.Cache[responsesCompactionRecoveryKey, time.Time]\n\trecoveryMisses *lru.Cache[responsesCompactionRecoveryKey, time.Time]')
+          p.write_text(s)
+          PYCODE
+          set +e
+          go test ./internal/server/api -run '^TestResponsesProtocolAutoCompactionNativeFirst$' -count=1 -v > "$RUNNER_TEMP/baseline.log" 2>&1
+          result=$?
+          set -e
+          cat "$RUNNER_TEMP/baseline.log"
+          test "$result" -ne 0
+          grep -F -- '--- FAIL: TestResponsesProtocolAutoCompactionNativeFirst' "$RUNNER_TEMP/baseline.log"
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: native-first-baseline
+          path: ${{ runner.temp }}/baseline.log
