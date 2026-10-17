@@ -2,7 +2,6 @@ package qb
 
 import (
 	"fmt"
-	"strconv"
 
 	"github.com/looplj/axonhub/internal/pkg/xtime"
 )
@@ -20,27 +19,15 @@ const (
 // DailyQueryFragmentConfig holds the SQL fragments for daily throughput queries.
 type DailyQueryFragmentConfig struct {
 	IDColumn      string
-	NameColumn    string
-	NameAlias     string
-	JoinClause    string
-	GroupByFields string
 }
 
 // AllowedDailyQueryConfigs maps each DailyThroughputQueryType to its SQL fragments.
 var AllowedDailyQueryConfigs = map[DailyThroughputQueryType]DailyQueryFragmentConfig{
 	DailyThroughputByChannel: {
 		IDColumn:      "se.channel_id",
-		NameColumn:    "c.name as channel_name",
-		NameAlias:     "channel_name",
-		JoinClause:    "JOIN channels c ON se.channel_id = c.id",
-		GroupByFields: "se.channel_id, c.name",
 	},
 	DailyThroughputByModel: {
 		IDColumn:      "r.model_id",
-		NameColumn:    "m.name as model_name",
-		NameAlias:     "model_name",
-		JoinClause:    "JOIN requests r ON se.request_id = r.id\nJOIN models m ON r.model_id = m.model_id",
-		GroupByFields: "r.model_id, m.name",
 	},
 }
 
@@ -72,63 +59,6 @@ func getDateExpression(dialect string, dateExpr string, timezone string, offsetS
 	}
 }
 
-// BuildDailyModelThroughputQuery constructs a SQL query for daily model throughput statistics.
-//
-// Parameters:
-//   - dialect: database dialect ("postgres", "mysql", "sqlite3")
-//   - timezone: timezone string for date conversion (e.g., "America/New_York")
-//   - offsetSeconds: timezone offset in seconds
-//   - limit: maximum number of results per day
-//   - mode: which SQL pattern to use (ROW_NUMBER or MAX_ID)
-//
-// Returns: SQL query string with placeholders for the since timestamp
-func BuildDailyModelThroughputQuery(dialect string, timezone string, offsetSeconds int, limit int, mode ThroughputQueryMode) string {
-	return buildDailyThroughputQuery(dialect, timezone, offsetSeconds, DailyThroughputByModel, limit, mode)
-}
-
-// BuildDailyChannelThroughputQuery constructs a SQL query for daily channel throughput statistics.
-//
-// Parameters:
-//   - dialect: database dialect ("postgres", "mysql", "sqlite3")
-//   - timezone: database timezone string for date conversion
-//   - offsetSeconds: timezone offset in seconds
-//   - limit: maximum number of results per day
-//   - mode: which SQL pattern to use (ROW_NUMBER or MAX_ID)
-//
-// Returns: SQL query string with placeholders for the since timestamp
-func BuildDailyChannelThroughputQuery(dialect string, timezone string, offsetSeconds int, limit int, mode ThroughputQueryMode) string {
-	return buildDailyThroughputQuery(dialect, timezone, offsetSeconds, DailyThroughputByChannel, limit, mode)
-}
-
-// buildDailyThroughputQuery constructs the actual SQL query for daily throughput.
-func buildDailyThroughputQuery(dialect string, timezone string, offsetSeconds int, queryType DailyThroughputQueryType, limit int, mode ThroughputQueryMode) string {
-	// Validate limit
-	if limit <= 0 {
-		limit = 10 // Default for daily queries
-	}
-
-	// Get query config
-	config, ok := AllowedDailyQueryConfigs[queryType]
-	if !ok {
-		config = AllowedDailyQueryConfigs[DailyThroughputByModel]
-	}
-
-	// Get date expression based on dialect
-	dateExpr := getDateExpression(dialect, "se.created_at", timezone, offsetSeconds)
-
-	// Determine parameter placeholder based on dialect
-	paramPlaceholder := "?"
-	if dialect == "postgres" || dialect == "postgresql" {
-		paramPlaceholder = "$1"
-	}
-
-	if mode == ThroughputModeMaxID {
-		return buildDailyMaxIDQuery(dateExpr, config, limit, paramPlaceholder)
-	}
-
-	return buildDailyRowNumberQuery(dateExpr, config, limit, paramPlaceholder)
-}
-
 // throughputCoreSQL returns the shared CASE expression body for throughput calculations.
 // This extracts the common latency calculation logic used by throughputCalculationSQL.
 func throughputCoreSQL(seTable string) string {
@@ -149,77 +79,6 @@ func throughputCalculationSQL(seTable string) string {
              / SUM(%s)
         ELSE 0
     END`, core, core)
-}
-
-// buildDailyRowNumberQuery constructs a daily throughput query using ROW_NUMBER().
-// Applies date filtering and per-day limit using ROW_NUMBER() window partitioned by date.
-func buildDailyRowNumberQuery(dateExpr string, config DailyQueryFragmentConfig, limit int, startDatePlaceholder string) string {
-	throughputSQL := throughputCalculationSQL("se")
-	return "WITH successful_execs AS (\n" +
-		"    SELECT\n" +
-		"        request_id,\n" +
-		"        channel_id,\n" +
-		"        metrics_latency_ms,\n" +
-		"        metrics_first_token_latency_ms,\n" +
-		"        stream,\n" +
-		"        created_at,\n" +
-		"        ROW_NUMBER() OVER (PARTITION BY request_id ORDER BY created_at DESC) as rn\n" +
-		"    FROM request_executions\n" +
-		"    WHERE status = 'completed' AND metrics_latency_ms > 0 AND created_at >= " + startDatePlaceholder + "\n" +
-		"),\n" +
-		"daily_stats AS (\n" +
-		"    SELECT\n" +
-		"        " + dateExpr + " as date,\n" +
-		"        " + config.IDColumn + " as id,\n" +
-		"        " + config.NameColumn + ",\n" +
-		"        SUM(ul.completion_tokens) as tokens_count,\n" +
-		"        COUNT(DISTINCT se.request_id) as request_count,\n" +
-		"        " + throughputSQL + " as throughput,\n" +
-		"        ROW_NUMBER() OVER (PARTITION BY " + dateExpr + " ORDER BY " + throughputSQL + " DESC) as daily_rn\n" +
-		"    FROM successful_execs se\n" +
-		"    JOIN usage_logs ul ON se.request_id = ul.request_id\n" +
-		"    " + config.JoinClause + "\n" +
-		"    WHERE se.rn = 1\n" +
-		"    GROUP BY " + dateExpr + ", " + config.GroupByFields + "\n" +
-		")\n" +
-		"SELECT date, id, " + config.NameAlias + ", tokens_count, request_count, throughput\n" +
-		"FROM daily_stats\n" +
-		"WHERE daily_rn <= " + strconv.Itoa(limit) + "\n" +
-		"ORDER BY date DESC, throughput DESC"
-}
-
-// buildDailyMaxIDQuery constructs a daily throughput query using MAX(id) subquery.
-// Applies date filtering and per-day limit using ROW_NUMBER() window partitioned by date.
-func buildDailyMaxIDQuery(dateExpr string, config DailyQueryFragmentConfig, limit int, startDatePlaceholder string) string {
-	throughputSQL := throughputCalculationSQL("se")
-	return "WITH ranked_execs AS (\n" +
-		"    SELECT\n" +
-		"        " + dateExpr + " as date,\n" +
-		"        " + config.IDColumn + " as id,\n" +
-		"        " + config.NameColumn + ",\n" +
-		"        SUM(ul.completion_tokens) as tokens_count,\n" +
-		"        COUNT(DISTINCT se.request_id) as request_count,\n" +
-		"        " + throughputSQL + " as throughput,\n" +
-		"        ROW_NUMBER() OVER (PARTITION BY " + dateExpr + " ORDER BY " + throughputSQL + " DESC) as daily_rn\n" +
-		"    FROM request_executions se\n" +
-		"    JOIN usage_logs ul ON se.request_id = ul.request_id\n" +
-		"    " + config.JoinClause + "\n" +
-		"    WHERE se.status = 'completed'\n" +
-		"        AND se.metrics_latency_ms > 0\n" +
-		"        AND se.created_at >= " + startDatePlaceholder + "\n" +
-		"        AND se.id = (\n" +
-		"            SELECT MAX(re2.id)\n" +
-		"            FROM request_executions re2\n" +
-		"            WHERE re2.request_id = se.request_id\n" +
-		"                AND re2.status = 'completed'\n" +
-		"                AND re2.metrics_latency_ms > 0\n" +
-		"        )\n" +
-		"    GROUP BY " + dateExpr + ", " + config.GroupByFields + "\n" +
-		")\n" +
-		"SELECT date, id, " + config.NameAlias + ", tokens_count, request_count, throughput\n" +
-		"FROM ranked_execs\n" +
-		"WHERE daily_rn <= " + strconv.Itoa(limit) + "\n" +
-		"ORDER BY date DESC, throughput DESC"
 }
 
 // BuildDailyPerformanceStatsQuery constructs a SQL query for daily performance statistics

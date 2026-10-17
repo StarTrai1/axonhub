@@ -9,6 +9,7 @@ import (
 	"github.com/dlclark/regexp2/v2"
 	"github.com/samber/lo"
 	"go.uber.org/fx"
+
 	lru "github.com/hashicorp/golang-lru/v2"
 
 	"github.com/looplj/axonhub/internal/authz"

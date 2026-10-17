@@ -2,7 +2,6 @@ import { useCallback, useState } from 'react';
 import { format } from 'date-fns';
 import { ColumnDef, Row, Table } from '@tanstack/react-table';
 import { IconCheck, IconX, IconLink, IconChevronDown, IconChevronRight } from '@tabler/icons-react';
-import * as Icons from '@lobehub/icons';
 import { useTranslation } from 'react-i18next';
 import { usePermissions } from '@/hooks/usePermissions';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +15,7 @@ import { Model } from '../data/schema';
 import { DataTableRowActions } from './data-table-row-actions';
 import { ModelsStatusDialog } from './models-status-dialog';
 import { useDeveloperLabel } from './models-table';
+import { ModelIcon } from './model-icon';
 
 // Status Switch Cell Component to handle status toggle with confirmation dialog
 function StatusSwitchCell({ row }: { row: Row<Model> }) {
@@ -125,18 +125,9 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       accessorKey: 'icon',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('models.columns.icon')} />,
       cell: ({ row }) => {
-        const model = row.original;
-        const iconName = model.icon;
-        const IconComponent = iconName && Icons[iconName as keyof typeof Icons];
-
         return (
           <div className='flex items-center justify-center'>
-            {IconComponent ? (
-              //@ts-ignore
-              <IconComponent className='h-5 w-5' />
-            ) : (
-              <span className='text-muted-foreground text-xs'>-</span>
-            )}
+            <ModelIcon name={row.original.icon} />
           </div>
         );
       },

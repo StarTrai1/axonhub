@@ -804,16 +804,3 @@ func applyAuth(headers http.Header, auth *AuthConfig) error {
 
 	return nil
 }
-
-// extractHeaders extracts headers from HTTP response.
-func (hc *HttpClient) extractHeaders(headers http.Header) map[string]string {
-	result := make(map[string]string)
-
-	for key, values := range headers {
-		if len(values) > 0 {
-			result[key] = values[0] // Take the first value
-		}
-	}
-
-	return result
-}

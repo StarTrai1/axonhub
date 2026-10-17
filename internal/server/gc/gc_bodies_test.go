@@ -280,10 +280,11 @@ func createBodyTestExecution(
 	req *ent.Request,
 	createdAt time.Time,
 	body, headers objects.JSONRawMessage,
+	storageIDs ...int,
 ) *ent.RequestExecution {
 	t.Helper()
 
-	exec, err := client.RequestExecution.Create().
+	create := client.RequestExecution.Create().
 		SetRequestID(req.ID).
 		SetProjectID(req.ProjectID).
 		SetCreatedAt(createdAt).
@@ -292,8 +293,11 @@ func createBodyTestExecution(
 		SetStatus(requestexecution.StatusCompleted).
 		SetStream(false).
 		SetRequestBody(body).
-		SetRequestHeaders(headers).
-		Save(ctx)
+		SetRequestHeaders(headers)
+	if len(storageIDs) > 0 {
+		create.SetDataStorageID(storageIDs[0])
+	}
+	exec, err := create.Save(ctx)
 	require.NoError(t, err)
 
 	return exec
@@ -533,10 +537,8 @@ func TestCleanupRequestBodies_SkipsFailedDeleteAndContinues(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(pathForKey(baseDir, blockedKey), "child"), []byte("x"), 0o644))
 	createFileForKey(t, baseDir, okKey)
 
-	blockedExec := createBodyTestExecution(t, ctx, client, blocked, oldAt, objects.JSONRawMessage(`{}`), objects.JSONRawMessage(`{"h":"blocked-execution"}`))
-	okExec := createBodyTestExecution(t, ctx, client, okReq, oldAt, objects.JSONRawMessage(`{}`), objects.JSONRawMessage(`{"h":"ok-execution"}`))
-	client.RequestExecution.UpdateOneID(blockedExec.ID).SetDataStorageID(fsStorage.ID).SaveX(ctx)
-	client.RequestExecution.UpdateOneID(okExec.ID).SetDataStorageID(fsStorage.ID).SaveX(ctx)
+	blockedExec := createBodyTestExecution(t, ctx, client, blocked, oldAt, objects.JSONRawMessage(`{}`), objects.JSONRawMessage(`{"h":"blocked-execution"}`), fsStorage.ID)
+	okExec := createBodyTestExecution(t, ctx, client, okReq, oldAt, objects.JSONRawMessage(`{}`), objects.JSONRawMessage(`{"h":"ok-execution"}`), fsStorage.ID)
 	blockedExecKey := biz.GenerateExecutionRequestBodyKey(proj.ID, blocked.ID, blockedExec.ID)
 	okExecKey := biz.GenerateExecutionRequestBodyKey(proj.ID, okReq.ID, okExec.ID)
 	createDirForKey(t, baseDir, blockedExecKey)

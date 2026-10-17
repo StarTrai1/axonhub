@@ -20,9 +20,9 @@ type patternCache struct {
 const maxCachedPatterns = 1024
 
 var (
-	globalCache = lo.Must(lru.New[string, *patternCache](maxCachedPatterns))
+	globalCache  = lo.Must(lru.New[string, *patternCache](maxCachedPatterns))
 	exactPattern = &patternCache{exactMatch: true}
-	allPattern = &patternCache{matchAll: true}
+	allPattern   = &patternCache{matchAll: true}
 )
 
 func MatchString(pattern string, str string) bool {

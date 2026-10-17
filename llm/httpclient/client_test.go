@@ -972,37 +972,6 @@ func Test_applyAuth(t *testing.T) {
 	}
 }
 
-func TestHttpClientImpl_extractHeaders(t *testing.T) {
-	client := &HttpClient{}
-
-	headers := http.Header{
-		"Content-Type":  []string{"application/json"},
-		"Authorization": []string{"Bearer token"},
-		"X-Custom":      []string{"value1", "value2"}, // Multiple values
-		"Empty-Header":  []string{},                   // Empty values
-	}
-
-	result := client.extractHeaders(headers)
-
-	expected := map[string]string{
-		"Content-Type":  "application/json",
-		"Authorization": "Bearer token",
-		"X-Custom":      "value1", // Should take first value
-	}
-
-	for key, expectedValue := range expected {
-		if result[key] != expectedValue {
-			t.Errorf("extractHeaders() key %s = %v, want %v", key, result[key], expectedValue)
-		}
-	}
-
-	// Empty-Header should not be in result
-	if _, exists := result["Empty-Header"]; exists {
-		t.Errorf("extractHeaders() should not include headers with empty values")
-	}
-}
-
-// Test SSE Stream implementation.
 func TestSSEStream(t *testing.T) {
 	// Create a mock response body with SSE data
 	sseData := `data: {"id": "1", "content": "Hello"}

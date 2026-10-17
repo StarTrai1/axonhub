@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
@@ -25,7 +26,11 @@ func TestRawStreamQueueReleasesConsumedHeldEvents(t *testing.T) {
 			for i, want := range expected {
 				var got *httpclient.StreamEvent
 				var ok bool
-				if buffered { got, ok = queue.nextBuffered() } else { got, ok = queue.next(context.Background()) }
+				if buffered {
+					got, ok = queue.nextBuffered()
+				} else {
+					got, ok = queue.next(context.Background())
+				}
 				require.True(t, ok)
 				require.Same(t, want, got)
 				// A consumed slot must not pin its large data through the backing

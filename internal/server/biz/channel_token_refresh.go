@@ -1,9 +1,7 @@
 package biz
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"slices"
 
@@ -120,23 +118,4 @@ func gcpCredentialsEqual(a, b *objects.GCPCredential) bool {
 	}
 
 	return a.Region == b.Region && a.ProjectID == b.ProjectID && a.JSONData == b.JSONData
-}
-
-// GetModelEntries returns all models this channel can handle, RequestModel -> Entry
-// This unifies:
-// - SupportedModels (direct models)
-// - ExtraModelPrefix (prefixed models)
-// - AutoTrimedModelPrefixes (auto-trimmed models)
-// - ModelMappings (mapped models)
-// The result is cached for performance.
-//
-// WARNING: The returned map is internal cached state.
-// DO NOT modify the returned map or its ChannelModelEntry values.
-// Modifications will not persist and may cause data inconsistency.
-//
-//nolint:gosec // G117: serialized credentials are compared only in memory; never logged, persisted or returned.
-func sameOAuthRefreshCredentials(current, snapshot *ent.Channel) bool {
-	currentJSON, currentErr := json.Marshal(current.Credentials)
-	snapshotJSON, snapshotErr := json.Marshal(snapshot.Credentials)
-	return currentErr == nil && snapshotErr == nil && bytes.Equal(currentJSON, snapshotJSON)
 }

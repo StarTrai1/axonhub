@@ -71,7 +71,7 @@ func (a *remoteCompactionAdapter) retainNativeCompactionSource(ctx context.Conte
 	if err != nil {
 		return err
 	}
-	sealed, err := sealCompactionText(aead, associatedData, base64.RawStdEncoding.EncodeToString(compressed), nativeCompactionMaxSealedTextBytes())
+	sealed, err := sealNativeCompactionSource(aead, associatedData, compressed)
 	if err != nil {
 		return fmt.Errorf("seal native compaction source: %w", err)
 	}
@@ -94,11 +94,7 @@ func (a *remoteCompactionAdapter) loadNativeCompactionSource(ctx context.Context
 	if err != nil {
 		return nil, err
 	}
-	packed, err := openCompactionText(aead, associatedData, sealed, nativeCompactionMaxSealedTextBytes())
-	if err != nil {
-		return nil, err
-	}
-	compressed, err := base64.RawStdEncoding.DecodeString(packed)
+	compressed, err := openNativeCompactionSource(aead, associatedData, sealed)
 	if err != nil {
 		return nil, err
 	}
