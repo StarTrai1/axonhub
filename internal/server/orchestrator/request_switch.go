@@ -33,24 +33,37 @@ type requestSwitchLifecycleStream struct {
 	stream streams.Stream[*httpclient.StreamEvent]
 	state  *PersistenceState
 	once   sync.Once
+	memoryTerminal *StreamTerminalTracker
 }
 
 func withRequestSwitchLifecycle(
 	stream streams.Stream[*httpclient.StreamEvent],
 	state *PersistenceState,
 ) streams.Stream[*httpclient.StreamEvent] {
-	return &requestSwitchLifecycleStream{
+	wrapped := &requestSwitchLifecycleStream{
 		stream: stream,
 		state:  state,
 	}
+	if state.codexMemory != nil {
+		wrapped.memoryTerminal = NewStreamTerminalTracker(1)
+	}
+	return wrapped
 }
 
 func (s *requestSwitchLifecycleStream) Next() bool {
-	return s.stream.Next()
+	next := s.stream.Next()
+	if !next && s.stream.Err() != nil && !s.DeliveryAcknowledged() {
+		s.state.codexMemory.finish(false)
+	}
+	return next
 }
 
 func (s *requestSwitchLifecycleStream) Current() *httpclient.StreamEvent {
-	return s.stream.Current()
+	event := s.stream.Current()
+	if s.memoryTerminal != nil && event != nil && s.memoryTerminal.Observe(event) && classifyAcceptedTerminalEvent(event) != streamTerminalCompleted {
+		s.state.codexMemory.finish(false)
+	}
+	return event
 }
 
 func (s *requestSwitchLifecycleStream) Err() error {
@@ -59,7 +72,10 @@ func (s *requestSwitchLifecycleStream) Err() error {
 
 func (s *requestSwitchLifecycleStream) Close() error {
 	err := s.stream.Close()
-	s.once.Do(func() { unregisterRequestSwitch(s.state) })
+	s.once.Do(func() {
+		s.state.codexMemory.finish(s.DeliveryAcknowledged() || s.state.StreamCompleted)
+		unregisterRequestSwitch(s.state)
+	})
 
 	return err
 }

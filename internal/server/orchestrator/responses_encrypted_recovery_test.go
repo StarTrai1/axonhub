@@ -58,14 +58,14 @@ func TestResponsesRedactedEncryptionRecoveryGuards(t *testing.T) {
 }
 
 func TestResponsesRedactedEncryptionStagedPipeline(t *testing.T) {
-	testResponsesStagedEncryptionPipeline(t, rejectedRedactedCiphertextMessage)
+	testResponsesStagedEncryptionPipeline(t, rejectedRedactedCiphertextMessage, "")
 }
 
 func TestResponsesInvalidEncryptedSummaryStagedPipeline(t *testing.T) {
-	testResponsesStagedEncryptionPipeline(t, "invalid encrypted summary (request id: synthetic_59693)")
+	testResponsesStagedEncryptionPipeline(t, "invalid encrypted summary (request id: synthetic_59958)", "validation_error")
 }
 
-func testResponsesStagedEncryptionPipeline(t *testing.T, rejectionMessage string) {
+func testResponsesStagedEncryptionPipeline(t *testing.T, rejectionMessage, rejectionCode string) {
 	for _, format := range []llm.APIFormat{llm.APIFormatOpenAIResponse, llm.APIFormatOpenAIResponseCompact} {
 		for _, raw := range []bool{true, false} {
 			for _, stage := range []string{"reasoning only", "both", "missing source", "budget", "repeated rejection"} {
@@ -85,7 +85,7 @@ func testResponsesStagedEncryptionPipeline(t *testing.T, rejectionMessage string
 					if stage != "missing source" {
 						adapter.summaries.SetDefault(remoteCompactionOwnerCacheKey(&PersistenceState{APIKey: apiKey}, remoteCompactionCacheKey(ref)), "verified retained source summary")
 					}
-					rejection := &httpclient.Error{StatusCode: 400, Body: []byte(`{"error":{"type":"invalid_request_error","message":"` + rejectionMessage + `"}}`)}
+					rejection := &httpclient.Error{StatusCode: 400, Body: []byte(`{"error":{"type":"invalid_request_error","code":"` + rejectionCode + `","message":"` + rejectionMessage + `"}}`)}
 					executor := &responsesReasoningPipelineExecutor{
 						failures: []error{rejection}, events: rejectedReasoningCompactionEvents(),
 						response: &httpclient.Response{StatusCode: http.StatusOK, Body: []byte(`{"id":"cmp_next","object":"response.compaction","output":[{"type":"compaction","id":"cmp_new","encrypted_content":"new-checkpoint"}]}`)},
@@ -161,6 +161,9 @@ func TestResponsesInvalidEncryptedSummaryRecoveryGuards(t *testing.T) {
 		{name: "exact relay message", message: message, want: true},
 		{name: "bare message", message: "invalid encrypted summary", want: true},
 		{name: "explicit code", message: message, code: "invalid_encrypted_summary", want: true},
+		{name: "relay validation code", message: message, code: "validation_error", want: true},
+		{name: "validation code alone", message: "invalid input", code: "validation_error"},
+		{name: "validation quoted summary", message: "Example: " + message, code: "validation_error"},
 		{name: "whole input", message: message, param: "input", want: true},
 		{name: "indexed reasoning", message: message, param: "input[1].encrypted_content", want: true},
 		{name: "indexed checkpoint is not reasoning", message: message, param: "input[9].encrypted_content"},

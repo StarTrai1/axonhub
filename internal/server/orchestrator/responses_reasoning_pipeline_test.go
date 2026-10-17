@@ -38,6 +38,8 @@ func TestResponsesRejectedReasoningPipelineCompactionRecovery(t *testing.T) {
 		{"native error with pass-through", `{"error":{"code":"invalid_encrypted_content","param":"input[2].encrypted_content"}}`, true},
 		{"agent relay with pass-through", `{"error":{"type":"invalid_request_error","message":"OpenAI Responses bad request: ` + rejectedReasoningMessage + ` [trace_id=synthetic-trace]"}}`, true},
 		{"native error with transformed stream", `{"error":{"code":"invalid_encrypted_content","param":"input[2].encrypted_content"}}`, false},
+		{"hydration error with pass-through", `{"error":{"code":"invalid_encrypted_content","param":"input","message":"` + rejectedReasoningHydrationMessage + `"}}`, true},
+		{"hydration error with transformed stream", `{"error":{"code":"invalid_encrypted_content","param":"input","message":"` + rejectedReasoningHydrationMessage + `"}}`, false},
 	} {
 		t.Run(scenario.name, func(t *testing.T) {
 			ctx := shared.WithSessionScope(t.Context(), "api_key:1:project:1")

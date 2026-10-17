@@ -15,6 +15,8 @@ import (
 
 const rejectedReasoningMessage = "The encrypted content for item rs_visible could not be verified. Reason: Encrypted content could not be decrypted or parsed."
 
+const rejectedReasoningHydrationMessage = "The encrypted content for item rs_visible could not be verified. Reason: reasoning hydration failed: Encrypted content could not be decrypted or parsed."
+
 func TestResponsesRejectedReasoningRecognizesExactRelayMessage(t *testing.T) {
 	for _, tt := range []struct {
 		name    string
@@ -25,6 +27,16 @@ func TestResponsesRejectedReasoningRecognizesExactRelayMessage(t *testing.T) {
 		want    bool
 	}{
 		{name: "unwrapped", message: rejectedReasoningMessage, status: 400, want: true},
+		{name: "hydration rejection whole input", message: rejectedReasoningHydrationMessage, code: "invalid_encrypted_content", param: "input", status: 400, want: true},
+		{name: "hydration rejection indexed", message: rejectedReasoningHydrationMessage, param: "input[1].encrypted_content", status: 400, want: true},
+		{name: "hydration relay wrapper", message: "OpenAI Responses bad request: " + rejectedReasoningHydrationMessage + " [trace_id=abc123]", code: "validation_error", status: 400, want: true},
+		{name: "hydration unknown item", message: strings.ReplaceAll(rejectedReasoningHydrationMessage, "rs_visible", "rs_unknown"), code: "invalid_encrypted_content", param: "input", status: 400},
+		{name: "hydration conflicting index", message: rejectedReasoningHydrationMessage, code: "invalid_encrypted_content", param: "input[6].encrypted_content", status: 400},
+		{name: "hydration unrelated code", message: rejectedReasoningHydrationMessage, code: "permission_denied", status: 400},
+		{name: "hydration server error", message: rejectedReasoningHydrationMessage, code: "invalid_encrypted_content", status: 500},
+		{name: "hydration quoted example", message: "Example: " + rejectedReasoningHydrationMessage, code: "validation_error", status: 400},
+		{name: "hydration extra text", message: rejectedReasoningHydrationMessage + " unrelated error", code: "validation_error", status: 400},
+		{name: "generic validation error", message: "invalid input", code: "validation_error", status: 400},
 		{name: "agent relay wrapper", message: "OpenAI Responses bad request: " + rejectedReasoningMessage + " [trace_id=abc123]", status: 400, want: true},
 		{name: "generic bad request code", message: rejectedReasoningMessage, code: "bad_request", status: 400, want: true},
 		{name: "relay signature code", message: rejectedReasoningMessage, code: "thinking_signature_invalid", status: 400, want: true},

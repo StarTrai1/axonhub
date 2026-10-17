@@ -123,9 +123,17 @@ Each window retains its reported usage percentage. Account-wide exhaustion does 
 
 ### Local compaction checkpoints
 
+An upstream `validation_error` / `invalid encrypted summary`, or an exact reasoning-item rejection containing `reasoning hydration failed: Encrypted content could not be decrypted or parsed.`, enters the existing bounded recovery flow. Recovery requires a complete encryption-rejection match, complete visible history, and the matching project/API key. It first repairs rejected reasoning while retaining the native checkpoint. If that checkpoint is also rejected, it uses authenticated retained source history or a saved summary. Missing history or an exhausted retry budget stops recovery instead of inventing context.
+
 New local bridge results carry an authenticated, encrypted summary in their `axonhub-local-v2` reference. They can be restored after a restart or request-log cleanup without generating another summary. References are bound to their item ID, API key, project, and installation secret. Preserve the installation secret when restoring a database backup; replacing it invalidates previously sealed references.
 
 For older `axonhub-local-v1` references, AxonHub first uses an existing checkpoint or the original compaction record. If that record has expired, recovery can use a completed continuation only when its thread, compaction window, full retained input prefix, and tool identities match. Client-only execution metadata and absent/null reasoning content do not prevent this comparison. The exact recovered summary is encrypted and saved separately from request logs. Missing or divergent history returns an explicit error; it is not replaced with a guessed summary.
+
+### Background memory costs after a foreground failure
+
+When a foreground request marked `request_kind=turn` finally fails, the gateway cancels active `request_kind=memory` requests for the same project, API key, and thread, and pauses new memory requests for 5 minutes. New requests receive HTTP 400 with `codex_memory_paused` before reaching upstream. Foreground retries remain allowed; a newly started foreground request that succeeds clears the pause early. A recovered intermediate channel error does not trigger the pause, and memory failures do not extend it.
+
+Per-frame WebSocket task metadata takes precedence over handshake prewarm metadata. Other threads, API keys, subagents, search, and compaction requests are unaffected. This policy requires explicit client task and thread identity. It does not permanently disable memory or refund tokens already processed upstream. Pause state lives in a bounded cache in the current gateway process and clears on restart.
 
 ### Codex 0.154.0 compatibility
 

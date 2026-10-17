@@ -16,15 +16,17 @@ var responsesRejectedReasoningParamPattern = regexp.MustCompile(`^input\[(\d+)\]
 // Require the complete rejection and an exact item in this request, rather than
 // treating arbitrary mentions of encryption as permission to rebuild history.
 var responsesRejectedReasoningMessagePattern = regexp.MustCompile(
-	`^(?:OpenAI Responses bad request: )?The encrypted content for item (rs_[A-Za-z0-9_-]+) could not be verified\. Reason: Encrypted content could not be decrypted or parsed\.(?: \[trace_id=[A-Za-z0-9_-]+\])?$`,
+	`^(?:OpenAI Responses bad request: )?The encrypted content for item (rs_[A-Za-z0-9_-]+) could not be verified\. Reason: (?:reasoning hydration failed: )?Encrypted content could not be decrypted or parsed\.(?: \[trace_id=[A-Za-z0-9_-]+\])?$`,
 )
 
 // Relays may rename the code for both reasoning and compaction rejections.
 // Callers must still match the complete message and the exact encrypted item;
 // a generic thinking signature error alone does not authorize history changes.
+// Likewise, validation_error is eligible only with the explicit encrypted
+// rejection checked by the caller, never as a generic validation retry.
 func responsesEncryptedContentRejectionCode(code string) bool {
 	switch code {
-	case "", "bad_request", "invalid_request_error", "invalid_encrypted_content", "invalid_encrypted_summary", "thinking_signature_invalid":
+	case "", "bad_request", "validation_error", "invalid_request_error", "invalid_encrypted_content", "invalid_encrypted_summary", "thinking_signature_invalid":
 		return true
 	default:
 		return false

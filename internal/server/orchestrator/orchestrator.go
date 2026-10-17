@@ -189,6 +189,18 @@ type ChatCompletionResult struct {
 func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, request *httpclient.Request) (ChatCompletionResult, error) {
 	lifecycleOwner, executionCtx := newStreamLifecycle(ctx)
 	ctx = executionCtx
+	memoryLease, admissionErr := codexBackgroundMemory.begin(ctx, request, lifecycleOwner.cancel)
+	if admissionErr != nil {
+		lifecycleOwner.Close()
+		return ChatCompletionResult{}, admissionErr
+	}
+	streamOwnsLease := false
+	defer func() {
+		if !streamOwnsLease {
+			memoryLease.finish(false)
+			lifecycleOwner.Close()
+		}
+	}()
 
 	var preparedResponsesBody []byte
 	var continuation *responsesContinuation
@@ -227,6 +239,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 	}
 
 	state := &PersistenceState{
+		codexMemory:           memoryLease,
 		ResponsesContinuation: continuation,
 		APIKey:                apiKey,
 		RequestService:        processor.RequestService,
@@ -392,6 +405,10 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 
 	result, err := pipe.Process(ctx, request)
 	if err != nil {
+		if errors.Is(context.Cause(ctx), errCodexMemoryPaused) {
+			err = errCodexMemoryPaused
+		}
+		memoryLease.finish(false)
 		unregisterRequestSwitch(state)
 		lifecycleOwner.Close()
 		persistCtx, cancel := xcontext.DetachWithTimeout(ctx, time.Second*10)
@@ -442,6 +459,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 			result.EventStream = &responsesAcceptedStream{Stream: result.EventStream, ctx: ctx, continuation: continuation}
 			continuation = nil
 		}
+		streamOwnsLease = true
 		return ChatCompletionResult{
 			ChatCompletion:                nil,
 			ChatCompletionStream:          withRequestSwitchLifecycle(result.EventStream, state),
@@ -452,6 +470,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 	if continuation != nil && result.Response != nil {
 		continuation.accept(ctx)
 	}
+	memoryLease.finish(true)
 	lifecycleOwner.Close()
 	if continuation == nil || result.Response == nil {
 		if preparedResponsesBody != nil && result.Response != nil {

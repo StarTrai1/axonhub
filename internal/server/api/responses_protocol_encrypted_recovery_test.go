@@ -3,7 +3,6 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"sync"
 	"testing"
@@ -21,14 +20,18 @@ import (
 // Model the iceberg failure through real client handlers, source retention,
 // retries, persistence and subsequent previous_response_id materialization.
 func TestResponsesProtocolRedactedEncryptionContinuation(t *testing.T) {
-	testResponsesProtocolEncryptionContinuation(t, "The encrypted content gAAA...AA== could not be verified. Reason: Encrypted content could not be decrypted or parsed.")
+	testResponsesProtocolEncryptionContinuation(t, "The encrypted content gAAA...AA== could not be verified. Reason: Encrypted content could not be decrypted or parsed.", "", "")
 }
 
 func TestResponsesProtocolInvalidEncryptedSummaryContinuation(t *testing.T) {
-	testResponsesProtocolEncryptionContinuation(t, "invalid encrypted summary (request id: synthetic_59694)")
+	testResponsesProtocolEncryptionContinuation(t, "invalid encrypted summary (request id: synthetic_59958)", "validation_error", "")
 }
 
-func testResponsesProtocolEncryptionContinuation(t *testing.T, rejectionMessage string) {
+func TestResponsesProtocolReasoningHydrationContinuation(t *testing.T) {
+	testResponsesProtocolEncryptionContinuation(t, "invalid encrypted summary", "validation_error", "The encrypted content for item rs_old could not be verified. Reason: reasoning hydration failed: Encrypted content could not be decrypted or parsed.")
+}
+
+func testResponsesProtocolEncryptionContinuation(t *testing.T, rejectionMessage, rejectionCode, reasoningMessage string) {
 	for _, model := range []string{"gpt-6-astra", "gpt-6.1-sol"} {
 		for _, downstream := range []string{"http", "ws"} {
 			for _, passThrough := range []bool{true, false} {
@@ -47,8 +50,12 @@ func testResponsesProtocolEncryptionContinuation(t *testing.T, rejectionMessage 
 						attempts = append(attempts, body)
 						if gjson.GetBytes(body, `input.#(type=="compaction")`).Exists() || gjson.GetBytes(body, `input.#(type=="reasoning").encrypted_content`).String() != "" {
 							rejections++
+							message, code, param := rejectionMessage, rejectionCode, ""
+							if reasoningMessage != "" && gjson.GetBytes(body, `input.#(type=="reasoning").encrypted_content`).String() != "" {
+								message, code, param = reasoningMessage, "invalid_encrypted_content", "input"
+							}
 							w.WriteHeader(http.StatusBadRequest)
-							_, _ = io.WriteString(w, `{"error":{"type":"invalid_request_error","message":"`+rejectionMessage+`"}}`)
+							_, _ = fmt.Fprintf(w, `{"error":{"type":"invalid_request_error","code":%q,"param":%q,"message":%q}}`, code, param, message)
 							return
 						}
 						output := `[{"type":"message","id":"msg_iceberg","role":"assistant","content":[{"type":"output_text","text":"recovered"}]}]`
