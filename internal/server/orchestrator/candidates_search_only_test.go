@@ -19,7 +19,7 @@ func TestSearchOnlyCandidatesKeepProfileBoundary(t *testing.T) {
 	require.NoError(t, err)
 	_, err = client.Channel.Create().SetName("disabled-search-only").SetType(channel.TypeCodex).
 		SetBaseURL("https://disabled.example.test/v1").SetCredentials(objects.ChannelCredentials{APIKey: "synthetic"}).
-		SetSupportedModels([]string{"gpt-6-sol"}).SetStatus(channel.StatusDisabled).
+		SetSupportedModels([]string{"gpt-6-sol"}).SetDefaultTestModel("gpt-6-sol").SetStatus(channel.StatusDisabled).
 		SetSettings(&objects.ChannelSettings{CodexSearchOnly: true}).Save(ctx)
 	require.NoError(t, err)
 	selector := NewDefaultSelector(newTestChannelServiceForChannels(client), newTestModelService(client), newTestSystemService(client))

@@ -112,7 +112,7 @@ func newResponsesIntegrationFixture(t *testing.T, upstreamURL string, configure 
 	for _, apply := range configure {
 		apply(create)
 	}
-	_, err = create.Save(ctx)
+	created, err := create.Save(ctx)
 	require.NoError(t, err)
 
 	cacheConfig := xcache.Config{Mode: xcache.ModeMemory}
@@ -124,7 +124,12 @@ func newResponsesIntegrationFixture(t *testing.T, upstreamURL string, configure 
 	requestService := biz.NewRequestService(client, cacheConfig, systemService, usageLogService, storage, biz.NewLiveStreamRegistry())
 	modelService := biz.NewModelService(biz.ModelServiceParams{ChannelService: channelService, SystemService: systemService, Ent: client})
 	selector := orchestrator.NewDefaultSelector(channelService, modelService, systemService)
-	candidates, err := selector.Select(ctx, &llm.Request{Model: "synthetic-model", RequestType: llm.RequestTypeChat})
+	selectionRequest := &llm.Request{Model: "synthetic-model", RequestType: llm.RequestTypeChat}
+	if created.Type == channel.TypeCodex && created.Settings != nil && created.Settings.CodexSearchOnly {
+		selectionRequest.RequestType = llm.RequestTypeSearch
+		selectionRequest.APIFormat = llm.APIFormatOpenAISearch
+	}
+	candidates, err := selector.Select(ctx, selectionRequest)
 	require.NoError(t, err)
 	require.NotEmpty(t, candidates)
 	protection := biz.NewPromptProtectionRuleService(biz.PromptProtectionRuleServiceParams{CacheConfig: cacheConfig, Ent: client})

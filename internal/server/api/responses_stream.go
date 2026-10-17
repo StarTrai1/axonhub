@@ -32,7 +32,7 @@ func newResponsesStreamAdapter(ctx context.Context, stream streams.Stream[*httpc
 			nextSequence.Store(seq.Int() + 1)
 		}
 		if id := gjson.GetBytes(event.Data, "response.id"); id.Type == gjson.String && id.String() != "" {
-			if previous := responseID.Load(); previous == nil || previous.(string) != id.String() {
+			if previous, ok := responseID.Load().(string); !ok || previous != id.String() {
 				createdAt.Store(time.Now().Unix())
 			}
 			responseID.Store(id.String())
