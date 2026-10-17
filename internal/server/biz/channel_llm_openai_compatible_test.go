@@ -149,7 +149,7 @@ func TestOpenAIResponsesEndpoint_InheritsWebSocketTransportFromBaseURL(t *testin
 	_, ok = searchOutbound.(*responses.SearchOutboundTransformer)
 	require.True(t, ok)
 	_, customized := searchOutbound.(pipeline.ChannelCustomizedExecutor)
-	require.True(t, customized)
+	require.False(t, customized)
 
 	searchReq, err := searchOutbound.TransformRequest(t.Context(), &llm.Request{
 		Model:       "gpt-5.6-sol",
@@ -162,15 +162,7 @@ func TestOpenAIResponsesEndpoint_InheritsWebSocketTransportFromBaseURL(t *testin
 	require.NoError(t, err)
 	require.Equal(t, "https://api.openai.com/v1/alpha/search", searchReq.URL)
 
-	probe := &searchFallbackProbeExecutor{}
-	fallbackResponse, err := searchOutbound.(pipeline.ChannelCustomizedExecutor).CustomizeExecutor(probe).Do(t.Context(), searchReq)
-	require.NoError(t, err)
-	require.Equal(t, "search fallback", gjson.GetBytes(fallbackResponse.Body, "output").String())
-	require.Len(t, probe.requests, 2)
-	require.Equal(t, "https://api.openai.com/v1/alpha/search", probe.requests[0].URL)
-	require.Equal(t, "https://api.openai.com/v1/custom/responses", probe.requests[1].URL)
-	require.Equal(t, "gpt-5.6-sol", gjson.GetBytes(probe.requests[1].Body, "model").String())
-	require.True(t, gjson.GetBytes(probe.requests[1].Body, "stream").Bool())
+
 }
 
 func TestOpenAIResponsesCompactEndpoint_RejectsInheritedWebSocketTransport(t *testing.T) {
@@ -243,7 +235,7 @@ func TestCodexDualEndpointSharesCredentials(t *testing.T) {
 	_, ok = searchOutbound.(*codex.SearchOutboundTransformer)
 	require.True(t, ok)
 	_, customized := searchOutbound.(pipeline.ChannelCustomizedExecutor)
-	require.True(t, customized)
+	require.False(t, customized)
 
 	searchReq, err := searchOutbound.TransformRequest(t.Context(), &llm.Request{
 		Model:       "gpt-5.6-sol",
@@ -280,7 +272,7 @@ func TestCodexAPIKeyChannelBuildsStandaloneSearchOutbound(t *testing.T) {
 	_, ok := searchOutbound.(*codex.SearchOutboundTransformer)
 	require.True(t, ok)
 	_, customized := searchOutbound.(pipeline.ChannelCustomizedExecutor)
-	require.True(t, customized)
+	require.False(t, customized)
 
 	searchReq, err := searchOutbound.TransformRequest(t.Context(), &llm.Request{
 		Model:       "gpt-5.6-sol",
@@ -293,52 +285,6 @@ func TestCodexAPIKeyChannelBuildsStandaloneSearchOutbound(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "https://sub.example.test/v1/alpha/search", searchReq.URL)
 	require.Equal(t, "third-party-key", searchReq.Auth.APIKey)
-}
-
-type searchFallbackProbeExecutor struct {
-	requests []*httpclient.Request
-}
-
-func (e *searchFallbackProbeExecutor) Do(
-	_ context.Context,
-	request *httpclient.Request,
-) (*httpclient.Response, error) {
-	e.requests = append(e.requests, request)
-	if len(e.requests) == 1 {
-		return nil, &httpclient.Error{
-			Method:     http.MethodPost,
-			URL:        request.URL,
-			StatusCode: http.StatusNotFound,
-			Body:       []byte(`{"error":{"message":"Invalid URL (POST /v1/alpha/search)"}}`),
-		}
-	}
-
-	return &httpclient.Response{
-		StatusCode: http.StatusOK,
-		Body: []byte(`{
-			"id":"resp-1",
-			"model":"gpt-5.5",
-			"status":"completed",
-			"output":[{"type":"message","content":[{"type":"output_text","text":"search fallback"}]}]
-		}`),
-		Request: request,
-	}, nil
-}
-
-func (e *searchFallbackProbeExecutor) DoStream(
-	_ context.Context,
-	request *httpclient.Request,
-) (streams.Stream[*httpclient.StreamEvent], error) {
-	e.requests = append(e.requests, request)
-
-	return streams.SliceStream([]*httpclient.StreamEvent{
-		{Data: []byte(`{"type":"response.created","response":{"id":"resp-1","object":"response","created_at":1700000000,"model":"gpt-5.6-sol","status":"in_progress","output":[]}}`)},
-		{Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"msg-1","type":"message","status":"in_progress","role":"assistant","content":[]}}`)},
-		{Data: []byte(`{"type":"response.content_part.added","item_id":"msg-1","output_index":0,"content_index":0,"part":{"type":"output_text","text":"","annotations":[]}}`)},
-		{Data: []byte(`{"type":"response.output_text.done","item_id":"msg-1","output_index":0,"content_index":0,"text":"search fallback"}`)},
-		{Data: []byte(`{"type":"response.output_item.done","output_index":0,"item":{"id":"msg-1","type":"message","status":"completed","role":"assistant","content":[{"type":"output_text","text":"search fallback","annotations":[]}]}}`)},
-		{Data: []byte(`{"type":"response.completed","response":{"id":"resp-1","object":"response","created_at":1700000001,"model":"gpt-5.6-sol","status":"completed","output":[]}}`)},
-	}), nil
 }
 
 func TestCodexDualEndpointBuildsActualProtocols(t *testing.T) {

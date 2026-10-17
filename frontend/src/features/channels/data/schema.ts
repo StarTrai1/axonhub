@@ -202,7 +202,7 @@ export const apiKeyAutoDisableRuleFormSchema = apiKeyAutoDisableRuleSchema
 export const routingTierSchema = z.enum(['preferred', 'standard', 'fallback']);
 export type RoutingTier = z.infer<typeof routingTierSchema>;
 
-export const webSearchPolicySchema = z.enum(['auto', 'native', 'mcp_only']);
+export const webSearchPolicySchema = z.preprocess((value) => value === 'auto' ? 'native' : value, z.enum(['native', 'mcp_only']));
 export type WebSearchPolicy = z.infer<typeof webSearchPolicySchema>;
 
 export const remoteCompactionPolicySchema = z.enum(['auto', 'native', 'local_bridge']);
@@ -230,7 +230,7 @@ export const channelPoliciesSchema = z
     ...value,
     routingTier: value.routingTier ?? 'standard',
     remoteCompaction: value.remoteCompaction ?? (value.supportsRemoteCompaction ? 'native' : 'auto'),
-    webSearch: value.webSearch ?? (value.supportsWebSearch ? 'native' : 'auto'),
+    webSearch: value.webSearch ?? 'native',
     codexIdentity: value.codexIdentity ?? 'off',
   }));
 export type ChannelPolicies = z.infer<typeof channelPoliciesSchema>;
@@ -395,6 +395,7 @@ export const channelSettingsSchema = z.object({
   modelProtocols: z.array(modelProtocolSchema).optional().nullable(),
   providerQuota: channelProviderQuotaSettingsSchema.optional().nullable(),
   codexSearchOnly: z.boolean().optional(),
+  codexSearchModel: z.string().optional(),
   quotaRoutingMode: z.enum(['INHERIT', 'IGNORE_QUOTA', 'REMOVE_ON_EXHAUSTED', 'BACKPRESSURE']).optional(),
 });
 

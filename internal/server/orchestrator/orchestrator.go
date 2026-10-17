@@ -317,7 +317,6 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		// upstreams preserve the client's protocol behavior.
 		applyPassThroughRequestHeaders(outbound),
 		applyResponsesContinuationBody(outbound),
-		applyResponsesLiteWebSearchFallback(outbound),
 		applyOverrideRequestBody(outbound),
 		applyStrictChatRoles(outbound),
 		applyXAIHostedToolChoice(outbound),

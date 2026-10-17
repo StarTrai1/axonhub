@@ -126,6 +126,7 @@ func newResponsesIntegrationFixture(t *testing.T, upstreamURL string, configure 
 	selector := orchestrator.NewDefaultSelector(channelService, modelService, systemService)
 	selectionRequest := &llm.Request{Model: "synthetic-model", RequestType: llm.RequestTypeChat}
 	if created.Type == channel.TypeCodex && created.Settings != nil && created.Settings.CodexSearchOnly {
+		selectionRequest.Model = "gpt-6.1-sol"
 		selectionRequest.RequestType = llm.RequestTypeSearch
 		selectionRequest.APIFormat = llm.APIFormatOpenAISearch
 	}

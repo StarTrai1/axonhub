@@ -124,6 +124,7 @@ const CREATE_CHANNEL_MUTATION = `
         httpProtocol
         http2ConnectionShards
         codexSearchOnly
+        codexSearchModel
         quotaRoutingMode
         proxy {
           type
@@ -225,6 +226,7 @@ const DUPLICATE_CHANNEL_MUTATION = `
         httpProtocol
         http2ConnectionShards
         codexSearchOnly
+        codexSearchModel
         quotaRoutingMode
         proxy {
           type
@@ -326,6 +328,7 @@ const BULK_CREATE_CHANNELS_MUTATION = `
         httpProtocol
         http2ConnectionShards
         codexSearchOnly
+        codexSearchModel
         quotaRoutingMode
         proxy {
           type
@@ -427,6 +430,7 @@ const UPDATE_CHANNEL_MUTATION = `
         httpProtocol
         http2ConnectionShards
         codexSearchOnly
+        codexSearchModel
         quotaRoutingMode
         proxy {
           type
@@ -673,6 +677,7 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
           httpProtocol
           http2ConnectionShards
           codexSearchOnly
+        codexSearchModel
           quotaRoutingMode
           transformOptions {
             forceArrayInstructions
@@ -915,6 +920,7 @@ const BULK_UPDATE_CHANNEL_ORDERING_MUTATION = `
           httpProtocol
           http2ConnectionShards
           codexSearchOnly
+        codexSearchModel
           quotaRoutingMode
           transformOptions {
             forceArrayInstructions
@@ -1159,6 +1165,7 @@ const CHANNEL_QUERY_FULL_NODE_SELECTION = `
             httpProtocol
             http2ConnectionShards
             codexSearchOnly
+        codexSearchModel
             quotaRoutingMode
             bodyOverrideOperations {
               op
@@ -1284,6 +1291,7 @@ const CHANNEL_QUERY_LIST_NODE_BASE_SELECTION = `
 const CHANNEL_QUERY_ROUTING_STATUS_SELECTION = `
            settings {
              codexSearchOnly
+        codexSearchModel
              quotaRoutingMode
            }
            providerQuotaStatus {
@@ -1305,6 +1313,7 @@ const CHANNEL_QUERY_TAGS_SELECTION = `
 const CHANNEL_QUERY_PROXY_SELECTION = `
           settings {
             codexSearchOnly
+        codexSearchModel
             quotaRoutingMode
             proxy {
               type
@@ -1323,6 +1332,7 @@ const CHANNEL_QUERY_ORDERING_WEIGHT_SELECTION = `
 const CHANNEL_QUERY_HEALTH_SELECTION = `
           settings {
             codexSearchOnly
+        codexSearchModel
             quotaRoutingMode
           }
           credentials {

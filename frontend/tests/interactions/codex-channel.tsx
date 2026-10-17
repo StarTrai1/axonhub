@@ -16,7 +16,8 @@ const row = channelSchema.parse({
   id: 'channel-preview', createdAt: '2026-10-17T00:00:00Z', updatedAt: '2026-10-17T00:00:00Z',
   name: 'Codex fixture', type: 'codex', status: 'enabled', baseURL: 'https://chatgpt.com/backend-api/codex#',
   credentials: { apiKey: JSON.stringify({ access_token: 'synthetic', refresh_token: 'synthetic' }) },
-  supportedModels: ['gpt-6-sol'], defaultTestModel: 'gpt-6-sol', settings: { codexSearchOnly: false },
+  policies: { webSearch: 'auto' },
+  supportedModels: ['gpt-6-sol', 'gpt-5.5'], defaultTestModel: 'gpt-6-sol', settings: { codexSearchOnly: false },
 });
 function Fixture() {
   const [open, setOpen] = useState(true);

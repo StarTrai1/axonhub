@@ -16,7 +16,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { IconBan, IconCheck, IconX, IconTrash, IconChevronDown, IconChevronRight, IconChevronsDown, IconChevronsUp, IconLink } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui/badge';

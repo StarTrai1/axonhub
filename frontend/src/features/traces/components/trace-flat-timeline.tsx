@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, ChevronRight, Workflow, ChevronsDownUp, ExternalLink, Filter } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'motion/react';
 import { buildGUID, cn } from '@/lib/utils';
 import { formatNumber } from '@/utils/format-number';
 import { Badge } from '@/components/ui/badge';

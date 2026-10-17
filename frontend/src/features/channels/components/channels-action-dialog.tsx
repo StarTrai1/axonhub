@@ -66,6 +66,7 @@ import {
   useEnableChannelAPIKey,
   useSyncChannelModels,
 } from '../data/channels';
+import { codexSearchModelOptions } from '../utils/codex-search';
 import { claudecodeOAuthExchange, claudecodeOAuthStart } from '../data/claudecode';
 import { codexDecodeAuthJSON, codexOAuthExchange, codexOAuthStart } from '../data/codex';
 import {
@@ -144,7 +145,7 @@ const ROUTING_TIER_OPTIONS: ReadonlyArray<{
 
 const WEB_SEARCH_POLICY_OPTIONS: ReadonlyArray<{
   value: WebSearchPolicy;
-}> = [{ value: 'native' }, { value: 'auto' }, { value: 'mcp_only' }];
+}> = [{ value: 'native' }, { value: 'mcp_only' }];
 
 const REMOTE_COMPACTION_POLICY_OPTIONS: ReadonlyArray<{
   value: RemoteCompactionPolicy;
@@ -173,7 +174,7 @@ function CompactPolicyRadioGroup<T extends string>({
     <RadioGroup
       value={value}
       onValueChange={(nextValue) => onValueChange(nextValue as T)}
-      className={`bg-muted/40 grid gap-1.5 rounded-md border p-1.5 ${options.length === 4 ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-1 sm:grid-cols-3'}`}
+      className={`bg-muted/40 grid flex-1 gap-1.5 rounded-md border p-1.5 ${options.length === 4 ? 'grid-cols-2 sm:grid-cols-4' : options.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}
       data-testid={testId}
     >
       {options.map((option) => {
@@ -661,6 +662,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     const shards = initialRow?.settings?.http2ConnectionShards ?? 0;
     return shards >= 1 && shards <= 8 ? shards : 1;
   });
+  const [codexSearchModel, setCodexSearchModel] = useState(() => initialRow?.settings?.codexSearchModel ?? '');
   const [codexSearchOnly, setCodexSearchOnly] = useState(() => initialRow?.settings?.codexSearchOnly ?? false);
   const [quotaRoutingMode, setQuotaRoutingMode] = useState<ChannelQuotaRoutingMode>(() => recallQuotaRoutingMode(initialRow?.settings));
   const [retryableStatusCodesText, setRetryableStatusCodesText] = useState(() =>
@@ -983,7 +985,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               remoteCompaction:
                 currentRow.policies?.remoteCompaction ?? (currentRow.policies?.supportsRemoteCompaction ? 'native' : 'auto'),
               supportsRemoteCompaction: currentRow.policies?.supportsRemoteCompaction ?? false,
-              webSearch: currentRow.policies?.webSearch ?? (currentRow.policies?.supportsWebSearch === false ? 'auto' : 'native'),
+              webSearch: currentRow.policies?.webSearch ?? 'native',
               supportsWebSearch: currentRow.policies?.supportsWebSearch ?? true,
               codexIdentity: currentRow.policies?.codexIdentity ?? 'off',
             },
@@ -1020,7 +1022,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                   duplicateFromRow.policies?.remoteCompaction ?? (duplicateFromRow.policies?.supportsRemoteCompaction ? 'native' : 'auto'),
                 supportsRemoteCompaction: duplicateFromRow.policies?.supportsRemoteCompaction ?? false,
                 webSearch:
-                  duplicateFromRow.policies?.webSearch ?? (duplicateFromRow.policies?.supportsWebSearch === false ? 'auto' : 'native'),
+                  duplicateFromRow.policies?.webSearch ?? 'native',
                 supportsWebSearch: duplicateFromRow.policies?.supportsWebSearch ?? true,
                 codexIdentity: duplicateFromRow.policies?.codexIdentity ?? 'off',
               },
@@ -1718,6 +1720,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           providerQuota: settingsForSubmit?.providerQuota,
           ...quotaRoutingModeSettingsPatch(quotaRoutingMode),
           codexSearchOnly: isCodexType ? codexSearchOnly : false,
+          codexSearchModel: isCodexType ? codexSearchModel : '',
           ...(shouldUpdateModelProtocols
             ? { modelProtocols: getModelProtocolsForApiFormat(selectedApiFormat, supportedModels, existingModelProtocols) }
             : {}),
@@ -1783,6 +1786,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           retryableErrorPatterns,
           ...quotaRoutingModeSettingsPatch(quotaRoutingMode),
           codexSearchOnly: isCodexType ? codexSearchOnly : false,
+          codexSearchModel: isCodexType ? codexSearchModel : '',
           ...(selectedApiFormat === 'zenmux/video' ||
           settingsForSubmit?.modelProtocols?.some((protocol) => protocol.apiFormats.includes('zenmux/video'))
             ? {
@@ -2213,6 +2217,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             setHTTP2ConnectionShards(initialShards >= 1 && initialShards <= 8 ? initialShards : 1);
             setQuotaRoutingMode(recallQuotaRoutingMode(initialRow?.settings));
             setCodexSearchOnly(initialRow?.settings?.codexSearchOnly ?? false);
+            setCodexSearchModel(initialRow?.settings?.codexSearchModel ?? '');
             setRetryableStatusCodesText(formatRetryableStatusCodes(initialRow?.settings?.retryableStatusCodes));
             setRetryableErrorPatternsText(formatRetryableErrorPatterns(initialRow?.settings?.retryableErrorPatterns));
             // Reset provider and API format state
@@ -2430,24 +2435,35 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                       )}
 
                       {isCodexType && (
-                        <div
-                          className='flex min-w-0 flex-col items-start gap-2 @sm/channel-fields:flex-row @sm/channel-fields:items-center @sm/channel-fields:gap-3'
-                          data-testid='codex-search-only-setting'
-                        >
-                          <Button
-                            type='button'
-                            size='sm'
-                            variant={codexSearchOnly ? 'default' : 'outline'}
-                            aria-pressed={codexSearchOnly}
-                            onClick={() => setCodexSearchOnly((enabled) => !enabled)}
-                            data-testid='codex-search-only-toggle'
-                          >
-                            <Search className='mr-2 h-4 w-4' />
-                            {t('channels.dialogs.fields.codexSearchOnly.label')}
-                          </Button>
-                          <p className='text-muted-foreground min-w-0 flex-1 text-xs'>
-                            {t('channels.dialogs.fields.codexSearchOnly.description')}
-                          </p>
+                        <div className='min-w-0 space-y-3' data-testid='codex-search-only-setting'>
+                          <div className='flex min-w-0 flex-col items-start gap-2 @sm/channel-fields:flex-row @sm/channel-fields:items-center @sm/channel-fields:gap-3'>
+                            <Button type='button' size='sm' variant={codexSearchOnly ? 'default' : 'outline'}
+                              aria-pressed={codexSearchOnly} onClick={() => setCodexSearchOnly((enabled) => !enabled)}
+                              data-testid='codex-search-only-toggle'>
+                              <Search className='mr-2 h-4 w-4' />
+                              {t('channels.dialogs.fields.codexSearchOnly.label')}
+                            </Button>
+                            <p className='text-muted-foreground min-w-0 flex-1 text-xs'>
+                              {t('channels.dialogs.fields.codexSearchOnly.description')}
+                            </p>
+                          </div>
+                          {codexSearchOnly && (
+                            <div className='min-w-0 space-y-2'>
+                              <label htmlFor='codex-search-model' className='text-sm font-medium'>
+                                {t('channels.dialogs.fields.codexSearchModel.label')}
+                              </label>
+                              <Select value={codexSearchModel || 'request'} onValueChange={(value) => setCodexSearchModel(value === 'request' ? '' : value)}>
+                                <SelectTrigger id='codex-search-model' data-testid='codex-search-model-select'><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value='request'>{t('channels.dialogs.fields.codexSearchModel.followRequest')}</SelectItem>
+                                  {codexSearchModelOptions(supportedModels, codexSearchModel).map((model) => (
+                                    <SelectItem key={model} value={model}>{model}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <p className='text-muted-foreground text-xs'>{t('channels.dialogs.fields.codexSearchModel.description')}</p>
+                            </div>
+                          )}
                         </div>
                       )}
                       {selectedProvider === 'claudecode' && (
@@ -3350,11 +3366,12 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                             />
 
                             {isCodexType && (
+                              <div className='grid min-w-0 grid-cols-1 gap-4 @lg/channel-fields:grid-cols-2' data-testid='codex-policy-cards'>
                               <FormField
                                 control={form.control}
                                 name='policies.remoteCompaction'
                                 render={({ field }) => (
-                                  <FormItem className='min-w-0 space-y-2'>
+                                  <FormItem className='bg-muted/20 flex h-full min-w-0 flex-col gap-3 space-y-0 rounded-lg border p-3'>
                                     <PolicyFieldHeader
                                       label={t('channels.dialogs.fields.remoteCompactionPolicy.label')}
                                       description={t('channels.dialogs.fields.remoteCompactionPolicy.description')}
@@ -3373,14 +3390,11 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                   </FormItem>
                                 )}
                               />
-                            )}
-
-                            {isCodexType && (
                               <FormField
                                 control={form.control}
                                 name='policies.webSearch'
                                 render={({ field }) => (
-                                  <FormItem className='min-w-0 space-y-2'>
+                                  <FormItem className='bg-muted/20 flex h-full min-w-0 flex-col gap-3 space-y-0 rounded-lg border p-3'>
                                     <PolicyFieldHeader
                                       label={t('channels.dialogs.fields.webSearchPolicy.label')}
                                       description={t('channels.dialogs.fields.webSearchPolicy.description')}
@@ -3399,6 +3413,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                   </FormItem>
                                 )}
                               />
+                              </div>
                             )}
 
                             {isCodexType && authMode !== 'third-party' && (
@@ -3521,7 +3536,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                           </div>
                         </div>
 
-                        <div className='grid grid-cols-1 items-start gap-x-4 gap-y-4 @xl/channel-fields:grid-cols-2'>
+                        <div className='grid grid-cols-1 items-start gap-x-4 gap-y-4 @lg/channel-fields:grid-cols-2'>
                           <FormField
                             control={form.control}
                             name='defaultTestModel'
@@ -3656,7 +3671,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                           </div>
                         </div>
 
-                        <div className='grid grid-cols-1 items-start gap-x-4 gap-y-4 @xl/channel-fields:grid-cols-2'>
+                        <div className='grid grid-cols-1 items-start gap-x-4 gap-y-4 @lg/channel-fields:grid-cols-2'>
                           <FormItem className='min-w-0 space-y-1.5'>
                             <div className='flex min-h-5 items-center gap-1.5'>
                               <FormLabel className='text-sm font-medium'>{t('channels.dialogs.retryableStatusCodes.label')}</FormLabel>

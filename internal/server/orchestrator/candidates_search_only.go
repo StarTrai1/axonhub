@@ -2,9 +2,9 @@ package orchestrator
 
 import (
 	"context"
-	"slices"
 
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm"
 )
 
@@ -16,13 +16,19 @@ func filterSearchOnlyCandidates(candidates []*ChannelModelsCandidate, req *llm.R
 	if isStandaloneSearch(req) {
 		return candidates
 	}
-	filtered := make([]*ChannelModelsCandidate, 0, len(candidates))
-	for _, candidate := range candidates {
-		if candidate == nil || !candidate.Channel.IsCodexSearchOnly() {
-			filtered = append(filtered, candidate)
+	for i, candidate := range candidates {
+		if candidate != nil && candidate.Channel.IsCodexSearchOnly() {
+			filtered := make([]*ChannelModelsCandidate, 0, len(candidates)-1)
+			filtered = append(filtered, candidates[:i]...)
+			for _, remaining := range candidates[i+1:] {
+				if remaining == nil || !remaining.Channel.IsCodexSearchOnly() {
+					filtered = append(filtered, remaining)
+				}
+			}
+			return filtered
 		}
 	}
-	return filtered
+	return candidates
 }
 
 func (s *DefaultSelector) selectSearchOnlyCandidates(ctx context.Context, req *llm.Request) []*ChannelModelsCandidate {
@@ -34,24 +40,14 @@ func (s *DefaultSelector) selectSearchOnlyCandidates(ctx context.Context, req *l
 		if !ch.IsCodexSearchOnly() {
 			continue
 		}
-		entries := ch.GetModelEntries()
-		entry, found := entries[req.Model]
-		if !found {
-			entry, found = entries[ch.DefaultTestModel]
+		model := ch.Settings.CodexSearchModel
+		if model == "" {
+			model = req.Model
 		}
-		if !found && len(entries) > 0 {
-			keys := make([]string, 0, len(entries))
-			for key := range entries {
-				keys = append(keys, key)
-			}
-			slices.Sort(keys)
-			entry = entries[keys[0]]
-			found = true
+		if !objects.IsCodexSearchModel(model) {
+			continue
 		}
-		if !found {
-			entry = biz.ChannelModelEntry{ActualModel: req.Model, Source: "search_only"}
-		}
-		entry.RequestModel = req.Model
+		entry := biz.ChannelModelEntry{RequestModel: req.Model, ActualModel: model, Source: "search_only"}
 		endpoints := applyForcedAPIFormatsForRequest(ctx, ch, []biz.ChannelModelEntry{entry}, req.Model, req.RequestType, ch.ResolveEndpoints())
 		format := SelectAPIFormat(endpoints, req)
 		if format != llm.APIFormatOpenAISearch.String() {

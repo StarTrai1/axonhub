@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { FileIcon, X } from 'lucide-react';
 
 interface FilePreviewProps {

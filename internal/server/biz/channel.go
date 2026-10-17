@@ -637,6 +637,10 @@ func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateCh
 			}
 		}
 
+		if err := objects.ValidateCodexSearchModel(input.Settings); err != nil {
+			return nil, err
+		}
+
 		if err := ValidateRateLimit(input.Settings.RateLimit); err != nil {
 			return nil, fmt.Errorf("invalid rate limit: %w", err)
 		}
@@ -1038,6 +1042,10 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 			if err := ValidateOverrideHeaders(input.Settings.HeaderOverrideOperations); err != nil {
 				return nil, fmt.Errorf("invalid header override operations: %w", err)
 			}
+		}
+
+		if err := objects.ValidateCodexSearchModel(input.Settings); err != nil {
+			return nil, err
 		}
 
 		if err := ValidateRateLimit(input.Settings.RateLimit); err != nil {

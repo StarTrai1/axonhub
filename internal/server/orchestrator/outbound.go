@@ -1002,8 +1002,6 @@ func (p *PersistentOutboundTransformer) NextChannel(ctx context.Context) error {
 	// Reset request execution for the new candidate
 	p.state.RequestExec = nil
 	p.state.PassThroughApplied = false
-	p.state.responsesLiteWebSearchInjectedChannel = 0
-	p.state.responsesLiteWebSearchRetryChannel = 0
 	p.state.responsesRejectedStatusRetryChannel = 0
 	p.state.responsesRelayAffinityRetryChannel = 0
 	p.state.responsesRelayAffinityExhaustedChannel = 0
@@ -1096,8 +1094,7 @@ func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
 		}
 	}
 	if p.state.CurrentCandidate.Channel != nil &&
-		(hasResponsesLiteWebSearchCompatibilityRetry(p.state, p.state.CurrentCandidate.Channel.ID) ||
-			hasResponsesRejectedStatusCompatibilityRetry(p.state, p.state.CurrentCandidate.Channel.ID)) {
+		hasResponsesRejectedStatusCompatibilityRetry(p.state, p.state.CurrentCandidate.Channel.ID) {
 		return true
 	}
 
@@ -1180,17 +1177,6 @@ func (p *PersistentOutboundTransformer) PrepareForRetry(ctx context.Context) err
 		hasResponsesRejectedStatusCompatibilityRetry(p.state, candidate.Channel.ID) {
 		p.state.responsesRejectedStatusRetryChannel = 0
 		log.Info(ctx, "prepared same-channel retry with compatible Responses input state",
-			log.Int("channel_id", candidate.Channel.ID),
-			log.String("channel", candidate.Channel.Name))
-
-		return nil
-	}
-
-	if candidate != nil && candidate.Channel != nil &&
-		hasResponsesLiteWebSearchCompatibilityRetry(p.state, candidate.Channel.ID) {
-		p.state.responsesLiteWebSearchRetryChannel = 0
-		p.state.responsesLiteWebSearchInjectedChannel = 0
-		log.Info(ctx, "prepared same-channel retry without hosted web search injection",
 			log.Int("channel_id", candidate.Channel.ID),
 			log.String("channel", candidate.Channel.Name))
 

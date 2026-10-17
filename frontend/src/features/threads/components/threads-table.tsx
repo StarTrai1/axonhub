@@ -12,7 +12,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 import type { DateTimeRangeValue } from '@/utils/date-range';
 import type { AutoRefreshInterval } from '@/hooks/use-auto-refresh-interval';

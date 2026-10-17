@@ -28,7 +28,7 @@ func TestSearchOnlyCandidatesKeepProfileBoundary(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, candidates, 1)
 	require.Equal(t, ch.ID, candidates[0].Channel.ID)
-	require.Equal(t, "gpt-6-sol", candidates[0].Models[0].ActualModel)
+	require.Equal(t, "gpt-6-astra", candidates[0].Models[0].ActualModel)
 	allowed, err := WithSelectedChannelsSelector(selector, []int{ch.ID}).Select(ctx, req)
 	require.NoError(t, err)
 	require.Len(t, allowed, 1)

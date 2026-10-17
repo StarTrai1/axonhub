@@ -2168,14 +2168,11 @@ func TestPersistentOutboundTransformer_RetrySelectionCounts(t *testing.T) {
 	processor.state.responsesRejectedStatusRetryChannel = second.Channel.ID
 	require.NoError(t, processor.PrepareForRetry(ctx))
 	assertCounts(3, 3)
-	processor.state.responsesLiteWebSearchRetryChannel = second.Channel.ID
-	require.NoError(t, processor.PrepareForRetry(ctx))
-	assertCounts(3, 4)
 
 	processor.state.CurrentCandidateIndex = 0
 	processor.state.CurrentCandidate = first
 	require.NoError(t, processor.NextAlternativeChannel(ctx))
-	assertCounts(3, 5)
+	assertCounts(3, 4)
 	require.Error(t, processor.NextAlternativeChannel(ctx))
-	assertCounts(3, 5)
+	assertCounts(3, 4)
 }

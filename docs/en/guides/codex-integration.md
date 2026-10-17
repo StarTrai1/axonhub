@@ -226,7 +226,7 @@ You can manually trigger a quota refresh by clicking the refresh icon in the quo
 
 ## Codex 0.159.2 and GPT-6.1 Sol
 
-The gateway recognizes `gpt-6.1-sol` and the local `gpt-6.1-sol-fast` alias. The alias selects `service_tier: priority` only when the request has not supplied a tier. Explicit client versions remain authoritative; the fallback version is 0.159.2.
+The gateway recognizes `gpt-6.1-sol` and the local `gpt-6.1-sol-fast` alias. The alias selects `service_tier: priority` only when the request has not supplied a tier. Explicit client versions remain authoritative; the fallback version follows the current Codex baseline described above.
 
 The [public API model](https://developers.openai.com/api/docs/models/gpt-6.1-sol) supports `low`, `medium`, `high`, `xhigh`, and `max`, with `medium` as its API default. Codex 0.159.2 uses its own model preset (default `low`, plus a client `ultra` option); the gateway does not replace an explicit client effort with the API default. When migrating requests, unsupported `none`/`minimal` become `low`, including ordered `configuration_update` items. Sampling and logprob parameters are removed when reasoning is enabled. Use a Responses endpoint for tool calls; the model's Chat Completions endpoint supports requests without tools.
 
@@ -242,6 +242,8 @@ Mid-turn `response.steer` is accepted for the GPT-6 family, including Sol 6.1 an
 
 Enable **Search only** in a Codex channel's edit dialog to reserve it for `openai/search` (`/v1/alpha/search`). The channel is excluded from Responses HTTP, Responses WebSocket, Chat Completions, compaction, and other generation routes. Turning the setting off restores normal routing.
 
-Search-only channels do not require the requested model to match a supported model. For example, a search from `gpt-6-astra` can use a channel configured for `gpt-6-sol`. An exact model match takes precedence; otherwise routing uses the channel's default test model or an existing model in name order. Project and API key channel scopes, tags, and quota restrictions still apply.
+Choose a GPT-5.6 or newer model in **Search model** to explicitly pin standalone searches. For example, searches from `gpt-6-astra` can use `gpt-6.1-sol`. **Follow request model** (the default) keeps the model supplied by the current conversation in its search request. It never chooses a channel's default test model or an arbitrary advertised model. Project and API key channel scopes, tags, and quota restrictions still apply.
 
 This setting does not grant upstream search capability. When `/alpha/search` is unavailable, the request fails or follows the existing retry policy to another channel. The search-only channel cannot fall back to `/responses` to emulate search.
+
+Web search policy now offers only **Native search** and **MCP only**. Stored **Compatible** policies normalize to native search. GPT-5.5 Responses search emulation, its capability cache, and Responses Lite search-tool injection/retry have been removed. An unavailable native search endpoint follows the existing cross-channel retry policy without changing to a generation request.

@@ -35,7 +35,7 @@ func TestCodexSearchOnlyCrossModelRouting(t *testing.T) {
 			}))
 			client, handlers, project := newResponsesIntegrationFixture(t, upstream.URL, func(create *ent.ChannelCreate) {
 				create.SetType(channel.TypeCodex).SetSupportedModels([]string{"synthetic-model", actualModel}).SetDefaultTestModel(actualModel).
-					SetSettings(&objects.ChannelSettings{CodexSearchOnly: true}).
+					SetSettings(&objects.ChannelSettings{CodexSearchOnly: true, CodexSearchModel: actualModel}).
 					SetPolicies(objects.ChannelPolicies{WebSearch: objects.WebSearchPolicyMCPOnly})
 			})
 			gateway := responsesIntegrationGateway(t, client, handlers, project)
@@ -71,7 +71,51 @@ func TestCodexSearchOnlyDoesNotFallbackToResponses(t *testing.T) {
 		create.SetType(channel.TypeCodex).SetSettings(&objects.ChannelSettings{CodexSearchOnly: true})
 	})
 	gateway := responsesIntegrationGateway(t, client, handlers, project)
-	status, body := responsesIntegrationPost(t, gateway, "/v1/alpha/search", `{"id":"missing-search","model":"synthetic-model","query":"lookup-canary"}`)
+	status, body := responsesIntegrationPost(t, gateway, "/v1/alpha/search", `{"id":"missing-search","model":"gpt-6.1-sol","query":"lookup-canary"}`)
+	require.GreaterOrEqual(t, status, http.StatusBadRequest, string(body))
+	require.Positive(t, searches.Load())
+	require.Zero(t, generations.Load())
+}
+
+func TestCodexSearchOnlyFollowsRequestModel(t *testing.T) {
+	var calls atomic.Int32
+	upstream := responsesIntegrationServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "/v1/alpha/search", r.URL.Path)
+		body, err := readRequestBody(r)
+		require.NoError(t, err)
+		require.Equal(t, gjson.GetBytes(body, "expected_model").String(), gjson.GetBytes(body, "model").String())
+		calls.Add(1)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"results":[]}`))
+	}))
+	client, handlers, project := newResponsesIntegrationFixture(t, upstream.URL, func(create *ent.ChannelCreate) {
+		create.SetType(channel.TypeCodex).SetSupportedModels([]string{"gpt-5.5", "unrelated-model"}).SetDefaultTestModel("gpt-5.5").
+			SetSettings(&objects.ChannelSettings{CodexSearchOnly: true})
+	})
+	gateway := responsesIntegrationGateway(t, client, handlers, project)
+	for _, model := range []string{"gpt-5.6-sol", "gpt-6-astra", "gpt-6.1-sol", "gpt-6-luna"} {
+		status, body := responsesIntegrationPost(t, gateway, "/v1/alpha/search", fmt.Sprintf(`{"model":%q,"expected_model":%q}`, model, model))
+		require.Equal(t, http.StatusOK, status, string(body))
+	}
+	status, body := responsesIntegrationPost(t, gateway, "/v1/alpha/search", `{"model":"gpt-5.5"}`)
+	require.GreaterOrEqual(t, status, http.StatusBadRequest, string(body))
+	require.EqualValues(t, 4, calls.Load())
+}
+
+func TestCodexNativeSearchDoesNotFallbackToResponses(t *testing.T) {
+	var searches, generations atomic.Int32
+	upstream := responsesIntegrationServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v1/alpha/search" { searches.Add(1) } else { generations.Add(1) }
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"error":{"message":"Unknown endpoint /alpha/search","type":"invalid_request_error"}}`))
+	}))
+	client, handlers, project := newResponsesIntegrationFixture(t, upstream.URL, func(create *ent.ChannelCreate) {
+		create.SetType(channel.TypeCodex).SetSupportedModels([]string{"synthetic-model", "gpt-6.1-sol"}).
+			SetPolicies(objects.ChannelPolicies{WebSearch: objects.WebSearchPolicy("auto")})
+	})
+	gateway := responsesIntegrationGateway(t, client, handlers, project)
+	status, body := responsesIntegrationPost(t, gateway, "/v1/alpha/search", `{"model":"gpt-6.1-sol"}`)
 	require.GreaterOrEqual(t, status, http.StatusBadRequest, string(body))
 	require.Positive(t, searches.Load())
 	require.Zero(t, generations.Load())

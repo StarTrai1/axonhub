@@ -472,11 +472,9 @@
   "channels.dialogs.fields.supportsWebSearch.label": "Supports web search",
   "channels.dialogs.fields.supportsWebSearch.description": "Legacy compatibility flag: enabled maps to Standalone; disabled maps to Compatible.",
   "channels.dialogs.fields.webSearchPolicy.label": "Web search policy",
-  "channels.dialogs.fields.webSearchPolicy.description": "Choose standalone search, AxonHub-compatible search, or MCP-only search for this Codex channel.",
-  "channels.dialogs.fields.webSearchPolicy.options.native.label": "Standalone",
-  "channels.dialogs.fields.webSearchPolicy.options.native.description": "Supports openai/search (/v1/alpha/search), prioritizes standalone requests, and does not inject a compatibility tool.",
-  "channels.dialogs.fields.webSearchPolicy.options.auto.label": "Compatible",
-  "channels.dialogs.fields.webSearchPolicy.options.auto.description": "For channels without standalone search: try hosted web_search when Responses Lite omits top-level tools. On a 400/422 rejection, retry once without the gateway-injected tool.",
+  "channels.dialogs.fields.webSearchPolicy.description": "Use native web search or only the client’s MCP search tools.",
+  "channels.dialogs.fields.webSearchPolicy.options.native.label": "Native search",
+  "channels.dialogs.fields.webSearchPolicy.options.native.description": "Use native upstream search endpoints and tools without generation fallback.",
   "channels.dialogs.fields.webSearchPolicy.options.mcp_only.label": "MCP only",
   "channels.dialogs.fields.webSearchPolicy.options.mcp_only.description": "Block standalone and hosted web search while preserving client-configured MCP search tools.",
   "channels.dialogs.fields.codexIdentityPolicy.label": "Codex identity policy",
@@ -1066,5 +1064,8 @@
   "channels.templates.dialogs.edit.description": "Update the template configuration. Changes do not affect channels until you apply the template again.",
   "channels.templates.validation.duplicateName": "A template named \"{{name}}\" already exists. Choose a different name.",
   "channels.dialogs.fields.codexSearchOnly.label": "Search only",
-  "channels.dialogs.fields.codexSearchOnly.description": "Use this channel only for web searches, across model names. Conversation and generation requests are excluded."
+  "channels.dialogs.fields.codexSearchOnly.description": "Use this channel only for web searches, excluding conversation and generation requests.",
+  "channels.dialogs.fields.codexSearchModel.label": "Search model",
+  "channels.dialogs.fields.codexSearchModel.followRequest": "Follow request model",
+  "channels.dialogs.fields.codexSearchModel.description": "Choose a GPT-5.6 or newer model, or keep the model requested by the current conversation."
 }

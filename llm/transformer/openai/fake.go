@@ -16,7 +16,7 @@ import (
 	"github.com/looplj/axonhub/llm/transformer"
 )
 
-//go:embed testdata/*
+//go:embed testdata/openai-stop.response.json testdata/openai-stop.stream.jsonl
 var testdataFS embed.FS
 
 // FakeTransformer implements pipeline.ChannelCustomizedExecutor for testing purposes.

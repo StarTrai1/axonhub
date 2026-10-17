@@ -10,20 +10,15 @@ import (
 	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/oauth"
-	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
 
 // SearchParams configures a standalone Codex search endpoint.
 type SearchParams struct {
-	DisableResponsesFallback bool
 	TokenProvider            oauth.TokenGetter
 	BaseURL                  string
 	EndpointPath             string
-	ResponsesBaseURL         string
-	ResponsesEndpointPath    string
-	FallbackModel            string
 }
 
 // SearchOutboundTransformer applies Codex authentication to standalone search requests.
@@ -41,18 +36,11 @@ func NewSearchOutboundTransformer(params SearchParams) (*SearchOutboundTransform
 	if params.BaseURL == "" || params.BaseURL == "https://api.openai.com/v1" {
 		params.BaseURL = codexBaseURL
 	}
-	if params.ResponsesBaseURL == "https://api.openai.com/v1" {
-		params.ResponsesBaseURL = codexBaseURL
-	}
 
 	delegate, err := responses.NewSearchOutboundTransformerWithConfig(&responses.SearchConfig{
-		DisableResponsesFallback: params.DisableResponsesFallback,
 		BaseURL:                  params.BaseURL,
 		EndpointPath:             params.EndpointPath,
 		APIKeyProvider:           auth.NewStaticKeyProvider("dummy"),
-		ResponsesBaseURL:         params.ResponsesBaseURL,
-		ResponsesEndpointPath:    params.ResponsesEndpointPath,
-		FallbackModel:            params.FallbackModel,
 	})
 	if err != nil {
 		return nil, err
@@ -66,10 +54,6 @@ func NewSearchOutboundTransformer(params SearchParams) (*SearchOutboundTransform
 
 func (t *SearchOutboundTransformer) APIFormat() llm.APIFormat {
 	return llm.APIFormatOpenAISearch
-}
-
-func (t *SearchOutboundTransformer) CustomizeExecutor(executor pipeline.Executor) pipeline.Executor {
-	return t.delegate.CustomizeExecutor(executor)
 }
 
 func (t *SearchOutboundTransformer) TransformRequest(

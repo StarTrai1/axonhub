@@ -38,13 +38,6 @@ type PersistenceState struct {
 	// codexTurnStateSessionKey captures the downstream API key and original
 	// client session before an OAuth identity policy rewrites outbound headers.
 	codexTurnStateSessionKey string
-	// responsesLiteWebSearchBlockedChannels records channels that rejected the
-	// gateway-injected hosted web search tool during this request. A semantic
-	// compatibility retry skips injection for that channel without changing the
-	// configured policy or suppressing client-provided tools.
-	responsesLiteWebSearchBlockedChannels map[int]struct{}
-	responsesLiteWebSearchInjectedChannel int
-	responsesLiteWebSearchRetryChannel    int
 	// responsesRejectedStatusRules records per-channel Responses input item
 	// types whose status field was explicitly rejected by that upstream.
 	responsesRejectedStatusRules        map[int][]responsesRejectedStatusRule

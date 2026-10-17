@@ -51,22 +51,22 @@ func TestWebSearchSelector_Select(t *testing.T) {
 		wantErr    bool
 	}{
 		{
-			name:    "explicitly capable Codex channel is preferred",
+			name:    "legacy capability flags normalize to native",
 			request: searchRequest,
 			candidates: []*ChannelModelsCandidate{
 				newCandidate("disabled", channel.TypeCodex, lo.ToPtr(false)),
 				newCandidate("enabled", channel.TypeCodex, lo.ToPtr(true)),
 			},
-			want: []string{"enabled"},
+			want: []string{"disabled", "enabled"},
 		},
 		{
-			name:    "legacy Codex channel defaults to capable",
+			name:    "legacy and unspecified channels use native search",
 			request: searchRequest,
 			candidates: []*ChannelModelsCandidate{
 				newCandidate("disabled", channel.TypeCodex, lo.ToPtr(false)),
 				newCandidate("legacy", channel.TypeCodex, nil),
 			},
-			want: []string{"legacy"},
+			want: []string{"disabled", "legacy"},
 		},
 		{
 			name:    "multiple capable channels preserve candidate order",
@@ -76,10 +76,10 @@ func TestWebSearchSelector_Select(t *testing.T) {
 				newCandidate("disabled", channel.TypeCodex, lo.ToPtr(false)),
 				newCandidate("second", channel.TypeCodex, nil),
 			},
-			want: []string{"first", "second"},
+			want: []string{"first", "disabled", "second"},
 		},
 		{
-			name:    "all disabled falls back to all eligible candidates",
+			name:    "legacy false flags no longer create a fallback tier",
 			request: searchRequest,
 			candidates: []*ChannelModelsCandidate{
 				newCandidate("first", channel.TypeCodex, lo.ToPtr(false)),
@@ -88,20 +88,20 @@ func TestWebSearchSelector_Select(t *testing.T) {
 			want: []string{"first", "second"},
 		},
 		{
-			name:    "explicit native policy is preferred over auto",
+			name:    "stored auto policy now has native semantics",
 			request: searchRequest,
 			candidates: []*ChannelModelsCandidate{
-				withPolicy(newCandidate("auto", channel.TypeCodex, lo.ToPtr(true)), objects.WebSearchPolicyAuto),
+				withPolicy(newCandidate("auto", channel.TypeCodex, lo.ToPtr(true)), objects.WebSearchPolicy("auto")),
 				withPolicy(newCandidate("native", channel.TypeCodex, lo.ToPtr(false)), objects.WebSearchPolicyNative),
 			},
-			want: []string{"native"},
+			want: []string{"auto", "native"},
 		},
 		{
-			name:    "MCP-only channels are excluded from auto fallback",
+			name:    "MCP-only channels remain excluded after migration",
 			request: searchRequest,
 			candidates: []*ChannelModelsCandidate{
 				withPolicy(newCandidate("mcp-only", channel.TypeCodex, nil), objects.WebSearchPolicyMCPOnly),
-				withPolicy(newCandidate("auto", channel.TypeCodex, nil), objects.WebSearchPolicyAuto),
+				withPolicy(newCandidate("auto", channel.TypeCodex, nil), objects.WebSearchPolicy("auto")),
 			},
 			want: []string{"auto"},
 		},

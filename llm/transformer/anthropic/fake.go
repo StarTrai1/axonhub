@@ -14,7 +14,7 @@ import (
 	"github.com/looplj/axonhub/llm/transformer"
 )
 
-//go:embed testdata/*
+//go:embed testdata/anthropic-stop.response.json testdata/anthropic-stop.stream.jsonl
 var testdataFS embed.FS
 
 // FakeTransformer implements a fake transformer that returns fixed responses from testdata.

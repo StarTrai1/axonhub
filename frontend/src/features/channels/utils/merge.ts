@@ -131,6 +131,7 @@ export function mergeChannelSettingsForUpdate(
     modelProtocols: pick('modelProtocols', existing?.modelProtocols ?? []),
     providerQuota: pick('providerQuota', existing?.providerQuota ?? null),
     codexSearchOnly: pick('codexSearchOnly', existing?.codexSearchOnly ?? false),
+    codexSearchModel: pick('codexSearchModel', existing?.codexSearchModel ?? ''),
     quotaRoutingMode: pick('quotaRoutingMode', existing?.quotaRoutingMode ?? undefined),
   };
 }

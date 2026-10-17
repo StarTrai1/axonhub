@@ -7,14 +7,14 @@ for (const width of [1280, 768, 390]) {
       id: 'channel-preview', createdAt: '2026-10-17T00:00:00Z', updatedAt: '2026-10-17T00:00:00Z',
       name: 'Codex fixture', type: 'codex', status: 'enabled', baseURL: 'https://chatgpt.com/backend-api/codex#',
       credentials: { apiKey: JSON.stringify({ access_token: 'synthetic', refresh_token: 'synthetic' }) },
-      supportedModels: ['gpt-6-sol'], defaultTestModel: 'gpt-6-sol', settings: { codexSearchOnly: false },
+      policies: { webSearch: 'auto' }, supportedModels: ['gpt-6-sol', 'gpt-5.5'], defaultTestModel: 'gpt-6-sol', settings: { codexSearchOnly: false, codexSearchModel: '' },
     };
     const settings: unknown[] = [];
     await page.route('**/fixture/channel', (route) => route.fulfill({ json: saved }));
     await page.route('**/admin/graphql', async (route) => {
       const body = route.request().postDataJSON();
       if (body.operationName === 'UpdateChannel') {
-        settings.push(body.variables.input.settings.codexSearchOnly);
+        settings.push({ enabled: body.variables.input.settings.codexSearchOnly, model: body.variables.input.settings.codexSearchModel });
         saved = { ...saved, ...body.variables.input };
         await route.fulfill({ json: { data: { updateChannel: saved } } });
       } else {
@@ -43,14 +43,35 @@ for (const width of [1280, 768, 390]) {
     await expect(toggle).toHaveAttribute('aria-pressed', 'false');
     await toggle.click();
     await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    const modelSelect = page.getByTestId('codex-search-model-select');
+    await expect(modelSelect).toContainText('Follow request model');
+    await modelSelect.click();
+    await expect(page.getByRole('option', { name: 'gpt-5.5', exact: true })).toHaveCount(0);
+    await page.getByRole('option', { name: 'gpt-6.1-sol', exact: true }).click();
+    await expect(modelSelect).toContainText('gpt-6.1-sol');
+    await page.screenshot({ path: testInfo.outputPath('codex-search-model.png') });
+    const cards = page.getByTestId('codex-policy-cards');
+    await cards.scrollIntoViewIfNeeded();
+    await expect(page.getByTestId('web-search-policy').getByRole('radio')).toHaveCount(2);
+    await expect(page.getByTestId('remote-compaction-policy').getByRole('radio')).toHaveCount(3);
+    await expect(page.getByTestId('web-search-policy-native')).toBeChecked();
+    const panels = cards.locator(':scope > div');
+    const sizes = await panels.evaluateAll((elements) => elements.map((element) => ({ width: element.getBoundingClientRect().width, height: element.getBoundingClientRect().height, overflow: element.scrollWidth > element.clientWidth + 1 })));
+    expect(sizes).toHaveLength(2);
+    expect(Math.abs(sizes[0].width - sizes[1].width)).toBeLessThan(2);
+    expect(sizes.some((size) => size.overflow)).toBe(false);
+    if (width === 1280) expect(Math.abs(sizes[0].height - sizes[1].height)).toBeLessThan(2);
     await page.screenshot({ path: testInfo.outputPath('codex-channel.png') });
     await page.getByTestId('channel-submit-button').click();
-    await expect.poll(() => settings).toEqual([true]);
+    await expect.poll(() => settings).toEqual([{ enabled: true, model: 'gpt-6.1-sol' }]);
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await page.getByTestId('reopen-codex').click();
     await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    await expect(modelSelect).toContainText('gpt-6.1-sol');
+    await modelSelect.click();
+    await page.getByRole('option', { name: 'Follow request model', exact: true }).click();
     await toggle.click();
     await page.getByTestId('channel-submit-button').click();
-    await expect.poll(() => settings).toEqual([true, false]);
+    await expect.poll(() => settings).toEqual([{ enabled: true, model: 'gpt-6.1-sol' }, { enabled: false, model: '' }]);
   });
 }

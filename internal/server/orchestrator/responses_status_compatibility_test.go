@@ -103,27 +103,3 @@ func TestResponsesRejectedStatusCompatibilityIgnoresUnrelatedBadRequest(t *testi
 	require.Empty(t, state.responsesRejectedStatusRules)
 }
 
-//nolint:exhaustruct // Tests initialize only fields relevant to the compatibility path.
-func TestResponsesRejectedStatusCompatibilityDoesNotDisableInjectedWebSearch(t *testing.T) {
-	body := []byte(`{"input":[{"type":"tool_search_output","status":"completed"}]}`)
-	candidate := &ChannelModelsCandidate{Channel: &biz.Channel{Channel: &ent.Channel{ID: 10, Name: "lite-relay"}}}
-	state := &PersistenceState{
-		CurrentCandidate: candidate,
-		RawProviderRequest: &httpclient.Request{
-			APIFormat: string(llm.APIFormatOpenAIResponse),
-			Body:      body,
-		},
-		responsesLiteWebSearchInjectedChannel: 10,
-	}
-	outbound := &PersistentOutboundTransformer{state: state}
-	providerErr := &httpclient.Error{
-		StatusCode: http.StatusBadRequest,
-		Body:       []byte(`{"error":{"code":"unknown_parameter","param":"input[0].status"}}`),
-	}
-
-	applyResponsesRejectedStatusCompatibility(outbound).OnOutboundRawError(context.Background(), providerErr)
-	applyResponsesLiteWebSearchFallback(outbound).OnOutboundRawError(context.Background(), providerErr)
-
-	require.True(t, hasResponsesRejectedStatusCompatibilityRetry(state, 10))
-	require.False(t, responsesLiteWebSearchBlockedForChannel(state, 10))
-}

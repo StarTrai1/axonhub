@@ -11,8 +11,8 @@ import (
 )
 
 // WebSearchSelector prefers Codex channels that support the standalone
-// openai/search protocol. Compatible (auto) channels remain fallback candidates,
-// while MCP-only Codex channels are never sent a standalone search request.
+// openai/search protocol. MCP-only channels are excluded unless explicitly
+// reserved for standalone search.
 type WebSearchSelector struct {
 	wrapped CandidateSelector
 }
@@ -36,14 +36,14 @@ func (s *WebSearchSelector) Select(ctx context.Context, req *llm.Request) ([]*Ch
 		return candidate == nil ||
 			candidate.Channel == nil ||
 			candidate.Channel.Type != channel.TypeCodex ||
-			candidate.Channel.IsCodexSearchOnly() || candidate.Channel.Policies.AllowsNativeWebSearchFallback()
+			candidate.Channel.IsCodexSearchOnly() || !candidate.Channel.Policies.UsesMCPOnlyWebSearch()
 	})
 
 	capable := lo.Filter(eligible, func(candidate *ChannelModelsCandidate, _ int) bool {
 		return candidate != nil &&
 			candidate.Channel != nil &&
 			candidate.Channel.Type == channel.TypeCodex &&
-			(candidate.Channel.IsCodexSearchOnly() || candidate.Channel.Policies.PrefersNativeWebSearch())
+			(candidate.Channel.IsCodexSearchOnly() || !candidate.Channel.Policies.UsesMCPOnlyWebSearch())
 	})
 	if len(capable) == 0 {
 		if log.DebugEnabled(ctx) {

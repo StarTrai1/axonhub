@@ -43,9 +43,9 @@ func TestChannelPolicies_EffectiveWebSearchPolicy(t *testing.T) {
 			want:   WebSearchPolicyNative,
 		},
 		{
-			name:   "legacy false becomes automatic fallback",
+			name:   "legacy false becomes native search",
 			policy: ChannelPolicies{SupportsWebSearch: lo.ToPtr(false)},
-			want:   WebSearchPolicyAuto,
+			want:   WebSearchPolicyNative,
 		},
 		{
 			name: "explicit policy wins over legacy field",

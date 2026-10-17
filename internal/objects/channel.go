@@ -156,6 +156,8 @@ type ChannelSettings struct {
 	// CodexSearchOnly reserves a Codex channel for the standalone search API.
 	// The zero value preserves existing routing for stored channel settings.
 	CodexSearchOnly bool `json:"codexSearchOnly,omitempty"`
+	// CodexSearchModel pins search-only requests; empty preserves the request model.
+	CodexSearchModel string `json:"codexSearchModel,omitempty"`
 
 	// ExtraModelPrefix sets the channel accept the model with the extra prefix.
 	// e.g. a channel
@@ -569,9 +571,6 @@ const (
 type WebSearchPolicy string
 
 const (
-	// WebSearchPolicyAuto enables compatibility for channels without standalone
-	// search: they remain eligible as a fallback and can receive hosted-search injection.
-	WebSearchPolicyAuto WebSearchPolicy = "auto"
 	// WebSearchPolicyNative marks the channel as capable of standalone web search.
 	WebSearchPolicyNative WebSearchPolicy = "native"
 	// WebSearchPolicyMCPOnly prevents standalone and hosted web search from reaching the channel.
@@ -711,29 +710,6 @@ func (p ChannelPolicies) PrefersNativeRemoteCompaction() bool {
 
 func (p ChannelPolicies) UsesLocalRemoteCompactionBridge() bool {
 	return p.EffectiveRemoteCompactionPolicy() == RemoteCompactionPolicyLocalBridge
-}
-
-// EffectiveWebSearchPolicy translates legacy data without changing its routing:
-// nil/true were preferred, while false participated only as a fallback.
-func (p ChannelPolicies) EffectiveWebSearchPolicy() WebSearchPolicy {
-	switch p.WebSearch {
-	case WebSearchPolicyAuto, WebSearchPolicyNative, WebSearchPolicyMCPOnly:
-		return p.WebSearch
-	}
-
-	if p.SupportsWebSearch != nil && !*p.SupportsWebSearch {
-		return WebSearchPolicyAuto
-	}
-
-	return WebSearchPolicyNative
-}
-
-func (p ChannelPolicies) PrefersNativeWebSearch() bool {
-	return p.EffectiveWebSearchPolicy() == WebSearchPolicyNative
-}
-
-func (p ChannelPolicies) AllowsNativeWebSearchFallback() bool {
-	return p.EffectiveWebSearchPolicy() != WebSearchPolicyMCPOnly
 }
 
 func (p ChannelPolicies) UsesMCPOnlyWebSearch() bool {

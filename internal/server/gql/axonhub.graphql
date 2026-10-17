@@ -195,6 +195,7 @@ input ChannelProviderQuotaSettingsInput {
 
 type ChannelSettings {
   codexSearchOnly: Boolean
+  codexSearchModel: String
   extraModelPrefix: String
   modelMappings: [ModelMapping!]
   autoTrimedModelPrefixes: [String!]
@@ -237,7 +238,6 @@ enum RoutingTier {
 }
 
 enum WebSearchPolicy {
-  auto
   native
   mcp_only
 }
@@ -319,6 +319,7 @@ input ModelMappingInput {
 
 input ChannelSettingsInput {
   codexSearchOnly: Boolean
+  codexSearchModel: String
   extraModelPrefix: String
   modelMappings: [ModelMappingInput!]
   autoTrimedModelPrefixes: [String!]
