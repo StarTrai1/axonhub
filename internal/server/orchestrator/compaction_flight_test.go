@@ -13,21 +13,21 @@ func TestCompactionFlightCanceledWaiterReturnsWithoutDuplicateGeneration(t *test
 	var group singleflight.Group
 	started := make(chan struct{})
 	release := make(chan struct{})
-	first := group.DoChan("same-checkpoint", func() (any,error) {
+	first := group.DoChan("same-checkpoint", func() (any, error) {
 		close(started)
 		<-release
-		return "completed checkpoint",nil
+		return "completed checkpoint", nil
 	})
 	<-started
-	ctx,cancel := context.WithTimeout(t.Context(),50*time.Millisecond)
+	ctx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
 	defer cancel()
-	value,err := waitForCompactionFlight(ctx,&group,"same-checkpoint",func()(any,error) {
-		return "must not generate a duplicate",nil
+	value, err := waitForCompactionFlight(ctx, &group, "same-checkpoint", func() (any, error) {
+		return "must not generate a duplicate", nil
 	})
 	close(release)
-	require.ErrorIs(t,err,context.DeadlineExceeded)
-	require.Nil(t,value)
-	completed:=<-first
-	require.Equal(t,"completed checkpoint",completed.Val)
-	require.NoError(t,completed.Err)
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+	require.Nil(t, value)
+	completed := <-first
+	require.Equal(t, "completed checkpoint", completed.Val)
+	require.NoError(t, completed.Err)
 }

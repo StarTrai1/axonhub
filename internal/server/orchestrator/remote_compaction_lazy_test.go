@@ -67,6 +67,7 @@ func TestRemoteCompactionLazyAncestorRecovery(t *testing.T) {
 
 type lazyCompactionExecutor struct {
 	rejectedCompactionBridgeExecutor
+
 	reject bool
 	bodies [][]byte
 }

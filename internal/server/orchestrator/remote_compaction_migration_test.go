@@ -85,19 +85,19 @@ func TestNativeCompactionMigrationReplacesOnlyCheckpoint(t *testing.T) {
 }
 
 func TestNativeCompactionMigrationDestinationIdentity(t *testing.T) {
-	source:=&remoteCompactionSource{body:[]byte(`{"model":"gpt-6-astra","instructions":"original instructions","prompt_cache_key":"old-cache","client_metadata":{"thread_id":"old-thread","x-codex-window-id":"old-window","x-codex-turn-metadata":"{\"request_kind\":\"compaction\",\"thread_id\":\"old-thread\",\"window_id\":\"old-window\",\"compaction\":{\"implementation\":\"responses_compaction_v2\"}}"},"input":[{"role":"user","content":"complete source"},{"type":"compaction_trigger"}]}`)}
-	destination:=&httpclient.Request{Body:[]byte(`{"prompt_cache_key":"target-cache","client_metadata":{"thread_id":"target-thread","x-codex-window-id":"target-window","x-codex-turn-metadata":"{\"session_id\":\"target-session\",\"context_window_id\":\"target-context\",\"request_kind\":\"turn\"}"}}`)}
-	bound,err:=bindNativeMigrationDestination(source,destination)
-	require.NoError(t,err)
-	metadata:=shared.ReadCodexRequestMetadata(bound.headers,bound.body)
-	require.Equal(t,"target-thread",metadata.ThreadID)
-	require.Equal(t,"target-window",metadata.WindowID)
-	require.Equal(t,"target-session",metadata.SessionID)
-	require.Equal(t,"compaction",metadata.RequestKind)
-	require.Equal(t,"target-context",gjson.Get(metadata.RawTurnMetadata,"context_window_id").String())
-	require.Equal(t,"responses_compaction_v2",gjson.Get(metadata.RawTurnMetadata,"compaction.implementation").String())
-	require.Equal(t,"target-cache",gjson.GetBytes(bound.body,"prompt_cache_key").String())
-	require.JSONEq(t,gjson.GetBytes(source.body,"input").Raw,gjson.GetBytes(bound.body,"input").Raw)
-	require.Equal(t,"original instructions",gjson.GetBytes(bound.body,"instructions").String())
-	require.Equal(t,"old-cache",gjson.GetBytes(source.body,"prompt_cache_key").String())
+	source := &remoteCompactionSource{body: []byte(`{"model":"gpt-6-astra","instructions":"original instructions","prompt_cache_key":"old-cache","client_metadata":{"thread_id":"old-thread","x-codex-window-id":"old-window","x-codex-turn-metadata":"{\"request_kind\":\"compaction\",\"thread_id\":\"old-thread\",\"window_id\":\"old-window\",\"compaction\":{\"implementation\":\"responses_compaction_v2\"}}"},"input":[{"role":"user","content":"complete source"},{"type":"compaction_trigger"}]}`)}
+	destination := &httpclient.Request{Body: []byte(`{"prompt_cache_key":"target-cache","client_metadata":{"thread_id":"target-thread","x-codex-window-id":"target-window","x-codex-turn-metadata":"{\"session_id\":\"target-session\",\"context_window_id\":\"target-context\",\"request_kind\":\"turn\"}"}}`)}
+	bound, err := bindNativeMigrationDestination(source, destination)
+	require.NoError(t, err)
+	metadata := shared.ReadCodexRequestMetadata(bound.headers, bound.body)
+	require.Equal(t, "target-thread", metadata.ThreadID)
+	require.Equal(t, "target-window", metadata.WindowID)
+	require.Equal(t, "target-session", metadata.SessionID)
+	require.Equal(t, "compaction", metadata.RequestKind)
+	require.Equal(t, "target-context", gjson.Get(metadata.RawTurnMetadata, "context_window_id").String())
+	require.Equal(t, "responses_compaction_v2", gjson.Get(metadata.RawTurnMetadata, "compaction.implementation").String())
+	require.Equal(t, "target-cache", gjson.GetBytes(bound.body, "prompt_cache_key").String())
+	require.JSONEq(t, gjson.GetBytes(source.body, "input").Raw, gjson.GetBytes(bound.body, "input").Raw)
+	require.Equal(t, "original instructions", gjson.GetBytes(bound.body, "instructions").String())
+	require.Equal(t, "old-cache", gjson.GetBytes(source.body, "prompt_cache_key").String())
 }

@@ -56,14 +56,14 @@ Be concise, structured, and focused on helping the next LLM seamlessly continue 
 )
 
 type remoteCompactionAdapter struct {
-	requestService   *biz.RequestService
-	usageLogService  *biz.UsageLogService
-	systemService    *biz.SystemService
-	summaries        *gocache.Cache
-	summaryGenerator singleflight.Group
-	recoveries       *lru.Cache[responsesCompactionRecoveryKey, time.Time]
-	recoveryMisses   *lru.Cache[responsesCompactionRecoveryKey, time.Time]
-	nativeMigrations *lru.Cache[responsesCompactionRecoveryKey, nativeCompactionMigrationCacheEntry]
+	requestService           *biz.RequestService
+	usageLogService          *biz.UsageLogService
+	systemService            *biz.SystemService
+	summaries                *gocache.Cache
+	summaryGenerator         singleflight.Group
+	recoveries               *lru.Cache[responsesCompactionRecoveryKey, time.Time]
+	recoveryMisses           *lru.Cache[responsesCompactionRecoveryKey, time.Time]
+	nativeMigrations         *lru.Cache[responsesCompactionRecoveryKey, nativeCompactionMigrationCacheEntry]
 	nativeMigrationGenerator singleflight.Group
 }
 
@@ -105,12 +105,12 @@ func newRemoteCompactionAdapter(
 	systemService *biz.SystemService,
 ) *remoteCompactionAdapter {
 	return &remoteCompactionAdapter{
-		requestService:  requestService,
-		usageLogService: usageLogService,
-		systemService:   systemService,
-		summaries:       gocache.New(remoteCompactionCacheExpiration, remoteCompactionCacheCleanup),
-		recoveries:      lo.Must(lru.New[responsesCompactionRecoveryKey, time.Time](responsesReasoningRecoveryMaxScopes)),
-		recoveryMisses:  lo.Must(lru.New[responsesCompactionRecoveryKey, time.Time](responsesReasoningRecoveryMaxScopes)),
+		requestService:   requestService,
+		usageLogService:  usageLogService,
+		systemService:    systemService,
+		summaries:        gocache.New(remoteCompactionCacheExpiration, remoteCompactionCacheCleanup),
+		recoveries:       lo.Must(lru.New[responsesCompactionRecoveryKey, time.Time](responsesReasoningRecoveryMaxScopes)),
+		recoveryMisses:   lo.Must(lru.New[responsesCompactionRecoveryKey, time.Time](responsesReasoningRecoveryMaxScopes)),
 		nativeMigrations: lo.Must(lru.New[responsesCompactionRecoveryKey, nativeCompactionMigrationCacheEntry](64)),
 	}
 }
@@ -1148,15 +1148,15 @@ func (a *remoteCompactionAdapter) generateCompactionWithCandidate(
 	if native && parentState.RawProviderRequest != nil {
 		// Both the retained content and destination headers are already effective
 		// wire values. Reapplying overrides or identity hashing would change them.
-		providerRequest.Body = append([]byte(nil),body...)
+		providerRequest.Body = append([]byte(nil), body...)
 		providerRequest.JSONBody = nil
 		providerRequest.Headers = headers.Clone()
-		providerRequest.Headers.Set("Authorization",parentState.RawProviderRequest.Headers.Get("Authorization"))
+		providerRequest.Headers.Set("Authorization", parentState.RawProviderRequest.Headers.Get("Authorization"))
 		providerRequest.Auth = parentState.RawProviderRequest.Auth
 		providerRequest.Headers.Del(nativeCompactionMigrationHeader)
 		providerRequest.Headers.Del(codexTurnStateHeader)
 		requestMiddlewares = []pipeline.Middleware{
-			recoverResponsesAgentMessages(outbound,a.systemService),compatibility,finalizeTransportRequest(outbound),
+			recoverResponsesAgentMessages(outbound, a.systemService), compatibility, finalizeTransportRequest(outbound),
 		}
 	}
 	for _, middleware := range requestMiddlewares {
@@ -1174,8 +1174,10 @@ func (a *remoteCompactionAdapter) generateCompactionWithCandidate(
 		Stream:    true,
 	}
 	attemptState.Perf = perf
-	retryCompatibility := []pipeline.Middleware{affinity,compatibility}
-	if native {retryCompatibility=[]pipeline.Middleware{compatibility}}
+	retryCompatibility := []pipeline.Middleware{affinity, compatibility}
+	if native {
+		retryCompatibility = []pipeline.Middleware{compatibility}
+	}
 	stream, executionRecord, err := a.startLocalCompactionStream(ctx, outbound, providerRequest, customizedExecutor, retryCompatibility...)
 	if err != nil {
 		return "", rejectedCompactionSourceError(attemptState.RawProviderRequest, err)
@@ -1215,7 +1217,7 @@ func (a *remoteCompactionAdapter) generateCompactionWithCandidate(
 		if parseErr != nil {
 			return "", parseErr
 		}
-		persistCtx,cancel:=context.WithTimeout(context.WithoutCancel(ctx),5*time.Second)
+		persistCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 		defer cancel()
 		if err := a.retainNativeCompactionSource(persistCtx, ref, parentState, &remoteCompactionSource{body: providerRequest.Body}); err != nil {
 			return "", err
@@ -1233,6 +1235,20 @@ func (a *remoteCompactionAdapter) generateCompactionWithCandidate(
 		}
 		return "", err
 	}
+	a.finalizeCompactionGeneration(ctx, attemptState, executionRecord, providerRequest, responseBody, meta)
+	return summary, nil
+}
+
+func (a *remoteCompactionAdapter) finalizeCompactionGeneration(
+	ctx context.Context,
+	attemptState *PersistenceState,
+	executionRecord *ent.RequestExecution,
+	providerRequest *httpclient.Request,
+	responseBody []byte,
+	meta llm.ResponseMeta,
+) {
+	perf := attemptState.Perf
+	bridgeRecord := attemptState.Request
 	if meta.Usage != nil {
 		if tokenCount := meta.Usage.GetCompletionTokens(); tokenCount != nil {
 			perf.CompletionTokens = *tokenCount
@@ -1262,7 +1278,7 @@ func (a *remoteCompactionAdapter) generateCompactionWithCandidate(
 				}
 			}
 		}
-		if persistErr := a.requestService.UpdateRequestChannelID(persistCtx, bridgeRecord.ID, candidate.Channel.ID); persistErr != nil {
+		if persistErr := a.requestService.UpdateRequestChannelID(persistCtx, bridgeRecord.ID, perf.ChannelID); persistErr != nil {
 			log.Warn(persistCtx, "failed to persist local compaction bridge channel", log.Cause(persistErr))
 		}
 		if persistErr := a.requestService.UpdateRequestFinalized(persistCtx, bridgeRecord.ID, request.StatusCompleted, meta.ID, responseBody, metrics); persistErr != nil {
@@ -1270,7 +1286,6 @@ func (a *remoteCompactionAdapter) generateCompactionWithCandidate(
 		}
 	}
 
-	return summary, nil
 }
 
 func collectLocalCompactionBridgeStream(

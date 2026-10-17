@@ -12,7 +12,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/system"
 )
 
-// Destination-native checkpoint aliases are separate from portable summaries.
+// LoadNativeCompactionMigration reads destination-native checkpoint aliases separately from portable summaries.
 // The caller seals the value with the complete owner/source/destination scope.
 func (s *SystemService) LoadNativeCompactionMigration(ctx context.Context, scope [sha256.Size]byte) (string, error) {
 	ctx = authz.WithSystemBypass(ctx, "load-native-compaction-migration")
