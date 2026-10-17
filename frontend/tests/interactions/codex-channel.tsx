@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryHistory, createRootRoute, createRouter, RouterProvider } from '@tanstack/react-router';
 import '@/index.css';
-import '@/lib/i18n';
+import i18n from '@/lib/i18n';
 import { ThemeProvider, useTheme } from '@/context/theme-context';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { ChannelsActionDialog } from '@/features/channels/components/channels-action-dialog';
@@ -25,6 +25,7 @@ function Fixture() {
   const [open, setOpen] = useState(true);
   const [currentRow, setCurrentRow] = useState<Channel>(row);
   return <>
+    <button data-testid="zh-locale" onClick={() => i18n.changeLanguage("zh-CN")}>中文</button>
     <button data-testid="dark-theme" onClick={() => setTheme("dark")}>Dark theme</button>
     <button data-testid='reopen-codex' onClick={async () => {
       const response = await fetch('/fixture/channel');

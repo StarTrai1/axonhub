@@ -56,18 +56,20 @@ for (const width of [1280, 768, 390]) {
     const compactPolicy = page.getByTestId('remote-compaction-policy');
     await expect(searchPolicy).toContainText('Native search');
     await searchPolicy.click();
-    await expect(page.getByRole('option')).toHaveCount(3);
+    await expect(page.getByRole('menuitemradio')).toHaveCount(3);
     await page.keyboard.press('Escape');
     await expect(searchPolicy).toBeFocused();
     await compactPolicy.click();
-    await expect(page.getByRole('option')).toHaveCount(3);
+    await expect(page.getByRole('menuitemradio')).toHaveCount(3);
     await page.keyboard.press('Escape');
     const rows = policies.locator(':scope > div');
     const sizes = await rows.evaluateAll((elements) => elements.map((element) => ({ width: element.getBoundingClientRect().width, height: element.getBoundingClientRect().height, overflow: element.scrollWidth > element.clientWidth + 1 })));
-    expect(sizes).toHaveLength(2);
+    expect(sizes).toHaveLength(3);
     expect(sizes.some((size) => size.overflow)).toBe(false);
     expect(sizes.every((size) => size.height < 100)).toBe(true);
-    expect(await policies.evaluate((element) => element.getBoundingClientRect().height)).toBeLessThan(200);
+    expect(await policies.evaluate((element) => element.getBoundingClientRect().height)).toBeLessThan(250);
+    expect((await searchPolicy.boundingBox())!.width).toBeLessThan(200);
+    expect((await compactPolicy.boundingBox())!.width).toBeLessThan(200);
     await page.screenshot({ path: testInfo.outputPath('codex-channel.png') });
     await page.getByTestId('dark-theme').evaluate((element) => (element as HTMLButtonElement).click());
     await expect(page.locator('html')).toHaveClass(/dark/);
@@ -93,5 +95,8 @@ for (const width of [1280, 768, 390]) {
     await searchPolicy.scrollIntoViewIfNeeded();
     await expect(searchPolicy).toContainText('Other channels');
     await expect(toggle).toHaveAttribute('aria-checked', 'false');
+    await page.getByTestId('zh-locale').evaluate((element) => (element as HTMLButtonElement).click());
+    await expect(searchPolicy).toContainText('使用其他渠道');
+    await page.screenshot({ path: testInfo.outputPath('codex-channel-zh-dark.png') });
   });
 }

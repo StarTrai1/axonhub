@@ -11,6 +11,7 @@ import {
   Search,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   PanelLeft,
   Plus,
   Trash2,
@@ -34,6 +35,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -156,7 +158,7 @@ const CODEX_IDENTITY_POLICY_OPTIONS: ReadonlyArray<{
   value: CodexIdentityPolicy;
 }> = [{ value: 'off' }, { value: 'device' }, { value: 'session' }, { value: 'full' }];
 
-function CompactPolicySelect<T extends string>({
+function CompactPolicyMenu<T extends string>({
   value,
   onValueChange,
   options,
@@ -169,24 +171,38 @@ function CompactPolicySelect<T extends string>({
   options: ReadonlyArray<{ value: T }>;
   translationPrefix: string;
   testId: string;
-} & Pick<ComponentProps<typeof SelectTrigger>, 'id' | 'aria-describedby' | 'aria-invalid'>) {
+} & Pick<ComponentProps<typeof Button>, 'id' | 'aria-describedby' | 'aria-invalid'>) {
   const { t } = useTranslation();
   return (
-    <Select value={value} onValueChange={(nextValue) => onValueChange(nextValue as T)}>
-      <SelectTrigger {...triggerProps} className='h-9 w-full min-w-0' data-testid={testId}>
-        <SelectValue>{t(`${translationPrefix}.${value}.label`)}</SelectValue>
-      </SelectTrigger>
-      <SelectContent className='max-w-[min(24rem,calc(100vw-2rem))]'>
-        {options.map((option) => (
-          <SelectItem key={option.value} value={option.value} data-testid={`${testId}-${option.value}`}>
-            <span className='block'>{t(`${translationPrefix}.${option.value}.label`)}</span>
-            <span className='text-muted-foreground mt-0.5 block text-xs whitespace-normal'>
-              {t(`${translationPrefix}.${option.value}.description`)}
-            </span>
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          {...triggerProps}
+          type='button'
+          variant='outline'
+          size='sm'
+          className='h-8 max-w-full gap-1.5 px-2.5 font-normal shadow-none'
+          data-testid={testId}
+        >
+          <span className='truncate'>{t(`${translationPrefix}.${value}.label`)}</span>
+          <ChevronDown className='text-muted-foreground size-3 shrink-0' />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align='start' className='max-w-[min(20rem,calc(100vw-2rem))]'>
+        <DropdownMenuRadioGroup value={value} onValueChange={(nextValue) => onValueChange(nextValue as T)}>
+          {options.map((option) => (
+            <DropdownMenuRadioItem key={option.value} value={option.value} data-testid={`${testId}-${option.value}`}>
+              <span className='min-w-0'>
+                <span className='block'>{t(`${translationPrefix}.${option.value}.label`)}</span>
+                <span className='text-muted-foreground mt-0.5 block text-xs whitespace-normal'>
+                  {t(`${translationPrefix}.${option.value}.description`)}
+                </span>
+              </span>
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -2410,14 +2426,19 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                       )}
 
                       {isCodexType && (
-                        <div className='min-w-0 space-y-3' data-testid='codex-search-only-setting'>
-                          <div className='flex min-h-9 items-center justify-between gap-4'>
-                            <div className='min-w-0'>
-                              <label htmlFor='codex-search-only' className='text-sm font-medium'>
-                                {t('channels.dialogs.fields.codexSearchOnly.label')}
-                              </label>
-                              <p className='text-muted-foreground text-xs'>{t('channels.dialogs.fields.codexSearchOnly.description')}</p>
-                            </div>
+                        <div className='flex min-w-0 flex-wrap items-center gap-x-6 gap-y-2' data-testid='codex-search-only-setting'>
+                          <div className='flex min-h-8 items-center gap-2'>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <label htmlFor='codex-search-only' className='inline-flex cursor-pointer items-center gap-1.5 text-sm font-medium'>
+                                  {t('channels.dialogs.fields.codexSearchOnly.label')}
+                                  <Info className='text-muted-foreground size-3.5' />
+                                </label>
+                              </TooltipTrigger>
+                              <TooltipContent className='max-w-72 text-wrap'>
+                                {t('channels.dialogs.fields.codexSearchOnly.description')}
+                              </TooltipContent>
+                            </Tooltip>
                             <Switch
                               id='codex-search-only'
                               checked={codexSearchOnly}
@@ -2429,7 +2450,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                             />
                           </div>
                           {codexSearchOnly && (
-                            <div className='grid min-w-0 grid-cols-1 items-center space-y-0 gap-x-4 gap-y-2 @sm/channel-fields:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]'>
+                            <div className='flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5 space-y-0'>
                               <label htmlFor='codex-search-model' className='text-sm font-medium'>
                                 {t('channels.dialogs.fields.codexSearchModel.label')}
                               </label>
@@ -2437,7 +2458,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                 value={codexSearchModel || 'request'}
                                 onValueChange={(value) => setCodexSearchModel(value === 'request' ? '' : value)}
                               >
-                                <SelectTrigger id='codex-search-model' data-testid='codex-search-model-select'>
+                                <SelectTrigger id='codex-search-model' className='h-8 w-auto max-w-full gap-2' data-testid='codex-search-model-select'>
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -2449,9 +2470,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                   ))}
                                 </SelectContent>
                               </Select>
-                              <p className='text-muted-foreground text-xs @sm/channel-fields:col-span-2'>
-                                {t('channels.dialogs.fields.codexSearchModel.description')}
-                              </p>
+
                             </div>
                           )}
                         </div>
@@ -3051,7 +3070,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                         control={form.control}
                         name='policies.routingTier'
                         render={({ field }) => (
-                          <FormItem className='grid min-w-0 grid-cols-1 items-center space-y-0 gap-x-4 gap-y-2 @sm/channel-fields:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]'>
+                          <FormItem className='flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5 space-y-0'>
                             <PolicyFieldHeader
                               label={t('channels.dialogs.fields.routingTier.label')}
                               description={t('channels.dialogs.fields.routingTier.description')}
@@ -3059,7 +3078,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                             />
                             <div className='space-y-1'>
                               <FormControl>
-                                <CompactPolicySelect
+                                <CompactPolicyMenu
                                   value={field.value ?? 'standard'}
                                   onValueChange={field.onChange}
                                   options={ROUTING_TIER_OPTIONS}
@@ -3356,19 +3375,19 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                             />
 
                             {isCodexType && (
-                              <div className='min-w-0 space-y-3' data-testid='codex-policy-settings'>
+                              <div className='flex min-w-0 flex-wrap items-center gap-x-6 gap-y-3' data-testid='codex-policy-settings'>
                                 <FormField
                                   control={form.control}
                                   name='policies.remoteCompaction'
                                   render={({ field }) => (
-                                    <FormItem className='grid min-w-0 grid-cols-1 items-center space-y-0 gap-x-4 gap-y-2 @sm/channel-fields:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]'>
+                                    <FormItem className='flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5 space-y-0'>
                                       <PolicyFieldHeader
                                         label={t('channels.dialogs.fields.remoteCompactionPolicy.label')}
                                         description={t('channels.dialogs.fields.remoteCompactionPolicy.description')}
                                         testId='remote-compaction-policy-tip'
                                       />
                                       <FormControl>
-                                        <CompactPolicySelect
+                                        <CompactPolicyMenu
                                           value={field.value ?? 'auto'}
                                           onValueChange={field.onChange}
                                           options={REMOTE_COMPACTION_POLICY_OPTIONS}
@@ -3384,14 +3403,14 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                   control={form.control}
                                   name='policies.webSearch'
                                   render={({ field }) => (
-                                    <FormItem className='grid min-w-0 grid-cols-1 items-center space-y-0 gap-x-4 gap-y-2 @sm/channel-fields:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]'>
+                                    <FormItem className='flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5 space-y-0'>
                                       <PolicyFieldHeader
                                         label={t('channels.dialogs.fields.webSearchPolicy.label')}
                                         description={t('channels.dialogs.fields.webSearchPolicy.description')}
                                         testId='web-search-policy-tip'
                                       />
                                       <FormControl>
-                                        <CompactPolicySelect
+                                        <CompactPolicyMenu
                                           value={field.value ?? 'native'}
                                           onValueChange={(value) => {
                                             field.onChange(value);
@@ -3406,22 +3425,19 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                     </FormItem>
                                   )}
                                 />
-                              </div>
-                            )}
-
-                            {isCodexType && authMode !== 'third-party' && (
+                            {authMode !== 'third-party' && (
                               <FormField
                                 control={form.control}
                                 name='policies.codexIdentity'
                                 render={({ field }) => (
-                                  <FormItem className='grid min-w-0 grid-cols-1 items-center space-y-0 gap-x-4 gap-y-2 @sm/channel-fields:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]'>
+                                  <FormItem className='flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5 space-y-0'>
                                     <PolicyFieldHeader
                                       label={t('channels.dialogs.fields.codexIdentityPolicy.label')}
                                       description={t('channels.dialogs.fields.codexIdentityPolicy.description')}
                                       testId='codex-identity-policy-tip'
                                     />
                                     <FormControl>
-                                      <CompactPolicySelect
+                                      <CompactPolicyMenu
                                         value={field.value ?? 'off'}
                                         onValueChange={field.onChange}
                                         options={CODEX_IDENTITY_POLICY_OPTIONS}
@@ -3433,6 +3449,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                   </FormItem>
                                 )}
                               />
+                            )}
+
+                              </div>
                             )}
 
                             {/* Auto sync model pattern */}
