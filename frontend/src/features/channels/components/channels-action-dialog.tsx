@@ -661,6 +661,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     const shards = initialRow?.settings?.http2ConnectionShards ?? 0;
     return shards >= 1 && shards <= 8 ? shards : 1;
   });
+  const [codexSearchOnly, setCodexSearchOnly] = useState(() => initialRow?.settings?.codexSearchOnly ?? false);
   const [quotaRoutingMode, setQuotaRoutingMode] = useState<ChannelQuotaRoutingMode>(() => recallQuotaRoutingMode(initialRow?.settings));
   const [retryableStatusCodesText, setRetryableStatusCodesText] = useState(() =>
     formatRetryableStatusCodes(initialRow?.settings?.retryableStatusCodes)
@@ -1716,6 +1717,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           // field when the patch omits it and carries the null clear through.
           providerQuota: settingsForSubmit?.providerQuota,
           ...quotaRoutingModeSettingsPatch(quotaRoutingMode),
+          codexSearchOnly: isCodexType ? codexSearchOnly : false,
           ...(shouldUpdateModelProtocols
             ? { modelProtocols: getModelProtocolsForApiFormat(selectedApiFormat, supportedModels, existingModelProtocols) }
             : {}),
@@ -1780,6 +1782,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           retryableStatusCodes,
           retryableErrorPatterns,
           ...quotaRoutingModeSettingsPatch(quotaRoutingMode),
+          codexSearchOnly: isCodexType ? codexSearchOnly : false,
           ...(selectedApiFormat === 'zenmux/video' ||
           settingsForSubmit?.modelProtocols?.some((protocol) => protocol.apiFormats.includes('zenmux/video'))
             ? {
@@ -2212,6 +2215,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             const initialShards = initialRow?.settings?.http2ConnectionShards ?? 0;
             setHTTP2ConnectionShards(initialShards >= 1 && initialShards <= 8 ? initialShards : 1);
             setQuotaRoutingMode(recallQuotaRoutingMode(initialRow?.settings));
+            setCodexSearchOnly(initialRow?.settings?.codexSearchOnly ?? false);
             setRetryableStatusCodesText(formatRetryableStatusCodes(initialRow?.settings?.retryableStatusCodes));
             setRetryableErrorPatternsText(formatRetryableErrorPatterns(initialRow?.settings?.retryableErrorPatterns));
             // Reset provider and API format state
@@ -2428,6 +2432,24 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                         </FormItem>
                       )}
 
+                      {isCodexType && (
+                        <div className='flex min-w-0 flex-wrap items-center gap-3' data-testid='codex-search-only-setting'>
+                          <Button
+                            type='button'
+                            size='sm'
+                            variant={codexSearchOnly ? 'default' : 'outline'}
+                            aria-pressed={codexSearchOnly}
+                            onClick={() => setCodexSearchOnly((enabled) => !enabled)}
+                            data-testid='codex-search-only-toggle'
+                          >
+                            <Search className='mr-2 h-4 w-4' />
+                            {t('channels.dialogs.fields.codexSearchOnly.label')}
+                          </Button>
+                          <p className='text-muted-foreground min-w-0 flex-1 text-xs'>
+                            {t('channels.dialogs.fields.codexSearchOnly.description')}
+                          </p>
+                        </div>
+                      )}
                       {selectedProvider === 'claudecode' && (
                         <FormItem className='space-y-2'>
                           <FormLabel className='font-medium'>{t('channels.dialogs.fields.apiFormat.label')}</FormLabel>
@@ -2625,9 +2647,12 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                       )}
 
                       {(isCodexType || isClaudeCodeType) && (
-                        <div className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
-                          <div className='col-span-2' />
-                          <div className='space-y-4 md:col-span-6'>
+                        <div
+                          className={isCodexType ? 'min-w-0' : 'grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'}
+                          data-testid={isCodexType ? 'codex-authorization-section' : undefined}
+                        >
+                          {!isCodexType && <div className='hidden md:col-span-2 md:block' />}
+                          <div className={isCodexType ? 'min-w-0 space-y-4' : 'space-y-4 md:col-span-6'}>
                             <div className='space-y-3'>
                               <Tabs
                                 value={authMode}

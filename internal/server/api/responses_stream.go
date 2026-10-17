@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 	"sync/atomic"
+	"time"
 
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
@@ -23,13 +24,21 @@ import (
 func newResponsesStreamAdapter(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent], systemService *biz.SystemService) (streams.Stream[*httpclient.StreamEvent], StreamErrorEncoder) {
 	var nextSequence atomic.Int64
 	var responseID atomic.Value
+	var createdAt atomic.Int64
+	createdAt.Store(time.Now().Unix())
 	source := stream
 	stream = streams.MapErr(stream, func(event *httpclient.StreamEvent) (*httpclient.StreamEvent, error) {
 		if seq := gjson.GetBytes(event.Data, "sequence_number"); seq.Type == gjson.Number && seq.Int() >= nextSequence.Load() {
 			nextSequence.Store(seq.Int() + 1)
 		}
 		if id := gjson.GetBytes(event.Data, "response.id"); id.Type == gjson.String && id.String() != "" {
+			if previous := responseID.Load(); previous == nil || previous.(string) != id.String() {
+				createdAt.Store(time.Now().Unix())
+			}
 			responseID.Store(id.String())
+		}
+		if timestamp := gjson.GetBytes(event.Data, "response.created_at"); timestamp.Type == gjson.Number && timestamp.Int() > 0 {
+			createdAt.Store(timestamp.Int())
 		}
 		return applyResponsesEventErrorPolicy(ctx, event, systemService)
 	})
@@ -62,7 +71,7 @@ func newResponsesStreamAdapter(ctx context.Context, stream streams.Stream[*httpc
 		if len(advice) > 0 {
 			detail.Headers, _ = json.Marshal(advice)
 		}
-		failed := &responses.Response{Object: "response", Status: new("failed"), Output: []responses.Item{}, Error: detail}
+		failed := &responses.Response{Object: "response", CreatedAt: createdAt.Load(), Status: new("failed"), Output: []responses.Item{}, Error: detail}
 		if id := responseID.Load(); id != nil {
 			failed.ID = id.(string)
 		}

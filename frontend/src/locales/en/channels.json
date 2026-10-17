@@ -1064,5 +1064,7 @@
   "channels.templates.manager.deleting": "Deleting...",
   "channels.templates.dialogs.edit.title": "Edit Template",
   "channels.templates.dialogs.edit.description": "Update the template configuration. Changes do not affect channels until you apply the template again.",
-  "channels.templates.validation.duplicateName": "A template named \"{{name}}\" already exists. Choose a different name."
+  "channels.templates.validation.duplicateName": "A template named \"{{name}}\" already exists. Choose a different name.",
+"channels.dialogs.fields.codexSearchOnly.label": "Search only",
+"channels.dialogs.fields.codexSearchOnly.description": "Use this channel only for web searches, across model names. Conversation and generation requests are excluded."
 }

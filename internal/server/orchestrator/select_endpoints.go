@@ -161,6 +161,9 @@ func applyForcedAPIFormatsForRequest(
 	requestType llm.RequestType,
 	endpoints []objects.ChannelEndpoint,
 ) []objects.ChannelEndpoint {
+	if ch.IsCodexSearchOnly() && requestType == llm.RequestTypeSearch {
+		return FilterEndpointsByAPIFormats(endpoints, []string{llm.APIFormatOpenAISearch.String()})
+	}
 	forced := forcedAPIFormatsForCandidate(ch, entries, requestModel)
 	filtered := applyForcedAPIFormats(ctx, ch, entries, requestModel, endpoints)
 	if len(forced) > 0 && len(filtered) == len(endpoints) && requiresExplicitEndpoint(requestType) && len(FilterEndpointsByAPIFormats(endpoints, forced)) == 0 {

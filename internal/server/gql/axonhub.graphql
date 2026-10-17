@@ -194,6 +194,7 @@ input ChannelProviderQuotaSettingsInput {
 }
 
 type ChannelSettings {
+  codexSearchOnly: Boolean
   extraModelPrefix: String
   modelMappings: [ModelMapping!]
   autoTrimedModelPrefixes: [String!]
@@ -317,6 +318,7 @@ input ModelMappingInput {
 }
 
 input ChannelSettingsInput {
+  codexSearchOnly: Boolean
   extraModelPrefix: String
   modelMappings: [ModelMappingInput!]
   autoTrimedModelPrefixes: [String!]

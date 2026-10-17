@@ -113,6 +113,7 @@ func (t *SearchInboundTransformer) AggregateStreamChunks(
 
 // SearchConfig configures the standalone search outbound endpoint.
 type SearchConfig struct {
+	DisableResponsesFallback bool
 	BaseURL               string
 	EndpointPath          string
 	APIKeyProvider        auth.APIKeyProvider
@@ -186,6 +187,9 @@ func (t *SearchOutboundTransformer) APIFormat() llm.APIFormat {
 }
 
 func (t *SearchOutboundTransformer) CustomizeExecutor(executor pipeline.Executor) pipeline.Executor {
+	if t.config.DisableResponsesFallback {
+		return executor
+	}
 	return &searchFallbackExecutor{
 		inner:      executor,
 		config:     t.config,

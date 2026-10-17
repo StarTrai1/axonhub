@@ -26,6 +26,7 @@ func (s *WebSearchSelector) Select(ctx context.Context, req *llm.Request) ([]*Ch
 	if err != nil {
 		return nil, err
 	}
+	candidates = filterSearchOnlyCandidates(candidates, req)
 
 	if len(candidates) == 0 || req == nil || req.APIFormat != llm.APIFormatOpenAISearch {
 		return candidates, nil
@@ -35,14 +36,14 @@ func (s *WebSearchSelector) Select(ctx context.Context, req *llm.Request) ([]*Ch
 		return candidate == nil ||
 			candidate.Channel == nil ||
 			candidate.Channel.Type != channel.TypeCodex ||
-			candidate.Channel.Policies.AllowsNativeWebSearchFallback()
+			candidate.Channel.IsCodexSearchOnly() || candidate.Channel.Policies.AllowsNativeWebSearchFallback()
 	})
 
 	capable := lo.Filter(eligible, func(candidate *ChannelModelsCandidate, _ int) bool {
 		return candidate != nil &&
 			candidate.Channel != nil &&
 			candidate.Channel.Type == channel.TypeCodex &&
-			candidate.Channel.Policies.PrefersNativeWebSearch()
+			(candidate.Channel.IsCodexSearchOnly() || candidate.Channel.Policies.PrefersNativeWebSearch())
 	})
 	if len(capable) == 0 {
 		if log.DebugEnabled(ctx) {

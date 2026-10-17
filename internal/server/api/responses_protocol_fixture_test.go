@@ -55,6 +55,7 @@ func responsesIntegrationGateway(t *testing.T, client *ent.Client, handlers *Ope
 		c.Next()
 	})
 	router.POST("/v1/responses", handlers.CreateResponse)
+	router.POST("/v1/alpha/search", handlers.Search)
 	router.GET("/v1/responses", handlers.CreateResponseWebSocket(5*time.Second))
 	router.POST("/v1/images/generations", handlers.CreateImage)
 	router.POST("/v1/images/edits", handlers.CreateImageEdit)

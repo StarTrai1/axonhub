@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"hash"
 	"hash/fnv"
@@ -108,6 +109,28 @@ func NewDefaultSelector(channelService *biz.ChannelService, modelService *biz.Mo
 }
 
 func (s *DefaultSelector) Select(ctx context.Context, req *llm.Request) ([]*ChannelModelsCandidate, error) {
+	searchOnly := s.selectSearchOnlyCandidates(ctx, req)
+	candidates, err := s.selectModelOrChannelCandidates(ctx, req)
+	if err != nil {
+		if len(searchOnly) == 0 || !errors.Is(err, biz.ErrInvalidModel) {
+			return nil, err
+		}
+	}
+	// Dedicated search channels are injected before project/key profile filters.
+	// They do not create generation associations for the requested model.
+	seen := make(map[int]bool, len(candidates))
+	for _, candidate := range candidates {
+		seen[candidate.Channel.ID] = true
+	}
+	for _, candidate := range searchOnly {
+		if !seen[candidate.Channel.ID] {
+			candidates = append(candidates, candidate)
+		}
+	}
+	return filterSearchOnlyCandidates(candidates, req), nil
+}
+
+func (s *DefaultSelector) selectModelOrChannelCandidates(ctx context.Context, req *llm.Request) ([]*ChannelModelsCandidate, error) {
 	candidates, err := s.selectModelCandidates(ctx, req)
 	if err != nil {
 		if ent.IsNotFound(err) {

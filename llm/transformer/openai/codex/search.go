@@ -17,6 +17,7 @@ import (
 
 // SearchParams configures a standalone Codex search endpoint.
 type SearchParams struct {
+	DisableResponsesFallback bool
 	TokenProvider         oauth.TokenGetter
 	BaseURL               string
 	EndpointPath          string
@@ -45,6 +46,7 @@ func NewSearchOutboundTransformer(params SearchParams) (*SearchOutboundTransform
 	}
 
 	delegate, err := responses.NewSearchOutboundTransformerWithConfig(&responses.SearchConfig{
+		DisableResponsesFallback: params.DisableResponsesFallback,
 		BaseURL:               params.BaseURL,
 		EndpointPath:          params.EndpointPath,
 		APIKeyProvider:        auth.NewStaticKeyProvider("dummy"),

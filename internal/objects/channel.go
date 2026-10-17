@@ -153,6 +153,10 @@ func (m ModelProtocol) IsEnabled() bool {
 }
 
 type ChannelSettings struct {
+	// CodexSearchOnly reserves a Codex channel for the standalone search API.
+	// The zero value preserves existing routing for stored channel settings.
+	CodexSearchOnly bool `json:"codexSearchOnly,omitempty"`
+
 	// ExtraModelPrefix sets the channel accept the model with the extra prefix.
 	// e.g. a channel
 	// supported_modles is ["deepseek-chat", "deepseek-reasoner"]
