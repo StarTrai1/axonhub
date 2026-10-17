@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 for (const width of [1280, 768, 390]) {
-  test(`Codex authorization aligns and search-only saves at ${width}px`, async ({ page }) => {
+  test(`Codex authorization aligns and search-only saves at ${width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 1100 });
     let saved = {
       id: 'channel-preview', createdAt: '2026-10-17T00:00:00Z', updatedAt: '2026-10-17T00:00:00Z',
@@ -43,13 +43,14 @@ for (const width of [1280, 768, 390]) {
     await expect(toggle).toHaveAttribute('aria-pressed', 'false');
     await toggle.click();
     await expect(toggle).toHaveAttribute('aria-pressed', 'true');
-    await page.getByRole('dialog').getByRole('button', { name: 'Edit', exact: true }).click();
+    await page.screenshot({ path: testInfo.outputPath('codex-channel.png') });
+    await page.getByTestId('channel-submit-button').click();
     await expect.poll(() => settings).toEqual([true]);
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await page.getByTestId('reopen-codex').click();
     await expect(toggle).toHaveAttribute('aria-pressed', 'true');
     await toggle.click();
-    await page.getByRole('dialog').getByRole('button', { name: 'Edit', exact: true }).click();
+    await page.getByTestId('channel-submit-button').click();
     await expect.poll(() => settings).toEqual([true, false]);
   });
 }

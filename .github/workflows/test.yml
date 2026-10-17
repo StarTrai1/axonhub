@@ -39,6 +39,8 @@ jobs:
         run: go test ./internal/server/orchestrator -run '^(TestResponsesRejectedNativeSource|TestSealedLocalCompactionSizeLimit)' -count=1 -v
       - name: Verify HTTP relay compaction and continuation on Windows
         run: go test ./internal/server/api -run '^TestResponsesProtocol(CompactionRelay|RedactedEncryption)' -count=1 -v
+      - name: Verify Codex delivery and search-only routing on Windows
+        run: go test ./internal/server/api -run '^Test(StreamDeliveryCodexLivePreview|CodexSearchOnly)' -count=1 -v
       - name: Verify SOCKS aliases and cancellation on Windows
         working-directory: llm
         run: go test ./transformer/openai/responses -run '^(TestWebSocketProxyAliasesDialThroughSOCKS|TestWebSocketSOCKSCancellation|TestWebSocketStreamCloseWhileNextBlockedReportsClosedBeforeResponse|TestWebSocketExecutorDoesNotReplayAfterReusedSession.*|TestWebSocketStreamDoesNotRetryFreshConnectionFailure)$' -count=1 -v
