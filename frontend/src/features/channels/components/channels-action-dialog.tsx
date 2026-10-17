@@ -2430,7 +2430,10 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                       )}
 
                       {isCodexType && (
-                        <div className='flex min-w-0 flex-wrap items-center gap-3' data-testid='codex-search-only-setting'>
+                        <div
+                          className='flex min-w-0 flex-col items-start gap-2 @sm/channel-fields:flex-row @sm/channel-fields:items-center @sm/channel-fields:gap-3'
+                          data-testid='codex-search-only-setting'
+                        >
                           <Button
                             type='button'
                             size='sm'
