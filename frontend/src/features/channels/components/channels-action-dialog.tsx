@@ -3398,7 +3398,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                           value={field.value ?? 'auto'}
                                           onValueChange={field.onChange}
                                           options={REMOTE_COMPACTION_POLICY_OPTIONS}
-                                        stacked
+                                          stacked
                                           translationPrefix='channels.dialogs.fields.remoteCompactionPolicy.options'
                                           testId='remote-compaction-policy'
                                         />
@@ -3422,7 +3422,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                           value={field.value ?? 'native'}
                                           onValueChange={field.onChange}
                                           options={WEB_SEARCH_POLICY_OPTIONS}
-                                        stacked
+                                          stacked
                                           translationPrefix='channels.dialogs.fields.webSearchPolicy.options'
                                           testId='web-search-policy'
                                         />
