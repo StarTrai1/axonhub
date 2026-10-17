@@ -267,7 +267,7 @@ func responsesBadRequestDetails(err error) (code, message, param string, ok bool
 }
 
 func responsesRejectedStatusRuleForDetails(requestBody []byte, code, message, param string) (responsesRejectedStatusRule, bool) {
-	if responsesRejectedCiphertextMessagePattern.MatchString(message) {
+	if isResponsesUnidentifiedEncryptionRejection(message) {
 		return responsesRejectedCiphertextReasoningRule(requestBody, code, message, param)
 	}
 	if responsesRejectedReasoningMessagePattern.MatchString(message) {

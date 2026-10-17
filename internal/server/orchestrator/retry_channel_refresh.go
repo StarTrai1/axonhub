@@ -9,6 +9,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/server/biz"
 )
 
 // errChannelUnavailableForRetry tells the pipeline to stop retrying the current
@@ -86,6 +87,9 @@ func (p *PersistentOutboundTransformer) refreshChannelBeforeRetry(ctx context.Co
 	}
 
 	if entity.Status != channel.StatusEnabled {
+		return errChannelUnavailableForRetry
+	}
+	if isStandaloneSearch(p.state.LlmRequest) && !(&biz.Channel{Channel: entity}).AllowsStandaloneSearch() {
 		return errChannelUnavailableForRetry
 	}
 

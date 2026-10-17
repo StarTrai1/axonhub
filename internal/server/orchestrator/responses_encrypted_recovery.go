@@ -15,15 +15,28 @@ var responsesRejectedCiphertextMessagePattern = regexp.MustCompile(
 	`^(?:OpenAI Responses bad request: )?The encrypted content ([A-Za-z0-9_+/=-]+(?:(?:\.{3}|…)[A-Za-z0-9_+/=-]+)?) could not be verified\. Reason: Encrypted content could not be decrypted or parsed\.(?: \[trace_id=[A-Za-z0-9_-]+\])?$`,
 )
 
+// Some relays replace the original encrypted-item error with this exact
+// message. It does not identify whether reasoning or the checkpoint failed:
+// use the same bounded two-stage recovery as a redacted ciphertext rejection.
+var responsesRejectedEncryptedSummaryMessagePattern = regexp.MustCompile(
+	`^(?:OpenAI Responses bad request: )?invalid encrypted summary(?: \(request id: [A-Za-z0-9_-]+\))?$`,
+)
+
+func isResponsesUnidentifiedEncryptionRejection(message string) bool {
+	return responsesRejectedCiphertextMessagePattern.MatchString(message) ||
+		responsesRejectedEncryptedSummaryMessagePattern.MatchString(message)
+}
+
 func responsesRejectedCiphertextIndex(body []byte, code, message, param string) (int, bool) {
 	if !responsesEncryptedContentRejectionCode(code) {
 		return -1, false
 	}
 	match := responsesRejectedCiphertextMessagePattern.FindStringSubmatch(message)
-	if len(match) != 2 {
+	summary := responsesRejectedEncryptedSummaryMessagePattern.MatchString(message)
+	if len(match) != 2 && !summary {
 		return -1, false
 	}
-	redacted := strings.Contains(match[1], "...") || strings.Contains(match[1], "…")
+	redacted := summary || strings.Contains(match[1], "...") || strings.Contains(match[1], "…")
 	index := -1
 	if !redacted {
 		for i, item := range gjson.GetBytes(body, "input").Array() {

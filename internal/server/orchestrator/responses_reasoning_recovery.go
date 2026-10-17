@@ -24,7 +24,7 @@ var responsesRejectedReasoningMessagePattern = regexp.MustCompile(
 // a generic thinking signature error alone does not authorize history changes.
 func responsesEncryptedContentRejectionCode(code string) bool {
 	switch code {
-	case "", "bad_request", "invalid_request_error", "invalid_encrypted_content", "thinking_signature_invalid":
+	case "", "bad_request", "invalid_request_error", "invalid_encrypted_content", "invalid_encrypted_summary", "thinking_signature_invalid":
 		return true
 	default:
 		return false

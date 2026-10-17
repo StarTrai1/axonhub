@@ -72,7 +72,6 @@ type PreviousChannelProvider interface {
 
 // associationCacheEntry stores cached association resolution results.
 type associationCacheEntry struct {
-	associations            []*objects.ModelAssociation
 	associationSignature    string
 	candidates              []*resolvedAssociationCandidate
 	channelCount            int
@@ -86,6 +85,7 @@ const (
 	// associationCacheTTL is the time-to-live for association cache entries.
 	// After this duration, cache entries are invalidated even if channels haven't changed.
 	associationCacheTTL = 5 * time.Minute
+	associationCacheMaxEntries = 1024
 )
 
 // DefaultSelector directly selects enabled channels supporting the requested model.
@@ -97,6 +97,7 @@ type DefaultSelector struct {
 	// Association resolution cache
 	cacheMu          sync.RWMutex
 	associationCache map[string]*associationCacheEntry
+	associationCachePrunedAt time.Time
 }
 
 func NewDefaultSelector(channelService *biz.ChannelService, modelService *biz.ModelService, systemService *biz.SystemService) *DefaultSelector {
@@ -407,8 +408,8 @@ func (s *DefaultSelector) resolveAssociations(
 
 	// Update cache
 	s.cacheMu.Lock()
+	s.pruneAssociationCacheLocked(time.Now(), channelCacheVersion)
 	s.associationCache[modelID] = &associationCacheEntry{
-		associations:            append([]*objects.ModelAssociation(nil), associations...),
 		associationSignature:    associationSignature,
 		candidates:              resolvedCandidates,
 		channelCount:            channelCount,
@@ -426,6 +427,30 @@ func (s *DefaultSelector) resolveAssociations(
 	}
 
 	return resolvedCandidates, nil
+}
+
+// Opportunistic bounded eviction releases removed models and old channel
+// snapshots without introducing another background worker or changing validity
+// checks on reads. Caller holds cacheMu for writing.
+func (s *DefaultSelector) pruneAssociationCacheLocked(now time.Time, channelVersion int64) {
+ if len(s.associationCache) < associationCacheMaxEntries && now.Sub(s.associationCachePrunedAt) < associationCacheTTL {
+  return
+ }
+ s.associationCachePrunedAt = now
+ var oldestKey string
+ var oldestTime time.Time
+ for key, entry := range s.associationCache {
+  if now.Sub(entry.cachedAt) >= associationCacheTTL || entry.channelCacheVersion != channelVersion {
+   delete(s.associationCache, key)
+   continue
+  }
+  if oldestTime.IsZero() || entry.cachedAt.Before(oldestTime) {
+   oldestKey, oldestTime = key, entry.cachedAt
+  }
+ }
+ if len(s.associationCache) >= associationCacheMaxEntries {
+  delete(s.associationCache, oldestKey)
+ }
 }
 
 func modelAssociationSignature(associations []*objects.ModelAssociation) string {

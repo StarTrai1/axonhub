@@ -9,13 +9,13 @@ import (
 )
 
 func TestWebSearchPolicyRetiresAutomaticFallback(t *testing.T) {
-	for _, value := range []string{"auto", "native", "", "mcp_only"} {
+	for _, value := range []string{"auto", "native", "", "mcp_only", "other_channels"} {
 		t.Run(value, func(t *testing.T) {
 			var policies ChannelPolicies
 			require.NoError(t, json.Unmarshal([]byte(`{"webSearch":"`+value+`","supportsWebSearch":false}`), &policies))
 			want := WebSearchPolicyNative
-			if value == "mcp_only" {
-				want = WebSearchPolicyMCPOnly
+			if value == "mcp_only" || value == "other_channels" {
+				want = WebSearchPolicy(value)
 			}
 			require.Equal(t, want, policies.WebSearch)
 			var output bytes.Buffer
@@ -41,4 +41,12 @@ func TestCodexSearchModelValidation(t *testing.T) {
 	if settings.CodexSearchModel != "" {
 		t.Fatal("blank search model must follow the request")
 	}
+}
+
+func TestWebSearchPolicyGraphQLAcceptsOtherChannels(t *testing.T) {
+ var policy WebSearchPolicy
+ require.NoError(t, policy.UnmarshalGQL("other_channels"))
+ require.Equal(t, WebSearchPolicyOtherChannels, policy)
+ require.Error(t, policy.UnmarshalGQL("auto"))
+ require.Error(t, policy.UnmarshalGQL("disabled"))
 }

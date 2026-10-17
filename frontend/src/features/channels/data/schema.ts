@@ -202,7 +202,7 @@ export const apiKeyAutoDisableRuleFormSchema = apiKeyAutoDisableRuleSchema
 export const routingTierSchema = z.enum(['preferred', 'standard', 'fallback']);
 export type RoutingTier = z.infer<typeof routingTierSchema>;
 
-export const webSearchPolicySchema = z.preprocess((value) => (value === 'auto' ? 'native' : value), z.enum(['native', 'mcp_only']));
+export const webSearchPolicySchema = z.preprocess((value) => (value === 'auto' ? 'native' : value), z.enum(['native', 'other_channels', 'mcp_only']));
 export type WebSearchPolicy = z.infer<typeof webSearchPolicySchema>;
 
 export const remoteCompactionPolicySchema = z.enum(['auto', 'native', 'local_bridge']);

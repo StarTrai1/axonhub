@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"strings"
+"strconv"
 	"testing"
 	"time"
 
@@ -639,4 +640,32 @@ func TestDefaultSelector_GetLatestChannelUpdateTime(t *testing.T) {
 		latest := selector.getLatestChannelUpdateTime(channels)
 		require.True(t, latest.Equal(newest))
 	})
+}
+
+func TestAssociationCacheEvictsExpiredAndRetiredSnapshots(t *testing.T) {
+ now := time.Now()
+ selector := NewDefaultSelector(nil, nil, nil)
+ selector.associationCache["expired"] = &associationCacheEntry{cachedAt: now.Add(-associationCacheTTL), channelCacheVersion: 2}
+ selector.associationCache["old-channel-snapshot"] = &associationCacheEntry{cachedAt: now, channelCacheVersion: 1}
+ current := &associationCacheEntry{cachedAt: now, channelCacheVersion: 2}
+ selector.associationCache["current"] = current
+ selector.cacheMu.Lock()
+ selector.pruneAssociationCacheLocked(now, 2)
+ selector.cacheMu.Unlock()
+ require.Len(t, selector.associationCache, 1)
+ require.Same(t, current, selector.associationCache["current"])
+}
+
+func TestAssociationCacheRemainsBoundedAcrossModels(t *testing.T) {
+ now := time.Now()
+ selector := NewDefaultSelector(nil, nil, nil)
+ for i := range associationCacheMaxEntries + 100 {
+  selector.cacheMu.Lock()
+  selector.pruneAssociationCacheLocked(now, 2)
+  selector.associationCache[strconv.Itoa(i)] = &associationCacheEntry{cachedAt: now.Add(time.Duration(i)), channelCacheVersion: 2}
+  selector.cacheMu.Unlock()
+ }
+ require.Len(t, selector.associationCache, associationCacheMaxEntries)
+ require.NotContains(t, selector.associationCache, "0")
+ require.Contains(t, selector.associationCache, strconv.Itoa(associationCacheMaxEntries + 99))
 }

@@ -21,6 +21,14 @@ import (
 // Model the iceberg failure through real client handlers, source retention,
 // retries, persistence and subsequent previous_response_id materialization.
 func TestResponsesProtocolRedactedEncryptionContinuation(t *testing.T) {
+ testResponsesProtocolEncryptionContinuation(t, "The encrypted content gAAA...AA== could not be verified. Reason: Encrypted content could not be decrypted or parsed.")
+}
+
+func TestResponsesProtocolInvalidEncryptedSummaryContinuation(t *testing.T) {
+ testResponsesProtocolEncryptionContinuation(t, "invalid encrypted summary (request id: synthetic_59694)")
+}
+
+func testResponsesProtocolEncryptionContinuation(t *testing.T, rejectionMessage string) {
 	for _, model := range []string{"gpt-6-astra", "gpt-6.1-sol"} {
 		for _, downstream := range []string{"http", "ws"} {
 			for _, passThrough := range []bool{true, false} {
@@ -40,7 +48,7 @@ func TestResponsesProtocolRedactedEncryptionContinuation(t *testing.T) {
 						if gjson.GetBytes(body, `input.#(type=="compaction")`).Exists() || gjson.GetBytes(body, `input.#(type=="reasoning").encrypted_content`).String() != "" {
 							rejections++
 							w.WriteHeader(http.StatusBadRequest)
-							_, _ = io.WriteString(w, `{"error":{"type":"invalid_request_error","message":"The encrypted content gAAA...AA== could not be verified. Reason: Encrypted content could not be decrypted or parsed."}}`)
+							_, _ = io.WriteString(w, `{"error":{"type":"invalid_request_error","message":"` + rejectionMessage + `"}}`)
 							return
 						}
 						output := `[{"type":"message","id":"msg_iceberg","role":"assistant","content":[{"type":"output_text","text":"recovered"}]}]`

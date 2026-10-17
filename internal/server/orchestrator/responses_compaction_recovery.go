@@ -38,7 +38,7 @@ func responsesRejectedCompactionMessage(body []byte, ref *remoteCompactionRefere
 		!responsesEncryptedContentRejectionCode(code) {
 		return false
 	}
-	if responsesRejectedCiphertextMessagePattern.MatchString(message) {
+	if isResponsesUnidentifiedEncryptionRejection(message) {
 		return responsesRejectedCiphertextCompaction(body, ref, code, message, param)
 	}
 	match := responsesRejectedCompactionMessagePattern.FindStringSubmatch(message)

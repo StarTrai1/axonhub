@@ -12,8 +12,8 @@ import (
 // EffectiveWebSearchPolicy retires automatic Responses emulation. Stored auto
 // policies and the old capability flag now use the native search endpoint.
 func (p ChannelPolicies) EffectiveWebSearchPolicy() WebSearchPolicy {
-	if p.WebSearch == WebSearchPolicyMCPOnly {
-		return WebSearchPolicyMCPOnly
+	if p.WebSearch == WebSearchPolicyMCPOnly || p.WebSearch == WebSearchPolicyOtherChannels {
+		return p.WebSearch
 	}
 	return WebSearchPolicyNative
 }
@@ -33,8 +33,8 @@ func (p WebSearchPolicy) MarshalGQL(w io.Writer) {
 
 func (p *WebSearchPolicy) UnmarshalGQL(value any) error {
 	text, ok := value.(string)
-	if !ok || (text != string(WebSearchPolicyNative) && text != string(WebSearchPolicyMCPOnly)) {
-		return fmt.Errorf("web search policy must be native or mcp_only")
+	if !ok || (text != string(WebSearchPolicyNative) && text != string(WebSearchPolicyMCPOnly) && text != string(WebSearchPolicyOtherChannels)) {
+		return fmt.Errorf("web search policy must be native, other_channels or mcp_only")
 	}
 	*p = WebSearchPolicy(text)
 	return nil

@@ -37,7 +37,7 @@ func (s *DefaultSelector) selectSearchOnlyCandidates(ctx context.Context, req *l
 	}
 	var candidates []*ChannelModelsCandidate
 	for _, ch := range s.ChannelService.GetEnabledChannels() {
-		if !ch.IsCodexSearchOnly() {
+		if !ch.IsCodexSearchOnly() || !ch.AllowsStandaloneSearch() {
 			continue
 		}
 		model := ch.Settings.CodexSearchModel

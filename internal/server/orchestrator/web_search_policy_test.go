@@ -113,7 +113,7 @@ func TestApplyWebSearchPolicy_ReindexesRawTools(t *testing.T) {
 func TestApplyWebSearchPolicy_OtherPoliciesAreUnchanged(t *testing.T) {
 	req := &llm.Request{Tools: []llm.Tool{{Type: llm.ToolTypeWebSearch}}}
 
-	for _, policy := range []objects.WebSearchPolicy{objects.WebSearchPolicy("auto"), objects.WebSearchPolicyNative} {
+	for _, policy := range []objects.WebSearchPolicy{objects.WebSearchPolicy("auto"), objects.WebSearchPolicyNative, objects.WebSearchPolicyOtherChannels} {
 		t.Run(string(policy), func(t *testing.T) {
 			candidate := &biz.Channel{Channel: &ent.Channel{
 				Type:     channel.TypeCodex,

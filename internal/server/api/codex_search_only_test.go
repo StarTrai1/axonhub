@@ -10,6 +10,8 @@ import (
 	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/internal/ent"
+"github.com/looplj/axonhub/internal/authz"
+"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/objects"
 )
@@ -123,4 +125,57 @@ func TestCodexNativeSearchDoesNotFallbackToResponses(t *testing.T) {
 	require.GreaterOrEqual(t, status, http.StatusBadRequest, string(body))
 	require.Positive(t, searches.Load())
 	require.Zero(t, generations.Load())
+}
+
+func TestCodexSearchOtherChannelsSkipsUnsupportedRoute(t *testing.T) {
+ for _, withSearchChannel := range []bool{false, true} {
+  t.Run(fmt.Sprintf("alternative=%t", withSearchChannel), func(t *testing.T) {
+   var rejectedSearches, generations, searches atomic.Int32
+   primary := responsesIntegrationServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+    if r.URL.Path == "/v1/alpha/search" {
+     rejectedSearches.Add(1)
+     w.WriteHeader(http.StatusNotFound)
+     return
+    }
+    body, err := readRequestBody(r)
+    require.NoError(t, err)
+    require.Contains(t, string(body), "web_search")
+    generations.Add(1)
+    w.Header().Set("Content-Type", "text/event-stream")
+    _, _ = fmt.Fprint(w, "data: {\"type\":\"response.completed\",\"response\":{\"id\":\"resp_search_route\",\"status\":\"completed\",\"output\":[{\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"generation preserved\"}]}]}}\n\n")
+   }))
+   client, handlers, project := newResponsesIntegrationFixture(t, primary.URL, func(create *ent.ChannelCreate) {
+    create.SetType(channel.TypeCodex).SetSupportedModels([]string{"synthetic-model", "gpt-6.1-sol"}).SetPolicies(objects.ChannelPolicies{RoutingTier: objects.RoutingTierPreferred, WebSearch: objects.WebSearchPolicyOtherChannels})
+   })
+   ctx := authz.WithTestBypass(ent.NewContext(t.Context(), client))
+   if withSearchChannel {
+    alternative := responsesIntegrationServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+     require.Equal(t, "/v1/alpha/search", r.URL.Path)
+     searches.Add(1)
+     w.Header().Set("Content-Type", "application/json")
+     _, _ = fmt.Fprint(w, `{"results":[{"title":"alternative-search-canary"}]}`)
+    }))
+    second := client.Channel.Create().SetName("search-alternative").SetType(channel.TypeCodex).SetStatus(channel.StatusEnabled).SetBaseURL(alternative.URL).SetCredentials(objects.ChannelCredentials{APIKey:"synthetic-alternative"}).SetSupportedModels([]string{"gpt-6.1-sol"}).SetSettings(&objects.ChannelSettings{CodexSearchOnly:true}).SaveX(ctx)
+    built, err := handlers.ChannelService.GetChannel(ctx, second.ID)
+    require.NoError(t, err)
+    enabled := append([]*biz.Channel(nil), handlers.ChannelService.GetEnabledChannels()...)
+    handlers.ChannelService.SetEnabledChannelsForTest(append(enabled, built))
+   }
+   policy := handlers.SystemService.RetryPolicyOrDefault(ctx)
+   policy.Enabled, policy.MaxSingleChannelRetries, policy.MaxChannelRetries, policy.RetryDelayMs = true, 10, 10, 0
+   require.NoError(t, handlers.SystemService.SetRetryPolicy(ctx, policy))
+   gateway := responsesIntegrationGateway(t, client, handlers, project)
+   status, body := responsesIntegrationPost(t, gateway, "/v1/alpha/search", `{"model":"gpt-6.1-sol","query":"lookup-canary"}`)
+   if withSearchChannel {
+    require.Equal(t, http.StatusOK, status, string(body))
+    require.EqualValues(t, 1, searches.Load())
+   } else {
+    require.GreaterOrEqual(t, status, http.StatusBadRequest, string(body))
+   }
+   require.Zero(t, rejectedSearches.Load(), "opted-out channels must never be tried, even with a large retry budget")
+   status, body = responsesIntegrationPost(t, gateway, "/v1/responses", `{"model":"gpt-6.1-sol","input":"continue","tools":[{"type":"web_search"}]}`)
+   require.Equal(t, http.StatusOK, status, string(body))
+   require.EqualValues(t, 1, generations.Load())
+  })
+ }
 }

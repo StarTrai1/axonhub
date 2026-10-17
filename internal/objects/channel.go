@@ -573,6 +573,9 @@ type WebSearchPolicy string
 const (
 	// WebSearchPolicyNative marks the channel as capable of standalone web search.
 	WebSearchPolicyNative WebSearchPolicy = "native"
+	// WebSearchPolicyOtherChannels routes standalone search elsewhere while
+	// preserving search tool declarations on this channel's generation requests.
+	WebSearchPolicyOtherChannels WebSearchPolicy = "other_channels"
 	// WebSearchPolicyMCPOnly prevents standalone and hosted web search from reaching the channel.
 	WebSearchPolicyMCPOnly WebSearchPolicy = "mcp_only"
 )

@@ -733,6 +733,9 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 	if candidate.Channel.IsCodexSearchOnly() && !isStandaloneSearch(llmRequest) {
 		return nil, fmt.Errorf("%w: channel is reserved for standalone search", biz.ErrInvalidModel)
 	}
+	if isStandaloneSearch(llmRequest) && !candidate.Channel.AllowsStandaloneSearch() {
+		return nil, fmt.Errorf("%w: standalone search is disabled for this channel", biz.ErrInvalidModel)
+	}
 	entry := candidate.Models[p.state.CurrentModelIndex]
 
 	p.state.CurrentCandidate = candidate
