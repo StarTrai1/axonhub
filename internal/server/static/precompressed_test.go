@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"compress/gzip"
 	"io"
-"io/fs"
-"strings"
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -101,36 +101,40 @@ func TestPrecompressedAssetsPreserveHTTPBehavior(t *testing.T) {
 }
 
 func TestPackedEmbeddedAssetsMatchViteOutput(t *testing.T) {
- if _, err := dist.ReadFile("dist/index.html.gz"); err != nil {
-  t.Skip("packed assets are validated after make build-frontend in hosted CI")
- }
- count := 0
- require.NoError(t, fs.WalkDir(dist, "dist", func(name string, entry fs.DirEntry, walkErr error) error {
-  if walkErr != nil { return walkErr }
-  if entry.IsDir() || !strings.HasSuffix(name, ".gz") { return nil }
-  packed, err := dist.ReadFile(name)
-  require.NoError(t, err)
-  reader, err := gzip.NewReader(bytes.NewReader(packed))
-  require.NoError(t, err)
-  decoded, err := io.ReadAll(reader)
-  require.NoError(t, err)
-  require.NoError(t, reader.Close())
-  original, err := os.ReadFile("../../../../frontend/" + strings.TrimSuffix(name, ".gz"))
-  require.NoError(t, err)
-  require.Equal(t, original, decoded, name)
-  count++
-  return nil
- }))
- require.Positive(t, count)
- gin.SetMode(gin.TestMode)
- router := gin.New()
- router.NoRoute(Handler())
- result := httptest.NewRecorder()
- req := httptest.NewRequest(http.MethodGet, "/channels", nil)
- req.Header.Set("Accept-Encoding", "gzip")
- router.ServeHTTP(result, req)
- require.Equal(t, http.StatusOK, result.Code)
- require.Equal(t, "gzip", result.Header().Get("Content-Encoding"))
- require.Contains(t, result.Header().Get("Content-Type"), "text/html")
- require.Equal(t, "no-cache, no-store, must-revalidate", result.Header().Get("Cache-Control"))
+	if _, err := dist.ReadFile("dist/index.html.gz"); err != nil {
+		t.Skip("packed assets are validated after make build-frontend in hosted CI")
+	}
+	count := 0
+	require.NoError(t, fs.WalkDir(dist, "dist", func(name string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if entry.IsDir() || !strings.HasSuffix(name, ".gz") {
+			return nil
+		}
+		packed, err := dist.ReadFile(name)
+		require.NoError(t, err)
+		reader, err := gzip.NewReader(bytes.NewReader(packed))
+		require.NoError(t, err)
+		decoded, err := io.ReadAll(reader)
+		require.NoError(t, err)
+		require.NoError(t, reader.Close())
+		original, err := os.ReadFile("../../../../frontend/" + strings.TrimSuffix(name, ".gz"))
+		require.NoError(t, err)
+		require.Equal(t, original, decoded, name)
+		count++
+		return nil
+	}))
+	require.Positive(t, count)
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.NoRoute(Handler())
+	result := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/channels", nil)
+	req.Header.Set("Accept-Encoding", "gzip")
+	router.ServeHTTP(result, req)
+	require.Equal(t, http.StatusOK, result.Code)
+	require.Equal(t, "gzip", result.Header().Get("Content-Encoding"))
+	require.Contains(t, result.Header().Get("Content-Type"), "text/html")
+	require.Equal(t, "no-cache, no-store, must-revalidate", result.Header().Get("Cache-Control"))
 }

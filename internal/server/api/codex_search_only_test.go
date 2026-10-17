@@ -155,7 +155,7 @@ func TestCodexSearchOtherChannelsSkipsUnsupportedRoute(t *testing.T) {
 					w.Header().Set("Content-Type", "application/json")
 					_, _ = fmt.Fprint(w, `{"results":[{"title":"alternative-search-canary"}]}`)
 				}))
-				second := client.Channel.Create().SetName("search-alternative").SetType(channel.TypeCodex).SetStatus(channel.StatusEnabled).SetBaseURL(alternative.URL).SetCredentials(objects.ChannelCredentials{APIKey: "synthetic-alternative"}).SetSupportedModels([]string{"gpt-6.1-sol"}).SetSettings(&objects.ChannelSettings{CodexSearchOnly: true}).SaveX(ctx)
+				second := client.Channel.Create().SetName("search-alternative").SetType(channel.TypeCodex).SetStatus(channel.StatusEnabled).SetBaseURL(alternative.URL).SetCredentials(objects.ChannelCredentials{APIKey: "synthetic-alternative"}).SetSupportedModels([]string{"gpt-6.1-sol"}).SetDefaultTestModel("gpt-6.1-sol").SetSettings(&objects.ChannelSettings{CodexSearchOnly: true}).SaveX(ctx)
 				built, err := handlers.ChannelService.GetChannel(ctx, second.ID)
 				require.NoError(t, err)
 				enabled := append([]*biz.Channel(nil), handlers.ChannelService.GetEnabledChannels()...)

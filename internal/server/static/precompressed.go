@@ -59,7 +59,7 @@ func acceptsGzip(headers []string) bool {
 	var gzipQuality, wildcardQuality float64
 	explicitGzip := false
 	for _, header := range headers {
-		for _, value := range strings.Split(header, ",") {
+		for value := range strings.SplitSeq(header, ",") {
 			parts := strings.Split(value, ";")
 			encoding := strings.ToLower(strings.TrimSpace(parts[0]))
 			quality := 1.0
