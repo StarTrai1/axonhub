@@ -570,9 +570,9 @@ func convertReasoningWithFollowing(items []Item, startIdx int) (*llm.Message, in
 		case "function_call":
 			// Merge function_call into the same assistant message
 			msg.ToolCalls = append(msg.ToolCalls, llm.ToolCall{
-				ID:    nextItem.CallID,
-				Type:  "function",
-				Async: nextItem.Async,
+				ID:                  nextItem.CallID,
+				Type:                "function",
+				Async:               nextItem.Async,
 				TransformerMetadata: encryptedFunctionArgsMetadata(nextItem),
 				Function: llm.FunctionCall{
 					Name:      nextItem.Name,
@@ -691,9 +691,9 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 			Role: "assistant",
 			ToolCalls: []llm.ToolCall{
 				{
-					ID:    item.CallID,
-					Type:  "function",
-					Async: item.Async,
+					ID:                  item.CallID,
+					Type:                "function",
+					Async:               item.Async,
 					TransformerMetadata: encryptedFunctionArgsMetadata(item),
 					Function: llm.FunctionCall{
 						Name:      item.Name,

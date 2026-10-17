@@ -168,6 +168,12 @@ func testResponsesProtocolEncryptionContinuation(t *testing.T, rejectionMessage,
 							status, _ := responsesIntegrationPost(t, gateway, "/v1/responses", invalid)
 							require.NotEqual(t, http.StatusOK, status, "unverifiable arguments must stop before upstream execution")
 						}
+						for _, marker := range []any{nil, []string{}, []string{"message", "future"}, "future-marker"} {
+							invalid, err := sjson.Set(continuation, "input.6.encrypted_function_args", marker)
+							require.NoError(t, err)
+							status, _ := responsesIntegrationPost(t, gateway, "/v1/responses", invalid)
+							require.NotEqual(t, http.StatusOK, status, "decrypting message must not discard unknown argument markers")
+						}
 					}
 					mu.Lock()
 					defer mu.Unlock()

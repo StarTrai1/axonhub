@@ -130,6 +130,12 @@ func recoverResponsesAgentMessages(outbound *PersistentOutboundTransformer, serv
 				arguments := item.Get("arguments").String()
 				sealed := gjson.Get(arguments, "message").String()
 				if strings.HasPrefix(sealed, responsesAgentMessagePrefix) {
+					if marker := item.Get("encrypted_function_args"); marker.Exists() {
+						fields := marker.Array()
+						if !marker.IsArray() || len(fields) != 1 || fields[0].Type != gjson.String || fields[0].String() != "message" {
+							return nil, errors.New("unsupported encrypted agent tool arguments")
+						}
+					}
 					if err := loadCipher(); err != nil {
 						return nil, err
 					}
