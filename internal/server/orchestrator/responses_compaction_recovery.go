@@ -25,6 +25,7 @@ type responsesCompactionRecoveryKey struct {
 	threadID  string
 	apiKeyID  int
 	projectID int
+	replay    bool
 }
 
 var responsesRejectedCompactionMessagePattern = regexp.MustCompile(
@@ -118,6 +119,12 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawError(ctx context.C
 		m.rejected = make(map[responsesCompactionRecoveryKey]struct{})
 	}
 	m.rejected[key] = struct{}{}
+	if !m.outbound.GetCurrentChannel().Policies.UsesLocalRemoteCompactionBridge() && m.outbound.HasAlternativeChannel() {
+		// Preserve native state for another candidate before paying for a local
+		// reconstruction on a destination that has just rejected the checkpoint.
+		m.outbound.state.responsesCompactionSkipChannel = key.scope.provider.channelID
+		return
+	}
 	m.outbound.state.responsesRejectedStatusRetryChannel = key.scope.provider.channelID
 	log.Info(ctx, "native compaction rejected; scheduling retained-history recovery",
 		log.Int("channel_id", key.scope.provider.channelID),
@@ -141,14 +148,39 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawRequest(
 	}
 	_, rejected := m.rejected[key]
 	known := m.hasConfirmedRecovery(ctx, key)
+	replayKey := key
+	replayKey.replay = true
+	knownReplay := m.hasConfirmedRecovery(ctx, replayKey)
 	local := m.outbound.GetCurrentChannel().Policies.UsesLocalRemoteCompactionBridge()
-	if !rejected && !known && !local {
+	if !rejected && !known && !knownReplay && !local {
 		return request, nil
 	}
 	if _, safe := responsesResourceHistorySupportsRecoveryWithAgents(request.Body, true); !safe {
 		return nil, &remoteCompactionPreparationError{cause: errors.New("cannot recover rejected compaction with unresolved Responses history")}
 	}
 	state := m.outbound.state
+	// Small, authenticated source histories can be restored exactly without an
+	// extra model call. Keep the input unchanged unless every boundary verifies.
+	if !local && !known {
+		body, replayed, err := m.adapter.replayNativeCompaction(ctx, request.Body, ref, state)
+		if err != nil {
+			return nil, &remoteCompactionPreparationError{cause: err}
+		}
+		if replayed {
+			request.Body = body
+			if len(request.JSONBody) > 0 {
+				request.JSONBody = body
+			}
+			request.Headers.Del(codexTurnStateHeader)
+			m.adapted = &replayKey
+			log.Info(ctx, "restored exact native compaction source without summarization",
+				log.Int("channel_id", key.scope.provider.channelID))
+			return request, nil
+		}
+		if knownReplay {
+			return nil, &remoteCompactionPreparationError{cause: errors.New("exact compaction replay no longer fits its verified history boundary or budget")}
+		}
+	}
 	candidate := *state.CurrentCandidate
 	if state.CurrentModelIndex < 0 || state.CurrentModelIndex >= len(candidate.Models) {
 		return nil, &remoteCompactionPreparationError{cause: errors.New("rejected compaction has no selected model")}
@@ -195,6 +227,9 @@ func (key responsesCompactionRecoveryKey) digest() [sha256.Size]byte {
 		key.scope.provider.model, key.scope.provider.credential, key.scope.owner,
 		key.scope.threadID, key.scope.windowID, key.cacheKey, key.threadID, key.apiKeyID, key.projectID,
 	}
+	if key.replay {
+		identity[0] = "compaction-exact-replay-v1"
+	}
 	encoded, _ := json.Marshal(identity)
 	return sha256.Sum256(encoded)
 }
@@ -214,6 +249,11 @@ func (m *responsesCompactionRecoveryMiddleware) hasConfirmedRecovery(ctx context
 	if m.adapter.systemService == nil {
 		return false
 	}
+	if m.adapter.recoveryMisses != nil {
+		if expiry, found := m.adapter.recoveryMisses.Get(key); found && time.Now().Before(expiry) {
+			return false
+		}
+	}
 	lookupCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 	expiry, err := m.adapter.systemService.LoadResponsesCompactionRecovery(lookupCtx, key.digest())
@@ -222,6 +262,9 @@ func (m *responsesCompactionRecoveryMiddleware) hasConfirmedRecovery(ctx context
 		return false
 	}
 	if !time.Now().Before(expiry) {
+		if m.adapter.recoveryMisses != nil {
+			m.adapter.recoveryMisses.Add(key, time.Now().Add(time.Minute))
+		}
 		return false
 	}
 	if m.adapter.recoveries != nil {
@@ -235,6 +278,9 @@ func (m *responsesCompactionRecoveryMiddleware) confirmRecovery(ctx context.Cont
 		return
 	}
 	expiry := time.Now().Add(responsesReasoningRecoveryTTL)
+	if m.adapter.recoveryMisses != nil {
+		m.adapter.recoveryMisses.Remove(key)
+	}
 	if m.adapter.recoveries != nil {
 		m.adapter.recoveries.Add(key, expiry)
 	}

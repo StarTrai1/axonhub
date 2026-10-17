@@ -1344,6 +1344,25 @@ func (s *RequestService) UpdateRequestStatusFromError(ctx context.Context, reque
 	return s.UpdateRequestStatus(ctx, requestID, request.StatusFailed)
 }
 
+// UpdateRequestFailureWithMetrics preserves end-to-end wait even when routing
+// or checkpoint preparation failed before an execution was created.
+func (s *RequestService) UpdateRequestFailureWithMetrics(ctx context.Context, requestID int, rawErr error, metrics *LatencyMetrics) error {
+	status := request.StatusFailed
+	if errors.Is(rawErr, context.Canceled) || errors.Is(ctx.Err(), context.Canceled) {
+		status = request.StatusCanceled
+	}
+	update := s.entFromContext(ctx).Request.UpdateOneID(requestID).SetStatus(status)
+	if metrics != nil {
+		if metrics.LatencyMs != nil {
+			update.SetMetricsLatencyMs(*metrics.LatencyMs)
+		}
+		if metrics.FirstTokenLatencyMs != nil {
+			update.SetMetricsFirstTokenLatencyMs(*metrics.FirstTokenLatencyMs)
+		}
+	}
+	return update.Exec(ctx)
+}
+
 // cancelStaleRecords updates records older than maxAge to canceled status.
 func (s *RequestService) cancelStaleRecords(
 	ctx context.Context,

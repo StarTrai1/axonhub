@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"time"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/server/biz"
@@ -28,6 +29,9 @@ type PersistenceState struct {
 	RoutingPolicy       EffectiveRoutingPolicy
 
 	// Request state
+	// RequestStartedAt includes routing, checkpoint preparation, and all retries.
+	// Perf retains its independent per-attempt clock for channel health.
+	RequestStartedAt time.Time
 	ModelMapper *ModelMapper
 	// Proxy config, will be used to override channel's default proxy config.
 	Proxy *httpclient.ProxyConfig
@@ -43,6 +47,7 @@ type PersistenceState struct {
 	// types whose status field was explicitly rejected by that upstream.
 	responsesRejectedStatusRules        map[int][]responsesRejectedStatusRule
 	responsesRejectedStatusRetryChannel int
+	responsesCompactionSkipChannel     int
 	// A relay affinity recovery consumes the existing same-channel budget and
 	// stops if the replacement affinity is also explicitly overloaded.
 	responsesRelayAffinityRetryChannel     int

@@ -37,5 +37,5 @@ func persistRemoteCompactionPreparationFailure(ctx context.Context, inbound *Per
 	if errors.Is(failure, context.Canceled) {
 		status = request.StatusCanceled
 	}
-	return state.RequestService.UpdateRequestStatusExternalIDAndResponseBody(ctx, record.ID, status, "", objects.JSONRawMessage(transformed.Body), nil)
+	return state.RequestService.UpdateRequestStatusExternalIDAndResponseBody(ctx, record.ID, status, "", objects.JSONRawMessage(transformed.Body), requestLatencyMetrics(state, nil))
 }

@@ -95,16 +95,16 @@ func TestRemoteCompactionSelectorSelect(t *testing.T) {
 				newCandidate("capable-a", channel.TypeCodex, objects.RemoteCompactionPolicyNative),
 				newCandidate("capable-b", channel.TypeCodex, objects.RemoteCompactionPolicyNative),
 			},
-			want: []string{"capable-a", "capable-b"},
+			want: []string{"automatic", "capable-a", "capable-b"},
 		},
 		{
-			name:    "v2 trigger prefers capable Codex channels",
+			name:    "v2 trigger preserves automatic and native routes",
 			request: v2Request,
 			candidates: []*ChannelModelsCandidate{
 				newCandidate("automatic", channel.TypeCodex, objects.RemoteCompactionPolicyAuto),
 				newCandidate("capable", channel.TypeCodex, objects.RemoteCompactionPolicyNative),
 			},
-			want: []string{"capable"},
+			want: []string{"automatic", "capable"},
 		},
 		{
 			name:    "post-compaction turn prefers capable Codex channels",
@@ -125,14 +125,14 @@ func TestRemoteCompactionSelectorSelect(t *testing.T) {
 			want: []string{"local", "capable"},
 		},
 		{
-			name:    "generation prefers explicit local bridge before automatic fallback",
+			name:    "generation preserves native attempt on automatic routes",
 			request: v2Request,
 			candidates: []*ChannelModelsCandidate{
 				newCandidate("automatic-a", channel.TypeCodex, objects.RemoteCompactionPolicyAuto),
 				newCandidate("local", channel.TypeCodex, objects.RemoteCompactionPolicyLocalBridge),
 				newCandidate("automatic-b", channel.TypeCodex, objects.RemoteCompactionPolicyAuto),
 			},
-			want: []string{"local"},
+			want: []string{"automatic-a", "automatic-b"},
 		},
 		{
 			name:    "continuation fallback keeps automatic and local bridge candidates",
@@ -141,7 +141,7 @@ func TestRemoteCompactionSelectorSelect(t *testing.T) {
 				newCandidate("automatic", channel.TypeCodex, objects.RemoteCompactionPolicyAuto),
 				newCandidate("local", channel.TypeCodex, objects.RemoteCompactionPolicyLocalBridge),
 			},
-			want: []string{"automatic", "local"},
+			want: []string{"automatic"},
 		},
 		{
 			name:    "generation with only local bridge remains eligible",
@@ -175,7 +175,7 @@ func TestRemoteCompactionSelectorSelect(t *testing.T) {
 				newLegacyCandidate("legacy-native", true),
 				newCandidate("automatic", channel.TypeCodex, objects.RemoteCompactionPolicyAuto),
 			},
-			want: []string{"legacy-native"},
+			want: []string{"legacy-native", "automatic"},
 		},
 		{
 			name:    "capability flag is scoped to Codex channels",

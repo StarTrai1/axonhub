@@ -187,6 +187,7 @@ type ChatCompletionResult struct {
 }
 
 func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, request *httpclient.Request) (ChatCompletionResult, error) {
+	startedAt := time.Now()
 	lifecycleOwner, executionCtx := newStreamLifecycle(ctx)
 	ctx = executionCtx
 	memoryLease, admissionErr := codexBackgroundMemory.begin(ctx, request, lifecycleOwner.cancel)
@@ -239,6 +240,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 	}
 
 	state := &PersistenceState{
+		RequestStartedAt:      startedAt,
 		codexMemory:           memoryLease,
 		ResponsesContinuation: continuation,
 		APIKey:                apiKey,
@@ -439,10 +441,11 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 
 		// Update the main request status based on error
 		if request := outbound.GetRequest(); request != nil {
-			if updateErr := processor.RequestService.UpdateRequestStatusFromError(
+			if updateErr := processor.RequestService.UpdateRequestFailureWithMetrics(
 				persistCtx,
 				request.ID,
 				err,
+				requestLatencyMetrics(state, nil),
 			); updateErr != nil {
 				log.Warn(persistCtx, "Failed to update request status from error", log.Cause(updateErr))
 			}

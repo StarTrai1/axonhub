@@ -17,10 +17,9 @@ const (
 	legacyRemoteCompactionSummaryType = "compaction_summary"
 )
 
-// RemoteCompactionSelector prefers native-capable Codex channels. For
-// compaction generation, an explicit local bridge is the next safest option;
-// automatic channels preserve the historical permissive fallback only when no
-// native or local-bridge channel exists.
+// RemoteCompactionSelector retains both native and auto Codex routes. Auto is
+// not a negative capability result: removing it breaks same-channel affinity
+// whenever a native route exists elsewhere in the routing plan.
 type RemoteCompactionSelector struct {
 	wrapped CandidateSelector
 }
@@ -43,7 +42,7 @@ func (s *RemoteCompactionSelector) Select(ctx context.Context, req *llm.Request)
 		return candidate != nil &&
 			candidate.Channel != nil &&
 			candidate.Channel.Type == channel.TypeCodex &&
-			candidate.Channel.Policies.PrefersNativeRemoteCompaction()
+			!candidate.Channel.Policies.UsesLocalRemoteCompactionBridge()
 	})
 	if len(capable) == 0 {
 		if log.DebugEnabled(ctx) {

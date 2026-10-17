@@ -61,7 +61,7 @@ func TestResponsesProtocolCompactionRelayContinuation(t *testing.T) {
 							responseID = "resp_summary"
 						default:
 							continuationCalls++
-							if continuationCalls <= 2 {
+							if continuationCalls <= 1 {
 								w.WriteHeader(http.StatusBadRequest)
 								_, _ = io.WriteString(w, relayResourceMismatchFixture)
 								return
@@ -108,12 +108,12 @@ func TestResponsesProtocolCompactionRelayContinuation(t *testing.T) {
 					mu.Lock()
 					defer mu.Unlock()
 					require.Equal(t, 1, summaryCalls, "generate the verified source summary once")
-					require.Equal(t, 4, continuationCalls, "two bounded repairs, completion, then delta continuation")
-					require.Len(t, bodies, 6)
+					require.Equal(t, 3, continuationCalls, "reasoning repair, completion, then delta continuation")
+					require.Len(t, bodies, 7)
 					for _, method := range methods {
 						require.Equal(t, http.MethodPost, method, "an HTTP relay must not receive a WS handshake")
 					}
-					for _, body := range bodies[2:] {
+					for _, body := range bodies[4:] {
 						require.Contains(t, string(body), "verified-summary-canary")
 						require.Contains(t, string(body), "retained-user-canary")
 						require.Contains(t, string(body), "tool-input-canary")
@@ -122,11 +122,10 @@ func TestResponsesProtocolCompactionRelayContinuation(t *testing.T) {
 						require.NotContains(t, string(body), "native-source-ciphertext")
 						require.False(t, gjson.GetBytes(body, "previous_response_id").Exists())
 					}
-					require.Contains(t, string(bodies[2]), "gAAAAABsynthetic_old_reasoning_ciphertext_0123456789abcdef0123456789abcdef")
-					require.Contains(t, string(bodies[3]), "gAAAAABsynthetic_old_reasoning_ciphertext_0123456789abcdef0123456789abcdef")
-					require.NotContains(t, string(bodies[4]), "gAAAAABsynthetic_old_reasoning_ciphertext_0123456789abcdef0123456789abcdef")
-					require.Contains(t, string(bodies[4]), "visible-reasoning-canary")
-					require.Contains(t, string(bodies[5]), "next-turn-canary")
+					require.Contains(t, string(bodies[4]), "gAAAAABsynthetic_old_reasoning_ciphertext_0123456789abcdef0123456789abcdef")
+					require.NotContains(t, string(bodies[5]), "gAAAAABsynthetic_old_reasoning_ciphertext_0123456789abcdef0123456789abcdef")
+					require.Contains(t, string(bodies[5]), "visible-reasoning-canary")
+					require.Contains(t, string(bodies[6]), "next-turn-canary")
 				})
 			}
 		}

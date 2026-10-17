@@ -62,6 +62,7 @@ type remoteCompactionAdapter struct {
 	summaries        *gocache.Cache
 	summaryGenerator singleflight.Group
 	recoveries       *lru.Cache[responsesCompactionRecoveryKey, time.Time]
+	recoveryMisses   *lru.Cache[responsesCompactionRecoveryKey, time.Time]
 }
 
 type remoteCompactionReference struct {
@@ -107,6 +108,7 @@ func newRemoteCompactionAdapter(
 		systemService:   systemService,
 		summaries:       gocache.New(remoteCompactionCacheExpiration, remoteCompactionCacheCleanup),
 		recoveries:      lo.Must(lru.New[responsesCompactionRecoveryKey, time.Time](responsesReasoningRecoveryMaxScopes)),
+		recoveryMisses:  lo.Must(lru.New[responsesCompactionRecoveryKey, time.Time](responsesReasoningRecoveryMaxScopes)),
 	}
 }
 
@@ -359,10 +361,9 @@ func (m *remoteCompactionMiddleware) OnOutboundLlmStream(
 
 func hasLocalBridgeCodexCandidate(candidates []*ChannelModelsCandidate) bool {
 	for _, candidate := range candidates {
-		if candidate != nil && candidate.Channel != nil &&
-			candidate.Channel.Type == channel.TypeCodex &&
-			candidate.Channel.Policies.UsesLocalRemoteCompactionBridge() {
-			return true
+		if candidate != nil && candidate.Channel != nil {
+			return candidate.Channel.Type == channel.TypeCodex &&
+				candidate.Channel.Policies.UsesLocalRemoteCompactionBridge()
 		}
 	}
 
@@ -392,22 +393,10 @@ func shouldAdaptRemoteCompactionReference(
 		return true
 	}
 
-	// Candidate order is authoritative after routing-tier and load-balancing
-	// selection. A later native channel must not disable the explicit local
-	// bridge policy of the channel that will receive the first attempt.
-	for _, candidate := range candidates {
-		if candidate == nil || candidate.Channel == nil || candidate.Channel.Type != channel.TypeCodex {
-			continue
-		}
-		if candidate.Channel.Policies.UsesLocalRemoteCompactionBridge() {
-			return true
-		}
-		if candidate.Channel.Policies.PrefersNativeRemoteCompaction() {
-			return false
-		}
-	}
-
-	return hasUnsupportedCodexCandidate(candidates)
+	// Auto is not evidence that a checkpoint is unsupported. Preserve the
+	// native prefix until this destination actually rejects it. A later local
+	// candidate must not rewrite the request selected for a native/auto route.
+	return hasLocalBridgeCodexCandidate(candidates)
 }
 
 func isLocalCompactionReference(ref *remoteCompactionReference) bool {
@@ -658,18 +647,6 @@ func extractAssistantResponseText(response *llm.Response) string {
 	}
 
 	return text.String()
-}
-
-func hasUnsupportedCodexCandidate(candidates []*ChannelModelsCandidate) bool {
-	for _, candidate := range candidates {
-		if candidate != nil && candidate.Channel != nil &&
-			candidate.Channel.Type == channel.TypeCodex &&
-			!candidate.Channel.Policies.PrefersNativeRemoteCompaction() {
-			return true
-		}
-	}
-
-	return false
 }
 
 func (a *remoteCompactionAdapter) summaryForCompaction(

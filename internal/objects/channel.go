@@ -583,9 +583,8 @@ const (
 type RemoteCompactionPolicy string
 
 const (
-	// RemoteCompactionPolicyAuto preserves the historical permissive fallback:
-	// prefer native-capable channels, but keep this channel eligible when none
-	// exist.
+	// RemoteCompactionPolicyAuto tries native state before applying the bounded
+	// recovery flow after an explicit upstream rejection.
 	RemoteCompactionPolicyAuto RemoteCompactionPolicy = "auto"
 	// RemoteCompactionPolicyNative marks the channel as capable of handling the
 	// Codex remote compaction protocol without adaptation.

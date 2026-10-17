@@ -39,6 +39,8 @@ type ChannelModelsCandidate struct {
 	// Anthropic max_tokens fallback when the client omitted an output cap.
 	// Zero means the catalog model has no usable limit.
 	DefaultMaxTokens int64
+	// ContextTokens bounds exact retained-history replay; zero disables it.
+	ContextTokens int
 }
 
 // ModelRoutingPolicy contains model-level overrides carried from model
@@ -262,6 +264,9 @@ func (s *DefaultSelector) selectModelCandidates(ctx context.Context, req *llm.Re
 	for _, candidate := range candidates {
 		candidate.ModelRoutingPolicy = modelRoutingPolicy
 		candidate.DefaultMaxTokens = defaultMaxTokens
+		if model.ModelCard != nil {
+			candidate.ContextTokens = model.ModelCard.Limit.Context
+		}
 	}
 
 	if log.DebugEnabled(ctx) {

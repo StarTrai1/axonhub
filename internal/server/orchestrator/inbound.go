@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"time"
 
 	"github.com/tidwall/gjson"
 
@@ -456,7 +457,7 @@ func (ts *InboundPersistentStream) Close() error {
 		ts.persistFailureChunks(persistCtx)
 
 		if ts.request != nil {
-			if err := ts.requestService.UpdateRequestStatusFromError(persistCtx, ts.request.ID, decision.cause); err != nil {
+			if err := ts.requestService.UpdateRequestFailureWithMetrics(persistCtx, ts.request.ID, decision.cause, requestLatencyMetrics(ts.state, ts.perf)); err != nil {
 				log.Warn(persistCtx, "Failed to update request status from error", log.Cause(err))
 			}
 		}
@@ -476,7 +477,7 @@ func (ts *InboundPersistentStream) Close() error {
 		ts.persistFailureChunks(persistCtx)
 
 		if ts.request != nil {
-			if err := ts.requestService.UpdateRequestStatusFromError(persistCtx, ts.request.ID, decision.cause); err != nil {
+			if err := ts.requestService.UpdateRequestFailureWithMetrics(persistCtx, ts.request.ID, decision.cause, requestLatencyMetrics(ts.state, ts.perf)); err != nil {
 				log.Warn(persistCtx, "Failed to update request status from error", log.Cause(err))
 			}
 		}
@@ -537,19 +538,7 @@ func (ts *InboundPersistentStream) _persistResponse(ctx context.Context, respons
 		return
 	}
 
-	// Build latency metrics from performance record
-	var metrics *biz.LatencyMetrics
-
-	if ts.perf != nil {
-		firstTokenLatencyMs, requestLatencyMs, _ := ts.perf.Calculate()
-
-		metrics = &biz.LatencyMetrics{
-			LatencyMs: &requestLatencyMs,
-		}
-		if ts.perf.Stream && ts.perf.FirstTokenTime != nil {
-			metrics.FirstTokenLatencyMs = &firstTokenLatencyMs
-		}
-	}
+	metrics := requestLatencyMetrics(ts.state, ts.perf)
 
 	status := ts.terminalState.requestStatus()
 	err := ts.requestService.UpdateRequestFinalized(ctx, ts.request.ID, status, meta.ID, responseBody, metrics)
@@ -585,6 +574,9 @@ func (p *PersistentInboundTransformer) TransformError(ctx context.Context, rawEr
 }
 
 func (p *PersistentInboundTransformer) TransformRequest(ctx context.Context, request *httpclient.Request) (*llm.Request, error) {
+	if p.state.RequestStartedAt.IsZero() {
+		p.state.RequestStartedAt = time.Now()
+	}
 	llmRequest, err := p.wrapped.TransformRequest(ctx, request)
 	if err != nil {
 		return nil, err

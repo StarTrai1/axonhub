@@ -1008,6 +1008,7 @@ func (p *PersistentOutboundTransformer) NextChannel(ctx context.Context) error {
 	p.state.responsesRejectedStatusRetryChannel = 0
 	p.state.responsesRelayAffinityRetryChannel = 0
 	p.state.responsesRelayAffinityExhaustedChannel = 0
+	p.state.responsesCompactionSkipChannel = 0
 
 	candidate := p.state.ChannelModelsCandidates[p.state.CurrentCandidateIndex]
 	p.state.CurrentCandidate = candidate
@@ -1089,6 +1090,9 @@ func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
 		return false
 	}
 	if current := p.state.CurrentCandidate.Channel; current != nil && current.ID > 0 {
+		if p.state.responsesCompactionSkipChannel == current.ID {
+			return false
+		}
 		if p.state.responsesRelayAffinityExhaustedChannel == current.ID {
 			return false
 		}
