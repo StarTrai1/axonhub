@@ -728,13 +728,22 @@ func (a *remoteCompactionAdapter) summaryForCompactionChain(
 				},
 			}
 		}
-		source, err = a.adaptStoredCompactionSource(ctx, source, state, executor, ancestors)
-		if err != nil {
-			return "", err
+		// A native ancestor may still be accepted by this destination even when
+		// the newest checkpoint was rejected. Expand it only after evidence from
+		// the actual summary request, not preemptively for the whole chain.
+		previous, _, _, parseErr := parseRemoteCompactionRequest(source.body)
+		if parseErr != nil {
+			return "", parseErr
+		}
+		if isLocalCompactionReference(previous) {
+			source, err = a.adaptStoredCompactionSource(ctx, source, state, executor, ancestors)
+			if err != nil {
+				return "", err
+			}
 		}
 	}
 
-	value, err, _ := a.summaryGenerator.Do(ownerKey, func() (any, error) {
+	generate := func() (any, error) {
 		if cached, ok := a.summaries.Get(ownerKey); ok {
 			if summary, valid := cached.(string); valid && summary != "" {
 				return summary, nil
@@ -742,6 +751,10 @@ func (a *remoteCompactionAdapter) summaryForCompactionChain(
 		}
 
 		if summary == "" {
+			log.Warn(ctx, "generating text compaction fallback from authenticated history",
+				log.String("compaction_id", ref.ID),
+				log.Int("source_depth", len(ancestors)),
+				log.String("recovery_kind", "text_summary"))
 			summary, err = a.generateLocalSummary(ctx, cacheKey, source, state, executor)
 			if err != nil {
 				return "", err
@@ -753,7 +766,23 @@ func (a *remoteCompactionAdapter) summaryForCompactionChain(
 
 		a.summaries.SetDefault(ownerKey, summary)
 		return summary, nil
-	})
+	}
+	value, err, _ := a.summaryGenerator.Do(ownerKey, generate)
+	if rejected, ok := errors.AsType[*compactionSourceRejectedError](err); ok && source != nil && ctx.Err() == nil {
+		previous, _, _, parseErr := parseRemoteCompactionRequest(source.body)
+		if parseErr != nil {
+			return "", parseErr
+		}
+		if previous == nil || remoteCompactionCacheKey(previous) != rejected.cacheKey {
+			return "", err
+		}
+		// Never wait on a nested generation while holding the parent's flight.
+		source, err = a.adaptStoredCompactionSource(ctx, source, state, executor, ancestors)
+		if err != nil {
+			return "", err
+		}
+		value, err, _ = a.summaryGenerator.Do(ownerKey, generate)
+	}
 	if err != nil {
 		return "", err
 	}
@@ -1103,7 +1132,7 @@ func (a *remoteCompactionAdapter) generateLocalSummaryWithCandidate(
 	attemptState.Perf = perf
 	stream, executionRecord, err := a.startLocalCompactionStream(ctx, outbound, providerRequest, customizedExecutor, affinity, compatibility)
 	if err != nil {
-		return "", err
+		return "", rejectedCompactionSourceError(attemptState.RawProviderRequest, err)
 	}
 	stream = maybeRepairDelayedCodexResponsesTerminal(
 		ctx,

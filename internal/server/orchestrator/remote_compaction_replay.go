@@ -74,9 +74,15 @@ func spliceNativeCompactionSource(body, source []byte, ref *remoteCompactionRefe
 	}
 	for _, field := range []string{"model", "instructions", "tools"} {
 		var current, prior any
-		if len(envelope[field]) != 0 && json.Unmarshal(envelope[field], &current) != nil ||
-			len(sourceEnvelope[field]) != 0 && json.Unmarshal(sourceEnvelope[field], &prior) != nil {
-			return body, false, nil
+		if len(envelope[field]) != 0 {
+			if err := json.Unmarshal(envelope[field], &current); err != nil {
+				return nil, false, err
+			}
+		}
+		if len(sourceEnvelope[field]) != 0 {
+			if err := json.Unmarshal(sourceEnvelope[field], &prior); err != nil {
+				return nil, false, err
+			}
 		}
 		left, _ := json.Marshal(current)
 		right, _ := json.Marshal(prior)
@@ -159,6 +165,9 @@ func exactReplayTextItem(raw json.RawMessage) bool {
 		value := item.Get(field)
 		if value.Exists() && !value.IsArray() && value.Type != gjson.String && value.Type != gjson.Null {
 			return false
+		}
+		if !value.IsArray() {
+			continue
 		}
 		for _, part := range value.Array() {
 			if part.Get("file_id").Exists() || part.Get("encrypted_content").Exists() || part.Get("encrypted_function_args").Exists() {

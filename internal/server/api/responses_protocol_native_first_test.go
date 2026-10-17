@@ -25,7 +25,10 @@ func TestResponsesProtocolAutoCompactionNativeFirst(t *testing.T) {
 					var bodies [][]byte
 					upstream := responsesIntegrationServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 						body, err := readRequestBody(r)
-						if err != nil { t.Error(err); return }
+						if err != nil {
+							t.Error(err)
+							return
+						}
 						mu.Lock()
 						bodies = append(bodies, body)
 						mu.Unlock()
@@ -39,34 +42,36 @@ func TestResponsesProtocolAutoCompactionNativeFirst(t *testing.T) {
 					})
 					gateway := responsesIntegrationGateway(t, client, handlers, project)
 					payload := map[string]any{
-						"model":"gpt-6-astra", "stream":false, "prompt_cache_key":"stable-native-key",
-						"reasoning":map[string]string{"effort":"xhigh"},
-						"client_metadata":map[string]string{"thread_id":"native-first-thread"},
-						"input":[]any{map[string]string{"role":"user","content":"retained-user"},map[string]string{"type":"compaction","id":"cmp_native_first","encrypted_content":"opaque-native-prefix"}},
+						"model": "gpt-6-astra", "stream": false, "prompt_cache_key": "stable-native-key",
+						"reasoning":       map[string]string{"effort": "xhigh"},
+						"client_metadata": map[string]string{"thread_id": "native-first-thread"},
+						"input":           []any{map[string]string{"role": "user", "content": "retained-user"}, map[string]string{"type": "compaction", "id": "cmp_native_first", "encrypted_content": "opaque-native-prefix"}},
 					}
-					if trigger { payload["input"] = append(payload["input"].([]any), map[string]string{"type":"compaction_trigger"}) }
+					if trigger {
+						payload["input"] = append(payload["input"].([]any), map[string]string{"type": "compaction_trigger"})
+					}
 					if transport == "http" {
 						encoded, err := json.Marshal(payload)
 						require.NoError(t, err)
 						status, result := responsesIntegrationPost(t, gateway, "/v1/responses", string(encoded))
 						require.Equal(t, http.StatusOK, status, string(result))
 					} else {
-						delete(payload,"stream")
+						delete(payload, "stream")
 						payload["type"] = "response.create"
 						encoded, err := json.Marshal(payload)
-						require.NoError(t,err)
-						conn := responsesIntegrationDial(t,gateway)
+						require.NoError(t, err)
+						conn := responsesIntegrationDial(t, gateway)
 						result := responsesIntegrationTurn(t, conn, string(encoded))
-						require.Equal(t,"response.completed",gjson.GetBytes(result,"type").String(),string(result))
+						require.Equal(t, "response.completed", gjson.GetBytes(result, "type").String(), string(result))
 					}
 					mu.Lock()
 					defer mu.Unlock()
-					require.Len(t,bodies,1,"native acceptance must not need a summary or source-history lookup")
-					require.Equal(t,"opaque-native-prefix",gjson.GetBytes(bodies[0],`input.#(type=="compaction").encrypted_content`).String())
-					require.Equal(t,"stable-native-key",gjson.GetBytes(bodies[0],"prompt_cache_key").String())
-					require.Equal(t,"xhigh",gjson.GetBytes(bodies[0],"reasoning.effort").String())
-					require.Equal(t,trigger,gjson.GetBytes(bodies[0],`input.#(type=="compaction_trigger")`).Exists())
-					require.NotContains(t,string(bodies[0]),"CONTEXT CHECKPOINT COMPACTION")
+					require.Len(t, bodies, 1, "native acceptance must not need a summary or source-history lookup")
+					require.Equal(t, "opaque-native-prefix", gjson.GetBytes(bodies[0], `input.#(type=="compaction").encrypted_content`).String())
+					require.Equal(t, "stable-native-key", gjson.GetBytes(bodies[0], "prompt_cache_key").String())
+					require.Equal(t, "xhigh", gjson.GetBytes(bodies[0], "reasoning.effort").String())
+					require.Equal(t, trigger, gjson.GetBytes(bodies[0], `input.#(type=="compaction_trigger")`).Exists())
+					require.NotContains(t, string(bodies[0]), "CONTEXT CHECKPOINT COMPACTION")
 				})
 			}
 		}

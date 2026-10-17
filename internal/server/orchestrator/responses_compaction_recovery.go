@@ -177,9 +177,8 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawRequest(
 				log.Int("channel_id", key.scope.provider.channelID))
 			return request, nil
 		}
-		if knownReplay {
-			return nil, &remoteCompactionPreparationError{cause: errors.New("exact compaction replay no longer fits its verified history boundary or budget")}
-		}
+		// A later turn may exceed the exact-replay budget. The retained source
+		// remains authoritative; fall through to the explicit summary fallback.
 	}
 	candidate := *state.CurrentCandidate
 	if state.CurrentModelIndex < 0 || state.CurrentModelIndex >= len(candidate.Models) {
