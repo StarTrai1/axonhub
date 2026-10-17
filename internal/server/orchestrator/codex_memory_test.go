@@ -132,7 +132,7 @@ func TestCodexMemoryGuardFailureCacheIsBounded(t *testing.T) {
 
 func TestCodexMemoryGuardPreservesSteeringAndInterrupts(t *testing.T) {
 	for _, tc := range []struct {
-		name string
+		name   string
 		events []string
 	}{
 		{"interrupt", []string{`{"type":"response.incomplete","response":{"id":"resp_old","status":"incomplete","incomplete_details":{"reason":"interrupted"}}}`}},
