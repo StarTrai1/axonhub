@@ -87,6 +87,12 @@ var (
 )
 
 func isExternalResponseBodyMarker(body objects.JSONRawMessage) bool {
+	// Ordinary responses and compressed envelopes cannot be the tiny marker.
+	// Avoid compacting (and copying) their entire JSON just to check its tag.
+	prefix := bytes.TrimSpace(body)
+	if len(prefix) == 0 || prefix[0] != '{' || !bytes.HasPrefix(bytes.TrimSpace(prefix[1:]), []byte(`"_ext"`)) {
+		return false
+	}
 	var compact bytes.Buffer
 	if err := json.Compact(&compact, body); err != nil {
 		return false
@@ -1515,7 +1521,9 @@ func (s *RequestService) LoadCompletedResponsesSession(
 	)
 	query = query.Where(request.ProjectIDEQ(projectID))
 
-	req, err := query.Order(ent.Desc(request.FieldCreatedAt)).First(ctx)
+	req, err := query.Select(request.FieldID, request.FieldProjectID, request.FieldDataStorageID,
+		request.FieldStatus, request.FieldRequestBody, request.FieldResponseBody, request.FieldRequestHeaders).
+		Order(ent.Desc(request.FieldCreatedAt)).First(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return nil, nil, false, nil
@@ -1535,7 +1543,10 @@ func (s *RequestService) LoadCompletedResponsesSession(
 		requestexecution.RequestIDEQ(req.ID),
 		requestexecution.StatusEQ(requestexecution.StatusCompleted),
 		requestexecution.FormatEQ(string(llm.APIFormatOpenAIResponse)),
-	).Order(ent.Desc(requestexecution.FieldID)).First(ctx)
+	).Select(requestexecution.FieldID, requestexecution.FieldRequestID, requestexecution.FieldProjectID,
+		requestexecution.FieldDataStorageID, requestexecution.FieldStatus,
+		requestexecution.FieldRequestBody, requestexecution.FieldResponseBody).
+		Order(ent.Desc(requestexecution.FieldID)).First(ctx)
 	if executionErr != nil && !ent.IsNotFound(executionErr) {
 		return nil, nil, false, fmt.Errorf("failed to find Responses execution snapshot: %w", executionErr)
 	}

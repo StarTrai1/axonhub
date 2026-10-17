@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict';
+import { execFile } from 'node:child_process';
 import { mkdtemp, mkdir, readFile, writeFile, access } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
 import { gunzipSync } from 'node:zlib';
 import { packFrontend } from './pack-frontend.mjs';
 
@@ -38,4 +41,12 @@ test('embedded assets are deterministic, lossless and leave Vite output intact',
   assert.deepEqual(await readFile(path.join(destination, 'assets/app-Ab12cd_9.js.gz')), packed);
   await assert.rejects(packFrontend(source, source));
   await assert.rejects(packFrontend(source, root));
+  // Docker invokes the same packer with explicit paths, outside the repo layout.
+  const run = promisify(execFile);
+  const cli = fileURLToPath(new URL('./pack-frontend.mjs', import.meta.url));
+  const dockerDestination = path.join(root, 'docker-embedded');
+  const { stdout } = await run(process.execPath, [cli, source, dockerDestination], { cwd: root });
+  assert.deepEqual(JSON.parse(stdout), stats);
+  assert.deepEqual(await readFile(path.join(dockerDestination, 'assets/app-Ab12cd_9.js.gz')), packed);
+  await assert.rejects(run(process.execPath, [cli, source], { cwd: root }), /Usage:/);
 });

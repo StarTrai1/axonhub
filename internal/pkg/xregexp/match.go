@@ -5,8 +5,9 @@ import (
 	"strings"
 
 	"github.com/dlclark/regexp2/v2"
+	"github.com/samber/lo"
 
-	"github.com/looplj/axonhub/internal/pkg/xmap"
+	lru "github.com/hashicorp/golang-lru/v2"
 )
 
 type patternCache struct {
@@ -16,7 +17,13 @@ type patternCache struct {
 	matchAll   bool
 }
 
-var globalCache = xmap.New[string, *patternCache]()
+const maxCachedPatterns = 1024
+
+var (
+	globalCache = lo.Must(lru.New[string, *patternCache](maxCachedPatterns))
+	exactPattern = &patternCache{exactMatch: true}
+	allPattern = &patternCache{matchAll: true}
+)
 
 func MatchString(pattern string, str string) bool {
 	cached := getOrCreatePattern(pattern)
@@ -71,26 +78,18 @@ func Filter(items []string, pattern string) []string {
 }
 
 func getOrCreatePattern(pattern string) *patternCache {
-	if cached, ok := globalCache.Load(pattern); ok {
+	if pattern == "*" {
+		return allPattern
+	}
+
+	if !containsRegexChars(pattern) {
+		return exactPattern
+	}
+	if cached, ok := globalCache.Get(pattern); ok {
 		return cached
 	}
 
 	cached := &patternCache{}
-
-	if pattern == "*" {
-		cached.matchAll = true
-		globalCache.Store(pattern, cached)
-
-		return cached
-	}
-
-	if !containsRegexChars(pattern) {
-		cached.exactMatch = true
-		globalCache.Store(pattern, cached)
-
-		return cached
-	}
-
 	compiled, err := regexp2.Compile(ensureAnchored(pattern), regexp2.None)
 	if err != nil {
 		cached.compileErr = true
@@ -98,7 +97,7 @@ func getOrCreatePattern(pattern string) *patternCache {
 		cached.regex = compiled
 	}
 
-	globalCache.Store(pattern, cached)
+	globalCache.Add(pattern, cached)
 
 	return cached
 }

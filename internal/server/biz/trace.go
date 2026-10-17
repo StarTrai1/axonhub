@@ -426,35 +426,20 @@ type RequestMetadata struct {
 
 // GetRootSegment retrieves the hierarchical segments for a trace ID.
 //
-// Design Assumption:
-// This function loads ALL requests belonging to a trace into memory for segment building.
-// We assume a single trace typically contains a reasonable number of requests (e.g., < 100).
-// For most agent workflows, a single user message triggers limited agent calls (10-50 requests).
-//
-// If a trace contains an excessive number of requests (> 1000), this could lead to:
-// - High memory consumption (each request body can be 1-5MB)
-// - Increased GC pressure
-// - Slower response times
-//
-// For traces with many requests, consider:
-// 1. Splitting the workflow into multiple traces
-// 2. Using pagination at the application level
-// 3. Implementing streaming/progressive loading
-//
-// Performance characteristics:
-// - Concurrent body loading is limited by MaxConcurrentBodyLoads
-// - Typical use case: < 50 requests per trace, ~50MB peak memory
-// - Edge case: 1000 requests could consume up to 1GB memory.
+// The full segment tree is retained for parent matching. Stored rows omit unused
+// headers/chunks, and each body is decoded, parsed and released in the same
+// bounded worker instead of retaining all decompressed JSON until tree building.
 func (s *TraceService) GetRootSegment(ctx context.Context, traceID int) (*Segment, error) {
 	client := s.entFromContext(ctx)
 	if client == nil {
 		return nil, fmt.Errorf("ent client not found in context")
 	}
 
-	// Note: No pagination limit - relies on the assumption that a trace contains
-	// a reasonable number of requests. See function documentation above.
 	requests, err := client.Request.Query().
 		Where(request.TraceIDEQ(traceID), request.StatusEQ(request.StatusCompleted)).
+		Select(request.FieldID, request.FieldProjectID, request.FieldDataStorageID, request.FieldStatus,
+			request.FieldModelID, request.FieldFormat, request.FieldCreatedAt, request.FieldUpdatedAt,
+			request.FieldRequestBody, request.FieldResponseBody).
 		Order(ent.Asc(request.FieldCreatedAt)).
 		All(ctx)
 	if err != nil {
@@ -476,8 +461,10 @@ func (s *TraceService) GetRootSegment(ctx context.Context, traceID int) (*Segmen
 		return nil
 	})
 
-	for _, req := range requests {
+	segments := make([]*Segment, len(requests))
+	for i, req := range requests {
 		eg.Go(func() (err error) {
+			defer func() { req.RequestBody, req.ResponseBody = nil, nil }()
 			req.RequestBody, err = s.requestService.LoadRequestBody(egCtx, req)
 			if err != nil {
 				return fmt.Errorf("failed to load request body: %w", err)
@@ -488,7 +475,11 @@ func (s *TraceService) GetRootSegment(ctx context.Context, traceID int) (*Segmen
 				return fmt.Errorf("failed to load request response body: %w", err)
 			}
 
-			return err
+			segments[i], err = requestToSegment(egCtx, req)
+			if err != nil {
+				return fmt.Errorf("failed to build segment: %w", err)
+			}
+			return nil
 		})
 	}
 
@@ -504,12 +495,7 @@ func (s *TraceService) GetRootSegment(ctx context.Context, traceID int) (*Segmen
 	buildInfos := make([]*segmentBuildInfo, len(requests))
 	toolCallIndex := make(map[string]*segmentBuildInfo) // tool_call_id → producing segment
 
-	for i, req := range requests {
-		seg, segErr := requestToSegment(ctx, req)
-		if segErr != nil {
-			return nil, fmt.Errorf("failed to build segment: %w", segErr)
-		}
-
+	for i, seg := range segments {
 		info := &segmentBuildInfo{
 			segment:             seg,
 			originSpans:         append(append([]Span{}, seg.RequestSpans...), seg.ResponseSpans...),
@@ -583,6 +569,9 @@ func (s *TraceService) getPreviousTraceSpans(ctx context.Context, client *ent.Cl
 			request.TraceIDEQ(prevTrace.ID),
 			request.StatusEQ(request.StatusCompleted),
 		).
+		Select(request.FieldID, request.FieldProjectID, request.FieldDataStorageID, request.FieldStatus,
+			request.FieldModelID, request.FieldFormat, request.FieldCreatedAt, request.FieldUpdatedAt,
+			request.FieldRequestBody, request.FieldResponseBody).
 		Order(ent.Desc(request.FieldCreatedAt)).
 		First(ctx)
 	if err != nil {

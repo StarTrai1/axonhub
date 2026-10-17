@@ -46,5 +46,10 @@ export async function packFrontend(source, destination) {
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const root = fileURLToPath(new URL('../', import.meta.url));
-  console.log(JSON.stringify(await packFrontend(path.join(root, 'frontend/dist'), path.join(root, 'internal/server/static/dist'))));
+  const args = process.argv.slice(2);
+  if (args.length !== 0 && args.length !== 2) {
+    throw new Error('Usage: node pack-frontend.mjs [source destination]');
+  }
+  const [source, destination] = args.length === 2 ? args : [path.join(root, 'frontend/dist'), path.join(root, 'internal/server/static/dist')];
+  console.log(JSON.stringify(await packFrontend(source, destination)));
 }

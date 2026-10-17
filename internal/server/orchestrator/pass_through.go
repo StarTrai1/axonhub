@@ -1717,11 +1717,7 @@ func (b *rawStreamBacklog) hold(event *httpclient.StreamEvent) (bool, error) {
 	}
 
 	size := rawStreamEventSize(event)
-	maxBytes := maxRawPreAttachBytes
-	if b.attached {
-		maxBytes = maxRawQueueBytes
-	}
-	if size > maxRawEventBytes || b.count >= maxRawPreAttachEvents || size > maxBytes-b.bytes {
+	if size > maxRawEventBytes || b.count >= maxRawPreAttachEvents || size > maxRawPreAttachBytes-b.bytes {
 		return false, errRawPreAttachBudgetExceeded
 	}
 	b.bytes += size

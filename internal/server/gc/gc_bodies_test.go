@@ -484,6 +484,9 @@ func TestCleanupRequestBodies_ExternalDeleteFailureLeavesRowRetryable(t *testing
 }
 
 func TestCleanupRequestBodies_SkipsFailedDeleteAndContinues(t *testing.T) {
+	previousBatchSize := defaultBatchSize
+	defaultBatchSize = 1
+	t.Cleanup(func() { defaultBatchSize = previousBatchSize })
 	worker, ctx, fsStorage, baseDir := setupWorkerWithFSStorage(t)
 	client := worker.Ent
 
@@ -530,6 +533,16 @@ func TestCleanupRequestBodies_SkipsFailedDeleteAndContinues(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(pathForKey(baseDir, blockedKey), "child"), []byte("x"), 0o644))
 	createFileForKey(t, baseDir, okKey)
 
+	blockedExec := createBodyTestExecution(t, ctx, client, blocked, oldAt, objects.JSONRawMessage(`{}`), objects.JSONRawMessage(`{"h":"blocked-execution"}`))
+	okExec := createBodyTestExecution(t, ctx, client, okReq, oldAt, objects.JSONRawMessage(`{}`), objects.JSONRawMessage(`{"h":"ok-execution"}`))
+	client.RequestExecution.UpdateOneID(blockedExec.ID).SetDataStorageID(fsStorage.ID).SaveX(ctx)
+	client.RequestExecution.UpdateOneID(okExec.ID).SetDataStorageID(fsStorage.ID).SaveX(ctx)
+	blockedExecKey := biz.GenerateExecutionRequestBodyKey(proj.ID, blocked.ID, blockedExec.ID)
+	okExecKey := biz.GenerateExecutionRequestBodyKey(proj.ID, okReq.ID, okExec.ID)
+	createDirForKey(t, baseDir, blockedExecKey)
+	require.NoError(t, os.WriteFile(filepath.Join(pathForKey(baseDir, blockedExecKey), "child"), []byte("x"), 0o644))
+	createFileForKey(t, baseDir, okExecKey)
+
 	err = worker.cleanupRequestBodies(ctx, 7)
 	require.Error(t, err)
 
@@ -538,6 +551,17 @@ func TestCleanupRequestBodies_SkipsFailedDeleteAndContinues(t *testing.T) {
 	require.JSONEq(t, `{"h":"1"}`, string(blocked.RequestHeaders))
 	require.Nil(t, okReq.RequestHeaders)
 	assertRemoved(t, baseDir, okKey)
+	require.NotEmpty(t, client.RequestExecution.GetX(ctx, blockedExec.ID).RequestHeaders)
+	require.Empty(t, client.RequestExecution.GetX(ctx, okExec.ID).RequestHeaders)
+	assertRemoved(t, baseDir, okExecKey)
+
+	// A fresh pass retries earlier failures even though the previous pass
+	// advanced through subsequent request and execution batches.
+	require.NoError(t, os.RemoveAll(pathForKey(baseDir, blockedKey)))
+	require.NoError(t, os.RemoveAll(pathForKey(baseDir, blockedExecKey)))
+	require.NoError(t, worker.cleanupRequestBodies(ctx, 7))
+	require.Empty(t, client.Request.GetX(ctx, blocked.ID).RequestHeaders)
+	require.Empty(t, client.RequestExecution.GetX(ctx, blockedExec.ID).RequestHeaders)
 }
 
 func TestCleanupRequestBodies_PostgresImmutableJSON(t *testing.T) {

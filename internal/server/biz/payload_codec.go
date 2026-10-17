@@ -201,7 +201,14 @@ func storedPayloadIdentity(raw []byte) (int, string, error) {
 		return length, digest, nil
 	}
 
-	var envelope databasePayloadEnvelope
+	// Identity checks run before execution persistence. Ignore the base64 data
+	// field so a multi-MiB compressed body is not copied just to read its digest.
+	var envelope struct {
+		Codec string `json:"codec"`
+		Version int `json:"version"`
+		RawBytes int `json:"raw_bytes"`
+		SHA256 string `json:"sha256"`
+	}
 	if err := json.Unmarshal(raw, &envelope); err != nil {
 		return 0, "", fmt.Errorf("decode compressed payload identity: %w", err)
 	}

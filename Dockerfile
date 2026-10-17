@@ -7,12 +7,13 @@ RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
     pnpm install --frozen-lockfile
 
 COPY ./frontend .
+COPY scripts/pack-frontend.mjs ./scripts/pack-frontend.mjs
 ENV NODE_OPTIONS="--max-old-space-size=4096"
-RUN pnpm build
+RUN pnpm build && node scripts/pack-frontend.mjs /build/dist /build/embedded-dist
 
 # Copy dist to a stage with the target platform to avoid architecture mismatch
 FROM alpine AS frontend-dist
-COPY --from=frontend-builder /build/dist /dist
+COPY --from=frontend-builder /build/embedded-dist /dist
 
 FROM golang:1.27.2-alpine AS backend-builder
 

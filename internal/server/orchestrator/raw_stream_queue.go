@@ -58,6 +58,7 @@ func (q *rawStreamQueue) next(ctx context.Context) (*httpclient.StreamEvent, boo
 	q.heldMu.Lock()
 	if len(q.held) > 0 {
 		event := q.held[0]
+		q.held[0] = nil
 		q.held = q.held[1:]
 		size := q.heldSizes[0]
 		q.heldSizes = q.heldSizes[1:]
@@ -83,6 +84,7 @@ func (q *rawStreamQueue) nextBuffered() (*httpclient.StreamEvent, bool) {
 	q.heldMu.Lock()
 	if len(q.held) > 0 {
 		event := q.held[0]
+		q.held[0] = nil
 		q.held = q.held[1:]
 		size := q.heldSizes[0]
 		q.heldSizes = q.heldSizes[1:]

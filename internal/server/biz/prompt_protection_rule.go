@@ -9,6 +9,7 @@ import (
 	"github.com/dlclark/regexp2/v2"
 	"github.com/samber/lo"
 	"go.uber.org/fx"
+	lru "github.com/hashicorp/golang-lru/v2"
 
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
@@ -19,7 +20,6 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/pkg/xcache/live"
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
-	"github.com/looplj/axonhub/internal/pkg/xmap"
 )
 
 type promptProtectionPatternCache struct {
@@ -28,7 +28,9 @@ type promptProtectionPatternCache struct {
 	err        error
 }
 
-var promptProtectionRegexCache = xmap.New[string, *promptProtectionPatternCache]()
+const maxPromptProtectionPatterns = 1024
+
+var promptProtectionRegexCache = lo.Must(lru.New[string, *promptProtectionPatternCache](maxPromptProtectionPatterns))
 
 type PromptProtectionRuleServiceParams struct {
 	fx.In
@@ -151,7 +153,7 @@ func ReplacePromptProtectionRule(pattern string, content string, replacement str
 }
 
 func getOrCompilePromptProtectionPattern(pattern string) (*regexp2.Regexp, error) {
-	if cached, ok := promptProtectionRegexCache.Load(pattern); ok {
+	if cached, ok := promptProtectionRegexCache.Get(pattern); ok {
 		if cached.compileErr {
 			return nil, cached.err
 		}
@@ -165,13 +167,13 @@ func getOrCompilePromptProtectionPattern(pattern string) (*regexp2.Regexp, error
 	if err != nil {
 		cached.compileErr = true
 		cached.err = err
-		promptProtectionRegexCache.Store(pattern, cached)
+		promptProtectionRegexCache.Add(pattern, cached)
 
 		return nil, err
 	}
 
 	cached.regex = compiled
-	promptProtectionRegexCache.Store(pattern, cached)
+	promptProtectionRegexCache.Add(pattern, cached)
 
 	return compiled, nil
 }

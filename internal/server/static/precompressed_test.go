@@ -119,7 +119,7 @@ func TestPackedEmbeddedAssetsMatchViteOutput(t *testing.T) {
 		decoded, err := io.ReadAll(reader)
 		require.NoError(t, err)
 		require.NoError(t, reader.Close())
-		original, err := os.ReadFile("../../../../frontend/" + strings.TrimSuffix(name, ".gz"))
+		original, err := os.ReadFile("../../../frontend/" + strings.TrimSuffix(name, ".gz"))
 		require.NoError(t, err)
 		require.Equal(t, original, decoded, name)
 		count++

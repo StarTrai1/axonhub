@@ -38,9 +38,9 @@ jobs:
       - name: Verify large native compaction checkpoints on Windows
         run: go test ./internal/server/orchestrator -run '^(TestResponsesRejectedNativeSource|TestSealedLocalCompactionSizeLimit)' -count=1 -v
       - name: Verify HTTP relay compaction and continuation on Windows
-        run: go test ./internal/server/api -run '^TestResponsesProtocol(CompactionRelay|RedactedEncryption)' -count=1 -v
+        run: go test ./internal/server/api -run '^TestResponsesProtocol(CompactionRelay|RedactedEncryption|InvalidEncryptedSummary)' -count=1 -v
       - name: Verify Codex delivery and search-only routing on Windows
-        run: go test ./internal/server/api -run '^Test(StreamDeliveryCodexLivePreview|CodexSearchOnly)' -count=1 -v
+        run: go test ./internal/server/api -run '^Test(StreamDeliveryCodexLivePreview|CodexSearchOnly|CodexSearchOtherChannels)' -count=1 -v
       - name: Verify SOCKS aliases and cancellation on Windows
         working-directory: llm
         run: go test ./transformer/openai/responses -run '^(TestWebSocketProxyAliasesDialThroughSOCKS|TestWebSocketSOCKSCancellation|TestWebSocketStreamCloseWhileNextBlockedReportsClosedBeforeResponse|TestWebSocketExecutorDoesNotReplayAfterReusedSession.*|TestWebSocketStreamDoesNotRetryFreshConnectionFailure)$' -count=1 -v
@@ -166,7 +166,7 @@ jobs:
         run: |
           go test -race ./internal/server/orchestrator -run 'TestHTTP2FallbackPipeline|TestWebSocketSOCKSChannelRetry|TestCaptureRawProviderStream|TestPassThroughAnthropicStream|TestRawStreamBacklog|TestResponsesSession|TestResponsesRejected|TestResponsesRedactedEncryption|TestResponsesAgent|TestResponsesCompactionRecovery|TestChannelRejectsFailedStreamEvenAfterText|TestSealedLocalCompaction|TestLegacyLocalCompaction' -count=1
           go test -race ./internal/server/biz -run '^TestChannelReload|^TestChannelSwap|^TestSystemServiceResponsesMetadata|^TestChannelMetrics_ConcurrentReadsAndWrites$' -count=1
-          go test -race ./internal/server/api -run '^TestResponses(WebSocket(Warmup|Heartbeat|Auth|Interrupt|Close)|ProtocolNativeContinuation|ProtocolCompactionRelay|ProtocolRedactedEncryption)' -count=1
+          go test -race ./internal/server/api -run '^TestResponses(WebSocket(Warmup|Heartbeat|Auth|Interrupt|Close)|ProtocolNativeContinuation|ProtocolCompactionRelay|ProtocolRedactedEncryption|ProtocolInvalidEncryptedSummary)' -count=1
           cd llm
           go test -race ./httpclient -run '^TestHTTP2Fallback' -count=1
           go test -race ./transformer/antigravity -run '^TestClaudeStructuredOutput|^TestClaudeToolUnions|^TestAntigravityTieredCatalogRequests' -count=1

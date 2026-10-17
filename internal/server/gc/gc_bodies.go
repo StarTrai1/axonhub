@@ -112,7 +112,7 @@ func (w *Worker) stripRequestPayloads(ctx context.Context, kind bodyPayloadKind,
 	batchSize := w.getBatchSize()
 	total := 0
 	failed := 0
-	skipIDs := make([]int, 0)
+	lastID := 0
 	cache := make(map[int]*ent.DataStorage)
 
 	for {
@@ -123,13 +123,10 @@ func (w *Worker) stripRequestPayloads(ctx context.Context, kind bodyPayloadKind,
 				request.FieldDataStorageID,
 			).
 			Where(
+				request.IDGT(lastID),
 				request.CreatedAtLT(cutoff),
 				request.Not(request.HasTraceWith(trace.StatusEQ(trace.StatusRetained))),
 			)
-		if len(skipIDs) > 0 {
-			query = query.Where(request.IDNotIn(skipIDs...))
-		}
-
 		reqs, err := query.
 			Modify(func(s *sql.Selector) {
 				applyBodyPayloadPredicate(s, kind, primaryID, request.FieldRequestBody, request.FieldRequestHeaders, request.FieldResponseBody, request.FieldResponseHeaders, request.FieldResponseChunks, request.FieldDataStorageID)
@@ -149,6 +146,9 @@ func (w *Worker) stripRequestPayloads(ctx context.Context, kind bodyPayloadKind,
 			return total, nil
 		}
 
+		// Advance even after an external deletion fails. A later cleanup starts
+		// from zero and retries those rows without accumulating NOT IN values.
+		lastID = reqs[len(reqs)-1].ID
 		ids := make([]int, 0, len(reqs))
 		for _, req := range reqs {
 			if err := w.deleteRequestExternalPayload(ctx, req, kind, cache); err != nil {
@@ -158,7 +158,6 @@ func (w *Worker) stripRequestPayloads(ctx context.Context, kind bodyPayloadKind,
 					log.Int("request_id", req.ID),
 					log.String("resource", string(kind)),
 				)
-				skipIDs = append(skipIDs, req.ID)
 				failed++
 
 				continue
@@ -183,7 +182,7 @@ func (w *Worker) stripExecutionPayloads(ctx context.Context, kind bodyPayloadKin
 	batchSize := w.getBatchSize()
 	total := 0
 	failed := 0
-	skipIDs := make([]int, 0)
+	lastID := 0
 	cache := make(map[int]*ent.DataStorage)
 
 	for {
@@ -195,15 +194,12 @@ func (w *Worker) stripExecutionPayloads(ctx context.Context, kind bodyPayloadKin
 				requestexecution.FieldDataStorageID,
 			).
 			Where(
+				requestexecution.IDGT(lastID),
 				requestexecution.CreatedAtLT(cutoff),
 				requestexecution.Not(requestexecution.HasRequestWith(
 					request.HasTraceWith(trace.StatusEQ(trace.StatusRetained)),
 				)),
 			)
-		if len(skipIDs) > 0 {
-			query = query.Where(requestexecution.IDNotIn(skipIDs...))
-		}
-
 		execs, err := query.
 			Modify(func(s *sql.Selector) {
 				applyBodyPayloadPredicate(s, kind, primaryID, requestexecution.FieldRequestBody, requestexecution.FieldRequestHeaders, requestexecution.FieldResponseBody, requestexecution.FieldResponseHeaders, requestexecution.FieldResponseChunks, requestexecution.FieldDataStorageID)
@@ -223,6 +219,7 @@ func (w *Worker) stripExecutionPayloads(ctx context.Context, kind bodyPayloadKin
 			return total, nil
 		}
 
+		lastID = execs[len(execs)-1].ID
 		ids := make([]int, 0, len(execs))
 		for _, exec := range execs {
 			if err := w.deleteExecutionExternalPayload(ctx, exec, kind, cache); err != nil {
@@ -231,7 +228,6 @@ func (w *Worker) stripExecutionPayloads(ctx context.Context, kind bodyPayloadKin
 					log.Int("execution_id", exec.ID),
 					log.String("resource", string(kind)),
 				)
-				skipIDs = append(skipIDs, exec.ID)
 				failed++
 
 				continue

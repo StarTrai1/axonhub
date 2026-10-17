@@ -35,7 +35,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -2430,7 +2436,10 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                           <div className='flex min-h-8 items-center gap-2'>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <label htmlFor='codex-search-only' className='inline-flex cursor-pointer items-center gap-1.5 text-sm font-medium'>
+                                <label
+                                  htmlFor='codex-search-only'
+                                  className='inline-flex cursor-pointer items-center gap-1.5 text-sm font-medium'
+                                >
                                   {t('channels.dialogs.fields.codexSearchOnly.label')}
                                   <Info className='text-muted-foreground size-3.5' />
                                 </label>
@@ -2450,7 +2459,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                             />
                           </div>
                           {codexSearchOnly && (
-                            <div className='flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5 space-y-0'>
+                            <div className='flex min-w-0 flex-wrap items-center space-y-0 gap-x-2 gap-y-1.5'>
                               <label htmlFor='codex-search-model' className='text-sm font-medium'>
                                 {t('channels.dialogs.fields.codexSearchModel.label')}
                               </label>
@@ -2458,7 +2467,11 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                 value={codexSearchModel || 'request'}
                                 onValueChange={(value) => setCodexSearchModel(value === 'request' ? '' : value)}
                               >
-                                <SelectTrigger id='codex-search-model' className='h-8 w-auto max-w-full gap-2' data-testid='codex-search-model-select'>
+                                <SelectTrigger
+                                  id='codex-search-model'
+                                  className='h-8 w-auto max-w-full gap-2'
+                                  data-testid='codex-search-model-select'
+                                >
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -2470,7 +2483,6 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                   ))}
                                 </SelectContent>
                               </Select>
-
                             </div>
                           )}
                         </div>
@@ -3070,7 +3082,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                         control={form.control}
                         name='policies.routingTier'
                         render={({ field }) => (
-                          <FormItem className='flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5 space-y-0'>
+                          <FormItem className='flex min-w-0 flex-wrap items-center space-y-0 gap-x-2 gap-y-1.5'>
                             <PolicyFieldHeader
                               label={t('channels.dialogs.fields.routingTier.label')}
                               description={t('channels.dialogs.fields.routingTier.description')}
@@ -3380,7 +3392,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                   control={form.control}
                                   name='policies.remoteCompaction'
                                   render={({ field }) => (
-                                    <FormItem className='flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5 space-y-0'>
+                                    <FormItem className='flex min-w-0 flex-wrap items-center space-y-0 gap-x-2 gap-y-1.5'>
                                       <PolicyFieldHeader
                                         label={t('channels.dialogs.fields.remoteCompactionPolicy.label')}
                                         description={t('channels.dialogs.fields.remoteCompactionPolicy.description')}
@@ -3403,7 +3415,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                   control={form.control}
                                   name='policies.webSearch'
                                   render={({ field }) => (
-                                    <FormItem className='flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5 space-y-0'>
+                                    <FormItem className='flex min-w-0 flex-wrap items-center space-y-0 gap-x-2 gap-y-1.5'>
                                       <PolicyFieldHeader
                                         label={t('channels.dialogs.fields.webSearchPolicy.label')}
                                         description={t('channels.dialogs.fields.webSearchPolicy.description')}
@@ -3425,32 +3437,31 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                     </FormItem>
                                   )}
                                 />
-                            {authMode !== 'third-party' && (
-                              <FormField
-                                control={form.control}
-                                name='policies.codexIdentity'
-                                render={({ field }) => (
-                                  <FormItem className='flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5 space-y-0'>
-                                    <PolicyFieldHeader
-                                      label={t('channels.dialogs.fields.codexIdentityPolicy.label')}
-                                      description={t('channels.dialogs.fields.codexIdentityPolicy.description')}
-                                      testId='codex-identity-policy-tip'
-                                    />
-                                    <FormControl>
-                                      <CompactPolicyMenu
-                                        value={field.value ?? 'off'}
-                                        onValueChange={field.onChange}
-                                        options={CODEX_IDENTITY_POLICY_OPTIONS}
-                                        translationPrefix='channels.dialogs.fields.codexIdentityPolicy.options'
-                                        testId='codex-identity-policy'
-                                      />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
+                                {authMode !== 'third-party' && (
+                                  <FormField
+                                    control={form.control}
+                                    name='policies.codexIdentity'
+                                    render={({ field }) => (
+                                      <FormItem className='flex min-w-0 flex-wrap items-center space-y-0 gap-x-2 gap-y-1.5'>
+                                        <PolicyFieldHeader
+                                          label={t('channels.dialogs.fields.codexIdentityPolicy.label')}
+                                          description={t('channels.dialogs.fields.codexIdentityPolicy.description')}
+                                          testId='codex-identity-policy-tip'
+                                        />
+                                        <FormControl>
+                                          <CompactPolicyMenu
+                                            value={field.value ?? 'off'}
+                                            onValueChange={field.onChange}
+                                            options={CODEX_IDENTITY_POLICY_OPTIONS}
+                                            translationPrefix='channels.dialogs.fields.codexIdentityPolicy.options'
+                                            testId='codex-identity-policy'
+                                          />
+                                        </FormControl>
+                                        <FormMessage />
+                                      </FormItem>
+                                    )}
+                                  />
                                 )}
-                              />
-                            )}
-
                               </div>
                             )}
 
