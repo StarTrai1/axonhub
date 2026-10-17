@@ -56,7 +56,17 @@ export function ThemeProvider({
 }: ThemeProviderProps) {
   const [theme, _setTheme] = useState<Theme>(() => readPreference(storageKey, defaultTheme, ['dark', 'light', 'system']));
   const [colorScheme, _setColorScheme] = useState<ColorScheme>(() =>
-    readPreference(colorSchemeStorageKey, defaultColorScheme, ['blue', 'green', 'purple', 'orange', 'red', 'black', 'cream', 'claude', 'starry'])
+    readPreference(colorSchemeStorageKey, defaultColorScheme, [
+      'blue',
+      'green',
+      'purple',
+      'orange',
+      'red',
+      'black',
+      'cream',
+      'claude',
+      'starry',
+    ])
   );
 
   useEffect(() => {

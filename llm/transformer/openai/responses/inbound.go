@@ -573,6 +573,7 @@ func convertReasoningWithFollowing(items []Item, startIdx int) (*llm.Message, in
 				ID:    nextItem.CallID,
 				Type:  "function",
 				Async: nextItem.Async,
+				TransformerMetadata: encryptedFunctionArgsMetadata(nextItem),
 				Function: llm.FunctionCall{
 					Name:      nextItem.Name,
 					Namespace: nextItem.Namespace,
@@ -693,6 +694,7 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 					ID:    item.CallID,
 					Type:  "function",
 					Async: item.Async,
+					TransformerMetadata: encryptedFunctionArgsMetadata(item),
 					Function: llm.FunctionCall{
 						Name:      item.Name,
 						Namespace: item.Namespace,

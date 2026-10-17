@@ -596,6 +596,8 @@ type Item struct {
 	Name      string `json:"name,omitempty"`
 	Namespace string `json:"namespace,omitempty"`
 	Arguments string `json:"arguments,omitempty"`
+	// Preserve the marker until the owning gateway authenticates the arguments.
+	EncryptedFunctionArgs json.RawMessage `json:"encrypted_function_args,omitempty"`
 	// Async is emitted on GPT-6 Astra function and custom tool call items.
 	Async *bool `json:"async,omitempty"`
 

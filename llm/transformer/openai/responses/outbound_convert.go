@@ -306,6 +306,7 @@ func convertAssistantMessage(msg llm.Message) []Item {
 			toolCallItems = append(toolCallItems, Item{
 				Type:      "function_call",
 				CallID:    tc.ID,
+				EncryptedFunctionArgs: rawMetadata(tc.TransformerMetadata, responsesEncryptedFunctionArgsMetadataKey),
 				Name:      localFunctionName(tc.Function.Namespace, tc.Function.Name),
 				Namespace: tc.Function.Namespace,
 				Arguments: tc.Function.Arguments,

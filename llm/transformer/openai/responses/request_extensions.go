@@ -7,6 +7,17 @@ import (
 	"github.com/looplj/axonhub/llm"
 )
 
+const responsesEncryptedFunctionArgsMetadataKey = "openai.responses.encrypted_function_args"
+
+func encryptedFunctionArgsMetadata(item *Item) map[string]any {
+	if item == nil || len(item.EncryptedFunctionArgs) == 0 {
+		return nil
+	}
+	// Store JSON as a string so even an explicit null survives common-request
+	// persistence. Older metadata without this optional key remains valid.
+	return map[string]any{responsesEncryptedFunctionArgsMetadataKey: string(item.EncryptedFunctionArgs)}
+}
+
 var rawCreateRequestFields = []string{
 	"access_programs",
 	"client_metadata",
