@@ -272,17 +272,7 @@ func (s *responsesSessionStore) record(ctx context.Context, requestBody, respons
 }
 
 func (s *responsesSessionStore) lookup(ctx context.Context, responseID string) *responsesSessionRecord {
-	now := time.Now()
-	scope, ok := shared.GetSessionScope(ctx)
-	if !ok || strings.TrimSpace(scope) == "" {
-		return nil
-	}
-	key := responsesSessionKey{scope: scope, responseID: responseID}
-
-	s.mu.Lock()
-	s.evictExpiredLocked(now)
-	record := s.byResponse[key]
-	s.mu.Unlock()
+	record := s.retainedRecord(ctx, responseID)
 	if record == nil {
 		return nil
 	}
@@ -297,6 +287,31 @@ func (s *responsesSessionStore) lookup(ctx context.Context, responseID string) *
 		complete:  record.complete,
 		origin:    record.origin,
 	}
+}
+
+// lookupIdentity reads only immutable routing metadata, without cloning history.
+func (s *responsesSessionStore) lookupIdentity(ctx context.Context, responseID string) (sessionID, windowID string, found bool) {
+	if record := s.retainedRecord(ctx, responseID); record != nil {
+		return record.sessionID, record.windowID, true
+	}
+	return "", "", false
+}
+
+// Published records are immutable. Callers must copy any payload before returning
+// it to code that can modify it; identity-only reads never retain payload slices.
+func (s *responsesSessionStore) retainedRecord(ctx context.Context, responseID string) *responsesSessionRecord {
+	now := time.Now()
+	scope, ok := shared.GetSessionScope(ctx)
+	if !ok || strings.TrimSpace(scope) == "" {
+		return nil
+	}
+	key := responsesSessionKey{scope: scope, responseID: responseID}
+
+	s.mu.Lock()
+	s.evictExpiredLocked(now)
+	record := s.byResponse[key]
+	s.mu.Unlock()
+	return record
 }
 
 func (s *responsesSessionStore) evictExpiredLocked(now time.Time) {

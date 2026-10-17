@@ -203,8 +203,8 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		ctx = shared.WithResponsesAttempt(ctx, &shared.ResponsesAttempt{})
 		if shared.GetResponsesLane(ctx) == nil {
 			sessionID, _ := shared.GetSessionID(ctx)
-			if record := processor.responsesSessions.lookup(ctx, continuation.previous); record != nil && record.sessionID != "" {
-				sessionID = record.sessionID
+			if previousSessionID, _, found := processor.responsesSessions.lookupIdentity(ctx, continuation.previous); found && previousSessionID != "" {
+				sessionID = previousSessionID
 			}
 			ctx = shared.WithSessionID(ctx, responseSessionID(sessionID))
 		}

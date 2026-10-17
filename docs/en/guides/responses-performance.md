@@ -1,5 +1,37 @@
 # Responses latency and compatibility
 
+## Prompt-cache stability and gateway overhead
+
+Prompt-cache reuse depends on the provider and an unchanged eligible prompt prefix.
+Keep instructions, tool definitions/order and retained history stable between turns;
+explicit client cache keys remain authoritative. A native compaction creates a new
+prefix, and switching accounts or channels may lose provider-side cache state.
+The [official OpenAI prompt-caching guide](https://developers.openai.com/api/docs/guides/prompt-caching)
+explains public API behavior; Codex relay capabilities can differ.
+
+Multi-key channels preserve their existing trace-based credential selection. When
+tracing is absent, a retained thread or authenticated transport session supplies
+stable affinity instead of selecting a random credential on every turn. Client
+session IDs are scoped to the authenticated owner. Disabled keys are rejected even
+if a prior selection is still cached. Requests without a trusted conversation
+identity continue to distribute normally. This supports upstream connection and
+cache reuse without changing channel priorities, quotas or retry budgets.
+
+Identity-only Responses cache reads no longer copy the retained conversation.
+Continuation preparation reuses a complete snapshot already loaded for that request,
+while preserving ownership, expiry, context-window rollover and replay isolation.
+Metadata updates before dispatch, on response headers and at finalization select
+only required database fields, avoiding readbacks of request/response bodies and
+stream chunks. Stored history, headers, usage accounting and terminal status remain
+available through their normal readers.
+
+Measure provider cache reads as `sum(cached_tokens) / sum(input_tokens)` over the
+same model, channel, credential and conversation-window population. Track cache
+writes separately, together with first meaningful output latency, total latency
+and retry count. Gateway allocation benchmarks do not establish a production
+cache-hit percentage or a provider latency improvement. These changes do not
+send prewarming requests or alter billable provider cache settings.
+
 ## First output timeout
 
 The existing **Stream First Output Timeout** setting now waits for meaningful
@@ -63,7 +95,7 @@ Before returning a native compaction checkpoint, AxonHub saves its complete sour
 history, encrypted and bound to the API key, project and native checkpoint. This
 allows later recovery without depending on request-log retention. Source history
 has a 64 MiB limit; its compressed, Base64-encoded storage uses a separate size
-budget from the 4 MiB local text summary limit. Older saved sources remain readable.
+budget from the 4 MiB local text summary limit. New sources encrypt compressed bytes directly in a versioned binary envelope, removing a redundant inner Base64 layer. Older saved sources remain readable.
 Incompressible encrypted history can therefore cross the old 4 MiB storage boundary
 without being truncated or discarded. A real storage or size-limit failure still
 prevents publishing a checkpoint whose source cannot be recovered.

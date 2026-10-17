@@ -65,9 +65,14 @@ func prepareResponsesAttemptBodyWithRequest(ctx context.Context, p *PersistentOu
 		}
 	}
 	if c.previous != "" && c.store != nil {
-		if record := c.store.lookupOrLoad(ctx, c.previous); record != nil {
-			windowID := shared.ReadCodexRequestMetadata(nil, body).WindowID
-			if windowID != "" && record.windowID != "" && windowID != record.windowID {
+		if windowID := shared.ReadCodexRequestMetadata(nil, body).WindowID; windowID != "" {
+			_, previousWindowID, found := c.store.lookupIdentity(ctx, c.previous)
+			if !found {
+				if record := c.store.lookupOrLoad(ctx, c.previous); record != nil {
+					previousWindowID = record.windowID
+				}
+			}
+			if previousWindowID != "" && windowID != previousWindowID {
 				delete(payload, "previous_response_id")
 				var err error
 				body, err = json.Marshal(payload)
@@ -88,7 +93,7 @@ func prepareResponsesAttemptBodyWithRequest(ctx context.Context, p *PersistentOu
 			if record.ID == c.previous {
 				c.owner = &record
 			}
-		} else if c.store != nil {
+		} else if c.store != nil && (c.owner == nil || c.owner.Snapshot == nil) {
 			c.owner = loadResponsesContinuationOwner(ctx, c)
 		}
 		if c.owner != nil && c.owner.Snapshot != nil {

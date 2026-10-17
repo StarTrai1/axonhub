@@ -35,7 +35,9 @@ func TestRequestService_MetadataUpdatesDoNotReadPayloads(t *testing.T) {
 	// Metadata operations must not hydrate the large JSON columns at either stage.
 	checking := true
 	check := func(value ent.Value) {
-		if !checking { return }
+		if !checking {
+			return
+		}
 		switch v := value.(type) {
 		case *ent.Request:
 			require.Empty(t, v.RequestBody)
@@ -62,14 +64,18 @@ func TestRequestService_MetadataUpdatesDoNotReadPayloads(t *testing.T) {
 	client.Use(func(next ent.Mutator) ent.Mutator {
 		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
 			value, err := next.Mutate(ctx, m)
-			if err == nil { check(value) }
+			if err == nil {
+				check(value)
+			}
 			return value, err
 		})
 	})
 	client.Intercept(ent.InterceptFunc(func(next ent.Querier) ent.Querier {
 		return ent.QuerierFunc(func(ctx context.Context, q ent.Query) (ent.Value, error) {
 			value, err := next.Query(ctx, q)
-			if err == nil { check(value) }
+			if err == nil {
+				check(value)
+			}
 			return value, err
 		})
 	}))
@@ -108,11 +114,15 @@ func BenchmarkRequestChannelSelectionMetadata(b *testing.B) {
 	body := []byte(`{"input":"` + strings.Repeat("x", 1024*1024) + `"}`)
 	req, err := client.Request.Create().SetModelID("gpt-6-astra").SetRequestBody(body).
 		SetResponseBody(body).SetStatus(request.StatusProcessing).Save(ctx)
-	if err != nil { b.Fatal(err) }
+	if err != nil {
+		b.Fatal(err)
+	}
 	svc := &RequestService{AbstractService: &AbstractService{db: client}}
 	b.ReportAllocs()
 	b.ResetTimer()
 	for b.Loop() {
-		if err := svc.UpdateRequestChannelID(ctx, req.ID, 0); err != nil { b.Fatal(err) }
+		if err := svc.UpdateRequestChannelID(ctx, req.ID, 0); err != nil {
+			b.Fatal(err)
+		}
 	}
 }
