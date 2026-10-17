@@ -54,7 +54,7 @@ func withRequestSwitchLifecycle(
 
 func (s *requestSwitchLifecycleStream) Next() bool {
 	next := s.stream.Next()
-	if !next && s.stream.Err() != nil && !s.DeliveryAcknowledged() {
+	if s.state.codexMemory != nil && !next && s.stream.Err() != nil && !s.DeliveryAcknowledged() {
 		s.state.codexMemory.finish(false)
 	}
 	return next
@@ -81,7 +81,9 @@ func (s *requestSwitchLifecycleStream) Err() error {
 func (s *requestSwitchLifecycleStream) Close() error {
 	err := s.stream.Close()
 	s.once.Do(func() {
-		s.state.codexMemory.finish(s.DeliveryAcknowledged() || s.state.StreamCompleted)
+		if s.state.codexMemory != nil {
+			s.state.codexMemory.finish(s.DeliveryAcknowledged() || s.state.StreamCompleted)
+		}
 		unregisterRequestSwitch(s.state)
 	})
 

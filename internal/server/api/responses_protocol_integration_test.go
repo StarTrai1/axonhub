@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -103,7 +104,10 @@ func TestResponsesProtocolIntegrationIsolation(t *testing.T) {
 
 func newResponsesIntegrationFixture(t *testing.T, upstreamURL string, configure ...func(*ent.ChannelCreate)) (*ent.Client, *OpenAIHandlers, *ent.Project) {
 	t.Helper()
-	client := enttest.NewEntClient(t, "sqlite3", "file:"+t.Name()+"?mode=memory&_fk=1")
+	// Cancellation can retire SQLite's sole connection. A private in-memory
+	// database would then lose its schema before stream accounting finishes.
+	// Match production persistence while keeping each fixture isolated.
+	client := enttest.NewEntClient(t, "sqlite3", "file:"+filepath.ToSlash(filepath.Join(t.TempDir(), "responses.db"))+"?_fk=1")
 	t.Cleanup(func() { require.NoError(t, client.Close()) })
 	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
 	project, err := client.Project.Create().SetName("responses-integration-project").SetDescription("synthetic").SetStatus(project.StatusActive).Save(ctx)
