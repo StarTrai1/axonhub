@@ -107,6 +107,8 @@ orphan tool results and ambiguous encrypted agent messages still prevent recover
 Only completed recoveries remember scoped hashes of old reasoning. New reasoning,
 other conversations and other destination credentials remain unaffected.
 
+The complete relay error `invalid encrypted summary` (optionally followed by `(request id: …)`) uses the same two-stage recovery. It does not identify an encrypted item, so ambiguity, retained-source and ownership checks still apply. Ordinary HTTP 400 responses, permission errors and messages that merely contain similar text do not authorize recovery.
+
 ### Portable agent messages
 
 For authenticated Codex requests, the dedicated `message` parameter of `agents` and
@@ -318,3 +320,9 @@ generated identity and bypasses automatic version discovery. An authentic client
 User-Agent remains preserved; existing channel header overrides still take
 precedence. Invalid version values are ignored. Without a pin, asynchronous
 official release discovery remains enabled.
+
+## Frontend assets and routing caches
+
+Release builds precompress text assets such as HTML, JavaScript and CSS before embedding them, while preserving Vite's original `frontend/dist`. Clients accepting gzip receive those bytes directly; other clients receive the restored content. Existing content-hashed `/assets/` files allow one year of immutable caching. Entry HTML remains uncached, and missing assets receive no long-lived cache policy. This reduces embedded size and browser transfer without changing model requests, context or token-cache keys.
+
+Standalone search reuses the candidate slice when no channel needs exclusion. The model-association cache is bounded to 1024 entries, with opportunistic eviction of expired entries and old channel snapshots. Reads still validate channel versions, association signatures, model update times and other existing conditions. These changes do not establish lower provider TTFT or a higher prompt-cache hit rate; those require separate measurements.

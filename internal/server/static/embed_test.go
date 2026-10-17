@@ -102,27 +102,31 @@ func TestHandler_DoesNotFallbackMissingStaticAssetToSPAIndex(t *testing.T) {
 }
 
 func TestHandlerCachesOnlyExistingContentHashedAssets(t *testing.T) {
- gin.SetMode(gin.TestMode)
- root := t.TempDir()
- require.NoError(t, os.Mkdir(root+"/assets", 0o755))
- for _, name := range []string{"app-Ab12cd_9.js", "app.js"} {
-  require.NoError(t, os.WriteFile(root+"/assets/"+name, []byte("console.log('fixture')"), 0o644))
- }
- original := staticFS
- staticFS = ginstatic.LocalFile(root, false)
- t.Cleanup(func(){staticFS=original})
- router := gin.New()
- router.NoRoute(Handler())
- for _, tc := range []struct{ path string; status int; cache string }{
-  {"/assets/app-Ab12cd_9.js", http.StatusOK, "public, max-age=31536000, immutable"},
-  {"/assets/app.js", http.StatusOK, ""},
-  {"/assets/missing-Ab12cd_9.js", http.StatusNotFound, ""},
- } {
-  t.Run(tc.path,func(t *testing.T){
-   result := httptest.NewRecorder()
-   router.ServeHTTP(result, httptest.NewRequest(http.MethodGet, tc.path, nil))
-   require.Equal(t, tc.status, result.Code)
-   require.Equal(t, tc.cache, result.Header().Get("Cache-Control"))
-  })
- }
+	gin.SetMode(gin.TestMode)
+	root := t.TempDir()
+	require.NoError(t, os.Mkdir(root+"/assets", 0o755))
+	for _, name := range []string{"app-Ab12cd_9.js", "app.js"} {
+		require.NoError(t, os.WriteFile(root+"/assets/"+name, []byte("console.log('fixture')"), 0o644))
+	}
+	original := staticFS
+	staticFS = ginstatic.LocalFile(root, false)
+	t.Cleanup(func() { staticFS = original })
+	router := gin.New()
+	router.NoRoute(Handler())
+	for _, tc := range []struct {
+		path   string
+		status int
+		cache  string
+	}{
+		{"/assets/app-Ab12cd_9.js", http.StatusOK, "public, max-age=31536000, immutable"},
+		{"/assets/app.js", http.StatusOK, ""},
+		{"/assets/missing-Ab12cd_9.js", http.StatusNotFound, ""},
+	} {
+		t.Run(tc.path, func(t *testing.T) {
+			result := httptest.NewRecorder()
+			router.ServeHTTP(result, httptest.NewRequest(http.MethodGet, tc.path, nil))
+			require.Equal(t, tc.status, result.Code)
+			require.Equal(t, tc.cache, result.Header().Get("Cache-Control"))
+		})
+	}
 }
