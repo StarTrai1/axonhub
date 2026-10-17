@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"sync"
 
 	"github.com/looplj/axonhub/internal/pkg/chunkbuffer"
 	"github.com/looplj/axonhub/internal/server/biz"
@@ -137,7 +138,8 @@ type liveRequestExecutionStream struct {
 	buffer             *chunkbuffer.Buffer
 	liveStreamRegistry *biz.LiveStreamRegistry
 	executionID        int
-	closed             bool
+	closeOnce          sync.Once
+	closeErr           error
 	current            *httpclient.StreamEvent
 }
 
@@ -167,15 +169,12 @@ func (s *liveRequestExecutionStream) Err() error {
 }
 
 func (s *liveRequestExecutionStream) Close() error {
-	if s.closed {
-		return nil
-	}
-
-	s.closed = true
-	s.buffer.Close()
-	s.liveStreamRegistry.UnregisterExecution(s.executionID)
-
-	return s.stream.Close()
+	s.closeOnce.Do(func() {
+		s.buffer.Close()
+		s.liveStreamRegistry.UnregisterExecution(s.executionID)
+		s.closeErr = s.stream.Close()
+	})
+	return s.closeErr
 }
 
 type liveRequestStream struct {

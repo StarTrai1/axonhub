@@ -1488,7 +1488,7 @@ func applyPassThroughStream(outbound *PersistentOutboundTransformer, systemServi
 		}
 
 		if observer != nil {
-			return withPassThroughDeliveryGateAndDrain(rawStream, observer, stream.Close, drainDone), nil
+			return withPassThroughDeliveryGateAndDrain(rawStream, observer, outbound.state.RawStreamCancel, stream.Close, drainDone), nil
 		}
 
 		return rawStream, nil
@@ -1522,6 +1522,7 @@ type passThroughDeliveryStream struct {
 
 	observer streams.DeliveryAcknowledger
 	boundary streams.DeliveryBoundary
+	abort    func()
 	close    func() error
 	done     <-chan struct{}
 }
@@ -1546,6 +1547,7 @@ func withPassThroughDeliveryGate(
 func withPassThroughDeliveryGateAndDrain(
 	stream streams.Stream[*httpclient.StreamEvent],
 	observer streams.DeliveryAcknowledger,
+	abort func(),
 	close func() error,
 	done <-chan struct{},
 ) streams.Stream[*httpclient.StreamEvent] {
@@ -1554,21 +1556,17 @@ func withPassThroughDeliveryGateAndDrain(
 	}
 
 	boundary, _ := observer.(streams.DeliveryBoundary)
-	return &passThroughDeliveryStream{Stream: stream, observer: observer, boundary: boundary, close: close, done: done}
+	return &passThroughDeliveryStream{Stream: stream, observer: observer, boundary: boundary, abort: abort, close: close, done: done}
 }
 
 func (s *passThroughDeliveryStream) Close() error {
-	// Stop the producer before waiting on the drain. A failed downstream write
-	// stops the pass-through consumer, so nothing reads the raw queue, the
-	// producer blocks on it, and the drain blocks on the producer. Only s.close
-	// cancels the producer, so waiting first deadlocks. The drain still consumes
-	// everything already buffered, preserving the background reader's accounting.
-	var closeErr error
-	producerClosed := false
+	// Cancel only the raw producer before waiting on the drain. Closing the
+	// transformed pipeline here would publish its performance record while the
+	// drain is still updating terminal status and usage. Cancellation also frees
+	// a producer blocked on the raw queue after a downstream write failure.
 	delivered := s.DeliveryAcknowledged()
-	if !delivered && s.close != nil {
-		closeErr = s.close()
-		producerClosed = true
+	if !delivered && s.abort != nil {
+		s.abort()
 	}
 	if s.done != nil {
 		if delivered {
@@ -1576,9 +1574,8 @@ func (s *passThroughDeliveryStream) Close() error {
 			select {
 			case <-s.done:
 			case <-timer.C:
-				if s.close != nil {
-					closeErr = s.close()
-					producerClosed = true
+				if s.abort != nil {
+					s.abort()
 				}
 			}
 			if !timer.Stop() {
@@ -1587,11 +1584,11 @@ func (s *passThroughDeliveryStream) Close() error {
 				default:
 				}
 			}
-		} else {
-			<-s.done
 		}
+		<-s.done
 	}
-	if delivered && !producerClosed && s.close != nil {
+	var closeErr error
+	if s.close != nil {
 		closeErr = s.close()
 	}
 	return errors.Join(closeErr, s.Stream.Close())
