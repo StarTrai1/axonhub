@@ -68,6 +68,8 @@ type responsesCompactionRecoveryMiddleware struct {
 	executor pipeline.Executor
 	rejected map[responsesCompactionRecoveryKey]struct{}
 	adapted  *responsesCompactionRecoveryKey
+	migration *responsesCompactionRecoveryKey
+	failedMigrations map[responsesCompactionRecoveryKey]bool
 }
 
 func recoverRejectedRemoteCompaction(
@@ -94,6 +96,21 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawError(ctx context.C
 	request := m.outbound.state.RawProviderRequest
 	if request == nil {
 		return
+	}
+	if m.migration!=nil {
+		if _,rejected:=errors.AsType[*compactionSourceRejectedError](rejectedCompactionSourceError(request,err));rejected {
+			key:=*m.migration
+			if m.failedMigrations==nil {m.failedMigrations=make(map[responsesCompactionRecoveryKey]bool)}
+			m.failedMigrations[key]=true
+			if saveErr:=m.adapter.saveNativeMigration(ctx,key,nativeCompactionMigration{RejectedUntil:time.Now().Add(responsesReasoningRecoveryTTL)});saveErr!=nil {
+				log.Warn(ctx,"could not disable rejected native migration",log.Cause(saveErr))
+			}
+			if m.rejected==nil {m.rejected=make(map[responsesCompactionRecoveryKey]struct{})}
+			m.rejected[key]=struct{}{}
+			m.outbound.state.responsesRejectedStatusRetryChannel=key.scope.provider.channelID
+			m.migration=nil
+			return
+		}
 	}
 	key, ref, ok := m.recoveryKey(ctx, request)
 	if !ok {
@@ -136,6 +153,7 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawRequest(
 	request *httpclient.Request,
 ) (*httpclient.Request, error) {
 	m.adapted = nil
+	m.migration = nil
 	if m.adapter == nil || m.executor == nil {
 		return request, nil
 	}
@@ -152,6 +170,13 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawRequest(
 	replayKey.replay = true
 	knownReplay := m.hasConfirmedRecovery(ctx, replayKey)
 	local := m.outbound.GetCurrentChannel().Policies.UsesLocalRemoteCompactionBridge()
+	if !local && !known && !knownReplay && !m.failedMigrations[key] {
+		migration,err:=m.adapter.loadNativeMigration(ctx,key)
+		if err!=nil {return nil,&remoteCompactionPreparationError{cause:err}}
+		if len(migration.Item)>0 {
+			return m.applyNativeMigration(request,ref,key,migration.Item)
+		}
+	}
 	if !rejected && !known && !knownReplay && !local {
 		return request, nil
 	}
@@ -196,6 +221,11 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawRequest(
 		Proxy:                   state.Proxy,
 		ChannelModelsCandidates: []*ChannelModelsCandidate{&candidate},
 	}
+	if !local && !known && !knownReplay && !m.failedMigrations[key] {
+		item,err:=m.adapter.migrateNativeCompaction(contexts.CloneRequestContext(ctx),key,ref,bridgeState,m.executor)
+		if err!=nil {return nil,&remoteCompactionPreparationError{cause:err}}
+		if len(item)>0 {return m.applyNativeMigration(request,ref,key,item)}
+	}
 	summary, err := m.adapter.summaryForCompaction(
 		contexts.CloneRequestContext(ctx), key.cacheKey, ref, key.threadID,
 		key.scope.provider.model, bridgeState, m.executor,
@@ -216,6 +246,16 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawRequest(
 		m.adapted = &key
 	}
 	return request, nil
+}
+
+func (m *responsesCompactionRecoveryMiddleware) applyNativeMigration(request *httpclient.Request,ref *remoteCompactionReference,key responsesCompactionRecoveryKey,item json.RawMessage)(*httpclient.Request,error) {
+	body,err:=replaceNativeCompactionMigration(request.Body,ref,item)
+	if err!=nil {return nil,&remoteCompactionPreparationError{cause:err}}
+	request.Body=body
+	if len(request.JSONBody)>0 {request.JSONBody=body}
+	request.Headers.Del(codexTurnStateHeader)
+	m.migration=&key
+	return request,nil
 }
 
 // Hash all authenticated and destination identities; no credentials or opaque
@@ -347,5 +387,5 @@ func (m *responsesCompactionRecoveryMiddleware) recoveryKey(
 	return responsesCompactionRecoveryKey{
 		scope: scope, cacheKey: remoteCompactionCacheKey(ref), threadID: threadID,
 		apiKeyID: state.APIKey.ID, projectID: state.APIKey.ProjectID,
-	}, original, true
+	}, ref, true
 }

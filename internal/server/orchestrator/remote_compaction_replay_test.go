@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
@@ -120,6 +121,7 @@ func TestResponsesCompactionExactReplayPipeline(t *testing.T) {
 			require.NotContains(t, string(executor.requests[1].Body), "CONTEXT CHECKPOINT COMPACTION")
 			require.Contains(t, string(executor.requests[1].Body), "complete source detail")
 			require.NotContains(t, string(executor.requests[1].Body), "native-exact")
+			require.Eventually(t, func() bool { return adapter.recoveries.Len() == 1 }, time.Second, time.Millisecond)
 			warm := executor.requests[1].Body
 			executor = &responsesReasoningPipelineExecutor{events: rejectedReasoningCompactionEvents()}
 			_, result, err = runRejectedReasoningPipeline(t, ctx, req, executor, "replay-credential", passThrough, 1, configure)

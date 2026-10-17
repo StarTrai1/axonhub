@@ -2,6 +2,7 @@ package biz
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -10,6 +11,28 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/system"
 )
+
+// Destination-native checkpoint aliases are separate from portable summaries.
+// The caller seals the value with the complete owner/source/destination scope.
+func (s *SystemService) LoadNativeCompactionMigration(ctx context.Context, scope [sha256.Size]byte) (string, error) {
+	ctx = authz.WithSystemBypass(ctx, "load-native-compaction-migration")
+	record, err := s.entFromContext(ctx).System.Query().Where(system.KeyEQ("native_compaction_migration_v1:"+hex.EncodeToString(scope[:]))).Only(ctx)
+	if ent.IsNotFound(err) {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	return record.Value,nil
+}
+
+func (s *SystemService) SaveNativeCompactionMigration(ctx context.Context, scope [sha256.Size]byte, sealed string) error {
+	if sealed == "" {
+		return errors.New("empty native compaction migration")
+	}
+	ctx = authz.WithSystemBypass(ctx, "save-native-compaction-migration")
+	return s.setSystemValue(ctx,"native_compaction_migration_v1:"+hex.EncodeToString(scope[:]),sealed)
+}
 
 // Keep encrypted summaries outside request logs, whose retention is independent
 // of a conversation's lifetime. Native references use these after bridging;

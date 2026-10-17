@@ -36,7 +36,7 @@ func TestResponsesProtocolAutoCompactionNativeFirst(t *testing.T) {
 						_, _ = fmt.Fprint(w, "data: {\"type\":\"response.completed\",\"response\":{\"id\":\"resp_native_first\",\"object\":\"response\",\"model\":\"gpt-6-astra\",\"status\":\"completed\",\"output\":[{\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"continued\"}]}]}}\n\n")
 					}))
 					client, handlers, project := newResponsesIntegrationFixture(t, upstream.URL, func(create *ent.ChannelCreate) {
-						create.SetType(channel.TypeCodex).SetSupportedModels([]string{"gpt-6-astra"}).
+						create.SetType(channel.TypeCodex).SetSupportedModels([]string{"synthetic-model", "gpt-6-astra"}).
 							SetPolicies(objects.ChannelPolicies{RemoteCompaction: objects.RemoteCompactionPolicyAuto}).
 							SetSettings(&objects.ChannelSettings{PassThroughBody: lo.ToPtr(passThrough)})
 					})

@@ -63,6 +63,8 @@ type remoteCompactionAdapter struct {
 	summaryGenerator singleflight.Group
 	recoveries       *lru.Cache[responsesCompactionRecoveryKey, time.Time]
 	recoveryMisses   *lru.Cache[responsesCompactionRecoveryKey, time.Time]
+	nativeMigrations *lru.Cache[responsesCompactionRecoveryKey, nativeCompactionMigrationCacheEntry]
+	nativeMigrationGenerator singleflight.Group
 }
 
 type remoteCompactionReference struct {
@@ -109,6 +111,7 @@ func newRemoteCompactionAdapter(
 		summaries:       gocache.New(remoteCompactionCacheExpiration, remoteCompactionCacheCleanup),
 		recoveries:      lo.Must(lru.New[responsesCompactionRecoveryKey, time.Time](responsesReasoningRecoveryMaxScopes)),
 		recoveryMisses:  lo.Must(lru.New[responsesCompactionRecoveryKey, time.Time](responsesReasoningRecoveryMaxScopes)),
+		nativeMigrations: lo.Must(lru.New[responsesCompactionRecoveryKey, nativeCompactionMigrationCacheEntry](64)),
 	}
 }
 
@@ -760,7 +763,9 @@ func (a *remoteCompactionAdapter) summaryForCompactionChain(
 				return "", err
 			}
 		}
-		if err := a.retainCompactionSummary(ctx, cacheKey, ref, state, summary); err != nil {
+		persistCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+		defer cancel()
+		if err := a.retainCompactionSummary(persistCtx, cacheKey, ref, state, summary); err != nil {
 			return "", fmt.Errorf("retain compaction checkpoint: %w", err)
 		}
 
@@ -970,6 +975,17 @@ func (a *remoteCompactionAdapter) generateLocalSummary(
 	state *PersistenceState,
 	executor pipeline.Executor,
 ) (string, error) {
+	return a.generateCompaction(ctx, cacheKey, source, state, executor, false)
+}
+
+func (a *remoteCompactionAdapter) generateCompaction(
+	ctx context.Context,
+	cacheKey string,
+	source *remoteCompactionSource,
+	state *PersistenceState,
+	executor pipeline.Executor,
+	native bool,
+) (string, error) {
 	body, err := buildLocalCompactionRequest(source.body)
 	if err != nil {
 		return "", err
@@ -978,8 +994,16 @@ func (a *remoteCompactionAdapter) generateLocalSummary(
 	headers := source.headers.Clone()
 	headers.Del("Authorization")
 	headers.Del("Content-Length")
-	headers.Set(remoteCompactionCacheHeader, cacheKey)
-	updateCompactionImplementationHeader(headers)
+	if native {
+		body, err = buildNativeCompactionMigrationRequest(source.body)
+		if err != nil {
+			return "", err
+		}
+		headers.Set(nativeCompactionMigrationHeader, cacheKey)
+	} else {
+		headers.Set(remoteCompactionCacheHeader, cacheKey)
+		updateCompactionImplementationHeader(headers)
+	}
 
 	logRequest := &httpclient.Request{
 		Method:      http.MethodPost,
@@ -1009,7 +1033,7 @@ func (a *remoteCompactionAdapter) generateLocalSummary(
 			continue
 		}
 
-		summary, attemptErr := a.generateLocalSummaryWithCandidate(
+		summary, attemptErr := a.generateCompactionWithCandidate(
 			ctx,
 			body,
 			headers,
@@ -1017,6 +1041,7 @@ func (a *remoteCompactionAdapter) generateLocalSummary(
 			candidate,
 			state,
 			executor,
+			native,
 		)
 		if attemptErr == nil {
 			return summary, nil
@@ -1056,6 +1081,19 @@ func (a *remoteCompactionAdapter) generateLocalSummaryWithCandidate(
 	parentState *PersistenceState,
 	executor pipeline.Executor,
 ) (string, error) {
+	return a.generateCompactionWithCandidate(ctx, body, headers, bridgeRecord, candidate, parentState, executor, false)
+}
+
+func (a *remoteCompactionAdapter) generateCompactionWithCandidate(
+	ctx context.Context,
+	body []byte,
+	headers http.Header,
+	bridgeRecord *ent.Request,
+	candidate *ChannelModelsCandidate,
+	parentState *PersistenceState,
+	executor pipeline.Executor,
+	native bool,
+) (string, error) {
 	rawRequest := &httpclient.Request{
 		Method:      http.MethodPost,
 		Headers:     headers.Clone(),
@@ -1065,6 +1103,7 @@ func (a *remoteCompactionAdapter) generateLocalSummaryWithCandidate(
 		APIFormat:   string(llm.APIFormatOpenAIResponse),
 	}
 	rawRequest.Headers.Del(remoteCompactionCacheHeader)
+	rawRequest.Headers.Del(nativeCompactionMigrationHeader)
 	// Local bridge generation is a gateway-authored summary turn rather than a
 	// continuation of the client's upstream turn. Never replay an opaque state
 	// token minted by the channel that handled the preceding client request.
@@ -1159,6 +1198,22 @@ func (a *remoteCompactionAdapter) generateLocalSummaryWithCandidate(
 		return "", err
 	}
 	summary := extractAssistantOutputText(responseBody)
+	if native {
+		summary, err = extractNativeCompactionMigration(responseBody)
+		if err != nil {
+			a.markBridgeExecutionFailed(ctx, executionRecord, err)
+			return "", err
+		}
+		ref, parseErr := nativeMigrationReference(summary)
+		if parseErr != nil {
+			return "", parseErr
+		}
+		persistCtx,cancel:=context.WithTimeout(context.WithoutCancel(ctx),5*time.Second)
+		defer cancel()
+		if err := a.retainNativeCompactionSource(persistCtx, ref, parentState, &remoteCompactionSource{body: providerRequest.Body}); err != nil {
+			return "", err
+		}
+	}
 	if summary == "" {
 		err = errors.New("local compaction provider returned no assistant summary")
 		a.markBridgeExecutionFailed(ctx, executionRecord, err)

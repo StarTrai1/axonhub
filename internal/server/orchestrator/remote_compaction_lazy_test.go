@@ -23,41 +23,43 @@ import (
 
 func TestRemoteCompactionLazyAncestorRecovery(t *testing.T) {
 	for _, reject := range []bool{false, true} {
-		t.Run(fmt.Sprintf("reject-ancestor=%t",reject),func(t *testing.T) {
+		t.Run(fmt.Sprintf("reject-ancestor=%t", reject), func(t *testing.T) {
 			ctx, _, owner, adapter := rejectedCompactionStorage(t)
 			provider, err := codex.NewOutboundTransformer(codex.Params{
-				BaseURL:"https://example.invalid/v1",
-				TokenProvider:oauth.NewStaticTokenProvider(&oauth.OAuthCredentials{AccessToken:"synthetic-lazy-key"}),
+				BaseURL:       "https://example.invalid/v1",
+				TokenProvider: oauth.NewStaticTokenProvider(&oauth.OAuthCredentials{AccessToken: "synthetic-lazy-key"}),
 			})
-			require.NoError(t,err)
+			require.NoError(t, err)
 			candidate := &ChannelModelsCandidate{
-				Channel:&biz.Channel{Channel:&ent.Channel{ID:93001,Type:channel.TypeCodex,Settings:&objects.ChannelSettings{PassThroughBody:lo.ToPtr(true)}},Outbound:provider},
-				Models:[]biz.ChannelModelEntry{{RequestModel:"gpt-6-astra",ActualModel:"gpt-6-astra",Source:"direct"}},APIFormat:string(llm.APIFormatOpenAIResponse),
+				Channel: &biz.Channel{Channel: &ent.Channel{ID: 93001, Type: channel.TypeCodex, Settings: &objects.ChannelSettings{PassThroughBody: lo.ToPtr(true)}}, Outbound: provider},
+				Models:  []biz.ChannelModelEntry{{RequestModel: "gpt-6-astra", ActualModel: "gpt-6-astra", Source: "direct"}}, APIFormat: string(llm.APIFormatOpenAIResponse),
 			}
-			state := &PersistenceState{APIKey:owner,ChannelModelsCandidates:[]*ChannelModelsCandidate{candidate}}
-			latest := &remoteCompactionReference{ID:"cmp_latest",EncryptedContent:"native-latest"}
-			ancestor := &remoteCompactionReference{ID:"cmp_ancestor",EncryptedContent:"native-ancestor"}
+			state := &PersistenceState{APIKey: owner, ChannelModelsCandidates: []*ChannelModelsCandidate{candidate}}
+			latest := &remoteCompactionReference{ID: "cmp_latest", EncryptedContent: "native-latest"}
+			ancestor := &remoteCompactionReference{ID: "cmp_ancestor", EncryptedContent: "native-ancestor"}
 			first := []byte(`{"model":"gpt-6-astra","client_metadata":{"thread_id":"lazy-thread"},"input":[{"role":"user","content":"first source detail"},{"type":"compaction_trigger"}]}`)
 			second := []byte(`{"model":"gpt-6-astra","client_metadata":{"thread_id":"lazy-thread"},"input":[{"role":"user","content":"retained detail"},{"type":"compaction","id":"cmp_ancestor","encrypted_content":"native-ancestor"},{"role":"user","content":"new source detail"},{"type":"compaction_trigger"}]}`)
-			require.NoError(t,adapter.retainNativeCompactionSource(ctx,ancestor,state,&remoteCompactionSource{body:first}))
-			require.NoError(t,adapter.retainNativeCompactionSource(ctx,latest,state,&remoteCompactionSource{body:second}))
-			executor := &lazyCompactionExecutor{reject:reject}
+			require.NoError(t, adapter.retainNativeCompactionSource(ctx, ancestor, state, &remoteCompactionSource{body: first}))
+			require.NoError(t, adapter.retainNativeCompactionSource(ctx, latest, state, &remoteCompactionSource{body: second}))
+			executor := &lazyCompactionExecutor{reject: reject}
 			for range 2 {
-				summary, err := adapter.summaryForCompaction(ctx,remoteCompactionCacheKey(latest),latest,"lazy-thread","gpt-6-astra",state,executor)
-				require.NoError(t,err)
-				require.Equal(t,"verified retained source summary",summary)
+				summary, err := adapter.summaryForCompaction(ctx, remoteCompactionCacheKey(latest), latest, "lazy-thread", "gpt-6-astra", state, executor)
+				require.NoError(t, err)
+				require.Equal(t, "verified retained source summary", summary)
 				// Cold restart must reuse the sealed result, not generate again.
-				adapter=newRemoteCompactionAdapter(adapter.requestService,nil,adapter.systemService)
+				adapter = newRemoteCompactionAdapter(adapter.requestService, nil, adapter.systemService)
 			}
-			want:=1
-			if reject {want=3}
-			require.Len(t,executor.bodies,want)
-			require.Contains(t,string(executor.bodies[0]),"native-ancestor")
+			want := 1
 			if reject {
-				require.Contains(t,string(executor.bodies[1]),"first source detail")
-				require.Contains(t,string(executor.bodies[2]),"verified retained source summary")
-				require.Contains(t,string(executor.bodies[2]),"new source detail")
-				require.NotContains(t,string(executor.bodies[2]),"native-ancestor")
+				want = 3
+			}
+			require.Len(t, executor.bodies, want)
+			require.Contains(t, string(executor.bodies[0]), "native-ancestor")
+			if reject {
+				require.Contains(t, string(executor.bodies[1]), "first source detail")
+				require.Contains(t, string(executor.bodies[2]), "verified retained source summary")
+				require.Contains(t, string(executor.bodies[2]), "new source detail")
+				require.NotContains(t, string(executor.bodies[2]), "native-ancestor")
 			}
 		})
 	}
@@ -69,10 +71,10 @@ type lazyCompactionExecutor struct {
 	bodies [][]byte
 }
 
-func (e *lazyCompactionExecutor) DoStream(ctx context.Context,req *httpclient.Request)(streams.Stream[*httpclient.StreamEvent],error) {
-	e.bodies=append(e.bodies,append([]byte(nil),req.Body...))
-	if e.reject && gjson.GetBytes(req.Body,`input.#(type=="compaction")`).Exists() {
-		return nil,&httpclient.Error{StatusCode:http.StatusBadRequest,Body:[]byte(`{"error":{"type":"invalid_request_error","message":"The encrypted content for item cmp_ancestor could not be verified. Reason: Encrypted content could not be decrypted or parsed."}}`)}
+func (e *lazyCompactionExecutor) DoStream(ctx context.Context, req *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
+	e.bodies = append(e.bodies, append([]byte(nil), req.Body...))
+	if e.reject && gjson.GetBytes(req.Body, `input.#(type=="compaction")`).Exists() {
+		return nil, &httpclient.Error{StatusCode: http.StatusBadRequest, Body: []byte(`{"error":{"type":"invalid_request_error","message":"The encrypted content for item cmp_ancestor could not be verified. Reason: Encrypted content could not be decrypted or parsed."}}`)}
 	}
-	return e.rejectedCompactionBridgeExecutor.DoStream(ctx,req)
+	return e.rejectedCompactionBridgeExecutor.DoStream(ctx, req)
 }

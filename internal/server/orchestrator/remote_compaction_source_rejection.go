@@ -5,7 +5,7 @@ import (
 )
 
 type compactionSourceRejectedError struct {
-	cause error
+	cause    error
 	cacheKey string
 }
 
@@ -28,8 +28,8 @@ func rejectedCompactionSourceError(request *httpclient.Request, err error) error
 	}
 	exact := responsesRejectedCompactionMessage(request.Body, ref, code, message, param)
 	hasIDs, safe := responsesResourceHistorySupportsRecoveryWithAgents(request.Body, exact)
-	if !safe || !exact && (param != "" || hasIDs || !responsesResourceMismatch(code,message)) {
+	if !safe || !exact && (param != "" || hasIDs || !responsesResourceMismatch(code, message)) {
 		return err
 	}
-	return &compactionSourceRejectedError{cause:err,cacheKey:remoteCompactionCacheKey(ref)}
+	return &compactionSourceRejectedError{cause: err, cacheKey: remoteCompactionCacheKey(ref)}
 }
