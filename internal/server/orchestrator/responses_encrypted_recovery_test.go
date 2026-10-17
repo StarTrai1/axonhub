@@ -58,11 +58,11 @@ func TestResponsesRedactedEncryptionRecoveryGuards(t *testing.T) {
 }
 
 func TestResponsesRedactedEncryptionStagedPipeline(t *testing.T) {
- testResponsesStagedEncryptionPipeline(t, rejectedRedactedCiphertextMessage)
+	testResponsesStagedEncryptionPipeline(t, rejectedRedactedCiphertextMessage)
 }
 
 func TestResponsesInvalidEncryptedSummaryStagedPipeline(t *testing.T) {
- testResponsesStagedEncryptionPipeline(t, "invalid encrypted summary (request id: synthetic_59693)")
+	testResponsesStagedEncryptionPipeline(t, "invalid encrypted summary (request id: synthetic_59693)")
 }
 
 func testResponsesStagedEncryptionPipeline(t *testing.T, rejectionMessage string) {
@@ -150,36 +150,39 @@ func testResponsesStagedEncryptionPipeline(t *testing.T, rejectionMessage string
 }
 
 func TestResponsesInvalidEncryptedSummaryRecoveryGuards(t *testing.T) {
- body, err := sjson.SetRawBytes([]byte(responsesRejectedReasoningFixture), "input.-1", []byte(preservedReasoningCheckpoint))
- require.NoError(t, err)
- const message = "invalid encrypted summary (request id: synthetic_59693)"
- for _, tc := range []struct {
-  name, message, code, param, path string
-  value any
-  want bool
- }{
-  {name: "exact relay message", message: message, want: true},
-  {name: "bare message", message: "invalid encrypted summary", want: true},
-  {name: "explicit code", message: message, code: "invalid_encrypted_summary", want: true},
-  {name: "whole input", message: message, param: "input", want: true},
-  {name: "indexed reasoning", message: message, param: "input[1].encrypted_content", want: true},
-  {name: "indexed checkpoint is not reasoning", message: message, param: "input[9].encrypted_content"},
-  {name: "wrong field", message: message, param: "input[1].id"},
-  {name: "wrong code", message: message, code: "permission_denied"},
-  {name: "extra text", message: message + " unrelated error"},
-  {name: "substring", message: "cannot proceed: " + message},
-  {name: "unknown request identifier", message: "invalid encrypted summary (request id: anything with spaces)"},
-  {name: "unresolved previous", message: message, path: "previous_response_id", value: "resp_missing"},
-  {name: "unresolved conversation", message: message, path: "conversation", value: "conv_missing"},
-  {name: "orphan tool", message: message, path: "input.3.call_id", value: "missing"},
-  {name: "multiple checkpoints", message: message, path: "input.10", value: map[string]any{"type": "compaction", "id": "cmp_other", "encrypted_content": "other"}},
-  {name: "opaque agent", message: message, path: "input.10", value: json.RawMessage(preservedEncryptedAgentMessage)},
- } {
-  t.Run(tc.name, func(t *testing.T) {
-   changed := body
-   if tc.path != "" { changed, err = sjson.SetBytes(body, tc.path, tc.value); require.NoError(t, err) }
-   _, accepted := responsesRejectedStatusRuleForDetails(changed, tc.code, tc.message, tc.param)
-   require.Equal(t, tc.want, accepted)
-  })
- }
+	body, err := sjson.SetRawBytes([]byte(responsesRejectedReasoningFixture), "input.-1", []byte(preservedReasoningCheckpoint))
+	require.NoError(t, err)
+	const message = "invalid encrypted summary (request id: synthetic_59693)"
+	for _, tc := range []struct {
+		name, message, code, param, path string
+		value                            any
+		want                             bool
+	}{
+		{name: "exact relay message", message: message, want: true},
+		{name: "bare message", message: "invalid encrypted summary", want: true},
+		{name: "explicit code", message: message, code: "invalid_encrypted_summary", want: true},
+		{name: "whole input", message: message, param: "input", want: true},
+		{name: "indexed reasoning", message: message, param: "input[1].encrypted_content", want: true},
+		{name: "indexed checkpoint is not reasoning", message: message, param: "input[9].encrypted_content"},
+		{name: "wrong field", message: message, param: "input[1].id"},
+		{name: "wrong code", message: message, code: "permission_denied"},
+		{name: "extra text", message: message + " unrelated error"},
+		{name: "substring", message: "cannot proceed: " + message},
+		{name: "unknown request identifier", message: "invalid encrypted summary (request id: anything with spaces)"},
+		{name: "unresolved previous", message: message, path: "previous_response_id", value: "resp_missing"},
+		{name: "unresolved conversation", message: message, path: "conversation", value: "conv_missing"},
+		{name: "orphan tool", message: message, path: "input.3.call_id", value: "missing"},
+		{name: "multiple checkpoints", message: message, path: "input.10", value: map[string]any{"type": "compaction", "id": "cmp_other", "encrypted_content": "other"}},
+		{name: "opaque agent", message: message, path: "input.10", value: json.RawMessage(preservedEncryptedAgentMessage)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			changed := body
+			if tc.path != "" {
+				changed, err = sjson.SetBytes(body, tc.path, tc.value)
+				require.NoError(t, err)
+			}
+			_, accepted := responsesRejectedStatusRuleForDetails(changed, tc.code, tc.message, tc.param)
+			require.Equal(t, tc.want, accepted)
+		})
+	}
 }

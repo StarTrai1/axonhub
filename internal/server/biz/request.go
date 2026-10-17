@@ -1679,7 +1679,10 @@ func (s *RequestService) LoadRequestExecutionRequestBody(ctx context.Context, ex
 					exec.RequestID,
 				)
 			}
-			parent, err := s.entFromContext(ctx).Request.Get(ctx, exec.RequestID)
+			// Referenced bodies do not need the parent's response or stream chunks,
+			// which can be much larger than the request itself.
+			parent, err := s.entFromContext(ctx).Request.Query().Where(request.IDEQ(exec.RequestID)).
+				Select(request.FieldID, request.FieldProjectID, request.FieldDataStorageID, request.FieldRequestBody).Only(ctx)
 			if err != nil {
 				return nil, fmt.Errorf("load referenced request %d: %w", exec.RequestID, err)
 			}

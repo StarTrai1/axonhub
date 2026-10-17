@@ -78,9 +78,16 @@ jobs:
         working-directory: frontend
         run: pnpm install --frozen-lockfile
 
+      - name: Set up Go for embedded asset tests
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: .go-version
+
       - name: Build frontend
-        working-directory: frontend
-        run: pnpm build
+        run: |
+          node --test scripts/pack-frontend.test.mjs
+          make build-frontend
+          go test ./internal/server/static
 
       - name: Channel quota regression
         working-directory: frontend

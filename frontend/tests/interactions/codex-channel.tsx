@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryHistory, createRootRoute, createRouter, RouterProvider } from '@tanstack/react-router';
 import '@/index.css';
 import '@/lib/i18n';
+import { ThemeProvider, useTheme } from '@/context/theme-context';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { ChannelsActionDialog } from '@/features/channels/components/channels-action-dialog';
 import { channelSchema, type Channel } from '@/features/channels/data/schema';
@@ -20,9 +21,11 @@ const row = channelSchema.parse({
   supportedModels: ['gpt-6-sol', 'gpt-5.5'], defaultTestModel: 'gpt-6-sol', settings: { codexSearchOnly: false },
 });
 function Fixture() {
+  const {setTheme} = useTheme();
   const [open, setOpen] = useState(true);
   const [currentRow, setCurrentRow] = useState<Channel>(row);
   return <>
+    <button data-testid="dark-theme" onClick={() => setTheme("dark")}>Dark theme</button>
     <button data-testid='reopen-codex' onClick={async () => {
       const response = await fetch('/fixture/channel');
       setCurrentRow(channelSchema.parse(await response.json()));
@@ -32,4 +35,4 @@ function Fixture() {
   </>;
 }
 const router = createRouter({ routeTree: createRootRoute({ component: Fixture }), history: createMemoryHistory({ initialEntries: ['/'] }) });
-createRoot(document.getElementById('root')!).render(<StrictMode><QueryClientProvider client={queryClient}><TooltipProvider><RouterProvider router={router} /></TooltipProvider></QueryClientProvider></StrictMode>);
+createRoot(document.getElementById('root')!).render(<StrictMode><QueryClientProvider client={queryClient}><ThemeProvider defaultTheme="light" defaultColorScheme="claude"><TooltipProvider><RouterProvider router={router} /></TooltipProvider></ThemeProvider></QueryClientProvider></StrictMode>);

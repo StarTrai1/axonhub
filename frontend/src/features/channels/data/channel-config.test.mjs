@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import test from 'node:test';
 
 const dataDir = import.meta.dirname;
 const srcRoot = join(dataDir, '..', '..', '..');
@@ -16,7 +16,10 @@ function parseLocale(locale) {
 
 test('lazy channel lists retain routing tiers and official Codex usage data', () => {
   const source = read('features/channels/data/channels.ts');
-  const base = source.slice(source.indexOf('const CHANNEL_QUERY_LIST_NODE_BASE_SELECTION'), source.indexOf('const CHANNEL_QUERY_SUPPORTED_MODELS_SELECTION'));
+  const base = source.slice(
+    source.indexOf('const CHANNEL_QUERY_LIST_NODE_BASE_SELECTION'),
+    source.indexOf('const CHANNEL_QUERY_SUPPORTED_MODELS_SELECTION')
+  );
   assert.match(base, /policies\s*\{\s*routingTier/);
   const health = source.slice(source.indexOf('const CHANNEL_QUERY_HEALTH_SELECTION'), source.indexOf('function isChannelColumnVisible'));
   assert.match(health, /credentials\s*\{\s*apiKey/);
@@ -35,8 +38,16 @@ test('Cline is available as a channel type in frontend schemas and configs', () 
 
   assert.match(schema, /channelTypeSchema[\s\S]*'cline'/, 'channelTypeSchema should accept cline');
   assert.match(channelsConfig, /cline:\s*{[\s\S]*channelType:\s*'cline'/, 'CHANNEL_CONFIGS should define cline');
-  assert.match(channelsConfig, /cline:\s*{[\s\S]*baseURL:\s*'https:\/\/api\.cline\.bot\/api\/v1'/, 'Cline should use the documented API base URL');
-  assert.match(channelsConfig, /cline:\s*{[\s\S]*apiFormat:\s*OPENAI_CHAT_COMPLETIONS/, 'Cline should use OpenAI Chat Completions in the UI');
+  assert.match(
+    channelsConfig,
+    /cline:\s*{[\s\S]*baseURL:\s*'https:\/\/api\.cline\.bot\/api\/v1'/,
+    'Cline should use the documented API base URL'
+  );
+  assert.match(
+    channelsConfig,
+    /cline:\s*{[\s\S]*apiFormat:\s*OPENAI_CHAT_COMPLETIONS/,
+    'Cline should use OpenAI Chat Completions in the UI'
+  );
   assert.match(channelsConfig, /CHANNEL_TYPE_TO_PROVIDER[\s\S]*cline:\s*'cline'/, 'Cline should map to the Cline provider');
   assert.match(providersConfig, /cline:\s*{[\s\S]*channelTypes:\s*\[\s*'cline'\s*\]/, 'PROVIDER_CONFIGS should expose a Cline provider');
 });
@@ -60,7 +71,10 @@ test('Fenno exposes a third-party Codex channel', () => {
   const providersConfig = read('features/channels/data/config_providers.ts');
 
   assert.match(schema, /channelTypeSchema[\s\S]*'fenno'/);
-  assert.match(channelsConfig, /fenno:\s*{[\s\S]*baseURL:\s*'https:\/\/api\.fenno\.ai'[\s\S]*apiFormat:\s*OPENAI_RESPONSES[\s\S]*icon:\s*FennoIcon/);
+  assert.match(
+    channelsConfig,
+    /fenno:\s*{[\s\S]*baseURL:\s*'https:\/\/api\.fenno\.ai'[\s\S]*apiFormat:\s*OPENAI_RESPONSES[\s\S]*icon:\s*FennoIcon/
+  );
   assert.match(channelsConfig, /fenno:\s*{[\s\S]*color:\s*'bg-\[#EEF2FF\] text-\[#3155C6\] border-\[#C7D2FE\]'/);
   assert.match(providersConfig, /fenno:\s*{[\s\S]*icon:\s*FennoIcon[\s\S]*channelTypes:\s*\[\s*'fenno'\s*\]/);
   const fennoIcon = read('features/channels/components/fenno-icon.tsx');
@@ -318,7 +332,9 @@ test('Command Code has localized channel, provider, cookie field, and quota labe
     assert.equal(channels['channels.types.commandcode'], 'Command Code');
     assert.equal(channels['channels.providers.commandcode'], 'Command Code');
     assert.ok(channels['channels.types.commandcode_anthropic']);
-    assert.ok(channels['channels.dialogs.fields.commandCodeQuota.authCookie.placeholder'].includes('__Secure-commandcode_prod_.session_token'));
+    assert.ok(
+      channels['channels.dialogs.fields.commandCodeQuota.authCookie.placeholder'].includes('__Secure-commandcode_prod_.session_token')
+    );
     assert.ok(channels['channels.dialogs.fields.commandCodeQuota.authCookie.description']);
     assert.ok(system['quota.label.commandcode.top_up']);
     assert.ok(system['quota.label.commandcode.no_windows']);

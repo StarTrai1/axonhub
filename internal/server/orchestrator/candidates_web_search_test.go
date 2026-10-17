@@ -105,31 +105,31 @@ func TestWebSearchSelector_Select(t *testing.T) {
 			},
 			want: []string{"auto"},
 		},
-        {
-            name: "other channels skips preferred generation channel",
-            request: searchRequest,
-            candidates: []*ChannelModelsCandidate{
-                withPolicy(newCandidate("generation", channel.TypeCodex, nil), objects.WebSearchPolicyOtherChannels),
-                withPolicy(newCandidate("search", channel.TypeCodex, nil), objects.WebSearchPolicyNative),
-            },
-            want: []string{"search"},
-        },
-        {
-            name: "all opted-out channels fail closed",
-            request: searchRequest,
-            candidates: []*ChannelModelsCandidate{
-                withPolicy(newCandidate("generation", channel.TypeCodex, nil), objects.WebSearchPolicyOtherChannels),
-            },
-            want: []string{},
-        },
-        {
-            name: "other channels preserves generation routing",
-            request: responsesRequest,
-            candidates: []*ChannelModelsCandidate{
-                withPolicy(newCandidate("generation", channel.TypeCodex, nil), objects.WebSearchPolicyOtherChannels),
-            },
-            want: []string{"generation"},
-        },
+		{
+			name:    "other channels skips preferred generation channel",
+			request: searchRequest,
+			candidates: []*ChannelModelsCandidate{
+				withPolicy(newCandidate("generation", channel.TypeCodex, nil), objects.WebSearchPolicyOtherChannels),
+				withPolicy(newCandidate("search", channel.TypeCodex, nil), objects.WebSearchPolicyNative),
+			},
+			want: []string{"search"},
+		},
+		{
+			name:    "all opted-out channels fail closed",
+			request: searchRequest,
+			candidates: []*ChannelModelsCandidate{
+				withPolicy(newCandidate("generation", channel.TypeCodex, nil), objects.WebSearchPolicyOtherChannels),
+			},
+			want: []string{},
+		},
+		{
+			name:    "other channels preserves generation routing",
+			request: responsesRequest,
+			candidates: []*ChannelModelsCandidate{
+				withPolicy(newCandidate("generation", channel.TypeCodex, nil), objects.WebSearchPolicyOtherChannels),
+			},
+			want: []string{"generation"},
+		},
 
 		{
 			name:    "all MCP-only channels fail closed",

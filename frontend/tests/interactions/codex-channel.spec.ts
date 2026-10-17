@@ -69,7 +69,10 @@ for (const width of [1280, 768, 390]) {
     expect(sizes.every((size) => size.height < 100)).toBe(true);
     expect(await policies.evaluate((element) => element.getBoundingClientRect().height)).toBeLessThan(200);
     await page.screenshot({ path: testInfo.outputPath('codex-channel.png') });
-    await page.evaluate(() => document.documentElement.classList.add('dark'));
+    await page.getByTestId('dark-theme').evaluate((element) => (element as HTMLButtonElement).click());
+    await expect(page.locator('html')).toHaveClass(/dark/);
+    await expect(page.locator('html')).toHaveClass(/claude/);
+    await expect(page.getByRole('dialog')).toHaveCSS('background-color', 'oklch(0.22 0.002 106)');
     await page.screenshot({ path: testInfo.outputPath('codex-channel-dark.png') });
     await page.getByTestId('channel-submit-button').click();
     await expect.poll(() => settings).toEqual([{ enabled: true, model: 'gpt-6.1-sol', policy: 'native' }]);

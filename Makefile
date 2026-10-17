@@ -27,10 +27,8 @@ build-backend:
 build-frontend:
 	@echo "Building axonhub frontend..."
 	cd frontend && pnpm vite build
-	@echo "Copying frontend dist to server static directory..."
-	rm -rf internal/server/static/dist/assets
-	mkdir -p internal/server/static/dist
-	cp -r frontend/dist/* internal/server/static/dist/
+	@echo "Packing frontend dist for the server..."
+	node scripts/pack-frontend.mjs
 	@echo "Frontend build completed!"
 
 # Build both frontend and backend

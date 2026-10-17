@@ -2416,9 +2416,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                               <label htmlFor='codex-search-only' className='text-sm font-medium'>
                                 {t('channels.dialogs.fields.codexSearchOnly.label')}
                               </label>
-                              <p className='text-muted-foreground text-xs'>
-                                {t('channels.dialogs.fields.codexSearchOnly.description')}
-                              </p>
+                              <p className='text-muted-foreground text-xs'>{t('channels.dialogs.fields.codexSearchOnly.description')}</p>
                             </div>
                             <Switch
                               id='codex-search-only'
@@ -2431,7 +2429,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                             />
                           </div>
                           {codexSearchOnly && (
-                            <div className='grid min-w-0 grid-cols-1 items-center gap-x-4 gap-y-2 space-y-0 @sm/channel-fields:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]'>
+                            <div className='grid min-w-0 grid-cols-1 items-center space-y-0 gap-x-4 gap-y-2 @sm/channel-fields:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]'>
                               <label htmlFor='codex-search-model' className='text-sm font-medium'>
                                 {t('channels.dialogs.fields.codexSearchModel.label')}
                               </label>
@@ -2451,7 +2449,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                   ))}
                                 </SelectContent>
                               </Select>
-                              <p className='text-muted-foreground text-xs @sm/channel-fields:col-span-2'>{t('channels.dialogs.fields.codexSearchModel.description')}</p>
+                              <p className='text-muted-foreground text-xs @sm/channel-fields:col-span-2'>
+                                {t('channels.dialogs.fields.codexSearchModel.description')}
+                              </p>
                             </div>
                           )}
                         </div>
@@ -3051,7 +3051,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                         control={form.control}
                         name='policies.routingTier'
                         render={({ field }) => (
-                          <FormItem className='grid min-w-0 grid-cols-1 items-center gap-x-4 gap-y-2 space-y-0 @sm/channel-fields:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]'>
+                          <FormItem className='grid min-w-0 grid-cols-1 items-center space-y-0 gap-x-4 gap-y-2 @sm/channel-fields:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]'>
                             <PolicyFieldHeader
                               label={t('channels.dialogs.fields.routingTier.label')}
                               description={t('channels.dialogs.fields.routingTier.description')}
@@ -3356,15 +3356,12 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                             />
 
                             {isCodexType && (
-                              <div
-                                className='min-w-0 space-y-3'
-                                data-testid='codex-policy-settings'
-                              >
+                              <div className='min-w-0 space-y-3' data-testid='codex-policy-settings'>
                                 <FormField
                                   control={form.control}
                                   name='policies.remoteCompaction'
                                   render={({ field }) => (
-                                    <FormItem className='grid min-w-0 grid-cols-1 items-center gap-x-4 gap-y-2 space-y-0 @sm/channel-fields:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]'>
+                                    <FormItem className='grid min-w-0 grid-cols-1 items-center space-y-0 gap-x-4 gap-y-2 @sm/channel-fields:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]'>
                                       <PolicyFieldHeader
                                         label={t('channels.dialogs.fields.remoteCompactionPolicy.label')}
                                         description={t('channels.dialogs.fields.remoteCompactionPolicy.description')}
@@ -3387,7 +3384,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                   control={form.control}
                                   name='policies.webSearch'
                                   render={({ field }) => (
-                                    <FormItem className='grid min-w-0 grid-cols-1 items-center gap-x-4 gap-y-2 space-y-0 @sm/channel-fields:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]'>
+                                    <FormItem className='grid min-w-0 grid-cols-1 items-center space-y-0 gap-x-4 gap-y-2 @sm/channel-fields:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]'>
                                       <PolicyFieldHeader
                                         label={t('channels.dialogs.fields.webSearchPolicy.label')}
                                         description={t('channels.dialogs.fields.webSearchPolicy.description')}
@@ -3417,7 +3414,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                 control={form.control}
                                 name='policies.codexIdentity'
                                 render={({ field }) => (
-                                  <FormItem className='grid min-w-0 grid-cols-1 items-center gap-x-4 gap-y-2 space-y-0 @sm/channel-fields:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]'>
+                                  <FormItem className='grid min-w-0 grid-cols-1 items-center space-y-0 gap-x-4 gap-y-2 @sm/channel-fields:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]'>
                                     <PolicyFieldHeader
                                       label={t('channels.dialogs.fields.codexIdentityPolicy.label')}
                                       description={t('channels.dialogs.fields.codexIdentityPolicy.description')}

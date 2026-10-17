@@ -4,6 +4,7 @@ import (
 	"embed"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strings"
 
 	"github.com/gin-contrib/static"
@@ -16,6 +17,10 @@ import (
 var dist embed.FS
 
 var staticFS static.ServeFileSystem
+
+// Vite content hashes change whenever asset contents change. Only these URLs
+// are immutable; entry HTML, unhashed files and missing assets must revalidate.
+var immutableAssetPath = regexp.MustCompile(`^/assets/[^/]+-[A-Za-z0-9_-]{8,}\.[A-Za-z0-9]+$`)
 
 var apiPrefixes = []string{
 	"/admin",
@@ -39,6 +44,7 @@ func init() {
 }
 
 func Handler() gin.HandlerFunc {
+	serveAsset := static.Serve("/", staticFS)
 	return func(c *gin.Context) {
 		path := c.Request.URL.Path
 
@@ -48,7 +54,13 @@ func Handler() gin.HandlerFunc {
 		}
 
 		if isStaticAssetPath(path) {
-			static.Serve("/", staticFS)(c)
+			if servePrecompressed(c, path, immutableAssetPath.MatchString(path)) {
+				return
+			}
+			if immutableAssetPath.MatchString(path) && staticFS.Exists("/", path) {
+				c.Header("Cache-Control", "public, max-age=31536000, immutable")
+			}
+			serveAsset(c)
 			return
 		}
 
@@ -72,6 +84,9 @@ func serveSPAIndex(c *gin.Context) {
 	c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
 	c.Header("Pragma", "no-cache")
 	c.Header("Expires", "0")
+	if servePrecompressed(c, "/index.html", false) {
+		return
+	}
 	c.FileFromFS("/", staticFS)
 }
 

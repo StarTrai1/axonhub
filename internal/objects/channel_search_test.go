@@ -44,9 +44,9 @@ func TestCodexSearchModelValidation(t *testing.T) {
 }
 
 func TestWebSearchPolicyGraphQLAcceptsOtherChannels(t *testing.T) {
- var policy WebSearchPolicy
- require.NoError(t, policy.UnmarshalGQL("other_channels"))
- require.Equal(t, WebSearchPolicyOtherChannels, policy)
- require.Error(t, policy.UnmarshalGQL("auto"))
- require.Error(t, policy.UnmarshalGQL("disabled"))
+	var policy WebSearchPolicy
+	require.NoError(t, policy.UnmarshalGQL("other_channels"))
+	require.Equal(t, WebSearchPolicyOtherChannels, policy)
+	require.Error(t, policy.UnmarshalGQL("auto"))
+	require.Error(t, policy.UnmarshalGQL("disabled"))
 }

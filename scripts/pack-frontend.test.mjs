@@ -1,0 +1,41 @@
+import assert from 'node:assert/strict';
+import { mkdtemp, mkdir, readFile, writeFile, access } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import test from 'node:test';
+import { gunzipSync } from 'node:zlib';
+import { packFrontend } from './pack-frontend.mjs';
+
+test('embedded assets are deterministic, lossless and leave Vite output intact', async (t) => {
+  const root = await mkdtemp(path.join(tmpdir(), 'axonhub-assets-'));
+  t.after(async () => {
+    const { rm } = await import('node:fs/promises');
+    await rm(root, { recursive: true, force: true });
+  });
+  const source = path.join(root, 'vite');
+  const destination = path.join(root, 'embedded');
+  await mkdir(path.join(source, 'assets'), { recursive: true });
+  await mkdir(destination);
+  const script = Buffer.from('console.log("保持功能一致");\n'.repeat(1000));
+  const image = Buffer.from([0, 1, 2, 3, 255]);
+  await writeFile(path.join(source, 'assets/app-Ab12cd_9.js'), script);
+  await writeFile(path.join(source, 'image.png'), image);
+  await writeFile(path.join(source, 'index.html'), '<html>fixture</html>');
+  await writeFile(path.join(destination, '.gitkeep'), '');
+  await writeFile(path.join(destination, 'obsolete.js'), 'old');
+  const stats = await packFrontend(source, destination);
+  assert.equal(stats.files, 3);
+  assert.equal(stats.compressedFiles, 1);
+  assert.ok(stats.embeddedBytes < stats.sourceBytes);
+  const packed = await readFile(path.join(destination, 'assets/app-Ab12cd_9.js.gz'));
+  assert.deepEqual(gunzipSync(packed), script);
+  assert.deepEqual(await readFile(path.join(source, 'assets/app-Ab12cd_9.js')), script);
+  assert.deepEqual(await readFile(path.join(destination, 'image.png')), image);
+  await assert.rejects(access(path.join(destination, 'obsolete.js')));
+  await assert.rejects(access(path.join(destination, 'assets/app-Ab12cd_9.js')));
+  await access(path.join(destination, '.gitkeep'));
+  await packFrontend(source, destination);
+  assert.deepEqual(await readFile(path.join(destination, 'assets/app-Ab12cd_9.js.gz')), packed);
+  await assert.rejects(packFrontend(source, source));
+  await assert.rejects(packFrontend(source, root));
+});

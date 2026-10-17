@@ -1,8 +1,8 @@
 package biz
 
 import (
- "github.com/looplj/axonhub/internal/ent/channel"
- "github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/objects"
 )
 
 // IsCodexSearchOnly is an opt-in routing restriction, independent of the
