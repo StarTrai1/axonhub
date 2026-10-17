@@ -807,13 +807,7 @@ export const createChannelInputSchema = z
 
     // Validate that at least one credential type is provided. A Vertex key only counts
     // on a gemini_vertex channel, so it must not satisfy an ordinary channel.
-    if (
-      !hasApiKey &&
-      !hasApiKeys &&
-      data.type !== 'anthropic_aws' &&
-      data.type !== 'anthropic_gcp' &&
-      data.type !== 'gemini_vertex'
-    ) {
+    if (!hasApiKey && !hasApiKeys && data.type !== 'anthropic_aws' && data.type !== 'anthropic_gcp' && data.type !== 'gemini_vertex') {
       ctx.addIssue({
         code: 'custom' as const,
         message: 'At least one API Key is required',

@@ -20,9 +20,11 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/openai"
 )
 
-var _ transformer.Inbound = (*SearchInboundTransformer)(nil)
-var _ transformer.Outbound = (*SearchOutboundTransformer)(nil)
-var _ pipeline.ChannelCustomizedExecutor = (*SearchOutboundTransformer)(nil)
+var (
+	_ transformer.Inbound                = (*SearchInboundTransformer)(nil)
+	_ transformer.Outbound               = (*SearchOutboundTransformer)(nil)
+	_ pipeline.ChannelCustomizedExecutor = (*SearchOutboundTransformer)(nil)
+)
 
 const (
 	defaultSearchFallbackModel         = "gpt-5.5"
@@ -114,13 +116,13 @@ func (t *SearchInboundTransformer) AggregateStreamChunks(
 // SearchConfig configures the standalone search outbound endpoint.
 type SearchConfig struct {
 	DisableResponsesFallback bool
-	BaseURL               string
-	EndpointPath          string
-	APIKeyProvider        auth.APIKeyProvider
-	ResponsesBaseURL      string
-	ResponsesEndpointPath string
-	FallbackModel         string
-	CapabilityNegativeTTL time.Duration
+	BaseURL                  string
+	EndpointPath             string
+	APIKeyProvider           auth.APIKeyProvider
+	ResponsesBaseURL         string
+	ResponsesEndpointPath    string
+	FallbackModel            string
+	CapabilityNegativeTTL    time.Duration
 }
 
 // SearchOutboundTransformer forwards standalone search JSON without coupling it
@@ -230,8 +232,8 @@ func (t *SearchOutboundTransformer) TransformRequest(
 			Type:   httpclient.AuthTypeBearer,
 			APIKey: t.config.APIKeyProvider.Get(ctx),
 		},
-		RequestType:          string(llm.RequestTypeSearch),
-		APIFormat:            string(llm.APIFormatOpenAISearch),
+		RequestType:           string(llm.RequestTypeSearch),
+		APIFormat:             string(llm.APIFormatOpenAISearch),
 		SkipInboundQueryMerge: true,
 	}, nil
 }

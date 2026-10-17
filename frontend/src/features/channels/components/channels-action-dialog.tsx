@@ -1635,9 +1635,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         manualModels,
         credentials: credentials
           ? getCodexThirdPartySubmitCredentials(credentials, {
-               type: valuesForSubmit.type,
-               authMode,
-             })
+              type: valuesForSubmit.type,
+              authMode,
+            })
           : credentials,
       };
       const effectiveChannelType = dataWithModels.type ?? currentRow?.type ?? derivedChannelType;
@@ -1904,10 +1904,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     const oauthApiKey = form.getValues('credentials.apiKey');
     const vertexApiKeys = channelType === 'gemini_vertex' ? form.getValues('credentials.vertexApiKeys') : undefined;
     const selectedVertexCredential = vertexApiKeys?.find(
-      (credential) =>
-        credential.apiKey.trim().length > 0 &&
-        credential.projectID.trim().length > 0 &&
-        credential.region.trim().length > 0,
+      (credential) => credential.apiKey.trim().length > 0 && credential.projectID.trim().length > 0 && credential.region.trim().length > 0
     );
 
     if (!channelType || !baseURL) {
@@ -2886,7 +2883,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                         />
                       )}
 
-                      {(!isGeminiVertex && (!(isCodexType || isClaudeCodeType || isCopilotType || isXAISubscriptionType) || authMode === 'third-party')) &&
+                      {!isGeminiVertex &&
+                        (!(isCodexType || isClaudeCodeType || isCopilotType || isXAISubscriptionType) || authMode === 'third-party') &&
                         selectedProvider !== 'antigravity' &&
                         selectedType !== 'anthropic_gcp' && (
                           <FormField

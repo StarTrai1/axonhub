@@ -18,12 +18,12 @@ import (
 // SearchParams configures a standalone Codex search endpoint.
 type SearchParams struct {
 	DisableResponsesFallback bool
-	TokenProvider         oauth.TokenGetter
-	BaseURL               string
-	EndpointPath          string
-	ResponsesBaseURL      string
-	ResponsesEndpointPath string
-	FallbackModel         string
+	TokenProvider            oauth.TokenGetter
+	BaseURL                  string
+	EndpointPath             string
+	ResponsesBaseURL         string
+	ResponsesEndpointPath    string
+	FallbackModel            string
 }
 
 // SearchOutboundTransformer applies Codex authentication to standalone search requests.
@@ -47,12 +47,12 @@ func NewSearchOutboundTransformer(params SearchParams) (*SearchOutboundTransform
 
 	delegate, err := responses.NewSearchOutboundTransformerWithConfig(&responses.SearchConfig{
 		DisableResponsesFallback: params.DisableResponsesFallback,
-		BaseURL:               params.BaseURL,
-		EndpointPath:          params.EndpointPath,
-		APIKeyProvider:        auth.NewStaticKeyProvider("dummy"),
-		ResponsesBaseURL:      params.ResponsesBaseURL,
-		ResponsesEndpointPath: params.ResponsesEndpointPath,
-		FallbackModel:         params.FallbackModel,
+		BaseURL:                  params.BaseURL,
+		EndpointPath:             params.EndpointPath,
+		APIKeyProvider:           auth.NewStaticKeyProvider("dummy"),
+		ResponsesBaseURL:         params.ResponsesBaseURL,
+		ResponsesEndpointPath:    params.ResponsesEndpointPath,
+		FallbackModel:            params.FallbackModel,
 	})
 	if err != nil {
 		return nil, err

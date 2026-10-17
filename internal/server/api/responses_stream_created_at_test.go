@@ -15,9 +15,9 @@ import (
 
 func TestResponsesStreamFailureCreatedAt(t *testing.T) {
 	for _, tc := range []struct {
-		name string
+		name   string
 		events []string
-		want int64
+		want   int64
 	}{
 		{name: "provider timestamp", events: []string{`{"type":"response.created","response":{"id":"resp_1","created_at":1700000000}}`}, want: 1700000000},
 		{name: "missing provider timestamp", events: []string{`{"type":"response.created","response":{"id":"resp_1"}}`}},

@@ -1065,6 +1065,6 @@
   "channels.templates.dialogs.edit.title": "编辑模板",
   "channels.templates.dialogs.edit.description": "更新模板配置。在你重新应用模板之前，改动不会影响任何渠道。",
   "channels.templates.validation.duplicateName": "已存在名为 \"{{name}}\" 的模板，请更换名称。",
-"channels.dialogs.fields.codexSearchOnly.label": "仅搜索",
-"channels.dialogs.fields.codexSearchOnly.description": "此渠道仅用于联网搜索，可跨模型选用，不承接对话或生成请求。"
+  "channels.dialogs.fields.codexSearchOnly.label": "仅搜索",
+  "channels.dialogs.fields.codexSearchOnly.description": "此渠道仅用于联网搜索，可跨模型选用，不承接对话或生成请求。"
 }

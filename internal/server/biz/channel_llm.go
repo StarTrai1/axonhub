@@ -534,11 +534,11 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 
 			return codex.NewSearchOutboundTransformer(codex.SearchParams{
 				DisableResponsesFallback: ch.IsCodexSearchOnly(),
-				TokenProvider:         primary.TokenProvider(),
-				BaseURL:               baseURL,
-				EndpointPath:          ep.Path,
-				ResponsesBaseURL:      responsesBaseURL,
-				ResponsesEndpointPath: responsesEndpointPath,
+				TokenProvider:            primary.TokenProvider(),
+				BaseURL:                  baseURL,
+				EndpointPath:             ep.Path,
+				ResponsesBaseURL:         responsesBaseURL,
+				ResponsesEndpointPath:    responsesEndpointPath,
 			})
 		}
 
