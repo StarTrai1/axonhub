@@ -159,6 +159,12 @@ When Anthropic function tools are converted to Responses, an omitted `strict` be
 
 Positive reasoning usage is exposed as `usage.output_tokens_details.thinking_tokens`, including on the final streaming `message_delta`. Native Anthropic thinking usage is also retained in the unified reasoning-token count. Counts are bounded to the non-negative output total; absent, zero, or invalid outgoing counts do not add an optional breakdown. `output_tokens` remains the inclusive billing total: thinking is neither added again nor treated as cache creation. See the [Anthropic streaming contract](https://platform.claude.com/docs/en/build-with-claude/streaming) and [usage definition](https://github.com/anthropics/anthropic-sdk-python/blob/62de60b27d04f0927a0ccf0f2610597fafcfab6a/src/anthropic/types/output_tokens_details.py).
 
+### Structured response schemas
+
+When a native Anthropic, Chat Completions, or Responses request carries a JSON Schema response constraint, conversion to a Claude destination restores it in `output_config.format` after reasoning normalization. This keeps the schema when an effort level is changed or omitted. Schema property order and constraints are retained; no prompt text, tool definitions, or reasoning levels are added to compensate for a missing format. OpenAI envelope fields such as `name` and `strict` are not sent as Claude format fields. Malformed or missing schema objects fail before an upstream request is sent.
+
+This mapping applies to direct Claude, Claude Code, Bedrock and Vertex destinations. It does not infer format support from effort support on third-party Anthropic-compatible endpoints: DeepSeek documents only `output_config.effort`. Model-specific schema restrictions still belong to the provider. Keeping the same schema also avoids unnecessarily changing a parameter that affects prompt caching; this is not a measured cache-hit improvement. See [Claude structured outputs](https://platform.claude.com/docs/en/build-with-claude/structured-outputs) and [DeepSeek's Anthropic compatibility](https://api-docs.deepseek.com/guides/anthropic_api/).
+
 ## Error Handling
 
 Anthropic format error responses:

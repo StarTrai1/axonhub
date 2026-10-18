@@ -159,6 +159,12 @@ fmt.Println("\n完整响应:", content)
 
 正数思考用量通过 `usage.output_tokens_details.thinking_tokens` 返回，流式响应在最终 `message_delta` 中携带；原生 Anthropic 思考用量也保留到统一的 reasoning token 计数。计数限制在非负的输出总量内；缺失、零或无效的出站计数不新增可选明细。`output_tokens` 仍是包含思考的计费总量，不重复累加思考，也不把它当作缓存创建。参见 [Anthropic 流协议](https://platform.claude.com/docs/en/build-with-claude/streaming)与[用量定义](https://github.com/anthropics/anthropic-sdk-python/blob/62de60b27d04f0927a0ccf0f2610597fafcfab6a/src/anthropic/types/output_tokens_details.py)。
 
+### 结构化响应 Schema
+
+原生 Anthropic、Chat Completions 或 Responses 请求携带 JSON Schema 输出约束时，转换到 Claude 目标会在推理配置规范化之后恢复 `output_config.format`，避免修改或省略 effort 时丢失 schema。保留 schema 属性顺序及约束，不通过添加提示词、工具定义或改变推理强度补偿格式丢失。OpenAI 封装中的 `name`、`strict` 等字段不会被当作 Claude format 字段发送。schema 对象缺失或格式错误会在发送上游前失败。
+
+此映射适用于直连 Claude、Claude Code、Bedrock 和 Vertex 目标。第三方 Anthropic 兼容接口支持 effort 不代表支持 format；DeepSeek 文档仅声明支持 `output_config.effort`。具体模型的 schema 限制仍由提供商校验。保持相同 schema 也可避免无意改变影响提示缓存的参数，但不代表已实测缓存命中率提升。参见 [Claude 结构化输出](https://platform.claude.com/docs/en/build-with-claude/structured-outputs)和 [DeepSeek Anthropic 兼容范围](https://api-docs.deepseek.com/guides/anthropic_api/)。
+
 ## 错误处理
 
 Anthropic 格式错误响应：

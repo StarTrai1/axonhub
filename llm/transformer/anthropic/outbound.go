@@ -183,6 +183,9 @@ func (t *OutboundTransformer) TransformRequest(
 
 	// Convert to Anthropic request format
 	anthropicReq := convertToAnthropicRequestWithConfig(llmReq, t.config)
+	if err := restoreStructuredOutput(llmReq, anthropicReq, t.config); err != nil {
+		return nil, err
+	}
 	if t.config.Type == PlatformBedrock && llmReq.RawRequest != nil {
 		for _, line := range llmReq.RawRequest.Headers.Values("Anthropic-Beta") {
 			for beta := range strings.SplitSeq(line, ",") {
