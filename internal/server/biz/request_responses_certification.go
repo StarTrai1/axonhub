@@ -17,13 +17,19 @@ func (s *RequestService) HasCompletedResponsesOrigin(ctx context.Context, respon
 	).Exist(ctx)
 }
 
-func certifiedResponsesSnapshot(requestBody, responseBody []byte, responseID string) bool {
+func certifiedResponsesRequest(requestBody, responseBody []byte, responseID string, allowDelta bool) bool {
 	previous := gjson.GetBytes(requestBody, "previous_response_id")
-	if previous.Exists() && previous.String() != "" {
+	if previous.Exists() && previous.Type != gjson.Null && previous.Type != gjson.String {
+		return false
+	}
+	if !allowDelta && previous.String() != "" {
 		return false
 	}
 	response := gjson.ParseBytes(responseBody)
 	if response.Get("id").String() != responseID || response.Get("status").String() != "completed" || !response.Get("output").IsArray() {
+		return false
+	}
+	if failure := response.Get("error"); failure.Exists() && failure.Type != gjson.Null {
 		return false
 	}
 	input := gjson.GetBytes(requestBody, "input")

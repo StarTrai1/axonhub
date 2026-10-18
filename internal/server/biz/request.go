@@ -1531,6 +1531,25 @@ func (s *RequestService) LoadCompletedResponsesSession(
 	ctx context.Context,
 	responseID string,
 ) (requestBody, responseBody []byte, found bool, err error) {
+	return s.loadCompletedResponsesSession(ctx, responseID, false)
+}
+
+// LoadCompletedResponsesCompactionPredecessor returns an owner-scoped completed
+// turn for rebuilding a compaction source. Unlike a portable session snapshot,
+// its request may still depend on previous_response_id; the caller must resolve
+// every predecessor before using or retaining the reconstructed source.
+func (s *RequestService) LoadCompletedResponsesCompactionPredecessor(
+	ctx context.Context,
+	responseID string,
+) (requestBody, responseBody []byte, found bool, err error) {
+	return s.loadCompletedResponsesSession(ctx, responseID, true)
+}
+
+func (s *RequestService) loadCompletedResponsesSession(
+	ctx context.Context,
+	responseID string,
+	allowDelta bool,
+) (requestBody, responseBody []byte, found bool, err error) {
 	responseID = strings.TrimSpace(responseID)
 	apiKey, ok := contexts.GetAPIKey(ctx)
 	if responseID == "" || !ok || apiKey == nil {
@@ -1614,7 +1633,7 @@ func (s *RequestService) LoadCompletedResponsesSession(
 		!json.Valid(storedResponse) {
 		return nil, nil, false, nil
 	}
-	if !certifiedResponsesSnapshot(storedRequest, storedResponse, responseID) {
+	if !certifiedResponsesRequest(storedRequest, storedResponse, responseID, allowDelta) {
 		return nil, nil, false, nil
 	}
 

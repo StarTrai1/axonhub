@@ -47,6 +47,10 @@ func (a *remoteCompactionAdapter) retainNativeCompactionSource(ctx context.Conte
 	if a.systemService == nil || source == nil || len(source.body) == 0 || len(source.body) > nativeCompactionMaxSourceBytes {
 		return errors.New("native compaction source storage is unavailable or source exceeds limit")
 	}
+	source, err := a.resolveCompactionSourceContinuation(ctx, source, state)
+	if err != nil {
+		return err
+	}
 	encoded, err := json.Marshal(nativeCompactionSourceCheckpoint{Version: 1, Body: source.body})
 	if err != nil {
 		return err
@@ -111,10 +115,20 @@ func (a *remoteCompactionAdapter) loadNativeCompactionSource(ctx context.Context
 	if err := json.Unmarshal(decoded, &checkpoint); err != nil || checkpoint.Version != 1 || len(checkpoint.Body) > nativeCompactionMaxSourceBytes || !json.Valid(checkpoint.Body) {
 		return nil, errors.New("invalid native compaction source checkpoint")
 	}
-	if _, err := buildLocalCompactionRequest(checkpoint.Body); err != nil {
+	source := &remoteCompactionSource{body: checkpoint.Body, headers: make(http.Header)}
+	resolved, err := a.resolveCompactionSourceContinuation(ctx, source, state)
+	if err != nil {
 		return nil, err
 	}
-	return &remoteCompactionSource{body: checkpoint.Body, headers: make(http.Header)}, nil
+	if _, err := buildLocalCompactionRequest(resolved.body); err != nil {
+		return nil, err
+	}
+	if resolved != source {
+		if err := a.retainNativeCompactionSource(ctx, ref, state, resolved); err != nil {
+			return nil, fmt.Errorf("retain reconstructed compaction source: %w", err)
+		}
+	}
+	return resolved, nil
 }
 
 type nativeCompactionSourceMiddleware struct {

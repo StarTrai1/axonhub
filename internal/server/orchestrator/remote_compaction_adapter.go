@@ -939,6 +939,12 @@ func (a *remoteCompactionAdapter) findStoredSummaryOrSource(
 		}
 	}
 
+	if source != nil {
+		source, err = a.resolveCompactionSourceContinuation(ctx, source, state)
+		if err != nil {
+			return "", nil, err
+		}
+	}
 	if source != nil && a.systemService != nil && !isLocalCompactionReference(ref) {
 		if err := a.retainNativeCompactionSource(ctx, ref, state, source); err != nil {
 			return "", nil, fmt.Errorf("retain recovered native compaction source: %w", err)
@@ -989,6 +995,11 @@ func (a *remoteCompactionAdapter) generateCompaction(
 	executor pipeline.Executor,
 	native bool,
 ) (string, error) {
+	var err error
+	source, err = a.resolveCompactionSourceContinuation(ctx, source, state)
+	if err != nil {
+		return "", err
+	}
 	body, err := buildLocalCompactionRequest(source.body)
 	if err != nil {
 		return "", err
