@@ -1560,8 +1560,18 @@ func (s *RequestService) loadCompletedResponsesSession(
 		return nil, nil, false, nil
 	}
 
+	origin := request.ExternalIDEQ(responseID)
+	if allowDelta {
+		// Native pass-through can retain the authoritative terminal on the
+		// execution before the transformed request obtains its external ID.
+		origin = request.Or(origin, request.HasExecutionsWith(
+			requestexecution.ExternalIDEQ(responseID),
+			requestexecution.StatusEQ(requestexecution.StatusCompleted),
+			requestexecution.FormatIn(string(llm.APIFormatOpenAIResponse), string(llm.APIFormatOpenAIResponseWebSocket)),
+		))
+	}
 	query := s.entFromContext(ctx).Request.Query().Where(
-		request.ExternalIDEQ(responseID),
+		origin,
 		request.APIKeyIDEQ(apiKey.ID),
 		request.FormatIn(
 			string(llm.APIFormatOpenAIResponse),
