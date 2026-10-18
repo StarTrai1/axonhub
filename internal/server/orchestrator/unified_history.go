@@ -367,9 +367,21 @@ func (a *remoteCompactionAdapter) archiveHistoryResponse(ctx context.Context, bo
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	if original,ok:=ctx.Value(unifiedHistoryOriginKey{}).([]byte);ok && len(original)>0 {body=original}
+    hasCheckpoint:=false
+    for _,item:=range gjson.GetBytes(response,"output").Array(){if item.Get("type").String()==remoteCompactionItemType || item.Get("type").String()==legacyRemoteCompactionSummaryType {hasCheckpoint=true}}
+    // A local compaction executor first emits assistant text internally. Only
+    // its final checkpoint is an authoritative output for downstream deltas.
+    if gjson.GetBytes(body,`input.#(type=="compaction_trigger")`).Exists() && !hasCheckpoint {return nil}
 	source, err := a.flattenHistorySource(ctx, &remoteCompactionSource{body: body}, state)
 	if err != nil {
 		return err
 	}
+    if hasCheckpoint {
+        envelope,input,err:=decodeResponsesInput(source.body);if err!=nil{return err}
+        if len(input)>0 && rawInputItemType(input[len(input)-1])==remoteCompactionTriggerType {
+            if err:=setResponseEnvelopeInput(envelope,input[:len(input)-1]);err!=nil{return err}
+            source.body,err=json.Marshal(envelope);if err!=nil{return err}
+        }
+    }
 	return a.saveHistorySnapshot(ctx, historyResponseAlias(id), source.body, response)
 }

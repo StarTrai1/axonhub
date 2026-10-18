@@ -189,6 +189,12 @@ func TestUnifiedHistoryGenerationAvoidsAdditionalProviderCall(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, found)
 	require.Contains(t, string(body), "retain this exact original constraint")
+    responseID:=gjson.Get(events["response.completed"],"response.id").String()
+    stored,completed,found,err:=adapter.loadHistorySnapshot(ctx,historyResponseAlias(responseID))
+    require.NoError(t,err);require.True(t,found)
+    require.False(t,gjson.GetBytes(stored,`input.#(type=="compaction_trigger")`).Exists(),"completed control frames must not reappear in the next delta")
+    require.Equal(t,ref.ID,gjson.GetBytes(completed,"output.0.id").String())
+    require.Equal(t,"compaction",gjson.GetBytes(completed,"output.0.type").String(),"internal assistant summary must never become the published checkpoint output")
 }
 
 func TestUnifiedHistoryPortableReasoningAndToolBoundaries(t *testing.T) {
