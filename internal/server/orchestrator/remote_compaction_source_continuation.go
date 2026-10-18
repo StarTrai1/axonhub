@@ -104,3 +104,4 @@ func compactionSourceContinuationUnavailable(reason string) error {
 		Type: "invalid_request_error", Code: "compaction_history_unavailable", Param: "input",
 		Message: "Retained compaction source could not be reconstructed: " + reason + "; restore the source history or use a compatible channel",
 	}}
+}
