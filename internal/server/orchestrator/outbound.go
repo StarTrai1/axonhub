@@ -1262,6 +1262,9 @@ func (p *PersistentOutboundTransformer) PrepareForRetry(ctx context.Context) err
 // e.g. the aws bedrock process need a custom executor to handle the request.
 // It implements the pipeline.ChannelCustomizedExecutor interface.
 func (p *PersistentOutboundTransformer) CustomizeExecutor(executor pipeline.Executor) pipeline.Executor {
+	if p.state != nil && p.state.unifiedCompactionSummary != "" {
+		return &unifiedCompactionExecutor{summary: p.state.unifiedCompactionSummary}
+	}
 	// Start with the default executor, then layer customizations.
 	customizedExecutor := executor
 

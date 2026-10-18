@@ -26,7 +26,7 @@ func (a *remoteCompactionAdapter) resolveCompactionSourceContinuation(ctx contex
 	owner, ok := contexts.GetAPIKey(ctx)
 	project, hasProject := contexts.GetProjectID(ctx)
 	if !ok || !hasProject || owner == nil || state == nil || state.APIKey == nil ||
-		owner.ID != state.APIKey.ID || project != state.APIKey.ProjectID || a.requestService == nil {
+		owner.ID != state.APIKey.ID || project != state.APIKey.ProjectID || a.requestService == nil && !a.unifiedHistoryEnabled() {
 		return nil, compactionSourceContinuationUnavailable("authenticated predecessor lookup is unavailable")
 	}
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
@@ -49,7 +49,15 @@ func (a *remoteCompactionAdapter) resolveCompactionSourceContinuation(ctx contex
 			return nil, compactionSourceContinuationUnavailable("predecessor chain is cyclic or exceeds the lookup limit")
 		}
 		seen[previous] = true
-		body, response, found, err := a.requestService.LoadCompletedResponsesCompactionPredecessor(ctx, previous)
+		var body, response []byte
+		var found bool
+		if a.unifiedHistoryEnabled() {
+			body, response, found, err = a.loadHistorySnapshot(ctx, historyResponseAlias(previous))
+			if err != nil { return nil, err }
+		}
+		if !found && a.requestService != nil {
+			body, response, found, err = a.requestService.LoadCompletedResponsesCompactionPredecessor(ctx, previous)
+		}
 		if err != nil {
 			return nil, fmt.Errorf("load compaction predecessor: %w", err)
 		}

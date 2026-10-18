@@ -105,6 +105,15 @@ func NewChatCompletionOrchestrator(
 		responsesSessions:          responsesStore,
 	}
 	orchestrator.remoteCompactionAdapter = newRemoteCompactionAdapter(requestService, usageLogService, systemService)
+	if orchestrator.remoteCompactionAdapter.unifiedHistoryEnabled() {
+		adapter := orchestrator.remoteCompactionAdapter
+		responsesStore.archive = adapter.archiveHistoryResponse
+		responsesStore.load = func(ctx context.Context, id string) ([]byte, []byte, bool, error) {
+			body, response, found, err := adapter.loadHistorySnapshot(ctx, historyResponseAlias(id))
+			if err != nil || found { return body, response, found, err }
+			return requestService.LoadCompletedResponsesSession(ctx, id)
+		}
+	}
 
 	return orchestrator
 }

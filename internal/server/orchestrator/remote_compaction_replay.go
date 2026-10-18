@@ -100,6 +100,10 @@ func (a *remoteCompactionAdapter) replayNativeCompactionChain(ctx context.Contex
 // Require a unique exact match for every retained item before replacing that
 // whole prefix, then preserve every post-checkpoint item and request option.
 func spliceNativeCompactionSource(body, source []byte, ref *remoteCompactionReference, budget int) ([]byte, bool, error) {
+	return spliceCompactionSource(body, source, ref, budget, true)
+}
+
+func spliceCompactionSource(body, source []byte, ref *remoteCompactionReference, budget int, textOnly bool) ([]byte, bool, error) {
 	envelope, input, err := decodeResponsesInput(body)
 	if err != nil {
 		return nil, false, err
@@ -137,7 +141,7 @@ func spliceNativeCompactionSource(body, source []byte, ref *remoteCompactionRefe
 	original = original[:len(original)-1]
 	canonical := make([][]byte, len(original))
 	for i, item := range original {
-		if !exactReplayTextItem(item) {
+		if textOnly && !exactReplayTextItem(item) {
 			return body, false, nil
 		}
 		canonical[i], err = compactionReplayItem(item)
@@ -167,7 +171,7 @@ func spliceNativeCompactionSource(body, source []byte, ref *remoteCompactionRefe
 	}
 	restored := append(append([]json.RawMessage(nil), original...), input[ref.Index+1:]...)
 	for _, item := range restored {
-		if !exactReplayTextItem(item) {
+		if textOnly && !exactReplayTextItem(item) {
 			return body, false, nil
 		}
 	}

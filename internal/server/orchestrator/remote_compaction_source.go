@@ -51,6 +51,9 @@ func (a *remoteCompactionAdapter) retainNativeCompactionSource(ctx context.Conte
 	if err != nil {
 		return err
 	}
+	if a.unifiedHistoryEnabled() {
+		return a.saveHistorySnapshot(ctx, historyCheckpointAlias(ref), source.body, nil)
+	}
 	encoded, err := json.Marshal(nativeCompactionSourceCheckpoint{Version: 1, Body: source.body})
 	if err != nil {
 		return err
@@ -85,6 +88,14 @@ func (a *remoteCompactionAdapter) retainNativeCompactionSource(ctx context.Conte
 func (a *remoteCompactionAdapter) loadNativeCompactionSource(ctx context.Context, ref *remoteCompactionReference, state *PersistenceState) (*remoteCompactionSource, error) {
 	if a.systemService == nil || state == nil || state.APIKey == nil {
 		return nil, nil
+	}
+	if a.unifiedHistoryEnabled() {
+		owner, ownerErr := historyState(ctx)
+		if ownerErr != nil { return nil, ownerErr }
+		if owner.APIKey.ID != state.APIKey.ID || owner.APIKey.ProjectID != state.APIKey.ProjectID { return nil, nil }
+		body, _, found, err := a.loadHistorySnapshot(ctx, historyCheckpointAlias(ref))
+		if err != nil { return nil, err }
+		if found { return &remoteCompactionSource{body: body, headers: make(http.Header)}, nil }
 	}
 	sealed, err := a.systemService.LoadNativeCompactionSource(ctx, state.APIKey.ProjectID, state.APIKey.ID, remoteCompactionCacheKey(ref))
 	if err != nil || sealed == "" {

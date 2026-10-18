@@ -671,6 +671,7 @@ type SystemServiceParams struct {
 
 	CacheConfig xcache.Config
 	Ent         *ent.Client
+	UnifiedHistory UnifiedHistoryConfig `optional:"true"`
 }
 
 func NewSystemService(params SystemServiceParams) *SystemService {
@@ -680,6 +681,7 @@ func NewSystemService(params SystemServiceParams) *SystemService {
 		},
 		CacheConfig: params.CacheConfig,
 		Cache:       xcache.NewFromConfig[ent.System](params.CacheConfig),
+		UnifiedHistory: params.UnifiedHistory,
 	}
 }
 
@@ -688,6 +690,7 @@ type SystemService struct {
 
 	CacheConfig xcache.Config
 	Cache       xcache.Cache[ent.System]
+	UnifiedHistory UnifiedHistoryConfig
 
 	mu           sync.RWMutex
 	timeLocation *time.Location

@@ -36,6 +36,7 @@ type responsesSessionStore struct {
 	totalBytes int
 	load       responsesSessionLoadFunc
 	known      func(context.Context, string) (bool, error)
+	archive    func(context.Context, []byte, []byte) error
 }
 
 type responsesSessionLoadFunc func(ctx context.Context, responseID string) (requestBody, responseBody []byte, found bool, err error)
@@ -147,6 +148,11 @@ func decodeResponsesSessionRecord(requestBody, responseBody []byte) *responsesSe
 }
 
 func (s *responsesSessionStore) record(ctx context.Context, requestBody, responseBody []byte) {
+	if s.archive != nil {
+		if err := s.archive(ctx, requestBody, responseBody); err != nil {
+			log.Warn(ctx, "could not retain unified conversation history", log.Cause(err))
+		}
+	}
 	record := decodeResponsesSessionRecord(requestBody, responseBody)
 	if record == nil {
 		if !json.Valid(responseBody) || gjson.GetBytes(responseBody, "status").String() != "completed" || gjson.GetBytes(responseBody, "id").String() == "" {

@@ -36,6 +36,7 @@ type Config struct {
 	Cache            xcache.Config       `conf:"cache" yaml:"cache" json:"cache"`
 	ProviderQuota    providerQuotaConfig `conf:"provider_quota" yaml:"provider_quota" json:"provider_quota"`
 	OIDC             biz.OIDCConfig      `conf:"oidc" yaml:"oidc" json:"oidc"`
+	UnifiedHistory biz.UnifiedHistoryConfig `conf:"unified_history" yaml:"unified_history" json:"unified_history"`
 	DisableSSLVerify bool                `name:"disable_ssl_verify" yaml:"-" json:"-"`
 	AllowNoAuth      bool                `name:"allow_no_auth" yaml:"-" json:"-"`
 	APIKeyPrefix     string              `name:"api_key_prefix" yaml:"-" json:"-"`
@@ -212,6 +213,8 @@ func customizedDecodeHook(srcType reflect.Type, dstType reflect.Type, data any) 
 
 // setDefaults sets default configuration values.
 func setDefaults(v *viper.Viper) {
+	v.SetDefault("unified_history.enabled", false)
+	v.SetDefault("unified_history.retention_days", 0)
 	// Server defaults
 	v.SetDefault("server.host", "0.0.0.0")
 	v.SetDefault("server.port", 8090)

@@ -1,6 +1,7 @@
 package orchestrator
 
 import (
+	"bytes"
 	"context"
 	"crypto/cipher"
 	"crypto/rand"
@@ -88,6 +89,7 @@ type localCompactionGeneration struct {
 	standalone     bool
 	summaryCipher  cipher.AEAD
 	associatedData []byte
+	retainSource func(*remoteCompactionReference) error
 }
 
 type remoteCompactionMiddleware struct {
@@ -97,6 +99,7 @@ type remoteCompactionMiddleware struct {
 	adapter    *remoteCompactionAdapter
 	executor   pipeline.Executor
 	generation *localCompactionGeneration
+	historySource *remoteCompactionSource
 }
 
 func newRemoteCompactionAdapter(
@@ -145,6 +148,33 @@ func (m *remoteCompactionMiddleware) OnInboundLlmRequest(ctx context.Context, re
 	}
 
 	candidates := m.inbound.state.ChannelModelsCandidates
+	if m.adapter.unifiedHistoryEnabled() && req.RawRequest != nil &&
+		(req.RequestType == llm.RequestTypeCompact || bytes.Contains(rawRequestPayload(req.RawRequest), []byte(`"compaction_trigger"`))) {
+		body := append([]byte(nil), rawRequestPayload(req.RawRequest)...)
+		if req.RequestType == llm.RequestTypeCompact {
+			envelope, input, decodeErr := decodeResponsesInput(body)
+			if decodeErr != nil { return nil, decodeErr }
+			input = append(input, json.RawMessage(`{"type":"compaction_trigger"}`))
+			if err := setResponseEnvelopeInput(envelope, input); err != nil { return nil, err }
+			body, err = json.Marshal(envelope)
+			if err != nil { return nil, err }
+		}
+		m.historySource, err = m.adapter.resolveCompactionSourceContinuation(ctx, &remoteCompactionSource{body: body, headers: req.RawRequest.Headers}, m.inbound.state)
+		if err != nil { return nil, err }
+		if hasLocalBridgeCodexCandidate(candidates) {
+			compiled, supported, compileErr := m.adapter.compileUnifiedContext(ctx, m.historySource.body, m.inbound.state, m.executor)
+			if compileErr != nil { return nil, compileErr }
+			if supported {
+				_, input, decodeErr := decodeResponsesInput(compiled)
+				if decodeErr != nil { return nil, decodeErr }
+				if len(input)>0 && rawInputItemType(input[len(input)-1])==remoteCompactionTriggerType { input=input[:len(input)-1] }
+				encoded, encodeErr := json.Marshal(input)
+				if encodeErr != nil { return nil, encodeErr }
+				m.inbound.state.unifiedCompactionSummary = "Archived conversation context. Preserve the original roles and chronological order of these records:\n"+string(encoded)
+				return m.adaptLocalCompactionGeneration(ctx, req)
+			}
+		}
+	}
 	if req.RawRequest != nil && len(rawRequestPayload(req.RawRequest)) > 0 &&
 		(responses.IsResponsesFormat(req.APIFormat) || req.RequestType == llm.RequestTypeCompact) {
 		ref, threadID, rawModel, err := parseRemoteCompactionRequest(rawRequestPayload(req.RawRequest))
@@ -179,6 +209,9 @@ func (m *remoteCompactionMiddleware) adaptRemoteCompactionHistory(
 		return nil, errors.New("remote compaction local fallback requires a compaction id and Codex thread id")
 	}
 
+	adaptedBody, compiled, err := m.adapter.compileUnifiedContext(ctx, rawRequestPayload(req.RawRequest), m.inbound.state, m.executor)
+	if err != nil { return nil, err }
+	if !compiled {
 	cacheKey := remoteCompactionCacheKey(ref)
 	summary, err := m.adapter.summaryForCompaction(
 		ctx,
@@ -193,9 +226,10 @@ func (m *remoteCompactionMiddleware) adaptRemoteCompactionHistory(
 		return nil, fmt.Errorf("adapt remote compaction for selected Codex channel: %w", err)
 	}
 
-	adaptedBody, err := replaceRemoteCompactionWithLocalSummary(rawRequestPayload(req.RawRequest), summary)
+	adaptedBody, err = replaceRemoteCompactionWithLocalSummary(rawRequestPayload(req.RawRequest), summary)
 	if err != nil {
 		return nil, err
+	}
 	}
 	adaptedRawRequest := cloneRawRequest(req.RawRequest)
 	adaptedRawRequest.Body = adaptedBody
@@ -292,6 +326,14 @@ func (m *remoteCompactionMiddleware) adaptLocalCompactionGeneration(ctx context.
 		standalone:     standalone,
 		summaryCipher:  summaryCipher,
 		associatedData: associatedData,
+	}
+	if m.historySource != nil {
+		source := m.historySource
+		m.generation.retainSource = func(ref *remoteCompactionReference) error {
+			persistCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+			defer cancel()
+			return m.adapter.saveHistorySnapshot(persistCtx, historyCheckpointAlias(ref), source.body, nil)
+		}
 	}
 
 	m.inbound.state.RawRequest = adaptedRawRequest
