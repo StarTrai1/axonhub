@@ -12,7 +12,10 @@ import (
 	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
+	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
 
 const unifiedContextMaxBytes = 256 << 10
@@ -59,6 +62,8 @@ func (a *remoteCompactionAdapter) compileUnifiedContext(ctx context.Context, bod
 	budget:=min(unifiedContextMaxBytes,candidate.ContextTokens/2)
 	expanded,ok,err:=a.expandUnifiedHistory(ctx,body,state,make(map[string]bool))
 	if err!=nil || !ok {return body,false,err}
+	expanded,err=protectUnifiedHistory(ctx,expanded,state)
+	if err!=nil{return nil,false,err}
 	envelope,items,err:=decodeResponsesInput(expanded);if err!=nil{return nil,false,err}
 	// The archive retains provider-private reasoning verbatim. Its portable view
 	// retains visible reasoning summaries; unreadable state is explicitly counted
@@ -110,6 +115,7 @@ func (a *remoteCompactionAdapter) compileUnifiedContext(ctx context.Context, bod
 		// The contract includes model, tools, instructions and reasoning options.
 		contract:=make(map[string]json.RawMessage)
 		for _,field:=range []string{"model","instructions","tools","reasoning","text","input"}{if value:=segmentEnvelope[field];len(value)>0{contract[field]=value}}
+		if len(candidate.Models)>0{contract["destination_model"],_ = json.Marshal(candidate.Models[0].ActualModel)}
 		identity,err:=json.Marshal(contract);if err!=nil{return nil,false,err}
 		segment.key="summary:"+historyDigest(append([]byte("segment-summary-v1:"),identity...))
 	}
@@ -221,4 +227,19 @@ func unifiedPortableItems(items []json.RawMessage)([]json.RawMessage,int,bool){
 		result=append(result,item)
 	}
 	return result,opaque,true
+}
+
+func protectUnifiedHistory(ctx context.Context,body []byte,state *PersistenceState)([]byte,error){
+	if state.PromptProtecter==nil{return body,nil}
+	raw:=&httpclient.Request{Body:body,APIFormat:string(llm.APIFormatOpenAIResponse),Headers:make(http.Header)}
+	inbound:=responses.NewInboundTransformer()
+	req,err:=inbound.TransformRequest(ctx,raw);if err!=nil{return nil,err};req.RawRequest=raw
+	protected,rules,err:=protectPromptRequest(ctx,state.PromptProtecter,req)
+	if err!=nil{return nil,fmt.Errorf("unified history protection failed: %w",err)}
+	if protected==nil{protected=req}
+	patched,err:=patchPassThroughPromptProtection(body,llm.APIFormatOpenAIResponse,rules)
+	if err!=nil{return nil,err}
+	check:=&promptProtectionBodyCheck{inbound:inbound,raw:raw,expected:promptProtectionTexts(protected)}
+	if err:=check.validate(ctx,patched);err!=nil{return nil,err}
+	return patched,nil
 }

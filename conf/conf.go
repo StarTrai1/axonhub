@@ -154,6 +154,9 @@ func unmarshal(v *viper.Viper) (Config, error) {
 	config.DisableSSLVerify = config.APIServer.DisableSSLVerify
 	config.AllowNoAuth = config.APIServer.API.Auth.AllowNoAuth
 	config.APIKeyPrefix = config.APIServer.API.Auth.KeyPrefix
+	if config.UnifiedHistory.RetentionDays < 0 || config.UnifiedHistory.RetentionDays > 36500 {
+		return Config{}, errors.New("unified_history.retention_days must be between 0 and 36500")
+	}
 
 	return config, nil
 }

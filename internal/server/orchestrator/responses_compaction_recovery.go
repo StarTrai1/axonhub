@@ -244,6 +244,7 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawRequest(
 	candidate.Models = candidate.Models[state.CurrentModelIndex : state.CurrentModelIndex+1]
 	candidate.APIFormat = string(llm.APIFormatOpenAIResponse)
 	bridgeState := &PersistenceState{
+		PromptProtecter:         state.PromptProtecter,
 		compactionRecovery:      &compactionRecoveryEvidence{},
 		RawProviderRequest:      request,
 		APIKey:                  state.APIKey,
