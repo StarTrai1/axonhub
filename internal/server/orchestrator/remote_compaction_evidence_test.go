@@ -34,6 +34,15 @@ func TestNativeCompactionMigrationReusesAncestorEvidence(t *testing.T) {
 					require.NoError(t, err)
 				}
 				latest := []byte(`{"model":"gpt-6-astra","reasoning":{"effort":"xhigh","context":"all_turns"},"client_metadata":{"thread_id":"recovery-thread","x-codex-turn-metadata":"{\"request_kind\":\"compaction\",\"compaction\":{\"implementation\":\"responses_compaction_v2\"}}"},"input":[{"type":"message","role":"user","status":"completed","content":"retained detail"},{"type":"compaction","id":"cmp_ancestor","encrypted_content":"ancestor-cipher"},{"role":"user","content":"new source detail"},{"type":"compaction_trigger"}]}`)
+				if large {
+					// Match #61053/#61054/#61056: the rejected field belongs to
+					// reasoning, whose ID, summary and ciphertext must survive.
+					first, err = sjson.DeleteBytes(first, "input.0.status")
+					require.NoError(t, err)
+					latest, err = sjson.DeleteBytes(latest, "input.0.status")
+					require.NoError(t, err)
+					latest = []byte(strings.ReplaceAll(string(latest), `{"type":"compaction_trigger"}`, `{"type":"reasoning","id":"rs_source","status":"completed","summary":[],"encrypted_content":"reasoning-cipher"},{"type":"compaction_trigger"}`))
+				}
 				ancestor := &remoteCompactionReference{ID: "cmp_ancestor", EncryptedContent: "ancestor-cipher"}
 				state := &PersistenceState{APIKey: owner}
 				require.NoError(t, adapter.retainNativeCompactionSource(ctx, ancestor, state, &remoteCompactionSource{body: first}))
@@ -62,6 +71,11 @@ func TestNativeCompactionMigrationReusesAncestorEvidence(t *testing.T) {
 				require.Equal(t, "xhigh", gjson.GetBytes(last, "reasoning.effort").String())
 				if large {
 					require.Contains(t, string(last), "verified retained source summary")
+					reasoning := gjson.GetBytes(last, `input.#(type=="reasoning")`)
+					require.Equal(t, "rs_source", reasoning.Get("id").String())
+					require.Equal(t, "reasoning-cipher", reasoning.Get("encrypted_content").String())
+					require.Equal(t, "[]", reasoning.Get("summary").Raw)
+					require.False(t, reasoning.Get("status").Exists())
 				} else {
 					require.NotContains(t, string(last), "verified retained source summary", "exact source must avoid summary-of-summary")
 					require.Equal(t, 1, strings.Count(string(last), "retained detail"))
