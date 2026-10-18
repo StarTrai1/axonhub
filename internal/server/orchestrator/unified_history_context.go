@@ -401,8 +401,11 @@ func protectUnifiedHistory(ctx context.Context,body []byte,state *PersistenceSta
 	protected,rules,err:=protectPromptRequest(ctx,state.PromptProtecter,req)
 	if err!=nil{return nil,fmt.Errorf("unified history protection failed: %w",err)}
 	if protected==nil{protected=req}
-	patched,err:=patchPassThroughPromptProtection(body,llm.APIFormatOpenAIResponse,rules)
-	if err!=nil{return nil,err}
+    patched:=body
+    if len(rules)>0 {
+        patched,err=patchPassThroughPromptProtection(body,llm.APIFormatOpenAIResponse,rules)
+        if err!=nil{return nil,err}
+    }
 	check:=&promptProtectionBodyCheck{inbound:inbound,raw:raw,expected:promptProtectionTexts(protected)}
 	if err:=check.validate(ctx,patched);err!=nil{return nil,err}
 	return patched,nil

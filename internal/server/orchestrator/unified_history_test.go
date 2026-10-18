@@ -219,6 +219,12 @@ func TestUnifiedHistoryRestoredPromptProtection(t *testing.T) {
  require.NoError(t,adapter.saveHistorySnapshot(ctx,historyCheckpointAlias(ref),source,nil))
  body:=[]byte(`{"model":"gpt-6-astra","input":[{"type":"compaction","id":"cmp_protected","encrypted_content":"native-cipher"},{"role":"user","content":"continue"}]}`)
  rule:=&ent.PromptProtectionRule{Pattern:"secret-[0-9]+",Settings:&objects.PromptProtectionSettings{Action:objects.PromptProtectionActionMask,Replacement:"[MASKED]",Scopes:[]objects.PromptProtectionScope{objects.PromptProtectionScopeUser}}}
+ state.PromptProtecter=&payloadPromptProtecter{}
+ unchanged,ok,err:=adapter.compileUnifiedContext(ctx,body,state,&compactionEvidenceExecutor{})
+ require.NoError(t,err);require.True(t,ok);require.Contains(t,string(unchanged),"secret-123","no matched rule leaves verified text unchanged")
+ state.PromptProtecter=&legacyPayloadPromptProtecter{rules:[]*ent.PromptProtectionRule{rule}}
+ _,_,err=adapter.compileUnifiedContext(ctx,body,state,&compactionEvidenceExecutor{})
+ require.Error(t,err,"a legacy protector changing text without raw mask evidence must fail closed")
  state.PromptProtecter=&payloadPromptProtecter{rules:[]*ent.PromptProtectionRule{rule}}
  compiled,ok,err:=adapter.compileUnifiedContext(ctx,body,state,&compactionEvidenceExecutor{})
  require.NoError(t,err);require.True(t,ok);require.NotContains(t,string(compiled),"secret-123");require.Contains(t,string(compiled),"[MASKED]")
