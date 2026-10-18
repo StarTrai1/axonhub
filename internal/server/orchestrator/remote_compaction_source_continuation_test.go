@@ -3,7 +3,6 @@ package orchestrator
 import (
 	"context"
 	"encoding/json"
-	"net/http"
 	"testing"
 
 	"github.com/klauspost/compress/zstd"
@@ -63,11 +62,11 @@ func assertResolvedCompactionSource(t *testing.T, body []byte) {
 
 func TestResponsesRejectedNativeSourceDeltaBeforePublication(t *testing.T) {
 	for _, stream := range []bool{false, true} {
-		t.Run(map[bool]string{false:"response", true:"stream"}[stream], func(t *testing.T) {
+		t.Run(map[bool]string{false: "response", true: "stream"}[stream], func(t *testing.T) {
 			ctx, client, owner, adapter := rejectedCompactionStorage(t)
 			seedCompactionPredecessorChain(t, ctx, client, owner)
 			state := &PersistenceState{APIKey: owner, RawProviderRequest: &httpclient.Request{Body: []byte(deltaCompactionSource), APIFormat: string(llm.APIFormatOpenAIResponseWebSocket)}}
-			middleware := retainNativeCompactionSources(&PersistentOutboundTransformer{state:state}, adapter)
+			middleware := retainNativeCompactionSources(&PersistentOutboundTransformer{state: state}, adapter)
 			if stream {
 				event := &httpclient.StreamEvent{Data: []byte(`{"type":"response.output_item.done","item":{"type":"compaction","id":"cmp_durable","encrypted_content":"native-ciphertext"}}`)}
 				wrapped, err := middleware.OnOutboundRawStream(ctx, streams.SliceStream([]*httpclient.StreamEvent{event}))
@@ -77,13 +76,13 @@ func TestResponsesRejectedNativeSourceDeltaBeforePublication(t *testing.T) {
 				require.NoError(t, wrapped.Err())
 				require.NoError(t, wrapped.Close())
 			} else {
-				_, err := middleware.OnOutboundRawResponse(ctx, &httpclient.Response{StatusCode:200, Body:[]byte(nativeSourceResponse)})
+				_, err := middleware.OnOutboundRawResponse(ctx, &httpclient.Response{StatusCode: 200, Body: []byte(nativeSourceResponse)})
 				require.NoError(t, err)
 			}
 			_, err := client.Request.Delete().Exec(ctx)
 			require.NoError(t, err)
-			restarted := newRemoteCompactionAdapter(nil, nil, biz.NewSystemService(biz.SystemServiceParams{Ent:client}))
-			source, err := restarted.loadNativeCompactionSource(ctx, &remoteCompactionReference{ID:"cmp_durable", EncryptedContent:"native-ciphertext"}, state)
+			restarted := newRemoteCompactionAdapter(nil, nil, biz.NewSystemService(biz.SystemServiceParams{Ent: client}))
+			source, err := restarted.loadNativeCompactionSource(ctx, &remoteCompactionReference{ID: "cmp_durable", EncryptedContent: "native-ciphertext"}, state)
 			require.NoError(t, err)
 			require.NotNil(t, source)
 			assertResolvedCompactionSource(t, source.body)
@@ -95,7 +94,7 @@ func TestResponsesRejectedNativeSourceDeltaBeforePublication(t *testing.T) {
 // normalization, to reproduce checkpoints already created by older releases.
 func seedLegacyDeltaCompactionSource(t *testing.T, ctx context.Context, adapter *remoteCompactionAdapter, ref *remoteCompactionReference, state *PersistenceState) {
 	t.Helper()
-	encoded, err := json.Marshal(nativeCompactionSourceCheckpoint{Version:1, Body:json.RawMessage(deltaCompactionSource)})
+	encoded, err := json.Marshal(nativeCompactionSourceCheckpoint{Version: 1, Body: json.RawMessage(deltaCompactionSource)})
 	require.NoError(t, err)
 	compressor, err := zstd.NewWriter(nil)
 	require.NoError(t, err)
@@ -113,15 +112,15 @@ func seedLegacyDeltaCompactionSource(t *testing.T, ctx context.Context, adapter 
 func TestResponsesRejectedNativeSourceLegacyDeltaRepair(t *testing.T) {
 	ctx, client, owner, adapter := rejectedCompactionStorage(t)
 	seedCompactionPredecessorChain(t, ctx, client, owner)
-	state := &PersistenceState{APIKey:owner}
-	ref := &remoteCompactionReference{ID:"cmp_legacy_delta", EncryptedContent:"legacy-source-cipher"}
+	state := &PersistenceState{APIKey: owner}
+	ref := &remoteCompactionReference{ID: "cmp_legacy_delta", EncryptedContent: "legacy-source-cipher"}
 	seedLegacyDeltaCompactionSource(t, ctx, adapter, ref, state)
 	source, err := adapter.loadNativeCompactionSource(ctx, ref, state)
 	require.NoError(t, err)
 	assertResolvedCompactionSource(t, source.body)
 	_, err = client.Request.Delete().Exec(ctx)
 	require.NoError(t, err)
-	restarted := newRemoteCompactionAdapter(nil, nil, biz.NewSystemService(biz.SystemServiceParams{Ent:client}))
+	restarted := newRemoteCompactionAdapter(nil, nil, biz.NewSystemService(biz.SystemServiceParams{Ent: client}))
 	source, err = restarted.loadNativeCompactionSource(ctx, ref, state)
 	require.NoError(t, err)
 	assertResolvedCompactionSource(t, source.body)
@@ -135,29 +134,42 @@ func TestResponsesRejectedNativeSourceDeltaFailures(t *testing.T) {
 			row, err := client.Request.Query().Where(request.ExternalIDEQ("resp_root")).Only(ctx)
 			require.NoError(t, err)
 			switch mode {
-			case "missing": require.NoError(t, client.Request.DeleteOne(row).Exec(ctx))
-			case "wrong key": require.NoError(t, row.Update().SetAPIKeyID(owner.ID+1).Exec(ctx))
-			case "wrong project": require.NoError(t, row.Update().SetProjectID(owner.ProjectID+1).Exec(ctx))
+			case "missing":
+				require.NoError(t, client.Request.DeleteOne(row).Exec(ctx))
+			case "wrong key", "wrong project":
+				other := &ent.APIKey{ID: owner.ID, ProjectID: owner.ProjectID}
+				if mode == "wrong key" { other.ID++ } else { other.ProjectID++ }
+				require.NoError(t, client.Request.DeleteOne(row).Exec(ctx))
+				seedCompactionPredecessor(t, ctx, client, other, "resp_root", string(row.RequestBody), gjson.GetBytes(row.ResponseBody, "output").Raw)
 			case "incomplete", "wrong id", "error":
 				field, value := "status", any("incomplete")
-				if mode == "wrong id" { field, value = "id", "another-response" }
-				if mode == "error" { field, value = "error", map[string]string{"message":"failed"} }
+				if mode == "wrong id" {
+					field, value = "id", "another-response"
+				}
+				if mode == "error" {
+					field, value = "error", map[string]string{"message": "failed"}
+				}
 				body, err := sjson.SetBytes(row.ResponseBody, field, value)
 				require.NoError(t, err)
 				require.NoError(t, row.Update().SetResponseBody(body).Exec(ctx))
 			case "cycle", "thread", "model":
 				field, value := "previous_response_id", "resp_delta"
-				if mode == "thread" { field, value = "client_metadata.thread_id", "unrelated-thread" }
-				if mode == "model" { field, value = "model", "different-model" }
+				if mode == "thread" {
+					field, value = "client_metadata.thread_id", "unrelated-thread"
+				}
+				if mode == "model" {
+					field, value = "model", "different-model"
+				}
 				body, err := sjson.SetBytes(row.RequestBody, field, value)
 				require.NoError(t, err)
-				require.NoError(t, row.Update().SetRequestBody(body).Exec(ctx))
+				require.NoError(t, client.Request.DeleteOne(row).Exec(ctx))
+				seedCompactionPredecessor(t, ctx, client, owner, "resp_root", string(body), gjson.GetBytes(row.ResponseBody, "output").Raw)
 			case "canceled":
 				var cancel context.CancelFunc
 				ctx, cancel = context.WithCancel(ctx)
 				cancel()
 			}
-			source, err := adapter.resolveCompactionSourceContinuation(ctx, &remoteCompactionSource{body:[]byte(deltaCompactionSource)}, &PersistenceState{APIKey:owner})
+			source, err := adapter.resolveCompactionSourceContinuation(ctx, &remoteCompactionSource{body: []byte(deltaCompactionSource)}, &PersistenceState{APIKey: owner})
 			require.Error(t, err)
 			require.Nil(t, source)
 		})
@@ -170,7 +182,7 @@ func TestResponsesRejectedNativeSourceDeltaKeepsSessionCertification(t *testing.
 	_, _, found, err := adapter.requestService.LoadCompletedResponsesSession(ctx, "resp_delta")
 	require.NoError(t, err)
 	require.False(t, found, "a delta is still not a portable ordinary session snapshot")
-	other := contexts.WithProjectID(contexts.WithAPIKey(ctx, &ent.APIKey{ID:owner.ID+1, ProjectID:owner.ProjectID}), owner.ProjectID)
+	other := contexts.WithProjectID(contexts.WithAPIKey(ctx, &ent.APIKey{ID: owner.ID + 1, ProjectID: owner.ProjectID}), owner.ProjectID)
 	_, _, found, err = adapter.requestService.LoadCompletedResponsesCompactionPredecessor(other, "resp_delta")
 	require.NoError(t, err)
 	require.False(t, found)
@@ -182,7 +194,7 @@ func TestNativeCompactionMigrationLegacyDeltaContinuation(t *testing.T) {
 	req := rejectedCompactionPipelineRequest(t, llm.APIFormatOpenAIResponse)
 	ref, _, _, err := parseRemoteCompactionRequest(req.Body)
 	require.NoError(t, err)
-	seedLegacyDeltaCompactionSource(t, ctx, adapter, ref, &PersistenceState{APIKey:owner})
+	seedLegacyDeltaCompactionSource(t, ctx, adapter, ref, &PersistenceState{APIKey: owner})
 	executor := &deltaMigrationExecutor{}
 	for range 2 {
 		_, result, err := runRejectedReasoningPipeline(t, ctx, req, executor, "delta-migration-credential", true, 2, func(state *PersistenceState, outbound *PersistentOutboundTransformer) pipeline.Middleware {
@@ -200,7 +212,7 @@ func TestNativeCompactionMigrationLegacyDeltaContinuation(t *testing.T) {
 type deltaMigrationExecutor struct {
 	rejectedCompactionBridgeExecutor
 	nativeCalls int
-	nativeBody []byte
+	nativeBody  []byte
 }
 
 func (e *deltaMigrationExecutor) DoStream(ctx context.Context, req *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
@@ -213,7 +225,7 @@ func (e *deltaMigrationExecutor) DoStream(ctx context.Context, req *httpclient.R
 		return nil, rejectedNativeCheckpointError()
 	}
 	if gjson.GetBytes(req.Body, `input.#(id=="cmp_output")`).Exists() {
-		return streams.SliceStream([]*httpclient.StreamEvent{{Type:"response.completed", Data:[]byte(`{"type":"response.completed","response":{"id":"resp_delta_continued","object":"response","status":"completed","output":[{"type":"message","role":"assistant","content":[{"type":"output_text","text":"continued"}]}]}}`)}}), nil
+		return streams.SliceStream([]*httpclient.StreamEvent{{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":{"id":"resp_delta_continued","object":"response","status":"completed","output":[{"type":"message","role":"assistant","content":[{"type":"output_text","text":"continued"}]}]}}`)}}), nil
 	}
 	return e.rejectedCompactionBridgeExecutor.DoStream(ctx, req)
 }
