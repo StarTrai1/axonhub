@@ -669,8 +669,8 @@ func (p *ProbeFrequency) UnmarshalGQL(v any) error {
 type SystemServiceParams struct {
 	fx.In
 
-	CacheConfig xcache.Config
-	Ent         *ent.Client
+	CacheConfig    xcache.Config
+	Ent            *ent.Client
 	UnifiedHistory UnifiedHistoryConfig `optional:"true"`
 }
 
@@ -679,8 +679,8 @@ func NewSystemService(params SystemServiceParams) *SystemService {
 		AbstractService: &AbstractService{
 			db: params.Ent,
 		},
-		CacheConfig: params.CacheConfig,
-		Cache:       xcache.NewFromConfig[ent.System](params.CacheConfig),
+		CacheConfig:    params.CacheConfig,
+		Cache:          xcache.NewFromConfig[ent.System](params.CacheConfig),
 		UnifiedHistory: params.UnifiedHistory,
 	}
 }
@@ -688,8 +688,8 @@ func NewSystemService(params SystemServiceParams) *SystemService {
 type SystemService struct {
 	*AbstractService
 
-	CacheConfig xcache.Config
-	Cache       xcache.Cache[ent.System]
+	CacheConfig    xcache.Config
+	Cache          xcache.Cache[ent.System]
 	UnifiedHistory UnifiedHistoryConfig
 
 	mu           sync.RWMutex

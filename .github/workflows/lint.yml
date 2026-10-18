@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - 'dev'
+      - 'feat/unified-conversation-history'
       - 'unstable'
       - 'release/**'
   pull_request:

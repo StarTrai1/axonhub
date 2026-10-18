@@ -12,6 +12,7 @@ on:
   push:
     branches:
       - "dev"
+      - "feat/unified-conversation-history"
       - "unstable"
       - "release/**"
   pull_request:
@@ -36,9 +37,9 @@ jobs:
       - name: Verify HTTP2 reset fallback on Windows
         run: go test ./internal/server/orchestrator -run '^TestHTTP2FallbackPipeline$' -count=1 -v
       - name: Verify large native compaction checkpoints on Windows
-        run: go test ./internal/server/orchestrator -run '^(TestResponsesRejectedNativeSource|TestSealedLocalCompactionSizeLimit)' -count=1 -v
+        run: go test ./internal/server/orchestrator -run '^(TestUnifiedHistory|TestResponsesRejectedNativeSource|TestSealedLocalCompactionSizeLimit)' -count=1 -v
       - name: Verify HTTP relay compaction and continuation on Windows
-        run: go test ./internal/server/api -run '^TestResponsesProtocol(CompactionRelay|AutoCompaction|NativeCompactionMigration|RedactedEncryption|InvalidEncryptedSummary|ReasoningHydration|EncryptedAgentCompaction)' -count=1 -v
+        run: go test ./internal/server/api -run '^(TestUnifiedHistoryProtocol|TestResponsesProtocol(CompactionRelay|AutoCompaction|NativeCompactionMigration|RedactedEncryption|InvalidEncryptedSummary|ReasoningHydration|EncryptedAgentCompaction))' -count=1 -v
       - name: Verify Codex delivery and search-only routing on Windows
         run: go test ./internal/server/api -run '^Test(StreamDeliveryCodexLivePreview|CodexSearchOnly|CodexSearchOtherChannels|CodexMemoryForeground)' -count=1 -v
       - name: Verify SOCKS aliases and cancellation on Windows

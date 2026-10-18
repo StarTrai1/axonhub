@@ -14,7 +14,6 @@ import (
 	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/internal/contexts"
-	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 const historyBlockBytes = 64 << 10
@@ -23,169 +22,320 @@ const historyBlockBytes = 64 << 10
 // Identical blocks share storage; their positions and repetitions remain in the
 // manifest. Branches therefore cannot silently consume a sibling's history.
 type unifiedHistorySnapshot struct {
-	Version int `json:"version"`
+	Version  int             `json:"version"`
 	Envelope json.RawMessage `json:"envelope"`
-	Input [][]string `json:"input"`
-	Output [][]string `json:"output,omitempty"`
+	Input    [][]string      `json:"input"`
+	Output   [][]string      `json:"output,omitempty"`
 	Response json.RawMessage `json:"response,omitempty"`
 }
 
 func historyDigest(data []byte) string {
-	digest:=sha256.Sum256(data)
+	digest := sha256.Sum256(data)
 	return hex.EncodeToString(digest[:])
 }
 
 func (a *remoteCompactionAdapter) unifiedHistoryEnabled() bool {
-	return a!=nil && a.systemService!=nil && a.systemService.UnifiedHistory.Enabled
+	return a != nil && a.systemService != nil && a.systemService.UnifiedHistory.Enabled
 }
 
-func historyState(ctx context.Context) (*PersistenceState,error) {
-	key,ok:=contexts.GetAPIKey(ctx)
-	project,found:=contexts.GetProjectID(ctx)
-	if !ok || !found || key==nil || key.ID<=0 || key.ProjectID!=project { return nil,errors.New("unified history owner is unavailable") }
-	return &PersistenceState{APIKey:key},nil
+func historyState(ctx context.Context) (*PersistenceState, error) {
+	key, ok := contexts.GetAPIKey(ctx)
+	project, found := contexts.GetProjectID(ctx)
+	if !ok || !found || key == nil || key.ID <= 0 || key.ProjectID != project {
+		return nil, errors.New("unified history owner is unavailable")
+	}
+	return &PersistenceState{APIKey: key}, nil
 }
 
-func (a *remoteCompactionAdapter) sealHistoryRecord(ctx context.Context,key string,body []byte) (string,error) {
-	state,err:=historyState(ctx);if err!=nil{return "",err}
-	aead,err:=a.localCompactionCipher(ctx);if err!=nil{return "",err}
-	aad:=fmt.Appendf(nil,"axonhub/unified-history/v1:%d:%d:%s",state.APIKey.ProjectID,state.APIKey.ID,key)
-	z,err:=zstd.NewWriter(nil,zstd.WithEncoderConcurrency(1));if err!=nil{return "",err};defer z.Close()
-	return sealNativeCompactionSource(aead,aad,z.EncodeAll(body,nil))
+func (a *remoteCompactionAdapter) sealHistoryRecord(ctx context.Context, key string, body []byte) (string, error) {
+	state, err := historyState(ctx)
+	if err != nil {
+		return "", err
+	}
+	aead, err := a.localCompactionCipher(ctx)
+	if err != nil {
+		return "", err
+	}
+	aad := fmt.Appendf(nil, "axonhub/unified-history/v1:%d:%d:%s", state.APIKey.ProjectID, state.APIKey.ID, key)
+	z, err := zstd.NewWriter(nil, zstd.WithEncoderConcurrency(1))
+	if err != nil {
+		return "", err
+	}
+	defer z.Close()
+	return sealNativeCompactionSource(aead, aad, z.EncodeAll(body, nil))
 }
 
-func (a *remoteCompactionAdapter) openHistoryRecord(ctx context.Context,key,sealed string,limit int) ([]byte,error) {
-	state,err:=historyState(ctx);if err!=nil{return nil,err}
-	aead,err:=a.localCompactionCipher(ctx);if err!=nil{return nil,err}
-	aad:=fmt.Appendf(nil,"axonhub/unified-history/v1:%d:%d:%s",state.APIKey.ProjectID,state.APIKey.ID,key)
-	compressed,err:=openNativeCompactionSource(aead,aad,sealed);if err!=nil{return nil,err}
-	z,err:=zstd.NewReader(nil,zstd.WithDecoderConcurrency(1),zstd.WithDecoderMaxMemory(uint64(max(limit,historyBlockBytes))));if err!=nil{return nil,err};defer z.Close()
-	body,err:=z.DecodeAll(compressed,nil)
-	if err!=nil || len(body)>limit{return nil,errors.New("invalid or oversized unified history record")}
-	return body,nil
+func (a *remoteCompactionAdapter) openHistoryRecord(ctx context.Context, key, sealed string, limit int) ([]byte, error) {
+	state, err := historyState(ctx)
+	if err != nil {
+		return nil, err
+	}
+	aead, err := a.localCompactionCipher(ctx)
+	if err != nil {
+		return nil, err
+	}
+	aad := fmt.Appendf(nil, "axonhub/unified-history/v1:%d:%d:%s", state.APIKey.ProjectID, state.APIKey.ID, key)
+	compressed, err := openNativeCompactionSource(aead, aad, sealed)
+	if err != nil {
+		return nil, err
+	}
+	z, err := zstd.NewReader(nil, zstd.WithDecoderConcurrency(1), zstd.WithDecoderMaxMemory(uint64(max(limit, historyBlockBytes))))
+	if err != nil {
+		return nil, err
+	}
+	defer z.Close()
+	body, err := z.DecodeAll(compressed, nil)
+	if err != nil || len(body) > limit {
+		return nil, errors.New("invalid or oversized unified history record")
+	}
+	return body, nil
 }
 
-func (a *remoteCompactionAdapter) saveHistorySnapshot(ctx context.Context,alias string,body,response []byte) error {
-	if len(body)+len(response)>nativeCompactionMaxSourceBytes{return errors.New("unified history snapshot exceeds 64 MiB")}
-	envelope,input,err:=decodeResponsesInput(body);if err!=nil{return err}
-	if gjson.GetBytes(body,"previous_response_id").String()!="" {return errors.New("cannot archive an unresolved history delta")}
-	delete(envelope,"input")
-	header,err:=json.Marshal(envelope);if err!=nil{return err}
-	snapshot:=unifiedHistorySnapshot{Version:1,Envelope:header}
-	blocks:=make(map[string][]byte)
-	pack:=func(items []json.RawMessage) [][]string {
-		result:=make([][]string,0,len(items))
-		for _,item:=range items {
+func (a *remoteCompactionAdapter) saveHistorySnapshot(ctx context.Context, alias string, body, response []byte) error {
+	if len(body)+len(response) > nativeCompactionMaxSourceBytes {
+		return errors.New("unified history snapshot exceeds 64 MiB")
+	}
+	envelope, input, err := decodeResponsesInput(body)
+	if err != nil {
+		return err
+	}
+	if gjson.GetBytes(body, "previous_response_id").String() != "" {
+		return errors.New("cannot archive an unresolved history delta")
+	}
+	delete(envelope, "input")
+	header, err := json.Marshal(envelope)
+	if err != nil {
+		return err
+	}
+	snapshot := unifiedHistorySnapshot{Version: 1, Envelope: header}
+	blocks := make(map[string][]byte)
+	pack := func(items []json.RawMessage) [][]string {
+		result := make([][]string, 0, len(items))
+		for _, item := range items {
 			var ids []string
-			for offset:=0;offset<len(item);offset+=historyBlockBytes {
-				part:=item[offset:min(offset+historyBlockBytes,len(item))]
-				key:="block:"+historyDigest(part)
-				blocks[key]=part
-				ids=append(ids,key)
+			for offset := 0; offset < len(item); offset += historyBlockBytes {
+				part := item[offset:min(offset+historyBlockBytes, len(item))]
+				key := "block:" + historyDigest(part)
+				blocks[key] = part
+				ids = append(ids, key)
 			}
-			result=append(result,ids)
+			result = append(result, ids)
 		}
 		return result
 	}
-	snapshot.Input=pack(input)
-	if len(response)>0 {
+	snapshot.Input = pack(input)
+	if len(response) > 0 {
 		var value map[string]json.RawMessage
-		if err:=json.Unmarshal(response,&value);err!=nil{return err}
+		if err := json.Unmarshal(response, &value); err != nil {
+			return err
+		}
 		var output []json.RawMessage
-		if err:=json.Unmarshal(value["output"],&output);err!=nil{return err}
-		snapshot.Output=pack(output);delete(value,"output")
-		snapshot.Response,err=json.Marshal(value);if err!=nil{return err}
+		if err := json.Unmarshal(value["output"], &output); err != nil {
+			return err
+		}
+		snapshot.Output = pack(output)
+		delete(value, "output")
+		snapshot.Response, err = json.Marshal(value)
+		if err != nil {
+			return err
+		}
 	}
-	manifest,err:=json.Marshal(snapshot);if err!=nil{return err}
-	if len(manifest)>4<<20 || len(blocks)>65530 {return errors.New("unified history manifest exceeds limit")}
-	root:="snapshot:"+historyDigest(manifest)
-	blocks[root]=manifest
-	blocks[alias]=[]byte(root)
-	keys:=make([]string,0,len(blocks));for key:=range blocks {keys=append(keys,key)};slices.Sort(keys)
-	existing,err:=a.systemService.LoadUnifiedHistory(ctx,keys);if err!=nil{return err}
-	entries:=make(map[string]string,len(blocks))
-	for _,key:=range keys {
-		if sealed:=existing[key];sealed!="" {
-			if key==alias {
-				prior,err:=a.openHistoryRecord(ctx,key,sealed,128);if err!=nil{return err}
-				if string(prior)!=root {return errors.New("history identifier already belongs to a different immutable version")}
+	manifest, err := json.Marshal(snapshot)
+	if err != nil {
+		return err
+	}
+	if len(manifest) > 4<<20 || len(blocks) > 65530 {
+		return errors.New("unified history manifest exceeds limit")
+	}
+	root := "snapshot:" + historyDigest(manifest)
+	blocks[root] = manifest
+	blocks[alias] = []byte(root)
+	keys := make([]string, 0, len(blocks))
+	for key := range blocks {
+		keys = append(keys, key)
+	}
+	slices.Sort(keys)
+	existing, err := a.systemService.LoadUnifiedHistory(ctx, keys)
+	if err != nil {
+		return err
+	}
+	entries := make(map[string]string, len(blocks))
+	for _, key := range keys {
+		if sealed := existing[key]; sealed != "" {
+			if key == alias {
+				prior, err := a.openHistoryRecord(ctx, key, sealed, 128)
+				if err != nil {
+					return err
+				}
+				if string(prior) != root {
+					return errors.New("history identifier already belongs to a different immutable version")
+				}
 			}
-			entries[key]=sealed;continue
+			entries[key] = sealed
+			continue
 		}
-		sealed,err:=a.sealHistoryRecord(ctx,key,blocks[key]);if err!=nil{return err};entries[key]=sealed
+		sealed, err := a.sealHistoryRecord(ctx, key, blocks[key])
+		if err != nil {
+			return err
+		}
+		entries[key] = sealed
 	}
-	return a.systemService.SaveUnifiedHistory(ctx,entries)
+	// Verify the published alias inside the same transaction. A competing writer
+	// may have won after our initial lookup; rolling back also removes this
+	// losing publication's otherwise unreachable blocks.
+	return a.systemService.RunInTransaction(ctx, func(txCtx context.Context) error {
+		if err := a.systemService.SaveUnifiedHistory(txCtx, entries); err != nil { return err }
+		published, err := a.systemService.LoadUnifiedHistory(txCtx, []string{alias})
+		if err != nil { return err }
+		prior, err := a.openHistoryRecord(txCtx, alias, published[alias], 128)
+		if err != nil { return err }
+		if string(prior) != root { return errors.New("history identifier already belongs to a different immutable version") }
+		return nil
+	})
 }
 
-func (a *remoteCompactionAdapter) loadHistorySnapshot(ctx context.Context,alias string) ([]byte,[]byte,bool,error) {
-	entries,err:=a.systemService.LoadUnifiedHistory(ctx,[]string{alias});if err!=nil{return nil,nil,false,err}
-	if entries[alias]=="" {return nil,nil,false,nil}
-	rootBytes,err:=a.openHistoryRecord(ctx,alias,entries[alias],128);if err!=nil{return nil,nil,false,err}
-	root:=string(rootBytes)
-	entries,err=a.systemService.LoadUnifiedHistory(ctx,[]string{root});if err!=nil{return nil,nil,false,err}
-	if entries[root]=="" {return nil,nil,false,errors.New("history snapshot is missing or expired")}
-	manifest,err:=a.openHistoryRecord(ctx,root,entries[root],4<<20);if err!=nil{return nil,nil,false,err}
-	if root!="snapshot:"+historyDigest(manifest){return nil,nil,false,errors.New("history manifest digest mismatch")}
+func (a *remoteCompactionAdapter) loadHistorySnapshot(ctx context.Context, alias string) ([]byte, []byte, bool, error) {
+	entries, err := a.systemService.LoadUnifiedHistory(ctx, []string{alias})
+	if err != nil {
+		return nil, nil, false, err
+	}
+	if entries[alias] == "" {
+		return nil, nil, false, nil
+	}
+	rootBytes, err := a.openHistoryRecord(ctx, alias, entries[alias], 128)
+	if err != nil {
+		return nil, nil, false, err
+	}
+	root := string(rootBytes)
+	entries, err = a.systemService.LoadUnifiedHistory(ctx, []string{root})
+	if err != nil {
+		return nil, nil, false, err
+	}
+	if entries[root] == "" {
+		return nil, nil, false, errors.New("history snapshot is missing or expired")
+	}
+	manifest, err := a.openHistoryRecord(ctx, root, entries[root], 4<<20)
+	if err != nil {
+		return nil, nil, false, err
+	}
+	if root != "snapshot:"+historyDigest(manifest) {
+		return nil, nil, false, errors.New("history manifest digest mismatch")
+	}
 	var snapshot unifiedHistorySnapshot
-	if err:=json.Unmarshal(manifest,&snapshot);err!=nil || snapshot.Version!=1{return nil,nil,false,errors.New("unsupported history manifest")}
-	keys:=make([]string,0)
-	for _,items:=range [][][]string{snapshot.Input,snapshot.Output}{for _,item:=range items{keys=append(keys,item...)}}
-	slices.Sort(keys);keys=slices.Compact(keys)
-	entries,err=a.systemService.LoadUnifiedHistory(ctx,keys);if err!=nil{return nil,nil,false,err}
-	total:=len(snapshot.Envelope)+len(snapshot.Response)
-	decoded:=make(map[string][]byte,len(keys))
-	for _,key:=range keys{
-		if entries[key]==""{return nil,nil,false,errors.New("history block is missing or expired")}
-		part,err:=a.openHistoryRecord(ctx,key,entries[key],historyBlockBytes);if err!=nil{return nil,nil,false,err}
-		if key!="block:"+historyDigest(part){return nil,nil,false,errors.New("history block digest mismatch")}
-		decoded[key]=part
+	if err := json.Unmarshal(manifest, &snapshot); err != nil || snapshot.Version != 1 {
+		return nil, nil, false, errors.New("unsupported history manifest")
 	}
-	unpack:=func(refs [][]string)([]json.RawMessage,error){
-		items:=make([]json.RawMessage,0,len(refs))
-		for _,ids:=range refs{
-			var item []byte
-			for _,id:=range ids{total+=len(decoded[id]);if total>nativeCompactionMaxSourceBytes{return nil,errors.New("expanded history exceeds 64 MiB")};item=append(item,decoded[id]...)}
-			if !json.Valid(item){return nil,errors.New("invalid archived history item")};items=append(items,item)
+	keys := make([]string, 0)
+	for _, items := range [][][]string{snapshot.Input, snapshot.Output} {
+		for _, item := range items {
+			keys = append(keys, item...)
 		}
-		return items,nil
 	}
-	input,err:=unpack(snapshot.Input);if err!=nil{return nil,nil,false,err}
+	slices.Sort(keys)
+	keys = slices.Compact(keys)
+	entries, err = a.systemService.LoadUnifiedHistory(ctx, keys)
+	if err != nil {
+		return nil, nil, false, err
+	}
+	total := len(snapshot.Envelope) + len(snapshot.Response)
+	decoded := make(map[string][]byte, len(keys))
+	for _, key := range keys {
+		if entries[key] == "" {
+			return nil, nil, false, errors.New("history block is missing or expired")
+		}
+		part, err := a.openHistoryRecord(ctx, key, entries[key], historyBlockBytes)
+		if err != nil {
+			return nil, nil, false, err
+		}
+		if key != "block:"+historyDigest(part) {
+			return nil, nil, false, errors.New("history block digest mismatch")
+		}
+		decoded[key] = part
+	}
+	unpack := func(refs [][]string) ([]json.RawMessage, error) {
+		items := make([]json.RawMessage, 0, len(refs))
+		for _, ids := range refs {
+			var item []byte
+			for _, id := range ids {
+				total += len(decoded[id])
+				if total > nativeCompactionMaxSourceBytes {
+					return nil, errors.New("expanded history exceeds 64 MiB")
+				}
+				item = append(item, decoded[id]...)
+			}
+			if !json.Valid(item) {
+				return nil, errors.New("invalid archived history item")
+			}
+			items = append(items, item)
+		}
+		return items, nil
+	}
+	input, err := unpack(snapshot.Input)
+	if err != nil {
+		return nil, nil, false, err
+	}
 	var envelope map[string]json.RawMessage
-	if err:=json.Unmarshal(snapshot.Envelope,&envelope);err!=nil{return nil,nil,false,err}
-	if err:=setResponseEnvelopeInput(envelope,input);err!=nil{return nil,nil,false,err}
-	body,err:=json.Marshal(envelope);if err!=nil{return nil,nil,false,err}
-	var response []byte
-	if len(snapshot.Response)>0 {
-		output,err:=unpack(snapshot.Output);if err!=nil{return nil,nil,false,err}
-		var value map[string]json.RawMessage
-		if err:=json.Unmarshal(snapshot.Response,&value);err!=nil{return nil,nil,false,err}
-		value["output"],err=json.Marshal(output);if err!=nil{return nil,nil,false,err}
-		response,err=json.Marshal(value);if err!=nil{return nil,nil,false,err}
+	if err := json.Unmarshal(snapshot.Envelope, &envelope); err != nil {
+		return nil, nil, false, err
 	}
-	return body,response,true,nil
+	if err := setResponseEnvelopeInput(envelope, input); err != nil {
+		return nil, nil, false, err
+	}
+	body, err := json.Marshal(envelope)
+	if err != nil {
+		return nil, nil, false, err
+	}
+	var response []byte
+	if len(snapshot.Response) > 0 {
+		output, err := unpack(snapshot.Output)
+		if err != nil {
+			return nil, nil, false, err
+		}
+		var value map[string]json.RawMessage
+		if err := json.Unmarshal(snapshot.Response, &value); err != nil {
+			return nil, nil, false, err
+		}
+		value["output"], err = json.Marshal(output)
+		if err != nil {
+			return nil, nil, false, err
+		}
+		response, err = json.Marshal(value)
+		if err != nil {
+			return nil, nil, false, err
+		}
+	}
+	return body, response, true, nil
 }
 
-func historyResponseAlias(id string) string {return "response:"+historyDigest([]byte(id))}
+func historyResponseAlias(id string) string { return "response:" + historyDigest([]byte(id)) }
 
 func historyCheckpointAlias(ref *remoteCompactionReference) string {
-	if isLocalCompactionReference(ref){return "checkpoint:"+historyDigest([]byte(ref.ID))}
-	return "checkpoint:"+remoteCompactionCacheKey(ref)
-}
-
-func (a *remoteCompactionAdapter) archiveHistoryResponse(ctx context.Context,body,response []byte) error {
-	if !a.unifiedHistoryEnabled(){return nil}
-	if gjson.GetBytes(response,"status").String()!="completed" || gjson.GetBytes(response,"error").Type!=gjson.Null {return nil}
-	id:=gjson.GetBytes(response,"id").String();if id==""{return nil}
-	state,err:=historyState(ctx);if err!=nil{return err}
-	ctx,cancel:=context.WithTimeout(ctx,10*time.Second);defer cancel()
-	source,err:=a.resolveCompactionSourceContinuation(ctx,&remoteCompactionSource{body:body},state);if err!=nil{return err}
-	return a.saveHistorySnapshot(ctx,historyResponseAlias(id),source.body,response)
-}
-
-func validateHistoryPredecessor(body,prior []byte) error {
-	current:=shared.ReadCodexRequestMetadata(nil,body);previous:=shared.ReadCodexRequestMetadata(nil,prior)
-	if gjson.GetBytes(body,"model").String()!=gjson.GetBytes(prior,"model").String() || current.ThreadID!="" && previous.ThreadID!="" && current.ThreadID!=previous.ThreadID {
-		return errors.New("history predecessor model or thread mismatch")
+	if isLocalCompactionReference(ref) {
+		return "checkpoint:" + historyDigest([]byte(ref.ID))
 	}
-	return nil
+	return "checkpoint:" + remoteCompactionCacheKey(ref)
+}
+
+func (a *remoteCompactionAdapter) archiveHistoryResponse(ctx context.Context, body, response []byte) error {
+	if !a.unifiedHistoryEnabled() {
+		return nil
+	}
+	if gjson.GetBytes(response, "status").String() != "completed" || gjson.GetBytes(response, "error").Type != gjson.Null {
+		return nil
+	}
+	id := gjson.GetBytes(response, "id").String()
+	if id == "" {
+		return nil
+	}
+	state, err := historyState(ctx)
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	source, err := a.resolveCompactionSourceContinuation(ctx, &remoteCompactionSource{body: body}, state)
+	if err != nil {
+		return err
+	}
+	return a.saveHistorySnapshot(ctx, historyResponseAlias(id), source.body, response)
 }

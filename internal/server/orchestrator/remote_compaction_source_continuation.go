@@ -53,7 +53,9 @@ func (a *remoteCompactionAdapter) resolveCompactionSourceContinuation(ctx contex
 		var found bool
 		if a.unifiedHistoryEnabled() {
 			body, response, found, err = a.loadHistorySnapshot(ctx, historyResponseAlias(previous))
-			if err != nil { return nil, err }
+			if err != nil {
+				return nil, err
+			}
 		}
 		if !found && a.requestService != nil {
 			body, response, found, err = a.requestService.LoadCompletedResponsesCompactionPredecessor(ctx, previous)

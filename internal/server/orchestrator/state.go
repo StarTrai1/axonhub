@@ -49,7 +49,7 @@ type PersistenceState struct {
 	responsesRejectedStatusRetryChannel int
 	responsesCompactionSkipChannel      int
 	compactionRecovery                  *compactionRecoveryEvidence
-	unifiedCompactionSummary string
+	unifiedCompactionSummary            string
 	// A relay affinity recovery consumes the existing same-channel budget and
 	// stops if the replacement affinity is also explicitly overloaded.
 	responsesRelayAffinityRetryChannel     int

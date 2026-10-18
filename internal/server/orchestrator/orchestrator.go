@@ -110,7 +110,9 @@ func NewChatCompletionOrchestrator(
 		responsesStore.archive = adapter.archiveHistoryResponse
 		responsesStore.load = func(ctx context.Context, id string) ([]byte, []byte, bool, error) {
 			body, response, found, err := adapter.loadHistorySnapshot(ctx, historyResponseAlias(id))
-			if err != nil || found { return body, response, found, err }
+			if err != nil || found {
+				return body, response, found, err
+			}
 			return requestService.LoadCompletedResponsesSession(ctx, id)
 		}
 	}

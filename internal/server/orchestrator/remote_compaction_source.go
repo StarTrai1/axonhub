@@ -91,11 +91,19 @@ func (a *remoteCompactionAdapter) loadNativeCompactionSource(ctx context.Context
 	}
 	if a.unifiedHistoryEnabled() {
 		owner, ownerErr := historyState(ctx)
-		if ownerErr != nil { return nil, ownerErr }
-		if owner.APIKey.ID != state.APIKey.ID || owner.APIKey.ProjectID != state.APIKey.ProjectID { return nil, nil }
+		if ownerErr != nil {
+			return nil, ownerErr
+		}
+		if owner.APIKey.ID != state.APIKey.ID || owner.APIKey.ProjectID != state.APIKey.ProjectID {
+			return nil, nil
+		}
 		body, _, found, err := a.loadHistorySnapshot(ctx, historyCheckpointAlias(ref))
-		if err != nil { return nil, err }
-		if found { return &remoteCompactionSource{body: body, headers: make(http.Header)}, nil }
+		if err != nil {
+			return nil, err
+		}
+		if found {
+			return &remoteCompactionSource{body: body, headers: make(http.Header)}, nil
+		}
 	}
 	sealed, err := a.systemService.LoadNativeCompactionSource(ctx, state.APIKey.ProjectID, state.APIKey.ID, remoteCompactionCacheKey(ref))
 	if err != nil || sealed == "" {

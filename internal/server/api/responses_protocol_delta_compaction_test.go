@@ -14,10 +14,20 @@ import (
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
+"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/objects"
 )
 
 func TestResponsesProtocolNativeCompactionMigrationFromWebSocketDelta(t *testing.T) {
+ testResponsesProtocolHistoryMigration(t,false)
+}
+
+func TestUnifiedHistoryProtocolMigrationFromWebSocketDelta(t *testing.T) {
+ testResponsesProtocolHistoryMigration(t,true)
+}
+
+func testResponsesProtocolHistoryMigration(t *testing.T, unified bool) {
+ t.Helper()
 	for _, policy := range []objects.RemoteCompactionPolicy{objects.RemoteCompactionPolicyAuto, objects.RemoteCompactionPolicyLocalBridge} {
 		t.Run(string(policy), func(t *testing.T) {
 			frames := make(chan []byte, 2)
@@ -75,7 +85,7 @@ func TestResponsesProtocolNativeCompactionMigrationFromWebSocketDelta(t *testing
 				w.Header().Set("Content-Type", "text/event-stream")
 				_, _ = fmt.Fprintf(w, "data: {\"type\":\"response.completed\",\"response\":{\"id\":\"resp_destination\",\"object\":\"response\",\"status\":\"completed\",\"output\":%s}}\n\n", output)
 			}))
-			client, handlers, project := newResponsesIntegrationFixture(t, upstream.URL, func(create *ent.ChannelCreate) {
+			client, handlers, project := newResponsesHistoryIntegrationFixture(t, upstream.URL, unified, func(create *ent.ChannelCreate) {
 				create.SetType(channel.TypeCodex).SetSupportedModels([]string{"synthetic-model", "gpt-6-astra"}).
 					SetPolicies(objects.ChannelPolicies{RemoteCompaction: objects.RemoteCompactionPolicyNative}).
 					SetEndpoints([]objects.ChannelEndpoint{{APIFormat: "openai/responses-ws"}}).
@@ -85,6 +95,13 @@ func TestResponsesProtocolNativeCompactionMigrationFromWebSocketDelta(t *testing
 			_, err := client.DataStorage.Create().SetName("primary").SetDescription("synthetic compaction history").SetPrimary(true).SetType("database").SetSettings(new(objects.DataStorageSettings)).Save(ctx)
 			require.NoError(t, err)
 			require.NoError(t, handlers.SystemService.SetSecretKey(ctx, "synthetic-delta-source-secret"))
+            if unified {
+                sourceChannel,err:=client.Channel.Query().Only(ctx);require.NoError(t,err)
+                _,err=client.Model.Create().SetDeveloper("openai").SetModelID("gpt-6-astra").SetName("gpt-6-astra").SetIcon("openai").SetGroup("gpt").SetStatus(model.StatusEnabled).
+                SetModelCard(&objects.ModelCard{Limit:objects.ModelCardLimit{Context:372000,Output:8192},ToolCall:true}).
+                SetSettings(&objects.ModelSettings{Associations:[]*objects.ModelAssociation{{Type:"channel_model",ChannelModel:&objects.ChannelModelAssociation{ChannelID:sourceChannel.ID,ModelID:"gpt-6-astra"}}}}).Save(ctx)
+                require.NoError(t,err)
+            }
 			retries := handlers.SystemService.RetryPolicyOrDefault(ctx)
 			retries.Enabled, retries.MaxChannelRetries, retries.MaxSingleChannelRetries, retries.RetryDelayMs = true, 0, 2, 0
 			require.NoError(t, handlers.SystemService.SetRetryPolicy(ctx, retries))
@@ -110,6 +127,12 @@ func TestResponsesProtocolNativeCompactionMigrationFromWebSocketDelta(t *testing
 			delta := <-frames
 			require.Equal(t, "resp_before_compaction", gjson.GetBytes(delta, "previous_response_id").String())
 			require.Len(t, gjson.GetBytes(delta, "input").Array(), 2, "the source is an actual connection-local delta")
+            if unified {
+                // Archived originals must survive log retention; the cross-protocol
+                // handler also owns a separate in-memory response session store.
+                _,err:=client.RequestExecution.Delete().Exec(ctx);require.NoError(t,err)
+                _,err=client.Request.Delete().Exec(ctx);require.NoError(t,err)
+            }
 			current, err := client.Channel.Query().Only(ctx)
 			require.NoError(t, err)
 			require.NoError(t, current.Update().SetPolicies(objects.ChannelPolicies{RemoteCompaction: policy}).
@@ -132,7 +155,19 @@ func TestResponsesProtocolNativeCompactionMigrationFromWebSocketDelta(t *testing
 					require.Contains(t, string(body), "original exact tool result")
 				}
 			}
-			require.Equal(t, 1, generations, "the next continuation must reuse the migrated checkpoint or local summary")
+			if unified {
+                require.Zero(t,generations,"portable original history must not call compact or summarize")
+                successes:=0
+                for _,body:=range migrated {
+                    if gjson.GetBytes(body,`input.#(id=="cmp_ws_source")`).Exists(){continue}
+                    successes++
+                    require.Contains(t,string(body),"complete original source canary")
+                    require.Contains(t,string(body),"original exact arguments")
+                    require.Contains(t,string(body),"original exact tool result")
+                    require.Contains(t,string(body),"continue-canary")
+                }
+                require.Equal(t,2,successes)
+            } else {require.Equal(t, 1, generations, "the next continuation must reuse the migrated checkpoint or local summary")}
 		})
 	}
 }

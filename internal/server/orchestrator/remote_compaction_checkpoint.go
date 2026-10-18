@@ -155,7 +155,9 @@ func (g *localCompactionGeneration) sealSummary(summary string) error {
 		return err
 	}
 	g.ref.EncryptedContent = sealed
-	if g.retainSource != nil { return g.retainSource(g.ref) }
+	if g.retainSource != nil {
+		return g.retainSource(g.ref)
+	}
 	return nil
 }
 

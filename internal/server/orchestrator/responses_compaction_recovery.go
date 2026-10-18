@@ -257,10 +257,12 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawRequest(
 		return nil, &remoteCompactionPreparationError{cause: err}
 	} else if assembled {
 		request.Body = body
-		if len(request.JSONBody)>0 { request.JSONBody=body }
+		if len(request.JSONBody) > 0 {
+			request.JSONBody = body
+		}
 		request.Headers.Del(codexTurnStateHeader)
-		m.adapted=&key
-		return request,nil
+		m.adapted = &key
+		return request, nil
 	}
 	if !local && !known && !knownReplay && !m.failedMigrations[key] {
 		item, err := m.adapter.migrateNativeCompaction(contexts.CloneRequestContext(ctx), key, ref, bridgeState, m.executor)
