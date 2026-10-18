@@ -73,6 +73,12 @@ func (s *SystemService) LoadUnifiedHistory(ctx context.Context, keys []string) (
 		if err != nil {
 			return nil, err
 		}
+        if s.UnifiedHistory.RetentionDays > 0 && len(rows) > 0 {
+            ids:=make([]int,len(rows));for i,row:=range rows {ids[i]=row.ID}
+            // An actively read checkpoint keeps its manifest and blocks alive;
+            // expired rows were excluded above and are never resurrected here.
+            if err:=s.entFromContext(ctx).System.Update().Where(system.IDIn(ids...)).SetUpdatedAt(time.Now()).Exec(ctx);err!=nil{return nil,err}
+        }
 		for _, row := range rows {
 			result[strings.TrimPrefix(row.Key, prefix)] = row.Value
 		}
@@ -103,15 +109,27 @@ func (s *SystemService) SaveUnifiedHistory(ctx context.Context, entries map[stri
 	ctx = authz.WithSystemBypass(ctx, "save-owned-unified-history")
 	return s.RunInTransaction(ctx, func(txCtx context.Context) error {
 		client := s.entFromContext(txCtx)
-		for offset := 0; offset < len(keys); offset += 32 {
-			batch := keys[offset:min(offset+32, len(keys))]
-			creates := make([]*ent.SystemCreate, 0, len(batch))
-			for _, key := range batch {
-				creates = append(creates, client.System.Create().SetKey(prefix+key).SetValue(entries[key]))
-			}
-			if err := client.System.CreateBulk(creates...).OnConflictColumns(system.FieldKey).Update(func(u *ent.SystemUpsert) { u.UpdateUpdatedAt() }).Exec(txCtx); err != nil {
-				return err
-			}
+		for offset := 0; offset < len(keys); offset += 128 {
+            batch:=keys[offset:min(offset+128,len(keys))]
+            full:=make([]string,len(batch))
+            for i,key:=range batch {full[i]=prefix+key}
+            existing,err:=client.System.Query().Where(system.KeyIn(full...)).Select(system.FieldKey).Strings(txCtx)
+            if err!=nil{return err}
+            found:=make(map[string]bool,len(existing))
+            for _,key:=range existing {found[key]=true}
+            if len(existing)>0 {
+                // Existing content never needs to cross the SQL wire again.
+                count,err:=client.System.Update().Where(system.KeyIn(existing...)).SetUpdatedAt(time.Now()).Save(txCtx)
+                if err!=nil{return err}
+                if count!=len(existing){return errors.New("history records expired during publication; retry with the original source")}
+            }
+            creates:=make([]*ent.SystemCreate,0,len(batch))
+            for _,key:=range batch {
+                if !found[prefix+key] {creates=append(creates,client.System.Create().SetKey(prefix+key).SetValue(entries[key]))}
+            }
+            for pos:=0;pos<len(creates);pos+=32 {
+                if err:=client.System.CreateBulk(creates[pos:min(pos+32,len(creates))]...).OnConflictColumns(system.FieldKey).Update(func(u *ent.SystemUpsert){u.UpdateUpdatedAt()}).Exec(txCtx);err!=nil{return err}
+            }
 		}
 		return nil
 	})

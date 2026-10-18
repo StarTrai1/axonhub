@@ -18,6 +18,23 @@ import (
 
 const historyBlockBytes = 64 << 10
 
+// Keep a bounded number of small-window encoders between requests. Creating a
+// compressor for every history item otherwise dominates short-item archival.
+var historyEncoders = make(chan *zstd.Encoder, 4)
+
+func compressHistoryRecord(body []byte) ([]byte, error) {
+ var encoder *zstd.Encoder
+ select {case encoder = <-historyEncoders: default:}
+ if encoder == nil {
+  var err error
+  encoder,err=zstd.NewWriter(nil,zstd.WithEncoderConcurrency(1),zstd.WithEncoderLevel(zstd.SpeedFastest),zstd.WithWindowSize(historyBlockBytes))
+  if err!=nil{return nil,err}
+ }
+ compressed:=encoder.EncodeAll(body,nil)
+ select {case historyEncoders<-encoder: default: _=encoder.Close()}
+ return compressed,nil
+}
+
 // Snapshots are immutable versions, never a mutable "latest thread" pointer.
 // Identical blocks share storage; their positions and repetitions remain in the
 // manifest. Branches therefore cannot silently consume a sibling's history.
@@ -57,12 +74,9 @@ func (a *remoteCompactionAdapter) sealHistoryRecord(ctx context.Context, key str
 		return "", err
 	}
 	aad := fmt.Appendf(nil, "axonhub/unified-history/v1:%d:%d:%s", state.APIKey.ProjectID, state.APIKey.ID, key)
-	z, err := zstd.NewWriter(nil, zstd.WithEncoderConcurrency(1))
-	if err != nil {
-		return "", err
-	}
-	defer z.Close()
-	return sealNativeCompactionSource(aead, aad, z.EncodeAll(body, nil))
+	compressed, err := compressHistoryRecord(body)
+	if err != nil { return "", err }
+	return sealNativeCompactionSource(aead, aad, compressed)
 }
 
 func (a *remoteCompactionAdapter) openHistoryRecord(ctx context.Context, key, sealed string, limit int) ([]byte, error) {

@@ -192,7 +192,7 @@ func (a *remoteCompactionAdapter) compileUnifiedContext(ctx context.Context, bod
 				contract[field] = value
 			}
 		}
-		if len(candidate.Models) > 0 { contract["destination_model"], _ = json.Marshal(candidate.Models[0].ActualModel) }
+		if state.CurrentModelIndex >= 0 && state.CurrentModelIndex < len(candidate.Models) { contract["destination_model"], _ = json.Marshal(candidate.Models[state.CurrentModelIndex].ActualModel) }
 		identity, err := json.Marshal(contract)
 		if err != nil {
 			return nil, false, err
@@ -252,7 +252,12 @@ func (a *remoteCompactionAdapter) compileUnifiedContext(ctx context.Context, bod
 			if err := a.systemService.SaveUnifiedHistory(ctx, map[string]string{segment.key: sealed}); err != nil {
 				return nil, err
 			}
-			return summary, nil
+            // Multiple gateway processes may generate concurrently. Always use
+            // the immutable winner so their reconstructed prefixes converge.
+            published,err:=a.systemService.LoadUnifiedHistory(ctx,[]string{segment.key})
+            if err!=nil{return nil,err}
+            text,err:=a.openHistoryRecord(ctx,segment.key,published[segment.key],localCompactionMaxSummaryBytes)
+            return string(text),err
 		})
 		if err != nil {
 			return nil, false, err
