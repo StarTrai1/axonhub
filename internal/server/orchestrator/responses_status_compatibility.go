@@ -145,6 +145,7 @@ func (m *responsesRejectedStatusCompatibilityMiddleware) OnOutboundRawRequest(
 			(rule.resourceScope == nil || *rule.resourceScope == resourceKey) &&
 			(rule.reasoningScope == nil || hasReasoningScope && *rule.reasoningScope == reasoningScope)
 	})
+	rules = append(rules, m.outbound.state.compactionRecovery.statusRules(channel.ID, request)...)
 	if hasReasoningScope {
 		if rule, found := rememberedResponsesReasoningRule(reasoningScope, request.Body); found {
 			rules = append(rules, rule)
@@ -222,6 +223,7 @@ func (m *responsesRejectedStatusCompatibilityMiddleware) OnOutboundRawError(ctx 
 	if !rememberResponsesRejectedStatusRule(state, channel.ID, rule) {
 		return
 	}
+	state.compactionRecovery.rejectStatus(responsesMetadataKey(channel.ID, state.RawProviderRequest), rule)
 
 	state.responsesRejectedStatusRetryChannel = channel.ID
 	if rule.metadataScope != nil {

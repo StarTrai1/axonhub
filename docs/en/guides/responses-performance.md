@@ -404,6 +404,21 @@ are not sent upstream. Text summarization is lossy; no synthetic test can prove
 unchanged answer quality. Cancellation stops pending generation and releases
 waiting callers; already completed checkpoints get a bounded persistence window.
 
+One recovery shares matched ancestor rejections and explicitly unsupported item
+type `status` fields across its native and text requests, scoped to the same
+channel, endpoint, model and credential. Text fallback does not resend an ancestor
+already rejected by native migration. Waiters on that migration receive the same
+evidence. Input indexes, reasoning removal and resource-affinity repairs are not
+carried into other requests, and this evidence is not a global capability cache.
+
+After an ancestor rejection, recovery first tries restoring its exact source
+under the same budget and integrity checks described above. When safe, it
+summarizes the latest source directly without an intermediate ancestor summary,
+preserving the configured reasoning effort. Large, opaque or ambiguously matched
+histories still use recursive compatibility fallback. Eliminating duplicate
+failed attempts does not eliminate long-history generation cost or guarantee
+provider prompt-cache reuse.
+
 ## Measuring actual cache reuse and user wait
 
 Report both `cached / current input` and how much of the preceding unchanged input

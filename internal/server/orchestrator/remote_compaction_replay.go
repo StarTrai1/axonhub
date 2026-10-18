@@ -7,12 +7,36 @@ import (
 	"errors"
 
 	"github.com/tidwall/gjson"
+
+	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/llm/pipeline"
 )
 
 // Bound work, memory and upstream prefill independently of the request-log
 // retention limit. JSON bytes deliberately overestimate text tokens. Unknown
 // model budgets and multimodal/opaque sources do not qualify for this path.
 const nativeCompactionReplayMaxBytes = 64 << 10
+
+// Restore the rejected ancestor's exact source before asking for a summary of
+// that source. When it fits, the newest checkpoint needs only one generation;
+// no summary is fed into another summary. The existing strict replay checks
+// still reject uncertain retained boundaries, opaque items and large sources.
+func (a *remoteCompactionAdapter) restoreRejectedCompactionSource(ctx context.Context, source *remoteCompactionSource, ref *remoteCompactionReference, state *PersistenceState, executor pipeline.Executor, ancestors map[string]struct{}) (*remoteCompactionSource, error) {
+	if state != nil && len(state.ChannelModelsCandidates) == 1 {
+		replayState := *state
+		replayState.CurrentCandidate = state.ChannelModelsCandidates[0]
+		body, restored, err := a.replayNativeCompaction(ctx, source.body, ref, &replayState)
+		if err != nil {
+			return nil, err
+		}
+		if restored {
+			log.Info(ctx, "restored exact ancestor source before compaction without an intermediate summary",
+				log.String("compaction_id", ref.ID))
+			return &remoteCompactionSource{body: body, headers: source.headers}, nil
+		}
+	}
+	return a.adaptStoredCompactionSource(ctx, source, state, executor, ancestors)
+}
 
 func (a *remoteCompactionAdapter) replayNativeCompaction(ctx context.Context, body []byte, ref *remoteCompactionReference, state *PersistenceState) ([]byte, bool, error) {
 	if state == nil || state.CurrentCandidate == nil || state.CurrentCandidate.ContextTokens <= 0 {

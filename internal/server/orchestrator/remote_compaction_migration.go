@@ -37,6 +37,11 @@ type nativeCompactionMigrationCacheEntry struct {
 	expires time.Time
 }
 
+type nativeCompactionMigrationResult struct {
+	item     json.RawMessage
+	evidence *compactionRecoveryEvidence
+}
+
 func nativeCompactionMigrationAAD(key responsesCompactionRecoveryKey) []byte {
 	digest := key.digest()
 	return []byte("axonhub/native-compaction-migration/v1:" + hex.EncodeToString(digest[:]))
@@ -193,6 +198,9 @@ func (a *remoteCompactionAdapter) migrateNativeCompaction(ctx context.Context, k
 	if a.systemService == nil {
 		return nil, nil
 	}
+	if state.compactionRecovery == nil {
+		state.compactionRecovery = &compactionRecoveryEvidence{}
+	}
 	cached, err := a.loadNativeMigration(ctx, key)
 	if err != nil || len(cached.Item) > 0 {
 		return cached.Item, err
@@ -218,7 +226,7 @@ func (a *remoteCompactionAdapter) migrateNativeCompaction(ctx context.Context, k
 			return nil, err
 		}
 		if len(cached.Item) > 0 || time.Now().Before(cached.RejectedUntil) {
-			return cached.Item, nil
+			return nativeCompactionMigrationResult{item: cached.Item, evidence: state.compactionRecovery}, nil
 		}
 		item, err := a.generateCompaction(ctx, key.cacheKey, source, state, executor, true)
 		if err != nil {
@@ -228,14 +236,14 @@ func (a *remoteCompactionAdapter) migrateNativeCompaction(ctx context.Context, k
 			if err := a.saveNativeMigration(ctx, key, nativeCompactionMigration{RejectedUntil: time.Now().Add(responsesReasoningRecoveryTTL)}); err != nil {
 				return nil, err
 			}
-			return json.RawMessage(nil), nil
+			return nativeCompactionMigrationResult{evidence: state.compactionRecovery}, nil
 		}
 		generated, err := nativeMigrationReference(item)
 		if err != nil {
 			return nil, err
 		}
 		if remoteCompactionCacheKey(generated) == key.cacheKey {
-			return json.RawMessage(nil), a.saveNativeMigration(ctx, key, nativeCompactionMigration{RejectedUntil: time.Now().Add(responsesReasoningRecoveryTTL)})
+			return nativeCompactionMigrationResult{evidence: state.compactionRecovery}, a.saveNativeMigration(ctx, key, nativeCompactionMigration{RejectedUntil: time.Now().Add(responsesReasoningRecoveryTTL)})
 		}
 		value := nativeCompactionMigration{Item: json.RawMessage(item)}
 		persistCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
@@ -244,7 +252,7 @@ func (a *remoteCompactionAdapter) migrateNativeCompaction(ctx context.Context, k
 			return nil, err
 		}
 		log.Info(ctx, "retained destination-native compaction migration", log.Int("channel_id", key.scope.provider.channelID), log.String("compaction_id", ref.ID))
-		return value.Item, nil
+		return nativeCompactionMigrationResult{item: value.Item, evidence: state.compactionRecovery}, nil
 	})
 	if err != nil {
 		return nil, err
@@ -252,11 +260,12 @@ func (a *remoteCompactionAdapter) migrateNativeCompaction(ctx context.Context, k
 	if result == nil {
 		return nil, nil
 	}
-	item, ok := result.(json.RawMessage)
+	migration, ok := result.(nativeCompactionMigrationResult)
 	if !ok {
 		return nil, fmt.Errorf("invalid native migration result %T", result)
 	}
-	return item, nil
+	state.compactionRecovery = migration.evidence
+	return migration.item, nil
 }
 
 func bindNativeMigrationDestination(source *remoteCompactionSource, destination *httpclient.Request) (*remoteCompactionSource, error) {

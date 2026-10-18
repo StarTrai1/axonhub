@@ -661,6 +661,9 @@ func (a *remoteCompactionAdapter) summaryForCompaction(
 	state *PersistenceState,
 	executor pipeline.Executor,
 ) (string, error) {
+	if state != nil && state.compactionRecovery == nil {
+		state.compactionRecovery = &compactionRecoveryEvidence{}
+	}
 	return a.summaryForCompactionChain(ctx, cacheKey, ref, threadID, model, state, executor, make(map[string]struct{}))
 }
 
@@ -731,15 +734,20 @@ func (a *remoteCompactionAdapter) summaryForCompactionChain(
 				},
 			}
 		}
-		// A native ancestor may still be accepted by this destination even when
-		// the newest checkpoint was rejected. Expand it only after evidence from
-		// the actual summary request, not preemptively for the whole chain.
+		// Keep native ancestors unless this recovery already observed a matching
+		// rejection at the same destination. A failed native migration is also
+		// evidence; repeating that failure with a text prompt teaches us nothing.
 		previous, _, _, parseErr := parseRemoteCompactionRequest(source.body)
 		if parseErr != nil {
 			return "", parseErr
 		}
 		if isLocalCompactionReference(previous) {
 			source, err = a.adaptStoredCompactionSource(ctx, source, state, executor, ancestors)
+			if err != nil {
+				return "", err
+			}
+		} else if state != nil && state.compactionRecovery.sourceRejected(state, previous) {
+			source, err = a.restoreRejectedCompactionSource(ctx, source, previous, state, executor, ancestors)
 			if err != nil {
 				return "", err
 			}
@@ -785,7 +793,7 @@ func (a *remoteCompactionAdapter) summaryForCompactionChain(
 			return "", err
 		}
 		// Never wait on a nested generation while holding the parent's flight.
-		source, err = a.adaptStoredCompactionSource(ctx, source, state, executor, ancestors)
+		source, err = a.restoreRejectedCompactionSource(ctx, source, previous, state, executor, ancestors)
 		if err != nil {
 			return "", err
 		}
@@ -1118,6 +1126,7 @@ func (a *remoteCompactionAdapter) generateCompactionWithCandidate(
 	bridgeRequest.RawRequest = rawRequest
 
 	attemptState := &PersistenceState{
+		compactionRecovery:      parentState.compactionRecovery,
 		APIKey:                  parentState.APIKey,
 		RequestService:          a.requestService,
 		UsageLogService:         a.usageLogService,
@@ -1191,7 +1200,11 @@ func (a *remoteCompactionAdapter) generateCompactionWithCandidate(
 	}
 	stream, executionRecord, err := a.startLocalCompactionStream(ctx, outbound, providerRequest, customizedExecutor, retryCompatibility...)
 	if err != nil {
-		return "", rejectedCompactionSourceError(attemptState.RawProviderRequest, err)
+		err = rejectedCompactionSourceError(attemptState.RawProviderRequest, err)
+		if rejected, ok := errors.AsType[*compactionSourceRejectedError](err); ok && ctx.Err() == nil {
+			parentState.compactionRecovery.rejectSource(responsesMetadataKey(candidate.Channel.ID, attemptState.RawProviderRequest), rejected.cacheKey)
+		}
+		return "", err
 	}
 	stream = maybeRepairDelayedCodexResponsesTerminal(
 		ctx,
