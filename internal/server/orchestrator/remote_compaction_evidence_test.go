@@ -164,3 +164,30 @@ func TestRemoteCompactionEvidenceDestinationIsolation(t *testing.T) {
 		})
 	}
 }
+
+func TestRemoteCompactionAncestorReplayHonorsActiveChain(t *testing.T) {
+	ctx, _, owner, adapter := rejectedCompactionStorage(t)
+	ancestor := &remoteCompactionReference{ID: "cmp_ancestor", EncryptedContent: "ancestor-cipher"}
+	latest := &remoteCompactionReference{ID: "cmp_latest", EncryptedContent: "latest-cipher"}
+	first := []byte(`{"model":"gpt-6-astra","client_metadata":{"thread_id":"recovery-thread"},"input":[{"role":"user","content":"complete original"},{"type":"compaction_trigger"}]}`)
+	second := []byte(`{"model":"gpt-6-astra","client_metadata":{"thread_id":"recovery-thread"},"input":[{"type":"compaction","id":"cmp_ancestor","encrypted_content":"ancestor-cipher"},{"role":"user","content":"latest detail"},{"type":"compaction_trigger"}]}`)
+	candidate := &ChannelModelsCandidate{Channel: &biz.Channel{Channel: &ent.Channel{ID: 40}}, ContextTokens: 372000}
+	state := &PersistenceState{APIKey: owner, ChannelModelsCandidates: []*ChannelModelsCandidate{candidate}, RawProviderRequest: &httpclient.Request{URL: "https://example.invalid/v1/responses", Body: second}, compactionRecovery: &compactionRecoveryEvidence{}}
+	require.NoError(t, adapter.retainNativeCompactionSource(ctx, ancestor, state, &remoteCompactionSource{body: first}))
+	require.NoError(t, adapter.retainNativeCompactionSource(ctx, latest, state, &remoteCompactionSource{body: second}))
+	state.compactionRecovery.rejectSource(responsesMetadataKey(40, state.RawProviderRequest), remoteCompactionCacheKey(ancestor))
+	for _, depth := range []int{1, remoteCompactionMaxSourceDepth - 1} {
+		active := make(map[string]struct{})
+		for i := range depth {
+			active[fmt.Sprint(i)] = struct{}{}
+		}
+		if depth == 1 {
+			active = map[string]struct{}{remoteCompactionCacheKey(ancestor): {}}
+		}
+		executor := &compactionEvidenceExecutor{}
+		_, err := adapter.summaryForCompactionChain(ctx, remoteCompactionCacheKey(latest), latest, "recovery-thread", "gpt-6-astra", state, executor, active)
+		require.ErrorContains(t, err, "cyclic or excessively deep", "exact replay must count the already active summary ancestors")
+		require.Empty(t, executor.summaries)
+		require.Zero(t, executor.nativeCalls)
+	}
+}

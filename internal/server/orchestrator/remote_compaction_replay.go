@@ -25,7 +25,15 @@ func (a *remoteCompactionAdapter) restoreRejectedCompactionSource(ctx context.Co
 	if state != nil && len(state.ChannelModelsCandidates) == 1 {
 		replayState := *state
 		replayState.CurrentCandidate = state.ChannelModelsCandidates[0]
-		body, restored, err := a.replayNativeCompaction(ctx, source.body, ref, &replayState)
+		budget := nativeCompactionReplayBudget(&replayState)
+		if budget == 0 || len(source.body) > budget {
+			return a.adaptStoredCompactionSource(ctx, source, state, executor, ancestors)
+		}
+		visited := make(map[string]bool, len(ancestors))
+		for key := range ancestors {
+			visited[key] = true
+		}
+		body, restored, err := a.replayNativeCompactionChain(ctx, source.body, ref, &replayState, budget, visited)
 		if err != nil {
 			return nil, err
 		}
@@ -39,14 +47,18 @@ func (a *remoteCompactionAdapter) restoreRejectedCompactionSource(ctx context.Co
 }
 
 func (a *remoteCompactionAdapter) replayNativeCompaction(ctx context.Context, body []byte, ref *remoteCompactionReference, state *PersistenceState) ([]byte, bool, error) {
-	if state == nil || state.CurrentCandidate == nil || state.CurrentCandidate.ContextTokens <= 0 {
-		return body, false, nil
-	}
-	budget := min(nativeCompactionReplayMaxBytes, state.CurrentCandidate.ContextTokens/2)
-	if len(body) > budget {
+	budget := nativeCompactionReplayBudget(state)
+	if budget == 0 || len(body) > budget {
 		return body, false, nil
 	}
 	return a.replayNativeCompactionChain(ctx, body, ref, state, budget, make(map[string]bool))
+}
+
+func nativeCompactionReplayBudget(state *PersistenceState) int {
+	if state == nil || state.CurrentCandidate == nil || state.CurrentCandidate.ContextTokens <= 0 {
+		return 0
+	}
+	return min(nativeCompactionReplayMaxBytes, state.CurrentCandidate.ContextTokens/2)
 }
 
 func (a *remoteCompactionAdapter) replayNativeCompactionChain(ctx context.Context, body []byte, ref *remoteCompactionReference, state *PersistenceState, budget int, ancestors map[string]bool) ([]byte, bool, error) {
