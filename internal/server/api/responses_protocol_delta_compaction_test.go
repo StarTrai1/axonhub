@@ -31,7 +31,7 @@ func TestResponsesProtocolNativeCompactionMigrationFromWebSocketDelta(t *testing
 						return
 					}
 					defer conn.Close()
-					for turn := 0; turn < 2; turn++ {
+					for turn := range 2 {
 						_, body, err := conn.ReadMessage()
 						if err != nil {
 							t.Error(err)

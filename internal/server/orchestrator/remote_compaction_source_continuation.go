@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"slices"
 	"time"
 
 	"github.com/tidwall/gjson"
@@ -82,8 +83,8 @@ func (a *remoteCompactionAdapter) resolveCompactionSourceContinuation(ctx contex
 		count += len(segment)
 	}
 	resolved := make([]json.RawMessage, 0, count)
-	for i := len(segments) - 1; i >= 0; i-- {
-		resolved = append(resolved, segments[i]...)
+	for _, segment := range slices.Backward(segments) {
+		resolved = append(resolved, segment...)
 	}
 	if err := setResponseEnvelopeInput(envelope, resolved); err != nil {
 		return nil, err

@@ -215,6 +215,7 @@ func TestNativeCompactionMigrationLegacyDeltaContinuation(t *testing.T) {
 
 type deltaMigrationExecutor struct {
 	rejectedCompactionBridgeExecutor
+
 	nativeCalls int
 	nativeBody  []byte
 }
