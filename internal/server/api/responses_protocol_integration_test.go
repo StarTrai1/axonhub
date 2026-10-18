@@ -123,6 +123,7 @@ func newResponsesIntegrationFixture(t *testing.T, upstreamURL string, configure 
 	systemService := biz.NewSystemService(biz.SystemServiceParams{CacheConfig: cacheConfig, Ent: client})
 	require.NoError(t, systemService.SetModelSettings(ctx, biz.SystemModelSettings{FallbackToChannelsOnModelNotFound: true, QueryAllChannelModels: true}))
 	channelService := biz.NewChannelService(biz.ChannelServiceParams{CacheConfig: cacheConfig, Ent: client, SystemService: systemService, HttpClient: httpclient.NewHttpClient()})
+	t.Cleanup(channelService.Stop)
 	usageLogService := biz.NewUsageLogService(client, systemService, channelService)
 	storage := &biz.DataStorageService{AbstractService: &biz.AbstractService{}, SystemService: systemService, Cache: xcache.NewFromConfig[ent.DataStorage](cacheConfig)}
 	requestService := biz.NewRequestService(client, cacheConfig, systemService, usageLogService, storage, biz.NewLiveStreamRegistry())
@@ -138,6 +139,7 @@ func newResponsesIntegrationFixture(t *testing.T, upstreamURL string, configure 
 	require.NoError(t, err)
 	require.NotEmpty(t, candidates)
 	protection := biz.NewPromptProtectionRuleService(biz.PromptProtectionRuleServiceParams{CacheConfig: cacheConfig, Ent: client})
+	t.Cleanup(protection.Stop)
 	params := OpenAIHandlersParams{
 		ChannelService: channelService, ModelService: modelService, DefaultSelector: selector, RequestService: requestService,
 		SystemService: systemService, UsageLogService: usageLogService, PromptService: biz.NewPromptService(biz.PromptServiceParams{Ent: client}),
