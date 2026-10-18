@@ -388,7 +388,9 @@ func (ts *OutboundPersistentStream) observeCapturedTerminal() {
 	}
 	ts.responseChunks = append(ts.responseChunks, httpclient.SummarizeBinaryChunk(event))
 	ts.terminalState = classifyAcceptedTerminalEvent(event)
-	ts.terminalError = streamTerminalErrorMessage(event, ts.terminalState)
+	if ts.terminalState != streamTerminalCompleted {
+		ts.terminalError = streamTerminalErrorMessage(event, ts.terminalState)
+	}
 	ts.state.OutboundStreamTerminal = ts.terminalState
 	ts.outcome.observeTerminal(ts.terminalState)
 	ts.markPerformanceTerminal(ts.terminalState, ts.terminalError)

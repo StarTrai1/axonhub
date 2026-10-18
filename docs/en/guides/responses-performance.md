@@ -420,3 +420,5 @@ health retain their per-attempt clocks. Historical records are not rewritten.
 A high cache ratio alone does not establish low latency: upstream throttling,
 queueing and generation can still dominate. Request `updated_at - created_at` is
 a useful historical approximation, but also includes persistence overhead.
+
+The pass-through reader retains the provider terminal event before fan-out. If a client disconnects immediately after a failed or incomplete response, execution accounting preserves that provider outcome and explicit final usage even when the transformed consumer has not reached the event. This evidence does not acknowledge downstream delivery; the main request keeps the existing delivery rules.

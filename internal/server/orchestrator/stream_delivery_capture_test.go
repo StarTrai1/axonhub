@@ -58,6 +58,7 @@ func TestStreamDeliveryCapturedTerminalSurvivesCanceledDrain(t *testing.T) {
 			want := requestexecution.StatusFailed
 			if status == "completed" {
 				want = requestexecution.StatusCompleted
+				require.Empty(t, saved.ErrorMessage)
 			}
 			require.Equal(t, want, saved.Status)
 			logs, err := client.UsageLog.Query().All(ctx)
