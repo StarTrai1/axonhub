@@ -899,6 +899,17 @@ func captureRawProviderStreamWithTerminalGrace(
 				if event == nil {
 					continue
 				}
+				// Record terminal evidence before either consumer can receive it.
+				// A downstream disconnect may stop the transformed drain before it
+				// observes the same event, but cannot undo the provider's outcome.
+				eventType := gjson.GetBytes(event.Data, "type").String()
+				if eventType == "" {
+					eventType = event.Type
+				}
+				terminal := (strings.HasPrefix(eventType, "response.") || eventType == "error") && steering.isFinalTerminal(event)
+				if terminal {
+					rawStreamErr.recordTerminal(event)
+				}
 				held, err := backlog.hold(event)
 				if err != nil {
 					rawStreamErr.store(err)
@@ -927,11 +938,7 @@ func captureRawProviderStreamWithTerminalGrace(
 
 				// Chat finish_reason can precede a separate usage frame and [DONE].
 				// Only Responses controls can end a persistent native turn here.
-				eventType := gjson.GetBytes(event.Data, "type").String()
-				if eventType == "" {
-					eventType = event.Type
-				}
-				if (strings.HasPrefix(eventType, "response.") || eventType == "error") && steering.isFinalTerminal(event) {
+				if terminal {
 					return
 				}
 			}
@@ -1498,8 +1505,26 @@ func applyPassThroughStream(outbound *PersistentOutboundTransformer, systemServi
 // passThroughStreamError keeps the final error scoped to one attempt. Terminal
 // handling may read it before the capture goroutine has closed its channels.
 type passThroughStreamError struct {
-	mu  sync.RWMutex
-	err error
+	mu       sync.RWMutex
+	err      error
+	terminal *httpclient.StreamEvent
+}
+
+func (e *passThroughStreamError) recordTerminal(event *httpclient.StreamEvent) {
+	e.mu.Lock()
+	if e.terminal == nil {
+		e.terminal = event
+	}
+	e.mu.Unlock()
+}
+
+func (e *passThroughStreamError) loadTerminal() *httpclient.StreamEvent {
+	if e == nil {
+		return nil
+	}
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return e.terminal
 }
 
 func (e *passThroughStreamError) store(err error) {

@@ -61,6 +61,7 @@ type OutboundPersistentStream struct {
 	consumerDoneOnce sync.Once
 	sourceEnd        llm.SourceEndReason
 	persistenceErr   error
+	capturedOutcome  *passThroughStreamError
 	state            *PersistenceState
 	terminalTracker  *StreamTerminalTracker
 }
@@ -96,6 +97,10 @@ func NewOutboundPersistentStream(
 		state:           state,
 		terminalTracker: NewStreamTerminalTrackerForRequest(request),
 		consumerDone:    make(chan struct{}),
+	}
+	if state != nil {
+		// Capture this attempt's evidence; state may later move to another route.
+		s.capturedOutcome = state.RawStreamErrRef
 	}
 	if lifecycleOwner := streamLifecycleFromContext(ctx); lifecycleOwner != nil {
 		s.HoldFinalization()
@@ -257,6 +262,7 @@ func (ts *OutboundPersistentStream) FinalizeAccounting(sourceEnd llm.SourceEndRe
 
 func (ts *OutboundPersistentStream) finalizeClose() error {
 	ctx := ts.ctx
+	ts.observeCapturedTerminal()
 
 	log.Debug(ctx, "Closing persistent stream", log.Int("chunk_count", len(ts.responseChunks)), log.Bool("execution_completed", ts.terminalState == streamTerminalCompleted))
 
@@ -367,6 +373,26 @@ func (ts *OutboundPersistentStream) finalizeClose() error {
 	}
 
 	return ts.stream.Close()
+}
+
+// The raw consumer can deliver a terminal before the transformed consumer reads
+// it. Recover that already-observed fact after the readers have quiesced; this
+// never reads the upstream again or acknowledges delivery to the client.
+func (ts *OutboundPersistentStream) observeCapturedTerminal() {
+	if ts.terminalState != streamTerminalNone {
+		return
+	}
+	event := ts.capturedOutcome.loadTerminal()
+	if event == nil || !ts.terminalTracker.Observe(event) {
+		return
+	}
+	ts.responseChunks = append(ts.responseChunks, httpclient.SummarizeBinaryChunk(event))
+	ts.terminalState = classifyAcceptedTerminalEvent(event)
+	ts.terminalError = streamTerminalErrorMessage(event, ts.terminalState)
+	ts.state.OutboundStreamTerminal = ts.terminalState
+	ts.outcome.observeTerminal(ts.terminalState)
+	ts.markPerformanceTerminal(ts.terminalState, ts.terminalError)
+	ts.sourceEnd = llm.SourceEndSemantic
 }
 
 func (ts *OutboundPersistentStream) markPerformanceTerminal(state streamTerminalState, message string) {
