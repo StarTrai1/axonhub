@@ -192,6 +192,12 @@ func TestUnifiedHistoryGenerationAvoidsAdditionalProviderCall(t *testing.T) {
 }
 
 func TestUnifiedHistoryPortableReasoningAndToolBoundaries(t *testing.T) {
+    agent:=json.RawMessage(`{"type":"agent_message","id":"amsg_original","author":"/root/reviewer","recipient":"/root","content":[{"type":"input_text","text":"exact recovered reviewer evidence"}]}`)
+    preserved,_,portable:=unifiedPortableItems([]json.RawMessage{agent})
+    require.True(t,portable);require.JSONEq(t,string(agent),string(preserved[0]))
+    _,_,portable=unifiedPortableItems([]json.RawMessage{json.RawMessage(`{"type":"agent_message","author":"/root/reviewer","recipient":"/root","content":[{"type":"encrypted_content","encrypted_content":"opaque"}]}`)})
+    require.False(t,portable,"opaque agent payloads must not be replaced by their visible prefix")
+
 	items := []json.RawMessage{json.RawMessage(`{"type":"reasoning","encrypted_content":"private","summary":[{"text":"visible rationale"}]}`), json.RawMessage(`{"type":"function_call","call_id":"call","name":"tool","arguments":"{\"x\":1}"}`)}
 	got, opaque, ok := unifiedPortableItems(items)
 	require.True(t, ok)

@@ -161,13 +161,13 @@ jobs:
       - name: Verify PostgreSQL quota routing migration
         env:
           AXONHUB_TEST_PG_DSN: postgres://axonhub_test:axonhub_test@127.0.0.1:5432/axonhub_test?sslmode=disable
-        run: go test ./internal/server/biz -run '^TestQuotaRoutingMigration_Postgres$' -count=1 -v
+        run: go test ./internal/server/biz -run '^TestQuotaRoutingMigration_Postgres$|^TestUnifiedHistory.*Postgres$' -count=1 -v
 
       - name: Responses concurrency regression
         run: |
-          go test -race ./internal/server/orchestrator -run 'TestStreamDeliveryCaptured|TestHTTP2FallbackPipeline|TestWebSocketSOCKSChannelRetry|TestCaptureRawProviderStream|TestPassThroughAnthropicStream|TestRawStreamBacklog|TestResponsesSession|TestResponsesRejected|TestResponsesRedactedEncryption|TestResponsesAgent|TestResponsesCompactionRecovery|TestCompactionFlight|TestNativeCompactionMigration|TestNativeCompactionExactReplay|TestRemoteCompactionLazy|TestResponsesCompactionExactReplay|TestRequestLatency|TestChannelRejectsFailedStreamEvenAfterText|TestSealedLocalCompaction|TestLegacyLocalCompaction' -count=1
-          go test -race ./internal/server/biz -run '^TestChannelReload|^TestChannelSwap|^TestSystemServiceResponsesMetadata|^TestChannelMetrics_ConcurrentReadsAndWrites$' -count=1
-          go test -race ./internal/server/api -run '^TestResponses(WebSocket(Warmup|Heartbeat|Auth|Interrupt|Close)|ProtocolNativeContinuation|ProtocolCompactionRelay|ProtocolAutoCompaction|ProtocolNativeCompactionMigration|ProtocolRedactedEncryption|ProtocolInvalidEncryptedSummary|ProtocolReasoningHydration|ProtocolEncryptedAgentCompaction)' -count=1
+          go test -race ./internal/server/orchestrator -run 'TestUnifiedHistory|TestStreamDeliveryCaptured|TestHTTP2FallbackPipeline|TestWebSocketSOCKSChannelRetry|TestCaptureRawProviderStream|TestPassThroughAnthropicStream|TestRawStreamBacklog|TestResponsesSession|TestResponsesRejected|TestResponsesRedactedEncryption|TestResponsesAgent|TestResponsesCompactionRecovery|TestCompactionFlight|TestNativeCompactionMigration|TestNativeCompactionExactReplay|TestRemoteCompactionLazy|TestResponsesCompactionExactReplay|TestRequestLatency|TestChannelRejectsFailedStreamEvenAfterText|TestSealedLocalCompaction|TestLegacyLocalCompaction' -count=1
+          go test -race ./internal/server/biz -run '^TestUnifiedHistory|^TestChannelReload|^TestChannelSwap|^TestSystemServiceResponsesMetadata|^TestChannelMetrics_ConcurrentReadsAndWrites$' -count=1
+          go test -race ./internal/server/api -run '^TestUnifiedHistory|^TestResponses(WebSocket(Warmup|Heartbeat|Auth|Interrupt|Close)|ProtocolNativeContinuation|ProtocolCompactionRelay|ProtocolAutoCompaction|ProtocolNativeCompactionMigration|ProtocolRedactedEncryption|ProtocolInvalidEncryptedSummary|ProtocolReasoningHydration|ProtocolEncryptedAgentCompaction)' -count=1
           go test -race ./internal/server/orchestrator ./internal/server/api -run '^TestCodexMemory' -count=1
           cd llm
           go test -race ./httpclient -run '^TestHTTP2Fallback' -count=1
@@ -177,7 +177,7 @@ jobs:
           go test -race ./transformer/openai/responses -run 'TestWebSocketSOCKSCancellation|TestWebSocketExecutorSeparatesCodexExecutionScopes|TestWebSocketExecutorInterrupt|TestCodexExecutionPoolIdentity|TestWebSocketStreamCloseWhileNextBlocked|TestWebSocketExecutorDoesNotReplay|TestWebSocketStreamDoesNotRetryFresh' -count=1
 
       - name: Responses cache benchmarks
-        run: go test ./internal/server/orchestrator -run '^$' -bench '^BenchmarkResponsesSession' -benchmem -count=3 | tee responses-cache-benchmarks.txt
+        run: go test ./internal/server/orchestrator -run '^$' -bench '^BenchmarkResponsesSession|^BenchmarkUnifiedHistoryCompression' -benchmem -count=3 | tee responses-cache-benchmarks.txt
 
       - name: Upload Responses cache benchmarks
         uses: actions/upload-artifact@v6

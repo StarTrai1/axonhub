@@ -382,7 +382,10 @@ func unifiedPortableItems(items []json.RawMessage) ([]json.RawMessage, int, bool
 			}
 			continue
 		}
-		if !exactReplayTextItem(item) {
+        if value.Get("type").String()=="agent_message" {
+            if !responsesAgentMessageSupportsPreservation(value){return nil,opaque,false}
+            for _,part:=range value.Get("content").Array(){if part.Get("type").String()=="encrypted_content"{return nil,opaque,false}}
+        } else if !exactReplayTextItem(item) {
 			return nil, opaque, false
 		}
 		result = append(result, item)

@@ -4,6 +4,8 @@ import (
  "context"
  "errors"
  "fmt"
+ "os"
+ "sync"
  "strings"
  "testing"
  "time"
@@ -19,6 +21,17 @@ import (
 func TestUnifiedHistoryStorageTransactionAndRetention(t *testing.T) {
  client:=enttest.NewEntClient(t,"sqlite3","file:history-storage?mode=memory&_fk=1")
  t.Cleanup(func(){require.NoError(t,client.Close())})
+ testUnifiedHistoryStorage(t,client)
+}
+
+func TestUnifiedHistoryStorage_Postgres(t *testing.T) {
+ dsn:=os.Getenv("AXONHUB_TEST_PG_DSN")
+ if dsn=="" {t.Skip("AXONHUB_TEST_PG_DSN not set")}
+ testUnifiedHistoryStorage(t,newPostgresQuotaRoutingMigrationClient(t,dsn))
+}
+
+func testUnifiedHistoryStorage(t *testing.T,client *ent.Client) {
+ t.Helper()
  service:=NewSystemService(SystemServiceParams{Ent:client,UnifiedHistory:UnifiedHistoryConfig{Enabled:true,RetentionDays:2}})
  ctx:=contexts.WithAPIKey(authz.WithTestBypass(ent.NewContext(t.Context(),client)),&ent.APIKey{ID:71,ProjectID:19})
  ctx=contexts.WithProjectID(ctx,19)
@@ -52,4 +65,34 @@ func TestUnifiedHistoryStorageTransactionAndRetention(t *testing.T) {
  require.NoError(t,client.System.Update().SetUpdatedAt(old).Exec(ctx))
  require.NoError(t,service.PruneUnifiedHistory(ctx))
  count,err=client.System.Query().Count(ctx);require.NoError(t,err);require.Equal(t,2,count)
+}
+
+func TestUnifiedHistoryPublicationRace_Postgres(t *testing.T) {
+ dsn:=os.Getenv("AXONHUB_TEST_PG_DSN")
+ if dsn=="" {t.Skip("AXONHUB_TEST_PG_DSN not set")}
+ client:=newPostgresQuotaRoutingMigrationClient(t,dsn)
+ service:=NewSystemService(SystemServiceParams{Ent:client,UnifiedHistory:UnifiedHistoryConfig{Enabled:true}})
+ ctx:=contexts.WithProjectID(contexts.WithAPIKey(authz.WithTestBypass(ent.NewContext(t.Context(),client)),&ent.APIKey{ID:71,ProjectID:19}),19)
+ alias:="response:"+strings.Repeat("a",64)
+ conflict:=errors.New("immutable alias conflict")
+ results:=make(chan error,8)
+ start:=make(chan struct{})
+ var wg sync.WaitGroup
+ for i:=range 8 {
+  wg.Go(func(){
+   <-start
+   value:=fmt.Sprintf("writer-%d",i)
+   results<-service.RunInTransaction(ctx,func(txCtx context.Context)error {
+    if err:=service.SaveUnifiedHistory(txCtx,map[string]string{alias:value,fmt.Sprintf("block:%064x",i):value});err!=nil{return err}
+    stored,err:=service.LoadUnifiedHistory(txCtx,[]string{alias});if err!=nil{return err}
+    if stored[alias]!=value{return conflict};return nil
+   })
+  })
+ }
+ close(start);wg.Wait();close(results)
+ winners:=0
+ for err:=range results {if err==nil{winners++}else{require.ErrorIs(t,err,conflict)}}
+ require.Equal(t,1,winners)
+ count,err:=client.System.Query().Where(system.KeyHasPrefix(unifiedHistoryPrefix)).Count(ctx)
+ require.NoError(t,err);require.Equal(t,2,count,"losing writers must not leave unreachable blocks")
 }

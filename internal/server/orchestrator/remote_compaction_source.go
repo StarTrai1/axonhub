@@ -52,6 +52,9 @@ func (a *remoteCompactionAdapter) retainNativeCompactionSource(ctx context.Conte
 		return err
 	}
 	if a.unifiedHistoryEnabled() {
+        owner,ownerErr:=historyState(ctx)
+        if ownerErr!=nil{return ownerErr}
+        if state==nil || state.APIKey==nil || owner.APIKey.ID!=state.APIKey.ID || owner.APIKey.ProjectID!=state.APIKey.ProjectID {return errors.New("unified history source owner mismatch")}
         if state.unifiedHistorySource!=nil {source=state.unifiedHistorySource}
         source,err=a.flattenHistorySource(ctx,source,state)
         if err!=nil{return err}
