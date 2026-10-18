@@ -256,4 +256,10 @@ func TestUnifiedHistoryArchivesOriginalInsteadOfProviderSummaryView(t *testing.T
  require.NoError(t,adapter.archiveHistoryResponse(ctx,provider,[]byte(`{"id":"resp_origin","status":"completed","output":[]}`)))
  stored,_,found,err:=adapter.loadHistorySnapshot(ctx,historyResponseAlias("resp_origin"))
  require.NoError(t,err);require.True(t,found);require.Contains(t,string(stored),"exact original calibration 17.125");require.NotContains(t,string(stored),"lossy provider view")
+ state.unifiedHistorySource=&remoteCompactionSource{body:source}
+ ref=&remoteCompactionReference{ID:"cmp_provider_view",EncryptedContent:"new-native-cipher"}
+ // The provider may have a transport-local predecessor unknown to the archive.
+ require.NoError(t,adapter.retainNativeCompactionSource(ctx,ref,state,&remoteCompactionSource{body:[]byte(`{"model":"gpt-6-astra","previous_response_id":"provider-only-id","input":[]}`)}))
+ stored,_,found,err=adapter.loadHistorySnapshot(ctx,historyCheckpointAlias(ref))
+ require.NoError(t,err);require.True(t,found);require.Contains(t,string(stored),"exact original calibration 17.125")
 }
