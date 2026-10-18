@@ -38,3 +38,5 @@ Lossless archival does not mean every token is visible in every model request. L
 Cold segment generation still costs tokens and time; subsequent reuse must justify it. Prefix changes after compaction and hidden upstream account changes may still reduce cache hits. Model and reasoning effort are preserved. Evaluate total cost and task quality as well as cache percentages.
 
 Acceptance should compare source coverage, summary count, cached tokens, TTFT and total latency, with tests for early constraints, exact numbers/code/tool results, later corrections and branch isolation. Synthetic CI and loopback providers cannot prove unchanged real-model answer quality.
+
+Archived input is captured independently from the compiled provider view. Where the source can be verified, new checkpoints flatten earlier original sources before publication so repeated compaction does not accumulate ancestry depth. Publication verifies the immutable alias in the same transaction and rolls back conflicting versions. Existing blocks refresh timestamps without resending ciphertext to SQL; valid reads also refresh an explicitly finite retention policy.

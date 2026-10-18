@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
+"strings"
 	"testing"
 
 	"github.com/gorilla/websocket"
@@ -139,8 +140,10 @@ func testResponsesProtocolHistoryMigration(t *testing.T, unified bool) {
 				SetEndpoints([]objects.ChannelEndpoint{{APIFormat: "openai/responses"}}).
 				SetSettings(&objects.ChannelSettings{PassThroughBody: lo.ToPtr(true), ModelProtocols: []objects.ModelProtocol{{Model: "gpt-6-astra", APIFormats: []string{"openai/responses"}}}}).Exec(ctx))
 			require.NoError(t, handlers.ChannelService.ReloadEnabledChannelsCache(ctx))
+            continuationBody:=`{"model":"gpt-6-astra","stream":false,"client_metadata":{"thread_id":"delta-thread"},"input":[{"role":"user","content":"retained detail"},{"type":"compaction","id":"cmp_ws_source","encrypted_content":"source-cipher"},{"role":"user","content":"continue-canary"}]}`
+            if unified {continuationBody=strings.ReplaceAll(continuationBody,"retained detail","complete original source canary")}
 			for range 2 {
-				status, body := responsesIntegrationPost(t, gateway, "/v1/responses", `{"model":"gpt-6-astra","stream":false,"client_metadata":{"thread_id":"delta-thread"},"input":[{"role":"user","content":"retained detail"},{"type":"compaction","id":"cmp_ws_source","encrypted_content":"source-cipher"},{"role":"user","content":"continue-canary"}]}`)
+				status, body := responsesIntegrationPost(t, gateway, "/v1/responses", continuationBody)
 				require.Equal(t, http.StatusOK, status, string(body))
 			}
 			mu.Lock()

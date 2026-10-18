@@ -18,6 +18,25 @@ import (
 
 const historyBlockBytes = 64 << 10
 
+// The provider body may be a compiled summary view. Keep its archival source
+// independent so later previous_response_id deltas never promote that view to
+// the authoritative history. Only the main request installs this value.
+type unifiedHistoryOriginKey struct{}
+
+func withUnifiedHistoryOrigin(ctx context.Context, body []byte) context.Context {
+ return context.WithValue(ctx,unifiedHistoryOriginKey{},append([]byte(nil),body...))
+}
+
+func (a *remoteCompactionAdapter) flattenHistorySource(ctx context.Context, source *remoteCompactionSource,state *PersistenceState)(*remoteCompactionSource,error){
+ resolved,err:=a.resolveCompactionSourceContinuation(ctx,source,state)
+ if err!=nil{return nil,err}
+ expanded,complete,err:=a.expandUnifiedHistory(ctx,resolved.body,state,make(map[string]bool))
+ if err!=nil{return nil,err}
+ if !complete{return resolved,nil}
+ return &remoteCompactionSource{body:expanded,headers:resolved.headers},nil
+}
+
+
 // Keep a bounded number of small-window encoders between requests. Creating a
 // compressor for every history item otherwise dominates short-item archival.
 var historyEncoders = make(chan *zstd.Encoder, 4)
@@ -347,7 +366,8 @@ func (a *remoteCompactionAdapter) archiveHistoryResponse(ctx context.Context, bo
 	}
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	source, err := a.resolveCompactionSourceContinuation(ctx, &remoteCompactionSource{body: body}, state)
+	if original,ok:=ctx.Value(unifiedHistoryOriginKey{}).([]byte);ok && len(original)>0 {body=original}
+	source, err := a.flattenHistorySource(ctx, &remoteCompactionSource{body: body}, state)
 	if err != nil {
 		return err
 	}

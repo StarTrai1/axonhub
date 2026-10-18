@@ -1,5 +1,7 @@
 # Responses latency and compatibility
 
+[Unified conversation history (experimental)](unified-conversation-history.md)
+
 ## Prompt-cache stability and gateway overhead
 
 Prompt-cache reuse depends on the provider and an unchanged eligible prompt prefix.

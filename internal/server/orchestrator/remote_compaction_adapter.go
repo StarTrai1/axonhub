@@ -169,6 +169,7 @@ func (m *remoteCompactionMiddleware) OnInboundLlmRequest(ctx context.Context, re
 		if err != nil {
 			return nil, err
 		}
+		m.inbound.state.unifiedHistorySource=m.historySource
 		if hasLocalBridgeCodexCandidate(candidates) {
 			compiled, supported, compileErr := m.adapter.compileUnifiedContext(ctx, m.historySource.body, m.inbound.state, m.executor)
 			if compileErr != nil {
@@ -350,7 +351,7 @@ func (m *remoteCompactionMiddleware) adaptLocalCompactionGeneration(ctx context.
 		m.generation.retainSource = func(ref *remoteCompactionReference) error {
 			persistCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
 			defer cancel()
-			return m.adapter.saveHistorySnapshot(persistCtx, historyCheckpointAlias(ref), source.body, nil)
+			return m.adapter.retainNativeCompactionSource(persistCtx, ref, m.inbound.state, source)
 		}
 	}
 

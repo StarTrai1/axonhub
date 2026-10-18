@@ -221,3 +221,33 @@ func TestUnifiedHistoryRestoredPromptProtection(t *testing.T) {
  _,_,err=adapter.compileUnifiedContext(ctx,body,state,&compactionEvidenceExecutor{})
  require.Error(t,err,"restored history must not bypass a new reject rule")
 }
+
+func TestUnifiedHistoryRepeatedCheckpointsFlattenOriginalSources(t *testing.T) {
+ ctx,_,state,adapter:=unifiedHistoryFixture(t)
+ body:=[]byte(`{"model":"gpt-6-astra","input":[{"role":"user","content":"initial calibration 17.125"},{"type":"compaction_trigger"}]}`)
+ var ref *remoteCompactionReference
+ for i:=range 20 {
+  ref=&remoteCompactionReference{ID:fmt.Sprintf("cmp_generation_%d",i),EncryptedContent:"native-cipher"}
+  require.NoError(t,adapter.retainNativeCompactionSource(ctx,ref,state,&remoteCompactionSource{body:body}))
+  original,_,found,err:=adapter.loadHistorySnapshot(ctx,historyCheckpointAlias(ref))
+  require.NoError(t,err);require.True(t,found);require.Contains(t,string(original),"initial calibration 17.125")
+  require.False(t,gjson.GetBytes(original,`input.#(type=="compaction")`).Exists(),"new checkpoints must not accumulate ancestry depth")
+  body=[]byte(fmt.Sprintf(`{"model":"gpt-6-astra","input":[{"type":"compaction","id":%q,"encrypted_content":%q},{"role":"user","content":"correction %d"},{"type":"compaction_trigger"}]}`,ref.ID,ref.EncryptedContent,i))
+ }
+ compiled,ok,err:=adapter.compileUnifiedContext(ctx,body,state,&compactionEvidenceExecutor{})
+ require.NoError(t,err);require.True(t,ok)
+ for i:=range 20 {require.Contains(t,string(compiled),fmt.Sprintf("correction %d",i))}
+}
+
+func TestUnifiedHistoryArchivesOriginalInsteadOfProviderSummaryView(t *testing.T) {
+ ctx,_,state,adapter:=unifiedHistoryFixture(t)
+ ref:=&remoteCompactionReference{ID:"cmp_origin",EncryptedContent:"native-cipher"}
+ source:=[]byte(`{"model":"gpt-6-astra","input":[{"role":"user","content":"exact original calibration 17.125"},{"type":"compaction_trigger"}]}`)
+ require.NoError(t,adapter.retainNativeCompactionSource(ctx,ref,state,&remoteCompactionSource{body:source}))
+ original:=[]byte(`{"model":"gpt-6-astra","input":[{"type":"compaction","id":"cmp_origin","encrypted_content":"native-cipher"},{"role":"user","content":"continue"}]}`)
+ ctx=withUnifiedHistoryOrigin(ctx,original)
+ provider:=[]byte(`{"model":"gpt-6-astra","input":[{"role":"assistant","content":"lossy provider view"}]}`)
+ require.NoError(t,adapter.archiveHistoryResponse(ctx,provider,[]byte(`{"id":"resp_origin","status":"completed","output":[]}`)))
+ stored,_,found,err:=adapter.loadHistorySnapshot(ctx,historyResponseAlias("resp_origin"))
+ require.NoError(t,err);require.True(t,found);require.Contains(t,string(stored),"exact original calibration 17.125");require.NotContains(t,string(stored),"lossy provider view")
+}
