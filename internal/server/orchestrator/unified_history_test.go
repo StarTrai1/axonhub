@@ -269,3 +269,17 @@ func TestUnifiedHistoryArchivesOriginalInsteadOfProviderSummaryView(t *testing.T
  stored,_,found,err=adapter.loadHistorySnapshot(ctx,historyCheckpointAlias(ref))
  require.NoError(t,err);require.True(t,found);require.Contains(t,string(stored),"exact original calibration 17.125")
 }
+
+func TestUnifiedHistoryGroupsKeepInterruptedToolPairs(t *testing.T) {
+ items:=[]json.RawMessage{
+  json.RawMessage(`{"role":"user","content":"inspect original source"}`),
+  json.RawMessage(`{"type":"function_call","name":"inspect","call_id":"call_original","arguments":"{}"}`),
+  json.RawMessage(`{"role":"user","content":"interruption: preserve calibration 17.125"}`),
+  json.RawMessage(`{"type":"function_call_output","call_id":"call_original","output":"exact original result"}`),
+  json.RawMessage(`{"role":"user","content":"continue"}`),
+ }
+ groups:=unifiedHistoryGroups(items)
+ require.Len(t,groups,2)
+ require.Len(t,groups[0],4,"an interruption cannot separate the original call from its result")
+ require.Len(t,groups[1],1)
+}

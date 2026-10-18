@@ -315,18 +315,25 @@ func (a *remoteCompactionAdapter) compileUnifiedContext(ctx context.Context, bod
 }
 
 func unifiedHistoryGroups(items []json.RawMessage) [][]json.RawMessage {
-	var groups [][]json.RawMessage
-	start := 0
-	for i, item := range items {
-		if i > start && gjson.GetBytes(item, "role").String() == "user" {
-			groups = append(groups, items[start:i])
-			start = i
-		}
-	}
-	if start < len(items) {
-		groups = append(groups, items[start:])
-	}
-	return groups
+ var groups [][]json.RawMessage
+ start:=0
+ pending:=make(map[string]bool)
+ for i,item:=range items {
+  value:=gjson.ParseBytes(item)
+  // A user interruption can arrive before an outstanding tool result. Keep
+  // that call and its result in one original group across the user boundary.
+  if i>start && value.Get("role").String()=="user" && len(pending)==0 {
+   groups=append(groups,items[start:i]);start=i
+  }
+  switch value.Get("type").String(){
+  case "function_call","custom_tool_call":
+   if id:=value.Get("call_id").String();id!=""{pending[id]=true}
+  case "function_call_output","custom_tool_call_output":
+   delete(pending,value.Get("call_id").String())
+  }
+ }
+ if start<len(items){groups=append(groups,items[start:])}
+ return groups
 }
 
 func unifiedHistoryRelevant(query string, items []json.RawMessage) bool {
