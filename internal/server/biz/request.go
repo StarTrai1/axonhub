@@ -1589,10 +1589,14 @@ func (s *RequestService) loadCompletedResponsesSession(
 	if err != nil {
 		return nil, nil, false, fmt.Errorf("failed to load Responses response body: %w", err)
 	}
+	executionFormats := []string{string(llm.APIFormatOpenAIResponse)}
+	if allowDelta {
+		executionFormats = append(executionFormats, string(llm.APIFormatOpenAIResponseWebSocket))
+	}
 	execution, executionErr := s.entFromContext(ctx).RequestExecution.Query().Where(
 		requestexecution.RequestIDEQ(req.ID),
 		requestexecution.StatusEQ(requestexecution.StatusCompleted),
-		requestexecution.FormatEQ(string(llm.APIFormatOpenAIResponse)),
+		requestexecution.FormatIn(executionFormats...),
 	).Select(requestexecution.FieldID, requestexecution.FieldRequestID, requestexecution.FieldProjectID,
 		requestexecution.FieldDataStorageID, requestexecution.FieldStatus,
 		requestexecution.FieldRequestBody, requestexecution.FieldResponseBody).

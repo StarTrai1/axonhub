@@ -86,6 +86,18 @@ func TestResponsesProtocolNativeCompactionMigrationFromWebSocketDelta(t *testing
 			require.Equal(t, "resp_before_compaction", gjson.GetBytes(first, "response.id").String(), string(first))
 			<-frames
 			compacted := responsesIntegrationTurn(t, conn, `{"type":"response.create","model":"gpt-6-astra","previous_response_id":"resp_before_compaction","client_metadata":{"thread_id":"delta-thread","x-codex-turn-metadata":"{\"request_kind\":\"compaction\",\"compaction\":{\"implementation\":\"responses_compaction_v2\"}}"},"input":[{"type":"custom_tool_call_output","call_id":"call_original","output":"original exact tool result"},{"type":"compaction_trigger"}]}`)
+			if gjson.GetBytes(compacted, "response.output.0.id").String() != "cmp_ws_source" {
+				rows, err := client.Request.Query().All(ctx)
+				require.NoError(t, err)
+				for _, row := range rows {
+					t.Logf("source fixture row id=%d external=%s status=%s format=%s response=%s", row.ID, row.ExternalID, row.Status, row.Format, row.ResponseBody)
+					executions, err := row.QueryExecutions().All(ctx)
+					require.NoError(t, err)
+					for _, execution := range executions {
+						t.Logf("source fixture execution status=%s format=%s response=%s", execution.Status, execution.Format, execution.ResponseBody)
+					}
+				}
+			}
 			require.Equal(t, "cmp_ws_source", gjson.GetBytes(compacted, "response.output.0.id").String(), string(compacted))
 			delta := <-frames
 			require.Equal(t, "resp_before_compaction", gjson.GetBytes(delta, "previous_response_id").String())
