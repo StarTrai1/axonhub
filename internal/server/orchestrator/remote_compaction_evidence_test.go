@@ -94,6 +94,7 @@ func TestNativeCompactionMigrationReusesAncestorEvidence(t *testing.T) {
 
 type compactionEvidenceExecutor struct {
 	rejectedCompactionBridgeExecutor
+
 	nativeCalls        int
 	statusRejections   int
 	ancestorRejections int
