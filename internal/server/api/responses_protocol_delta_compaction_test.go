@@ -42,6 +42,9 @@ func TestResponsesProtocolNativeCompactionMigrationFromWebSocketDelta(t *testing
 						if turn == 1 {
 							response = `{"type":"response.completed","response":{"id":"resp_original_compaction","object":"response","status":"completed","output":[{"type":"compaction","id":"cmp_ws_source","encrypted_content":"source-cipher"}]}}`
 						}
+						id := gjson.Get(response, "response.id").String()
+						created := fmt.Sprintf(`{"type":"response.created","response":{"id":%q,"object":"response","model":"gpt-6-astra","status":"in_progress","output":[]}}`, id)
+						if err := conn.WriteMessage(websocket.TextMessage, []byte(created)); err != nil { t.Error(err); return }
 						if err := conn.WriteMessage(websocket.TextMessage, []byte(response)); err != nil {
 							t.Error(err)
 							return
