@@ -22,9 +22,9 @@ import (
 func TestAnthropicStructuredOutputConversion(t *testing.T) {
 	const schema = `{"type":"object","properties":{"z":{"type":"integer","minimum":7},"a":{"type":"string","enum":["yes","no"]}},"required":["z","a"],"additionalProperties":false}`
 	for _, source := range []struct {
-		name string
+		name    string
 		inbound transformer.Inbound
-		body string
+		body    string
 	}{
 		{"anthropic", anthropic.NewInboundTransformer(), `{"model":"claude-opus-5-5","max_tokens":8192,"messages":[{"role":"user","content":"answer"}],"thinking":{"type":"adaptive"},"cache_control":{"type":"ephemeral"},"output_config":{"effort":"max","format":{"type":"json_schema","schema":%s}}}`},
 		{"chat", openai.NewInboundTransformer(), `{"model":"claude-opus-5-5","messages":[{"role":"user","content":"answer"}],"reasoning_effort":"max","response_format":{"type":"json_schema","json_schema":{"name":"answer","strict":true,"schema":%s}}}`},
@@ -74,9 +74,11 @@ func TestAnthropicStructuredOutputSurvivesEffortNormalization(t *testing.T) {
 		{"claude-opus-4-6", "xhigh", "max"},
 	} {
 		t.Run(tc.model, func(t *testing.T) {
-			src := &llm.Request{APIFormat: llm.APIFormatOpenAIResponse, Model: tc.model, ReasoningEffort: tc.effort,
-				Messages: []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("answer")}}},
-				ResponseFormat: &llm.ResponseFormat{Type: "json_schema", JSONSchema: json.RawMessage(`{"schema":{"type":"object"}}`)}}
+			src := &llm.Request{
+				APIFormat: llm.APIFormatOpenAIResponse, Model: tc.model, ReasoningEffort: tc.effort,
+				Messages:       []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("answer")}}},
+				ResponseFormat: &llm.ResponseFormat{Type: "json_schema", JSONSchema: json.RawMessage(`{"schema":{"type":"object"}}`)},
+			}
 			outbound, err := anthropic.NewOutboundTransformer("https://example.invalid", "test-key")
 			require.NoError(t, err)
 			wire, err := outbound.TransformRequest(context.Background(), src)
@@ -90,8 +92,10 @@ func TestAnthropicStructuredOutputSurvivesEffortNormalization(t *testing.T) {
 func TestAnthropicStructuredOutputBoundaries(t *testing.T) {
 	for _, encoded := range []string{`{`, `null`, `{}`, `{"schema":null}`, `{"schema":[]}`, `{"schema":true}`} {
 		t.Run(encoded, func(t *testing.T) {
-			src := &llm.Request{Model: "claude-opus-5-5", Messages: []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("answer")}}},
-				ResponseFormat: &llm.ResponseFormat{Type: "json_schema", JSONSchema: json.RawMessage(encoded)}}
+			src := &llm.Request{
+				Model: "claude-opus-5-5", Messages: []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("answer")}}},
+				ResponseFormat: &llm.ResponseFormat{Type: "json_schema", JSONSchema: json.RawMessage(encoded)},
+			}
 			outbound, err := anthropic.NewOutboundTransformer("https://example.invalid", "test-key")
 			require.NoError(t, err)
 			wire, err := outbound.TransformRequest(context.Background(), src)
@@ -103,8 +107,10 @@ func TestAnthropicStructuredOutputBoundaries(t *testing.T) {
 		t.Run(string(platform), func(t *testing.T) {
 			outbound, err := anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{Type: platform, BaseURL: "https://example.invalid"})
 			require.NoError(t, err)
-			src := &llm.Request{Model: "provider-model", ReasoningEffort: "high", Messages: []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("answer")}}},
-				ResponseFormat: &llm.ResponseFormat{Type: "json_schema", JSONSchema: json.RawMessage(`{"schema":{"type":"object"}}`)}}
+			src := &llm.Request{
+				Model: "provider-model", ReasoningEffort: "high", Messages: []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("answer")}}},
+				ResponseFormat: &llm.ResponseFormat{Type: "json_schema", JSONSchema: json.RawMessage(`{"schema":{"type":"object"}}`)},
+			}
 			wire, err := outbound.TransformRequest(context.Background(), src)
 			require.NoError(t, err)
 			require.False(t, gjson.GetBytes(wire.Body, "output_config.format").Exists())

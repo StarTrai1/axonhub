@@ -1,6 +1,7 @@
 package anthropic
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 
@@ -32,8 +33,10 @@ func restoreStructuredOutput(src *llm.Request, dst *MessageRequest, config *Conf
 	if err := json.Unmarshal(src.ResponseFormat.JSONSchema, &wrapper); err != nil {
 		return fmt.Errorf("%w: invalid structured output envelope: %w", transformer.ErrInvalidRequest, err)
 	}
-	var schema map[string]json.RawMessage
-	if err := json.Unmarshal(wrapper.Schema, &schema); err != nil || schema == nil {
+	// Unmarshal already validates the nested JSON and owns its RawMessage copy;
+	// check the root shape without decoding or copying a potentially large schema again.
+	schema := bytes.TrimSpace(wrapper.Schema)
+	if len(schema) == 0 || schema[0] != '{' {
 		return fmt.Errorf("%w: structured output schema must be a JSON object", transformer.ErrInvalidRequest)
 	}
 	if dst.OutputConfig == nil {
@@ -43,7 +46,7 @@ func restoreStructuredOutput(src *llm.Request, dst *MessageRequest, config *Conf
 	// OpenAI's envelope name/description/strict are not Claude format fields.
 	dst.OutputConfig.Format = &JSONOutputFormat{
 		Type:   "json_schema",
-		Schema: append(json.RawMessage(nil), wrapper.Schema...),
+		Schema: wrapper.Schema,
 	}
 	return nil
 }
