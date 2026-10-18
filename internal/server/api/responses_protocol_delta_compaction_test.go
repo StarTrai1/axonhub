@@ -44,7 +44,10 @@ func TestResponsesProtocolNativeCompactionMigrationFromWebSocketDelta(t *testing
 						}
 						id := gjson.Get(response, "response.id").String()
 						created := fmt.Sprintf(`{"type":"response.created","response":{"id":%q,"object":"response","model":"gpt-6-astra","status":"in_progress","output":[]}}`, id)
-						if err := conn.WriteMessage(websocket.TextMessage, []byte(created)); err != nil { t.Error(err); return }
+						if err := conn.WriteMessage(websocket.TextMessage, []byte(created)); err != nil {
+							t.Error(err)
+							return
+						}
 						if err := conn.WriteMessage(websocket.TextMessage, []byte(response)); err != nil {
 							t.Error(err)
 							return
@@ -79,6 +82,8 @@ func TestResponsesProtocolNativeCompactionMigrationFromWebSocketDelta(t *testing
 					SetSettings(&objects.ChannelSettings{PassThroughBody: lo.ToPtr(true), ModelProtocols: []objects.ModelProtocol{{Model: "gpt-6-astra", APIFormats: []string{"openai/responses-ws"}}}})
 			})
 			ctx := authz.WithTestBypass(ent.NewContext(t.Context(), client))
+			_, err := client.DataStorage.Create().SetName("primary").SetDescription("synthetic compaction history").SetPrimary(true).SetType("database").SetSettings(new(objects.DataStorageSettings)).Save(ctx)
+			require.NoError(t, err)
 			require.NoError(t, handlers.SystemService.SetSecretKey(ctx, "synthetic-delta-source-secret"))
 			retries := handlers.SystemService.RetryPolicyOrDefault(ctx)
 			retries.Enabled, retries.MaxChannelRetries, retries.MaxSingleChannelRetries, retries.RetryDelayMs = true, 0, 2, 0

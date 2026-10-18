@@ -82,7 +82,7 @@ func (a *remoteCompactionAdapter) resolveCompactionSourceContinuation(ctx contex
 		count += len(segment)
 	}
 	resolved := make([]json.RawMessage, 0, count)
-	for i := len(segments)-1; i >= 0; i-- {
+	for i := len(segments) - 1; i >= 0; i-- {
 		resolved = append(resolved, segments[i]...)
 	}
 	if err := setResponseEnvelopeInput(envelope, resolved); err != nil {

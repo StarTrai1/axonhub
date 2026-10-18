@@ -138,7 +138,11 @@ func TestResponsesRejectedNativeSourceDeltaFailures(t *testing.T) {
 				require.NoError(t, client.Request.DeleteOne(row).Exec(ctx))
 			case "wrong key", "wrong project":
 				other := &ent.APIKey{ID: owner.ID, ProjectID: owner.ProjectID}
-				if mode == "wrong key" { other.ID++ } else { other.ProjectID++ }
+				if mode == "wrong key" {
+					other.ID++
+				} else {
+					other.ProjectID++
+				}
 				require.NoError(t, client.Request.DeleteOne(row).Exec(ctx))
 				seedCompactionPredecessor(t, ctx, client, other, "resp_root", string(row.RequestBody), gjson.GetBytes(row.ResponseBody, "output").Raw)
 			case "incomplete", "wrong id", "error":
