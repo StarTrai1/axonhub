@@ -133,6 +133,9 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawError(ctx context.C
 	} else if !exactCheckpoint {
 		return
 	}
+	if exactCheckpoint {
+		m.rememberCheckpointRejection(ctx, key)
+	}
 	if _, alreadyRejected := m.rejected[key]; alreadyRejected {
 		return
 	}
@@ -192,6 +195,7 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawRequest(
 		return request, nil
 	}
 	_, rejected := m.rejected[key]
+	rejected = rejected || m.hasCheckpointRejection(ctx, key)
 	known := m.hasConfirmedRecovery(ctx, key)
 	replayKey := key
 	replayKey.replay = true

@@ -64,6 +64,7 @@ type remoteCompactionAdapter struct {
 	summaryGenerator         singleflight.Group
 	recoveries               *lru.Cache[responsesCompactionRecoveryKey, time.Time]
 	recoveryMisses           *lru.Cache[responsesCompactionRecoveryKey, time.Time]
+	checkpointRejections     *lru.Cache[[sha256.Size]byte, time.Time]
 	nativeMigrations         *lru.Cache[responsesCompactionRecoveryKey, nativeCompactionMigrationCacheEntry]
 	nativeMigrationGenerator singleflight.Group
 }
@@ -115,6 +116,7 @@ func newRemoteCompactionAdapter(
 		summaries:        gocache.New(remoteCompactionCacheExpiration, remoteCompactionCacheCleanup),
 		recoveries:       lo.Must(lru.New[responsesCompactionRecoveryKey, time.Time](responsesReasoningRecoveryMaxScopes)),
 		recoveryMisses:   lo.Must(lru.New[responsesCompactionRecoveryKey, time.Time](responsesReasoningRecoveryMaxScopes)),
+		checkpointRejections: lo.Must(lru.New[[sha256.Size]byte, time.Time](responsesReasoningRecoveryMaxScopes)),
 		nativeMigrations: lo.Must(lru.New[responsesCompactionRecoveryKey, nativeCompactionMigrationCacheEntry](64)),
 	}
 }

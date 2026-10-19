@@ -47,6 +47,15 @@ func (service *SystemService) SaveResponsesCompactionRecovery(ctx context.Contex
 	return service.saveResponsesRecoveryExpiry(ctx, "responses_compaction_recoveries_v1", scope, expiresAt)
 }
 
+// Rejection evidence does not prove that a replacement history was accepted.
+func (service *SystemService) LoadResponsesCompactionRejection(ctx context.Context, scope [sha256.Size]byte) (time.Time, error) {
+	return service.loadResponsesRecoveryExpiry(ctx, "responses_compaction_rejections_v1", scope)
+}
+
+func (service *SystemService) SaveResponsesCompactionRejection(ctx context.Context, scope [sha256.Size]byte, expiresAt time.Time) error {
+	return service.saveResponsesRecoveryExpiry(ctx, "responses_compaction_rejections_v1", scope, expiresAt)
+}
+
 func (service *SystemService) loadResponsesRecoveryExpiry(ctx context.Context, storageKey string, scope [sha256.Size]byte) (time.Time, error) {
 	ctx = authz.WithSystemBypass(ctx, "load-responses-metadata-capability")
 	record, err := service.entFromContext(ctx).System.Query().

@@ -168,6 +168,8 @@ type unifiedConcurrentExecutor struct {
 	active    atomic.Int32
 	max       atomic.Int32
 	cancel    context.CancelFunc
+	started chan<- struct{}
+	release <-chan struct{}
 }
 
 func (e *unifiedConcurrentExecutor) Do(context.Context, *httpclient.Request) (*httpclient.Response, error) {
@@ -193,6 +195,14 @@ func (e *unifiedConcurrentExecutor) DoStream(ctx context.Context, req *httpclien
 		return nil, context.Canceled
 	}
 	e.mu.Unlock()
+	if e.started != nil {
+		e.started <- struct{}{}
+		select {
+		case <-e.release:
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
 	contexts.WithChannelAPIKey(ctx, "segment-local-credential")
 	return streams.SliceStream([]*httpclient.StreamEvent{{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":{"id":"resp_segment","status":"completed","model":"gpt-6-astra","output":[{"type":"message","role":"assistant","content":[{"type":"output_text","text":"verified retained source summary"}]}]}}`)}}), nil
 }

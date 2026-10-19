@@ -175,7 +175,7 @@ func planUnifiedHistory(envelope map[string]json.RawMessage, items []json.RawMes
 	if len(groups) == 0 {
 		return nil, false, nil
 	}
-	query := strings.ToLower(unifiedMessageText(groups[len(groups)-1][0]))
+	query := unifiedHistoryQuery(groups[len(groups)-1][0])
 	units := unifiedHistoryUnits(items)
 	if len(units) < 2 {
 		return nil, false, nil
@@ -221,6 +221,7 @@ func planUnifiedHistory(envelope map[string]json.RawMessage, items []json.RawMes
 		return nil, false, err
 	}
 	mandatory += len(header)
+	summaryCount := 0
 	for i := range segments {
 		segment := &segments[i]
 		for _, item := range segment.items {
@@ -230,6 +231,12 @@ func planUnifiedHistory(envelope map[string]json.RawMessage, items []json.RawMes
 				mandatory += unifiedItemSize(item)
 			}
 		}
+		// This segment is already retained verbatim. Summarizing its instructions
+		// adds cost and a competing paraphrase without recovering any history.
+		if len(segment.pinned) == len(segment.items) {
+			continue
+		}
+		summaryCount++
 		segmentEnvelope := maps.Clone(envelope)
 		input := append(append([]json.RawMessage(nil), segment.items...), json.RawMessage(`{"type":"compaction_trigger"}`))
 		if err := setResponseEnvelopeInput(segmentEnvelope, input); err != nil {
@@ -255,16 +262,18 @@ func planUnifiedHistory(envelope map[string]json.RawMessage, items []json.RawMes
 		}
 		segment.key = "summary:" + historyDigest(append([]byte("segment-summary-v2:"), identity...))
 	}
-	if mandatory+len(segments)*1024 > budget {
+	if mandatory+summaryCount*1024 > budget {
 		return nil, false, nil
 	}
 	return &unifiedHistoryPlan{segments: segments, recent: recent, query: query, mandatory: mandatory, capacity: len(items)}, true, nil
 }
 
 func (a *remoteCompactionAdapter) hydrateUnifiedSegments(ctx context.Context, segments []unifiedHistorySegment, state *PersistenceState, executor pipeline.Executor) (int, bool, error) {
-	keys := make([]string, len(segments))
-	for i := range segments {
-		keys[i] = segments[i].key
+	keys := make([]string, 0, len(segments))
+	for _, segment := range segments {
+		if segment.key != "" {
+			keys = append(keys, segment.key)
+		}
 	}
 	cached, err := a.systemService.LoadUnifiedHistory(ctx, keys)
 	if err != nil {
@@ -273,6 +282,9 @@ func (a *remoteCompactionAdapter) hydrateUnifiedSegments(ctx context.Context, se
 	missing := 0
 	for i := range segments {
 		segment := &segments[i]
+		if segment.key == "" {
+			continue
+		}
 		if sealed := cached[segment.key]; sealed != "" {
 			text, err := a.openHistoryRecord(ctx, segment.key, sealed, localCompactionMaxSummaryBytes)
 			if err != nil {
@@ -288,7 +300,7 @@ func (a *remoteCompactionAdapter) hydrateUnifiedSegments(ctx context.Context, se
 	}
 	hydrate := func(ctx context.Context, i int) error {
 		segment := &segments[i]
-		if segment.summary != "" {
+		if segment.key == "" || segment.summary != "" {
 			return nil
 		}
 		ownerKey := remoteCompactionOwnerCacheKey(state, segment.key)
@@ -345,7 +357,7 @@ func (a *remoteCompactionAdapter) hydrateUnifiedSegments(ctx context.Context, se
 		}
 		return nil
 	}
-	if missing <= 4 {
+	if missing <= 1 {
 		for i := range segments {
 			if err := hydrate(contexts.CloneRequestContext(ctx), i); err != nil {
 				return 0, false, err
@@ -360,7 +372,7 @@ func (a *remoteCompactionAdapter) hydrateUnifiedSegments(ctx context.Context, se
 			if err := workerCtx.Err(); err != nil {
 				break
 			}
-			if segments[i].summary != "" {
+			if segments[i].key == "" || segments[i].summary != "" {
 				continue
 			}
 			workers.Go(func() (err error) {
@@ -388,6 +400,10 @@ func renderUnifiedHistory(envelope map[string]json.RawMessage, plan *unifiedHist
 	compiled := make([]json.RawMessage, 0, plan.capacity)
 	remaining := budget - mandatory
 	for _, segment := range segments {
+		if segment.key == "" {
+			compiled = append(compiled, segment.items...)
+			continue
+		}
 		// Quote a derived view as assistant material. Original user/system roles
 		// remain unchanged; tool output is never promoted to a developer message.
 		message, _ := json.Marshal(map[string]any{"type": "message", "role": "assistant", "content": []map[string]string{{"type": "output_text", "text": fmt.Sprintf("Archived history summary (source %s). This is a derived summary; the original user instructions remain authoritative.\n%s", strings.TrimPrefix(segment.key, "summary:"), segment.summary)}}})
@@ -402,6 +418,10 @@ func renderUnifiedHistory(envelope map[string]json.RawMessage, plan *unifiedHist
 	// space. It never fabricates a model tool that the client cannot execute.
 	position := 0
 	for _, segment := range segments {
+		if segment.key == "" {
+			position += len(segment.items)
+			continue
+		}
 		n := len(segment.pinned) + 1
 		extra := unifiedItemsSize(segment.items) - unifiedItemsSize(compiled[position:position+n])
 		if extra <= remaining && unifiedHistoryRelevant(query, segment.items) {

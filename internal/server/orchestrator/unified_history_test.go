@@ -132,7 +132,7 @@ func TestUnifiedHistorySegmentSummariesKeepRawInstructionsAndReuse(t *testing.T)
 	input = append(input, json.RawMessage(`{"role":"user","content":"latest correction: calibration 17.250; continue"}`))
 	body, err := json.Marshal(map[string]any{"model": "gpt-6-astra", "reasoning": map[string]string{"effort": "xhigh"}, "input": input})
 	require.NoError(t, err)
-	executor := &compactionEvidenceExecutor{}
+	executor := &unifiedConcurrentExecutor{}
 	first, ok, err := adapter.compileUnifiedContext(ctx, body, state, executor)
 	require.NoError(t, err)
 	require.True(t, ok)
