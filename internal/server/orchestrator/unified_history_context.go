@@ -26,7 +26,7 @@ const (
 	unifiedContextMaxBytes     = 1 << 20
 	unifiedSummarySegmentBytes = 128 << 10
 	unifiedMaxNewSummaries     = 32
- unifiedMaxHistorySegments = 512
+	unifiedMaxHistorySegments  = 512
 	unifiedSegmentHeader       = "X-Axonhub-Unified-History-Segment"
 )
 
@@ -149,10 +149,12 @@ func (a *remoteCompactionAdapter) compileUnifiedContext(ctx context.Context, bod
 	plan, supported, err := planUnifiedHistory(envelope, items, state, candidate, budget)
 	if err != nil || !supported {
 		log.Warn(ctx, "unified history assembly unavailable", log.String("reason", "original_history_exceeds_plan_limits"))
-  if err == nil { err = unifiedHistoryPreparationLimit("the original instructions or indivisible tool interactions exceed the context assembly budget") }
-  return nil, false, err
- }
- log.Info(ctx, "preparing unified history segments", log.Int("segments", len(plan.segments)), log.Int("retained_bytes", plan.mandatory), log.Int("context_budget", budget))
+		if err == nil {
+			err = unifiedHistoryPreparationLimit("the original instructions or indivisible tool interactions exceed the context assembly budget")
+		}
+		return nil, false, err
+	}
+	log.Info(ctx, "preparing unified history segments", log.Int("segments", len(plan.segments)), log.Int("retained_bytes", plan.mandatory), log.Int("context_budget", budget))
 	missing, supported, err := a.hydrateUnifiedSegments(ctx, plan.segments, state, executor)
 	if err != nil || !supported {
 		return body, false, err
@@ -168,10 +170,10 @@ func (a *remoteCompactionAdapter) compileUnifiedContext(ctx context.Context, bod
 // A portable source rejected by our bounded planner must not silently fall
 // into the legacy whole-history summarizer with an even larger prompt.
 func unifiedHistoryPreparationLimit(reason string) error {
- return &llm.ResponseError{StatusCode: http.StatusBadRequest, Detail: llm.ErrorDetail{
-  Type: "invalid_request_error", Code: "unified_history_budget_exceeded", Param: "input",
-  Message: "Unified history preparation stopped: " + reason + "; compact the conversation on a compatible channel before continuing",
- }}
+	return &llm.ResponseError{StatusCode: http.StatusBadRequest, Detail: llm.ErrorDetail{
+		Type: "invalid_request_error", Code: "unified_history_budget_exceeded", Param: "input",
+		Message: "Unified history preparation stopped: " + reason + "; compact the conversation on a compatible channel before continuing",
+	}}
 }
 
 type unifiedHistoryPlan struct {

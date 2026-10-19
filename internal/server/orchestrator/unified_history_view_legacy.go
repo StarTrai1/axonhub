@@ -40,7 +40,7 @@ func (m *responsesCompactionRecoveryMiddleware) importUnifiedView(ctx context.Co
 		return nil, 0, err
 	}
 	loadedBytes := 0
- checkedWindows := map[string]bool{key.scope.windowID: true}
+	checkedWindows := map[string]bool{key.scope.windowID: true}
 	for _, row := range rows {
 		if row.RequestURL != destination.URL || row.Edges.Request == nil {
 			continue
@@ -57,18 +57,22 @@ func (m *responsesCompactionRecoveryMiddleware) importUnifiedView(ctx context.Co
 		if prior.ThreadID != key.scope.threadID {
 			continue
 		}
-  // An older view alias may have been published from a resolved full input
-  // while its request log still contains a delta. Probe its authenticated
-  // window using the CURRENT complete prefix, not a guessed delta expansion.
-  if prior.WindowID != "" && !checkedWindows[prior.WindowID] && len(checkedWindows) < 8 {
-   checkedWindows[prior.WindowID] = true
-   legacyKey := key
-   legacyKey.scope.windowID = prior.WindowID
-   legacyKeys, err := unifiedViewKeysVersion(legacyKey, current, true)
-   if err != nil { return nil, 0, err }
-   view, covered, err := m.loadUnifiedView(lookupCtx, legacyKeys)
-   if err != nil || covered > 0 { return view, covered, err }
-  }
+		// An older view alias may have been published from a resolved full input
+		// while its request log still contains a delta. Probe its authenticated
+		// window using the CURRENT complete prefix, not a guessed delta expansion.
+		if prior.WindowID != "" && !checkedWindows[prior.WindowID] && len(checkedWindows) < 8 {
+			checkedWindows[prior.WindowID] = true
+			legacyKey := key
+			legacyKey.scope.windowID = prior.WindowID
+			legacyKeys, err := unifiedViewKeysVersion(legacyKey, current, true)
+			if err != nil {
+				return nil, 0, err
+			}
+			view, covered, err := m.loadUnifiedView(lookupCtx, legacyKeys)
+			if err != nil || covered > 0 {
+				return view, covered, err
+			}
+		}
 		original, err := service.LoadRequestBody(lookupCtx, row.Edges.Request)
 		if err != nil {
 			return nil, 0, err
