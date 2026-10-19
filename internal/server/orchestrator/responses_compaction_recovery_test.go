@@ -390,7 +390,8 @@ func (e *rejectedCompactionBridgeExecutor) Do(context.Context, *httpclient.Reque
 func (e *rejectedCompactionBridgeExecutor) DoStream(ctx context.Context, req *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
 	isSummary := false
 	for _, item := range gjson.GetBytes(req.Body, "input").Array() {
-		isSummary = isSummary || item.Get("content.0.text").String() == localCompactionPrompt
+		text := item.Get("content.0.text").String()
+		isSummary = isSummary || text == localCompactionPrompt || text == unifiedSegmentPrompt
 	}
 	if isSummary {
 		e.summaries = append(e.summaries, append([]byte(nil), req.Body...))

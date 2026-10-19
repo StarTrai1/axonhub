@@ -224,7 +224,9 @@ func TestUnifiedHistoryPortableReasoningAndToolBoundaries(t *testing.T) {
 	_, _, ok = unifiedPortableItems([]json.RawMessage{json.RawMessage(`{"type":"function_call","encrypted_function_args":["cipher"],"arguments":""}`)})
 	require.False(t, ok)
 	_, _, ok = unifiedPortableItems([]json.RawMessage{json.RawMessage(`{"role":"user","content":[{"type":"input_image","image_url":"https://example.invalid/image"}]}`)})
-	require.False(t, ok)
+	require.True(t, ok, "complete images remain in the original context")
+	_, _, ok = unifiedPortableItems([]json.RawMessage{json.RawMessage(`{"role":"user","content":[{"type":"input_image","file_id":"private-file-reference"}]}`)})
+	require.False(t, ok, "a provider-private file reference is not portable")
 }
 
 var _ pipeline.Executor = (*unifiedCompactionExecutor)(nil)

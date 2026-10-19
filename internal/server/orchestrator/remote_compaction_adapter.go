@@ -1095,6 +1095,20 @@ func (a *remoteCompactionAdapter) generateCompaction(
 	if err != nil {
 		return "", err
 	}
+	if source.headers.Get(unifiedSegmentHeader) != "" {
+		envelope, input, decodeErr := decodeResponsesInput(body)
+		if decodeErr != nil {
+			return "", decodeErr
+		}
+		input[len(input)-1] = localCompactionMessage(unifiedSegmentPrompt)
+		if err := setResponseEnvelopeInput(envelope, input); err != nil {
+			return "", err
+		}
+		body, err = json.Marshal(envelope)
+		if err != nil {
+			return "", err
+		}
+	}
 
 	headers := source.headers.Clone()
 	headers.Del("Authorization")
@@ -1197,6 +1211,7 @@ func (a *remoteCompactionAdapter) generateCompactionWithCandidate(
 	}
 	rawRequest.Headers.Del(remoteCompactionCacheHeader)
 	rawRequest.Headers.Del(nativeCompactionMigrationHeader)
+	rawRequest.Headers.Del(unifiedSegmentHeader)
 	// Local bridge generation is a gateway-authored summary turn rather than a
 	// continuation of the client's upstream turn. Never replay an opaque state
 	// token minted by the channel that handled the preceding client request.
