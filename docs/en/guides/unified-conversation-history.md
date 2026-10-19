@@ -40,3 +40,5 @@ Cold segment generation still costs tokens and time; subsequent reuse must justi
 Acceptance should compare source coverage, summary count, cached tokens, TTFT and total latency, with tests for early constraints, exact numbers/code/tool results, later corrections and branch isolation. Synthetic CI and loopback providers cannot prove unchanged real-model answer quality.
 
 Archived input is captured independently from the compiled provider view. Where the source can be verified, new checkpoints flatten earlier original sources before publication so repeated compaction does not accumulate ancestry depth. Publication verifies the immutable alias in the same transaction and rolls back conflicting versions. Existing blocks refresh timestamps without resending ciphertext to SQL; valid reads also refresh an explicitly finite retention policy.
+
+Only segments whose boundary is closed by following original turns receive reusable summaries. The growing partial tail stays verbatim with the recent turn, avoiding a new overlapping tail summary on every continuation.

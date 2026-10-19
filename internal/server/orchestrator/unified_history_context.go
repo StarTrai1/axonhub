@@ -130,6 +130,7 @@ func (a *remoteCompactionAdapter) compileUnifiedContext(ctx context.Context, bod
 	}
 	// The final user turn and all its tool interactions are always exact.
 	recent := groups[len(groups)-1]
+    query:=strings.ToLower(unifiedMessageText(recent[0]))
 	groups = groups[:len(groups)-1]
 	segments := make([]unifiedHistorySegment, 0)
 	var current unifiedHistorySegment
@@ -152,7 +153,10 @@ func (a *remoteCompactionAdapter) compileUnifiedContext(ctx context.Context, bod
 		current.items = append(current.items, group...)
 		size += groupBytes
 	}
-	flush()
+    // The trailing partial segment is still growing. Keep it verbatim with
+    // the recent turn instead of summarizing an overlapping tail every turn.
+    // Only segments closed by a following group receive reusable summaries.
+    if len(current.items)>0 {recent=append(append([]json.RawMessage(nil),current.items...),recent...)}
 	if len(segments) > 32 {
 		return body, false, nil
 	}
@@ -268,7 +272,6 @@ func (a *remoteCompactionAdapter) compileUnifiedContext(ctx context.Context, bod
 		}
 	}
 	compiled := make([]json.RawMessage, 0, len(items))
-	query := strings.ToLower(unifiedMessageText(recent[0]))
 	remaining := budget - mandatory
 	for _, segment := range segments {
 		// Quote a derived view as assistant material. Original user/system roles
