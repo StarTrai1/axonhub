@@ -70,7 +70,7 @@ type responsesCompactionRecoveryMiddleware struct {
 	adapted          *responsesCompactionRecoveryKey
 	migration        *responsesCompactionRecoveryKey
 	failedMigrations map[responsesCompactionRecoveryKey]bool
-	pendingView string
+	pendingView      string
 }
 
 func recoverRejectedRemoteCompaction(

@@ -142,7 +142,7 @@ func (m *responsesCompactionRecoveryMiddleware) restoreUnifiedView(ctx context.C
 		if err != nil {
 			return false, err
 		}
-		for i := end-1; i >= start; i-- {
+		for i := end - 1; i >= start; i-- {
 			if entries[keys[i]] == "" {
 				continue
 			}

@@ -31,7 +31,9 @@ func setUnifiedSummaryKeys(segment *unifiedHistorySegment, contract map[string]j
 	if err != nil {
 		return err
 	}
-	key := func(body []byte) string { return "summary:" + historyDigest(append([]byte("segment-summary-v2:"), body...)) }
+	key := func(body []byte) string {
+		return "summary:" + historyDigest(append([]byte("segment-summary-v2:"), body...))
+	}
 	segment.key = key(canonical)
 	segment.cacheAlias = "summaryref:" + strings.TrimPrefix(segment.key, "summary:")
 	segment.legacyKeys = []string{key(raw)}
