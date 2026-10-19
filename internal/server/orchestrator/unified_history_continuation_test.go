@@ -97,6 +97,28 @@ func TestUnifiedHistoryUpdatedToolsPreservesSourceAndCurrentContract(t *testing.
 	require.Contains(t, string(got), "original evidence")
 }
 
+func TestUnifiedHistoryRepeatedToolRefreshFlattensSources(t *testing.T) {
+	ctx, _, state, adapter := unifiedHistoryFixture(t)
+	body := []byte(`{"model":"gpt-6-astra","input":[{"type":"additional_tools","role":"developer","id":"same_tool_id","tools":[]},{"role":"user","id":"original_user","content":"original exact 17.125"},{"type":"compaction_trigger"}]}`)
+	for i := range 20 {
+		ref := &remoteCompactionReference{ID: fmt.Sprintf("cmp_tools_%d", i), EncryptedContent: "native-cipher"}
+		require.NoError(t, adapter.retainNativeCompactionSource(ctx, ref, state, &remoteCompactionSource{body: body}))
+		stored, _, found, err := adapter.loadHistorySnapshot(ctx, historyCheckpointAlias(ref))
+		require.NoError(t, err)
+		require.True(t, found)
+		require.False(t, gjson.GetBytes(stored, `input.#(type=="compaction")`).Exists())
+		require.Contains(t, string(stored), "original exact 17.125")
+		body = []byte(fmt.Sprintf(`{"model":"gpt-6-astra","input":[{"type":"additional_tools","role":"developer","id":"same_tool_id","tools":[{"type":"custom","name":"tool_%d"}]},{"role":"user","id":"original_user","content":"original exact 17.125"},{"role":"developer","id":"current_%d","content":"current runtime %d"},{"type":"compaction","id":%q,"encrypted_content":%q},{"role":"user","content":"new turn %d"},{"type":"compaction_trigger"}]}`, i, i, i, ref.ID, ref.EncryptedContent, i))
+	}
+	compiled, ok, err := adapter.compileUnifiedContext(ctx, body, state, &compactionEvidenceExecutor{})
+	require.NoError(t, err)
+	require.True(t, ok)
+	require.Equal(t, 1, strings.Count(string(compiled), "original exact 17.125"))
+	for i := range 20 {
+		require.Contains(t, string(compiled), fmt.Sprintf("new turn %d", i))
+	}
+}
+
 func unifiedLongToolHistory(t *testing.T, calls int) []byte {
 	t.Helper()
 	items := []json.RawMessage{json.RawMessage(`{"role":"user","content":"preserve calibration exactly 17.125"}`)}

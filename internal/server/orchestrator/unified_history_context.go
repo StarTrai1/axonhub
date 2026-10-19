@@ -8,6 +8,7 @@ import (
 	"maps"
 	"net/http"
 	"strings"
+	"time"
 	"unicode"
 
 	"github.com/tidwall/gjson"
@@ -314,20 +315,24 @@ func (a *remoteCompactionAdapter) hydrateUnifiedSegments(ctx context.Context, se
 			if err != nil {
 				return nil, err
 			}
-			sealed, err := a.sealHistoryRecord(ctx, segment.key, []byte(summary))
+			// A finished generation remains reusable even if its caller cancels
+			// while we publish it. This scope never starts another model call.
+			persistCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+			defer cancel()
+			sealed, err := a.sealHistoryRecord(persistCtx, segment.key, []byte(summary))
 			if err != nil {
 				return nil, err
 			}
-			if err := a.systemService.SaveUnifiedHistory(ctx, map[string]string{segment.key: sealed}); err != nil {
+			if err := a.systemService.SaveUnifiedHistory(persistCtx, map[string]string{segment.key: sealed}); err != nil {
 				return nil, err
 			}
 			// Multiple gateway processes may generate concurrently. Always use
 			// the immutable winner so their reconstructed prefixes converge.
-			published, err := a.systemService.LoadUnifiedHistory(ctx, []string{segment.key})
+			published, err := a.systemService.LoadUnifiedHistory(persistCtx, []string{segment.key})
 			if err != nil {
 				return nil, err
 			}
-			text, err := a.openHistoryRecord(ctx, segment.key, published[segment.key], localCompactionMaxSummaryBytes)
+			text, err := a.openHistoryRecord(persistCtx, segment.key, published[segment.key], localCompactionMaxSummaryBytes)
 			return string(text), err
 		})
 		if err != nil {

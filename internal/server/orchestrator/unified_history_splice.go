@@ -74,14 +74,14 @@ func spliceUnifiedCompactionSource(body, source []byte, ref *remoteCompactionRef
 		match := -1
 		id := gjson.GetBytes(item, "id").String()
 		if ids := byID[id]; id != "" && len(ids) > 0 {
-			if len(ids) != 1 {
-				return body, false, nil
-			}
-			if canonical[ids[0]] == identity {
-				match = ids[0]
-			} else if rawInputItemType(item) != "additional_tools" {
-				// A changed message under the same ID is not just reinsertion.
-				return body, false, nil
+			for _, index := range ids {
+				if canonical[index] != identity && rawInputItemType(item) != "additional_tools" {
+					// A changed message under the same ID is not reinsertion.
+					return body, false, nil
+				}
+				if canonical[index] == identity && index >= position && match < 0 {
+					match = index
+				}
 			}
 		} else {
 			for _, index := range byContent[identity] {
