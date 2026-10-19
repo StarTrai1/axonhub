@@ -168,8 +168,8 @@ type unifiedConcurrentExecutor struct {
 	active    atomic.Int32
 	max       atomic.Int32
 	cancel    context.CancelFunc
-	started chan<- struct{}
-	release <-chan struct{}
+	started   chan<- struct{}
+	release   <-chan struct{}
 }
 
 func (e *unifiedConcurrentExecutor) Do(context.Context, *httpclient.Request) (*httpclient.Response, error) {

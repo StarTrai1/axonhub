@@ -17,7 +17,7 @@ func unifiedHistoryQuery(item json.RawMessage) string {
 		payload := strings.TrimSpace(strings.TrimSuffix(strings.TrimPrefix(text, open), close))
 		var replies []struct {
 			Question string `json:"question"`
-			Answer string `json:"answer"`
+			Answer   string `json:"answer"`
 		}
 		if json.Unmarshal([]byte(payload), &replies) == nil && len(replies) > 0 {
 			var parts []string

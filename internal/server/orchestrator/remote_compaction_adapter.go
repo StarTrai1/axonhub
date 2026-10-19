@@ -110,14 +110,14 @@ func newRemoteCompactionAdapter(
 	systemService *biz.SystemService,
 ) *remoteCompactionAdapter {
 	return &remoteCompactionAdapter{
-		requestService:   requestService,
-		usageLogService:  usageLogService,
-		systemService:    systemService,
-		summaries:        gocache.New(remoteCompactionCacheExpiration, remoteCompactionCacheCleanup),
-		recoveries:       lo.Must(lru.New[responsesCompactionRecoveryKey, time.Time](responsesReasoningRecoveryMaxScopes)),
-		recoveryMisses:   lo.Must(lru.New[responsesCompactionRecoveryKey, time.Time](responsesReasoningRecoveryMaxScopes)),
+		requestService:       requestService,
+		usageLogService:      usageLogService,
+		systemService:        systemService,
+		summaries:            gocache.New(remoteCompactionCacheExpiration, remoteCompactionCacheCleanup),
+		recoveries:           lo.Must(lru.New[responsesCompactionRecoveryKey, time.Time](responsesReasoningRecoveryMaxScopes)),
+		recoveryMisses:       lo.Must(lru.New[responsesCompactionRecoveryKey, time.Time](responsesReasoningRecoveryMaxScopes)),
 		checkpointRejections: lo.Must(lru.New[[sha256.Size]byte, time.Time](responsesReasoningRecoveryMaxScopes)),
-		nativeMigrations: lo.Must(lru.New[responsesCompactionRecoveryKey, nativeCompactionMigrationCacheEntry](64)),
+		nativeMigrations:     lo.Must(lru.New[responsesCompactionRecoveryKey, nativeCompactionMigrationCacheEntry](64)),
 	}
 }
 
