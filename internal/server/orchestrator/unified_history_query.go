@@ -46,7 +46,7 @@ func unifiedHistoryTerms(query string) []string {
 	}
 	var terms []string
 	seen := make(map[string]bool)
-	for _, term := range strings.Fields(normalized.String()) {
+	for term := range strings.FieldsSeq(normalized.String()) {
 		if seen[term] || len([]rune(term)) < 5 || len(term) > 96 || strings.Contains(" continue please following current previous conversation assistant content output input ", " "+term+" ") {
 			continue
 		}
