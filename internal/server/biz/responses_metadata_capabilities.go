@@ -47,7 +47,8 @@ func (service *SystemService) SaveResponsesCompactionRecovery(ctx context.Contex
 	return service.saveResponsesRecoveryExpiry(ctx, "responses_compaction_recoveries_v1", scope, expiresAt)
 }
 
-// Rejection evidence does not prove that a replacement history was accepted.
+// LoadResponsesCompactionRejection loads rejection evidence independently of
+// whether a replacement history was accepted.
 func (service *SystemService) LoadResponsesCompactionRejection(ctx context.Context, scope [sha256.Size]byte) (time.Time, error) {
 	return service.loadResponsesRecoveryExpiry(ctx, "responses_compaction_rejections_v1", scope)
 }
