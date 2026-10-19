@@ -12,7 +12,7 @@ import (
 
 func TestChannelOverrideConcurrentInitialization(t *testing.T) {
 	ch := &Channel{Channel: &ent.Channel{Settings: &objects.ChannelSettings{
-		OverrideParameters: `{"temperature":0.7}`,
+		OverrideParameters:       `{"temperature":0.7}`,
 		HeaderOverrideOperations: []objects.OverrideOperation{{Op: objects.OverrideOpSet, Path: "X-Synthetic", Value: "fixture"}},
 	}}}
 	var wg sync.WaitGroup

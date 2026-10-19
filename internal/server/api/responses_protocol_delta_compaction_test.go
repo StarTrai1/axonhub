@@ -27,7 +27,11 @@ func TestUnifiedHistoryProtocolMigrationFromWebSocketDelta(t *testing.T) {
 	testResponsesProtocolHistoryMigration(t, true)
 }
 
-func testResponsesProtocolHistoryMigration(t *testing.T, unified bool) {
+func TestUnifiedHistoryProtocolDirectChannelWithoutImportedModels(t *testing.T) {
+	testResponsesProtocolHistoryMigration(t, true, true)
+}
+
+func testResponsesProtocolHistoryMigration(t *testing.T, unified bool, direct ...bool) {
 	t.Helper()
 	for _, policy := range []objects.RemoteCompactionPolicy{objects.RemoteCompactionPolicyAuto, objects.RemoteCompactionPolicyLocalBridge} {
 		t.Run(string(policy), func(t *testing.T) {
@@ -96,7 +100,7 @@ func testResponsesProtocolHistoryMigration(t *testing.T, unified bool) {
 			_, err := client.DataStorage.Create().SetName("primary").SetDescription("synthetic compaction history").SetPrimary(true).SetType("database").SetSettings(new(objects.DataStorageSettings)).Save(ctx)
 			require.NoError(t, err)
 			require.NoError(t, handlers.SystemService.SetSecretKey(ctx, "synthetic-delta-source-secret"))
-			if unified {
+			if unified && (len(direct) == 0 || !direct[0]) {
 				sourceChannel, err := client.Channel.Query().Only(ctx)
 				require.NoError(t, err)
 				_, err = client.Model.Create().SetDeveloper("openai").SetModelID("gpt-6-astra").SetName("gpt-6-astra").SetIcon("openai").SetGroup("gpt").SetStatus(model.StatusEnabled).
@@ -146,6 +150,14 @@ func testResponsesProtocolHistoryMigration(t *testing.T, unified bool) {
 			continuationBody := `{"model":"gpt-6-astra","stream":false,"client_metadata":{"thread_id":"delta-thread"},"input":[{"role":"user","content":"retained detail"},{"type":"compaction","id":"cmp_ws_source","encrypted_content":"source-cipher"},{"role":"user","content":"continue-canary"}]}`
 			if unified {
 				continuationBody = strings.ReplaceAll(continuationBody, "retained detail", "complete original source canary")
+				if len(direct) > 0 && direct[0] {
+					// Match a cold legacy continuation after Codex rebuilt current
+					// runtime messages, with no imported model configuration.
+					continuationBody = strings.ReplaceAll(continuationBody, `{"type":"compaction"`, `{"role":"developer","content":"current runtime canary"},{"type":"compaction"`)
+					count, err := client.Model.Query().Count(ctx)
+					require.NoError(t, err)
+					require.Zero(t, count)
+				}
 			}
 			for range 2 {
 				status, body := responsesIntegrationPost(t, gateway, "/v1/responses", continuationBody)
@@ -175,6 +187,9 @@ func testResponsesProtocolHistoryMigration(t *testing.T, unified bool) {
 					require.Contains(t, string(body), "original exact arguments")
 					require.Contains(t, string(body), "original exact tool result")
 					require.Contains(t, string(body), "continue-canary")
+					if len(direct) > 0 && direct[0] {
+						require.Contains(t, string(body), "current runtime canary")
+					}
 				}
 				require.Equal(t, 2, successes)
 			} else {
