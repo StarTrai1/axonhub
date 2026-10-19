@@ -12,8 +12,8 @@ import (
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/schema/schematype"
 	"github.com/looplj/axonhub/internal/ent/system"
-"github.com/looplj/axonhub/internal/ent/schema/schematype"
 )
 
 // UnifiedHistoryConfig is opt-in because source retention is independent of
@@ -73,12 +73,17 @@ func (s *SystemService) LoadUnifiedHistory(ctx context.Context, keys []string) (
 		if err != nil {
 			return nil, err
 		}
-        if s.UnifiedHistory.RetentionDays > 0 && len(rows) > 0 {
-            ids:=make([]int,len(rows));for i,row:=range rows {ids[i]=row.ID}
-            // An actively read checkpoint keeps its manifest and blocks alive;
-            // expired rows were excluded above and are never resurrected here.
-            if err:=s.entFromContext(ctx).System.Update().Where(system.IDIn(ids...)).SetUpdatedAt(time.Now()).Exec(ctx);err!=nil{return nil,err}
-        }
+		if s.UnifiedHistory.RetentionDays > 0 && len(rows) > 0 {
+			ids := make([]int, len(rows))
+			for i, row := range rows {
+				ids[i] = row.ID
+			}
+			// An actively read checkpoint keeps its manifest and blocks alive;
+			// expired rows were excluded above and are never resurrected here.
+			if err := s.entFromContext(ctx).System.Update().Where(system.IDIn(ids...)).SetUpdatedAt(time.Now()).Exec(ctx); err != nil {
+				return nil, err
+			}
+		}
 		for _, row := range rows {
 			result[strings.TrimPrefix(row.Key, prefix)] = row.Value
 		}
@@ -110,26 +115,40 @@ func (s *SystemService) SaveUnifiedHistory(ctx context.Context, entries map[stri
 	return s.RunInTransaction(ctx, func(txCtx context.Context) error {
 		client := s.entFromContext(txCtx)
 		for offset := 0; offset < len(keys); offset += 128 {
-            batch:=keys[offset:min(offset+128,len(keys))]
-            full:=make([]string,len(batch))
-            for i,key:=range batch {full[i]=prefix+key}
-            existing,err:=client.System.Query().Where(system.KeyIn(full...)).Select(system.FieldKey).Strings(txCtx)
-            if err!=nil{return err}
-            found:=make(map[string]bool,len(existing))
-            for _,key:=range existing {found[key]=true}
-            if len(existing)>0 {
-                // Existing content never needs to cross the SQL wire again.
-                count,err:=client.System.Update().Where(system.KeyIn(existing...)).SetUpdatedAt(time.Now()).Save(txCtx)
-                if err!=nil{return err}
-                if count!=len(existing){return errors.New("history records expired during publication; retry with the original source")}
-            }
-            creates:=make([]*ent.SystemCreate,0,len(batch))
-            for _,key:=range batch {
-                if !found[prefix+key] {creates=append(creates,client.System.Create().SetKey(prefix+key).SetValue(entries[key]))}
-            }
-            for pos:=0;pos<len(creates);pos+=32 {
-                if err:=client.System.CreateBulk(creates[pos:min(pos+32,len(creates))]...).OnConflictColumns(system.FieldKey).Update(func(u *ent.SystemUpsert){u.UpdateUpdatedAt()}).Exec(txCtx);err!=nil{return err}
-            }
+			batch := keys[offset:min(offset+128, len(keys))]
+			full := make([]string, len(batch))
+			for i, key := range batch {
+				full[i] = prefix + key
+			}
+			existing, err := client.System.Query().Where(system.KeyIn(full...)).Select(system.FieldKey).Strings(txCtx)
+			if err != nil {
+				return err
+			}
+			found := make(map[string]bool, len(existing))
+			for _, key := range existing {
+				found[key] = true
+			}
+			if len(existing) > 0 {
+				// Existing content never needs to cross the SQL wire again.
+				count, err := client.System.Update().Where(system.KeyIn(existing...)).SetUpdatedAt(time.Now()).Save(txCtx)
+				if err != nil {
+					return err
+				}
+				if count != len(existing) {
+					return errors.New("history records expired during publication; retry with the original source")
+				}
+			}
+			creates := make([]*ent.SystemCreate, 0, len(batch))
+			for _, key := range batch {
+				if !found[prefix+key] {
+					creates = append(creates, client.System.Create().SetKey(prefix+key).SetValue(entries[key]))
+				}
+			}
+			for pos := 0; pos < len(creates); pos += 32 {
+				if err := client.System.CreateBulk(creates[pos:min(pos+32, len(creates))]...).OnConflictColumns(system.FieldKey).Update(func(u *ent.SystemUpsert) { u.UpdateUpdatedAt() }).Exec(txCtx); err != nil {
+					return err
+				}
+			}
 		}
 		return nil
 	})
@@ -146,9 +165,15 @@ func (s *SystemService) PruneUnifiedHistory(ctx context.Context) error {
 	client := s.entFromContext(ctx)
 	for {
 		ids, err := client.System.Query().Where(system.KeyHasPrefix(unifiedHistoryPrefix), system.UpdatedAtLT(cutoff)).Order(ent.Asc(system.FieldID)).Limit(256).IDs(ctx)
-		if err != nil { return err }
-		if len(ids) == 0 { return nil }
+		if err != nil {
+			return err
+		}
+		if len(ids) == 0 {
+			return nil
+		}
 		// Recheck age because a publication can refresh a selected block.
-		if _, err := client.System.Delete().Where(system.IDIn(ids...), system.UpdatedAtLT(cutoff)).Exec(ctx); err != nil { return err }
+		if _, err := client.System.Delete().Where(system.IDIn(ids...), system.UpdatedAtLT(cutoff)).Exec(ctx); err != nil {
+			return err
+		}
 	}
 }

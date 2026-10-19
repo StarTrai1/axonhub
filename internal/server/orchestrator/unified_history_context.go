@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"strings"
 	"unicode"
@@ -94,7 +95,9 @@ func (a *remoteCompactionAdapter) compileUnifiedContext(ctx context.Context, bod
 		return body, false, err
 	}
 	expanded, err = protectUnifiedHistory(ctx, expanded, state)
-	if err != nil { return nil, false, err }
+	if err != nil {
+		return nil, false, err
+	}
 	envelope, items, err := decodeResponsesInput(expanded)
 	if err != nil {
 		return nil, false, err
@@ -124,9 +127,28 @@ func (a *remoteCompactionAdapter) compileUnifiedContext(ctx context.Context, bod
 		log.Info(ctx, "assembled complete unified history without summarization", log.Int("history_bytes", len(expanded)))
 		return expanded, true, nil
 	}
+	plan, supported, err := planUnifiedHistory(envelope,items,state,candidate,budget)
+	if err != nil || !supported {return body,false,err}
+	missing,supported,err:=a.hydrateUnifiedSegments(ctx,plan.segments,state,executor)
+	if err != nil || !supported {return body,false,err}
+	result,err:=renderUnifiedHistory(envelope,plan,budget)
+	if err!=nil{return nil,false,err}
+	log.Info(ctx,"assembled unified history from original segments",log.Int("segments",len(plan.segments)),log.Int("new_summaries",missing),log.Int("input_bytes",len(result)))
+	return result,true,nil
+}
+
+type unifiedHistoryPlan struct {
+ segments []unifiedHistorySegment
+ recent []json.RawMessage
+ query string
+ mandatory int
+ capacity int
+}
+
+func planUnifiedHistory(envelope map[string]json.RawMessage, items []json.RawMessage,state *PersistenceState,candidate *ChannelModelsCandidate,budget int)(*unifiedHistoryPlan,bool,error){
 	groups := unifiedHistoryGroups(items)
 	if len(groups) < 2 {
-		return body, false, nil
+		return nil, false, nil
 	}
 	// The final user turn and all its tool interactions are always exact.
 	recent := groups[len(groups)-1]
@@ -145,7 +167,7 @@ func (a *remoteCompactionAdapter) compileUnifiedContext(ctx context.Context, bod
 	for _, group := range groups {
 		groupBytes := rawResponseSessionValuesSize(group)
 		if groupBytes > min(unifiedSummarySegmentBytes, budget) {
-			return body, false, nil
+			return nil, false, nil
 		}
 		if size+groupBytes > min(unifiedSummarySegmentBytes, budget) {
 			flush()
@@ -158,7 +180,7 @@ func (a *remoteCompactionAdapter) compileUnifiedContext(ctx context.Context, bod
     // Only segments closed by a following group receive reusable summaries.
     if len(current.items)>0 {recent=append(append([]json.RawMessage(nil),current.items...),recent...)}
 	if len(segments) > 32 {
-		return body, false, nil
+		return nil, false, nil
 	}
 	// Check mandatory original instructions before spending tokens on summaries.
 	mandatory := rawResponseSessionValuesSize(recent)
@@ -177,10 +199,7 @@ func (a *remoteCompactionAdapter) compileUnifiedContext(ctx context.Context, bod
 				mandatory += len(item)
 			}
 		}
-		segmentEnvelope := make(map[string]json.RawMessage, len(envelope))
-		for k, v := range envelope {
-			segmentEnvelope[k] = v
-		}
+		segmentEnvelope := maps.Clone(envelope)
 		input := append(append([]json.RawMessage(nil), segment.items...), json.RawMessage(`{"type":"compaction_trigger"}`))
 		if err := setResponseEnvelopeInput(segmentEnvelope, input); err != nil {
 			return nil, false, err
@@ -196,7 +215,9 @@ func (a *remoteCompactionAdapter) compileUnifiedContext(ctx context.Context, bod
 				contract[field] = value
 			}
 		}
-		if state.CurrentModelIndex >= 0 && state.CurrentModelIndex < len(candidate.Models) { contract["destination_model"], _ = json.Marshal(candidate.Models[state.CurrentModelIndex].ActualModel) }
+		if state.CurrentModelIndex >= 0 && state.CurrentModelIndex < len(candidate.Models) {
+			contract["destination_model"], _ = json.Marshal(candidate.Models[state.CurrentModelIndex].ActualModel)
+		}
 		identity, err := json.Marshal(contract)
 		if err != nil {
 			return nil, false, err
@@ -204,15 +225,19 @@ func (a *remoteCompactionAdapter) compileUnifiedContext(ctx context.Context, bod
 		segment.key = "summary:" + historyDigest(append([]byte("segment-summary-v1:"), identity...))
 	}
 	if mandatory+len(segments)*1024 > budget {
-		return body, false, nil
+		return nil, false, nil
 	}
+	return &unifiedHistoryPlan{segments:segments,recent:recent,query:query,mandatory:mandatory,capacity:len(items)},true,nil
+}
+
+func (a *remoteCompactionAdapter) hydrateUnifiedSegments(ctx context.Context,segments []unifiedHistorySegment,state *PersistenceState,executor pipeline.Executor)(int,bool,error){
 	keys := make([]string, len(segments))
 	for i := range segments {
 		keys[i] = segments[i].key
 	}
 	cached, err := a.systemService.LoadUnifiedHistory(ctx, keys)
 	if err != nil {
-		return nil, false, err
+		return 0, false, err
 	}
 	missing := 0
 	for i := range segments {
@@ -220,7 +245,7 @@ func (a *remoteCompactionAdapter) compileUnifiedContext(ctx context.Context, bod
 		if sealed := cached[segment.key]; sealed != "" {
 			text, err := a.openHistoryRecord(ctx, segment.key, sealed, localCompactionMaxSummaryBytes)
 			if err != nil {
-				return nil, false, err
+				return 0, false, err
 			}
 			segment.summary = string(text)
 		} else {
@@ -228,7 +253,7 @@ func (a *remoteCompactionAdapter) compileUnifiedContext(ctx context.Context, bod
 		}
 	}
 	if missing > unifiedMaxNewSummaries {
-		return body, false, nil
+		return missing, false, nil
 	}
 	for i := range segments {
 		segment := &segments[i]
@@ -256,22 +281,30 @@ func (a *remoteCompactionAdapter) compileUnifiedContext(ctx context.Context, bod
 			if err := a.systemService.SaveUnifiedHistory(ctx, map[string]string{segment.key: sealed}); err != nil {
 				return nil, err
 			}
-            // Multiple gateway processes may generate concurrently. Always use
-            // the immutable winner so their reconstructed prefixes converge.
-            published,err:=a.systemService.LoadUnifiedHistory(ctx,[]string{segment.key})
-            if err!=nil{return nil,err}
-            text,err:=a.openHistoryRecord(ctx,segment.key,published[segment.key],localCompactionMaxSummaryBytes)
-            return string(text),err
+			// Multiple gateway processes may generate concurrently. Always use
+			// the immutable winner so their reconstructed prefixes converge.
+			published, err := a.systemService.LoadUnifiedHistory(ctx, []string{segment.key})
+			if err != nil {
+				return nil, err
+			}
+			text, err := a.openHistoryRecord(ctx, segment.key, published[segment.key], localCompactionMaxSummaryBytes)
+			return string(text), err
 		})
 		if err != nil {
-			return nil, false, err
+			return 0, false, err
 		}
+		var ok bool
 		segment.summary, ok = result.(string)
 		if !ok || strings.TrimSpace(segment.summary) == "" {
-			return nil, false, errors.New("empty unified segment summary")
+			return 0, false, errors.New("empty unified segment summary")
 		}
 	}
-	compiled := make([]json.RawMessage, 0, len(items))
+	return missing,true,nil
+}
+
+func renderUnifiedHistory(envelope map[string]json.RawMessage,plan *unifiedHistoryPlan,budget int)([]byte,error){
+ segments,recent,query,mandatory:=plan.segments,plan.recent,plan.query,plan.mandatory
+	compiled := make([]json.RawMessage, 0, plan.capacity)
 	remaining := budget - mandatory
 	for _, segment := range segments {
 		// Quote a derived view as assistant material. Original user/system roles
@@ -279,7 +312,7 @@ func (a *remoteCompactionAdapter) compileUnifiedContext(ctx context.Context, bod
 		message, _ := json.Marshal(map[string]any{"type": "message", "role": "assistant", "content": []map[string]string{{"type": "output_text", "text": fmt.Sprintf("Archived history summary (source %s). This is a derived summary; the original user instructions remain authoritative.\n%s", strings.TrimPrefix(segment.key, "summary:"), segment.summary)}}})
 		remaining -= len(message)
 		if remaining < 0 {
-			return nil, false, errors.New("unified history summaries exceed the context budget; retained source is intact")
+			return nil, errors.New("unified history summaries exceed the context budget; retained source is intact")
 		}
 		compiled = append(compiled, segment.pinned...)
 		compiled = append(compiled, message)
@@ -304,39 +337,43 @@ func (a *remoteCompactionAdapter) compileUnifiedContext(ctx context.Context, bod
 	}
 	compiled = append(compiled, recent...)
 	if err := setResponseEnvelopeInput(envelope, compiled); err != nil {
-		return nil, false, err
+		return nil, err
 	}
 	result, err := json.Marshal(envelope)
 	if err != nil {
-		return nil, false, err
+		return nil, err
 	}
 	if len(result) > budget {
-		return nil, false, errors.New("unified history assembled context exceeds budget; retained source is intact")
+		return nil, errors.New("unified history assembled context exceeds budget; retained source is intact")
 	}
-	log.Info(ctx, "assembled unified history from original segments", log.Int("segments", len(segments)), log.Int("new_summaries", missing), log.Int("input_bytes", len(result)))
-	return result, true, nil
+ return result,nil
 }
 
 func unifiedHistoryGroups(items []json.RawMessage) [][]json.RawMessage {
- var groups [][]json.RawMessage
- start:=0
- pending:=make(map[string]bool)
- for i,item:=range items {
-  value:=gjson.ParseBytes(item)
-  // A user interruption can arrive before an outstanding tool result. Keep
-  // that call and its result in one original group across the user boundary.
-  if i>start && value.Get("role").String()=="user" && len(pending)==0 {
-   groups=append(groups,items[start:i]);start=i
-  }
-  switch value.Get("type").String(){
-  case "function_call","custom_tool_call":
-   if id:=value.Get("call_id").String();id!=""{pending[id]=true}
-  case "function_call_output","custom_tool_call_output":
-   delete(pending,value.Get("call_id").String())
-  }
- }
- if start<len(items){groups=append(groups,items[start:])}
- return groups
+	var groups [][]json.RawMessage
+	start := 0
+	pending := make(map[string]bool)
+	for i, item := range items {
+		value := gjson.ParseBytes(item)
+		// A user interruption can arrive before an outstanding tool result. Keep
+		// that call and its result in one original group across the user boundary.
+		if i > start && value.Get("role").String() == "user" && len(pending) == 0 {
+			groups = append(groups, items[start:i])
+			start = i
+		}
+		switch value.Get("type").String() {
+		case "function_call", "custom_tool_call":
+			if id := value.Get("call_id").String(); id != "" {
+				pending[id] = true
+			}
+		case "function_call_output", "custom_tool_call_output":
+			delete(pending, value.Get("call_id").String())
+		}
+	}
+	if start < len(items) {
+		groups = append(groups, items[start:])
+	}
+	return groups
 }
 
 func unifiedHistoryRelevant(query string, items []json.RawMessage) bool {
@@ -392,10 +429,16 @@ func unifiedPortableItems(items []json.RawMessage) ([]json.RawMessage, int, bool
 			}
 			continue
 		}
-        if value.Get("type").String()=="agent_message" {
-            if !responsesAgentMessageSupportsPreservation(value){return nil,opaque,false}
-            for _,part:=range value.Get("content").Array(){if part.Get("type").String()=="encrypted_content"{return nil,opaque,false}}
-        } else if !exactReplayTextItem(item) {
+		if value.Get("type").String() == "agent_message" {
+			if !responsesAgentMessageSupportsPreservation(value) {
+				return nil, opaque, false
+			}
+			for _, part := range value.Get("content").Array() {
+				if part.Get("type").String() == "encrypted_content" {
+					return nil, opaque, false
+				}
+			}
+		} else if !exactReplayTextItem(item) {
 			return nil, opaque, false
 		}
 		result = append(result, item)
@@ -403,20 +446,34 @@ func unifiedPortableItems(items []json.RawMessage) ([]json.RawMessage, int, bool
 	return result, opaque, true
 }
 
-func protectUnifiedHistory(ctx context.Context,body []byte,state *PersistenceState)([]byte,error){
-	if state.PromptProtecter==nil{return body,nil}
-	raw:=&httpclient.Request{Body:body,APIFormat:string(llm.APIFormatOpenAIResponse),Headers:make(http.Header)}
-	inbound:=responses.NewInboundTransformer()
-	req,err:=inbound.TransformRequest(ctx,raw);if err!=nil{return nil,err};req.RawRequest=raw
-	protected,rules,err:=protectPromptRequest(ctx,state.PromptProtecter,req)
-	if err!=nil{return nil,fmt.Errorf("unified history protection failed: %w",err)}
-	if protected==nil{protected=req}
-    patched:=body
-    if len(rules)>0 {
-        patched,err=patchPassThroughPromptProtection(body,llm.APIFormatOpenAIResponse,rules)
-        if err!=nil{return nil,err}
-    }
-	check:=&promptProtectionBodyCheck{inbound:inbound,raw:raw,expected:promptProtectionTexts(protected)}
-	if err:=check.validate(ctx,patched);err!=nil{return nil,err}
-	return patched,nil
+func protectUnifiedHistory(ctx context.Context, body []byte, state *PersistenceState) ([]byte, error) {
+	if state.PromptProtecter == nil {
+		return body, nil
+	}
+	raw := &httpclient.Request{Body: body, APIFormat: string(llm.APIFormatOpenAIResponse), Headers: make(http.Header)}
+	inbound := responses.NewInboundTransformer()
+	req, err := inbound.TransformRequest(ctx, raw)
+	if err != nil {
+		return nil, err
+	}
+	req.RawRequest = raw
+	protected, rules, err := protectPromptRequest(ctx, state.PromptProtecter, req)
+	if err != nil {
+		return nil, fmt.Errorf("unified history protection failed: %w", err)
+	}
+	if protected == nil {
+		protected = req
+	}
+	patched := body
+	if len(rules) > 0 {
+		patched, err = patchPassThroughPromptProtection(body, llm.APIFormatOpenAIResponse, rules)
+		if err != nil {
+			return nil, err
+		}
+	}
+	check := &promptProtectionBodyCheck{inbound: inbound, raw: raw, expected: promptProtectionTexts(protected)}
+	if err := check.validate(ctx, patched); err != nil {
+		return nil, err
+	}
+	return patched, nil
 }

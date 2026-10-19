@@ -170,7 +170,7 @@ func (m *remoteCompactionMiddleware) OnInboundLlmRequest(ctx context.Context, re
 		if err != nil {
 			return nil, err
 		}
-		m.inbound.state.unifiedHistorySource=m.historySource
+		m.inbound.state.unifiedHistorySource = m.historySource
 		if hasLocalBridgeCodexCandidate(candidates) {
 			compiled, supported, compileErr := m.adapter.compileUnifiedContext(ctx, m.historySource.body, m.inbound.state, m.executor)
 			if compileErr != nil {
@@ -354,12 +354,15 @@ func (m *remoteCompactionMiddleware) adaptLocalCompactionGeneration(ctx context.
 			defer cancel()
 			return m.adapter.retainNativeCompactionSource(persistCtx, ref, m.inbound.state, source)
 		}
-        m.generation.retainResponse=func(responseID string) error {
-            persistCtx,cancel:=context.WithTimeout(context.WithoutCancel(ctx),10*time.Second);defer cancel()
-            response,err:=json.Marshal(map[string]any{"id":responseID,"status":"completed","output":[]map[string]string{{"type":remoteCompactionItemType,"id":ref.ID,"encrypted_content":ref.EncryptedContent}}})
-            if err!=nil{return err}
-            return m.adapter.archiveHistoryResponse(persistCtx,source.body,response)
-        }
+		m.generation.retainResponse = func(responseID string) error {
+			persistCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+			defer cancel()
+			response, err := json.Marshal(map[string]any{"id": responseID, "status": "completed", "output": []map[string]string{{"type": remoteCompactionItemType, "id": ref.ID, "encrypted_content": ref.EncryptedContent}}})
+			if err != nil {
+				return err
+			}
+			return m.adapter.archiveHistoryResponse(persistCtx, source.body, response)
+		}
 	}
 
 	m.inbound.state.RawRequest = adaptedRawRequest
@@ -416,8 +419,12 @@ func (m *remoteCompactionMiddleware) OnOutboundLlmResponse(ctx context.Context, 
 		m.adapter.summaries.SetDefault(m.generation.ownerKey, summary)
 	}
 
-    result:=localStandaloneCompactionResponse(response,m.generation)
-    if m.generation.retainResponse!=nil {if err:=m.generation.retainResponse(result.ID);err!=nil{return nil,err}}
+	result := localStandaloneCompactionResponse(response, m.generation)
+	if m.generation.retainResponse != nil {
+		if err := m.generation.retainResponse(result.ID); err != nil {
+			return nil, err
+		}
+	}
 	return result, nil
 }
 
@@ -652,9 +659,12 @@ func (s *localCompactionBridgeStream) finishSource() bool {
 	if responseID == "" {
 		responseID = "resp_" + strings.TrimPrefix(s.generation.ref.ID, "cmp_")
 	}
-    if s.generation.retainResponse!=nil {
-        if err:=s.generation.retainResponse(responseID);err!=nil{s.err=err;return false}
-    }
+	if s.generation.retainResponse != nil {
+		if err := s.generation.retainResponse(responseID); err != nil {
+			s.err = err
+			return false
+		}
+	}
 	model := s.response.Model
 	if model == "" {
 		model = s.generation.model

@@ -24,34 +24,48 @@ const historyBlockBytes = 64 << 10
 type unifiedHistoryOriginKey struct{}
 
 func withUnifiedHistoryOrigin(ctx context.Context, body []byte) context.Context {
- return context.WithValue(ctx,unifiedHistoryOriginKey{},append([]byte(nil),body...))
+	return context.WithValue(ctx, unifiedHistoryOriginKey{}, append([]byte(nil), body...))
 }
 
-func (a *remoteCompactionAdapter) flattenHistorySource(ctx context.Context, source *remoteCompactionSource,state *PersistenceState)(*remoteCompactionSource,error){
- resolved,err:=a.resolveCompactionSourceContinuation(ctx,source,state)
- if err!=nil{return nil,err}
- expanded,complete,err:=a.expandUnifiedHistory(ctx,resolved.body,state,make(map[string]bool))
- if err!=nil{return nil,err}
- if !complete{return resolved,nil}
- return &remoteCompactionSource{body:expanded,headers:resolved.headers},nil
+func (a *remoteCompactionAdapter) flattenHistorySource(ctx context.Context, source *remoteCompactionSource, state *PersistenceState) (*remoteCompactionSource, error) {
+	resolved, err := a.resolveCompactionSourceContinuation(ctx, source, state)
+	if err != nil {
+		return nil, err
+	}
+	expanded, complete, err := a.expandUnifiedHistory(ctx, resolved.body, state, make(map[string]bool))
+	if err != nil {
+		return nil, err
+	}
+	if !complete {
+		return resolved, nil
+	}
+	return &remoteCompactionSource{body: expanded, headers: resolved.headers}, nil
 }
-
 
 // Keep a bounded number of small-window encoders between requests. Creating a
 // compressor for every history item otherwise dominates short-item archival.
 var historyEncoders = make(chan *zstd.Encoder, 4)
 
 func compressHistoryRecord(body []byte) ([]byte, error) {
- var encoder *zstd.Encoder
- select {case encoder = <-historyEncoders: default:}
- if encoder == nil {
-  var err error
-  encoder,err=zstd.NewWriter(nil,zstd.WithEncoderConcurrency(1),zstd.WithEncoderLevel(zstd.SpeedFastest),zstd.WithWindowSize(historyBlockBytes))
-  if err!=nil{return nil,err}
- }
- compressed:=encoder.EncodeAll(body,nil)
- select {case historyEncoders<-encoder: default: _=encoder.Close()}
- return compressed,nil
+	var encoder *zstd.Encoder
+	select {
+	case encoder = <-historyEncoders:
+	default:
+	}
+	if encoder == nil {
+		var err error
+		encoder, err = zstd.NewWriter(nil, zstd.WithEncoderConcurrency(1), zstd.WithEncoderLevel(zstd.SpeedFastest), zstd.WithWindowSize(historyBlockBytes))
+		if err != nil {
+			return nil, err
+		}
+	}
+	compressed := encoder.EncodeAll(body, nil)
+	select {
+	case historyEncoders <- encoder:
+	default:
+		_ = encoder.Close()
+	}
+	return compressed, nil
 }
 
 // Snapshots are immutable versions, never a mutable "latest thread" pointer.
@@ -94,7 +108,9 @@ func (a *remoteCompactionAdapter) sealHistoryRecord(ctx context.Context, key str
 	}
 	aad := fmt.Appendf(nil, "axonhub/unified-history/v1:%d:%d:%s", state.APIKey.ProjectID, state.APIKey.ID, key)
 	compressed, err := compressHistoryRecord(body)
-	if err != nil { return "", err }
+	if err != nil {
+		return "", err
+	}
 	return sealNativeCompactionSource(aead, aad, compressed)
 }
 
@@ -217,12 +233,20 @@ func (a *remoteCompactionAdapter) saveHistorySnapshot(ctx context.Context, alias
 	// may have won after our initial lookup; rolling back also removes this
 	// losing publication's otherwise unreachable blocks.
 	return a.systemService.RunInTransaction(ctx, func(txCtx context.Context) error {
-		if err := a.systemService.SaveUnifiedHistory(txCtx, entries); err != nil { return err }
+		if err := a.systemService.SaveUnifiedHistory(txCtx, entries); err != nil {
+			return err
+		}
 		published, err := a.systemService.LoadUnifiedHistory(txCtx, []string{alias})
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 		prior, err := a.openHistoryRecord(txCtx, alias, published[alias], 128)
-		if err != nil { return err }
-		if string(prior) != root { return errors.New("history identifier already belongs to a different immutable version") }
+		if err != nil {
+			return err
+		}
+		if string(prior) != root {
+			return errors.New("history identifier already belongs to a different immutable version")
+		}
 		return nil
 	})
 }
@@ -366,22 +390,38 @@ func (a *remoteCompactionAdapter) archiveHistoryResponse(ctx context.Context, bo
 	}
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	if original,ok:=ctx.Value(unifiedHistoryOriginKey{}).([]byte);ok && len(original)>0 {body=original}
-    hasCheckpoint:=false
-    for _,item:=range gjson.GetBytes(response,"output").Array(){if item.Get("type").String()==remoteCompactionItemType || item.Get("type").String()==legacyRemoteCompactionSummaryType {hasCheckpoint=true}}
-    // A local compaction executor first emits assistant text internally. Only
-    // its final checkpoint is an authoritative output for downstream deltas.
-    if gjson.GetBytes(body,`input.#(type=="compaction_trigger")`).Exists() && !hasCheckpoint {return nil}
+	if original, ok := ctx.Value(unifiedHistoryOriginKey{}).([]byte); ok && len(original) > 0 {
+		body = original
+	}
+	hasCheckpoint := false
+	for _, item := range gjson.GetBytes(response, "output").Array() {
+		if item.Get("type").String() == remoteCompactionItemType || item.Get("type").String() == legacyRemoteCompactionSummaryType {
+			hasCheckpoint = true
+		}
+	}
+	// A local compaction executor first emits assistant text internally. Only
+	// its final checkpoint is an authoritative output for downstream deltas.
+	if gjson.GetBytes(body, `input.#(type=="compaction_trigger")`).Exists() && !hasCheckpoint {
+		return nil
+	}
 	source, err := a.flattenHistorySource(ctx, &remoteCompactionSource{body: body}, state)
 	if err != nil {
 		return err
 	}
-    if hasCheckpoint {
-        envelope,input,err:=decodeResponsesInput(source.body);if err!=nil{return err}
-        if len(input)>0 && rawInputItemType(input[len(input)-1])==remoteCompactionTriggerType {
-            if err:=setResponseEnvelopeInput(envelope,input[:len(input)-1]);err!=nil{return err}
-            source.body,err=json.Marshal(envelope);if err!=nil{return err}
-        }
-    }
+	if hasCheckpoint {
+		envelope, input, err := decodeResponsesInput(source.body)
+		if err != nil {
+			return err
+		}
+		if len(input) > 0 && rawInputItemType(input[len(input)-1]) == remoteCompactionTriggerType {
+			if err := setResponseEnvelopeInput(envelope, input[:len(input)-1]); err != nil {
+				return err
+			}
+			source.body, err = json.Marshal(envelope)
+			if err != nil {
+				return err
+			}
+		}
+	}
 	return a.saveHistorySnapshot(ctx, historyResponseAlias(id), source.body, response)
 }

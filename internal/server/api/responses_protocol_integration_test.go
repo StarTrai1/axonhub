@@ -125,7 +125,7 @@ func newResponsesHistoryIntegrationFixture(t *testing.T, upstreamURL string, ena
 	require.NoError(t, err)
 
 	cacheConfig := xcache.Config{Mode: xcache.ModeMemory}
-	systemService := biz.NewSystemService(biz.SystemServiceParams{CacheConfig: cacheConfig, Ent: client, UnifiedHistory: biz.UnifiedHistoryConfig{Enabled:enabled}})
+	systemService := biz.NewSystemService(biz.SystemServiceParams{CacheConfig: cacheConfig, Ent: client, UnifiedHistory: biz.UnifiedHistoryConfig{Enabled: enabled}})
 	require.NoError(t, systemService.SetModelSettings(ctx, biz.SystemModelSettings{FallbackToChannelsOnModelNotFound: true, QueryAllChannelModels: true}))
 	channelService := biz.NewChannelService(biz.ChannelServiceParams{CacheConfig: cacheConfig, Ent: client, SystemService: systemService, HttpClient: httpclient.NewHttpClient()})
 	t.Cleanup(channelService.Stop)

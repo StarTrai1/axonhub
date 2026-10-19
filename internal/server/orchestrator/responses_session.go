@@ -148,10 +148,10 @@ func decodeResponsesSessionRecord(requestBody, responseBody []byte) *responsesSe
 }
 
 func (s *responsesSessionStore) record(ctx context.Context, requestBody, responseBody []byte) {
- s.recordSnapshot(ctx,requestBody,responseBody,true)
+	s.recordSnapshot(ctx, requestBody, responseBody, true)
 }
 
-func (s *responsesSessionStore) recordSnapshot(ctx context.Context, requestBody,responseBody []byte,archive bool) {
+func (s *responsesSessionStore) recordSnapshot(ctx context.Context, requestBody, responseBody []byte, archive bool) {
 	if archive && s.archive != nil {
 		if err := s.archive(ctx, requestBody, responseBody); err != nil {
 			log.Warn(ctx, "could not retain unified conversation history", log.Cause(err))

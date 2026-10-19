@@ -79,7 +79,7 @@ func TestUnifiedHistoryDurabilityDeduplicationAndIsolation(t *testing.T) {
 		require.NotContains(t, row.Value, "17.125")
 		require.NotContains(t, row.Value, "calibration")
 	}
-	block, err := client.System.Query().Where(system.KeyHasSuffix(":block:"+historyDigest([]byte(`{"role":"user","content":"never alter calibration 17.125"}`)))).Only(ctx)
+	block, err := client.System.Query().Where(system.KeyHasSuffix(":block:" + historyDigest([]byte(`{"role":"user","content":"never alter calibration 17.125"}`)))).Only(ctx)
 	require.NoError(t, err)
 	require.NoError(t, block.Update().SetValue("tampered-ciphertext").Exec(ctx))
 	_, _, _, err = adapter.loadHistorySnapshot(ctx, historyResponseAlias("resp_history_source"))
@@ -196,20 +196,22 @@ func TestUnifiedHistoryGenerationAvoidsAdditionalProviderCall(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, found)
 	require.Contains(t, string(body), "retain this exact original constraint")
-    responseID:=gjson.Get(events["response.completed"],"response.id").String()
-    stored,completed,found,err:=adapter.loadHistorySnapshot(ctx,historyResponseAlias(responseID))
-    require.NoError(t,err);require.True(t,found)
-    require.False(t,gjson.GetBytes(stored,`input.#(type=="compaction_trigger")`).Exists(),"completed control frames must not reappear in the next delta")
-    require.Equal(t,ref.ID,gjson.GetBytes(completed,"output.0.id").String())
-    require.Equal(t,"compaction",gjson.GetBytes(completed,"output.0.type").String(),"internal assistant summary must never become the published checkpoint output")
+	responseID := gjson.Get(events["response.completed"], "response.id").String()
+	stored, completed, found, err := adapter.loadHistorySnapshot(ctx, historyResponseAlias(responseID))
+	require.NoError(t, err)
+	require.True(t, found)
+	require.False(t, gjson.GetBytes(stored, `input.#(type=="compaction_trigger")`).Exists(), "completed control frames must not reappear in the next delta")
+	require.Equal(t, ref.ID, gjson.GetBytes(completed, "output.0.id").String())
+	require.Equal(t, "compaction", gjson.GetBytes(completed, "output.0.type").String(), "internal assistant summary must never become the published checkpoint output")
 }
 
 func TestUnifiedHistoryPortableReasoningAndToolBoundaries(t *testing.T) {
-    agent:=json.RawMessage(`{"type":"agent_message","id":"amsg_original","author":"/root/reviewer","recipient":"/root","content":[{"type":"input_text","text":"exact recovered reviewer evidence"}]}`)
-    preserved,_,portable:=unifiedPortableItems([]json.RawMessage{agent})
-    require.True(t,portable);require.JSONEq(t,string(agent),string(preserved[0]))
-    _,_,portable=unifiedPortableItems([]json.RawMessage{json.RawMessage(`{"type":"agent_message","author":"/root/reviewer","recipient":"/root","content":[{"type":"encrypted_content","encrypted_content":"opaque"}]}`)})
-    require.False(t,portable,"opaque agent payloads must not be replaced by their visible prefix")
+	agent := json.RawMessage(`{"type":"agent_message","id":"amsg_original","author":"/root/reviewer","recipient":"/root","content":[{"type":"input_text","text":"exact recovered reviewer evidence"}]}`)
+	preserved, _, portable := unifiedPortableItems([]json.RawMessage{agent})
+	require.True(t, portable)
+	require.JSONEq(t, string(agent), string(preserved[0]))
+	_, _, portable = unifiedPortableItems([]json.RawMessage{json.RawMessage(`{"type":"agent_message","author":"/root/reviewer","recipient":"/root","content":[{"type":"encrypted_content","encrypted_content":"opaque"}]}`)})
+	require.False(t, portable, "opaque agent payloads must not be replaced by their visible prefix")
 
 	items := []json.RawMessage{json.RawMessage(`{"type":"reasoning","encrypted_content":"private","summary":[{"text":"visible rationale"}]}`), json.RawMessage(`{"type":"function_call","call_id":"call","name":"tool","arguments":"{\"x\":1}"}`)}
 	got, opaque, ok := unifiedPortableItems(items)
@@ -226,73 +228,91 @@ func TestUnifiedHistoryPortableReasoningAndToolBoundaries(t *testing.T) {
 var _ pipeline.Executor = (*unifiedCompactionExecutor)(nil)
 
 func TestUnifiedHistoryRestoredPromptProtection(t *testing.T) {
- ctx,_,state,adapter:=unifiedHistoryFixture(t)
- ref:=&remoteCompactionReference{ID:"cmp_protected",EncryptedContent:"native-cipher"}
- source:=[]byte(`{"model":"gpt-6-astra","input":[{"role":"user","content":"old secret-123 instruction"},{"type":"compaction_trigger"}]}`)
- require.NoError(t,adapter.saveHistorySnapshot(ctx,historyCheckpointAlias(ref),source,nil))
- body:=[]byte(`{"model":"gpt-6-astra","input":[{"type":"compaction","id":"cmp_protected","encrypted_content":"native-cipher"},{"role":"user","content":"continue"}]}`)
- rule:=&ent.PromptProtectionRule{Pattern:"secret-[0-9]+",Settings:&objects.PromptProtectionSettings{Action:objects.PromptProtectionActionMask,Replacement:"[MASKED]",Scopes:[]objects.PromptProtectionScope{objects.PromptProtectionScopeUser}}}
- state.PromptProtecter=&payloadPromptProtecter{}
- unchanged,ok,err:=adapter.compileUnifiedContext(ctx,body,state,&compactionEvidenceExecutor{})
- require.NoError(t,err);require.True(t,ok);require.Contains(t,string(unchanged),"secret-123","no matched rule leaves verified text unchanged")
- state.PromptProtecter=&legacyPayloadPromptProtecter{rules:[]*ent.PromptProtectionRule{rule}}
- _,_,err=adapter.compileUnifiedContext(ctx,body,state,&compactionEvidenceExecutor{})
- require.Error(t,err,"a legacy protector changing text without raw mask evidence must fail closed")
- state.PromptProtecter=&payloadPromptProtecter{rules:[]*ent.PromptProtectionRule{rule}}
- compiled,ok,err:=adapter.compileUnifiedContext(ctx,body,state,&compactionEvidenceExecutor{})
- require.NoError(t,err);require.True(t,ok);require.NotContains(t,string(compiled),"secret-123");require.Contains(t,string(compiled),"[MASKED]")
- original,_,found,err:=adapter.loadHistorySnapshot(ctx,historyCheckpointAlias(ref));require.NoError(t,err);require.True(t,found);require.Contains(t,string(original),"secret-123","protection must not mutate archived evidence")
- rule.Settings.Action=objects.PromptProtectionActionReject
- _,_,err=adapter.compileUnifiedContext(ctx,body,state,&compactionEvidenceExecutor{})
- require.Error(t,err,"restored history must not bypass a new reject rule")
+	ctx, _, state, adapter := unifiedHistoryFixture(t)
+	ref := &remoteCompactionReference{ID: "cmp_protected", EncryptedContent: "native-cipher"}
+	source := []byte(`{"model":"gpt-6-astra","input":[{"role":"user","content":"old secret-123 instruction"},{"type":"compaction_trigger"}]}`)
+	require.NoError(t, adapter.saveHistorySnapshot(ctx, historyCheckpointAlias(ref), source, nil))
+	body := []byte(`{"model":"gpt-6-astra","input":[{"type":"compaction","id":"cmp_protected","encrypted_content":"native-cipher"},{"role":"user","content":"continue"}]}`)
+	rule := &ent.PromptProtectionRule{Pattern: "secret-[0-9]+", Settings: &objects.PromptProtectionSettings{Action: objects.PromptProtectionActionMask, Replacement: "[MASKED]", Scopes: []objects.PromptProtectionScope{objects.PromptProtectionScopeUser}}}
+	state.PromptProtecter = &payloadPromptProtecter{}
+	unchanged, ok, err := adapter.compileUnifiedContext(ctx, body, state, &compactionEvidenceExecutor{})
+	require.NoError(t, err)
+	require.True(t, ok)
+	require.Contains(t, string(unchanged), "secret-123", "no matched rule leaves verified text unchanged")
+	state.PromptProtecter = &legacyPayloadPromptProtecter{rules: []*ent.PromptProtectionRule{rule}}
+	_, _, err = adapter.compileUnifiedContext(ctx, body, state, &compactionEvidenceExecutor{})
+	require.Error(t, err, "a legacy protector changing text without raw mask evidence must fail closed")
+	state.PromptProtecter = &payloadPromptProtecter{rules: []*ent.PromptProtectionRule{rule}}
+	compiled, ok, err := adapter.compileUnifiedContext(ctx, body, state, &compactionEvidenceExecutor{})
+	require.NoError(t, err)
+	require.True(t, ok)
+	require.NotContains(t, string(compiled), "secret-123")
+	require.Contains(t, string(compiled), "[MASKED]")
+	original, _, found, err := adapter.loadHistorySnapshot(ctx, historyCheckpointAlias(ref))
+	require.NoError(t, err)
+	require.True(t, found)
+	require.Contains(t, string(original), "secret-123", "protection must not mutate archived evidence")
+	rule.Settings.Action = objects.PromptProtectionActionReject
+	_, _, err = adapter.compileUnifiedContext(ctx, body, state, &compactionEvidenceExecutor{})
+	require.Error(t, err, "restored history must not bypass a new reject rule")
 }
 
 func TestUnifiedHistoryRepeatedCheckpointsFlattenOriginalSources(t *testing.T) {
- ctx,_,state,adapter:=unifiedHistoryFixture(t)
- body:=[]byte(`{"model":"gpt-6-astra","input":[{"role":"user","content":"initial calibration 17.125"},{"type":"compaction_trigger"}]}`)
- var ref *remoteCompactionReference
- for i:=range 20 {
-  ref=&remoteCompactionReference{ID:fmt.Sprintf("cmp_generation_%d",i),EncryptedContent:"native-cipher"}
-  require.NoError(t,adapter.retainNativeCompactionSource(ctx,ref,state,&remoteCompactionSource{body:body}))
-  original,_,found,err:=adapter.loadHistorySnapshot(ctx,historyCheckpointAlias(ref))
-  require.NoError(t,err);require.True(t,found);require.Contains(t,string(original),"initial calibration 17.125")
-  require.False(t,gjson.GetBytes(original,`input.#(type=="compaction")`).Exists(),"new checkpoints must not accumulate ancestry depth")
-  body=[]byte(fmt.Sprintf(`{"model":"gpt-6-astra","input":[{"type":"compaction","id":%q,"encrypted_content":%q},{"role":"user","content":"correction %d"},{"type":"compaction_trigger"}]}`,ref.ID,ref.EncryptedContent,i))
- }
- compiled,ok,err:=adapter.compileUnifiedContext(ctx,body,state,&compactionEvidenceExecutor{})
- require.NoError(t,err);require.True(t,ok)
- for i:=range 20 {require.Contains(t,string(compiled),fmt.Sprintf("correction %d",i))}
+	ctx, _, state, adapter := unifiedHistoryFixture(t)
+	body := []byte(`{"model":"gpt-6-astra","input":[{"role":"user","content":"initial calibration 17.125"},{"type":"compaction_trigger"}]}`)
+	var ref *remoteCompactionReference
+	for i := range 20 {
+		ref = &remoteCompactionReference{ID: fmt.Sprintf("cmp_generation_%d", i), EncryptedContent: "native-cipher"}
+		require.NoError(t, adapter.retainNativeCompactionSource(ctx, ref, state, &remoteCompactionSource{body: body}))
+		original, _, found, err := adapter.loadHistorySnapshot(ctx, historyCheckpointAlias(ref))
+		require.NoError(t, err)
+		require.True(t, found)
+		require.Contains(t, string(original), "initial calibration 17.125")
+		require.False(t, gjson.GetBytes(original, `input.#(type=="compaction")`).Exists(), "new checkpoints must not accumulate ancestry depth")
+		body = []byte(fmt.Sprintf(`{"model":"gpt-6-astra","input":[{"type":"compaction","id":%q,"encrypted_content":%q},{"role":"user","content":"correction %d"},{"type":"compaction_trigger"}]}`, ref.ID, ref.EncryptedContent, i))
+	}
+	compiled, ok, err := adapter.compileUnifiedContext(ctx, body, state, &compactionEvidenceExecutor{})
+	require.NoError(t, err)
+	require.True(t, ok)
+	for i := range 20 {
+		require.Contains(t, string(compiled), fmt.Sprintf("correction %d", i))
+	}
 }
 
 func TestUnifiedHistoryArchivesOriginalInsteadOfProviderSummaryView(t *testing.T) {
- ctx,_,state,adapter:=unifiedHistoryFixture(t)
- ref:=&remoteCompactionReference{ID:"cmp_origin",EncryptedContent:"native-cipher"}
- source:=[]byte(`{"model":"gpt-6-astra","input":[{"role":"user","content":"exact original calibration 17.125"},{"type":"compaction_trigger"}]}`)
- require.NoError(t,adapter.retainNativeCompactionSource(ctx,ref,state,&remoteCompactionSource{body:source}))
- original:=[]byte(`{"model":"gpt-6-astra","input":[{"type":"compaction","id":"cmp_origin","encrypted_content":"native-cipher"},{"role":"user","content":"continue"}]}`)
- ctx=withUnifiedHistoryOrigin(ctx,original)
- provider:=[]byte(`{"model":"gpt-6-astra","input":[{"role":"assistant","content":"lossy provider view"}]}`)
- require.NoError(t,adapter.archiveHistoryResponse(ctx,provider,[]byte(`{"id":"resp_origin","status":"completed","output":[]}`)))
- stored,_,found,err:=adapter.loadHistorySnapshot(ctx,historyResponseAlias("resp_origin"))
- require.NoError(t,err);require.True(t,found);require.Contains(t,string(stored),"exact original calibration 17.125");require.NotContains(t,string(stored),"lossy provider view")
- state.unifiedHistorySource=&remoteCompactionSource{body:source}
- ref=&remoteCompactionReference{ID:"cmp_provider_view",EncryptedContent:"new-native-cipher"}
- // The provider may have a transport-local predecessor unknown to the archive.
- require.NoError(t,adapter.retainNativeCompactionSource(ctx,ref,state,&remoteCompactionSource{body:[]byte(`{"model":"gpt-6-astra","previous_response_id":"provider-only-id","input":[]}`)}))
- stored,_,found,err=adapter.loadHistorySnapshot(ctx,historyCheckpointAlias(ref))
- require.NoError(t,err);require.True(t,found);require.Contains(t,string(stored),"exact original calibration 17.125")
+	ctx, _, state, adapter := unifiedHistoryFixture(t)
+	ref := &remoteCompactionReference{ID: "cmp_origin", EncryptedContent: "native-cipher"}
+	source := []byte(`{"model":"gpt-6-astra","input":[{"role":"user","content":"exact original calibration 17.125"},{"type":"compaction_trigger"}]}`)
+	require.NoError(t, adapter.retainNativeCompactionSource(ctx, ref, state, &remoteCompactionSource{body: source}))
+	original := []byte(`{"model":"gpt-6-astra","input":[{"type":"compaction","id":"cmp_origin","encrypted_content":"native-cipher"},{"role":"user","content":"continue"}]}`)
+	ctx = withUnifiedHistoryOrigin(ctx, original)
+	provider := []byte(`{"model":"gpt-6-astra","input":[{"role":"assistant","content":"lossy provider view"}]}`)
+	require.NoError(t, adapter.archiveHistoryResponse(ctx, provider, []byte(`{"id":"resp_origin","status":"completed","output":[]}`)))
+	stored, _, found, err := adapter.loadHistorySnapshot(ctx, historyResponseAlias("resp_origin"))
+	require.NoError(t, err)
+	require.True(t, found)
+	require.Contains(t, string(stored), "exact original calibration 17.125")
+	require.NotContains(t, string(stored), "lossy provider view")
+	state.unifiedHistorySource = &remoteCompactionSource{body: source}
+	ref = &remoteCompactionReference{ID: "cmp_provider_view", EncryptedContent: "new-native-cipher"}
+	// The provider may have a transport-local predecessor unknown to the archive.
+	require.NoError(t, adapter.retainNativeCompactionSource(ctx, ref, state, &remoteCompactionSource{body: []byte(`{"model":"gpt-6-astra","previous_response_id":"provider-only-id","input":[]}`)}))
+	stored, _, found, err = adapter.loadHistorySnapshot(ctx, historyCheckpointAlias(ref))
+	require.NoError(t, err)
+	require.True(t, found)
+	require.Contains(t, string(stored), "exact original calibration 17.125")
 }
 
 func TestUnifiedHistoryGroupsKeepInterruptedToolPairs(t *testing.T) {
- items:=[]json.RawMessage{
-  json.RawMessage(`{"role":"user","content":"inspect original source"}`),
-  json.RawMessage(`{"type":"function_call","name":"inspect","call_id":"call_original","arguments":"{}"}`),
-  json.RawMessage(`{"role":"user","content":"interruption: preserve calibration 17.125"}`),
-  json.RawMessage(`{"type":"function_call_output","call_id":"call_original","output":"exact original result"}`),
-  json.RawMessage(`{"role":"user","content":"continue"}`),
- }
- groups:=unifiedHistoryGroups(items)
- require.Len(t,groups,2)
- require.Len(t,groups[0],4,"an interruption cannot separate the original call from its result")
- require.Len(t,groups[1],1)
+	items := []json.RawMessage{
+		json.RawMessage(`{"role":"user","content":"inspect original source"}`),
+		json.RawMessage(`{"type":"function_call","name":"inspect","call_id":"call_original","arguments":"{}"}`),
+		json.RawMessage(`{"role":"user","content":"interruption: preserve calibration 17.125"}`),
+		json.RawMessage(`{"type":"function_call_output","call_id":"call_original","output":"exact original result"}`),
+		json.RawMessage(`{"role":"user","content":"continue"}`),
+	}
+	groups := unifiedHistoryGroups(items)
+	require.Len(t, groups, 2)
+	require.Len(t, groups[0], 4, "an interruption cannot separate the original call from its result")
+	require.Len(t, groups[1], 1)
 }

@@ -44,7 +44,9 @@ func nativeCompactionSourceAAD(ref *remoteCompactionReference, state *Persistenc
 }
 
 func (a *remoteCompactionAdapter) retainNativeCompactionSource(ctx context.Context, ref *remoteCompactionReference, state *PersistenceState, source *remoteCompactionSource) error {
-    if a.unifiedHistoryEnabled() && state!=nil && state.unifiedHistorySource!=nil {source=state.unifiedHistorySource}
+	if a.unifiedHistoryEnabled() && state != nil && state.unifiedHistorySource != nil {
+		source = state.unifiedHistorySource
+	}
 	if a.systemService == nil || source == nil || len(source.body) == 0 || len(source.body) > nativeCompactionMaxSourceBytes {
 		return errors.New("native compaction source storage is unavailable or source exceeds limit")
 	}
@@ -53,11 +55,17 @@ func (a *remoteCompactionAdapter) retainNativeCompactionSource(ctx context.Conte
 		return err
 	}
 	if a.unifiedHistoryEnabled() {
-        owner,ownerErr:=historyState(ctx)
-        if ownerErr!=nil{return ownerErr}
-        if state==nil || state.APIKey==nil || owner.APIKey.ID!=state.APIKey.ID || owner.APIKey.ProjectID!=state.APIKey.ProjectID {return errors.New("unified history source owner mismatch")}
-        source,err=a.flattenHistorySource(ctx,source,state)
-        if err!=nil{return err}
+		owner, ownerErr := historyState(ctx)
+		if ownerErr != nil {
+			return ownerErr
+		}
+		if state == nil || state.APIKey == nil || owner.APIKey.ID != state.APIKey.ID || owner.APIKey.ProjectID != state.APIKey.ProjectID {
+			return errors.New("unified history source owner mismatch")
+		}
+		source, err = a.flattenHistorySource(ctx, source, state)
+		if err != nil {
+			return err
+		}
 		return a.saveHistorySnapshot(ctx, historyCheckpointAlias(ref), source.body, nil)
 	}
 	encoded, err := json.Marshal(nativeCompactionSourceCheckpoint{Version: 1, Body: source.body})
@@ -200,7 +208,7 @@ func (m *nativeCompactionSourceMiddleware) snapshot() (*remoteCompactionSource, 
 		return nil, nil
 	}
 	owner := &ent.APIKey{ID: state.APIKey.ID, ProjectID: state.APIKey.ProjectID}
-	return &remoteCompactionSource{body: append([]byte(nil), body...)}, &PersistenceState{APIKey: owner, unifiedHistorySource:state.unifiedHistorySource}
+	return &remoteCompactionSource{body: append([]byte(nil), body...)}, &PersistenceState{APIKey: owner, unifiedHistorySource: state.unifiedHistorySource}
 }
 
 func (m *nativeCompactionSourceMiddleware) OnOutboundRawResponse(ctx context.Context, response *httpclient.Response) (*httpclient.Response, error) {

@@ -221,10 +221,12 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawRequest(
 			return nil, &remoteCompactionPreparationError{cause: err}
 		}
 		if replayed {
-            if m.adapter.unifiedHistoryEnabled() {
-                body,err=protectUnifiedHistory(ctx,body,state)
-                if err!=nil{return nil,&remoteCompactionPreparationError{cause:err}}
-            }
+			if m.adapter.unifiedHistoryEnabled() {
+				body, err = protectUnifiedHistory(ctx, body, state)
+				if err != nil {
+					return nil, &remoteCompactionPreparationError{cause: err}
+				}
+			}
 			request.Body = body
 			if len(request.JSONBody) > 0 {
 				request.JSONBody = body
