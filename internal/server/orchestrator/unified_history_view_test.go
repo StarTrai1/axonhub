@@ -123,6 +123,35 @@ func TestUnifiedHistoryFailedViewIsNotPublished(t *testing.T) {
 	require.Empty(t, entries)
 }
 
+func TestUnifiedHistoryRecoveryMiddlewareRestoresPublishedView(t *testing.T) {
+	ctx, _, m, _ := unifiedViewFixture(t)
+	original, err := sjson.SetBytes([]byte(unifiedViewOriginal), "client_metadata.thread_id", "view-thread")
+	require.NoError(t, err)
+	newRequest := func(body []byte) *httpclient.Request {
+		return &httpclient.Request{URL:"https://example.invalid/responses", APIFormat:"openai/responses", Body:body,
+			Headers:http.Header{"Authorization":{"Bearer synthetic-view-key"},"Thread-Id":{"view-thread"},"X-Codex-Window-Id":{"view-thread:8"}}}
+	}
+	m.outbound.state.RawRequest = newRequest(original)
+	key, _, ok := m.recoveryKey(ctx, newRequest(original))
+	require.True(t, ok)
+	m.prepareUnifiedView(key)
+	m.adapted = &key
+	_, err = m.OnOutboundRawResponse(ctx, &httpclient.Response{StatusCode:200, Body:[]byte(`{"status":"completed","output":[]}`)})
+	require.NoError(t, err)
+	m.adapter = newRemoteCompactionAdapter(nil,nil,m.adapter.systemService)
+	executor := &unifiedConcurrentExecutor{}
+	m.executor = executor
+	grown := growUnifiedViewInput(t, original, 20)
+	m.outbound.state.RawRequest = newRequest(grown)
+	got, err := m.OnOutboundRawRequest(ctx, newRequest(grown))
+	require.NoError(t, err)
+	require.Contains(t,string(got.Body),"already accepted evidence, never summarize it again")
+	require.Contains(t,string(got.Body),"new correction: use 17.250")
+	require.NotContains(t,string(got.Body),"source-only-state")
+	require.Empty(t,executor.summaries)
+	require.Contains(t,string(m.outbound.state.RawRequest.Body),"source-only-state")
+}
+
 func TestUnifiedHistoryImportsVerifiedCompletedViewOnUpgrade(t *testing.T) {
 	for _, scenario := range []string{"same", "other-account", "other-window", "failed", "forged-summary"} {
 		t.Run(scenario, func(t *testing.T) {

@@ -271,11 +271,7 @@ func (a *remoteCompactionAdapter) hydrateUnifiedSegments(ctx context.Context, se
 	keys := make([]string, 0, len(segments))
 	for _, segment := range segments {
 		if segment.key != "" {
-			keys = append(keys, segment.key)
-			keys = append(keys, segment.legacyKeys...)
-			if segment.cacheAlias != "" {
-				keys = append(keys, segment.cacheAlias)
-			}
+			keys = append(keys, unifiedSummaryLookupKeys(&segment)...)
 		}
 	}
 	cached, err := a.systemService.LoadUnifiedHistory(ctx, keys)
@@ -318,7 +314,7 @@ func (a *remoteCompactionAdapter) hydrateUnifiedSegments(ctx context.Context, se
 		}
 		ownerKey := remoteCompactionOwnerCacheKey(state, flightKey)
 		result, err := waitForUnifiedHistoryFlight(ctx, &a.summaryGenerator, ownerKey, func() (any, error) {
-			stored, err := a.systemService.LoadUnifiedHistory(ctx, keys)
+			stored, err := a.systemService.LoadUnifiedHistory(ctx, unifiedSummaryLookupKeys(segment))
 			if err != nil {
 				return nil, err
 			}

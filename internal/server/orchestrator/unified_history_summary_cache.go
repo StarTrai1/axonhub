@@ -35,27 +35,54 @@ func setUnifiedSummaryKeys(segment *unifiedHistorySegment, contract map[string]j
 	segment.key = key(canonical)
 	segment.cacheAlias = "summaryref:" + strings.TrimPrefix(segment.key, "summary:")
 	segment.legacyKeys = []string{key(raw)}
-	// Earlier source expansion serialized tool items through a map while later
-	// archives preserved their wire order. Import both existing representations.
-	var input []map[string]json.RawMessage
+	// Agent transport used to reserialize custom calls but leave their outputs
+	// and ordinary messages untouched. Sorting every item would miss those
+	// already completed summaries too. Read each historical representation.
+	var input []json.RawMessage
 	if err := json.Unmarshal(contract["input"], &input); err != nil {
 		return err
 	}
-	legacy := maps.Clone(contract)
-	legacy["input"], err = json.Marshal(input)
-	if err != nil {
-		return err
-	}
-	shallow, err := json.Marshal(legacy)
-	if err != nil {
-		return err
-	}
-	for _, candidate := range []string{key(shallow), segment.key} {
+	for _, types := range [][]string{{"custom_tool_call"}, {"custom_tool_call", "function_call"}, nil} {
+		items := slices.Clone(input)
+		for i, raw := range input {
+			if types != nil && !slices.Contains(types, rawInputItemType(raw)) {
+				continue
+			}
+			var item map[string]json.RawMessage
+			if err := json.Unmarshal(raw, &item); err != nil {
+				return err
+			}
+			items[i], err = json.Marshal(item)
+			if err != nil {
+				return err
+			}
+		}
+		legacy := maps.Clone(contract)
+		legacy["input"], err = json.Marshal(items)
+		if err != nil {
+			return err
+		}
+		encoded, err := json.Marshal(legacy)
+		if err != nil {
+			return err
+		}
+		candidate := key(encoded)
 		if !slices.Contains(segment.legacyKeys, candidate) {
 			segment.legacyKeys = append(segment.legacyKeys, candidate)
 		}
 	}
+	if !slices.Contains(segment.legacyKeys, segment.key) {
+		segment.legacyKeys = append(segment.legacyKeys, segment.key)
+	}
 	return nil
+}
+
+func unifiedSummaryLookupKeys(segment *unifiedHistorySegment) []string {
+	keys := append([]string{segment.key}, segment.legacyKeys...)
+	if segment.cacheAlias != "" {
+		keys = append(keys, segment.cacheAlias)
+	}
+	return keys
 }
 
 type unifiedSummaryValue struct {

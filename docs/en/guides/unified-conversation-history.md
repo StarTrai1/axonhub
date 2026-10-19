@@ -33,6 +33,12 @@ Complete records in the portable view omit old upstream item IDs, status and dia
 
 ## Quality and cost limits
 
+After a destination completes a request using assembled context, the gateway retains that actual provider view separately. Ordinary full resends verify the original input prefix, project/API key, thread, window, checkpoint, destination model/endpoint/credential and request contract, then append new records to the accepted input. Growing tails and changed questions do not re-summarize the old window. Prompt protection still runs; explicit input or contract changes cannot be overwritten by a cached view. Failed or canceled requests do not publish accepted views. Only initial successful assemblies are persisted using the existing block store, without replacing original archives; normal model context limits and client compaction remain applicable.
+
+For upgrades, a bounded lookup of at most 128 recent completed executions can import an older view after verifying its complete original prefix, account or unique credential suffix, and authenticated summaries. This never adopts a thread's latest record without checking its source. Missing verifiable evidence retains the existing recovery path. Imported and newly published views remain reusable after restart and request-log removal.
+
+Summary identities canonicalize JSON object member order while preserving array order, strings and numbers. Common historical serializations remain readable; immutable aliases preserve the existing summary text and rendered source label, avoiding paid regeneration solely because serialization changed.
+
 Lossless archival does not mean every token is visible in every model request. Long histories still use model summaries, and lexical retrieval can miss relevant evidence. Original private reasoning ciphertext remains archived; portable views carry only visible reasoning summaries and log the number of private items omitted. The gateway cannot decrypt or guarantee migration of hidden provider state. Encrypted tool arguments are not eligible for this exception.
 
 Cold segment generation still costs tokens and time; subsequent reuse must justify it. Prefix changes after compaction and hidden upstream account changes may still reduce cache hits. Model and reasoning effort are preserved. Evaluate total cost and task quality as well as cache percentages.

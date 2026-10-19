@@ -20,8 +20,8 @@ func summaryCacheSegment(t *testing.T, input string) unifiedHistorySegment {
 
 func TestUnifiedHistorySummaryCacheImportsOldItemOrderWithoutGeneration(t *testing.T) {
 	ctx, _, state, adapter := unifiedHistoryFixture(t)
-	old := summaryCacheSegment(t, `[{"call_id":"call_exact","input":"literal {\"b\":2,\"a\":1}","name":"inspect","type":"custom_tool_call"},{"call_id":"call_exact","output":[{"type":"input_text","text":"retain 9007199254740993"}],"type":"custom_tool_call_output"},{"type":"compaction_trigger"}]`)
-	current := summaryCacheSegment(t, `[{"type":"custom_tool_call","call_id":"call_exact","name":"inspect","input":"literal {\"b\":2,\"a\":1}"},{"call_id":"call_exact","output":[{"type":"input_text","text":"retain 9007199254740993"}],"type":"custom_tool_call_output"},{"type":"compaction_trigger"}]`)
+	old := summaryCacheSegment(t, `[{"call_id":"call_exact","input":"literal {\"b\":2,\"a\":1}","name":"inspect","type":"custom_tool_call"},{"type":"custom_tool_call_output","call_id":"call_exact","output":[{"type":"input_text","text":"retain 9007199254740993"}]},{"type":"function_call","name":"stats","call_id":"function_exact","arguments":"{}"},{"type":"function_call_output","call_id":"function_exact","output":"count 7"},{"type":"compaction_trigger"}]`)
+	current := summaryCacheSegment(t, `[{"type":"custom_tool_call","call_id":"call_exact","name":"inspect","input":"literal {\"b\":2,\"a\":1}"},{"type":"custom_tool_call_output","call_id":"call_exact","output":[{"type":"input_text","text":"retain 9007199254740993"}]},{"type":"function_call","name":"stats","call_id":"function_exact","arguments":"{}"},{"type":"function_call_output","call_id":"function_exact","output":"count 7"},{"type":"compaction_trigger"}]`)
 	require.Equal(t, old.cacheAlias, current.cacheAlias)
 	require.NotEqual(t, old.legacyKeys[0], current.legacyKeys[0], "reproduces the legacy false cache miss")
 	oldKey := old.legacyKeys[0]
@@ -38,7 +38,7 @@ func TestUnifiedHistorySummaryCacheImportsOldItemOrderWithoutGeneration(t *testi
 	require.Equal(t, oldKey, segments[0].key, "keep the old rendered source label")
 	require.Contains(t, segments[0].summary, "9007199254740993")
 	adapter = newRemoteCompactionAdapter(nil, nil, adapter.systemService)
-	thirdOrder := summaryCacheSegment(t, `[{"name":"inspect","type":"custom_tool_call","input":"literal {\"b\":2,\"a\":1}","call_id":"call_exact"},{"output":[{"type":"input_text","text":"retain 9007199254740993"}],"call_id":"call_exact","type":"custom_tool_call_output"},{"type":"compaction_trigger"}]`)
+	thirdOrder := summaryCacheSegment(t, `[{"name":"inspect","type":"custom_tool_call","input":"literal {\"b\":2,\"a\":1}","call_id":"call_exact"},{"output":[{"type":"input_text","text":"retain 9007199254740993"}],"call_id":"call_exact","type":"custom_tool_call_output"},{"type":"function_call","name":"stats","call_id":"function_exact","arguments":"{}"},{"type":"function_call_output","call_id":"function_exact","output":"count 7"},{"type":"compaction_trigger"}]`)
 	segments = []unifiedHistorySegment{thirdOrder}
 	missing, supported, err = adapter.hydrateUnifiedSegments(ctx, segments, state, executor)
 	require.NoError(t, err)
