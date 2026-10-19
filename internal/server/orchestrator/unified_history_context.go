@@ -127,32 +127,38 @@ func (a *remoteCompactionAdapter) compileUnifiedContext(ctx context.Context, bod
 		log.Info(ctx, "assembled complete unified history without summarization", log.Int("history_bytes", len(expanded)))
 		return expanded, true, nil
 	}
-	plan, supported, err := planUnifiedHistory(envelope,items,state,candidate,budget)
-	if err != nil || !supported {return body,false,err}
-	missing,supported,err:=a.hydrateUnifiedSegments(ctx,plan.segments,state,executor)
-	if err != nil || !supported {return body,false,err}
-	result,err:=renderUnifiedHistory(envelope,plan,budget)
-	if err!=nil{return nil,false,err}
-	log.Info(ctx,"assembled unified history from original segments",log.Int("segments",len(plan.segments)),log.Int("new_summaries",missing),log.Int("input_bytes",len(result)))
-	return result,true,nil
+	plan, supported, err := planUnifiedHistory(envelope, items, state, candidate, budget)
+	if err != nil || !supported {
+		return body, false, err
+	}
+	missing, supported, err := a.hydrateUnifiedSegments(ctx, plan.segments, state, executor)
+	if err != nil || !supported {
+		return body, false, err
+	}
+	result, err := renderUnifiedHistory(envelope, plan, budget)
+	if err != nil {
+		return nil, false, err
+	}
+	log.Info(ctx, "assembled unified history from original segments", log.Int("segments", len(plan.segments)), log.Int("new_summaries", missing), log.Int("input_bytes", len(result)))
+	return result, true, nil
 }
 
 type unifiedHistoryPlan struct {
- segments []unifiedHistorySegment
- recent []json.RawMessage
- query string
- mandatory int
- capacity int
+	segments  []unifiedHistorySegment
+	recent    []json.RawMessage
+	query     string
+	mandatory int
+	capacity  int
 }
 
-func planUnifiedHistory(envelope map[string]json.RawMessage, items []json.RawMessage,state *PersistenceState,candidate *ChannelModelsCandidate,budget int)(*unifiedHistoryPlan,bool,error){
+func planUnifiedHistory(envelope map[string]json.RawMessage, items []json.RawMessage, state *PersistenceState, candidate *ChannelModelsCandidate, budget int) (*unifiedHistoryPlan, bool, error) {
 	groups := unifiedHistoryGroups(items)
 	if len(groups) < 2 {
 		return nil, false, nil
 	}
 	// The final user turn and all its tool interactions are always exact.
 	recent := groups[len(groups)-1]
-    query:=strings.ToLower(unifiedMessageText(recent[0]))
+	query := strings.ToLower(unifiedMessageText(recent[0]))
 	groups = groups[:len(groups)-1]
 	segments := make([]unifiedHistorySegment, 0)
 	var current unifiedHistorySegment
@@ -175,10 +181,12 @@ func planUnifiedHistory(envelope map[string]json.RawMessage, items []json.RawMes
 		current.items = append(current.items, group...)
 		size += groupBytes
 	}
-    // The trailing partial segment is still growing. Keep it verbatim with
-    // the recent turn instead of summarizing an overlapping tail every turn.
-    // Only segments closed by a following group receive reusable summaries.
-    if len(current.items)>0 {recent=append(append([]json.RawMessage(nil),current.items...),recent...)}
+	// The trailing partial segment is still growing. Keep it verbatim with
+	// the recent turn instead of summarizing an overlapping tail every turn.
+	// Only segments closed by a following group receive reusable summaries.
+	if len(current.items) > 0 {
+		recent = append(append([]json.RawMessage(nil), current.items...), recent...)
+	}
 	if len(segments) > 32 {
 		return nil, false, nil
 	}
@@ -227,10 +235,10 @@ func planUnifiedHistory(envelope map[string]json.RawMessage, items []json.RawMes
 	if mandatory+len(segments)*1024 > budget {
 		return nil, false, nil
 	}
-	return &unifiedHistoryPlan{segments:segments,recent:recent,query:query,mandatory:mandatory,capacity:len(items)},true,nil
+	return &unifiedHistoryPlan{segments: segments, recent: recent, query: query, mandatory: mandatory, capacity: len(items)}, true, nil
 }
 
-func (a *remoteCompactionAdapter) hydrateUnifiedSegments(ctx context.Context,segments []unifiedHistorySegment,state *PersistenceState,executor pipeline.Executor)(int,bool,error){
+func (a *remoteCompactionAdapter) hydrateUnifiedSegments(ctx context.Context, segments []unifiedHistorySegment, state *PersistenceState, executor pipeline.Executor) (int, bool, error) {
 	keys := make([]string, len(segments))
 	for i := range segments {
 		keys[i] = segments[i].key
@@ -299,11 +307,11 @@ func (a *remoteCompactionAdapter) hydrateUnifiedSegments(ctx context.Context,seg
 			return 0, false, errors.New("empty unified segment summary")
 		}
 	}
-	return missing,true,nil
+	return missing, true, nil
 }
 
-func renderUnifiedHistory(envelope map[string]json.RawMessage,plan *unifiedHistoryPlan,budget int)([]byte,error){
- segments,recent,query,mandatory:=plan.segments,plan.recent,plan.query,plan.mandatory
+func renderUnifiedHistory(envelope map[string]json.RawMessage, plan *unifiedHistoryPlan, budget int) ([]byte, error) {
+	segments, recent, query, mandatory := plan.segments, plan.recent, plan.query, plan.mandatory
 	compiled := make([]json.RawMessage, 0, plan.capacity)
 	remaining := budget - mandatory
 	for _, segment := range segments {
@@ -346,7 +354,7 @@ func renderUnifiedHistory(envelope map[string]json.RawMessage,plan *unifiedHisto
 	if len(result) > budget {
 		return nil, errors.New("unified history assembled context exceeds budget; retained source is intact")
 	}
- return result,nil
+	return result, nil
 }
 
 func unifiedHistoryGroups(items []json.RawMessage) [][]json.RawMessage {
