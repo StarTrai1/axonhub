@@ -128,6 +128,7 @@ func (m *responsesCompactionRecoveryMiddleware) restoreUnifiedView(ctx context.C
 	if !m.adapter.unifiedHistoryEnabled() {
 		return false, nil
 	}
+	key = m.unifiedViewScope(key, request)
 	original := rawRequestPayload(m.outbound.state.RawRequest)
 	keys, err := unifiedViewKeys(key, original)
 	if err != nil || len(keys) == 0 {
@@ -183,14 +184,35 @@ func (m *responsesCompactionRecoveryMiddleware) applyUnifiedView(ctx context.Con
 	return nil
 }
 
-func (m *responsesCompactionRecoveryMiddleware) prepareUnifiedView(key responsesCompactionRecoveryKey) {
+func (m *responsesCompactionRecoveryMiddleware) unifiedViewScope(key responsesCompactionRecoveryKey, request *httpclient.Request) responsesCompactionRecoveryKey {
+	channel := m.outbound.GetCurrentChannel()
+	if channel != nil && channel.Credentials.IsOAuth() && request != nil {
+		if account := request.Headers.Get("Chatgpt-Account-Id"); account != "" {
+			// These views contain no provider-private state. Refreshing the access
+			// token of the same account must not discard its accepted text prefix.
+			key.scope.provider.credential = sha256.Sum256([]byte("unified-view-oauth-account:" + account))
+		}
+	}
+	return key
+}
+
+func (m *responsesCompactionRecoveryMiddleware) prepareUnifiedView(key responsesCompactionRecoveryKey, request *httpclient.Request) {
 	if !m.adapter.unifiedHistoryEnabled() {
 		return
 	}
-	keys, err := unifiedViewKeys(key, rawRequestPayload(m.outbound.state.RawRequest))
+	keys, err := unifiedViewKeys(m.unifiedViewScope(key, request), rawRequestPayload(m.outbound.state.RawRequest))
 	if err == nil && len(keys) > 0 {
 		m.pendingView = keys[len(keys)-1]
 	}
+}
+
+func portableUnifiedView(body []byte) bool {
+	_, input, err := decodeResponsesInput(body)
+	if err != nil {
+		return false
+	}
+	_, opaque, portable := unifiedPortableItems(input)
+	return portable && opaque == 0
 }
 
 func (m *responsesCompactionRecoveryMiddleware) confirmUnifiedView(ctx context.Context) {
@@ -198,7 +220,7 @@ func (m *responsesCompactionRecoveryMiddleware) confirmUnifiedView(ctx context.C
 	m.pendingView = ""
 	request := m.outbound.state.RawProviderRequest
 	if alias == "" || request == nil || gjson.GetBytes(request.Body, "previous_response_id").String() != "" ||
-		gjson.GetBytes(request.Body, `input.#(type=="compaction_trigger")`).Exists() {
+		gjson.GetBytes(request.Body, `input.#(type=="compaction_trigger")`).Exists() || !portableUnifiedView(request.Body) {
 		return
 	}
 	// Completion is the publication boundary. Canceled/failed preparations are

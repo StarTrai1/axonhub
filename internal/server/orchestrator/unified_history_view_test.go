@@ -57,7 +57,7 @@ func growUnifiedViewInput(t *testing.T, body []byte, count int) []byte {
 
 func TestUnifiedHistoryAcceptedViewSurvivesRestartAndGrowingResends(t *testing.T) {
 	ctx, _, m, key := unifiedViewFixture(t)
-	m.prepareUnifiedView(key)
+	m.prepareUnifiedView(key, m.outbound.state.RawProviderRequest)
 	require.NotEmpty(t, m.pendingView)
 	m.confirmUnifiedView(ctx)
 	// No rejection/source archive/generator is available after restart. An
@@ -86,7 +86,7 @@ func TestUnifiedHistoryAcceptedViewIsolationAndOverrides(t *testing.T) {
 	for _, scenario := range []string{"sibling", "owner", "credential", "model", "thread", "window", "checkpoint", "contract", "wire-override"} {
 		t.Run(scenario, func(t *testing.T) {
 			ctx, _, m, key := unifiedViewFixture(t)
-			m.prepareUnifiedView(key); m.confirmUnifiedView(ctx)
+			m.prepareUnifiedView(key, m.outbound.state.RawProviderRequest); m.confirmUnifiedView(ctx)
 			m.adapter = newRemoteCompactionAdapter(nil, nil, m.adapter.systemService)
 			body := []byte(unifiedViewOriginal)
 			switch scenario {
@@ -113,7 +113,7 @@ func TestUnifiedHistoryAcceptedViewIsolationAndOverrides(t *testing.T) {
 
 func TestUnifiedHistoryFailedViewIsNotPublished(t *testing.T) {
 	ctx, _, m, key := unifiedViewFixture(t)
-	m.prepareUnifiedView(key)
+	m.prepareUnifiedView(key, m.outbound.state.RawProviderRequest)
 	alias := m.pendingView
 	m.adapted = &key
 	_, err := m.OnOutboundRawResponse(ctx, &httpclient.Response{StatusCode:400, Body:[]byte(`{"error":{"message":"failed"}}`)})
@@ -134,7 +134,7 @@ func TestUnifiedHistoryRecoveryMiddlewareRestoresPublishedView(t *testing.T) {
 	m.outbound.state.RawRequest = newRequest(original)
 	key, _, ok := m.recoveryKey(ctx, newRequest(original))
 	require.True(t, ok)
-	m.prepareUnifiedView(key)
+	m.prepareUnifiedView(key, m.outbound.state.RawProviderRequest)
 	m.adapted = &key
 	_, err = m.OnOutboundRawResponse(ctx, &httpclient.Response{StatusCode:200, Body:[]byte(`{"status":"completed","output":[]}`)})
 	require.NoError(t, err)
@@ -152,13 +152,29 @@ func TestUnifiedHistoryRecoveryMiddlewareRestoresPublishedView(t *testing.T) {
 	require.Contains(t,string(m.outbound.state.RawRequest.Body),"source-only-state")
 }
 
+func TestUnifiedHistoryAcceptedViewSurvivesOAuthRefreshButNotAccountChange(t *testing.T) {
+	ctx, _, m, key := unifiedViewFixture(t)
+	m.outbound.GetCurrentChannel().Credentials = objects.ChannelCredentials{OAuth:&objects.OAuthCredentials{AccessToken:"synthetic-token"}}
+	m.outbound.state.RawProviderRequest.Headers = http.Header{"Chatgpt-Account-Id":{"same-account"}}
+	m.prepareUnifiedView(key, m.outbound.state.RawProviderRequest)
+	m.confirmUnifiedView(ctx)
+	m.adapter = newRemoteCompactionAdapter(nil,nil,m.adapter.systemService)
+	key.scope.provider.credential = sha256.Sum256([]byte("refreshed-token"))
+	for _, account := range []string{"same-account", "different-account"} {
+		wire := &httpclient.Request{Body:[]byte(unifiedViewOriginal), Headers:http.Header{"Chatgpt-Account-Id":{account}}}
+		ok, err := m.restoreUnifiedView(ctx,wire,key)
+		require.NoError(t,err)
+		require.Equal(t,account == "same-account",ok)
+	}
+}
+
 func TestUnifiedHistoryImportsVerifiedCompletedViewOnUpgrade(t *testing.T) {
-	for _, scenario := range []string{"same", "other-account", "other-window", "failed", "forged-summary"} {
+	for _, scenario := range []string{"same", "other-account", "other-window", "failed", "forged-summary", "opaque-checkpoint"} {
 		t.Run(scenario, func(t *testing.T) {
 			ctx, client, m, key := unifiedViewFixture(t)
 			channel := m.outbound.GetCurrentChannel()
 			channel.Credentials = objects.ChannelCredentials{OAuth:&objects.OAuthCredentials{AccessToken:"synthetic-oauth"}}
-			channel.UpdatedAt = time.Now().Add(-time.Hour)
+			channel.UpdatedAt = time.Now().Add(time.Minute) // refreshed after the historical execution
 			summaryKey := "summary:"+strings.Repeat("a",64)
 			text := "verified old summary 17.125"
 			sealed, err := m.adapter.sealHistoryRecord(ctx, summaryKey, []byte(text))
@@ -168,6 +184,10 @@ func TestUnifiedHistoryImportsVerifiedCompletedViewOnUpgrade(t *testing.T) {
 			if scenario == "forged-summary" { note += "not in authenticated summary" }
 			view, err := sjson.SetBytes([]byte(unifiedViewAccepted), "input.1.content", []map[string]string{{"type":"output_text","text":note}})
 			require.NoError(t, err)
+			if scenario == "opaque-checkpoint" {
+				view, err = sjson.SetRawBytes(view, "input.-1", []byte(`{"type":"compaction","id":"cmp_foreign","encrypted_content":"unreadable"}`))
+				require.NoError(t, err)
+			}
 			parent, err := client.Request.Create().SetAPIKeyID(key.apiKeyID).SetProjectID(key.projectID).SetModelID("gpt-6-astra").SetFormat("openai/responses-ws").SetStatus(request.StatusCompleted).SetRequestBody([]byte(unifiedViewOriginal)).Save(ctx)
 			require.NoError(t, err)
 			headers := http.Header{"Chatgpt-Account-Id":{"account-one"},"Thread-Id":{"wire-thread"},"X-Codex-Window-Id":{"window-8"}}

@@ -275,7 +275,7 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawRequest(
 	if body, assembled, err := m.adapter.compileUnifiedContext(ctx, request.Body, bridgeState, m.executor); err != nil {
 		return nil, &remoteCompactionPreparationError{cause: err}
 	} else if assembled {
-		m.prepareUnifiedView(key)
+		m.prepareUnifiedView(key, request)
 		request.Body = body
 		if len(request.JSONBody) > 0 {
 			request.JSONBody = body

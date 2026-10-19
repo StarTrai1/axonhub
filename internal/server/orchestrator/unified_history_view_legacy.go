@@ -21,16 +21,21 @@ func (m *responsesCompactionRecoveryMiddleware) importUnifiedView(ctx context.Co
 	}
 	account := destination.Headers.Get("Chatgpt-Account-Id")
 	suffix, suffixOK := responsesHistoryCredentialSuffix(ctx, channel, destination)
+	since := channel.UpdatedAt
 	if channel.Credentials.IsOAuth() {
 		if account == "" {
 			return nil, 0, nil
 		}
+		// Token refresh updates the channel timestamp without changing the
+		// account. Full account binding permits importing its recent text view;
+		// suffix-only API-key evidence still requires the configuration boundary.
+		since = time.Now().Add(-responsesReasoningRecoveryTTL)
 	} else if !suffixOK {
 		return nil, 0, nil
 	}
 	lookupCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	rows, err := service.FindUnifiedViewCandidates(lookupCtx, channel.ID, channel.UpdatedAt)
+	rows, err := service.FindUnifiedViewCandidates(lookupCtx, channel.ID, since)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -80,7 +85,7 @@ func (m *responsesCompactionRecoveryMiddleware) importUnifiedView(ctx context.Co
 		}
 		if gjson.GetBytes(view, "previous_response_id").String() != "" ||
 			gjson.GetBytes(view, "model").String() != key.scope.provider.model ||
-			!bytes.Contains(view, []byte("Archived history summary (source ")) {
+			!bytes.Contains(view, []byte("Archived history summary (source ")) || !portableUnifiedView(view) {
 			continue
 		}
 		// Logs are only imported when every summary is an authenticated existing
