@@ -5,12 +5,29 @@ import (
 	"strings"
 
 	"github.com/tidwall/gjson"
+	"github.com/tidwall/sjson"
 )
 
 // Count text JSON bytes conservatively; image transport bytes are not text
 // tokens. Keep the original image unchanged and reserve a large fixed visual
 // allowance. Unknown file/audio/encrypted inputs retain the compatibility path.
 const unifiedImageAllowance = 16 << 10
+
+func unifiedPortableIdentity(raw json.RawMessage) (json.RawMessage, error) {
+	if rawInputItemType(raw) == "agent_message" {
+		return raw, nil // Agent delivery identity is not an upstream hydration ID.
+	}
+	var err error
+	for _, field := range []string{"id", "status", "internal_chat_message_metadata_passthrough"} {
+		if gjson.GetBytes(raw, field).Exists() {
+			raw, err = sjson.DeleteBytes(raw, field)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+	return raw, nil
+}
 
 func unifiedItemSize(item json.RawMessage) int {
 	size := len(item)

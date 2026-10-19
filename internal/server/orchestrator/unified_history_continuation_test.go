@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -64,6 +63,24 @@ func TestUnifiedHistorySplicePreservesDuplicateMessagesAndRejectsDivergence(t *t
 	_, ok, err = spliceUnifiedCompactionSource(changed, source, ref)
 	require.NoError(t, err)
 	require.False(t, ok, "conflicting content with the same ID must not be silently accepted")
+}
+
+func TestUnifiedHistoryPortableViewKeepsCallsWithoutHydratingOldIDs(t *testing.T) {
+	input := []json.RawMessage{
+		json.RawMessage(`{"type":"message","id":"msg_foreign","status":"completed","role":"user","content":"preserve original 17.125"}`),
+		json.RawMessage(`{"type":"function_call","id":"fc_foreign","status":"completed","call_id":"call_original","name":"inspect","arguments":"{\"value\":17.125}"}`),
+		json.RawMessage(`{"type":"function_call_output","id":"result_foreign","call_id":"call_original","output":"exact result"}`),
+	}
+	got, _, ok := unifiedPortableItems(input)
+	require.True(t, ok)
+	for _, item := range got {
+		require.False(t, gjson.GetBytes(item, "id").Exists())
+		require.False(t, gjson.GetBytes(item, "status").Exists())
+	}
+	require.Equal(t, "call_original", gjson.GetBytes(got[1], "call_id").String())
+	require.Equal(t, "call_original", gjson.GetBytes(got[2], "call_id").String())
+	require.Equal(t, gjson.GetBytes(input[1], "arguments").String(), gjson.GetBytes(got[1], "arguments").String())
+	require.True(t, gjson.GetBytes(input[0], "id").Exists(), "archive identity remains unchanged")
 }
 
 func unifiedLongToolHistory(t *testing.T, calls int) []byte {

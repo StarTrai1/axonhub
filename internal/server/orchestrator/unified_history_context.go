@@ -302,7 +302,15 @@ func (a *remoteCompactionAdapter) hydrateUnifiedSegments(ctx context.Context, se
 			}
 			headers := make(http.Header)
 			headers.Set(unifiedSegmentHeader, segment.key)
-			summary, err := a.generateLocalSummary(ctx, historyDigest(segment.body), &remoteCompactionSource{body: segment.body, headers: headers}, state, executor)
+			segmentState := *state
+			segmentState.ChannelModelsCandidates = make([]*ChannelModelsCandidate, len(state.ChannelModelsCandidates))
+			for index, candidate := range state.ChannelModelsCandidates {
+				if candidate != nil {
+					cloned := *candidate
+					segmentState.ChannelModelsCandidates[index] = &cloned
+				}
+			}
+			summary, err := a.generateLocalSummary(ctx, historyDigest(segment.body), &remoteCompactionSource{body: segment.body, headers: headers}, &segmentState, executor)
 			if err != nil {
 				return nil, err
 			}
@@ -509,7 +517,13 @@ func unifiedPortableItems(items []json.RawMessage) ([]json.RawMessage, int, bool
 		} else if !unifiedPortableItem(item) {
 			return nil, opaque, false
 		}
-		result = append(result, item)
+		// These are complete reconstructed records, not upstream stored-item
+		// references. Avoid resource hydration and duplicate IDs after reinsertion.
+		portableItem, err := unifiedPortableIdentity(item)
+		if err != nil {
+			return nil, opaque, false
+		}
+		result = append(result, portableItem)
 	}
 	return result, opaque, true
 }
