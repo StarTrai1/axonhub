@@ -35,6 +35,8 @@ type unifiedHistorySegment struct {
 	items   []json.RawMessage
 	pinned  []json.RawMessage
 	key     string
+	cacheAlias string
+	legacyKeys []string
 	summary string
 	body    []byte
 }
@@ -255,11 +257,9 @@ func planUnifiedHistory(envelope map[string]json.RawMessage, items []json.RawMes
 		if state.CurrentModelIndex >= 0 && state.CurrentModelIndex < len(candidate.Models) {
 			contract["destination_model"], _ = json.Marshal(candidate.Models[state.CurrentModelIndex].ActualModel)
 		}
-		identity, err := json.Marshal(contract)
-		if err != nil {
+		if err := setUnifiedSummaryKeys(segment, contract); err != nil {
 			return nil, false, err
 		}
-		segment.key = "summary:" + historyDigest(append([]byte("segment-summary-v2:"), identity...))
 	}
 	if mandatory+summaryCount*1024 > budget {
 		return nil, false, nil
@@ -272,6 +272,10 @@ func (a *remoteCompactionAdapter) hydrateUnifiedSegments(ctx context.Context, se
 	for _, segment := range segments {
 		if segment.key != "" {
 			keys = append(keys, segment.key)
+			keys = append(keys, segment.legacyKeys...)
+			if segment.cacheAlias != "" {
+				keys = append(keys, segment.cacheAlias)
+			}
 		}
 	}
 	cached, err := a.systemService.LoadUnifiedHistory(ctx, keys)
@@ -284,12 +288,18 @@ func (a *remoteCompactionAdapter) hydrateUnifiedSegments(ctx context.Context, se
 		if segment.key == "" {
 			continue
 		}
-		if sealed := cached[segment.key]; sealed != "" {
-			text, err := a.openHistoryRecord(ctx, segment.key, sealed, localCompactionMaxSummaryBytes)
+		value, found, err := a.loadUnifiedSummary(ctx, segment, cached)
+		if err != nil {
+			return 0, false, err
+		}
+		if found {
+			if segment.cacheAlias != "" && cached[segment.cacheAlias] == "" {
+				value, err = a.publishUnifiedSummaryAlias(ctx, segment, value)
+			}
 			if err != nil {
 				return 0, false, err
 			}
-			segment.summary = string(text)
+			segment.key, segment.summary = value.key, value.text
 		} else {
 			missing++
 		}
@@ -302,15 +312,22 @@ func (a *remoteCompactionAdapter) hydrateUnifiedSegments(ctx context.Context, se
 		if segment.key == "" || segment.summary != "" {
 			return nil
 		}
-		ownerKey := remoteCompactionOwnerCacheKey(state, segment.key)
+		flightKey := segment.cacheAlias
+		if flightKey == "" {
+			flightKey = segment.key
+		}
+		ownerKey := remoteCompactionOwnerCacheKey(state, flightKey)
 		result, err := waitForUnifiedHistoryFlight(ctx, &a.summaryGenerator, ownerKey, func() (any, error) {
-			stored, err := a.systemService.LoadUnifiedHistory(ctx, []string{segment.key})
+			stored, err := a.systemService.LoadUnifiedHistory(ctx, keys)
 			if err != nil {
 				return nil, err
 			}
-			if sealed := stored[segment.key]; sealed != "" {
-				text, err := a.openHistoryRecord(ctx, segment.key, sealed, localCompactionMaxSummaryBytes)
-				return string(text), err
+			value, found, err := a.loadUnifiedSummary(ctx, segment, stored)
+			if err != nil {
+				return nil, err
+			}
+			if found {
+				return a.publishUnifiedSummaryAlias(ctx, segment, value)
 			}
 			headers := make(http.Header)
 			headers.Set(unifiedSegmentHeader, segment.key)
@@ -344,16 +361,19 @@ func (a *remoteCompactionAdapter) hydrateUnifiedSegments(ctx context.Context, se
 				return nil, err
 			}
 			text, err := a.openHistoryRecord(persistCtx, segment.key, published[segment.key], localCompactionMaxSummaryBytes)
-			return string(text), err
+			if err != nil {
+				return nil, err
+			}
+			return a.publishUnifiedSummaryAlias(persistCtx, segment, unifiedSummaryValue{key: segment.key, text: string(text)})
 		})
 		if err != nil {
 			return err
 		}
-		var ok bool
-		segment.summary, ok = result.(string)
-		if !ok || strings.TrimSpace(segment.summary) == "" {
+		value, ok := result.(unifiedSummaryValue)
+		if !ok || strings.TrimSpace(value.text) == "" {
 			return errors.New("empty unified segment summary")
 		}
+		segment.key, segment.summary = value.key, value.text
 		return nil
 	}
 	if missing <= 1 {

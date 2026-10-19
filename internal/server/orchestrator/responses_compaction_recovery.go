@@ -70,6 +70,7 @@ type responsesCompactionRecoveryMiddleware struct {
 	adapted          *responsesCompactionRecoveryKey
 	migration        *responsesCompactionRecoveryKey
 	failedMigrations map[responsesCompactionRecoveryKey]bool
+	pendingView string
 }
 
 func recoverRejectedRemoteCompaction(
@@ -86,6 +87,7 @@ func (m *responsesCompactionRecoveryMiddleware) Name() string {
 
 func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawError(ctx context.Context, err error) {
 	m.adapted = nil
+	m.pendingView = ""
 	if ctx.Err() != nil || m.outbound == nil || m.outbound.state == nil || m.adapter == nil || m.executor == nil {
 		return
 	}
@@ -184,6 +186,7 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawRequest(
 ) (*httpclient.Request, error) {
 	m.adapted = nil
 	m.migration = nil
+	m.pendingView = ""
 	if m.adapter == nil || m.executor == nil {
 		return request, nil
 	}
@@ -192,6 +195,12 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawRequest(
 	}
 	key, ref, ok := m.recoveryKey(ctx, request)
 	if !ok {
+		return request, nil
+	}
+	if restored, err := m.restoreUnifiedView(ctx, request, key); err != nil {
+		return nil, &remoteCompactionPreparationError{cause: err}
+	} else if restored {
+		m.adapted = &key
 		return request, nil
 	}
 	_, rejected := m.rejected[key]
@@ -266,6 +275,7 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawRequest(
 	if body, assembled, err := m.adapter.compileUnifiedContext(ctx, request.Body, bridgeState, m.executor); err != nil {
 		return nil, &remoteCompactionPreparationError{cause: err}
 	} else if assembled {
+		m.prepareUnifiedView(key)
 		request.Body = body
 		if len(request.JSONBody) > 0 {
 			request.JSONBody = body
@@ -397,6 +407,7 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawResponse(ctx contex
 	if m.adapted != nil && response != nil && response.StatusCode >= 200 && response.StatusCode < 300 &&
 		responsesReasoningRecoverySucceeded(response.Body) {
 		m.confirmRecovery(ctx, *m.adapted)
+		m.confirmUnifiedView(ctx)
 	}
 	return response, nil
 }
@@ -406,7 +417,10 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawStream(ctx context.
 		return stream, nil
 	}
 	key := *m.adapted
-	return &responsesReasoningRecoveryStream{Stream: stream, onSuccess: func() { m.confirmRecovery(ctx, key) }}, nil
+	return &responsesReasoningRecoveryStream{Stream: stream, onSuccess: func() {
+		m.confirmRecovery(ctx, key)
+		m.confirmUnifiedView(ctx)
+	}}, nil
 }
 
 func (m *responsesCompactionRecoveryMiddleware) recoveryKey(
