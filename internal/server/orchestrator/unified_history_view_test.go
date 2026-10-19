@@ -89,7 +89,7 @@ func TestUnifiedHistoryAcceptedViewSurvivesRestartAndGrowingResends(t *testing.T
 }
 
 func TestUnifiedHistoryAcceptedViewIsolationAndOverrides(t *testing.T) {
-	for _, scenario := range []string{"sibling", "owner", "credential", "model", "thread", "window", "checkpoint", "contract", "wire-override"} {
+	for _, scenario := range []string{"sibling", "owner", "credential", "model", "thread", "checkpoint", "contract", "wire-override"} {
 		t.Run(scenario, func(t *testing.T) {
 			ctx, _, m, key := unifiedViewFixture(t)
 			m.prepareUnifiedView(key, m.outbound.state.RawProviderRequest)
@@ -107,8 +107,6 @@ func TestUnifiedHistoryAcceptedViewIsolationAndOverrides(t *testing.T) {
 				key.scope.provider.model = "other-model"
 			case "thread":
 				key.threadID = "other-thread"
-			case "window":
-				key.scope.windowID = "window-9"
 			case "checkpoint":
 				key.cacheKey = "other-checkpoint"
 			case "contract":
@@ -231,7 +229,7 @@ func TestUnifiedHistoryImportsVerifiedCompletedViewOnUpgrade(t *testing.T) {
 			wire := &httpclient.Request{URL: key.scope.provider.url, Body: append([]byte(nil), original...), Headers: http.Header{"Chatgpt-Account-Id": {"account-one"}}}
 			ok, err := m.restoreUnifiedView(ctx, wire, key)
 			require.NoError(t, err)
-			require.Equal(t, scenario == "same", ok)
+			require.Equal(t, scenario == "same" || scenario == "other-window", ok)
 			if ok {
 				require.Contains(t, string(wire.Body), text)
 				require.Contains(t, string(wire.Body), "new correction: use 17.250")

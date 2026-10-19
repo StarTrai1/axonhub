@@ -7,9 +7,11 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
+ "fmt"
 	"time"
 
 	"github.com/tidwall/gjson"
+ "github.com/tidwall/sjson"
 
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -32,7 +34,41 @@ func unifiedViewContract(envelope map[string]json.RawMessage) ([]byte, error) {
 	return canonicalHistoryJSON(raw)
 }
 
+// A completed status and the dedicated agent-message encryption hint are
+// transport metadata rewritten by our own Responses pipeline. Preserve every
+// content field, call ID, opaque value and unknown/incomplete status.
+func unifiedViewItemIdentity(raw json.RawMessage) (string, error) {
+ var err error
+ switch rawInputItemType(raw) {
+ case "function_call", "custom_tool_call", "function_call_output", "custom_tool_call_output", "reasoning":
+  if gjson.GetBytes(raw, "status").String() == "completed" {
+   raw, err = sjson.DeleteBytes(raw, "status")
+   if err != nil { return "", err }
+  }
+ case "additional_tools":
+  for i, namespace := range gjson.GetBytes(raw, "tools").Array() {
+   if namespace.Get("type").String() != "namespace" { continue }
+   for j, tool := range namespace.Get("tools").Array() {
+    flag := tool.Get("parameters.properties.message.encrypted")
+    if tool.Get("type").String() != "function" || !responsesAgentTool(namespace.Get("name").String(), tool.Get("name").String()) ||
+     tool.Get("parameters.properties.message.type").String() != "string" || (flag.Type != gjson.True && flag.Type != gjson.False) { continue }
+    raw, err = sjson.SetBytes(raw, fmt.Sprintf("tools.%d.tools.%d.parameters.properties.message.encrypted", i, j), false)
+    if err != nil { return "", err }
+   }
+  }
+ }
+ return unifiedRetainedIdentity(raw)
+}
+
 func unifiedViewKeys(key responsesCompactionRecoveryKey, body []byte) ([]string, error) {
+ // A portable accepted view does not depend on a connection-local window.
+ // Exact source prefixes still isolate edited histories and sibling branches.
+ key.scope.windowID = ""
+ return unifiedViewKeysVersion(key, body, false)
+}
+
+func unifiedViewKeysVersion(key responsesCompactionRecoveryKey, body []byte, legacy bool) ([]string, error) {
+
 	if len(body) > nativeCompactionMaxSourceBytes || gjson.GetBytes(body, "previous_response_id").String() != "" {
 		return nil, nil
 	}
@@ -49,12 +85,16 @@ func unifiedViewKeys(key responsesCompactionRecoveryKey, body []byte) ([]string,
 	}
 	scope := key.digest()
 	hash := sha256.New()
-	hash.Write([]byte("unified-accepted-view-v1:"))
+	version := "unified-accepted-view-v2:"
+ if legacy { version = "unified-accepted-view-v1:" }
+ hash.Write([]byte(version))
 	hash.Write(scope[:])
 	hash.Write(canonical)
 	keys := make([]string, len(input))
 	for i, item := range input {
-		identity, err := unifiedRetainedIdentity(item)
+		identityFn := unifiedViewItemIdentity
+  if legacy { identityFn = unifiedRetainedIdentity }
+  identity, err := identityFn(item)
 		if err != nil {
 			return nil, err
 		}
@@ -97,11 +137,11 @@ func appendUnifiedView(body, original, view []byte, covered int) ([]byte, bool, 
 	// Take the prepared wire suffix, never bypass agent argument decryption or
 	// request protection by copying unchecked client payloads to the upstream.
 	for i, item := range wire {
-		left, err := unifiedRetainedIdentity(item)
+		left, err := unifiedViewItemIdentity(item)
 		if err != nil {
 			return nil, false, err
 		}
-		right, err := unifiedRetainedIdentity(source[i])
+		right, err := unifiedViewItemIdentity(source[i])
 		if err != nil {
 			return nil, false, err
 		}
@@ -134,41 +174,45 @@ func (m *responsesCompactionRecoveryMiddleware) restoreUnifiedView(ctx context.C
 	if err != nil || len(keys) == 0 {
 		return false, err
 	}
-	// Newest matching prefix first. Bounded batches avoid an ever-growing
-	// mutable thread pointer and preserve independently continued branches.
-	for end := len(keys); end > 0; {
-		start := max(0, end-128)
-		entries, err := m.adapter.systemService.LoadUnifiedHistory(ctx, keys[start:end])
-		if err != nil {
-			return false, err
-		}
-		for i := end - 1; i >= start; i-- {
-			if entries[keys[i]] == "" {
-				continue
-			}
-			view, _, found, err := m.adapter.loadHistorySnapshot(ctx, keys[i])
-			if err != nil {
-				return false, err
-			}
-			if found {
-				body, matched, err := appendUnifiedView(request.Body, original, view, i+1)
-				if err != nil || !matched {
-					return false, err
-				}
-				return true, m.applyUnifiedView(ctx, request, body)
-			}
-		}
-		end = start
-	}
-	view, covered, err := m.importUnifiedView(ctx, request, key, keys)
-	if err != nil || covered == 0 {
-		return false, err
-	}
-	body, matched, err := appendUnifiedView(request.Body, original, view, covered)
-	if err != nil || !matched {
-		return false, err
-	}
-	return true, m.applyUnifiedView(ctx, request, body)
+ view, covered, err := m.loadUnifiedView(ctx, keys)
+ if err != nil { return false, err }
+ upgrade := covered == 0
+ if covered == 0 {
+  legacyKeys, err := unifiedViewKeysVersion(key, original, true)
+  if err != nil { return false, err }
+  view, covered, err = m.loadUnifiedView(ctx, legacyKeys)
+  if err != nil { return false, err }
+ }
+ if covered == 0 {
+  view, covered, err = m.importUnifiedView(ctx, request, key, keys, original)
+  if err != nil || covered == 0 { return false, err }
+ }
+ body, matched, err := appendUnifiedView(request.Body, original, view, covered)
+ if err != nil || !matched { return false, err }
+ if err := m.applyUnifiedView(ctx, request, body); err != nil { return false, err }
+ // Upgrade a verified accepted view, never replace its text or source archive.
+ if upgrade {
+  if err := m.adapter.saveHistorySnapshot(ctx, keys[covered-1], view, nil); err != nil { return false, err }
+ }
+ log.Info(ctx, "reused accepted unified history view", log.Int("covered_items", covered))
+ return true, nil
+}
+
+func (m *responsesCompactionRecoveryMiddleware) loadUnifiedView(ctx context.Context, keys []string) ([]byte, int, error) {
+ // Newest matching prefix first, in bounded batches.
+ for end := len(keys); end > 0; {
+  start := max(0, end-128)
+  entries, err := m.adapter.systemService.LoadUnifiedHistory(ctx, keys[start:end])
+  if err != nil { return nil, 0, err }
+  for i := end-1; i >= start; i-- {
+   if entries[keys[i]] == "" { continue }
+   view, _, found, err := m.adapter.loadHistorySnapshot(ctx, keys[i])
+   if err != nil { return nil, 0, err }
+   if found { return view, i+1, nil }
+  }
+  end = start
+ }
+ return nil, 0, nil
 }
 
 func (m *responsesCompactionRecoveryMiddleware) applyUnifiedView(ctx context.Context, request *httpclient.Request, body []byte) error {

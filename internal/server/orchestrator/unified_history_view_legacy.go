@@ -13,7 +13,7 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
-func (m *responsesCompactionRecoveryMiddleware) importUnifiedView(ctx context.Context, destination *httpclient.Request, key responsesCompactionRecoveryKey, keys []string) ([]byte, int, error) {
+func (m *responsesCompactionRecoveryMiddleware) importUnifiedView(ctx context.Context, destination *httpclient.Request, key responsesCompactionRecoveryKey, keys []string, current []byte) ([]byte, int, error) {
 	service := m.adapter.requestService
 	channel := m.outbound.GetCurrentChannel()
 	if service == nil || channel == nil {
@@ -40,6 +40,7 @@ func (m *responsesCompactionRecoveryMiddleware) importUnifiedView(ctx context.Co
 		return nil, 0, err
 	}
 	loadedBytes := 0
+ checkedWindows := map[string]bool{key.scope.windowID: true}
 	for _, row := range rows {
 		if row.RequestURL != destination.URL || row.Edges.Request == nil {
 			continue
@@ -53,9 +54,21 @@ func (m *responsesCompactionRecoveryMiddleware) importUnifiedView(ctx context.Co
 			continue
 		}
 		prior := shared.ReadCodexRequestMetadata(headers, nil)
-		if prior.ThreadID != key.scope.threadID || prior.WindowID != key.scope.windowID {
+		if prior.ThreadID != key.scope.threadID {
 			continue
 		}
+  // An older view alias may have been published from a resolved full input
+  // while its request log still contains a delta. Probe its authenticated
+  // window using the CURRENT complete prefix, not a guessed delta expansion.
+  if prior.WindowID != "" && !checkedWindows[prior.WindowID] && len(checkedWindows) < 8 {
+   checkedWindows[prior.WindowID] = true
+   legacyKey := key
+   legacyKey.scope.windowID = prior.WindowID
+   legacyKeys, err := unifiedViewKeysVersion(legacyKey, current, true)
+   if err != nil { return nil, 0, err }
+   view, covered, err := m.loadUnifiedView(lookupCtx, legacyKeys)
+   if err != nil || covered > 0 { return view, covered, err }
+  }
 		original, err := service.LoadRequestBody(lookupCtx, row.Edges.Request)
 		if err != nil {
 			return nil, 0, err
@@ -92,9 +105,6 @@ func (m *responsesCompactionRecoveryMiddleware) importUnifiedView(ctx context.Co
 		// result. User text containing a lookalike marker is not a compiled view.
 		if !m.adapter.verifiedUnifiedViewSummaries(lookupCtx, view) {
 			continue
-		}
-		if err := m.adapter.saveHistorySnapshot(lookupCtx, keys[covered-1], view, nil); err != nil {
-			return nil, 0, err
 		}
 		log.Info(ctx, "restored accepted unified history view from completed request", log.Int("request_id", row.RequestID), log.Int("covered_items", covered))
 		return view, covered, nil
