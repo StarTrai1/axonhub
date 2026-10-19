@@ -101,9 +101,23 @@ func TestUnifiedHistoryReplyRetrievalUsesAnswerInsteadOfTransportIdentifiers(t *
 	query := unifiedHistoryQuery(item)
 	require.Equal(t, "choose the resource lifecycle\nuse deinit after disconnect", query)
 	unrelated := []json.RawMessage{json.RawMessage(`{"role":"assistant","content":"request_user_input_async call_metadata questionItemId"}`)}
-	require.True(t, unifiedHistoryRelevant(strings.ToLower(text), unrelated), "old query incorrectly recalls transport documentation")
-	require.False(t, unifiedHistoryRelevant(query, unrelated))
-	require.True(t, unifiedHistoryRelevant(query, []json.RawMessage{json.RawMessage(`{"role":"assistant","content":"exact deinit evidence"}`)}))
+	unrelatedSegments := []unifiedHistorySegment{{items:unrelated}}
+	require.Equal(t, []bool{true}, unifiedHistorySegmentRelevance(strings.ToLower(text), unrelatedSegments), "old query incorrectly recalls transport documentation")
+	require.Equal(t, []bool{false}, unifiedHistorySegmentRelevance(query, unrelatedSegments))
+	require.Equal(t, []bool{true}, unifiedHistorySegmentRelevance(query, []unifiedHistorySegment{{items:[]json.RawMessage{json.RawMessage(`{"role":"assistant","content":"exact deinit evidence"}`)}}}))
 	require.Equal(t, text, unifiedMessageText(item), "retrieval normalization must not alter the original user reply")
 	require.Equal(t, "plain original query", unifiedHistoryQuery(json.RawMessage(`{"role":"user","content":"Plain original query"}`)))
+}
+
+func TestUnifiedHistoryRetrievalIgnoresUbiquitousNamesAndFindsMixedScriptIdentifiers(t *testing.T) {
+	query := "AX7018F：做好资源准备init和清理deinit，查看audio_cleanup原文"
+	segments := []unifiedHistorySegment{
+		{items:[]json.RawMessage{json.RawMessage(`{"role":"assistant","content":"AX7018F old power measurements"}`)}},
+		{items:[]json.RawMessage{json.RawMessage(`{"role":"assistant","content":"AX7018F old advertising measurements"}`)}},
+		{items:[]json.RawMessage{json.RawMessage(`{"role":"assistant","content":"AX7018F exact audio_cleanup and deinit code"}`)}},
+		{items:[]json.RawMessage{json.RawMessage(`{"role":"assistant","content":"AX7018F old transport traces"}`)}},
+	}
+	require.Contains(t, unifiedHistoryTerms(query), "deinit")
+	require.Contains(t, unifiedHistoryTerms(query), "audio_cleanup")
+	require.Equal(t, []bool{false,false,true,false}, unifiedHistorySegmentRelevance(query, segments))
 }

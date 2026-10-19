@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"strings"
 	"time"
-	"unicode"
 
 	"github.com/tidwall/gjson"
 	"golang.org/x/sync/errgroup"
@@ -416,15 +415,16 @@ func renderUnifiedHistory(envelope map[string]json.RawMessage, plan *unifiedHist
 	}
 	// Automatic source lookup restores whole related segments when there is
 	// space. It never fabricates a model tool that the client cannot execute.
+	relevant := unifiedHistorySegmentRelevance(query, segments)
 	position := 0
-	for _, segment := range segments {
+	for index, segment := range segments {
 		if segment.key == "" {
 			position += len(segment.items)
 			continue
 		}
 		n := len(segment.pinned) + 1
 		extra := unifiedItemsSize(segment.items) - unifiedItemsSize(compiled[position:position+n])
-		if extra <= remaining && unifiedHistoryRelevant(query, segment.items) {
+		if extra <= remaining && relevant[index] {
 			updated := make([]json.RawMessage, 0, len(compiled)-n+len(segment.items))
 			updated = append(updated, compiled[:position]...)
 			updated = append(updated, segment.items...)
@@ -475,21 +475,6 @@ func unifiedHistoryGroups(items []json.RawMessage) [][]json.RawMessage {
 		groups = append(groups, items[start:])
 	}
 	return groups
-}
-
-func unifiedHistoryRelevant(query string, items []json.RawMessage) bool {
-	terms := strings.FieldsFunc(query, func(r rune) bool { return !unicode.IsLetter(r) && !unicode.IsDigit(r) && r != '_' })
-	for _, term := range terms {
-		if len([]rune(term)) < 5 || len(term) > 96 || strings.Contains(" continue please following current previous conversation assistant content output input ", " "+term+" ") {
-			continue
-		}
-		for _, item := range items {
-			if strings.Contains(strings.ToLower(string(item)), term) {
-				return true
-			}
-		}
-	}
-	return false
 }
 
 func unifiedMessageText(item json.RawMessage) string {
