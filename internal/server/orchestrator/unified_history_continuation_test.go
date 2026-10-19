@@ -83,6 +83,20 @@ func TestUnifiedHistoryPortableViewKeepsCallsWithoutHydratingOldIDs(t *testing.T
 	require.True(t, gjson.GetBytes(input[0], "id").Exists(), "archive identity remains unchanged")
 }
 
+func TestUnifiedHistoryUpdatedToolsPreservesSourceAndCurrentContract(t *testing.T) {
+	source := []byte(`{"model":"gpt-6-astra","input":[{"type":"additional_tools","id":"tools","role":"developer","tools":[{"type":"custom","name":"old_tool"}]},{"role":"user","id":"user","content":"original question"},{"role":"assistant","content":"original evidence"},{"type":"compaction_trigger"}]}`)
+	body := []byte(`{"model":"gpt-6-astra","input":[{"type":"additional_tools","id":"tools","role":"developer","tools":[{"type":"custom","name":"new_tool"}]},{"role":"user","id":"user","content":"original question"},{"type":"compaction","id":"cmp_tools","encrypted_content":"cipher"},{"role":"user","content":"new turn"}]}`)
+	ref, _, _, err := parseRemoteCompactionRequest(body)
+	require.NoError(t, err)
+	got, ok, err := spliceUnifiedCompactionSource(body, source, ref)
+	require.NoError(t, err)
+	require.True(t, ok)
+	items := gjson.GetBytes(got, "input").Array()
+	require.Equal(t, "old_tool", items[0].Get("tools.0.name").String())
+	require.Equal(t, "new_tool", items[1].Get("tools.0.name").String())
+	require.Contains(t, string(got), "original evidence")
+}
+
 func unifiedLongToolHistory(t *testing.T, calls int) []byte {
 	t.Helper()
 	items := []json.RawMessage{json.RawMessage(`{"role":"user","content":"preserve calibration exactly 17.125"}`)}
@@ -127,11 +141,11 @@ func TestUnifiedHistoryLongSingleTurnKeepsPairsAndReusesSegments(t *testing.T) {
 }
 
 type unifiedConcurrentExecutor struct {
-	mu sync.Mutex
+	mu        sync.Mutex
 	summaries [][]byte
-	active atomic.Int32
-	max atomic.Int32
-	cancel context.CancelFunc
+	active    atomic.Int32
+	max       atomic.Int32
+	cancel    context.CancelFunc
 }
 
 func (e *unifiedConcurrentExecutor) Do(context.Context, *httpclient.Request) (*httpclient.Response, error) {

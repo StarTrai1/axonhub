@@ -68,9 +68,11 @@ type Channel struct {
 
 	// cachedOverrideOps stores the parsed override operations to avoid repeated JSON parsing
 	cachedOverrideOps []objects.OverrideOperation
+	overrideOpsOnce sync.Once
 
 	// cachedOverrideHeaders stores the parsed override headers to avoid repeated JSON parsing
 	cachedOverrideHeaders []objects.OverrideOperation
+	overrideHeadersOnce sync.Once
 
 	// cachedModelEntries caches GetModelEntries results
 	// RequestModel -> Entry

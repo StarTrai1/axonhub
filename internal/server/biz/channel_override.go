@@ -22,36 +22,25 @@ import (
 // DO NOT modify the returned slice or its contents.
 // Modifications will not persist and may cause data inconsistency.
 func (c *Channel) GetBodyOverrideOperations() []objects.OverrideOperation {
-	if c.cachedOverrideOps != nil {
-		return c.cachedOverrideOps
-	}
-
-	if c.Settings != nil {
-		// New schema field takes precedence. Even an explicit empty slice means "no overrides".
-		if c.Settings.BodyOverrideOperations != nil {
-			c.cachedOverrideOps = c.Settings.BodyOverrideOperations
-			return c.cachedOverrideOps
+	c.overrideOpsOnce.Do(func() {
+		if c.cachedOverrideOps != nil {
+			return
 		}
-	}
-
-	if c.Settings == nil || c.Settings.OverrideParameters == "" {
+		if c.Settings != nil && c.Settings.BodyOverrideOperations != nil {
+			c.cachedOverrideOps = c.Settings.BodyOverrideOperations
+			return
+		}
 		c.cachedOverrideOps = make([]objects.OverrideOperation, 0)
-		return c.cachedOverrideOps
-	}
-
-	ops, err := objects.ParseOverrideOperations(c.Settings.OverrideParameters)
-	if err != nil {
-		log.Warn(context.Background(), "failed to parse override operations",
-			log.String("channel", c.Name),
-			log.Cause(err),
-		)
-		c.cachedOverrideOps = make([]objects.OverrideOperation, 0)
-
-		return c.cachedOverrideOps
-	}
-
-	c.cachedOverrideOps = ops
-
+		if c.Settings == nil || c.Settings.OverrideParameters == "" {
+			return
+		}
+		ops, err := objects.ParseOverrideOperations(c.Settings.OverrideParameters)
+		if err != nil {
+			log.Warn(context.Background(), "failed to parse override operations", log.String("channel", c.Name), log.Cause(err))
+			return
+		}
+		c.cachedOverrideOps = ops
+	})
 	return c.cachedOverrideOps
 }
 
@@ -62,25 +51,19 @@ func (c *Channel) GetBodyOverrideOperations() []objects.OverrideOperation {
 // DO NOT modify the returned slice or its elements.
 // Modifications will not persist and may cause data inconsistency.
 func (c *Channel) GetHeaderOverrideOperations() []objects.OverrideOperation {
-	if c.cachedOverrideHeaders != nil {
-		return c.cachedOverrideHeaders
-	}
-
-	if c.Settings != nil {
-		// New schema field takes precedence. Even an explicit empty slice means "no overrides".
-		if c.Settings.HeaderOverrideOperations != nil {
-			c.cachedOverrideHeaders = c.Settings.HeaderOverrideOperations
-			return c.cachedOverrideHeaders
+	c.overrideHeadersOnce.Do(func() {
+		if c.cachedOverrideHeaders != nil {
+			return
 		}
-	}
-
-	if c.Settings == nil || len(c.Settings.OverrideHeaders) == 0 {
+		if c.Settings != nil && c.Settings.HeaderOverrideOperations != nil {
+			c.cachedOverrideHeaders = c.Settings.HeaderOverrideOperations
+			return
+		}
 		c.cachedOverrideHeaders = make([]objects.OverrideOperation, 0)
-		return c.cachedOverrideHeaders
-	}
-
-	c.cachedOverrideHeaders = objects.HeaderEntriesToOverrideOperations(c.Settings.OverrideHeaders)
-
+		if c.Settings != nil && len(c.Settings.OverrideHeaders) > 0 {
+			c.cachedOverrideHeaders = objects.HeaderEntriesToOverrideOperations(c.Settings.OverrideHeaders)
+		}
+	})
 	return c.cachedOverrideHeaders
 }
 

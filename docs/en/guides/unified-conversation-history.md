@@ -29,7 +29,7 @@ A known context limit is required. Configured model limits take precedence; dire
 - Remaining space can restore complete relevant segments using deterministic keyword matching against current user text. This is limited lexical retrieval, not guaranteed semantic recall; no unimplemented history tool is injected into client tool lists.
 - Local compaction seals the assembled context directly without another model call. Segment generations retain independent usage records; local assembly reports zero model usage.
 
-User corrections retain chronological order. The gateway does not guess which instructions are obsolete. Derived summaries use assistant material, never promoted tool-output instructions. Restored text passes through existing prompt-protection policy before sending or summarizing it.
+Complete records in the portable view omit old upstream item IDs, status and diagnostic sidecars; tool call_id and arguments remain unchanged, as does the original archive. User corrections retain chronological order. The gateway does not guess which instructions are obsolete. Derived summaries use assistant material, never promoted tool-output instructions. Restored text passes through existing prompt-protection policy before sending or summarizing it.
 
 ## Quality and cost limits
 
