@@ -208,9 +208,16 @@ func TestNativeCompactionMigrationLegacyDeltaContinuation(t *testing.T) {
 		require.NoError(t, err)
 		drainRejectedReasoningPipeline(t, result)
 	}
-	require.Equal(t, 1, executor.nativeCalls, "the repaired source generates one reusable destination checkpoint")
+	require.Zero(t, executor.nativeCalls, "the repaired source resumes directly without another model call")
 	require.Empty(t, executor.summaries)
-	assertResolvedCompactionSource(t, executor.nativeBody)
+	require.Len(t, executor.continuations, 2)
+	for _, body := range executor.continuations {
+		for _, original := range []string{"original unabridged task", "first exact arguments", "first exact result", "second exact arguments", "second exact result"} {
+			require.Contains(t, string(body), original)
+		}
+		require.Empty(t, gjson.GetBytes(body, "previous_response_id").String())
+		require.False(t, gjson.GetBytes(body, `input.#(type=="compaction")`).Exists())
+	}
 }
 
 type deltaMigrationExecutor struct {

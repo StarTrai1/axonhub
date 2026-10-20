@@ -85,7 +85,12 @@ func TestResponsesRejectedNativeSourceLargeCheckpoint(t *testing.T) {
 			if mode == "compact" {
 				require.JSONEq(t, string(body), string(source.body))
 			} else {
-				require.Equal(t, body, source.body, "full source must survive without truncation")
+				wantEnvelope, wantItems, wantErr := decodeResponsesInput(body)
+				require.NoError(t, wantErr)
+				gotEnvelope, gotItems, gotErr := decodeResponsesInput(source.body)
+				require.NoError(t, gotErr)
+				require.Equal(t, wantEnvelope, gotEnvelope, "envelope fields remain exact across map serialization")
+				require.Equal(t, wantItems, gotItems, "every source item, including opaque content, remains byte-exact")
 			}
 		})
 	}

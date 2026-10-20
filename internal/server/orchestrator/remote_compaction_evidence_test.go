@@ -28,12 +28,12 @@ func TestNativeCompactionMigrationReusesAncestorEvidence(t *testing.T) {
 				req := rejectedCompactionPipelineRequest(t, format)
 				ref, _, _, err := parseRemoteCompactionRequest(req.Body)
 				require.NoError(t, err)
-				first := []byte(`{"model":"gpt-6-astra","client_metadata":{"thread_id":"recovery-thread"},"input":[{"type":"message","role":"user","status":"completed","content":"retained detail"},{"role":"user","content":"unabridged first source"},{"type":"compaction_trigger"}]}`)
+				first := []byte(`{"model":"legacy-context-unknown","client_metadata":{"thread_id":"recovery-thread"},"input":[{"type":"message","role":"user","status":"completed","content":"retained detail"},{"role":"user","content":"unabridged first source"},{"type":"compaction_trigger"}]}`)
 				if large {
 					first, err = sjson.SetBytes(first, "input.1.content", "unabridged first source"+strings.Repeat(" full history", 6000))
 					require.NoError(t, err)
 				}
-				latest := []byte(`{"model":"gpt-6-astra","reasoning":{"effort":"xhigh","context":"all_turns"},"client_metadata":{"thread_id":"recovery-thread","x-codex-turn-metadata":"{\"request_kind\":\"compaction\",\"compaction\":{\"implementation\":\"responses_compaction_v2\"}}"},"input":[{"type":"message","role":"user","status":"completed","content":"retained detail"},{"type":"compaction","id":"cmp_ancestor","encrypted_content":"ancestor-cipher"},{"role":"user","content":"new source detail"},{"type":"compaction_trigger"}]}`)
+				latest := []byte(`{"model":"legacy-context-unknown","reasoning":{"effort":"xhigh","context":"all_turns"},"client_metadata":{"thread_id":"recovery-thread","x-codex-turn-metadata":"{\"request_kind\":\"compaction\",\"compaction\":{\"implementation\":\"responses_compaction_v2\"}}"},"input":[{"type":"message","role":"user","status":"completed","content":"retained detail"},{"type":"compaction","id":"cmp_ancestor","encrypted_content":"ancestor-cipher"},{"role":"user","content":"new source detail"},{"type":"compaction_trigger"}]}`)
 				if large {
 					// Match #61053/#61054/#61056: the rejected field belongs to
 					// reasoning, whose ID, summary and ciphertext must survive.
@@ -176,8 +176,8 @@ func TestRemoteCompactionAncestorReplayHonorsActiveChain(t *testing.T) {
 	second := []byte(`{"model":"gpt-6-astra","client_metadata":{"thread_id":"recovery-thread"},"input":[{"type":"compaction","id":"cmp_ancestor","encrypted_content":"ancestor-cipher"},{"role":"user","content":"latest detail"},{"type":"compaction_trigger"}]}`)
 	candidate := &ChannelModelsCandidate{Channel: &biz.Channel{Channel: &ent.Channel{ID: 40}}, ContextTokens: 372000}
 	state := &PersistenceState{APIKey: owner, ChannelModelsCandidates: []*ChannelModelsCandidate{candidate}, RawProviderRequest: &httpclient.Request{URL: "https://example.invalid/v1/responses", Body: second}, compactionRecovery: &compactionRecoveryEvidence{}}
-	require.NoError(t, adapter.retainNativeCompactionSource(ctx, ancestor, state, &remoteCompactionSource{body: first}))
-	require.NoError(t, adapter.retainNativeCompactionSource(ctx, latest, state, &remoteCompactionSource{body: second}))
+	require.NoError(t, seedLegacyNativeCompactionSource(ctx, adapter, ancestor, state, &remoteCompactionSource{body: first}))
+	require.NoError(t, seedLegacyNativeCompactionSource(ctx, adapter, latest, state, &remoteCompactionSource{body: second}))
 	state.compactionRecovery.rejectSource(responsesMetadataKey(40, state.RawProviderRequest), remoteCompactionCacheKey(ancestor))
 	for _, depth := range []int{1, remoteCompactionMaxSourceDepth - 1} {
 		active := make(map[string]struct{})

@@ -39,8 +39,8 @@ func TestRemoteCompactionLazyAncestorRecovery(t *testing.T) {
 			ancestor := &remoteCompactionReference{ID: "cmp_ancestor", EncryptedContent: "native-ancestor"}
 			first := []byte(`{"model":"gpt-6-astra","client_metadata":{"thread_id":"lazy-thread"},"input":[{"role":"user","content":"first source detail"},{"type":"compaction_trigger"}]}`)
 			second := []byte(`{"model":"gpt-6-astra","client_metadata":{"thread_id":"lazy-thread"},"input":[{"role":"user","content":"retained detail"},{"type":"compaction","id":"cmp_ancestor","encrypted_content":"native-ancestor"},{"role":"user","content":"new source detail"},{"type":"compaction_trigger"}]}`)
-			require.NoError(t, adapter.retainNativeCompactionSource(ctx, ancestor, state, &remoteCompactionSource{body: first}))
-			require.NoError(t, adapter.retainNativeCompactionSource(ctx, latest, state, &remoteCompactionSource{body: second}))
+			require.NoError(t, seedLegacyNativeCompactionSource(ctx, adapter, ancestor, state, &remoteCompactionSource{body: first}))
+			require.NoError(t, seedLegacyNativeCompactionSource(ctx, adapter, latest, state, &remoteCompactionSource{body: second}))
 			executor := &lazyCompactionExecutor{reject: reject}
 			for range 2 {
 				summary, err := adapter.summaryForCompaction(ctx, remoteCompactionCacheKey(latest), latest, "lazy-thread", "gpt-6-astra", state, executor)

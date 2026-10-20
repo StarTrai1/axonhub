@@ -20,11 +20,14 @@ func TestNativeCompactionMigrationRecoveryBoundaries(t *testing.T) {
 			req := rejectedCompactionPipelineRequest(t, llm.APIFormatOpenAIResponse)
 			ref, _, _, err := parseRemoteCompactionRequest(req.Body)
 			require.NoError(t, err)
-			source := []byte(`{"model":"gpt-6-astra","client_metadata":{"thread_id":"recovery-thread","x-codex-turn-metadata":"{\"request_kind\":\"compaction\",\"compaction\":{\"implementation\":\"responses_compaction_v2\"}}"},"input":[{"role":"user","content":"full source detail"},{"type":"compaction_trigger"}]}`)
+			source := []byte(`{"model":"legacy-context-unknown","client_metadata":{"thread_id":"recovery-thread","x-codex-turn-metadata":"{\"request_kind\":\"compaction\",\"compaction\":{\"implementation\":\"responses_compaction_v2\"}}"},"input":[{"role":"user","content":"full source detail"},{"type":"compaction_trigger"}]}`)
 			require.NoError(t, adapter.retainNativeCompactionSource(ctx, ref, &PersistenceState{APIKey: owner}, &remoteCompactionSource{body: source}))
 			executor := &nativeMigrationBoundaryExecutor{mode: mode}
 			_, result, err := runRejectedReasoningPipeline(t, ctx, req, executor, "native-boundary-key", true, 2, func(state *PersistenceState, outbound *PersistentOutboundTransformer) pipeline.Middleware {
 				state.APIKey = owner
+				// Unknown model context exercises native migration before the legacy fallback.
+				state.ChannelModelsCandidates[0].ContextTokens = 0
+				state.ChannelModelsCandidates[0].Models[0].ActualModel = "legacy-context-unknown"
 				return recoverRejectedRemoteCompaction(outbound, adapter, executor)
 			})
 			require.Equal(t, 1, executor.nativeCalls)

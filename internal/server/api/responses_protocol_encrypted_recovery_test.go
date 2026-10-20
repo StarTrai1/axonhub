@@ -78,6 +78,7 @@ func testResponsesProtocolEncryptionContinuation(t *testing.T, rejectionMessage,
 						attempts = append(attempts, body)
 						if gjson.GetBytes(body, `input.#(type=="compaction")`).Exists() || gjson.GetBytes(body, `input.#(type=="reasoning").encrypted_content`).String() != "" {
 							rejections++
+							t.Logf("rejection attempt=%d checkpoint=%s reasoning=%t thread=%s window=%s", len(attempts), gjson.GetBytes(body, `input.#(type=="compaction").id`).String(), gjson.GetBytes(body, `input.#(type=="reasoning").encrypted_content`).String() != "", gjson.GetBytes(body, "client_metadata.thread_id").String(), gjson.GetBytes(body, "client_metadata.x-codex-window-id").String())
 							message, code, param := rejectionMessage, rejectionCode, ""
 							if reasoningMessage != "" && gjson.GetBytes(body, `input.#(type=="reasoning").encrypted_content`).String() != "" {
 								message, code, param = reasoningMessage, "invalid_encrypted_content", "input"
@@ -149,7 +150,7 @@ func testResponsesProtocolEncryptionContinuation(t *testing.T, rejectionMessage,
 						response = responsesIntegrationTurn(t, conn, fmt.Sprintf(`{"type":"response.create","model":%q,"previous_response_id":"resp_iceberg","input":"next-turn-canary"}`, model))
 						require.Equal(t, "response.completed", gjson.GetBytes(response, "type").String(), string(response))
 					}
-					wantAttempts := 6
+					wantAttempts := 5
 					if encryptedAgents {
 						// A fresh client resends the sealed history. Confirmed checkpoint
 						// recovery must still decrypt it before checking completeness.
@@ -178,14 +179,14 @@ func testResponsesProtocolEncryptionContinuation(t *testing.T, rejectionMessage,
 					mu.Lock()
 					defer mu.Unlock()
 					require.Equal(t, 2, rejections)
-					require.Equal(t, 1, summaries)
+					require.Zero(t, summaries, "complete source must resume without a summary generation")
 					require.Len(t, attempts, wantAttempts)
 					require.Contains(t, string(attempts[1]), "gAAAAABsynthetic_old_reasoning_ciphertext_0123456789abcdef0123456789abcdef")
 					require.Contains(t, string(attempts[2]), "checkpoint-cipher")
 					require.NotContains(t, string(attempts[2]), "gAAAAABsynthetic_old_reasoning_ciphertext_0123456789abcdef0123456789abcdef")
 					require.Contains(t, string(attempts[3]), "complete-source-canary")
-					for _, body := range attempts[4:] {
-						for _, text := range []string{"retained-source-summary-canary", "retained-user-canary", "visible-reasoning-canary", "tool-input-canary", "tool-output-canary", "call_retained", "continue-canary"} {
+					for _, body := range attempts[3:] {
+						for _, text := range []string{"complete-source-canary", "retained-user-canary", "visible-reasoning-canary", "tool-input-canary", "tool-output-canary", "call_retained", "continue-canary"} {
 							require.Contains(t, string(body), text)
 						}
 						require.NotContains(t, string(body), "checkpoint-cipher")
@@ -194,8 +195,8 @@ func testResponsesProtocolEncryptionContinuation(t *testing.T, rejectionMessage,
 					}
 					if encryptedAgents {
 						for index, body := range attempts {
-							if index == 0 || index == 3 {
-								continue // Original source and its independent summary request.
+							if index == 0 {
+								continue // Original source request.
 							}
 							call := gjson.GetBytes(body, `input.#(call_id=="call_agent")`)
 							require.Equal(t, "exact-agent-instructions-canary", gjson.Get(call.Get("arguments").String(), "message").String())
@@ -206,7 +207,7 @@ func testResponsesProtocolEncryptionContinuation(t *testing.T, rejectionMessage,
 							require.NotContains(t, string(body), "axonhub-agent-v1.")
 						}
 					}
-					require.Contains(t, string(attempts[5]), "next-turn-canary")
+					require.Contains(t, string(attempts[4]), "next-turn-canary")
 				})
 			}
 		}
