@@ -187,7 +187,8 @@ jobs:
 
   test-frontend-unit:
     name: Test Frontend Unit
-    runs-on: ubuntu-latest
+    # Keep the runner compatible with the browser version in pnpm-lock.yaml.
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
         with:
