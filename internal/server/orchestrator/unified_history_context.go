@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	unifiedContextMaxTokens          = 1 << 20
+	unifiedContextMaxTokens         = 1 << 20
 	unifiedSummarySegmentBytes      = 128 << 10
 	unifiedMaxNewSummaries          = 32
 	unifiedNativeExportMinSummaries = 8

@@ -11,8 +11,8 @@ import (
 
 func TestModelCapacityExhaustionIsNotAnOrdinaryServerRetry(t *testing.T) {
 	for _, tt := range []struct {
-		status int
-		message string
+		status   int
+		message  string
 		capacity bool
 	}{
 		{500, "当前模型 gpt-6.1-sol 负载已经达到上限，请稍后重试 (request id: synthetic)", true},

@@ -167,6 +167,57 @@ func TestUnifiedHistorySegmentSummariesKeepRawInstructionsAndReuse(t *testing.T)
 	require.ErrorIs(t, err, context.Canceled)
 }
 
+func TestUnifiedHistoryCachedLargeHistoryUsesTokensAndKeepsEveryInstruction(t *testing.T) {
+	ctx, _, state, adapter := unifiedHistoryFixture(t)
+	state.CurrentCandidate.ContextTokens = 0
+	var input []json.RawMessage
+	for i := range 45 {
+		user, err := json.Marshal(map[string]string{"role": "user", "content": fmt.Sprintf("original constraint %d: ", i) + historyTestEntropy(16200, uint64(i))})
+		require.NoError(t, err)
+		assistant, err := json.Marshal(map[string]string{"role": "assistant", "content": historyTestEntropy(100000, uint64(i+1000))})
+		require.NoError(t, err)
+		input = append(input, user, assistant)
+	}
+	input = append(input, json.RawMessage(`{"role":"user","content":"continue"}`))
+	body, err := json.Marshal(map[string]any{"model": "gpt-6-astra", "input": input})
+	require.NoError(t, err)
+	envelope, items, err := decodeResponsesInput(body)
+	require.NoError(t, err)
+	target, ceiling := unifiedHistoryInputBudgets(body, state.CurrentCandidate, 0, biz.BundledModelContextLimit("gpt-6-astra"))
+	plan, ok, err := planUnifiedHistory(envelope, items, state, state.CurrentCandidate, target)
+	require.NoError(t, err)
+	require.True(t, ok)
+	stored := make(map[string]string)
+	for i := range plan.segments {
+		segment := &plan.segments[i]
+		if segment.key == "" {
+			continue
+		}
+		segment.summary = fmt.Sprintf("completed segment %d: ", i) + strings.Repeat("verified evidence ", 600)
+		stored[segment.key], err = adapter.sealHistoryRecord(ctx, segment.key, []byte(segment.summary))
+		require.NoError(t, err)
+	}
+	require.NoError(t, adapter.systemService.SaveUnifiedHistory(ctx, stored))
+	executor := &unifiedConcurrentExecutor{}
+	compiled, ok, err := adapter.compileUnifiedContext(ctx, body, state, executor)
+	require.NoError(t, err)
+	require.True(t, ok)
+	require.Empty(t, executor.summaries, "reuse all completed notes, including after a cold load")
+	require.Greater(t, len(compiled), ceiling, "serialized bytes must not be used as model tokens")
+	require.LessOrEqual(t, unifiedContextSize(compiled), ceiling)
+	for _, item := range input {
+		if gjson.GetBytes(item, "role").String() == "user" {
+			require.Contains(t, string(compiled), gjson.GetBytes(item, "content").String())
+		}
+	}
+	adapter = newRemoteCompactionAdapter(adapter.requestService, nil, adapter.systemService)
+	again, ok, err := adapter.compileUnifiedContext(ctx, body, state, executor)
+	require.NoError(t, err)
+	require.True(t, ok)
+	require.Equal(t, compiled, again)
+	require.Empty(t, executor.summaries)
+}
+
 func TestUnifiedHistoryGenerationAvoidsAdditionalProviderCall(t *testing.T) {
 	ctx, _, owner, adapter := rejectedCompactionStorage(t)
 	req := rejectedCompactionPipelineRequest(t, llm.APIFormatOpenAIResponse)
