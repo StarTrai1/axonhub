@@ -19,6 +19,7 @@ const unifiedSummaryFailureTTL = time.Minute
 type unifiedSummaryFailureKey struct {
 	owner       string
 	destination [sha256.Size]byte
+	provider    responsesMetadataCapabilityKey
 }
 
 func unifiedSegmentFailureKey(state *PersistenceState, segment *unifiedHistorySegment) unifiedSummaryFailureKey {
@@ -36,6 +37,11 @@ func unifiedSegmentFailureKey(state *PersistenceState, segment *unifiedHistorySe
 		// bodies in the bounded failure cache. A changed destination can retry.
 		encoded, _ := json.Marshal([]any{candidate.Channel.ID, candidate.Channel.BaseURL, candidate.Channel.Settings, candidate.Channel.Credentials, candidate.APIFormat})
 		result.destination = sha256.Sum256(encoded)
+		if state.RawProviderRequest != nil {
+			// A credential pool can select another key without changing its
+			// configuration. Do not let one selected key pause the others.
+			result.provider = responsesMetadataKey(candidate.Channel.ID, state.RawProviderRequest)
+		}
 	}
 	return result
 }

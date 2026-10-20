@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"context"
 	"errors"
+	"net/http"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -65,4 +66,17 @@ func TestUnifiedHistorySummaryFailureExpiresAndIgnoresCancellation(t *testing.T)
 	cancel()
 	adapter.rememberUnifiedSummaryFailure(ctx, key, errors.New("sibling failed"))
 	require.NoError(t, adapter.unifiedSummaryCooldown(key, time.Now()))
+}
+
+func TestUnifiedHistorySummaryFailureSeparatesSelectedPoolCredentials(t *testing.T) {
+	ctx, _, state, adapter := unifiedHistoryFixture(t)
+	segment := &unifiedHistorySegment{key: "summary:synthetic-source"}
+	state.RawProviderRequest = &httpclient.Request{URL: "https://example.invalid/v1/responses", Headers: http.Header{"Authorization": {"Bearer first-synthetic-key"}}}
+	first := unifiedSegmentFailureKey(state, segment)
+	adapter.rememberUnifiedSummaryFailure(ctx, first, errors.New("first key unavailable"))
+	state.RawProviderRequest.Headers.Set("Authorization", "Bearer second-synthetic-key")
+	second := unifiedSegmentFailureKey(state, segment)
+	require.NotEqual(t, first, second)
+	require.Error(t, adapter.unifiedSummaryCooldown(first, time.Now()))
+	require.NoError(t, adapter.unifiedSummaryCooldown(second, time.Now()))
 }
