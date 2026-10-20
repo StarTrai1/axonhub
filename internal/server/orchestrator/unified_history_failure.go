@@ -17,16 +17,20 @@ import (
 const unifiedSummaryFailureTTL = time.Minute
 
 type unifiedSummaryFailureKey struct {
-	owner string
+	owner       string
 	destination [sha256.Size]byte
 }
 
 func unifiedSegmentFailureKey(state *PersistenceState, segment *unifiedHistorySegment) unifiedSummaryFailureKey {
 	key := segment.cacheAlias
-	if key == "" { key = segment.key }
+	if key == "" {
+		key = segment.key
+	}
 	result := unifiedSummaryFailureKey{owner: remoteCompactionOwnerCacheKey(state, key)}
 	candidate := state.CurrentCandidate
-	if candidate == nil && len(state.ChannelModelsCandidates) > 0 { candidate = state.ChannelModelsCandidates[0] }
+	if candidate == nil && len(state.ChannelModelsCandidates) > 0 {
+		candidate = state.ChannelModelsCandidates[0]
+	}
 	if candidate != nil && candidate.Channel != nil {
 		// Hash configuration and credentials; keep neither secrets nor request
 		// bodies in the bounded failure cache. A changed destination can retry.
@@ -37,10 +41,17 @@ func unifiedSegmentFailureKey(state *PersistenceState, segment *unifiedHistorySe
 }
 
 func (a *remoteCompactionAdapter) unifiedSummaryCooldown(key unifiedSummaryFailureKey, now time.Time) error {
-	if a.summaryFailures == nil { return nil }
+	if a.summaryFailures == nil {
+		return nil
+	}
 	until, found := a.summaryFailures.Get(key)
-	if !found { return nil }
-	if !now.Before(until) { a.summaryFailures.Remove(key); return nil }
+	if !found {
+		return nil
+	}
+	if !now.Before(until) {
+		a.summaryFailures.Remove(key)
+		return nil
+	}
 	seconds := max(1, int((until.Sub(now)+time.Second-1)/time.Second))
 	return &llm.ResponseError{StatusCode: http.StatusServiceUnavailable, Detail: llm.ErrorDetail{
 		Type: "upstream_error", Code: "unified_history_preparation_cooldown",

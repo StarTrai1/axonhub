@@ -13,7 +13,7 @@ import (
 	lru "github.com/hashicorp/golang-lru/v2"
 
 	"github.com/looplj/axonhub/internal/contexts"
- "github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer/shared"
@@ -48,7 +48,7 @@ type codexMemoryGuard struct {
 	active   map[codexMemoryScope]map[*codexMemoryLease]context.CancelCauseFunc
 	paused   *lru.Cache[codexMemoryScope, codexMemoryPause]
 	clock    func() time.Time
- settled *lru.Cache[codexMemoryScope, uint64]
+	settled  *lru.Cache[codexMemoryScope, uint64]
 }
 
 type codexMemoryLease struct {
@@ -63,10 +63,10 @@ var codexBackgroundMemory = newCodexMemoryGuard()
 
 func newCodexMemoryGuard() *codexMemoryGuard {
 	return &codexMemoryGuard{
-		active: make(map[codexMemoryScope]map[*codexMemoryLease]context.CancelCauseFunc),
-		paused: lo.Must(lru.New[codexMemoryScope, codexMemoryPause](1024)),
-		clock:  time.Now,
- settled: lo.Must(lru.New[codexMemoryScope, uint64](1024)),
+		active:  make(map[codexMemoryScope]map[*codexMemoryLease]context.CancelCauseFunc),
+		paused:  lo.Must(lru.New[codexMemoryScope, codexMemoryPause](1024)),
+		clock:   time.Now,
+		settled: lo.Must(lru.New[codexMemoryScope, uint64](1024)),
 	}
 }
 
@@ -109,7 +109,7 @@ func (g *codexMemoryGuard) begin(ctx context.Context, request *httpclient.Reques
 	if pause, found := g.paused.Get(scope); found {
 		if !g.clock().Before(pause.until) {
 			g.paused.Remove(scope)
- log.Info(ctx, "Codex background memory admission resumed", log.String("reason", "pause_expired"))
+			log.Info(ctx, "Codex background memory admission resumed", log.String("reason", "pause_expired"))
 		} else if memory {
 			return nil, errCodexMemoryPaused
 		}
@@ -133,13 +133,13 @@ func (lease *codexMemoryLease) finish(success bool) {
 		g := lease.guard
 		g.mu.Lock()
 		var cancelMemory []context.CancelCauseFunc
-  if !lease.memory {
-   if sequence, found := g.settled.Peek(lease.scope); found && sequence > lease.sequence {
-    g.mu.Unlock()
-    return
-   }
-   g.settled.Add(lease.scope, lease.sequence)
-  }
+		if !lease.memory {
+			if sequence, found := g.settled.Peek(lease.scope); found && sequence > lease.sequence {
+				g.mu.Unlock()
+				return
+			}
+			g.settled.Add(lease.scope, lease.sequence)
+		}
 		switch {
 		case lease.memory:
 			delete(g.active[lease.scope], lease)
@@ -149,7 +149,7 @@ func (lease *codexMemoryLease) finish(success bool) {
 		case success:
 			if pause, found := g.paused.Peek(lease.scope); found && lease.sequence > pause.sequence {
 				g.paused.Remove(lease.scope)
- log.Info(context.Background(), "Codex background memory admission resumed", log.String("reason", "foreground_succeeded"), log.Int("api_key_id", lease.scope.apiKeyID), log.Int("project_id", lease.scope.projectID))
+				log.Info(context.Background(), "Codex background memory admission resumed", log.String("reason", "foreground_succeeded"), log.Int("api_key_id", lease.scope.apiKeyID), log.Int("project_id", lease.scope.projectID))
 			}
 		default:
 			sequence := lease.sequence

@@ -2,7 +2,9 @@ package orchestrator
 
 import (
 	"testing"
+
 	"github.com/stretchr/testify/require"
+
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -10,7 +12,7 @@ import (
 )
 
 func TestRemoteCompactionRequiresSuccessfulTerminal(t *testing.T) {
-	for _, tc := range []struct{name, terminal, want string}{
+	for _, tc := range []struct{ name, terminal, want string }{
 		{"clean EOF", "", "terminal event"},
 		{"done marker", "[DONE]", "terminal event"},
 		{"unfinished completion", `{"type":"response.completed","response":{"status":"in_progress"}}`, "terminal event"},
@@ -21,7 +23,9 @@ func TestRemoteCompactionRequiresSuccessfulTerminal(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			events := []*httpclient.StreamEvent{{Data: []byte(`{"type":"response.created","response":{"id":"resp_summary","status":"in_progress","output":[]}}`)}, {Data: []byte(`{"type":"response.output_text.delta","delta":"partial summary must never be published"}`)}}
-			if tc.terminal != "" { events = append(events, &httpclient.StreamEvent{Data: []byte(tc.terminal)}) }
+			if tc.terminal != "" {
+				events = append(events, &httpclient.StreamEvent{Data: []byte(tc.terminal)})
+			}
 			perf := new(biz.PerformanceRecord)
 			chunks, err := collectLocalCompactionBridgeStream(streams.SliceStream(events), perf)
 			require.ErrorContains(t, err, tc.want)

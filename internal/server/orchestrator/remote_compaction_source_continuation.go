@@ -20,7 +20,7 @@ import (
 // completed predecessors while their request logs are still available, before
 // publishing the checkpoint or migrating it to another provider.
 func (a *remoteCompactionAdapter) resolveCompactionSourceContinuation(ctx context.Context, source *remoteCompactionSource, state *PersistenceState) (*remoteCompactionSource, error) {
- return a.resolveRetainedContinuation(ctx, source, state, false)
+	return a.resolveRetainedContinuation(ctx, source, state, false)
 }
 
 func (a *remoteCompactionAdapter) resolveRetainedContinuation(ctx context.Context, source *remoteCompactionSource, state *PersistenceState, wireOnly bool) (*remoteCompactionSource, error) {

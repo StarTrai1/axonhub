@@ -320,7 +320,9 @@ func (a *remoteCompactionAdapter) hydrateUnifiedSegments(ctx context.Context, se
 	// not repeatedly regenerate the other segments around a known failed one.
 	for i := range segments {
 		if segments[i].key != "" && segments[i].summary == "" {
-			if err := a.unifiedSummaryCooldown(unifiedSegmentFailureKey(state, &segments[i]), time.Now()); err != nil { return 0, false, err }
+			if err := a.unifiedSummaryCooldown(unifiedSegmentFailureKey(state, &segments[i]), time.Now()); err != nil {
+				return 0, false, err
+			}
 		}
 	}
 	hydrate := func(ctx context.Context, i int) error {
@@ -346,7 +348,9 @@ func (a *remoteCompactionAdapter) hydrateUnifiedSegments(ctx context.Context, se
 				return a.publishUnifiedSummaryAlias(ctx, segment, value)
 			}
 			failureKey := unifiedSegmentFailureKey(state, segment)
-			if err := a.unifiedSummaryCooldown(failureKey, time.Now()); err != nil { return nil, err }
+			if err := a.unifiedSummaryCooldown(failureKey, time.Now()); err != nil {
+				return nil, err
+			}
 			headers := make(http.Header)
 			headers.Set(unifiedSegmentHeader, segment.key)
 			segmentState := *state

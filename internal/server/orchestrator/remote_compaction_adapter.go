@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/samber/lo"
+	"github.com/tidwall/gjson"
 	"golang.org/x/sync/singleflight"
 
 	lru "github.com/hashicorp/golang-lru/v2"
@@ -67,7 +68,7 @@ type remoteCompactionAdapter struct {
 	checkpointRejections     *lru.Cache[[sha256.Size]byte, time.Time]
 	nativeMigrations         *lru.Cache[responsesCompactionRecoveryKey, nativeCompactionMigrationCacheEntry]
 	nativeMigrationGenerator singleflight.Group
-	summaryFailures *lru.Cache[unifiedSummaryFailureKey, time.Time]
+	summaryFailures          *lru.Cache[unifiedSummaryFailureKey, time.Time]
 }
 
 type remoteCompactionReference struct {
@@ -119,7 +120,7 @@ func newRemoteCompactionAdapter(
 		recoveryMisses:       lo.Must(lru.New[responsesCompactionRecoveryKey, time.Time](responsesReasoningRecoveryMaxScopes)),
 		checkpointRejections: lo.Must(lru.New[[sha256.Size]byte, time.Time](responsesReasoningRecoveryMaxScopes)),
 		nativeMigrations:     lo.Must(lru.New[responsesCompactionRecoveryKey, nativeCompactionMigrationCacheEntry](64)),
-		summaryFailures: lo.Must(lru.New[unifiedSummaryFailureKey, time.Time](1024)),
+		summaryFailures:      lo.Must(lru.New[unifiedSummaryFailureKey, time.Time](1024)),
 	}
 }
 
@@ -1327,7 +1328,9 @@ func (a *remoteCompactionAdapter) generateCompactionWithCandidate(
 			// Retain a structured diagnostic, not a misleading in-progress response.
 			failure := responses.NewInboundTransformer().TransformError(ctx, err)
 			status := requestexecution.StatusFailed
-			if errors.Is(err, context.Canceled) { status = requestexecution.StatusCanceled }
+			if errors.Is(err, context.Canceled) {
+				status = requestexecution.StatusCanceled
+			}
 			persistCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 			defer cancel()
 			if persistErr := a.requestService.UpdateRequestExecutionFinalized(persistCtx, executionRecord.ID, status, ExtractErrorMessage(err), "", failure.Body, nil, ""); persistErr != nil {
@@ -1440,8 +1443,12 @@ func collectLocalCompactionBridgeStream(
 		}
 		chunks = append(chunks, event)
 		if IsTerminalStreamEvent(event) {
-			if bytes.Equal(event.Data, llm.DoneStreamEvent.Data) { return nil, llm.ErrStreamIncomplete }
-			if err := responses.StreamEventError(event); err != nil { return nil, err }
+			if bytes.Equal(event.Data, llm.DoneStreamEvent.Data) {
+				return nil, llm.ErrStreamIncomplete
+			}
+			if err := responses.StreamEventError(event); err != nil {
+				return nil, err
+			}
 			outcome := classifyAcceptedTerminalEvent(event)
 			if outcome != streamTerminalCompleted {
 				return nil, &llm.ResponseError{StatusCode: http.StatusBadGateway, Detail: llm.ErrorDetail{
@@ -1451,8 +1458,12 @@ func collectLocalCompactionBridgeStream(
 			// [DONE] and a clean EOF cannot certify a durable summary. Require
 			// the Responses completed event before publishing any generated text.
 			completed = event.Type == "response.completed" || gjson.GetBytes(event.Data, "type").String() == "response.completed"
-			if status := gjson.GetBytes(event.Data, "response.status").String(); status != "" && status != "completed" { completed = false }
-			if !completed { return nil, llm.ErrStreamIncomplete }
+			if status := gjson.GetBytes(event.Data, "response.status").String(); status != "" && status != "completed" {
+				completed = false
+			}
+			if !completed {
+				return nil, llm.ErrStreamIncomplete
+			}
 			if perf != nil && !perf.RequestCompleted {
 				perf.MarkSuccess()
 			}
@@ -1462,7 +1473,9 @@ func collectLocalCompactionBridgeStream(
 	if err := stream.Err(); err != nil {
 		return nil, err
 	}
-	if !completed { return nil, llm.ErrStreamIncomplete }
+	if !completed {
+		return nil, llm.ErrStreamIncomplete
+	}
 
 	return chunks, nil
 }

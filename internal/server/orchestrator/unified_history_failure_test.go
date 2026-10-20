@@ -8,15 +8,22 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
 )
 
-type unifiedFailingExecutor struct { calls atomic.Int32 }
-func (*unifiedFailingExecutor) Do(context.Context, *httpclient.Request) (*httpclient.Response, error) { return nil, errors.New("unexpected nonstream request") }
+type unifiedFailingExecutor struct{ calls atomic.Int32 }
+
+func (*unifiedFailingExecutor) Do(context.Context, *httpclient.Request) (*httpclient.Response, error) {
+	return nil, errors.New("unexpected nonstream request")
+}
+
 func (e *unifiedFailingExecutor) DoStream(ctx context.Context, _ *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
-	if err := ctx.Err(); err != nil { return nil, err }
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	e.calls.Add(1)
 	return streams.SliceStream([]*httpclient.StreamEvent{{Data: []byte(`{"type":"response.created","response":{"id":"resp_failed_summary","status":"in_progress","output":[]}}`)}, {Data: []byte(`{"type":"error","error":{"code":"server_error","message":"synthetic summary upstream failed"}}`)}}), nil
 }

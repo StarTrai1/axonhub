@@ -32,11 +32,13 @@ func TestResponsesRejectedLocalCompactionPersistsRetriesAndProviderErrors(t *tes
 		exhausted    bool
 		empty        bool
 		terminalOnly bool
+		streamError bool
 	}{
 		{name: "recovers after capacity error"},
 		{name: "capacity retry budget exhausted", exhausted: true},
 		{name: "tool-only response is retained as failure", empty: true},
 		{name: "terminal-only summary completes bridge", terminalOnly: true},
+		{name: "standalone stream failure preserves provider detail", streamError: true},
 	} {
 		t.Run(scenario.name, func(t *testing.T) {
 			client := enttest.NewEntClient(t, "sqlite3", "file:compaction-errors?mode=memory&_fk=0")
@@ -88,6 +90,9 @@ func TestResponsesRejectedLocalCompactionPersistsRetriesAndProviderErrors(t *tes
 			if scenario.terminalOnly {
 				executor.events = executor.events[len(executor.events)-1:]
 			}
+			if scenario.streamError {
+				executor.events = []*httpclient.StreamEvent{executor.events[0], {Type: "error", Data: []byte(`{"type":"error","status":429,"error":{"code":"insufficient_quota","message":"synthetic quota exhausted"}}`)}}
+			}
 			adapter := newRemoteCompactionAdapter(service, nil, system)
 			summary, err := adapter.generateLocalSummary(ctx, "synthetic-compaction-cache-key", &remoteCompactionSource{
 				body:    []byte(`{"model":"gpt-6-astra","tool_choice":"auto","input":[{"type":"additional_tools","role":"developer","tools":[{"type":"custom","name":"exec"}]},{"type":"message","role":"user","content":[{"type":"input_text","text":"complete original history"}]},{"type":"compaction_trigger"}]}`),
@@ -109,7 +114,17 @@ func TestResponsesRejectedLocalCompactionPersistsRetriesAndProviderErrors(t *tes
 			require.Equal(t, "model capacity reached", executions[0].ErrorMessage)
 			body, loadErr := biz.DecodeStoredPayload(stored.ResponseBody)
 			require.NoError(t, loadErr)
-			if scenario.empty {
+			if scenario.streamError {
+				require.ErrorContains(t, err, "synthetic quota exhausted")
+				require.Empty(t, summary)
+				require.Equal(t, request.StatusFailed, stored.Status)
+				require.Equal(t, requestexecution.StatusFailed, executions[1].Status)
+				require.Equal(t, lo.ToPtr(429), executions[1].ResponseStatusCode)
+				providerBody, loadErr := biz.DecodeStoredPayload(executions[1].ResponseBody)
+				require.NoError(t, loadErr)
+				require.Equal(t, "insufficient_quota", gjson.GetBytes(providerBody, "error.code").String())
+				require.Equal(t, "synthetic quota exhausted", gjson.GetBytes(providerBody, "error.message").String())
+			} else if scenario.empty {
 				require.EqualError(t, err, "local compaction provider returned no assistant summary")
 				require.Empty(t, summary)
 				require.Equal(t, request.StatusFailed, stored.Status)

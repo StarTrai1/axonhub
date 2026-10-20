@@ -18,12 +18,20 @@ var relayResponsesTimeoutMessage = regexp.MustCompile(`^OpenAI Responses HTTP er
 // StreamEventError preserves protocol error details for callers consuming raw
 // Responses streams, including standalone errors without response.created.
 func StreamEventError(raw *httpclient.StreamEvent) error {
-	if raw == nil { return nil }
+	if raw == nil {
+		return nil
+	}
 	var event StreamEvent
-	if err := json.Unmarshal(raw.Data, &event); err != nil { return err }
-	if event.Type == "" { event.Type = StreamEventType(raw.Type) }
-	if event.Type == StreamEventTypeError { return responseErrorFromStreamEvent(&event) }
-	if event.Type == StreamEventTypeResponseFailed || event.Response != nil && (event.Response.Status == "failed" || event.Response.Error != nil) {
+	if err := json.Unmarshal(raw.Data, &event); err != nil {
+		return err
+	}
+	if event.Type == "" {
+		event.Type = StreamEventType(raw.Type)
+	}
+	if event.Type == StreamEventTypeError {
+		return responseErrorFromStreamEvent(&event)
+	}
+	if event.Type == StreamEventTypeResponseFailed || event.Response != nil && (event.Response.Status != nil && *event.Response.Status == "failed" || event.Response.Error != nil) {
 		return responseFailedError(event)
 	}
 	return nil
