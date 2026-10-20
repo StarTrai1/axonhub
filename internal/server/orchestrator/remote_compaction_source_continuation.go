@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"slices"
@@ -61,6 +62,12 @@ func (a *remoteCompactionAdapter) resolveRetainedContinuation(ctx context.Contex
 				return nil, err
 			}
 		}
+		if !found && a.unifiedHistoryEnabled() {
+			body, response, found, err = a.loadHistorySnapshot(ctx, historyWireAlias(previous, historyChannelID(state)))
+			if err != nil {
+				return nil, err
+			}
+		}
 		if !found && a.requestService != nil {
 			body, response, found, err = a.requestService.LoadCompletedResponsesCompactionPredecessor(ctx, previous)
 		}
@@ -68,7 +75,7 @@ func (a *remoteCompactionAdapter) resolveRetainedContinuation(ctx context.Contex
 			return nil, fmt.Errorf("load compaction predecessor: %w", err)
 		}
 		if !found {
-			return nil, compactionSourceContinuationUnavailable("a completed predecessor is missing")
+			return nil, &missingHistoryPredecessorError{compactionSourceContinuationUnavailable("a completed predecessor is missing")}
 		}
 		bytes += len(body) + len(response)
 		if bytes > nativeCompactionMaxSourceBytes {
@@ -112,6 +119,17 @@ func (a *remoteCompactionAdapter) resolveRetainedContinuation(ctx context.Contex
 		return nil, compactionSourceContinuationUnavailable("resolved source exceeds the source size limit")
 	}
 	return &remoteCompactionSource{body: body, headers: source.headers}, nil
+}
+
+// Only an absent owned predecessor is an archive coverage gap. Corruption,
+// mismatched ownership, divergent threads and cycles must remain hard errors.
+type missingHistoryPredecessorError struct { error }
+
+func (e *missingHistoryPredecessorError) Unwrap() error { return e.error }
+
+func missingHistoryPredecessor(err error) bool {
+	var missing *missingHistoryPredecessorError
+	return errors.As(err, &missing)
 }
 
 func compactionSourceContinuationUnavailable(reason string) error {

@@ -177,7 +177,7 @@ func (m *nativeCompactionSourceMiddleware) snapshot() (*remoteCompactionSource, 
 		return nil, nil
 	}
 	owner := &ent.APIKey{ID: state.APIKey.ID, ProjectID: state.APIKey.ProjectID}
-	return &remoteCompactionSource{body: append([]byte(nil), body...)}, &PersistenceState{APIKey: owner, unifiedHistorySource: state.unifiedHistorySource}
+	return &remoteCompactionSource{body: append([]byte(nil), body...)}, &PersistenceState{APIKey: owner, unifiedHistorySource: state.unifiedHistorySource, CurrentCandidate: state.CurrentCandidate}
 }
 
 func (m *nativeCompactionSourceMiddleware) OnOutboundRawResponse(ctx context.Context, response *httpclient.Response) (*httpclient.Response, error) {

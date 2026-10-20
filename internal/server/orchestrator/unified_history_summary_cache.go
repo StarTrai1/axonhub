@@ -35,7 +35,10 @@ func setUnifiedSummaryKeys(segment *unifiedHistorySegment, contract map[string]j
 		return "summary:" + historyDigest(append([]byte("segment-summary-v2:"), body...))
 	}
 	segment.key = key(canonical)
-	segment.cacheAlias = "summaryref:" + strings.TrimPrefix(segment.key, "summary:")
+	segment.legacyAlias = "summaryref:" + strings.TrimPrefix(segment.key, "summary:")
+	semantic, err := unifiedSummaryContract(contract, true)
+	if err != nil { return err }
+	segment.cacheAlias = "summaryref:" + historyDigest(append([]byte("segment-facts-v3:"), semantic...))
 	segment.legacyKeys = []string{key(raw)}
 	// Agent transport used to reserialize custom calls but leave their outputs
 	// and ordinary messages untouched. Sorting every item would miss those
@@ -76,6 +79,23 @@ func setUnifiedSummaryKeys(segment *unifiedHistorySegment, contract map[string]j
 	if !slices.Contains(segment.legacyKeys, segment.key) {
 		segment.legacyKeys = append(segment.legacyKeys, segment.key)
 	}
+	// Import completed factual notes produced at a stronger effort. This only
+	// adds an exact old contract lookup; it never changes today's request.
+	var reasoning map[string]json.RawMessage
+	if json.Unmarshal(contract["reasoning"], &reasoning) == nil && len(reasoning) > 0 {
+		for _, effort := range []string{"xhigh", "high"} {
+			prior := maps.Clone(contract)
+			r := maps.Clone(reasoning)
+			r["effort"], _ = json.Marshal(effort)
+			prior["reasoning"], _ = json.Marshal(r)
+			raw, err := json.Marshal(prior)
+			if err != nil { return err }
+			canonical, err := canonicalHistoryJSON(raw)
+			if err != nil { return err }
+			old := key(canonical)
+			if !slices.Contains(segment.legacyKeys, old) { segment.legacyKeys = append(segment.legacyKeys, old) }
+		}
+	}
 	return nil
 }
 
@@ -84,6 +104,7 @@ func unifiedSummaryLookupKeys(segment *unifiedHistorySegment) []string {
 	if segment.cacheAlias != "" {
 		keys = append(keys, segment.cacheAlias)
 	}
+	if segment.legacyAlias != "" { keys = append(keys, segment.legacyAlias) }
 	return keys
 }
 
@@ -96,8 +117,10 @@ func (a *remoteCompactionAdapter) loadUnifiedSummary(ctx context.Context, segmen
 	if len(keys) == 0 {
 		keys = []string{segment.key}
 	}
-	if sealed := entries[segment.cacheAlias]; sealed != "" {
-		alias, err := a.openHistoryRecord(ctx, segment.cacheAlias, sealed, 128)
+	aliasKey := segment.cacheAlias
+	if entries[aliasKey] == "" && entries[segment.legacyAlias] != "" { aliasKey = segment.legacyAlias }
+	if sealed := entries[aliasKey]; sealed != "" {
+		alias, err := a.openHistoryRecord(ctx, aliasKey, sealed, 128)
 		if err != nil {
 			return unifiedSummaryValue{}, false, err
 		}

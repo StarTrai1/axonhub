@@ -27,7 +27,7 @@ func unifiedHistoryOwner(ctx context.Context) (string, error) {
 
 func validHistoryKey(key string) bool {
 	parts := strings.Split(key, ":")
-	if len(parts) != 2 || !slices.Contains([]string{"block", "snapshot", "response", "checkpoint", "summary", "summaryref", "view"}, parts[0]) {
+	if len(parts) != 2 || !slices.Contains([]string{"block", "snapshot", "response", "checkpoint", "summary", "summaryref", "view", "wire", "coverage", "native", "origin"}, parts[0]) {
 		return false
 	}
 	digest, err := hex.DecodeString(parts[1])

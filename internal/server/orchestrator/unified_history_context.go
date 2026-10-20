@@ -38,6 +38,9 @@ type unifiedHistorySegment struct {
 	key        string
 	cacheAlias string
 	legacyKeys []string
+	legacyAlias string
+	coverageKey string
+	coverageItems []string
 	summary    string
 	body       []byte
 }
@@ -147,9 +150,16 @@ func (a *remoteCompactionAdapter) compileUnifiedContext(ctx context.Context, bod
 		log.Info(ctx, "assembled complete unified history without summarization", log.Int("history_bytes", len(expanded)))
 		return expanded, true, nil
 	}
-	plan, supported, err := planUnifiedHistory(envelope, items, state, candidate, budget)
+	if err := a.importUnifiedSourceCoverage(ctx, body, state, candidate, budget); err != nil {
+		return nil, false, err
+	}
+	reusable, err := a.loadUnifiedCoverage(ctx, envelope, items, state, candidate)
+	if err != nil {
+		return nil, false, err
+	}
+	plan, supported, err := planUnifiedHistoryWithCoverage(envelope, items, state, candidate, budget, reusable)
 	if err == nil && !supported && ceiling > budget {
-		plan, supported, err = planUnifiedHistory(envelope, items, state, candidate, ceiling)
+		plan, supported, err = planUnifiedHistoryWithCoverage(envelope, items, state, candidate, ceiling, reusable)
 	}
 	if err != nil || !supported {
 		log.Warn(ctx, "unified history assembly unavailable", log.String("reason", "original_history_exceeds_plan_limits"))
@@ -199,6 +209,10 @@ type unifiedHistoryPlan struct {
 }
 
 func planUnifiedHistory(envelope map[string]json.RawMessage, items []json.RawMessage, state *PersistenceState, candidate *ChannelModelsCandidate, budget int) (*unifiedHistoryPlan, bool, error) {
+	return planUnifiedHistoryWithCoverage(envelope, items, state, candidate, budget, nil)
+}
+
+func planUnifiedHistoryWithCoverage(envelope map[string]json.RawMessage, items []json.RawMessage, state *PersistenceState, candidate *ChannelModelsCandidate, budget int, reusable map[int]unifiedHistorySegment) (*unifiedHistoryPlan, bool, error) {
 	groups := unifiedHistoryGroups(items)
 	if len(groups) == 0 {
 		return nil, false, nil
@@ -223,7 +237,20 @@ func planUnifiedHistory(envelope map[string]json.RawMessage, items []json.RawMes
 			size = 0
 		}
 	}
-	for _, unit := range units {
+	position := 0
+	for index := 0; index < len(units); {
+		unit := units[index]
+		if segment, ok := reusable[position]; ok {
+			flush()
+			segments = append(segments, segment)
+			covered := 0
+			for index < len(units) && covered < len(segment.items) {
+				covered += len(units[index])
+				index++
+			}
+			position += covered
+			continue
+		}
 		unitBytes := unifiedItemsSize(unit)
 		if unitBytes > segmentLimit {
 			return nil, false, nil
@@ -233,6 +260,8 @@ func planUnifiedHistory(envelope map[string]json.RawMessage, items []json.RawMes
 		}
 		current.items = append(current.items, unit...)
 		size += unitBytes
+		position += len(unit)
+		index++
 	}
 	// The trailing partial segment is growing; retain it with the latest turn.
 	if len(current.items) > 0 {
@@ -284,7 +313,13 @@ func planUnifiedHistory(envelope map[string]json.RawMessage, items []json.RawMes
 		if state.CurrentModelIndex >= 0 && state.CurrentModelIndex < len(candidate.Models) {
 			contract["destination_model"], _ = json.Marshal(candidate.Models[state.CurrentModelIndex].ActualModel)
 		}
+		if segment.summary != "" {
+			continue // Keep the immutable text and source label of the cached range.
+		}
 		if err := setUnifiedSummaryKeys(segment, contract); err != nil {
+			return nil, false, err
+		}
+		if err := setUnifiedCoverageIdentity(segment, contract); err != nil {
 			return nil, false, err
 		}
 	}
@@ -308,6 +343,9 @@ func (a *remoteCompactionAdapter) loadUnifiedSegments(ctx context.Context, segme
 	missing := 0
 	for i := range segments {
 		segment := &segments[i]
+		if segment.summary != "" {
+			continue
+		}
 		if segment.key == "" {
 			continue
 		}
@@ -424,7 +462,9 @@ func (a *remoteCompactionAdapter) hydrateUnifiedSegments(ctx context.Context, se
 			return errors.New("empty unified segment summary")
 		}
 		segment.key, segment.summary = value.key, value.text
-		return nil
+		persistCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+		defer cancel()
+		return a.publishUnifiedCoverage(persistCtx, segment)
 	}
 	if missing <= 1 {
 		for i := range segments {
@@ -458,6 +498,11 @@ func (a *remoteCompactionAdapter) hydrateUnifiedSegments(ctx context.Context, se
 			return 0, false, err
 		}
 		if err := ctx.Err(); err != nil {
+			return 0, false, err
+		}
+	}
+	for i := range segments {
+		if err := a.publishUnifiedCoverage(ctx, &segments[i]); err != nil {
 			return 0, false, err
 		}
 	}

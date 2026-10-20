@@ -14,6 +14,10 @@ import (
 	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/internal/contexts"
+	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 const historyBlockBytes = 64 << 10
@@ -33,6 +37,12 @@ func (a *remoteCompactionAdapter) flattenHistorySource(ctx context.Context, sour
 		return nil, err
 	}
 	expanded, complete, err := a.expandUnifiedHistory(ctx, resolved.body, state, make(map[string]bool))
+	if missingHistoryPredecessor(err) {
+		// The current native window is complete even when an older opaque root
+		// cannot be expanded. Preserve that root, never present it as plaintext.
+		log.Warn(ctx, "retained native history with an unavailable archival ancestor")
+		return resolved, nil
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -366,6 +376,17 @@ func (a *remoteCompactionAdapter) loadHistorySnapshot(ctx context.Context, alias
 
 func historyResponseAlias(id string) string { return "response:" + historyDigest([]byte(id)) }
 
+func historyChannelID(state *PersistenceState) int {
+	if state != nil && state.CurrentCandidate != nil && state.CurrentCandidate.Channel != nil {
+		return state.CurrentCandidate.Channel.ID
+	}
+	return 0
+}
+
+func historyWireAlias(id string, channelID int) string {
+	return "wire:" + historyDigest(fmt.Appendf(nil, "%d:%s", channelID, id))
+}
+
 func historyCheckpointAlias(ref *remoteCompactionReference) string {
 	if isLocalCompactionReference(ref) {
 		return "checkpoint:" + historyDigest([]byte(ref.ID))
@@ -390,6 +411,24 @@ func (a *remoteCompactionAdapter) archiveHistoryResponse(ctx context.Context, bo
 	}
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
+	// Persist the accepted provider window independently of the raw archive.
+	// A same-channel reconnect must never expand private ancestor checkpoints.
+	channelID := 0
+	if attempt := shared.GetResponsesAttempt(ctx); attempt != nil {
+		channelID = attempt.Origin().ChannelID
+	}
+	wireState := *state
+	if channelID != 0 {
+		wireState.CurrentCandidate = &ChannelModelsCandidate{Channel: &biz.Channel{Channel: &ent.Channel{ID: channelID}}}
+	}
+	wire, wireErr := a.resolveRetainedContinuation(ctx, &remoteCompactionSource{body: body}, &wireState, true)
+	if wireErr == nil {
+		if err := a.saveHistorySnapshot(ctx, historyWireAlias(id, channelID), wire.body, response); err != nil {
+			return err
+		}
+	} else if !missingHistoryPredecessor(wireErr) {
+		return wireErr
+	}
 	if original, ok := ctx.Value(unifiedHistoryOriginKey{}).([]byte); ok && len(original) > 0 {
 		body = original
 	}
