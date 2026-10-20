@@ -12,9 +12,9 @@ import (
 	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/internal/authz"
-	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
@@ -71,10 +71,9 @@ func testUnifiedHistoryLostNativeContinuation(t *testing.T, fresh bool) {
 	<-frames
 	// The production reproducer references a long-completed turn. Await the
 	// fixture's asynchronous persistence before simulating lost connection state.
-	lookup := contexts.WithProjectID(contexts.WithAPIKey(ctx, &ent.APIKey{ID: 101, ProjectID: project.ID}), project.ID)
 	require.Eventually(t, func() bool {
-		_, _, found, err := handlers.RequestService.LoadCompletedResponsesCompactionPredecessor(lookup, "resp_accepted")
-		return err == nil && found
+		row, err := client.Request.Query().Where(request.ExternalIDEQ("resp_accepted")).Only(ctx)
+		return err == nil && row.Status == request.StatusCompleted
 	}, 2*time.Second, 10*time.Millisecond)
 	if fresh {
 		require.NoError(t, conn.Close())
