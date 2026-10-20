@@ -20,16 +20,14 @@ import (
 func TestUnifiedHistoryLegacyChainWithReinsertedContextAndImages(t *testing.T) {
 	ctx, _, state, adapter := unifiedHistoryFixture(t)
 	state.CurrentCandidate.ContextTokens = 0 // direct channel routing, no models table rows
-	adapter.systemService.UnifiedHistory.Enabled = false
 	image := `{"type":"input_image","image_url":"data:image/png;base64,` + strings.Repeat("AAAA", 80000) + `"}`
 	imageUser := `{"type":"message","id":"msg_source","role":"user","content":[{"type":"input_text","text":"calibration 17.125"},` + image + `]}`
 	body := []byte(`{"model":"gpt-6-astra","input":[` + imageUser + `,{"type":"function_call","name":"inspect","call_id":"call_initial","arguments":"{}"},{"type":"function_call_output","call_id":"call_initial","output":"original exact calibration evidence"},{"type":"compaction_trigger"}]}`)
 	for i := range 3 {
 		ref := &remoteCompactionReference{ID: fmt.Sprintf("cmp_chain_%d", i), EncryptedContent: "native-cipher"}
-		require.NoError(t, adapter.retainNativeCompactionSource(ctx, ref, state, &remoteCompactionSource{body: body}))
+		require.NoError(t, seedLegacyNativeCompactionSource(ctx, adapter, ref, state, &remoteCompactionSource{body: body}))
 		body = []byte(fmt.Sprintf(`{"model":"gpt-6-astra","input":[%s,{"type":"message","id":"runtime_%d","role":"developer","content":"current runtime constraint %d"},{"type":"compaction","id":%q,"encrypted_content":%q},{"role":"user","content":"correction %d"},{"type":"compaction_trigger"}]}`, strings.ReplaceAll(imageUser, "msg_source", "msg_reassigned"), i, i, ref.ID, ref.EncryptedContent, i))
 	}
-	adapter.systemService.UnifiedHistory.Enabled = true
 	executor := &compactionEvidenceExecutor{}
 	compiled, ok, err := adapter.compileUnifiedContext(ctx, body, state, executor)
 	require.NoError(t, err)

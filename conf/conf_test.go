@@ -145,27 +145,10 @@ func writeTestConfig(t *testing.T, contents string) string {
 	return configFile
 }
 
-func TestUnifiedHistoryConfig(t *testing.T) {
-	cfg, _, err := loadConfig(writeTestConfig(t, ""))
-	if err != nil {
+func TestRetiredUnifiedHistoryConfigDoesNotAffectStartup(t *testing.T) {
+	t.Setenv("AXONHUB_UNIFIED_HISTORY_ENABLED", "false")
+	t.Setenv("AXONHUB_UNIFIED_HISTORY_RETENTION_DAYS", "-1")
+	if _, _, err := loadConfig(writeTestConfig(t, "unified_history:\n  enabled: false\n  retention_days: -1\n")); err != nil {
 		t.Fatal(err)
-	}
-	if cfg.UnifiedHistory.Enabled || cfg.UnifiedHistory.RetentionDays != 0 {
-		t.Fatal("history must be opt-in with explicit finite retention")
-	}
-	t.Setenv("AXONHUB_UNIFIED_HISTORY_ENABLED", "true")
-	t.Setenv("AXONHUB_UNIFIED_HISTORY_RETENTION_DAYS", "14")
-	cfg, _, err = loadConfig(writeTestConfig(t, ""))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !cfg.UnifiedHistory.Enabled || cfg.UnifiedHistory.RetentionDays != 14 {
-		t.Fatalf("history environment ignored: %+v", cfg.UnifiedHistory)
-	}
-	for _, days := range []string{"-1", "36501"} {
-		t.Setenv("AXONHUB_UNIFIED_HISTORY_RETENTION_DAYS", days)
-		if _, _, err := loadConfig(writeTestConfig(t, "")); err == nil {
-			t.Fatalf("invalid retention accepted: %s", days)
-		}
 	}
 }

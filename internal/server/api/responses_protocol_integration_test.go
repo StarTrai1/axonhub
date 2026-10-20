@@ -104,10 +104,10 @@ func TestResponsesProtocolIntegrationIsolation(t *testing.T) {
 
 func newResponsesIntegrationFixture(t *testing.T, upstreamURL string, configure ...func(*ent.ChannelCreate)) (*ent.Client, *OpenAIHandlers, *ent.Project) {
 	t.Helper()
-	return newResponsesHistoryIntegrationFixture(t, upstreamURL, false, configure...)
+	return newResponsesHistoryIntegrationFixture(t, upstreamURL, configure...)
 }
 
-func newResponsesHistoryIntegrationFixture(t *testing.T, upstreamURL string, enabled bool, configure ...func(*ent.ChannelCreate)) (*ent.Client, *OpenAIHandlers, *ent.Project) {
+func newResponsesHistoryIntegrationFixture(t *testing.T, upstreamURL string, configure ...func(*ent.ChannelCreate)) (*ent.Client, *OpenAIHandlers, *ent.Project) {
 	t.Helper()
 	// Cancellation can retire SQLite's sole connection. A private in-memory
 	// database would then lose its schema before stream accounting finishes.
@@ -125,7 +125,7 @@ func newResponsesHistoryIntegrationFixture(t *testing.T, upstreamURL string, ena
 	require.NoError(t, err)
 
 	cacheConfig := xcache.Config{Mode: xcache.ModeMemory}
-	systemService := biz.NewSystemService(biz.SystemServiceParams{CacheConfig: cacheConfig, Ent: client, UnifiedHistory: biz.UnifiedHistoryConfig{Enabled: enabled}})
+	systemService := biz.NewSystemService(biz.SystemServiceParams{CacheConfig: cacheConfig, Ent: client})
 	require.NoError(t, systemService.SetModelSettings(ctx, biz.SystemModelSettings{FallbackToChannelsOnModelNotFound: true, QueryAllChannelModels: true}))
 	channelService := biz.NewChannelService(biz.ChannelServiceParams{CacheConfig: cacheConfig, Ent: client, SystemService: systemService, HttpClient: httpclient.NewHttpClient()})
 	t.Cleanup(channelService.Stop)

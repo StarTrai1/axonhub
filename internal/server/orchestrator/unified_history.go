@@ -85,7 +85,7 @@ func historyDigest(data []byte) string {
 }
 
 func (a *remoteCompactionAdapter) unifiedHistoryEnabled() bool {
-	return a != nil && a.systemService != nil && a.systemService.UnifiedHistory.Enabled
+	return a != nil && a.systemService != nil
 }
 
 func historyState(ctx context.Context) (*PersistenceState, error) {

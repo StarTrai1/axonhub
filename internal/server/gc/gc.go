@@ -139,11 +139,6 @@ func (w *Worker) runCleanupLocked(
 
 	ctx = ent.NewContext(ctx, w.Ent)
 	ctx = schematype.SkipSoftDelete(ctx)
-	if !manual {
-		if err := w.SystemService.PruneUnifiedHistory(ctx); err != nil {
-			return err
-		}
-	}
 
 	policy, err := w.SystemService.StoragePolicy(ctx)
 	if err != nil {

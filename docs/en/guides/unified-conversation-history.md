@@ -1,14 +1,8 @@
-# Unified conversation history (experimental)
+# Unified conversation history
 
-This opt-in feature is developed on a separate branch. It stores completed Responses input/output, native compaction sources and local bridge sources as encrypted history independently of request logs. Explicit response/checkpoint references identify branches; no mutable “latest thread” lookup joins unrelated conversations.
+Unified history is built into AxonHub and requires no configuration file or environment variables. Completed Responses input/output, native compaction sources and local bridge sources are stored as encrypted history independently of request logs. Explicit response/checkpoint references identify branches; no mutable “latest thread” lookup joins unrelated conversations.
 
-```yaml
-unified_history:
-  enabled: true
-  retention_days: 0
-```
-
-Alternatively set `AXONHUB_UNIFIED_HISTORY_ENABLED=true`. Configuration is read at startup; apply it through your deployment procedure. Zero retention disables automatic history expiry, so plan disk capacity. A positive value makes records unreadable after that many days without a refreshed reference; scheduled GC deletes expired records after one additional grace day. This policy is independent of request-log cleanup. Short retention may expire sources needed by old checkpoints. Disabling the feature does not erase stored records.
+History sources do not expire by age, and request-log cleanup does not remove them. Upgrades retain the existing history format, notes and references. Reads and repeated saves do not write timestamp-only updates. The former experimental `AXONHUB_UNIFIED_HISTORY_ENABLED`, `AXONHUB_UNIFIED_HISTORY_RETENTION_DAYS` and YAML `unified_history` settings have been removed; old values no longer affect availability or retention. For a directly launched EXE, keep the existing database and replace the executable through the usual upgrade procedure.
 
 ## Storage and recovery
 

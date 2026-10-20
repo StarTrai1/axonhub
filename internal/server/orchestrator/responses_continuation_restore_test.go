@@ -14,7 +14,7 @@ import (
 )
 
 func TestResponsesSessionRestoresAcceptedWireWithoutExpandingArchive(t *testing.T) {
-	for _, scenario := range []string{"restore", "new connection", "missing", "foreign", "failed", "disabled"} {
+	for _, scenario := range []string{"restore", "new connection", "missing", "foreign", "failed", "unavailable"} {
 		t.Run(scenario, func(t *testing.T) {
 			ctx, client, state, adapter := unifiedHistoryFixture(t)
 			wire := `{"model":"gpt-6-astra","input":[{"role":"user","content":"preserve original instruction"},{"type":"compaction","id":"cmp_accepted","encrypted_content":"unchanged-accepted-cipher"}]}`
@@ -32,14 +32,14 @@ func TestResponsesSessionRestoresAcceptedWireWithoutExpandingArchive(t *testing.
 			// The raw archive intentionally differs: recovery must retain the
 			// accepted native checkpoint rather than expanding all old originals.
 			require.NoError(t, adapter.saveHistorySnapshot(ctx, historyResponseAlias("resp_accepted"), []byte(`{"model":"gpt-6-astra","input":[{"role":"user","content":"archived-only-original"}]}`), []byte(`{"id":"resp_accepted","status":"completed","output":[]}`)))
-			if scenario == "disabled" {
-				adapter.systemService.UnifiedHistory.Enabled = false
-			}
 			raw := &httpclient.Request{Body: []byte(`{"model":"gpt-6-astra","previous_response_id":"resp_accepted","input":[{"type":"function_call_output","call_id":"call_exact","output":"exact tool result"}]}`)}
 			llmRequest, err := responses.NewInboundTransformer().TransformRequest(ctx, raw)
 			require.NoError(t, err)
 			state.RawRequest, state.LlmRequest = raw, llmRequest
 			state.SystemService, state.RequestService = adapter.systemService, adapter.requestService
+			if scenario == "unavailable" {
+				state.SystemService = nil
+			}
 			state.RawProviderRequest = &httpclient.Request{APIFormat: string(llm.APIFormatOpenAIResponseWebSocket)}
 			state.ResponsesContinuation = newResponsesContinuation(nil, raw.Body)
 			if scenario == "new connection" {

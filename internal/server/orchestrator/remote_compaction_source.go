@@ -54,49 +54,18 @@ func (a *remoteCompactionAdapter) retainNativeCompactionSource(ctx context.Conte
 	if err != nil {
 		return err
 	}
-	if a.unifiedHistoryEnabled() {
-		owner, ownerErr := historyState(ctx)
-		if ownerErr != nil {
-			return ownerErr
-		}
-		if state == nil || state.APIKey == nil || owner.APIKey.ID != state.APIKey.ID || owner.APIKey.ProjectID != state.APIKey.ProjectID {
-			return errors.New("unified history source owner mismatch")
-		}
-		source, err = a.flattenHistorySource(ctx, source, state)
-		if err != nil {
-			return err
-		}
-		return a.saveHistorySnapshot(ctx, historyCheckpointAlias(ref), source.body, nil)
+	owner, ownerErr := historyState(ctx)
+	if ownerErr != nil {
+		return ownerErr
 	}
-	encoded, err := json.Marshal(nativeCompactionSourceCheckpoint{Version: 1, Body: source.body})
+	if state == nil || state.APIKey == nil || owner.APIKey.ID != state.APIKey.ID || owner.APIKey.ProjectID != state.APIKey.ProjectID {
+		return errors.New("unified history source owner mismatch")
+	}
+	source, err = a.flattenHistorySource(ctx, source, state)
 	if err != nil {
 		return err
 	}
-	if len(encoded) > nativeCompactionMaxCheckpointBytes {
-		return errors.New("native compaction source checkpoint exceeds limit")
-	}
-	compressor, err := zstd.NewWriter(nil, zstd.WithEncoderConcurrency(1))
-	if err != nil {
-		return err
-	}
-	compressed := compressor.EncodeAll(encoded, nil)
-	_ = compressor.Close()
-	if len(compressed) > nativeCompactionMaxCheckpointBytes {
-		return errors.New("compressed native compaction source exceeds limit")
-	}
-	associatedData, err := nativeCompactionSourceAAD(ref, state)
-	if err != nil {
-		return err
-	}
-	aead, err := a.localCompactionCipher(ctx)
-	if err != nil {
-		return err
-	}
-	sealed, err := sealNativeCompactionSource(aead, associatedData, compressed)
-	if err != nil {
-		return fmt.Errorf("seal native compaction source: %w", err)
-	}
-	return a.systemService.SaveNativeCompactionSource(ctx, state.APIKey.ProjectID, state.APIKey.ID, remoteCompactionCacheKey(ref), sealed)
+	return a.saveHistorySnapshot(ctx, historyCheckpointAlias(ref), source.body, nil)
 }
 
 func (a *remoteCompactionAdapter) loadNativeCompactionSource(ctx context.Context, ref *remoteCompactionReference, state *PersistenceState) (*remoteCompactionSource, error) {

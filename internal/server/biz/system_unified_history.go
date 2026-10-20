@@ -7,22 +7,12 @@ import (
 	"fmt"
 	"slices"
 	"strings"
-	"time"
 
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
-	"github.com/looplj/axonhub/internal/ent/schema/schematype"
 	"github.com/looplj/axonhub/internal/ent/system"
 )
-
-// UnifiedHistoryConfig is opt-in because source retention is independent of
-// request-log retention. Zero retention keeps archived history until explicitly
-// deleted; a finite retention applies to all history records, not request logs.
-type UnifiedHistoryConfig struct {
-	Enabled       bool `conf:"enabled" json:"enabled" yaml:"enabled"`
-	RetentionDays int  `conf:"retention_days" json:"retention_days" yaml:"retention_days"`
-}
 
 const unifiedHistoryPrefix = "conversation_history_v1:"
 
@@ -66,23 +56,9 @@ func (s *SystemService) LoadUnifiedHistory(ctx context.Context, keys []string) (
 			full[i] = prefix + key
 		}
 		q := s.entFromContext(ctx).System.Query().Where(system.KeyIn(full...))
-		if s.UnifiedHistory.RetentionDays > 0 {
-			q.Where(system.UpdatedAtGTE(time.Now().Add(-time.Duration(s.UnifiedHistory.RetentionDays) * 24 * time.Hour)))
-		}
 		rows, err := q.All(ctx)
 		if err != nil {
 			return nil, err
-		}
-		if s.UnifiedHistory.RetentionDays > 0 && len(rows) > 0 {
-			ids := make([]int, len(rows))
-			for i, row := range rows {
-				ids[i] = row.ID
-			}
-			// An actively read checkpoint keeps its manifest and blocks alive;
-			// expired rows were excluded above and are never resurrected here.
-			if err := s.entFromContext(ctx).System.Update().Where(system.IDIn(ids...)).SetUpdatedAt(time.Now()).Exec(ctx); err != nil {
-				return nil, err
-			}
 		}
 		for _, row := range rows {
 			result[strings.TrimPrefix(row.Key, prefix)] = row.Value
@@ -94,7 +70,7 @@ func (s *SystemService) LoadUnifiedHistory(ctx context.Context, keys []string) (
 // SaveUnifiedHistory atomically publishes a manifest with all its encrypted
 // blocks. Existing immutable values are retained, not re-encrypted or rewritten.
 // Batches avoid SQL parameter limits and content hashes deduplicate only inside
-// the authenticated owner. Updating timestamps keeps referenced blocks alive.
+// the authenticated owner. Reusing immutable records performs no SQL update.
 func (s *SystemService) SaveUnifiedHistory(ctx context.Context, entries map[string]string) error {
 	prefix, err := unifiedHistoryOwner(ctx)
 	if err != nil {
@@ -128,16 +104,6 @@ func (s *SystemService) SaveUnifiedHistory(ctx context.Context, entries map[stri
 			for _, key := range existing {
 				found[key] = true
 			}
-			if len(existing) > 0 {
-				// Existing content never needs to cross the SQL wire again.
-				count, err := client.System.Update().Where(system.KeyIn(existing...)).SetUpdatedAt(time.Now()).Save(txCtx)
-				if err != nil {
-					return err
-				}
-				if count != len(existing) {
-					return errors.New("history records expired during publication; retry with the original source")
-				}
-			}
 			creates := make([]*ent.SystemCreate, 0, len(batch))
 			for _, key := range batch {
 				if !found[prefix+key] {
@@ -145,35 +111,11 @@ func (s *SystemService) SaveUnifiedHistory(ctx context.Context, entries map[stri
 				}
 			}
 			for pos := 0; pos < len(creates); pos += 32 {
-				if err := client.System.CreateBulk(creates[pos:min(pos+32, len(creates))]...).OnConflictColumns(system.FieldKey).Update(func(u *ent.SystemUpsert) { u.UpdateUpdatedAt() }).Exec(txCtx); err != nil {
+				if err := client.System.CreateBulk(creates[pos:min(pos+32, len(creates))]...).OnConflictColumns(system.FieldKey).DoNothing().Exec(txCtx); err != nil {
 					return err
 				}
 			}
 		}
 		return nil
 	})
-}
-
-// PruneUnifiedHistory only runs under an explicit finite history policy. A
-// grace day keeps blocks available during concurrent bounded publications.
-func (s *SystemService) PruneUnifiedHistory(ctx context.Context) error {
-	if !s.UnifiedHistory.Enabled || s.UnifiedHistory.RetentionDays <= 0 {
-		return nil
-	}
-	ctx = schematype.SkipSoftDelete(authz.WithSystemBypass(ctx, "prune-expired-unified-history"))
-	cutoff := time.Now().Add(-time.Duration(s.UnifiedHistory.RetentionDays+1) * 24 * time.Hour)
-	client := s.entFromContext(ctx)
-	for {
-		ids, err := client.System.Query().Where(system.KeyHasPrefix(unifiedHistoryPrefix), system.UpdatedAtLT(cutoff)).Order(ent.Asc(system.FieldID)).Limit(256).IDs(ctx)
-		if err != nil {
-			return err
-		}
-		if len(ids) == 0 {
-			return nil
-		}
-		// Recheck age because a publication can refresh a selected block.
-		if _, err := client.System.Delete().Where(system.IDIn(ids...), system.UpdatedAtLT(cutoff)).Exec(ctx); err != nil {
-			return err
-		}
-	}
 }

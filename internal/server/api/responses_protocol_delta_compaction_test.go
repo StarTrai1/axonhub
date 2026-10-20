@@ -20,7 +20,7 @@ import (
 )
 
 func TestResponsesProtocolNativeCompactionMigrationFromWebSocketDelta(t *testing.T) {
-	testResponsesProtocolHistoryMigration(t, false)
+	testResponsesProtocolHistoryMigration(t, true, true)
 }
 
 func TestUnifiedHistoryProtocolMigrationFromWebSocketDelta(t *testing.T) {
@@ -90,7 +90,7 @@ func testResponsesProtocolHistoryMigration(t *testing.T, unified bool, direct ..
 				w.Header().Set("Content-Type", "text/event-stream")
 				_, _ = fmt.Fprintf(w, "data: {\"type\":\"response.completed\",\"response\":{\"id\":\"resp_destination\",\"object\":\"response\",\"status\":\"completed\",\"output\":%s}}\n\n", output)
 			}))
-			client, handlers, project := newResponsesHistoryIntegrationFixture(t, upstream.URL, unified, func(create *ent.ChannelCreate) {
+			client, handlers, project := newResponsesHistoryIntegrationFixture(t, upstream.URL, func(create *ent.ChannelCreate) {
 				create.SetType(channel.TypeCodex).SetSupportedModels([]string{"synthetic-model", "gpt-6-astra"}).
 					SetPolicies(objects.ChannelPolicies{RemoteCompaction: objects.RemoteCompactionPolicyNative}).
 					SetEndpoints([]objects.ChannelEndpoint{{APIFormat: "openai/responses-ws"}}).

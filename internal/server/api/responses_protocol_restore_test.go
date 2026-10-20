@@ -62,7 +62,7 @@ func testUnifiedHistoryLostNativeContinuation(t *testing.T, fresh bool) {
 			}
 		}
 	}))
-	client, handlers, project := newResponsesHistoryIntegrationFixture(t, upstream.URL, true, func(create *ent.ChannelCreate) {
+	client, handlers, project := newResponsesHistoryIntegrationFixture(t, upstream.URL, func(create *ent.ChannelCreate) {
 		create.SetType(channel.TypeCodex).SetEndpoints([]objects.ChannelEndpoint{{APIFormat: "openai/responses-ws"}}).
 			SetSettings(&objects.ChannelSettings{PassThroughBody: lo.ToPtr(true), ModelProtocols: []objects.ModelProtocol{{Model: "synthetic-model", APIFormats: []string{"openai/responses-ws"}}}})
 	})

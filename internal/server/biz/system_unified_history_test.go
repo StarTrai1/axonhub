@@ -35,7 +35,7 @@ func TestUnifiedHistoryStorage_Postgres(t *testing.T) {
 
 func testUnifiedHistoryStorage(t *testing.T, client *ent.Client) {
 	t.Helper()
-	service := NewSystemService(SystemServiceParams{Ent: client, UnifiedHistory: UnifiedHistoryConfig{Enabled: true, RetentionDays: 2}})
+	service := NewSystemService(SystemServiceParams{Ent: client})
 	ctx := contexts.WithAPIKey(authz.WithTestBypass(ent.NewContext(t.Context(), client)), &ent.APIKey{ID: 71, ProjectID: 19})
 	ctx = contexts.WithProjectID(ctx, 19)
 	entries := map[string]string{}
@@ -67,33 +67,22 @@ func testUnifiedHistoryStorage(t *testing.T, client *ent.Client) {
 	require.Error(t, err)
 	_, err = service.LoadUnifiedHistory(t.Context(), []string{key})
 	require.Error(t, err)
-	activeTime := time.Now().Add(-36 * time.Hour)
-	require.NoError(t, client.System.Update().Where(system.KeyHasSuffix(key)).SetUpdatedAt(activeTime).Exec(ctx))
-	_, err = service.LoadUnifiedHistory(ctx, []string{key})
-	require.NoError(t, err)
-	active, err := client.System.Query().Where(system.KeyHasSuffix(key)).Only(ctx)
-	require.NoError(t, err)
-	require.True(t, active.UpdatedAt.After(activeTime.Add(time.Hour)), "reading active history refreshes retention")
-	old := time.Now().Add(-4 * 24 * time.Hour)
+	old := time.Now().Add(-400 * 24 * time.Hour)
 	require.NoError(t, client.System.Update().Where(system.KeyHasPrefix(unifiedHistoryPrefix)).SetUpdatedAt(old).Exec(ctx))
+	before, err := client.System.Query().Where(system.KeyHasSuffix(key)).Only(ctx)
+	require.NoError(t, err)
 	loaded, err = service.LoadUnifiedHistory(ctx, []string{key})
 	require.NoError(t, err)
-	require.Empty(t, loaded, "expired records are unreadable before GC")
+	require.Equal(t, "ciphertext", loaded[key], "history does not expire with request logs or elapsed days")
 	require.NoError(t, service.SaveUnifiedHistory(ctx, map[string]string{key: "new ciphertext"}))
-	loaded, err = service.LoadUnifiedHistory(ctx, []string{key})
+	after, err := client.System.Query().Where(system.KeyHasSuffix(key)).Only(ctx)
 	require.NoError(t, err)
-	require.Equal(t, "ciphertext", loaded[key], "refresh preserves immutable ciphertext")
-	require.NoError(t, client.System.Create().SetKey("unrelated_setting").SetValue("retained").SetUpdatedAt(old).Exec(ctx))
-	require.NoError(t, service.PruneUnifiedHistory(ctx))
+	require.Equal(t, "ciphertext", after.Value, "reuse preserves immutable ciphertext")
+	require.Equal(t, before.UpdatedAt, after.UpdatedAt, "reads and reuse must not write timestamp-only WAL entries")
 	count, err = client.System.Query().Count(ctx)
 	require.NoError(t, err)
-	require.Equal(t, 2, count)
-	service.UnifiedHistory.RetentionDays = 0
-	require.NoError(t, client.System.Update().SetUpdatedAt(old).Exec(ctx))
-	require.NoError(t, service.PruneUnifiedHistory(ctx))
-	count, err = client.System.Query().Count(ctx)
-	require.NoError(t, err)
-	require.Equal(t, 2, count)
+	require.Equal(t, len(entries), count)
+
 }
 
 func TestUnifiedHistoryPublicationRace_Postgres(t *testing.T) {
@@ -102,7 +91,7 @@ func TestUnifiedHistoryPublicationRace_Postgres(t *testing.T) {
 		t.Skip("AXONHUB_TEST_PG_DSN not set")
 	}
 	client := newPostgresQuotaRoutingMigrationClient(t, dsn)
-	service := NewSystemService(SystemServiceParams{Ent: client, UnifiedHistory: UnifiedHistoryConfig{Enabled: true}})
+	service := NewSystemService(SystemServiceParams{Ent: client})
 	ctx := contexts.WithProjectID(contexts.WithAPIKey(authz.WithTestBypass(ent.NewContext(t.Context(), client)), &ent.APIKey{ID: 71, ProjectID: 19}), 19)
 	alias := "response:" + strings.Repeat("a", 64)
 	conflict := errors.New("immutable alias conflict")

@@ -790,6 +790,11 @@ func convertToAnthropicResponse(chatResp *llm.Response) *Message {
 			}
 			resp.StopReason = &stopReason
 		}
+		if lo.FromPtr(resp.StopReason) == "end_turn" && lo.ContainsBy(resp.Content, func(block MessageContentBlock) bool {
+			return block.Type == "tool_use"
+		}) {
+			resp.StopReason = lo.ToPtr("tool_use")
+		}
 	}
 
 	// Convert usage

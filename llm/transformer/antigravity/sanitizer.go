@@ -67,6 +67,7 @@ var unsupportedKeywords = []string{
 	"propertyNames", "title", "$id", "$comment", "id", "discriminator",
 	"$anchor", "$vocabulary", "$dynamicRef", "$dynamicAnchor",
 	"additionalItems", "unevaluatedProperties", "unevaluatedItems", "contentSchema",
+	"contentMediaType", "contentEncoding", "readOnly", "writeOnly",
 	"dependentRequired", "dependentSchemas", "dependencies",
 }
 

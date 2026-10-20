@@ -14,7 +14,6 @@ import (
 
 func TestResponsesCompactionRejectionSurvivesIncompleteRecoveryAndWindowChange(t *testing.T) {
 	ctx, client, owner, adapter := rejectedCompactionStorage(t)
-	adapter.systemService.UnifiedHistory.Enabled = true
 	req := rejectedCompactionPipelineRequest(t, llm.APIFormatOpenAIResponse)
 	executor := &responsesReasoningPipelineExecutor{failures: []error{rejectedNativeCheckpointError()}}
 	var observed *responsesCompactionRecoveryMiddleware
@@ -33,7 +32,6 @@ func TestResponsesCompactionRejectionSurvivesIncompleteRecoveryAndWindowChange(t
 	require.True(t, observed.hasCheckpointRejection(ctx, key))
 	require.NoError(t, adapter.retainLegacyCompactionSummary(ctx, remoteCompactionCacheKey(ref), ref, &PersistenceState{APIKey: owner}, "verified original source summary"))
 	service := biz.NewSystemService(biz.SystemServiceParams{Ent: client})
-	service.UnifiedHistory.Enabled = true
 	adapter = newRemoteCompactionAdapter(adapter.requestService, nil, service)
 	executor = &responsesReasoningPipelineExecutor{events: rejectedReasoningCompactionEvents()}
 	req.Headers.Set("X-Codex-Window-Id", "recovery-thread:reconnected")

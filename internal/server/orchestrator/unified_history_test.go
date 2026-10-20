@@ -28,7 +28,6 @@ import (
 func unifiedHistoryFixture(t *testing.T) (context.Context, *ent.Client, *PersistenceState, *remoteCompactionAdapter) {
 	t.Helper()
 	ctx, client, owner, adapter := rejectedCompactionStorage(t)
-	adapter.systemService.UnifiedHistory.Enabled = true
 	provider, err := codex.NewOutboundTransformer(codex.Params{BaseURL: "https://example.invalid/v1", TokenProvider: oauth.NewStaticTokenProvider(&oauth.OAuthCredentials{AccessToken: "synthetic-history-key"})})
 	require.NoError(t, err)
 	candidate := &ChannelModelsCandidate{Channel: &biz.Channel{Channel: &ent.Channel{ID: 93009, Type: channel.TypeCodex, Settings: &objects.ChannelSettings{PassThroughBody: lo.ToPtr(true)}}, Outbound: provider}, Models: []biz.ChannelModelEntry{{RequestModel: "gpt-6-astra", ActualModel: "gpt-6-astra", Source: "direct"}}, APIFormat: string(llm.APIFormatOpenAIResponse), ContextTokens: 372000}
@@ -170,7 +169,6 @@ func TestUnifiedHistorySegmentSummariesKeepRawInstructionsAndReuse(t *testing.T)
 
 func TestUnifiedHistoryGenerationAvoidsAdditionalProviderCall(t *testing.T) {
 	ctx, _, owner, adapter := rejectedCompactionStorage(t)
-	adapter.systemService.UnifiedHistory.Enabled = true
 	req := rejectedCompactionPipelineRequest(t, llm.APIFormatOpenAIResponse)
 	req.Body = []byte(`{"model":"gpt-6-astra","stream":true,"client_metadata":{"thread_id":"recovery-thread"},"input":[{"role":"user","content":"retain this exact original constraint"},{"type":"compaction_trigger"}]}`)
 	executor := &compactionEvidenceExecutor{}

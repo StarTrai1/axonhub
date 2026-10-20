@@ -12,6 +12,7 @@ import (
 	"github.com/klauspost/compress/zstd"
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
@@ -71,15 +72,10 @@ func TestResponsesRejectedNativeSourceLargeCheckpoint(t *testing.T) {
 				require.NoError(t, saveErr)
 				require.Same(t, response, got)
 			}
-			sealed, loadErr := adapter.systemService.LoadNativeCompactionSource(ctx, apiKey.ProjectID, apiKey.ID, remoteCompactionCacheKey(ref))
+			stored, loadErr := adapter.systemService.LoadUnifiedHistory(ctx, []string{historyCheckpointAlias(ref)})
 			require.NoError(t, loadErr)
-			require.NotEmpty(t, sealed)
-			aead, cipherErr := adapter.localCompactionCipher(ctx)
-			require.NoError(t, cipherErr)
-			aad, aadErr := nativeCompactionSourceAAD(ref, state)
-			require.NoError(t, aadErr)
-			_, err = openLocalCompactionSummary(aead, aad, sealed)
-			require.Error(t, err, "client summary limit must remain 4 MiB")
+			require.NotEmpty(t, stored[historyCheckpointAlias(ref)])
+			require.NotContains(t, stored[historyCheckpointAlias(ref)], "complete original")
 
 			// Reload from durable storage, with no prior request service or cache.
 			restarted := newRemoteCompactionAdapter(nil, nil, biz.NewSystemService(biz.SystemServiceParams{Ent: client}))
@@ -119,7 +115,8 @@ func TestResponsesRejectedNativeSourceLegacyEncoding(t *testing.T) {
 
 	for _, other := range []*ent.APIKey{{ID: apiKey.ID + 1, ProjectID: apiKey.ProjectID}, {ID: apiKey.ID, ProjectID: apiKey.ProjectID + 1}} {
 		require.NoError(t, adapter.systemService.SaveNativeCompactionSource(ctx, other.ProjectID, other.ID, remoteCompactionCacheKey(ref), sealed))
-		_, err = adapter.loadNativeCompactionSource(ctx, ref, &PersistenceState{APIKey: other})
+		otherCtx := contexts.WithProjectID(contexts.WithAPIKey(ctx, other), other.ProjectID)
+		_, err = adapter.loadNativeCompactionSource(otherCtx, ref, &PersistenceState{APIKey: other})
 		require.Error(t, err, "a copied database record must still authenticate its owner")
 	}
 }

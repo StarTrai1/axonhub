@@ -47,3 +47,15 @@ func TestUnsupportedEvaluationKeywordsAreScopedToAntigravitySchemas(t *testing.T
 	require.JSONEq(t, `{"type":"OBJECT","properties":{"unevaluatedProperties":{"type":"STRING"},"rows":{"type":"ARRAY","items":{"type":"OBJECT","properties":{"contentSchema":{"type":"STRING"}},"required":["contentSchema"]}}},"required":["unevaluatedProperties","rows"]}`, string(declaration.Parameters))
 	require.Equal(t, raw, string(request.Tools[0].Function.Parameters))
 }
+
+func TestStrictSchemaDropsMediaAndAccessMetadataButPreservesNames(t *testing.T) {
+	const raw = `{"type":"object","readOnly":true,"properties":{"readOnly":{"type":"string","contentMediaType":"image/png","contentEncoding":"base64","writeOnly":true},"writeOnly":{"type":"string"},"contentEncoding":{"type":"string"},"contentMediaType":{"type":"string"}},"required":["readOnly","writeOnly","contentEncoding","contentMediaType"]}`
+	var input map[string]any
+	require.NoError(t, json.Unmarshal([]byte(raw), &input))
+	result, err := json.Marshal(SanitizeJSONSchema(input))
+	require.NoError(t, err)
+	require.JSONEq(t, `{"type":"object","properties":{"readOnly":{"type":"string"},"writeOnly":{"type":"string"},"contentEncoding":{"type":"string"},"contentMediaType":{"type":"string"}},"required":["readOnly","writeOnly","contentEncoding","contentMediaType"]}`, string(result))
+	original, err := json.Marshal(input)
+	require.NoError(t, err)
+	require.JSONEq(t, raw, string(original))
+}
