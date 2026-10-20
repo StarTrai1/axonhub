@@ -82,7 +82,6 @@ func testUnifiedHistoryStorage(t *testing.T, client *ent.Client) {
 	count, err = client.System.Query().Count(ctx)
 	require.NoError(t, err)
 	require.Equal(t, len(entries), count)
-
 }
 
 func TestUnifiedHistoryPublicationRace_Postgres(t *testing.T) {

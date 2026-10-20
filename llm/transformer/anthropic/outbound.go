@@ -230,7 +230,6 @@ func (t *OutboundTransformer) TransformRequest(
 		if !moveTopLevelCacheControlToLastBlock(anthropicReq) {
 			return nil, fmt.Errorf("%w: cannot safely place top-level cache control on managed Anthropic platform", transformer.ErrInvalidRequest)
 		}
-
 	}
 
 	// Determine endpoint based on platform

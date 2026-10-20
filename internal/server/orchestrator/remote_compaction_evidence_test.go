@@ -45,12 +45,15 @@ func TestNativeCompactionMigrationReusesAncestorEvidence(t *testing.T) {
 				}
 				ancestor := &remoteCompactionReference{ID: "cmp_ancestor", EncryptedContent: "ancestor-cipher"}
 				state := &PersistenceState{APIKey: owner}
-				require.NoError(t, adapter.retainNativeCompactionSource(ctx, ancestor, state, &remoteCompactionSource{body: first}))
-				require.NoError(t, adapter.retainNativeCompactionSource(ctx, ref, state, &remoteCompactionSource{body: latest}))
+				require.NoError(t, seedLegacyNativeCompactionSource(ctx, adapter, ancestor, state, &remoteCompactionSource{body: first}))
+				require.NoError(t, seedLegacyNativeCompactionSource(ctx, adapter, ref, state, &remoteCompactionSource{body: latest}))
 				executor := &compactionEvidenceExecutor{}
 				configure := func(state *PersistenceState, outbound *PersistentOutboundTransformer) pipeline.Middleware {
 					state.APIKey = owner
-					state.ChannelModelsCandidates[0].ContextTokens = 372000
+					// Exercise the retained compatibility path for a model without
+					// a known context contract; normal models now use unified recovery.
+					state.ChannelModelsCandidates[0].ContextTokens = 0
+					state.ChannelModelsCandidates[0].Models[0].ActualModel = "legacy-context-unknown"
 					state.RetryPolicyProvider = &mockRetryPolicyProvider{policy: &biz.RetryPolicy{Enabled: true, MaxSingleChannelRetries: 2}}
 					return recoverRejectedRemoteCompaction(outbound, adapter, executor)
 				}

@@ -14,8 +14,12 @@ func TestChatToolResponseRetainsExecutableStopReason(t *testing.T) {
 		finish   *string
 		expected string
 	}{
-		{nil, "tool_use"}, {lo.ToPtr("stop"), "tool_use"}, {lo.ToPtr("tool_calls"), "tool_use"},
-		{lo.ToPtr("length"), "max_tokens"}, {lo.ToPtr("content_filter"), "refusal"}, {lo.ToPtr("pause_turn"), "pause_turn"},
+		{nil, "tool_use"},
+		{lo.ToPtr("stop"), "tool_use"},
+		{lo.ToPtr("tool_calls"), "tool_use"},
+		{lo.ToPtr("length"), "max_tokens"},
+		{lo.ToPtr("content_filter"), "refusal"},
+		{lo.ToPtr("pause_turn"), "pause_turn"},
 	} {
 		t.Run(tc.expected+"/"+lo.FromPtr(tc.finish), func(t *testing.T) {
 			response := convertToAnthropicResponse(&llm.Response{Choices: []llm.Choice{{FinishReason: tc.finish, Message: &llm.Message{Role: "assistant", ToolCalls: []llm.ToolCall{{ID: "call_exact", Type: "function", Function: llm.FunctionCall{Name: "inspect", Arguments: `{"value":17.125}`}}}}}}})
