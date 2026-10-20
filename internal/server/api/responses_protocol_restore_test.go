@@ -53,7 +53,9 @@ func testUnifiedHistoryLostNativeContinuation(t *testing.T, fresh bool) {
 			}
 			if id := gjson.Get(response, "response.id").String(); id != "" {
 				created := fmt.Sprintf(`{"type":"response.created","response":{"id":%q,"object":"response","model":"synthetic-model","status":"in_progress","output":[]}}`, id)
-				if err := conn.WriteMessage(websocket.TextMessage, []byte(created)); err != nil { return }
+				if err := conn.WriteMessage(websocket.TextMessage, []byte(created)); err != nil {
+					return
+				}
 			}
 			if err := conn.WriteMessage(websocket.TextMessage, []byte(response)); err != nil {
 				return
@@ -72,9 +74,14 @@ func testUnifiedHistoryLostNativeContinuation(t *testing.T, fresh bool) {
 	gateway := responsesIntegrationGateway(t, client, handlers, project)
 	conn := responsesIntegrationDial(t, gateway)
 	t.Cleanup(func() {
-		if !t.Failed() { return }
+		if !t.Failed() {
+			return
+		}
 		rows, err := client.Request.Query().All(ctx)
-		if err != nil { t.Log(err); return }
+		if err != nil {
+			t.Log(err)
+			return
+		}
 		for _, row := range rows {
 			t.Logf("synthetic predecessor id=%d external=%s key=%d project=%d status=%s format=%s body=%s response=%s", row.ID, row.ExternalID, row.APIKeyID, row.ProjectID, row.Status, row.Format, row.RequestBody, row.ResponseBody)
 		}
