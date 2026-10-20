@@ -419,7 +419,11 @@ func (a *remoteCompactionAdapter) archiveHistoryResponse(ctx context.Context, bo
 	}
 	// A local compaction executor first emits assistant text internally. Only
 	// its final checkpoint is an authoritative output for downstream deltas.
-	if gjson.GetBytes(body, `input.#(type=="compaction_trigger")`).Exists() && !hasCheckpoint {
+	archivalBody := body
+	if original, ok := ctx.Value(unifiedHistoryOriginKey{}).([]byte); ok && len(original) > 0 {
+		archivalBody = original
+	}
+	if gjson.GetBytes(archivalBody, `input.#(type=="compaction_trigger")`).Exists() && !hasCheckpoint {
 		return nil
 	}
 	// Persist the accepted provider window independently of the raw archive.
@@ -465,9 +469,7 @@ func (a *remoteCompactionAdapter) archiveHistoryResponse(ctx context.Context, bo
 	} else if !missingHistoryPredecessor(wireErr) {
 		return wireErr
 	}
-	if original, ok := ctx.Value(unifiedHistoryOriginKey{}).([]byte); ok && len(original) > 0 {
-		body = original
-	}
+	body = archivalBody
 	source, err := a.flattenHistorySource(ctx, &remoteCompactionSource{body: body}, state)
 	if err != nil {
 		return err

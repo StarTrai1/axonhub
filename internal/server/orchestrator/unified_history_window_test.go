@@ -112,3 +112,23 @@ func TestUnifiedHistoryOrdinaryCompletedWindowWithoutCheckpoint(t *testing.T) {
 	require.JSONEq(t, string(body), string(window))
 	require.Equal(t, origin, storedOrigin)
 }
+
+func TestUnifiedHistoryInternalBridgeAnswerDoesNotClaimCheckpointResponse(t *testing.T) {
+	ctx, _, _, adapter := unifiedHistoryFixture(t)
+	original := []byte(`{"model":"gpt-6-astra","input":[{"role":"user","content":"original source"},{"type":"compaction_trigger"}]}`)
+	ctx = withUnifiedHistoryOrigin(ctx, original)
+	internal := []byte(`{"model":"gpt-6-astra","input":[{"role":"user","content":"internal summary prompt"}]}`)
+	answer := []byte(`{"id":"resp_local_bridge","status":"completed","output":[{"role":"assistant","content":"internal summary result"}]}`)
+	require.NoError(t, adapter.archiveHistoryResponse(ctx, internal, answer))
+	for _, alias := range []string{historyWireAlias("resp_local_bridge", 0), historyResponseAlias("resp_local_bridge")} {
+		_, _, found, err := adapter.loadHistorySnapshot(ctx, alias)
+		require.NoError(t, err)
+		require.False(t, found, "an internal answer must not reserve the final response ID")
+	}
+	completed := []byte(`{"id":"resp_local_bridge","status":"completed","output":[{"type":"compaction","id":"cmp_final_bridge","encrypted_content":"final-checkpoint"}]}`)
+	require.NoError(t, adapter.archiveHistoryResponse(ctx, original, completed))
+	_, output, found, err := adapter.loadHistorySnapshot(ctx, historyResponseAlias("resp_local_bridge"))
+	require.NoError(t, err)
+	require.True(t, found)
+	require.JSONEq(t, string(completed), string(output))
+}
