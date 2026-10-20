@@ -55,6 +55,9 @@ func (a *remoteCompactionAdapter) rememberNativeHistoryOrigins(ctx context.Conte
 			}
 		}
 	}
+	if len(entries) == 0 {
+		return nil
+	}
 	return a.systemService.SaveUnifiedHistory(ctx, entries)
 }
 

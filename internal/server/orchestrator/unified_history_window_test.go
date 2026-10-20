@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -89,4 +90,25 @@ func TestUnifiedHistoryNativeCheckpointKeepsExplicitMissingPredecessor(t *testin
 	require.Contains(t, string(recovered.body), "original parent")
 	require.Contains(t, string(recovered.body), "exact delta 17.125")
 	require.False(t, gjson.GetBytes(recovered.body, "previous_response_id").Exists())
+}
+
+func TestUnifiedHistoryOrdinaryCompletedWindowWithoutCheckpoint(t *testing.T) {
+	ctx, _, state, adapter := unifiedHistoryFixture(t)
+	body := []byte(`{"model":"gpt-6-astra","input":[{"role":"user","content":"ordinary original evidence"}]}`)
+	state.RawProviderRequest = &httpclient.Request{Body: body, URL: "https://example.invalid/responses", APIFormat: string(llm.APIFormatOpenAIResponse), Headers: http.Header{"Authorization": {"Bearer same-account"}}}
+	origin := shared.ResponsesOrigin{ChannelID: state.CurrentCandidate.Channel.ID, Endpoint: state.RawProviderRequest.URL, Auth: "synthetic-account", Model: "gpt-6-astra", Format: string(llm.APIFormatOpenAIResponse)}
+	attempt := &shared.ResponsesAttempt{}
+	attempt.SetOrigin(origin)
+	ctx = withNativeHistoryReader(shared.WithResponsesAttempt(ctx, attempt), state)
+	response := []byte(`{"id":"resp_plain_window","status":"completed","output":[{"role":"assistant","content":"completed ordinary reply"}]}`)
+	require.NoError(t, adapter.archiveHistoryResponse(ctx, body, response))
+	archived, _, found, err := adapter.loadHistorySnapshot(ctx, historyResponseAlias("resp_plain_window"))
+	require.NoError(t, err)
+	require.True(t, found, "empty reader evidence must not prevent ordinary archival")
+	require.JSONEq(t, string(body), string(archived))
+	window, _, storedOrigin, found, err := adapter.loadHistoryWindow(ctx, "resp_plain_window")
+	require.NoError(t, err)
+	require.True(t, found)
+	require.JSONEq(t, string(body), string(window))
+	require.Equal(t, origin, storedOrigin)
 }

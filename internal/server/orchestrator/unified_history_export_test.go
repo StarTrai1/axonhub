@@ -115,7 +115,7 @@ func TestUnifiedHistoryNativeReadingIndependentOfGenerationPolicy(t *testing.T) 
 	ctx, _, state, adapter := unifiedHistoryFixture(t)
 	ctx = shared.WithSessionScope(ctx, "native-reader-owner")
 	state.CurrentCandidate.Channel.Policies.RemoteCompaction = objects.RemoteCompactionPolicyLocalBridge
-	body := []byte(`{"model":"gpt-6-astra","client_metadata":{"thread_id":"reader-thread"},"input":[{"type":"compaction","id":"cmp_readable","encrypted_content":"same-account-state"},{"role":"user","content":"continue exact 17.125"}]}`)
+	body := []byte(`{"model":"gpt-6-astra","client_metadata":{"thread_id":"reader-thread","x-codex-window-id":"reader-window"},"input":[{"type":"compaction","id":"cmp_readable","encrypted_content":"same-account-state"},{"role":"user","content":"continue exact 17.125"}]}`)
 	state.RawRequest = &httpclient.Request{Body: body, APIFormat: string(llm.APIFormatOpenAIResponse)}
 	state.RawProviderRequest = &httpclient.Request{Body: body, URL: "https://example.invalid/responses", APIFormat: string(llm.APIFormatOpenAIResponse), Headers: http.Header{"Authorization": {"Bearer same-account"}}}
 	reader := nativeHistoryReaderFor(state)
