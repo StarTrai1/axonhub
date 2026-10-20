@@ -283,7 +283,9 @@ func TestResponsesRejectedCompactionDoesNotRetryPartialStream(t *testing.T) {
 
 func TestResponsesRejectedCompactionPreparationDoesNotRepeatBridgeBudget(t *testing.T) {
 	outbound := newCodexResponsesPassThroughOutbound()
-	require.True(t, outbound.CanRetry(bridgeOverloadError()))
+	require.True(t, outbound.CanRetry(bridgeTransientError()))
+	require.False(t, outbound.CanRetry(bridgeOverloadError()), "an exhausted model must not consume the same-channel retry budget")
+	require.False(t, outbound.CanRetry(&remoteCompactionPreparationError{cause: bridgeTransientError()}))
 	require.False(t, outbound.CanRetry(&remoteCompactionPreparationError{cause: bridgeOverloadError()}))
 }
 
