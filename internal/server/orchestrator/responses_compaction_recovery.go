@@ -230,7 +230,7 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawRequest(
 	// extra model call. Keep the input unchanged unless every boundary verifies.
 	if !local && !known {
 		body, replayed, err := m.adapter.replayNativeCompaction(ctx, request.Body, ref, state)
-		if err != nil {
+		if err != nil && !missingHistoryPredecessor(err) {
 			return nil, &remoteCompactionPreparationError{cause: err}
 		}
 		if replayed {
@@ -264,6 +264,7 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawRequest(
 	candidate.APIFormat = string(llm.APIFormatOpenAIResponse)
 	bridgeState := &PersistenceState{
 		PromptProtecter:         state.PromptProtecter,
+ unifiedHistoryCandidates: state.ChannelModelsCandidates,
 		compactionRecovery:      &compactionRecoveryEvidence{},
 		RawProviderRequest:      request,
 		APIKey:                  state.APIKey,

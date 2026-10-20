@@ -411,27 +411,6 @@ func (a *remoteCompactionAdapter) archiveHistoryResponse(ctx context.Context, bo
 	}
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	// Persist the accepted provider window independently of the raw archive.
-	// A same-channel reconnect must never expand private ancestor checkpoints.
-	channelID := 0
-	if attempt := shared.GetResponsesAttempt(ctx); attempt != nil {
-		channelID = attempt.Origin().ChannelID
-	}
-	wireState := *state
-	if channelID != 0 {
-		wireState.CurrentCandidate = &ChannelModelsCandidate{Channel: &biz.Channel{Channel: &ent.Channel{ID: channelID}}}
-	}
-	wire, wireErr := a.resolveRetainedContinuation(ctx, &remoteCompactionSource{body: body}, &wireState, true)
-	if wireErr == nil {
-		if err := a.saveHistorySnapshot(ctx, historyWireAlias(id, channelID), wire.body, response); err != nil {
-			return err
-		}
-	} else if !missingHistoryPredecessor(wireErr) {
-		return wireErr
-	}
-	if original, ok := ctx.Value(unifiedHistoryOriginKey{}).([]byte); ok && len(original) > 0 {
-		body = original
-	}
 	hasCheckpoint := false
 	for _, item := range gjson.GetBytes(response, "output").Array() {
 		if item.Get("type").String() == remoteCompactionItemType || item.Get("type").String() == legacyRemoteCompactionSummaryType {
@@ -442,6 +421,37 @@ func (a *remoteCompactionAdapter) archiveHistoryResponse(ctx context.Context, bo
 	// its final checkpoint is an authoritative output for downstream deltas.
 	if gjson.GetBytes(body, `input.#(type=="compaction_trigger")`).Exists() && !hasCheckpoint {
 		return nil
+	}
+	// Persist the accepted provider window independently of the raw archive.
+	// A same-channel reconnect must never expand private ancestor checkpoints.
+	channelID := 0
+	if attempt := shared.GetResponsesAttempt(ctx); attempt != nil {
+		channelID = attempt.Origin().ChannelID
+ if err := a.rememberNativeHistoryOrigins(ctx, body, response, attempt.Origin()); err != nil { return err }
+	}
+	wireState := *state
+	if channelID != 0 {
+		wireState.CurrentCandidate = &ChannelModelsCandidate{Channel: &biz.Channel{Channel: &ent.Channel{ID: channelID}}}
+	}
+	wire, wireErr := a.resolveRetainedContinuation(ctx, &remoteCompactionSource{body: body}, &wireState, true)
+	if wireErr == nil {
+ if hasCheckpoint {
+ envelope, input, err := decodeResponsesInput(wire.body)
+ if err != nil { return err }
+ if len(input) > 0 && rawInputItemType(input[len(input)-1]) == remoteCompactionTriggerType {
+ if err := setResponseEnvelopeInput(envelope, input[:len(input)-1]); err != nil { return err }
+ wire.body, err = json.Marshal(envelope)
+ if err != nil { return err }
+ }
+ }
+		if err := a.saveHistorySnapshot(ctx, historyWireAlias(id, channelID), wire.body, response); err != nil {
+			return err
+		}
+	} else if !missingHistoryPredecessor(wireErr) {
+		return wireErr
+	}
+	if original, ok := ctx.Value(unifiedHistoryOriginKey{}).([]byte); ok && len(original) > 0 {
+		body = original
 	}
 	source, err := a.flattenHistorySource(ctx, &remoteCompactionSource{body: body}, state)
 	if err != nil {

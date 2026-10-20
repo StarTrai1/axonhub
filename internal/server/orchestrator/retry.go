@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+"time"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/objects"
@@ -188,4 +189,11 @@ func deriveRoutingPolicy(
 
 func deriveLoadBalancerStrategy(retryPolicy *biz.RetryPolicy, apiKey *ent.APIKey) string {
 	return deriveRoutingPolicy(retryPolicy, apiKey, nil).LoadBalancerStrategy
+}
+
+// Repeating a gateway timeout after a long opening attempt burns the same
+// prompt again. Preserve the provider error and let normal channel failover
+// proceed; fast transient failures retain their existing retry policy.
+func expensiveGatewayTimeout(state *PersistenceState, now time.Time) bool {
+ return state != nil && state.Perf != nil && !state.Perf.StartTime.IsZero() && now.Sub(state.Perf.StartTime) >= 30*time.Second
 }

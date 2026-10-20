@@ -132,8 +132,20 @@ func TestUnifiedHistoryPreparationLimitsDoNotStartWholeHistorySummary(t *testing
 			require.False(t, ok)
 			var responseError *llm.ResponseError
 			require.ErrorAs(t, err, &responseError)
-			require.Equal(t, "unified_history_budget_exceeded", responseError.Detail.Code)
-			require.Empty(t, executor.summaries, "budget failure cannot launch a larger legacy summary")
+			if scenario == "too-many-new" {
+ require.Equal(t, "unified_history_preparation_in_progress", responseError.Detail.Code)
+ require.Len(t, executor.summaries, unifiedMaxNewSummaries)
+ for _, summary := range executor.summaries { require.Less(t, len(summary), unifiedSummarySegmentBytes + 4096) }
+ restarted := newRemoteCompactionAdapter(nil, nil, adapter.systemService)
+ compiled, ready, err := restarted.compileUnifiedContext(ctx, body, state, executor)
+ require.NoError(t, err)
+ require.True(t, ready)
+ require.LessOrEqual(t, len(executor.summaries), 35, "restart reuses the completed batch")
+ require.Contains(t, string(compiled), "17.250")
+ } else {
+ require.Equal(t, "unified_history_budget_exceeded", responseError.Detail.Code)
+ require.Empty(t, executor.summaries, "indivisible evidence cannot be silently truncated")
+ }
 		})
 	}
 }

@@ -114,9 +114,10 @@ func (a *remoteCompactionAdapter) compileUnifiedContext(ctx context.Context, bod
 		return nil, false, unifiedHistoryPreparationLimit("the requested output reservation leaves no input budget")
 	}
 	expanded, ok, err := a.expandUnifiedHistory(ctx, body, state, make(map[string]bool))
-	if err != nil || !ok {
-		return body, false, err
-	}
+	if missingHistoryPredecessor(err) || err == nil && !ok {
+ if exported, ready, exportErr := a.exportUnifiedCheckpoint(ctx, body, state, executor); exportErr != nil || ready { return exported, ready, exportErr }
+ }
+ if err != nil || !ok { return body, false, err }
 	expanded, err = protectUnifiedHistory(ctx, expanded, state)
 	if err != nil {
 		return nil, false, err
@@ -168,7 +169,12 @@ func (a *remoteCompactionAdapter) compileUnifiedContext(ctx context.Context, bod
 		}
 		return nil, false, err
 	}
-	log.Info(ctx, "preparing unified history segments", log.Int("segments", len(plan.segments)), log.Int("retained_bytes", plan.mandatory), log.Int("context_budget", budget))
+	uncached, err := a.loadUnifiedSegments(ctx, plan.segments)
+ if err != nil { return nil, false, err }
+ if uncached > unifiedMaxNewSummaries {
+ if exported, ready, exportErr := a.exportUnifiedCheckpoint(ctx, body, state, executor); exportErr != nil || ready { return exported, ready, exportErr }
+ }
+ log.Info(ctx, "preparing unified history segments", log.Int("segments", len(plan.segments)), log.Int("retained_bytes", plan.mandatory), log.Int("context_budget", budget))
 	missing, supported, err := a.hydrateUnifiedSegments(ctx, plan.segments, state, executor, func() error {
 		return validateUnifiedHistoryMinimum(plan, ceiling)
 	})
@@ -373,9 +379,10 @@ func (a *remoteCompactionAdapter) hydrateUnifiedSegments(ctx context.Context, se
 	if err != nil {
 		return 0, false, err
 	}
-	if missing > unifiedMaxNewSummaries {
-		return missing, false, unifiedHistoryPreparationLimit("too many uncached history segments require generation in one request")
-	}
+	// Completed segments survive this bounded batch. A resend resumes from them.
+ batch := min(missing, unifiedMaxNewSummaries)
+ ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+ defer cancel()
 	if preflight != nil {
 		if err := preflight(); err != nil {
 			return 0, false, err
@@ -477,6 +484,7 @@ func (a *remoteCompactionAdapter) hydrateUnifiedSegments(ctx context.Context, se
 		// and isolate mutable request credentials, errors and request IDs.
 		workers, workerCtx := errgroup.WithContext(ctx)
 		workers.SetLimit(4)
+ launched := 0
 		for i := range segments {
 			if err := workerCtx.Err(); err != nil {
 				break
@@ -484,7 +492,9 @@ func (a *remoteCompactionAdapter) hydrateUnifiedSegments(ctx context.Context, se
 			if segments[i].key == "" || segments[i].summary != "" {
 				continue
 			}
-			workers.Go(func() (err error) {
+			if launched >= batch { break }
+ launched++
+ workers.Go(func() (err error) {
 				defer func() {
 					if recovered := recover(); recovered != nil {
 						log.Error(ctx, "unified history segment worker panicked", log.Any("panic", recovered))
@@ -506,7 +516,10 @@ func (a *remoteCompactionAdapter) hydrateUnifiedSegments(ctx context.Context, se
 			return 0, false, err
 		}
 	}
-	return missing, true, nil
+	if missing > batch {
+ return batch, false, &llm.ResponseError{StatusCode:http.StatusServiceUnavailable, Detail:llm.ErrorDetail{Type:"upstream_error", Code:"unified_history_preparation_in_progress", Message:fmt.Sprintf("History preparation saved %d new segments; %d remain. Retry to resume from saved progress without repeating completed work.", batch, missing-batch)}, Cause:&httpclient.Error{StatusCode:http.StatusServiceUnavailable, Headers:http.Header{"Retry-After":{"1"}}}}
+ }
+ return missing, true, nil
 }
 
 func renderUnifiedHistory(envelope map[string]json.RawMessage, plan *unifiedHistoryPlan, budget int) ([]byte, error) {
