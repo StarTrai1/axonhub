@@ -186,8 +186,14 @@ func (a *remoteCompactionAdapter) compileUnifiedContext(ctx context.Context, bod
 		return nil, false, err
 	}
 	if uncached >= unifiedNativeExportMinSummaries {
-		if exported, ready, exportErr := a.exportUnifiedCheckpoint(ctx, body, state, executor); exportErr != nil || ready {
-			return exported, ready, exportErr
+		exportBody, eligible, err := unifiedCheckpointExportHistory(body, items)
+		if err != nil {
+			return nil, false, err
+		}
+		if eligible {
+			if exported, ready, exportErr := a.exportUnifiedCheckpoint(ctx, exportBody, state, executor); exportErr != nil || ready {
+				return exported, ready, exportErr
+			}
 		}
 	}
 	log.Info(ctx, "preparing unified history segments", log.Int("segments", len(plan.segments)), log.Int("retained_bytes", plan.mandatory), log.Int("context_budget", budget))

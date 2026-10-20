@@ -108,6 +108,61 @@ func unifiedCheckpointInputBudget(body []byte, candidate *ChannelModelsCandidate
 	return ceiling
 }
 
+// When originals are available, the cheaper native export must retain the same
+// exact user/system/developer records as segmented assembly. Missing originals
+// cannot supply these pins; that separate fallback retains only known records.
+func unifiedCheckpointExportHistory(body []byte, originals []json.RawMessage) ([]byte, bool, error) {
+	ref, _, _, err := parseRemoteCompactionRequest(body)
+	if err != nil || ref == nil || isLocalCompactionReference(ref) {
+		return body, false, err
+	}
+	envelope, input, err := decodeResponsesInput(body)
+	if err != nil {
+		return nil, false, err
+	}
+	checkpoints := 0
+	for _, item := range input {
+		if rawInputItemType(item) == remoteCompactionItemType || rawInputItemType(item) == legacyRemoteCompactionSummaryType {
+			checkpoints++
+		}
+	}
+	if checkpoints != 1 {
+		return body, false, nil
+	}
+	suffix, _, portable := unifiedPortableItems(input[ref.Index+1:])
+	boundary := len(originals) - len(suffix)
+	if !portable || boundary < 0 {
+		return body, false, nil
+	}
+	for i, item := range suffix {
+		left, err := unifiedViewItemIdentity(item)
+		if err != nil {
+			return nil, false, err
+		}
+		right, err := unifiedViewItemIdentity(originals[boundary+i])
+		if err != nil {
+			return nil, false, err
+		}
+		if left != right {
+			return body, false, nil
+		}
+	}
+	retained := make([]json.RawMessage, 0, len(originals))
+	for _, item := range originals[:boundary] {
+		switch gjson.GetBytes(item, "role").String() {
+		case "user", "system", "developer":
+			retained = append(retained, item)
+		}
+	}
+	retained = append(retained, input[ref.Index])
+	retained = append(retained, suffix...)
+	if err := setResponseEnvelopeInput(envelope, retained); err != nil {
+		return nil, false, err
+	}
+	result, err := json.Marshal(envelope)
+	return result, err == nil, err
+}
+
 // Export only the checkpoint window, once, on a proven reader. The exact live
 // suffix is never summarized. This is a portable handoff, not decrypted or
 // lossless access to hidden reasoning. Full raw archives remain independent.

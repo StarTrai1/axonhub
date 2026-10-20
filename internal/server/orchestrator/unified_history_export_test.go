@@ -177,6 +177,8 @@ func TestUnifiedHistoryColdArchivePrefersOneCheckpointExport(t *testing.T) {
 	require.Len(t, executor.requests, 1, "a readable current checkpoint avoids a dozen cold source summaries")
 	require.Contains(t, string(executor.requests[0].Body), "source-readable-state")
 	require.NotContains(t, string(executor.requests[0].Body), "original tool evidence")
-	require.NotContains(t, string(executor.requests[0].Body), "latest correction")
+	require.NotContains(t, string(executor.requests[0].Body), "keep latest correction 17.250")
+	require.Contains(t, string(compiled), "preserve calibration exactly 17.125", "cost optimization must retain original user constraints verbatim")
+	require.Contains(t, string(compiled), "latest correction: use 17.250; continue")
 	require.Contains(t, string(compiled), "keep latest correction 17.250")
 }
