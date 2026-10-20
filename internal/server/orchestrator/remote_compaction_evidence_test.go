@@ -63,10 +63,9 @@ func TestNativeCompactionMigrationReusesAncestorEvidence(t *testing.T) {
 				require.Equal(t, 1, executor.statusRejections, "an explicitly rejected status field must not be probed again during this recovery")
 				require.Equal(t, 1, executor.ancestorRejections, "text fallback must reuse the native attempt's ancestor rejection")
 				require.Equal(t, 2, executor.nativeCalls)
-				wantSummaries := 1
-				if large {
-					wantSummaries = 2
-				}
+				// Without a model window contract, the legacy path cannot prove
+				// even the small ancestor fits; both generations are required.
+				wantSummaries := 2
 				require.Len(t, executor.summaries, wantSummaries)
 				require.Contains(t, string(executor.summaries[0]), "unabridged first source")
 				last := executor.summaries[len(executor.summaries)-1]
@@ -79,10 +78,8 @@ func TestNativeCompactionMigrationReusesAncestorEvidence(t *testing.T) {
 					require.Equal(t, "reasoning-cipher", reasoning.Get("encrypted_content").String())
 					require.Equal(t, "[]", reasoning.Get("summary").Raw)
 					require.False(t, reasoning.Get("status").Exists())
-				} else {
-					require.NotContains(t, string(last), "verified retained source summary", "exact source must avoid summary-of-summary")
-					require.Equal(t, 1, strings.Count(string(last), "retained detail"))
 				}
+				require.Contains(t, string(last), "verified retained source summary")
 				// A new adapter and request still reuse the completed sealed summary.
 				adapter = newRemoteCompactionAdapter(adapter.requestService, nil, adapter.systemService)
 				_, result, err = runRejectedReasoningPipeline(t, ctx, req, executor, "ancestor-evidence-key", true, 2, configure)

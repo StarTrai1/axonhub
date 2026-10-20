@@ -322,7 +322,9 @@ func rejectedCompactionStorage(t *testing.T) (context.Context, *ent.Client, *ent
 	t.Helper()
 	// Cancellation may discard the pool's only connection. A private in-memory
 	// database then disappears before subsequent recovery assertions can run.
-	dsn := "file:" + filepath.ToSlash(filepath.Join(t.TempDir(), "compaction.db")) + "?_fk=0"
+	// Match production's durable SQLite WAL and busy-timeout settings. The
+	// rollback-journal default serializes filesystem flushes on Windows.
+	dsn := "file:" + filepath.ToSlash(filepath.Join(t.TempDir(), "compaction.db")) + "?_fk=0&_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)"
 	client := enttest.NewEntClient(t, "sqlite3", dsn)
 	t.Cleanup(func() { client.Close() })
 	ctx := authz.WithTestBypass(ent.NewContext(t.Context(), client))

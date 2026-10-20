@@ -34,6 +34,16 @@ func spliceUnifiedCompactionSource(body, source []byte, ref *remoteCompactionRef
 				return nil, false, err
 			}
 		}
+		// The Responses converter emits an empty instructions string when the
+		// client omitted it. This carries no prompt and must not split history.
+		if field == "instructions" {
+			if left == nil {
+				left = ""
+			}
+			if right == nil {
+				right = ""
+			}
+		}
 		x, _ := json.Marshal(left)
 		y, _ := json.Marshal(right)
 		if !bytes.Equal(x, y) {
