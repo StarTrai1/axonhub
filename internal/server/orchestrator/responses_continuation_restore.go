@@ -10,7 +10,8 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
 
-// Restore a lost native connection from completed, owner-scoped wire records.
+// RestoreResponsesContinuation restores a lost native connection from completed,
+// owner-scoped wire records.
 // Original archives can be much larger and contain foreign private state;
 // replay preserves the last accepted checkpoint instead of expanding it.
 func (p *PersistentOutboundTransformer) RestoreResponsesContinuation(ctx context.Context, request *llm.Request) (*llm.Request, error) {
