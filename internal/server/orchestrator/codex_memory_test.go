@@ -89,6 +89,30 @@ func TestCodexMemoryGuardExpiryAndStaleSuccess(t *testing.T) {
 	require.Zero(t, guard.paused.Len(), "memory failures must not renew the foreground pause")
 }
 
+func TestCodexMemoryGuardLateFailureCannotRepauseRecoveredConversation(t *testing.T) {
+	guard := newCodexMemoryGuard()
+	ctx := codexMemoryTestContext(t, 1, 2)
+	old, err := guard.begin(ctx, codexMemoryTestRequest("thread", "turn"), func(error) {})
+	require.NoError(t, err)
+	newer, err := guard.begin(ctx, codexMemoryTestRequest("thread", "turn"), func(error) {})
+	require.NoError(t, err)
+	newer.finish(true)
+	memoryCtx, cancel := context.WithCancelCause(ctx)
+	defer cancel(nil)
+	memory, err := guard.begin(memoryCtx, codexMemoryTestRequest("thread", "memory"), cancel)
+	require.NoError(t, err)
+	old.finish(false)
+	require.NoError(t, memoryCtx.Err(), "late old failure must not cancel memory after newer recovery")
+	require.Zero(t, guard.paused.Len())
+	memory.finish(true)
+	// A real subsequent failure must still pause this conversation.
+	failed, err := guard.begin(ctx, codexMemoryTestRequest("thread", "turn"), func(error) {})
+	require.NoError(t, err)
+	failed.finish(false)
+	_, err = guard.begin(ctx, codexMemoryTestRequest("thread", "memory"), func(error) {})
+	require.ErrorIs(t, err, errCodexMemoryPaused)
+}
+
 func TestCodexMemoryGuardIgnoresUnrelatedRequests(t *testing.T) {
 	for _, tc := range []struct {
 		name, path   string

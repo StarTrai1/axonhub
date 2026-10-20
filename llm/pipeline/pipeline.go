@@ -38,6 +38,13 @@ type ChannelRetryable interface {
 	PrepareForRetry(ctx context.Context) error
 }
 
+// ResponsesContinuationRestorer may replace an unavailable connection-local
+// continuation with authenticated full input once, before client-visible output.
+// Implementations must retain the selected destination/model and current policy.
+type ResponsesContinuationRestorer interface {
+ RestoreResponsesContinuation(context.Context, *llm.Request) (*llm.Request, error)
+}
+
 // ChannelCustomizedExecutor interface for channel need custom the process of request.
 // The customized executor will be used to execute the request.
 // e.g. the aws bedrock process need a custom executor to handle the request.
@@ -296,6 +303,7 @@ func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*R
 
 	channelSwitches := 0
 	sameChannelRetries := 0
+ continuationRestored := false
 	manualSwitchable, supportsManualSwitch := p.Outbound.(ManualSwitchable)
 
 	// Step 3: Process the request
@@ -357,9 +365,18 @@ func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*R
 		}
 
 		lastErr = err
-		if shared.IsResponsesRecoveryError(lastErr) {
-			return nil, shared.ResponsesRecoveryError()
-		}
+  if shared.IsResponsesRecoveryError(lastErr) {
+   if restorer, ok := p.Outbound.(ResponsesContinuationRestorer); ok && !continuationRestored && ctx.Err() == nil {
+    continuationRestored = true
+    restored, restoreErr := restorer.RestoreResponsesContinuation(ctx, llmRequest)
+    if restoreErr != nil { return nil, restoreErr }
+    if restored != nil {
+     llmRequest = restored
+     continue
+    }
+   }
+   return nil, shared.ResponsesRecoveryError()
+  }
 		if errors.Is(lastErr, transformer.ErrUnsupportedConversion) || isMissingGeminiCachedContent(lastErr) {
 			return nil, lastErr
 		}

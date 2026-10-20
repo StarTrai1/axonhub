@@ -15,6 +15,20 @@ import (
 
 var relayResponsesTimeoutMessage = regexp.MustCompile(`^OpenAI Responses HTTP error \[408\]: The operation was timeout\.(?: \[trace_id=[A-Za-z0-9_-]+\])?$`)
 
+// StreamEventError preserves protocol error details for callers consuming raw
+// Responses streams, including standalone errors without response.created.
+func StreamEventError(raw *httpclient.StreamEvent) error {
+	if raw == nil { return nil }
+	var event StreamEvent
+	if err := json.Unmarshal(raw.Data, &event); err != nil { return err }
+	if event.Type == "" { event.Type = StreamEventType(raw.Type) }
+	if event.Type == StreamEventTypeError { return responseErrorFromStreamEvent(&event) }
+	if event.Type == StreamEventTypeResponseFailed || event.Response != nil && (event.Response.Status == "failed" || event.Response.Error != nil) {
+		return responseFailedError(event)
+	}
+	return nil
+}
+
 func isRelayResponsesTimeout(detail llm.ErrorDetail) bool {
 	if detail.Code != "" && detail.Code != "bad_request" && detail.Code != "invalid_request_error" {
 		return false

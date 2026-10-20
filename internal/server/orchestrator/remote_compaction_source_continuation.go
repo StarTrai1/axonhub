@@ -20,6 +20,10 @@ import (
 // completed predecessors while their request logs are still available, before
 // publishing the checkpoint or migrating it to another provider.
 func (a *remoteCompactionAdapter) resolveCompactionSourceContinuation(ctx context.Context, source *remoteCompactionSource, state *PersistenceState) (*remoteCompactionSource, error) {
+ return a.resolveRetainedContinuation(ctx, source, state, false)
+}
+
+func (a *remoteCompactionAdapter) resolveRetainedContinuation(ctx context.Context, source *remoteCompactionSource, state *PersistenceState, wireOnly bool) (*remoteCompactionSource, error) {
 	if source == nil || gjson.GetBytes(source.body, "previous_response_id").String() == "" {
 		return source, nil
 	}
@@ -45,13 +49,13 @@ func (a *remoteCompactionAdapter) resolveCompactionSourceContinuation(ctx contex
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
-		if seen[previous] || len(seen) >= remoteCompactionHistoryLookupLimit {
+		if seen[previous] || len(seen) >= remoteCompactionHistoryLookupLimit || wireOnly && len(seen) >= 64 {
 			return nil, compactionSourceContinuationUnavailable("predecessor chain is cyclic or exceeds the lookup limit")
 		}
 		seen[previous] = true
 		var body, response []byte
 		var found bool
-		if a.unifiedHistoryEnabled() {
+		if !wireOnly && a.unifiedHistoryEnabled() {
 			body, response, found, err = a.loadHistorySnapshot(ctx, historyResponseAlias(previous))
 			if err != nil {
 				return nil, err

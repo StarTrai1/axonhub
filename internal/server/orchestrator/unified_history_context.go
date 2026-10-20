@@ -316,6 +316,13 @@ func (a *remoteCompactionAdapter) hydrateUnifiedSegments(ctx context.Context, se
 	if missing > unifiedMaxNewSummaries {
 		return missing, false, unifiedHistoryPreparationLimit("too many uncached history segments require generation in one request")
 	}
+	// Check the whole plan before launching any siblings. A client resend must
+	// not repeatedly regenerate the other segments around a known failed one.
+	for i := range segments {
+		if segments[i].key != "" && segments[i].summary == "" {
+			if err := a.unifiedSummaryCooldown(unifiedSegmentFailureKey(state, &segments[i]), time.Now()); err != nil { return 0, false, err }
+		}
+	}
 	hydrate := func(ctx context.Context, i int) error {
 		segment := &segments[i]
 		if segment.key == "" || segment.summary != "" {
@@ -338,6 +345,8 @@ func (a *remoteCompactionAdapter) hydrateUnifiedSegments(ctx context.Context, se
 			if found {
 				return a.publishUnifiedSummaryAlias(ctx, segment, value)
 			}
+			failureKey := unifiedSegmentFailureKey(state, segment)
+			if err := a.unifiedSummaryCooldown(failureKey, time.Now()); err != nil { return nil, err }
 			headers := make(http.Header)
 			headers.Set(unifiedSegmentHeader, segment.key)
 			segmentState := *state
@@ -350,6 +359,7 @@ func (a *remoteCompactionAdapter) hydrateUnifiedSegments(ctx context.Context, se
 			}
 			summary, err := a.generateLocalSummary(ctx, historyDigest(segment.body), &remoteCompactionSource{body: segment.body, headers: headers}, &segmentState, executor)
 			if err != nil {
+				a.rememberUnifiedSummaryFailure(ctx, failureKey, err)
 				return nil, err
 			}
 			// A finished generation remains reusable even if its caller cancels

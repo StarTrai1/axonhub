@@ -140,6 +140,8 @@ For older `axonhub-local-v1` references, AxonHub first uses an existing checkpoi
 
 When a foreground request marked `request_kind=turn` finally fails, the gateway cancels active `request_kind=memory` requests for the same project, API key, and thread, and pauses new memory requests for 5 minutes. New requests receive HTTP 400 with `codex_memory_paused` before reaching upstream. Foreground retries remain allowed; a newly started foreground request that succeeds clears the pause early. A recovered intermediate channel error does not trigger the pause, and memory failures do not extend it.
 
+Foreground outcomes are ordered by request start: a late failure from an older concurrent request cannot override a newer success. Expiry is checked when the next request arrives and admits that request. Clearing the pause only changes in-memory admission state; it creates no LLM request and does not resubmit canceled memory jobs. Codex schedules subsequent memory work. Gateway runtime logs record `Codex background memory admission resumed` with `foreground_succeeded` or `pause_expired`; earlier failed request rows remain unchanged.
+
 Per-frame WebSocket task metadata takes precedence over handshake prewarm metadata. Other threads, API keys, subagents, search, and compaction requests are unaffected. This policy requires explicit client task and thread identity. It does not permanently disable memory or refund tokens already processed upstream. Pause state lives in a bounded cache in the current gateway process and clears on restart.
 
 ### Codex 0.154.0 compatibility

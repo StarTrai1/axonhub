@@ -439,3 +439,10 @@ queueing and generation can still dominate. Request `updated_at - created_at` is
 a useful historical approximation, but also includes persistence overhead.
 
 The pass-through reader retains the provider terminal event before fan-out. If a client disconnects immediately after a failed or incomplete response, execution accounting preserves that provider outcome and explicit final usage even when the transformed consumer has not reached the event. This evidence does not acknowledge downstream delivery; the main request keeps the existing delivery rules.
+
+
+## Restoring input after a native connection is lost
+
+With unified history enabled, a native WebSocket continuation that reports `previous_response_not_found` before output can restore the last transmitted compressed input and subsequent deltas from completed request/execution records owned by the same project and API key. It removes the stale response ID and makes one correction on the same channel/model. This preserves the native checkpoint without expanding the entire original archive or generating another summary for connection recovery. Lookup is bounded to 64 predecessors, 64 MiB and ten seconds. Missing records, ownership mismatch or another rejection still return an error. Original archives and accepted compressed inputs serve different purposes.
+
+Segment summaries are saved only after a successful `response.completed`. Standalone errors, failed responses, output-limit interruptions, `[DONE]` alone and streams ending before completion cannot populate the summary cache; execution records retain structured failure details. A failed source segment has a one-minute generation cooldown for the same destination configuration/credentials. During cooldown, client resends return `unified_history_preparation_cooldown` before starting another summary batch. Completed summaries remain reusable, canceled siblings do not register failures, and changing channel/credentials permits another attempt. Cooldown state is bounded and process-local.
