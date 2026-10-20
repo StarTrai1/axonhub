@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"strings"
 	"testing"
@@ -150,4 +151,32 @@ func TestUnifiedHistoryCheckpointExportChecksExactSuffixBeforeGeneration(t *test
 	require.False(t, ready)
 	require.ErrorContains(t, err, "exact live suffix")
 	require.Empty(t, executor.requests)
+}
+
+func TestUnifiedHistoryColdArchivePrefersOneCheckpointExport(t *testing.T) {
+	ctx, _, state, adapter := unifiedHistoryFixture(t)
+	original := unifiedLongToolHistory(t, 26)
+	envelope, items, err := decodeResponsesInput(original)
+	require.NoError(t, err)
+	require.NoError(t, setResponseEnvelopeInput(envelope, append(items, json.RawMessage(`{"type":"compaction_trigger"}`))))
+	source, err := json.Marshal(envelope)
+	require.NoError(t, err)
+	ref := &remoteCompactionReference{ID: "cmp_cold_export", EncryptedContent: "source-readable-state"}
+	require.NoError(t, adapter.saveHistorySnapshot(ctx, historyCheckpointAlias(ref), source, nil))
+	body := []byte(`{"model":"gpt-6-astra","input":[{"type":"compaction","id":"cmp_cold_export","encrypted_content":"source-readable-state"},{"role":"user","content":"keep latest correction 17.250"}]}`)
+	executor := &unifiedExportExecutor{}
+	_, err = adapter.generateLocalSummary(ctx, "synthetic-reader", &remoteCompactionSource{body: []byte(`{"model":"gpt-6-astra","input":[{"type":"compaction_trigger"}]}`), headers: make(http.Header)}, state, executor)
+	require.NoError(t, err)
+	request := executor.requests[0]
+	reader := nativeHistoryReader{Provider: historyProviderIdentity{ChannelID: state.CurrentCandidate.Channel.ID, Endpoint: request.URL, Model: "gpt-6-astra", Format: request.APIFormat, Auth: historyReaderCredential(request, false)}}
+	require.NoError(t, adapter.rememberNativeHistoryOrigins(ctx, body, []byte(`{"output":[]}`), reader))
+	executor.requests = nil
+	compiled, ready, err := adapter.compileUnifiedContext(ctx, body, state, executor)
+	require.NoError(t, err)
+	require.True(t, ready)
+	require.Len(t, executor.requests, 1, "a readable current checkpoint avoids a dozen cold source summaries")
+	require.Contains(t, string(executor.requests[0].Body), "source-readable-state")
+	require.NotContains(t, string(executor.requests[0].Body), "original tool evidence")
+	require.NotContains(t, string(executor.requests[0].Body), "latest correction")
+	require.Contains(t, string(compiled), "keep latest correction 17.250")
 }

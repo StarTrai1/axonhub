@@ -26,6 +26,7 @@ const (
 	unifiedContextMaxBytes     = 1 << 20
 	unifiedSummarySegmentBytes = 128 << 10
 	unifiedMaxNewSummaries     = 32
+	unifiedNativeExportMinSummaries = 8
 	unifiedMaxHistorySegments  = 512
 	unifiedSegmentHeader       = "X-Axonhub-Unified-History-Segment"
 )
@@ -184,7 +185,7 @@ func (a *remoteCompactionAdapter) compileUnifiedContext(ctx context.Context, bod
 	if err != nil {
 		return nil, false, err
 	}
-	if uncached > unifiedMaxNewSummaries {
+	if uncached >= unifiedNativeExportMinSummaries {
 		if exported, ready, exportErr := a.exportUnifiedCheckpoint(ctx, body, state, executor); exportErr != nil || ready {
 			return exported, ready, exportErr
 		}
