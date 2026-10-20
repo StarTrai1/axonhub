@@ -154,11 +154,17 @@ func (a *remoteCompactionAdapter) exportUnifiedCheckpoint(ctx context.Context, b
 	}
 	key := "native:" + historyDigest(append([]byte("checkpoint-context-export-v1:"), contract...))
 	summary, err := a.loadUnifiedCheckpointExport(ctx, key)
-	if err != nil { return nil, false, err }
+	if err != nil {
+		return nil, false, err
+	}
 	if summary == "" {
 		summary, err = a.prepareUnifiedCheckpointExport(ctx, key, ref, envelope, state, executor)
-		if err != nil { return nil, false, err }
-		if summary == "" { return body, false, nil }
+		if err != nil {
+			return nil, false, err
+		}
+		if summary == "" {
+			return body, false, nil
+		}
 	}
 	result, err := replaceRemoteCompactionWithLocalSummary(body, summary)
 	if err != nil {
@@ -175,70 +181,106 @@ func (a *remoteCompactionAdapter) exportUnifiedCheckpoint(ctx context.Context, b
 }
 
 func (a *remoteCompactionAdapter) loadUnifiedCheckpointExport(ctx context.Context, key string) (string, error) {
- entries, err := a.systemService.LoadUnifiedHistory(ctx, []string{key})
- if err != nil || entries[key] == "" { return "", err }
- text, err := a.openHistoryRecord(ctx, key, entries[key], localCompactionMaxSummaryBytes)
- return string(text), err
+	entries, err := a.systemService.LoadUnifiedHistory(ctx, []string{key})
+	if err != nil || entries[key] == "" {
+		return "", err
+	}
+	text, err := a.openHistoryRecord(ctx, key, entries[key], localCompactionMaxSummaryBytes)
+	return string(text), err
 }
 
 func (a *remoteCompactionAdapter) selectUnifiedExportReader(ctx context.Context, ref *remoteCompactionReference, state *PersistenceState) (*ChannelModelsCandidate, *nativeHistoryReader, error) {
- candidates := state.unifiedHistoryCandidates
- if len(candidates) == 0 { candidates = state.ChannelModelsCandidates }
- for _, candidate := range candidates {
-  reader, err := a.loadNativeHistoryReader(ctx, ref, candidate)
-  if err != nil { return nil, nil, err }
-  if reader == nil { continue }
-  if rejected := state.unifiedRejectedReader; rejected != nil && rejected.Provider.ChannelID == reader.Provider.ChannelID && rejected.Provider.Auth == reader.Provider.Auth && rejected.Provider.Model == reader.Provider.Model { continue }
-  for i, model := range candidate.Models {
-   if model.ActualModel != reader.Provider.Model { continue }
-   clone := *candidate
-   clone.Models = candidate.Models[i:i+1]
-   clone.APIFormat = string(llm.APIFormatOpenAIResponse)
-   return &clone, reader, nil
-  }
- }
- return nil, nil, nil
+	candidates := state.unifiedHistoryCandidates
+	if len(candidates) == 0 {
+		candidates = state.ChannelModelsCandidates
+	}
+	for _, candidate := range candidates {
+		reader, err := a.loadNativeHistoryReader(ctx, ref, candidate)
+		if err != nil {
+			return nil, nil, err
+		}
+		if reader == nil {
+			continue
+		}
+		if rejected := state.unifiedRejectedReader; rejected != nil && rejected.Provider.ChannelID == reader.Provider.ChannelID && rejected.Provider.Auth == reader.Provider.Auth && rejected.Provider.Model == reader.Provider.Model {
+			continue
+		}
+		for i, model := range candidate.Models {
+			if model.ActualModel != reader.Provider.Model {
+				continue
+			}
+			clone := *candidate
+			clone.Models = candidate.Models[i : i+1]
+			clone.APIFormat = string(llm.APIFormatOpenAIResponse)
+			return &clone, reader, nil
+		}
+	}
+	return nil, nil, nil
 }
 
 func (a *remoteCompactionAdapter) prepareUnifiedCheckpointExport(ctx context.Context, key string, ref *remoteCompactionReference, envelope map[string]json.RawMessage, state *PersistenceState, executor pipeline.Executor) (string, error) {
- selected, reader, err := a.selectUnifiedExportReader(ctx, ref, state)
- if err != nil || selected == nil { return "", err }
- source, err := json.Marshal(envelope)
- if err != nil { return "", err }
- source, err = protectUnifiedHistory(ctx, source, state)
- if err != nil { return "", err }
- // The source reader must receive only a bounded existing native window.
- if budget := unifiedCheckpointInputBudget(source, selected, 0); budget <= 0 || unifiedContextSize(source) > budget { return "", nil }
- exportState := *state
- exportState.CurrentCandidate, exportState.CurrentModelIndex = selected, 0
- exportState.ChannelModelsCandidates = []*ChannelModelsCandidate{selected}
- exportState.RetryPolicyProvider, exportState.RawProviderRequest = nil, nil
- exportState.unifiedExportOrigin = reader
- exportState.compactionRecovery = &compactionRecoveryEvidence{}
- failureKey := unifiedSegmentFailureKey(&exportState, &unifiedHistorySegment{key:key})
- if err := a.unifiedSummaryCooldown(failureKey, time.Now()); err != nil { return "", err }
- result, err := waitForUnifiedHistoryFlight(ctx, &a.summaryGenerator, remoteCompactionOwnerCacheKey(state, key), func() (any, error) {
-  if value, err := a.loadUnifiedCheckpointExport(ctx, key); err != nil || value != "" { return value, err }
-  value, err := a.generateUnifiedCheckpointExport(ctx, key, source, &exportState, executor)
-  if err != nil { a.rememberUnifiedSummaryFailure(ctx, failureKey, err) }
-  return value, err
- })
- if err != nil { return "", err }
- summary, ok := result.(string)
- if !ok || strings.TrimSpace(summary) == "" { return "", errors.New("empty checkpoint context export") }
- log.Info(ctx, "exported portable context from verified native checkpoint reader", log.Int("source_channel_id", selected.Channel.ID))
- return summary, nil
+	selected, reader, err := a.selectUnifiedExportReader(ctx, ref, state)
+	if err != nil || selected == nil {
+		return "", err
+	}
+	source, err := json.Marshal(envelope)
+	if err != nil {
+		return "", err
+	}
+	source, err = protectUnifiedHistory(ctx, source, state)
+	if err != nil {
+		return "", err
+	}
+	// The source reader must receive only a bounded existing native window.
+	if budget := unifiedCheckpointInputBudget(source, selected, 0); budget <= 0 || unifiedContextSize(source) > budget {
+		return "", nil
+	}
+	exportState := *state
+	exportState.CurrentCandidate, exportState.CurrentModelIndex = selected, 0
+	exportState.ChannelModelsCandidates = []*ChannelModelsCandidate{selected}
+	exportState.RetryPolicyProvider, exportState.RawProviderRequest = nil, nil
+	exportState.unifiedExportOrigin = reader
+	exportState.compactionRecovery = &compactionRecoveryEvidence{}
+	failureKey := unifiedSegmentFailureKey(&exportState, &unifiedHistorySegment{key: key})
+	if err := a.unifiedSummaryCooldown(failureKey, time.Now()); err != nil {
+		return "", err
+	}
+	result, err := waitForUnifiedHistoryFlight(ctx, &a.summaryGenerator, remoteCompactionOwnerCacheKey(state, key), func() (any, error) {
+		if value, err := a.loadUnifiedCheckpointExport(ctx, key); err != nil || value != "" {
+			return value, err
+		}
+		value, err := a.generateUnifiedCheckpointExport(ctx, key, source, &exportState, executor)
+		if err != nil {
+			a.rememberUnifiedSummaryFailure(ctx, failureKey, err)
+		}
+		return value, err
+	})
+	if err != nil {
+		return "", err
+	}
+	summary, ok := result.(string)
+	if !ok || strings.TrimSpace(summary) == "" {
+		return "", errors.New("empty checkpoint context export")
+	}
+	log.Info(ctx, "exported portable context from verified native checkpoint reader", log.Int("source_channel_id", selected.Channel.ID))
+	return summary, nil
 }
 
 func (a *remoteCompactionAdapter) generateUnifiedCheckpointExport(ctx context.Context, key string, source []byte, state *PersistenceState, executor pipeline.Executor) (string, error) {
- exportCtx, cancel := context.WithTimeout(contexts.CloneRequestContext(ctx), 90*time.Second)
- defer cancel()
- value, err := a.generateLocalSummary(exportCtx, key, &remoteCompactionSource{body:source, headers:make(http.Header)}, state, executor)
- if err != nil { return "", err }
- persistCtx, persistCancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
- defer persistCancel()
- sealed, err := a.sealHistoryRecord(persistCtx, key, []byte(value))
- if err != nil { return "", err }
- if err := a.systemService.SaveUnifiedHistory(persistCtx, map[string]string{key:sealed}); err != nil { return "", err }
- return a.loadUnifiedCheckpointExport(persistCtx, key)
+	exportCtx, cancel := context.WithTimeout(contexts.CloneRequestContext(ctx), 90*time.Second)
+	defer cancel()
+	value, err := a.generateLocalSummary(exportCtx, key, &remoteCompactionSource{body: source, headers: make(http.Header)}, state, executor)
+	if err != nil {
+		return "", err
+	}
+	persistCtx, persistCancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+	defer persistCancel()
+	sealed, err := a.sealHistoryRecord(persistCtx, key, []byte(value))
+	if err != nil {
+		return "", err
+	}
+	if err := a.systemService.SaveUnifiedHistory(persistCtx, map[string]string{key: sealed}); err != nil {
+		return "", err
+	}
+	return a.loadUnifiedCheckpointExport(persistCtx, key)
 }
