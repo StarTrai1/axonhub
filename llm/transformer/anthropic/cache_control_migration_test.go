@@ -14,6 +14,7 @@ func TestManagedCacheControlKeepsToolResultBoundary(t *testing.T) {
 			content := MessageContent{MultipleContent: []MessageContentBlock{{Type: "tool_result", Content: &MessageContent{MultipleContent: []MessageContentBlock{{Type: "text", Text: lo.ToPtr("exact result")}}}}}}
 			if raw {
 				content = MessageContent{Raw: json.RawMessage(`[{"type":"tool_result","tool_use_id":"call","content":[{"type":"text","text":"exact result","vendor":"preserve"}]}]`)}
+			}
 			request := &MessageRequest{Messages: []MessageParam{{Role: "user", Content: content}}, CacheControl: &CacheControl{Type: "ephemeral"}}
 			require.True(t, moveTopLevelCacheControlToLastBlock(request))
 			encoded, err := json.Marshal(request.Messages[0].Content)

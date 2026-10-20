@@ -94,7 +94,7 @@ func sanitizeJSONSchema(schema map[string]any, flattenToolUnions bool) map[strin
 		return nil
 	}
 
-	result := deepCopy(schema)
+	result := inlineKnownSchemaRefs(deepCopy(schema))
 
 	// Phase 1: Convert and add hints
 	result = convertRefsToHints(result)
@@ -172,16 +172,7 @@ func convertRefsToHints(schema map[string]any) map[string]any {
 		return newSchema
 	}
 
-	// Recursively process all properties
-	for key, value := range schema {
-		if subSchema, ok := value.(map[string]any); ok {
-			schema[key] = convertRefsToHints(subSchema)
-		} else if subArray, ok := value.([]any); ok {
-			schema[key] = processArray(subArray, convertRefsToHints)
-		}
-	}
-
-	return schema
+	return mapSchemaChildren(schema, convertRefsToHints, true)
 }
 
 func convertConstToEnum(schema map[string]any) map[string]any {

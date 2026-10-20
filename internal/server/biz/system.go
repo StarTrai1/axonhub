@@ -669,8 +669,8 @@ func (p *ProbeFrequency) UnmarshalGQL(v any) error {
 type SystemServiceParams struct {
 	fx.In
 
-	CacheConfig    xcache.Config
-	Ent            *ent.Client
+	CacheConfig xcache.Config
+	Ent         *ent.Client
 }
 
 func NewSystemService(params SystemServiceParams) *SystemService {
@@ -678,16 +678,16 @@ func NewSystemService(params SystemServiceParams) *SystemService {
 		AbstractService: &AbstractService{
 			db: params.Ent,
 		},
-		CacheConfig:    params.CacheConfig,
-		Cache:          xcache.NewFromConfig[ent.System](params.CacheConfig),
+		CacheConfig: params.CacheConfig,
+		Cache:       xcache.NewFromConfig[ent.System](params.CacheConfig),
 	}
 }
 
 type SystemService struct {
 	*AbstractService
 
-	CacheConfig    xcache.Config
-	Cache          xcache.Cache[ent.System]
+	CacheConfig xcache.Config
+	Cache       xcache.Cache[ent.System]
 
 	mu           sync.RWMutex
 	timeLocation *time.Location

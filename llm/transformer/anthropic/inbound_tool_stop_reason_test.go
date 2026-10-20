@@ -10,7 +10,10 @@ import (
 )
 
 func TestChatToolResponseRetainsExecutableStopReason(t *testing.T) {
-	for _, tc := range []struct { finish *string; expected string }{
+	for _, tc := range []struct {
+		finish   *string
+		expected string
+	}{
 		{nil, "tool_use"}, {lo.ToPtr("stop"), "tool_use"}, {lo.ToPtr("tool_calls"), "tool_use"},
 		{lo.ToPtr("length"), "max_tokens"}, {lo.ToPtr("content_filter"), "refusal"}, {lo.ToPtr("pause_turn"), "pause_turn"},
 	} {
