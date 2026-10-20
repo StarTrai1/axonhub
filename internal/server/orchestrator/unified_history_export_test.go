@@ -10,14 +10,14 @@ import (
 	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/internal/server/biz"
+"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
-	"github.com/looplj/axonhub/llm/transformer/openai/responses"
-	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 type unifiedExportExecutor struct {
 	unifiedConcurrentExecutor
+
 	requests []*httpclient.Request
 }
 
@@ -39,7 +39,7 @@ func TestUnifiedHistoryCheckpointExportUsesProvenReaderOnce(t *testing.T) {
 	_, err = adapter.generateLocalSummary(ctx, "synthetic-provenance", source, state, executor)
 	require.NoError(t, err)
 	request := executor.requests[0]
-	origin := shared.ResponsesOrigin{ChannelID:state.CurrentCandidate.Channel.ID, Endpoint:request.URL, Auth:responses.ContinuationAuthIdentity(request), Model:"gpt-6-astra", Format:request.APIFormat}
+	origin := nativeHistoryReader{Provider:historyProviderIdentity{ChannelID:state.CurrentCandidate.Channel.ID, Endpoint:request.URL, Auth:historyReaderCredential(request, false), Model:"gpt-6-astra", Format:request.APIFormat}}
 	require.NoError(t, adapter.rememberNativeHistoryOrigins(ctx, body, []byte(`{"output":[]}`), origin))
 	executor.requests = nil
 	compiled, ok, err := adapter.compileUnifiedContext(ctx, body, state, executor)
@@ -62,7 +62,7 @@ func TestUnifiedHistoryCheckpointExportUsesProvenReaderOnce(t *testing.T) {
 func TestUnifiedHistoryCheckpointExportRejectsChangedReader(t *testing.T) {
 	ctx, _, state, adapter := unifiedHistoryFixture(t)
 	body := []byte(`{"model":"gpt-6-astra","input":[{"type":"compaction","id":"cmp_export_wrong","encrypted_content":"private-state"},{"role":"user","content":"continue"}]}`)
-	origin := shared.ResponsesOrigin{ChannelID:state.CurrentCandidate.Channel.ID, Endpoint:"https://foreign.invalid/responses", Auth:"changed-account", Model:"gpt-6-astra"}
+	origin := nativeHistoryReader{Provider:historyProviderIdentity{ChannelID:state.CurrentCandidate.Channel.ID, Endpoint:"https://foreign.invalid/responses", Auth:"changed-account", Model:"gpt-6-astra"}}
 	require.NoError(t, adapter.rememberNativeHistoryOrigins(ctx, body, []byte(`{"output":[]}`), origin))
 	executor := &unifiedExportExecutor{}
 	_, ok, err := adapter.compileUnifiedContext(ctx, body, state, executor)
@@ -88,4 +88,21 @@ func TestExpensiveGatewayTimeoutStopsSameChannelReplay(t *testing.T) {
 	require.True(t, outbound.CanRetry(err), "fast transient gateway failures retain the existing bounded retry policy")
 	require.True(t, canRetryLocalCompactionStream(outbound, err))
 	require.True(t, outbound.CanRetry(&httpclient.Error{StatusCode:http.StatusBadGateway}))
+}
+
+func TestUnifiedHistoryReaderIdentityExcludesRequestHeadersNotAccounts(t *testing.T) {
+ _, _, state, _ := unifiedHistoryFixture(t)
+ request := &httpclient.Request{URL:"https://example.invalid/responses", Body:[]byte(`{"model":"gpt-6-astra"}`), Headers:http.Header{"Authorization":{"Bearer first"}, "Chatgpt-Account-Id":{"account-a"}, "X-Request-Id":{"old"}}}
+ reader := nativeHistoryReader{Provider:historyProviderIdentity{ChannelID:state.CurrentCandidate.Channel.ID, Endpoint:request.URL, Model:"gpt-6-astra", Auth:historyReaderCredential(request, false)}}
+ request.Headers.Set("X-Request-Id", "new")
+ require.True(t, historyExportMatches(reader, state.CurrentCandidate, request))
+ request.Headers.Set("Authorization", "Bearer second")
+ require.False(t, historyExportMatches(reader, state.CurrentCandidate, request))
+ state.CurrentCandidate.Channel.Credentials = objects.ChannelCredentials{OAuth:&objects.OAuthCredentials{AccessToken:"second"}}
+ reader.OAuth = true
+ reader.Provider.Auth = historyReaderCredential(request, true)
+ request.Headers.Set("Authorization", "Bearer refreshed-same-account")
+ require.True(t, historyExportMatches(reader, state.CurrentCandidate, request))
+ request.Headers.Set("Chatgpt-Account-Id", "account-b")
+ require.False(t, historyExportMatches(reader, state.CurrentCandidate, request))
 }

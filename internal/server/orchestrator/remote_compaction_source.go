@@ -13,6 +13,7 @@ import (
 	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/internal/ent"
+"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
@@ -205,7 +206,10 @@ func (m *nativeCompactionSourceMiddleware) OnOutboundRawResponse(ctx context.Con
 			return nil, err
 		}
 	}
-	return response, nil
+if err := m.adapter.rememberNativeHistoryOrigins(ctx, source.body, response.Body, nativeHistoryReaderFor(state)); err != nil {
+ log.Warn(ctx, "could not retain completed native checkpoint reader", log.Cause(err))
+ }
+ return response, nil
 }
 
 func (m *nativeCompactionSourceMiddleware) saveItem(ctx context.Context, source *remoteCompactionSource, state *PersistenceState, item gjson.Result) error {
@@ -271,7 +275,12 @@ func (s *nativeCompactionSourceStream) Next() bool {
 		}
 		s.saved[key] = true
 	}
-	return true
+if kind == "response.completed" && gjson.GetBytes(event.Data, "response.status").String() == "completed" {
+ if err := s.middleware.adapter.rememberNativeHistoryOrigins(s.ctx, s.source.body, []byte(gjson.GetBytes(event.Data, "response").Raw), nativeHistoryReaderFor(s.state)); err != nil {
+ log.Warn(s.ctx, "could not retain completed native checkpoint reader", log.Cause(err))
+ }
+ }
+ return true
 }
 
 func (s *nativeCompactionSourceStream) Current() *httpclient.StreamEvent {

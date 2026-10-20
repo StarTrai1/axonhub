@@ -345,7 +345,7 @@ func cacheNativeResponsesSessionStream(
 		!responses.IsResponsesFormat(llm.APIFormat(state.RawProviderRequest.APIFormat)) {
 		return stream
 	}
-	return state.responsesSessions.wrapStream(ctx, responsesSessionProviderBody(state), stream)
+	return state.responsesSessions.wrapStream(withNativeHistoryReader(ctx, state), responsesSessionProviderBody(state), stream)
 }
 
 type responsesSessionStream struct {

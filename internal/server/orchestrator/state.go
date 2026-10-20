@@ -9,7 +9,6 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
-"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // PersistenceState holds shared state with channel management and retry capabilities.
@@ -53,7 +52,7 @@ type PersistenceState struct {
 	unifiedCompactionSummary            string
 	unifiedHistorySource                *remoteCompactionSource
  unifiedHistoryCandidates []*ChannelModelsCandidate
- unifiedExportOrigin *shared.ResponsesOrigin
+ unifiedExportOrigin *nativeHistoryReader
 	// A relay affinity recovery consumes the existing same-channel budget and
 	// stops if the replacement affinity is also explicitly overloaded.
 	responsesRelayAffinityRetryChannel     int

@@ -101,6 +101,11 @@ func (a *remoteCompactionAdapter) compileUnifiedContext(ctx context.Context, bod
 	if candidate == nil {
 		return body, false, nil
 	}
+ // Exact resends of a failed cold plan need not parse/hash every large segment
+ // again merely to rediscover the same short cooldown. Destination and owner
+ // boundaries match the per-segment failure cache.
+ planFailure := unifiedSegmentFailureKey(state, &unifiedHistorySegment{cacheAlias:"plan:" + historyDigest(body)})
+ if err := a.unifiedSummaryCooldown(planFailure, time.Now()); err != nil { return nil, false, err }
 	contextTokens := candidate.ContextTokens
 	if contextTokens <= 0 && state.CurrentModelIndex >= 0 && state.CurrentModelIndex < len(candidate.Models) {
 		contextTokens = biz.BundledModelContextLimit(candidate.Models[state.CurrentModelIndex].ActualModel)
@@ -179,6 +184,9 @@ func (a *remoteCompactionAdapter) compileUnifiedContext(ctx context.Context, bod
 		return validateUnifiedHistoryMinimum(plan, ceiling)
 	})
 	if err != nil || !supported {
+ if failure, ok := errors.AsType[*llm.ResponseError](err); !ok || failure.Detail.Code != "unified_history_preparation_in_progress" {
+ a.rememberUnifiedSummaryFailure(ctx, planFailure, err)
+ }
 		return body, false, err
 	}
 	result, err := renderUnifiedHistory(envelope, plan, budget)

@@ -388,7 +388,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		persistRequestExecution(outbound),
 		pipeline.OnRawResponse("cache-native-responses-session", func(ctx context.Context, response *httpclient.Response) (*httpclient.Response, error) {
 			if continuation != nil && response != nil && state.RawProviderRequest != nil && responses.IsResponsesFormat(llm.APIFormat(state.RawProviderRequest.APIFormat)) {
-				processor.responsesSessions.record(ctx, responsesSessionProviderBody(state), response.Body)
+				processor.responsesSessions.record(withNativeHistoryReader(ctx, state), responsesSessionProviderBody(state), response.Body)
 			}
 			return response, nil
 		}),

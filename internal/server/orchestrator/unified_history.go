@@ -427,7 +427,9 @@ func (a *remoteCompactionAdapter) archiveHistoryResponse(ctx context.Context, bo
 	channelID := 0
 	if attempt := shared.GetResponsesAttempt(ctx); attempt != nil {
 		channelID = attempt.Origin().ChannelID
- if err := a.rememberNativeHistoryOrigins(ctx, body, response, attempt.Origin()); err != nil { return err }
+ if reader, ok := ctx.Value(nativeHistoryReaderContextKey{}).(nativeHistoryReader); ok {
+ if err := a.rememberNativeHistoryOrigins(ctx, body, response, reader); err != nil { return err }
+ }
 	}
 	wireState := *state
 	if channelID != 0 {

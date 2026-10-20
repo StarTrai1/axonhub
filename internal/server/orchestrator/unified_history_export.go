@@ -15,8 +15,6 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
-	"github.com/looplj/axonhub/llm/transformer/openai/responses"
-	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // A successful native read is evidence for a specific provider/account/model,
@@ -25,10 +23,10 @@ func historyNativeOriginKey(ref *remoteCompactionReference, channelID int) strin
 	return "origin:" + historyDigest([]byte(remoteCompactionCacheKey(ref) + historyWireAlias("native", channelID)))
 }
 
-func (a *remoteCompactionAdapter) rememberNativeHistoryOrigins(ctx context.Context, body, response []byte, origin shared.ResponsesOrigin) error {
+func (a *remoteCompactionAdapter) rememberNativeHistoryOrigins(ctx context.Context, body, response []byte, reader nativeHistoryReader) error {
+ origin := reader.Provider
 	if origin.ChannelID <= 0 || origin.Auth == "" || origin.Endpoint == "" || origin.Model == "" { return nil }
-	origin.Generation = 0
-	encoded, err := json.Marshal(origin)
+	encoded, err := json.Marshal(reader)
 	if err != nil { return err }
 	entries := make(map[string]string)
 	for _, items := range []gjson.Result{gjson.GetBytes(body, "input"), gjson.GetBytes(response, "output")} {
@@ -44,10 +42,12 @@ func (a *remoteCompactionAdapter) rememberNativeHistoryOrigins(ctx context.Conte
 	return a.systemService.SaveUnifiedHistory(ctx, entries)
 }
 
-func historyExportMatches(origin shared.ResponsesOrigin, channelID int, request *httpclient.Request) bool {
+func historyExportMatches(reader nativeHistoryReader, candidate *ChannelModelsCandidate, request *httpclient.Request) bool {
+ origin := reader.Provider
+ if reader.OAuth != candidate.Channel.Credentials.IsOAuth() { return false }
 	endpoint := func(value string) string { return strings.Replace(strings.Replace(value, "wss://", "https://", 1), "ws://", "http://", 1) }
-	return origin.ChannelID == channelID && origin.Model == gjson.GetBytes(request.Body, "model").String() &&
-		origin.Auth != "" && origin.Auth == responses.ContinuationAuthIdentity(request) && endpoint(origin.Endpoint) == endpoint(request.URL)
+	return origin.ChannelID == candidate.Channel.ID && origin.Model == gjson.GetBytes(request.Body, "model").String() &&
+		origin.Auth != "" && origin.Auth == historyReaderCredential(request, reader.OAuth) && endpoint(origin.Endpoint) == endpoint(request.URL)
 }
 
 // Export only the checkpoint window, once, on a proven reader. The exact live
@@ -80,7 +80,7 @@ func (a *remoteCompactionAdapter) exportUnifiedCheckpoint(ctx context.Context, b
 		candidates := state.unifiedHistoryCandidates
 		if len(candidates) == 0 { candidates = state.ChannelModelsCandidates }
 		var selected *ChannelModelsCandidate
-		var origin shared.ResponsesOrigin
+		var reader nativeHistoryReader
 		for _, candidate := range candidates {
 			if candidate == nil || candidate.Channel == nil { continue }
 			originKey := historyNativeOriginKey(ref, candidate.Channel.ID)
@@ -89,9 +89,9 @@ func (a *remoteCompactionAdapter) exportUnifiedCheckpoint(ctx context.Context, b
 			if entries[originKey] == "" { continue }
 			raw, err := a.openHistoryRecord(ctx, originKey, entries[originKey], 8192)
 			if err != nil { return nil, false, err }
-			if json.Unmarshal(raw, &origin) != nil || origin.ChannelID != candidate.Channel.ID || origin.Auth == "" { return nil, false, errors.New("invalid checkpoint reader provenance") }
+			if json.Unmarshal(raw, &reader) != nil || reader.Provider.ChannelID != candidate.Channel.ID || reader.Provider.Auth == "" { return nil, false, errors.New("invalid checkpoint reader provenance") }
 			for i, model := range candidate.Models {
-				if model.ActualModel != origin.Model { continue }
+				if model.ActualModel != reader.Provider.Model { continue }
 				clone := *candidate
 				clone.Models = candidate.Models[i:i+1]
 				clone.APIFormat = string(llm.APIFormatOpenAIResponse)
@@ -111,7 +111,7 @@ func (a *remoteCompactionAdapter) exportUnifiedCheckpoint(ctx context.Context, b
 		exportState.CurrentCandidate, exportState.CurrentModelIndex = selected, 0
 		exportState.ChannelModelsCandidates = []*ChannelModelsCandidate{selected}
 		exportState.RetryPolicyProvider = nil
-		exportState.unifiedExportOrigin = &origin
+		exportState.unifiedExportOrigin = &reader
 		exportState.compactionRecovery = &compactionRecoveryEvidence{}
 		failureKey := unifiedSegmentFailureKey(&exportState, &unifiedHistorySegment{key:key})
 		if err := a.unifiedSummaryCooldown(failureKey, time.Now()); err != nil { return nil, false, err }

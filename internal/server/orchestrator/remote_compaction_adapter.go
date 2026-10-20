@@ -1289,7 +1289,7 @@ func (a *remoteCompactionAdapter) generateCompactionWithCandidate(
 		}
 	}
 	providerRequest.Headers.Del(remoteCompactionCacheHeader)
- if parentState.unifiedExportOrigin != nil && !historyExportMatches(*parentState.unifiedExportOrigin, candidate.Channel.ID, providerRequest) {
+ if parentState.unifiedExportOrigin != nil && !historyExportMatches(*parentState.unifiedExportOrigin, candidate, providerRequest) {
  return "", errors.New("checkpoint export reader account or endpoint has changed; no upstream request was sent")
  }
 
