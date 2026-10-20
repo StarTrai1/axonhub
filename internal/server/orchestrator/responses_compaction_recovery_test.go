@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"testing"
 
@@ -319,7 +320,10 @@ func TestResponsesRejectedCompactionSourceRequiresExactSuccessfulReference(t *te
 
 func rejectedCompactionStorage(t *testing.T) (context.Context, *ent.Client, *ent.APIKey, *remoteCompactionAdapter) {
 	t.Helper()
-	client := enttest.NewEntClient(t, "sqlite3", "file:rejected-native-compaction?mode=memory&_fk=0")
+	// Cancellation may discard the pool's only connection. A private in-memory
+	// database then disappears before subsequent recovery assertions can run.
+	dsn := "file:" + filepath.ToSlash(filepath.Join(t.TempDir(), "compaction.db")) + "?_fk=0"
+	client := enttest.NewEntClient(t, "sqlite3", dsn)
 	t.Cleanup(func() { client.Close() })
 	ctx := authz.WithTestBypass(ent.NewContext(t.Context(), client))
 	apiKey := &ent.APIKey{ID: 211, ProjectID: 212}
