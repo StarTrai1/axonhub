@@ -294,7 +294,7 @@ func planUnifiedHistory(envelope map[string]json.RawMessage, items []json.RawMes
 	return &unifiedHistoryPlan{segments: segments, recent: recent, query: query, mandatory: mandatory, capacity: len(items)}, true, nil
 }
 
-func (a *remoteCompactionAdapter) hydrateUnifiedSegments(ctx context.Context, segments []unifiedHistorySegment, state *PersistenceState, executor pipeline.Executor, preflight func() error) (int, bool, error) {
+func (a *remoteCompactionAdapter) loadUnifiedSegments(ctx context.Context, segments []unifiedHistorySegment) (int, error) {
 	keys := make([]string, 0, len(segments))
 	for _, segment := range segments {
 		if segment.key != "" {
@@ -303,7 +303,7 @@ func (a *remoteCompactionAdapter) hydrateUnifiedSegments(ctx context.Context, se
 	}
 	cached, err := a.systemService.LoadUnifiedHistory(ctx, keys)
 	if err != nil {
-		return 0, false, err
+		return 0, err
 	}
 	missing := 0
 	for i := range segments {
@@ -313,19 +313,27 @@ func (a *remoteCompactionAdapter) hydrateUnifiedSegments(ctx context.Context, se
 		}
 		value, found, err := a.loadUnifiedSummary(ctx, segment, cached)
 		if err != nil {
-			return 0, false, err
+			return 0, err
 		}
 		if found {
 			if segment.cacheAlias != "" && cached[segment.cacheAlias] == "" {
 				value, err = a.publishUnifiedSummaryAlias(ctx, segment, value)
 			}
 			if err != nil {
-				return 0, false, err
+				return 0, err
 			}
 			segment.key, segment.summary = value.key, value.text
 		} else {
 			missing++
 		}
+	}
+	return missing, nil
+}
+
+func (a *remoteCompactionAdapter) hydrateUnifiedSegments(ctx context.Context, segments []unifiedHistorySegment, state *PersistenceState, executor pipeline.Executor, preflight func() error) (int, bool, error) {
+	missing, err := a.loadUnifiedSegments(ctx, segments)
+	if err != nil {
+		return 0, false, err
 	}
 	if missing > unifiedMaxNewSummaries {
 		return missing, false, unifiedHistoryPreparationLimit("too many uncached history segments require generation in one request")
