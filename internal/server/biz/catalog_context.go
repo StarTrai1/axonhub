@@ -9,7 +9,7 @@ import (
 // routing, without importing admin model rows or fetching a catalog mid-request.
 type bundledHistoryLimits struct {
 	context int
-	input int
+	input   int
 }
 
 var bundledContextLimits = sync.OnceValue(func() map[string]bundledHistoryLimits {

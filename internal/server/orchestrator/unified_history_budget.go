@@ -19,7 +19,10 @@ func unifiedHistoryInputBudgets(body []byte, candidate *ChannelModelsCandidate, 
 	ceiling := target
 	if modelIndex >= 0 && modelIndex < len(candidate.Models) {
 		known := biz.BundledModelHistoryInputLimit(candidate.Models[modelIndex].ActualModel, contextTokens)
-		ceiling = max(ceiling, min(unifiedContextMaxBytes, known-4096))
+		if known > 0 {
+			ceiling = min(unifiedContextMaxBytes, max(0, known-4096))
+			target = min(target, ceiling)
+		}
 	}
 	output := max(candidate.DefaultMaxTokens, gjson.GetBytes(body, "max_output_tokens").Int())
 	if output > 0 {

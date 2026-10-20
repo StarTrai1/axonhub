@@ -66,7 +66,7 @@ func TestUnifiedHistoryCachedNotesCanExceedTargetWithoutResummarization(t *testi
 			if tooLarge {
 				noteBytes = 50000
 			}
-			for i := range len(plan.segments)-1 {
+			for i := range len(plan.segments) - 1 {
 				segment := &plan.segments[i]
 				segment.summary = fmt.Sprintf("immutable note_%d: ", i) + strings.Repeat("s", noteBytes)
 				stored[segment.key], err = adapter.sealHistoryRecord(ctx, segment.key, []byte(segment.summary))
