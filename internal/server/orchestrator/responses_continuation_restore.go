@@ -20,8 +20,12 @@ func (p *PersistentOutboundTransformer) RestoreResponsesContinuation(ctx context
 	}
 	c := state.ResponsesContinuation
 	format := ""
-	if state.CurrentCandidate != nil { format = state.CurrentCandidate.APIFormat }
-	if state.RawProviderRequest != nil { format = state.RawProviderRequest.APIFormat }
+	if state.CurrentCandidate != nil {
+		format = state.CurrentCandidate.APIFormat
+	}
+	if state.RawProviderRequest != nil {
+		format = state.RawProviderRequest.APIFormat
+	}
 	if state.SystemService == nil || !state.SystemService.UnifiedHistory.Enabled || state.RequestService == nil ||
 		c == nil || c.previous == "" || c.complete || state.RawRequest == nil ||
 		format != string(llm.APIFormatOpenAIResponseWebSocket) {

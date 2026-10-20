@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/samber/lo"
@@ -11,19 +12,21 @@ import (
 	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/internal/authz"
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/server/biz"
 )
 
 func TestUnifiedHistoryProtocolLostNativeContinuationReplaysAcceptedCheckpoint(t *testing.T) {
- for _, fresh := range []bool{false, true} {
-  t.Run(map[bool]string{false: "upstream-lost", true: "new-client-connection"}[fresh], func(t *testing.T) { testUnifiedHistoryLostNativeContinuation(t, fresh) })
- }
+	for _, fresh := range []bool{false, true} {
+		t.Run(map[bool]string{false: "upstream-lost", true: "new-client-connection"}[fresh], func(t *testing.T) { testUnifiedHistoryLostNativeContinuation(t, fresh) })
+	}
 }
 
 func testUnifiedHistoryLostNativeContinuation(t *testing.T, fresh bool) {
- t.Helper()
+	t.Helper()
 	var calls atomic.Int32
 	frames := make(chan []byte, 4)
 	upstream := responsesIntegrationServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -60,18 +63,33 @@ func testUnifiedHistoryLostNativeContinuation(t *testing.T, fresh bool) {
 	_, err := client.DataStorage.Create().SetName("primary").SetDescription("synthetic recovery history").SetPrimary(true).SetType("database").SetSettings(new(objects.DataStorageSettings)).Save(ctx)
 	require.NoError(t, err)
 	require.NoError(t, handlers.SystemService.SetSecretKey(ctx, "synthetic-restore-secret"))
+	require.NoError(t, handlers.SystemService.SetStoragePolicy(ctx, &biz.StoragePolicy{StoreRequestBody: true, StoreResponseBody: true}))
 	gateway := responsesIntegrationGateway(t, client, handlers, project)
 	conn := responsesIntegrationDial(t, gateway)
 	first := responsesIntegrationTurn(t, conn, `{"type":"response.create","model":"synthetic-model","input":[{"role":"user","content":"exact task"},{"type":"compaction","id":"cmp_accepted","encrypted_content":"accepted-cipher"}]}`)
 	require.Equal(t, "resp_accepted", gjson.GetBytes(first, "response.id").String(), string(first))
 	<-frames
- if fresh { require.NoError(t, conn.Close()); conn = responsesIntegrationDial(t, gateway) }
+	// The production reproducer references a long-completed turn. Await the
+	// fixture's asynchronous persistence before simulating lost connection state.
+	lookup := contexts.WithProjectID(contexts.WithAPIKey(ctx, &ent.APIKey{ID: 101, ProjectID: project.ID}), project.ID)
+	require.Eventually(t, func() bool {
+		_, _, found, err := handlers.RequestService.LoadCompletedResponsesCompactionPredecessor(lookup, "resp_accepted")
+		return err == nil && found
+	}, 2*time.Second, 10*time.Millisecond)
+	if fresh {
+		require.NoError(t, conn.Close())
+		conn = responsesIntegrationDial(t, gateway)
+	}
 	second := responsesIntegrationTurn(t, conn, `{"type":"response.create","model":"synthetic-model","previous_response_id":"resp_accepted","input":[{"type":"function_call_output","call_id":"call_exact","output":"exact result"}]}`)
 	require.Equal(t, "resp_restored", gjson.GetBytes(second, "response.id").String(), string(second))
 	want := int32(2)
- if !fresh { want = 3; delta := <-frames; require.Equal(t, "resp_accepted", gjson.GetBytes(delta, "previous_response_id").String()) }
- require.Equal(t, want, calls.Load(), "one full correction; no summary generation")
- full := <-frames
+	if !fresh {
+		want = 3
+		delta := <-frames
+		require.Equal(t, "resp_accepted", gjson.GetBytes(delta, "previous_response_id").String())
+	}
+	require.Equal(t, want, calls.Load(), "one full correction; no summary generation")
+	full := <-frames
 	require.False(t, gjson.GetBytes(full, "previous_response_id").Exists())
 	require.Len(t, gjson.GetBytes(full, "input").Array(), 4)
 	require.Equal(t, "accepted-cipher", gjson.GetBytes(full, "input.1.encrypted_content").String())

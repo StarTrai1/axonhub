@@ -32,7 +32,7 @@ func TestResponsesRejectedLocalCompactionPersistsRetriesAndProviderErrors(t *tes
 		exhausted    bool
 		empty        bool
 		terminalOnly bool
-		streamError bool
+		streamError  bool
 	}{
 		{name: "recovers after capacity error"},
 		{name: "capacity retry budget exhausted", exhausted: true},

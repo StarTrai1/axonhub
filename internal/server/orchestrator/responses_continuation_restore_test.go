@@ -42,8 +42,11 @@ func TestResponsesSessionRestoresAcceptedWireWithoutExpandingArchive(t *testing.
 			state.SystemService, state.RequestService = adapter.systemService, adapter.requestService
 			state.RawProviderRequest = &httpclient.Request{APIFormat: string(llm.APIFormatOpenAIResponseWebSocket)}
 			state.ResponsesContinuation = newResponsesContinuation(nil, raw.Body)
-			if scenario == "new connection" { state.RawProviderRequest = nil; state.CurrentCandidate.APIFormat = string(llm.APIFormatOpenAIResponseWebSocket) }
-            p := &PersistentOutboundTransformer{state: state}
+			if scenario == "new connection" {
+				state.RawProviderRequest = nil
+				state.CurrentCandidate.APIFormat = string(llm.APIFormatOpenAIResponseWebSocket)
+			}
+			p := &PersistentOutboundTransformer{state: state}
 			restored, err := p.RestoreResponsesContinuation(ctx, llmRequest)
 			require.NoError(t, err)
 			if scenario != "restore" && scenario != "new connection" {
