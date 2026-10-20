@@ -25,6 +25,9 @@ func historyNativeOriginKey(ref *remoteCompactionReference, channelID int) strin
 
 func (a *remoteCompactionAdapter) rememberNativeHistoryOrigins(ctx context.Context, body, response []byte, reader nativeHistoryReader) error {
  origin := reader.Provider
+	// Standalone compact output is canonical but does not certify that a
+	// different /responses endpoint can read it. Wait for a completed read.
+	if origin.Format == string(llm.APIFormatOpenAIResponseCompact) { return nil }
 	if origin.ChannelID <= 0 || origin.Auth == "" || origin.Endpoint == "" || origin.Model == "" { return nil }
 	encoded, err := json.Marshal(reader)
 	if err != nil { return err }
@@ -40,6 +43,18 @@ func (a *remoteCompactionAdapter) rememberNativeHistoryOrigins(ctx context.Conte
 		}
 	}
 	return a.systemService.SaveUnifiedHistory(ctx, entries)
+}
+
+func (a *remoteCompactionAdapter) loadNativeHistoryReader(ctx context.Context, ref *remoteCompactionReference, candidate *ChannelModelsCandidate) (*nativeHistoryReader, error) {
+	if !a.unifiedHistoryEnabled() || ref == nil || candidate == nil || candidate.Channel == nil { return nil, nil }
+	key := historyNativeOriginKey(ref, candidate.Channel.ID)
+	entries, err := a.systemService.LoadUnifiedHistory(ctx, []string{key})
+	if err != nil || entries[key] == "" { return nil, err }
+	raw, err := a.openHistoryRecord(ctx, key, entries[key], 8192)
+	if err != nil { return nil, err }
+	var reader nativeHistoryReader
+	if json.Unmarshal(raw, &reader) != nil || reader.Provider.ChannelID != candidate.Channel.ID || reader.Provider.Auth == "" { return nil, errors.New("invalid checkpoint reader provenance") }
+	return &reader, nil
 }
 
 func historyExportMatches(reader nativeHistoryReader, candidate *ChannelModelsCandidate, request *httpclient.Request) bool {
@@ -90,7 +105,10 @@ func (a *remoteCompactionAdapter) exportUnifiedCheckpoint(ctx context.Context, b
 			raw, err := a.openHistoryRecord(ctx, originKey, entries[originKey], 8192)
 			if err != nil { return nil, false, err }
 			if json.Unmarshal(raw, &reader) != nil || reader.Provider.ChannelID != candidate.Channel.ID || reader.Provider.Auth == "" { return nil, false, errors.New("invalid checkpoint reader provenance") }
-			for i, model := range candidate.Models {
+			if rejected := state.unifiedRejectedReader; rejected != nil && rejected.Provider.ChannelID == reader.Provider.ChannelID && rejected.Provider.Auth == reader.Provider.Auth && rejected.Provider.Model == reader.Provider.Model {
+ continue
+ }
+ for i, model := range candidate.Models {
 				if model.ActualModel != reader.Provider.Model { continue }
 				clone := *candidate
 				clone.Models = candidate.Models[i:i+1]

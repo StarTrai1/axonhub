@@ -210,6 +210,13 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawRequest(
 	replayKey.replay = true
 	knownReplay := m.hasConfirmedRecovery(ctx, replayKey)
 	local := m.outbound.GetCurrentChannel().Policies.UsesLocalRemoteCompactionBridge()
+ if local && !rejected && !known && !knownReplay {
+ reader, err := m.adapter.loadNativeHistoryReader(ctx, ref, m.outbound.state.CurrentCandidate)
+ if err != nil { return nil, &remoteCompactionPreparationError{cause:err} }
+ if reader != nil && historyExportMatches(*reader, m.outbound.state.CurrentCandidate, request) {
+ return request, nil
+ }
+ }
 	if !local && !known && !knownReplay && !m.failedMigrations[key] {
 		migration, err := m.adapter.loadNativeMigration(ctx, key)
 		if err != nil {
@@ -273,6 +280,10 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawRequest(
 		Proxy:                   state.Proxy,
 		ChannelModelsCandidates: []*ChannelModelsCandidate{&candidate},
 	}
+if rejected {
+ reader := nativeHistoryReaderFor(state)
+ bridgeState.unifiedRejectedReader = &reader
+ }
 	if body, assembled, err := m.adapter.compileUnifiedContext(ctx, request.Body, bridgeState, m.executor); err != nil {
 		return nil, &remoteCompactionPreparationError{cause: err}
 	} else if assembled {
