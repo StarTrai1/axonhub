@@ -14,11 +14,11 @@ def select(paths, full=False):
         return dict.fromkeys(FLAGS, True)
     result = dict.fromkeys(FLAGS, False)
     for path in paths:
-        if path.startswith((".github/", "scripts/ci/")):
+        if path == "Makefile" or path.startswith((".github/", "scripts/ci/")):
             return dict.fromkeys(FLAGS, True)
         if path.endswith(".md") or path.startswith(("docs/", ".agent/")):
             continue
-        dependency = path in ("go.mod", "go.sum", "llm/go.mod", "llm/go.sum", "cmd/schema/go.mod", "cmd/schema/go.sum", ".go-version", "Makefile")
+        dependency = path in ("go.mod", "go.sum", "llm/go.mod", "llm/go.sum", "cmd/schema/go.mod", "cmd/schema/go.sum", ".go-version")
         backend = dependency or path.endswith(".go") or path.startswith(("conf/", "deploy/", "scripts/verify-go-"))
         frontend = path.startswith(("frontend/", "scripts/pack-frontend", "internal/server/static/"))
         protocol = dependency or path.startswith(("llm/", "internal/server/orchestrator/", "internal/server/api/", "internal/contexts/", "scripts/codex-probes/"))

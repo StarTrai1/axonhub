@@ -125,7 +125,7 @@ func TestUnifiedHistoryPreparationLimitsDoNotStartWholeHistorySummary(t *testing
 			body := unifiedLongToolHistory(t, 70)
 			if scenario == "indivisible-tool" {
 				var err error
-				body, err = sjson.SetBytes(body, "input.2.output", strings.Repeat("oversized exact evidence ", 10000))
+				body, err = sjson.SetBytes(body, "input.2.output", strings.Repeat("oversized exact evidence ", (4<<20)/len("oversized exact evidence ")+1))
 				require.NoError(t, err)
 			}
 			_, ok, err := adapter.compileUnifiedContext(ctx, body, state, executor)

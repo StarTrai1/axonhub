@@ -34,8 +34,8 @@ func TestResponsesRejectedLocalCompactionPersistsRetriesAndProviderErrors(t *tes
 		terminalOnly bool
 		streamError  bool
 	}{
-		{name: "recovers after capacity error"},
-		{name: "capacity retry budget exhausted", exhausted: true},
+		{name: "recovers after transient server error"},
+		{name: "transient retry budget exhausted", exhausted: true},
 		{name: "tool-only response is retained as failure", empty: true},
 		{name: "terminal-only summary completes bridge", terminalOnly: true},
 		{name: "standalone stream failure preserves provider detail", streamError: true},
@@ -73,7 +73,7 @@ func TestResponsesRejectedLocalCompactionPersistsRetriesAndProviderErrors(t *tes
 				RetryPolicyProvider: &mockRetryPolicyProvider{policy: &biz.RetryPolicy{Enabled: true, MaxSingleChannelRetries: 1}},
 			}
 			executor := &localCompactionRetryExecutor{
-				failures: []error{bridgeOverloadError()},
+				failures: []error{bridgeTransientError()},
 				events: []*httpclient.StreamEvent{
 					{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_bridge","object":"response","status":"in_progress","model":"gpt-6-astra","output":[]}}`)},
 					{Type: "response.output_item.added", Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"type":"message","id":"msg_bridge","role":"assistant","status":"in_progress","content":[]}}`)},
@@ -82,7 +82,7 @@ func TestResponsesRejectedLocalCompactionPersistsRetriesAndProviderErrors(t *tes
 				},
 			}
 			if scenario.exhausted {
-				executor.failures = append(executor.failures, bridgeOverloadError())
+				executor.failures = append(executor.failures, bridgeTransientError())
 			}
 			if scenario.empty {
 				executor.events = []*httpclient.StreamEvent{{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":{"id":"resp_bridge","status":"completed","output":[{"type":"custom_tool_call","id":"ctc_summary","call_id":"call_summary","name":"exec","input":"must not run"}]}}`)}}
@@ -101,17 +101,23 @@ func TestResponsesRejectedLocalCompactionPersistsRetriesAndProviderErrors(t *tes
 			require.Len(t, executor.bodies, 2, "summary execution returned: %v", err)
 			require.Equal(t, executor.bodies[0], executor.bodies[1])
 			require.Equal(t, "none", gjson.GetBytes(executor.bodies[1], "tool_choice").String())
-			require.Equal(t, "additional_tools", gjson.GetBytes(executor.bodies[1], "input.0.type").String())
+			require.Equal(t, "message", gjson.GetBytes(executor.bodies[1], "input.0.type").String())
+			require.Equal(t, "complete original history", gjson.GetBytes(executor.bodies[1], "input.0.content.0.text").String())
+			require.Equal(t, "custom", gjson.GetBytes(executor.bodies[1], "tools.0.type").String())
+			require.Equal(t, "exec", gjson.GetBytes(executor.bodies[1], "tools.0.name").String())
 			stored, loadErr := client.Request.Query().Only(ctx)
 			require.NoError(t, loadErr)
 			require.Equal(t, apiKey.ID, stored.APIKeyID)
 			require.Equal(t, apiKey.ProjectID, stored.ProjectID)
+			original, loadErr := biz.DecodeStoredPayload(stored.RequestBody)
+			require.NoError(t, loadErr)
+			require.Equal(t, "additional_tools", gjson.GetBytes(original, "input.0.type").String(), "the archive preserves the client dialect")
 			executions, loadErr := client.RequestExecution.Query().Order(ent.Asc(requestexecution.FieldID)).All(ctx)
 			require.NoError(t, loadErr)
 			require.Len(t, executions, 2)
 			require.Equal(t, requestexecution.StatusFailed, executions[0].Status)
 			require.Equal(t, lo.ToPtr(http.StatusInternalServerError), executions[0].ResponseStatusCode)
-			require.Equal(t, "model capacity reached", executions[0].ErrorMessage)
+			require.Equal(t, "temporary upstream failure", executions[0].ErrorMessage)
 			body, loadErr := biz.DecodeStoredPayload(stored.ResponseBody)
 			require.NoError(t, loadErr)
 			if scenario.streamError {
@@ -138,8 +144,8 @@ func TestResponsesRejectedLocalCompactionPersistsRetriesAndProviderErrors(t *tes
 				require.Equal(t, request.StatusFailed, stored.Status)
 				require.Equal(t, requestexecution.StatusFailed, executions[1].Status)
 				require.Equal(t, lo.ToPtr(http.StatusInternalServerError), executions[1].ResponseStatusCode)
-				require.Equal(t, "model capacity reached", gjson.GetBytes(body, "error.message").String())
-				require.Equal(t, "model_overloaded", gjson.GetBytes(body, "error.code").String())
+				require.Equal(t, "temporary upstream failure", gjson.GetBytes(body, "error.message").String())
+				require.Equal(t, "temporary_server_error", gjson.GetBytes(body, "error.code").String())
 				clientError := responses.NewInboundTransformer().TransformError(ctx, &remoteCompactionPreparationError{cause: err})
 				require.Equal(t, http.StatusInternalServerError, clientError.StatusCode)
 				require.JSONEq(t, string(body), string(clientError.Body))
@@ -168,7 +174,7 @@ func TestResponsesRejectedLocalCompactionPersistsClassifiedFailures(t *testing.T
 		status requestexecution.Status
 		code   int
 	}{
-		{"opening load error", bridgeOverloadError(), requestexecution.StatusFailed, 500},
+		{"opening server error", bridgeTransientError(), requestexecution.StatusFailed, 500},
 		{"EOF during summary", io.ErrUnexpectedEOF, requestexecution.StatusFailed, 502},
 		{"canceled request", context.Canceled, requestexecution.StatusCanceled, 0},
 	} {

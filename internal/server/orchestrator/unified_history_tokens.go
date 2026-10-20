@@ -12,9 +12,9 @@ import (
 	"github.com/tidwall/sjson"
 	"github.com/tiktoken-go/tokenizer"
 
-	"github.com/looplj/axonhub/internal/server/biz"
-
 	lru "github.com/hashicorp/golang-lru/v2"
+
+	"github.com/looplj/axonhub/internal/server/biz"
 )
 
 // Archive limits and immutable segment boundaries use bytes. Model admission

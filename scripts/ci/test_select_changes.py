@@ -23,7 +23,7 @@ class SelectionTests(unittest.TestCase):
         self.assertTrue(select(["go.mod"])["generation"])
 
     def test_workflow_unknown_and_full_ranges_do_not_skip(self):
-        for paths, full in (([".github/workflows/test.yml"], False), (["new-owner/config.yaml"], False), ([], True)):
+        for paths, full in (([".github/workflows/test.yml"], False), (["Makefile"], False), (["new-owner/config.yaml"], False), ([], True)):
             self.assertTrue(all(select(paths, full).values()))
 
 

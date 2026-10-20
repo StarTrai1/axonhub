@@ -196,7 +196,7 @@ func (a *remoteCompactionAdapter) compileUnifiedContext(ctx context.Context, bod
 			}
 		}
 	}
-	log.Info(ctx, "preparing unified history segments", log.Int("segments", len(plan.segments)), log.Int("retained_bytes", plan.mandatory), log.Int("context_budget", budget))
+	log.Info(ctx, "preparing unified history segments", log.Int("segments", len(plan.segments)), log.Int("retained_token_estimate", plan.mandatory), log.Int("context_budget", budget))
 	missing, supported, err := a.hydrateUnifiedSegments(ctx, plan.segments, state, executor, func() error {
 		return validateUnifiedHistoryMinimum(plan, ceiling)
 	})

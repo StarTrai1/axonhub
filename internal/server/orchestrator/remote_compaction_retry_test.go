@@ -120,10 +120,11 @@ func TestResponsesRejectedLocalCompactionRetriesTransientOpeningFailures(t *test
 		wantCalls  int
 		wantResult bool
 	}{
-		{"load error then success", bridgeOverloadError(), 1, 2, false, 2, true},
-		{"load error exhausted", bridgeOverloadError(), 3, 2, false, 3, false},
-		{"zero retry budget", bridgeOverloadError(), 1, 0, false, 1, false},
-		{"disabled retries", bridgeOverloadError(), 1, 2, true, 1, false},
+		{"transient server error then success", bridgeTransientError(), 1, 2, false, 2, true},
+		{"transient server error exhausted", bridgeTransientError(), 3, 2, false, 3, false},
+		{"zero retry budget", bridgeTransientError(), 1, 0, false, 1, false},
+		{"disabled retries", bridgeTransientError(), 1, 2, true, 1, false},
+		{"model capacity reached", bridgeOverloadError(), 1, 2, false, 1, false},
 		{"opening EOF", io.ErrUnexpectedEOF, 1, 2, false, 2, true},
 		{"relay wrapped upstream timeout", &httpclient.Error{StatusCode: 400, Body: []byte(`{"error":{"type":"invalid_request_error","message":"OpenAI Responses HTTP error [408]: The operation was timeout. [trace_id=synthetic]"}}`)}, 1, 2, false, 2, true},
 		{"ordinary validation", &httpclient.Error{StatusCode: 400, Body: []byte(`{"error":{"message":"invalid input"}}`)}, 1, 2, false, 1, false},
@@ -160,7 +161,7 @@ func TestResponsesRejectedLocalCompactionRetriesTransientOpeningFailures(t *test
 				if ExtractStatusCodeFromError(scenario.failure) == 500 {
 					var responseErr *llm.ResponseError
 					require.ErrorAs(t, err, &responseErr)
-					require.Equal(t, "model capacity reached", responseErr.Detail.Message)
+					require.Equal(t, ExtractErrorMessage(scenario.failure), responseErr.Detail.Message)
 					require.Equal(t, http.StatusInternalServerError, responseErr.StatusCode)
 				}
 			}
@@ -176,7 +177,7 @@ func TestResponsesRejectedLocalCompactionTransientAndCompatibilityShareBudget(t 
 	}}
 	providerRequest := outbound.state.RawProviderRequest
 	providerRequest.Body = []byte(responsesResourceHistoryFixture)
-	executor := &localCompactionRetryExecutor{failures: []error{bridgeOverloadError(), resourceMismatchHTTPError()}}
+	executor := &localCompactionRetryExecutor{failures: []error{bridgeTransientError(), resourceMismatchHTTPError()}}
 	adapter := newRemoteCompactionAdapter(nil, nil, nil)
 	stream, _, err := adapter.startLocalCompactionStream(t.Context(), outbound, providerRequest, executor, applyResponsesRejectedStatusCompatibility(outbound))
 	require.NoError(t, err)
@@ -193,7 +194,7 @@ func TestResponsesRejectedLocalCompactionRetryWaitCanBeCanceled(t *testing.T) {
 	outbound.state.RetryPolicyProvider = &mockRetryPolicyProvider{policy: &biz.RetryPolicy{
 		Enabled: true, MaxSingleChannelRetries: 2, RetryDelayMs: 300000,
 	}}
-	executor := &localCompactionRetryExecutor{failure: bridgeOverloadError()}
+	executor := &localCompactionRetryExecutor{failure: bridgeTransientError()}
 	var timer *time.Timer
 	executor.onRequest = func() { timer = time.AfterFunc(10*time.Millisecond, cancel) }
 	t.Cleanup(func() {
@@ -223,6 +224,10 @@ func TestResponsesRejectedLocalCompactionDoesNotRetryPartialStream(t *testing.T)
 	require.Nil(t, chunks)
 	require.NoError(t, stream.Close())
 	require.Len(t, executor.bodies, 1)
+}
+
+func bridgeTransientError() *httpclient.Error {
+	return &httpclient.Error{StatusCode: http.StatusInternalServerError, Body: []byte(`{"error":{"type":"server_error","code":"temporary_server_error","message":"temporary upstream failure"}}`)}
 }
 
 func bridgeOverloadError() *httpclient.Error {

@@ -209,5 +209,6 @@ func isModelCapacityExhausted(err error) bool {
 	message := strings.ToLower(ExtractErrorMessage(err))
 	return strings.Contains(message, "负载已经达到上限") ||
 		strings.Contains(message, "model capacity exhausted") ||
+		strings.Contains(message, "model capacity reached") ||
 		strings.Contains(message, "model is overloaded")
 }

@@ -17,6 +17,7 @@ func TestModelCapacityExhaustionIsNotAnOrdinaryServerRetry(t *testing.T) {
 	}{
 		{500, "当前模型 gpt-6.1-sol 负载已经达到上限，请稍后重试 (request id: synthetic)", true},
 		{503, "The model is overloaded", true},
+		{500, "model capacity reached", true},
 		{500, "internal server error", false},
 		{502, "bad response status code 502", false},
 		{400, "model capacity exhausted", false},

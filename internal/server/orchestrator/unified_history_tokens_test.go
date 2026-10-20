@@ -51,7 +51,7 @@ func TestUnifiedHistoryLargeInteractionUsesModelBudget(t *testing.T) {
 	require.True(t, ok)
 	require.Len(t, plan.segments, 2)
 	require.Len(t, plan.segments[1].items, 2, "a large call and result stay indivisible")
-	require.Equal(t, output, plan.segments[1].items[1])
+	require.Equal(t, json.RawMessage(output), plan.segments[1].items[1])
 }
 
 func TestUnifiedHistoryTokenMeasureImagesAndConcurrency(t *testing.T) {
