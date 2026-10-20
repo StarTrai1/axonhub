@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 	"sync/atomic"
 	"testing"
@@ -50,6 +51,10 @@ func testUnifiedHistoryLostNativeContinuation(t *testing.T, fresh bool) {
 					response = `{"type":"error","error":{"code":"previous_response_not_found","type":"invalid_request_error","message":"Previous response not found"}}`
 				}
 			}
+			if id := gjson.Get(response, "response.id").String(); id != "" {
+				created := fmt.Sprintf(`{"type":"response.created","response":{"id":%q,"object":"response","model":"synthetic-model","status":"in_progress","output":[]}}`, id)
+				if err := conn.WriteMessage(websocket.TextMessage, []byte(created)); err != nil { return }
+			}
 			if err := conn.WriteMessage(websocket.TextMessage, []byte(response)); err != nil {
 				return
 			}
@@ -66,6 +71,14 @@ func testUnifiedHistoryLostNativeContinuation(t *testing.T, fresh bool) {
 	require.NoError(t, handlers.SystemService.SetStoragePolicy(ctx, &biz.StoragePolicy{StoreRequestBody: true, StoreResponseBody: true}))
 	gateway := responsesIntegrationGateway(t, client, handlers, project)
 	conn := responsesIntegrationDial(t, gateway)
+	t.Cleanup(func() {
+		if !t.Failed() { return }
+		rows, err := client.Request.Query().All(ctx)
+		if err != nil { t.Log(err); return }
+		for _, row := range rows {
+			t.Logf("synthetic predecessor id=%d external=%s key=%d project=%d status=%s format=%s body=%s response=%s", row.ID, row.ExternalID, row.APIKeyID, row.ProjectID, row.Status, row.Format, row.RequestBody, row.ResponseBody)
+		}
+	})
 	first := responsesIntegrationTurn(t, conn, `{"type":"response.create","model":"synthetic-model","input":[{"role":"user","content":"exact task"},{"type":"compaction","id":"cmp_accepted","encrypted_content":"accepted-cipher"}]}`)
 	require.Equal(t, "resp_accepted", gjson.GetBytes(first, "response.id").String(), string(first))
 	<-frames
