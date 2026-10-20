@@ -28,3 +28,18 @@ func TestChannelRejectsFailedStreamEvenAfterText(testingT *testing.T) {
 		})
 	}
 }
+
+func TestChannelNativeResponsesProbeRequiresSuccessfulTerminal(t *testing.T) {
+	for _, status := range []string{"completed", "failed", "incomplete"} {
+		t.Run(status, func(t *testing.T) {
+			stream := streams.SliceStream([]*httpclient.StreamEvent{
+				{Data: []byte(`{"type":"response.output_text.delta","delta":"hello"}`)},
+				{Data: []byte(`{"type":"response.` + status + `","response":{"status":"` + status + `","output":[]}}`)},
+			})
+			result, err := (&TestChannelOrchestrator{}).handleStreamResponse(t.Context(), stream, time.Now())
+			require.NoError(t, err)
+			require.Equal(t, status == "completed", result.Success)
+			require.Equal(t, "hello", *result.Message)
+		})
+	}
+}

@@ -253,7 +253,7 @@ func (processor *TestChannelOrchestrator) TestChannel(
 		}, nil
 	}
 
-	if apiFormat == llm.APIFormatTypeSafeSystemOne || apiFormat == llm.APIFormatOpenAIDecisions {
+	if apiFormat == llm.APIFormatTypeSafeSystemOne || apiFormat == llm.APIFormatOpenAIDecisions || apiFormat == llm.APIFormatOpenAIResponse {
 		message, err := channelTestResponseMessage(rawResponse.ChatCompletion.Body, apiFormat)
 		if err != nil {
 			return &TestChannelResult{Latency: latency, Success: false, Error: lo.ToPtr(err.Error())}, nil
@@ -433,6 +433,28 @@ func (processor *TestChannelOrchestrator) handleStreamResponse(
 
 		// The stream may end with a "[DONE]" message which is not valid JSON.
 		if string(event.Data) == "[DONE]" {
+			continue
+		}
+		switch gjson.GetBytes(event.Data, "type").String() {
+		case "response.output_text.delta":
+			accumulatedContent += gjson.GetBytes(event.Data, "delta").String()
+			continue
+		case "response.failed", "response.incomplete":
+			terminalError = gjson.GetBytes(event.Data, "response.error.message").String()
+			if terminalError == "" {
+				terminalError = "Responses stream did not complete successfully"
+			}
+			continue
+		case "response.completed":
+			if accumulatedContent == "" {
+				for _, item := range gjson.GetBytes(event.Data, "response.output").Array() {
+					for _, part := range item.Get("content").Array() {
+						if part.Get("type").String() == "output_text" {
+							accumulatedContent += part.Get("text").String()
+						}
+					}
+				}
+			}
 			continue
 		}
 
@@ -781,7 +803,7 @@ func (processor *TestChannelOrchestrator) testSingleKey(
 
 	latency := time.Since(startTime).Seconds()
 
-	if apiFormat == llm.APIFormatTypeSafeSystemOne || apiFormat == llm.APIFormatOpenAIDecisions {
+	if apiFormat == llm.APIFormatTypeSafeSystemOne || apiFormat == llm.APIFormatOpenAIDecisions || apiFormat == llm.APIFormatOpenAIResponse {
 		_, err := channelTestResponseMessage(rawResponse.ChatCompletion.Body, apiFormat)
 		if err != nil {
 			return &TestAPIKeyResult{KeyPrefix: keyPrefix, Latency: latency, Success: false, Error: lo.ToPtr(err.Error())}

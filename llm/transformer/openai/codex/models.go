@@ -52,6 +52,37 @@ func ModelsRequest(ctx context.Context, tokens oauth.TokenGetter, baseURL string
 
 // ParseThirdPartyModelCatalog returns only models explicitly listed by a third-party catalog.
 func ParseThirdPartyModelCatalog(body []byte) ([]string, error) {
+	// Codex-compatible gateways commonly expose the public /models resource,
+	// while ChatGPT exposes a picker catalog. Detect the response contract;
+	// choosing the Codex inference adapter does not choose the catalog schema.
+	var envelope map[string]json.RawMessage
+	if err := json.Unmarshal(body, &envelope); err != nil {
+		return nil, err
+	}
+	if raw, ok := envelope["data"]; ok {
+		var entries []struct {
+			ID string `json:"id"`
+		}
+		if err := json.Unmarshal(raw, &entries); err != nil {
+			return nil, fmt.Errorf("invalid OpenAI model list: %w", err)
+		}
+		models := make([]string, 0, len(entries))
+		seen := make(map[string]bool, len(entries))
+		for _, entry := range entries {
+			id := strings.TrimSpace(entry.ID)
+			if id == "" {
+				return nil, fmt.Errorf("invalid OpenAI model list: model id is empty")
+			}
+			if !seen[id] {
+				models = append(models, id)
+				seen[id] = true
+			}
+		}
+		if len(models) == 0 {
+			return nil, fmt.Errorf("OpenAI model list is empty")
+		}
+		return models, nil
+	}
 	return parseModelCatalog(body, false, false)
 }
 

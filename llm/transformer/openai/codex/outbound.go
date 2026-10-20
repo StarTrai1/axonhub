@@ -743,6 +743,7 @@ func (e *codexExecutor) requestForTransport(request *httpclient.Request) *httpcl
 }
 
 func (t *OutboundTransformer) FinalizeTransportRequest(request *httpclient.Request) *httpclient.Request {
+	request = t.normalizeResponsesContract(request)
 	request = t.normalizeFastModelRequest(request)
 	request = normalizeEmptyFunctionArguments(request)
 	request = normalizeNumericToolBounds(request)

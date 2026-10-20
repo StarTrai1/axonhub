@@ -237,6 +237,7 @@ type unifiedHistoryPlan struct {
 	query     string
 	mandatory int
 	capacity  int
+	measure unifiedHistoryMeasure
 }
 
 func planUnifiedHistory(envelope map[string]json.RawMessage, items []json.RawMessage, state *PersistenceState, candidate *ChannelModelsCandidate, budget int) (*unifiedHistoryPlan, bool, error) {
@@ -302,13 +303,14 @@ func planUnifiedHistoryWithCoverage(envelope map[string]json.RawMessage, items [
 		return nil, false, nil
 	}
 	// Check mandatory original instructions before spending tokens on summaries.
-	mandatory := unifiedItemsSize(recent)
+	measure := unifiedModelMeasure(gjson.ParseBytes(envelope["model"]).String())
+	mandatory := measure.items(recent)
 	delete(envelope, "input")
 	header, err := json.Marshal(envelope)
 	if err != nil {
 		return nil, false, err
 	}
-	mandatory += len(header)
+	mandatory += measure(header) + 32
 	summaryCount := 0
 	for i := range segments {
 		segment := &segments[i]
@@ -316,7 +318,7 @@ func planUnifiedHistoryWithCoverage(envelope map[string]json.RawMessage, items [
 			role := gjson.GetBytes(item, "role").String()
 			if role == "user" || role == "system" || role == "developer" {
 				segment.pinned = append(segment.pinned, item)
-				mandatory += unifiedItemSize(item)
+				mandatory += measure.item(item)
 			}
 		}
 		// This segment is already retained verbatim. Summarizing its instructions
@@ -357,7 +359,7 @@ func planUnifiedHistoryWithCoverage(envelope map[string]json.RawMessage, items [
 	if mandatory+summaryCount*1024 > budget {
 		return nil, false, nil
 	}
-	return &unifiedHistoryPlan{segments: segments, recent: recent, query: query, mandatory: mandatory, capacity: len(items)}, true, nil
+	return &unifiedHistoryPlan{segments: segments, recent: recent, query: query, mandatory: mandatory, capacity: len(items), measure: measure}, true, nil
 }
 
 func (a *remoteCompactionAdapter) loadUnifiedSegments(ctx context.Context, segments []unifiedHistorySegment) (int, error) {
@@ -561,7 +563,7 @@ func renderUnifiedHistory(envelope map[string]json.RawMessage, plan *unifiedHist
 		// Quote a derived view as assistant material. Original user/system roles
 		// remain unchanged; tool output is never promoted to a developer message.
 		message := unifiedSegmentSummaryMessage(segment)
-		remaining -= unifiedItemSize(message)
+		remaining -= plan.measure.item(message)
 		if remaining < 0 {
 			return nil, unifiedHistoryPreparationLimit("the retained instructions and segment summaries exceed the input budget; original history remains intact")
 		}
@@ -578,7 +580,7 @@ func renderUnifiedHistory(envelope map[string]json.RawMessage, plan *unifiedHist
 			continue
 		}
 		n := len(segment.pinned) + 1
-		extra := unifiedItemsSize(segment.items) - unifiedItemsSize(compiled[position:position+n])
+		extra := plan.measure.items(segment.items) - plan.measure.items(compiled[position:position+n])
 		if extra <= remaining && relevant[index] {
 			updated := make([]json.RawMessage, 0, len(compiled)-n+len(segment.items))
 			updated = append(updated, compiled[:position]...)

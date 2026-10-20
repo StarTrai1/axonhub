@@ -13,7 +13,7 @@ import (
 
 // Preserve the existing assembly target. A matching catalog contract can prove
 // that a larger input still leaves the full model output allowance available.
-// JSON bytes remain a conservative text-token bound, not a token estimate.
+// Token admission is independent of archive and segment byte limits.
 func unifiedHistoryInputBudgets(body []byte, candidate *ChannelModelsCandidate, modelIndex, contextTokens int) (int, int) {
 	target := min(unifiedContextMaxBytes, contextTokens-contextTokens/4)
 	ceiling := target
@@ -54,7 +54,7 @@ func validateUnifiedHistoryMinimum(plan *unifiedHistoryPlan, budget int) error {
 		if segment.summary == "" {
 			size += 1024
 		} else {
-			size += unifiedItemSize(unifiedSegmentSummaryMessage(segment))
+			size += plan.measure.item(unifiedSegmentSummaryMessage(segment))
 		}
 	}
 	if size > budget {
@@ -108,9 +108,14 @@ func unifiedItemsSize(items []json.RawMessage) int {
 }
 
 func unifiedContextSize(body []byte) int {
-	size := len(body)
+	measure := unifiedModelMeasure(gjson.GetBytes(body, "model").String())
+	envelope, err := sjson.DeleteBytes(body, "input")
+	if err != nil {
+		return len(body)
+	}
+	size := measure(envelope) + 32
 	for _, item := range gjson.GetBytes(body, "input").Array() {
-		size += unifiedItemSize(json.RawMessage(item.Raw)) - len(item.Raw) - 1
+		size += measure.item(json.RawMessage(item.Raw))
 	}
 	return size
 }

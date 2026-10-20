@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/samber/lo"
+	"github.com/tidwall/gjson"
 
 	entchannel "github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/pkg/xjson"
@@ -16,11 +17,15 @@ import (
 	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/openai"
 	"github.com/looplj/axonhub/llm/transformer/openai/decisions"
+	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 	"github.com/looplj/axonhub/llm/transformer/typesafe"
 )
 
 func channelTestAPIFormat(channel *biz.Channel, model string) llm.APIFormat {
 	if channel != nil {
+		if channel.Type == entchannel.TypeCodex {
+			return llm.APIFormatOpenAIResponse
+		}
 		endpoints := channel.ResolveEndpoints()
 		entry, ok := channel.GetModelEntries()[model]
 		if !ok {
@@ -47,6 +52,10 @@ func channelTestAPIFormat(channel *biz.Channel, model string) llm.APIFormat {
 }
 
 func (processor *TestChannelOrchestrator) buildNativeChannelTestInput(ctx context.Context, model string, useStream bool, systemPrompt, userPrompt string, responsesWebSocket bool, apiFormat llm.APIFormat) (transformer.Inbound, *httpclient.Request, error) {
+	if apiFormat == llm.APIFormatOpenAIResponse {
+		request, err := buildResponsesChannelTestRequest(model, systemPrompt, userPrompt)
+		return responses.NewInboundTransformer(), request, err
+	}
 	if apiFormat != llm.APIFormatTypeSafeSystemOne && apiFormat != llm.APIFormatOpenAIDecisions {
 		request, err := buildChannelTestRequest(model, useStream, systemPrompt, userPrompt, responsesWebSocket)
 		return openai.NewInboundTransformer(), request, err
@@ -97,7 +106,43 @@ func (processor *TestChannelOrchestrator) buildNativeChannelTestInput(ctx contex
 	return inbound, &httpclient.Request{Method: http.MethodPost, Headers: http.Header{"Content-Type": {"application/json"}}, Body: body, RequestType: string(map[llm.APIFormat]llm.RequestType{llm.APIFormatTypeSafeSystemOne: llm.RequestTypeSystemOne, llm.APIFormatOpenAIDecisions: llm.RequestTypeDecisions}[apiFormat]), APIFormat: string(apiFormat)}, nil
 }
 
+// Probe the selected channel's protocol, independently of model name lists.
+// The normal Codex transport finalizer supplies the same identity and required
+// wire fields as a real request; probes do not fabricate a private Lite mode.
+func buildResponsesChannelTestRequest(model, systemPrompt, userPrompt string) (*httpclient.Request, error) {
+	body, err := json.Marshal(map[string]any{
+		"model": model,
+		"instructions": systemPrompt,
+		"input": []map[string]any{{"type": "message", "role": "user", "content": []map[string]string{{"type": "input_text", "text": userPrompt}}}},
+		"stream": true,
+		"store": false,
+		"tools": []any{},
+		"parallel_tool_calls": true,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &httpclient.Request{Method: http.MethodPost, Headers: http.Header{"Content-Type": {"application/json"}}, Body: body, APIFormat: llm.APIFormatOpenAIResponse.String(), Metadata: map[string]string{channelTestRequestMetadataKey: "true"}}, nil
+}
+
 func channelTestResponseMessage(body []byte, apiFormat llm.APIFormat) (*string, error) {
+	if apiFormat == llm.APIFormatOpenAIResponse {
+		if gjson.GetBytes(body, "status").String() != "completed" {
+			return nil, fmt.Errorf("Responses probe did not complete successfully")
+		}
+		text := ""
+		for _, item := range gjson.GetBytes(body, "output").Array() {
+			for _, part := range item.Get("content").Array() {
+				if part.Get("type").String() == "output_text" {
+					text += part.Get("text").String()
+				}
+			}
+		}
+		if text == "" {
+			return nil, fmt.Errorf("no text in Responses probe")
+		}
+		return lo.ToPtr(text), nil
+	}
 	if apiFormat == llm.APIFormatOpenAIDecisions {
 		var wire struct {
 			Answers []json.RawMessage `json:"answers"`
