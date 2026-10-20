@@ -125,7 +125,7 @@ func TestUnifiedHistorySegmentSummariesKeepRawInstructionsAndReuse(t *testing.T)
 	var input []json.RawMessage
 	for i := range 8 {
 		user, _ := json.Marshal(map[string]any{"role": "user", "content": fmt.Sprintf("constraint_%d: preserve calibration %d.125", i, i)})
-		assistant, _ := json.Marshal(map[string]any{"role": "assistant", "content": fmt.Sprintf("original evidence_%d ", i) + strings.Repeat("abcdefgh ", 5000)})
+		assistant, _ := json.Marshal(map[string]any{"role": "assistant", "content": fmt.Sprintf("original evidence_%d ", i) + historyTestEntropy(45000, uint64(i))})
 		input = append(input, user, assistant)
 	}
 	input = append(input, json.RawMessage(`{"role":"user","content":"latest correction: calibration 17.250; continue"}`))

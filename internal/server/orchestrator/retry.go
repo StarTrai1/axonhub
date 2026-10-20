@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net"
+	"net/http"
 	"regexp"
 	"slices"
 	"strings"
@@ -196,4 +197,17 @@ func deriveLoadBalancerStrategy(retryPolicy *biz.RetryPolicy, apiKey *ent.APIKey
 // proceed; fast transient failures retain their existing retry policy.
 func expensiveGatewayTimeout(state *PersistenceState, now time.Time) bool {
 	return state != nil && state.Perf != nil && !state.Perf.StartTime.IsZero() && now.Sub(state.Perf.StartTime) >= 30*time.Second
+}
+
+// Capacity exhaustion is a routing outcome, even when a relay encodes it as
+// HTTP 500. Replaying the same model immediately cannot create capacity.
+func isModelCapacityExhausted(err error) bool {
+	status := ExtractStatusCodeFromError(err)
+	if status != http.StatusInternalServerError && status != http.StatusServiceUnavailable {
+		return false
+	}
+	message := strings.ToLower(ExtractErrorMessage(err))
+	return strings.Contains(message, "负载已经达到上限") ||
+		strings.Contains(message, "model capacity exhausted") ||
+		strings.Contains(message, "model is overloaded")
 }

@@ -8,10 +8,13 @@ import (
 	"sync"
 	"unicode/utf8"
 
-	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 	"github.com/tiktoken-go/tokenizer"
+
+	"github.com/looplj/axonhub/internal/server/biz"
+
+	lru "github.com/hashicorp/golang-lru/v2"
 )
 
 // Archive limits and immutable segment boundaries use bytes. Model admission
@@ -23,9 +26,10 @@ type unifiedHistoryMeasure func([]byte) int
 
 func unifiedModelMeasure(model string) unifiedHistoryMeasure {
 	model = strings.ToLower(strings.TrimSpace(model))
-	if strings.HasPrefix(model, "gpt-5") || strings.HasPrefix(model, "gpt-6") ||
+	model = strings.TrimSuffix(model, "-fast")
+	if biz.BundledModelContextLimit(model) > 0 && (strings.HasPrefix(model, "gpt-5") || strings.HasPrefix(model, "gpt-6") ||
 		strings.HasPrefix(model, "gpt-4o") || strings.HasPrefix(model, "gpt-4.1") ||
-		model == "o3" || strings.HasPrefix(model, "o3-") || model == "o4-mini" {
+		model == "o3" || strings.HasPrefix(model, "o3-") || model == "o4-mini") {
 		return unifiedTextTokens
 	}
 	return func(raw []byte) int { return len(raw) }
@@ -44,7 +48,7 @@ var unifiedTokenCounts = sync.OnceValue(func() *lru.Cache[[sha256.Size]byte, int
 func unifiedTextTokens(raw []byte) int {
 	count := 0
 	// Bounded pieces prevent pathological long strings from causing quadratic
-	// BPE work. Cutting merges only overestimates the full-text token count.
+	// BPE work. The safety allowance also covers piece-boundary differences.
 	for len(raw) > 0 {
 		n := min(len(raw), 1024)
 		for n < len(raw) && n > 0 && !utf8.RuneStart(raw[n]) {

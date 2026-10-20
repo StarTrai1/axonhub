@@ -69,9 +69,15 @@ func TestCodexOutbound_MemgenHeaderIsOfficialOnly(t *testing.T) {
 			require.Equal(t, "memory_consolidation", providerRequest.Headers.Get("X-Openai-Subagent"))
 			require.Equal(t, "gpt-6-astra", gjson.GetBytes(providerRequest.Body, "model").String())
 			require.Equal(t, "medium", gjson.GetBytes(providerRequest.Body, "reasoning.effort").String())
-			require.Equal(t, "all_turns", gjson.GetBytes(providerRequest.Body, "reasoning.context").String())
+			if testCase.official {
+				require.Equal(t, "all_turns", gjson.GetBytes(providerRequest.Body, "reasoning.context").String())
+				require.Equal(t, "additional_tools", gjson.GetBytes(providerRequest.Body, "input.0.type").String())
+			} else {
+				require.False(t, gjson.GetBytes(providerRequest.Body, "reasoning.context").Exists())
+				require.Equal(t, "message", gjson.GetBytes(providerRequest.Body, "input.0.type").String())
+				require.True(t, gjson.GetBytes(providerRequest.Body, "tools").IsArray())
+			}
 			require.JSONEq(t, gjson.GetBytes(inbound.Body, "client_metadata").Raw, gjson.GetBytes(providerRequest.Body, "client_metadata").Raw)
-			require.Equal(t, "additional_tools", gjson.GetBytes(providerRequest.Body, "input.0.type").String())
 		})
 	}
 }

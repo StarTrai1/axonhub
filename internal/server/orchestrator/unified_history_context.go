@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	unifiedContextMaxBytes          = 1 << 20
+	unifiedContextMaxTokens          = 1 << 20
 	unifiedSummarySegmentBytes      = 128 << 10
 	unifiedMaxNewSummaries          = 32
 	unifiedNativeExportMinSummaries = 8
@@ -237,7 +237,7 @@ type unifiedHistoryPlan struct {
 	query     string
 	mandatory int
 	capacity  int
-	measure unifiedHistoryMeasure
+	measure   unifiedHistoryMeasure
 }
 
 func planUnifiedHistory(envelope map[string]json.RawMessage, items []json.RawMessage, state *PersistenceState, candidate *ChannelModelsCandidate, budget int) (*unifiedHistoryPlan, bool, error) {
@@ -245,6 +245,7 @@ func planUnifiedHistory(envelope map[string]json.RawMessage, items []json.RawMes
 }
 
 func planUnifiedHistoryWithCoverage(envelope map[string]json.RawMessage, items []json.RawMessage, state *PersistenceState, candidate *ChannelModelsCandidate, budget int, reusable map[int]unifiedHistorySegment) (*unifiedHistoryPlan, bool, error) {
+	measure := unifiedModelMeasure(gjson.ParseBytes(envelope["model"]).String())
 	groups := unifiedHistoryGroups(items)
 	if len(groups) == 0 {
 		return nil, false, nil
@@ -285,7 +286,17 @@ func planUnifiedHistoryWithCoverage(envelope map[string]json.RawMessage, items [
 		}
 		unitBytes := unifiedItemsSize(unit)
 		if unitBytes > segmentLimit {
-			return nil, false, nil
+			// A complete interaction can exceed the preferred storage segment
+			// size while fitting comfortably in the model. Keep it indivisible,
+			// in its own segment, and enforce the model budget independently.
+			if unitBytes > 4<<20 || measure.items(unit) > budget/2 {
+				return nil, false, nil
+			}
+			flush()
+			segments = append(segments, unifiedHistorySegment{items: unit})
+			position += len(unit)
+			index++
+			continue
 		}
 		if size+unitBytes > segmentLimit {
 			flush()
@@ -303,7 +314,6 @@ func planUnifiedHistoryWithCoverage(envelope map[string]json.RawMessage, items [
 		return nil, false, nil
 	}
 	// Check mandatory original instructions before spending tokens on summaries.
-	measure := unifiedModelMeasure(gjson.ParseBytes(envelope["model"]).String())
 	mandatory := measure.items(recent)
 	delete(envelope, "input")
 	header, err := json.Marshal(envelope)

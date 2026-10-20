@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
 
+	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
@@ -41,6 +42,23 @@ func TestRelayResponsesContractUserOnlyProbe(t *testing.T) {
 	require.Equal(t, "[]", gjson.GetBytes(result.Body, "tools").Raw)
 	require.True(t, gjson.GetBytes(result.Body, "parallel_tool_calls").Bool())
 	require.False(t, gjson.GetBytes(result.Body, "tool_choice").Exists())
+}
+
+func TestRelayResponsesContractKeepsOtherEndpoints(t *testing.T) {
+	for _, kind := range []llm.RequestType{llm.RequestTypeAlphaSearch, llm.RequestTypeCompact} {
+		request := &httpclient.Request{RequestType: string(kind), Body: []byte(`{"model":"gpt-6-astra","input":[]}`)}
+		require.Same(t, request, (&OutboundTransformer{}).normalizeResponsesContract(request))
+	}
+}
+
+func TestRelayToolDeclarationsMergeNamespaceUpdates(t *testing.T) {
+	body := []byte(`{"tools":[{"type":"namespace","name":"clock","tools":[{"type":"function","name":"read"}]}],"input":[{"type":"additional_tools","tools":[{"type":"namespace","name":"clock","tools":[{"type":"function","name":"sleep"}]}]},{"type":"message","role":"user","content":"continue"}]}`)
+	result := liftRelayToolDeclarations(body)
+	require.Equal(t, "read", gjson.GetBytes(result, "tools.0.tools.0.name").String())
+	require.Equal(t, "sleep", gjson.GetBytes(result, "tools.0.tools.1.name").String())
+	require.Equal(t, "continue", gjson.GetBytes(result, "input.0.content").String())
+	malformed := []byte(`{"input":[{"type":"additional_tools","tools":["invalid"]}]}`)
+	require.Equal(t, malformed, liftRelayToolDeclarations(malformed))
 }
 
 func TestThirdPartyModelCatalogDetectsPublicList(t *testing.T) {

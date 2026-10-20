@@ -1134,6 +1134,9 @@ func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
 	}
 
 	status := ExtractStatusCodeFromError(err)
+	if isModelCapacityExhausted(err) {
+		return false
+	}
 	if status == http.StatusGatewayTimeout && expensiveGatewayTimeout(p.state, time.Now()) {
 		return false
 	}

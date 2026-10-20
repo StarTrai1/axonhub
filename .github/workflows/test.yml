@@ -4,6 +4,10 @@ name: Test
 on:
   workflow_dispatch:
     inputs:
+      benchmarks:
+        description: Run optional cache benchmarks
+        type: boolean
+        default: false
       format_base:
         description: Base revision for changed Go formatting (optional)
         required: false
@@ -12,18 +16,26 @@ on:
   push:
     branches:
       - "dev"
-      - "feat/unified-conversation-history"
       - "unstable"
       - "release/**"
   pull_request:
     branches:
+      - dev
       - "unstable"
       - "release/**"
 env:
   GO111MODULE: on
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  changes:
+    uses: ./.github/workflows/ci-changes.yml
   test-windows-websocket-proxy:
-    name: Windows WebSocket SOCKS and reset recovery (loopback only)
+    name: Windows transport and durable recovery
+    needs: changes
+    if: needs.changes.outputs.windows == 'true'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
@@ -32,30 +44,19 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version-file: .go-version
-      - name: Verify Winsock classification and real WSS through SOCKS
-        run: go test ./internal/server/orchestrator -run '^(TestWindowsWebSocketConnectionReset|TestWebSocketSOCKSChannelRetry|TestRetryTransportClassification|TestRetryTransportPipeline)$' -count=1 -v
-      - name: Verify HTTP2 reset fallback on Windows
-        run: go test ./internal/server/orchestrator -run '^TestHTTP2FallbackPipeline$' -count=1 -v
-      - name: Verify large native compaction checkpoints on Windows
-        run: go test ./internal/server/orchestrator -run '^(TestUnifiedHistory|TestResponsesRejectedNativeSource|TestSealedLocalCompactionSizeLimit)' -count=1 -v
-      - name: Verify HTTP relay compaction and continuation on Windows
-        run: go test ./internal/server/api -run '^(TestUnifiedHistoryProtocol|TestResponsesProtocol(CompactionRelay|AutoCompaction|NativeCompactionMigration|RedactedEncryption|InvalidEncryptedSummary|ReasoningHydration|EncryptedAgentCompaction))' -count=1 -v
-      - name: Verify Codex delivery and search-only routing on Windows
-        run: go test ./internal/server/api -run '^Test(StreamDeliveryCodexLivePreview|CodexSearchOnly|CodexSearchOtherChannels|CodexMemoryForeground)' -count=1 -v
-      - name: Verify SOCKS aliases and cancellation on Windows
+          cache-dependency-path: |
+            go.sum
+            llm/go.sum
+            cmd/schema/go.sum
+      - name: Verify Windows transport, SQLite and native continuation
+        run: go test ./internal/server/orchestrator ./internal/server/api ./cmd/axonhub -run 'TestWindowsWebSocketConnectionReset|TestWebSocketSOCKSChannelRetry|TestHTTP2FallbackPipeline|TestUnifiedHistory.*(Rollback|Restart|Canceled|TokenAdmission)|TestUnifiedHistoryProtocol|TestResponsesProtocolCompactionRelay|TestAgentRecoveryCLI' -count=1
+      - name: Verify Windows SOCKS and stream cancellation
         working-directory: llm
-        run: go test ./transformer/openai/responses -run '^(TestWebSocketProxyAliasesDialThroughSOCKS|TestWebSocketSOCKSCancellation|TestWebSocketStreamCloseWhileNextBlockedReportsClosedBeforeResponse|TestWebSocketExecutorDoesNotReplayAfterReusedSession.*|TestWebSocketStreamDoesNotRetryFreshConnectionFailure)$' -count=1 -v
-      - name: Verify native SQLite recovery import and rollback
-        run: go test ./cmd/axonhub -run '^TestAgentRecoveryCLI$' -count=1 -v
-      - name: Build native recovery maintenance tool
-        run: go build -o axonhub-recovery.exe ./cmd/axonhub
-      - name: Preserve native recovery maintenance tool
-        uses: actions/upload-artifact@v6
-        with:
-          name: windows-agent-recovery-tool
-          path: axonhub-recovery.exe
+        run: go test ./transformer/openai/responses -run 'TestWebSocketProxyAliasesDialThroughSOCKS|TestWebSocketSOCKSCancellation|TestWebSocketStreamCloseWhileNextBlocked' -count=1
 
   test-codex-probe-scripts:
+    needs: changes
+    if: needs.changes.outputs.protocol == 'true'
     name: Test Codex probe scripts (offline)
     runs-on: ubuntu-latest
     steps:
@@ -69,12 +70,15 @@ jobs:
         run: python -m unittest discover -s scripts/codex-probes -p 'test_*.py' -v
 
   test-codex-cli-compatibility:
+    needs: changes
+    if: needs.changes.outputs.protocol == 'true'
     name: Codex ${{ matrix.codex }} / ${{ matrix.model }} concurrency (loopback only)
     strategy:
       fail-fast: false
       matrix:
-        codex: ['0.162.1', '0.163.0']
-        model: [gpt-6-sol, gpt-6.1-sol]
+        include:
+          - {codex: '0.162.1', model: gpt-6-sol}
+          - {codex: '0.163.0', model: gpt-6.1-sol}
     env:
       PROBE_TEST_MODEL: ${{ matrix.model }}
       PROBE_TEST_CODEX_VERSION: ${{ matrix.codex }}
@@ -101,12 +105,18 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version-file: .go-version
+          cache-dependency-path: |
+            go.sum
+            llm/go.sum
+            cmd/schema/go.sum
       - name: Export the gateway retry failure for the real CLI
         run: go test ./internal/server/api -run '^TestCodex162RetryFixture$' -count=1
       - name: Verify real CLI concurrency against a local mock
         run: python -m unittest discover -s scripts/codex-probes -p 'test_cli_integration.py' -v
 
   test:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -133,15 +143,50 @@ jobs:
         with:
           # Share the verified toolchain with Build, Lint and Release.
           go-version-file: .go-version
+          cache-dependency-path: |
+            go.sum
+            llm/go.sum
+            cmd/schema/go.sum
 
+      - name: Test
+        run: make test-backend-all
+
+      - name: Verify PostgreSQL quota routing migration
+        env:
+          AXONHUB_TEST_PG_DSN: postgres://axonhub_test:axonhub_test@127.0.0.1:5432/axonhub_test?sslmode=disable
+        run: go test ./internal/server/biz -run '^TestQuotaRoutingMigration_Postgres$|^TestUnifiedHistory.*Postgres$' -count=1 -v
+
+  source-contract:
+    name: Verify generated sources and modules
+    needs: changes
+    if: needs.changes.outputs.generation == 'true' || needs.changes.outputs.dependencies == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: .go-version
+          cache-dependency-path: |
+            go.sum
+            llm/go.sum
+            cmd/schema/go.sum
       - name: Verify generation and changed Go formatting
         env:
+          CHECK_DEPENDENCIES: ${{ needs.changes.outputs.dependencies }}
+          CHECK_GENERATION: ${{ needs.changes.outputs.generation }}
           FORMAT_BASE: ${{ inputs.format_base || 'HEAD^' }}
         run: |
-          go mod tidy
-          (cd llm && go mod tidy)
-          (cd cmd/schema && go mod tidy)
-          make generate
+          if [ "$CHECK_DEPENDENCIES" = true ]; then
+            go mod tidy
+            (cd llm && go mod tidy)
+            (cd cmd/schema && go mod tidy)
+          fi
+          if [ "$CHECK_GENERATION" = true ]; then
+            make generate
+          fi
           git diff --name-only -z --diff-filter=ACMRT "$FORMAT_BASE" HEAD -- '*.go' | xargs -0 -r gofmt -w
           git diff --binary > "$RUNNER_TEMP/generated.patch"
           git diff --stat
@@ -155,37 +200,51 @@ jobs:
           path: ${{ runner.temp }}/generated.patch
           if-no-files-found: ignore
 
-      - name: Test
-        run: make test-backend-all
+  concurrency:
+    name: Targeted concurrency checks
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: .go-version
+          cache-dependency-path: |
+            go.sum
+            llm/go.sum
+            cmd/schema/go.sum
+      - name: Verify concurrent storage and gateway lifecycles
+        run: go test -race -timeout 15m ./internal/server/orchestrator ./internal/server/biz ./internal/server/api -run 'Test.*(Concurrent|Concurrency|Race|Canceled|Cancellation|Singleflight|Flight|CloseWhileNext|Interrupt|TokenMeasureImages)' -count=1
+      - name: Verify transport concurrency
+        working-directory: llm
+        run: go test -race ./httpclient ./pipeline ./transformer/openai/responses ./transformer/openai/codex -run 'Test.*(Concurrent|Concurrency|Race|Cancel|CloseWhileNext|Interrupt|ExecutionPoolIdentity|SeparatesCodexExecutionScopes)' -count=1
 
-      - name: Verify PostgreSQL quota routing migration
-        env:
-          AXONHUB_TEST_PG_DSN: postgres://axonhub_test:axonhub_test@127.0.0.1:5432/axonhub_test?sslmode=disable
-        run: go test ./internal/server/biz -run '^TestQuotaRoutingMigration_Postgres$|^TestUnifiedHistory.*Postgres$' -count=1 -v
-
-      - name: Responses concurrency regression
-        run: |
-          go test -race ./internal/server/orchestrator -run 'TestUnifiedHistory|TestStreamDeliveryCaptured|TestHTTP2FallbackPipeline|TestWebSocketSOCKSChannelRetry|TestCaptureRawProviderStream|TestPassThroughAnthropicStream|TestRawStreamBacklog|TestResponsesSession|TestResponsesRejected|TestResponsesRedactedEncryption|TestResponsesAgent|TestResponsesCompactionRecovery|TestCompactionFlight|TestNativeCompactionMigration|TestNativeCompactionExactReplay|TestRemoteCompactionLazy|TestResponsesCompactionExactReplay|TestRequestLatency|TestChannelRejectsFailedStreamEvenAfterText|TestSealedLocalCompaction|TestLegacyLocalCompaction' -count=1
-          go test -race ./internal/server/biz -run '^TestUnifiedHistory|^TestChannelReload|^TestChannelSwap|^TestSystemServiceResponsesMetadata|^TestChannelMetrics_ConcurrentReadsAndWrites$' -count=1
-          go test -race ./internal/server/api -run '^TestUnifiedHistory|^TestResponses(WebSocket(Warmup|Heartbeat|Auth|Interrupt|Close)|ProtocolNativeContinuation|ProtocolCompactionRelay|ProtocolAutoCompaction|ProtocolNativeCompactionMigration|ProtocolRedactedEncryption|ProtocolInvalidEncryptedSummary|ProtocolReasoningHydration|ProtocolEncryptedAgentCompaction)' -count=1
-          go test -race ./internal/server/orchestrator ./internal/server/api -run '^TestCodexMemory' -count=1
-          cd llm
-          go test -race ./httpclient -run '^TestHTTP2Fallback' -count=1
-          go test -race ./transformer/antigravity -run '^TestClaudeStructuredOutput|^TestClaudeToolUnions|^TestAntigravityTieredCatalogRequests' -count=1
-          go test -race ./transformer/gemini -run '^TestGeminiMalformedTool' -count=1
-          go test -race ./pipeline -run 'TestFirstOutput' -count=1
-          go test -race ./transformer/openai/responses -run 'TestWebSocketSOCKSCancellation|TestWebSocketExecutorSeparatesCodexExecutionScopes|TestWebSocketExecutorInterrupt|TestCodexExecutionPoolIdentity|TestWebSocketStreamCloseWhileNextBlocked|TestWebSocketExecutorDoesNotReplay|TestWebSocketStreamDoesNotRetryFresh' -count=1
-
-      - name: Responses cache benchmarks
-        run: go test ./internal/server/orchestrator -run '^$' -bench '^BenchmarkResponsesSession|^BenchmarkUnifiedHistoryCompression' -benchmem -count=3 | tee responses-cache-benchmarks.txt
-
-      - name: Upload Responses cache benchmarks
-        uses: actions/upload-artifact@v6
+  benchmarks:
+    if: github.event_name == 'workflow_dispatch' && inputs.benchmarks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: .go-version
+          cache-dependency-path: |
+            go.sum
+            llm/go.sum
+            cmd/schema/go.sum
+      - run: go test ./internal/server/orchestrator -run '^$' -bench '^BenchmarkResponsesSession|^BenchmarkUnifiedHistoryCompression' -benchmem -count=1 | tee responses-cache-benchmarks.txt
+      - uses: actions/upload-artifact@v6
         with:
           name: responses-cache-benchmarks
           path: responses-cache-benchmarks.txt
 
   test-frontend-unit:
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
     name: Test Frontend Unit
     # Keep the runner compatible with the browser version in pnpm-lock.yaml.
     runs-on: ubuntu-24.04

@@ -6,17 +6,25 @@ on:
   push:
     branches:
       - 'dev'
-      - 'feat/unified-conversation-history'
       - 'unstable'
       - 'release/**'
   pull_request:
     branches:
+      - dev
       - 'unstable'
       - 'release/**'
 env:
   GO111MODULE: on
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  changes:
+    uses: ./.github/workflows/ci-changes.yml
   lint:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -28,6 +36,10 @@ jobs:
         uses: actions/setup-go@v7
         with:
           go-version-file: .go-version
+          cache-dependency-path: |
+            go.sum
+            llm/go.sum
+            cmd/schema/go.sum
           cache: true
 
       - name: golangci-lint

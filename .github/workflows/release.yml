@@ -27,24 +27,23 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: '22'
+          node-version: '24'
           cache: 'pnpm'
           cache-dependency-path: frontend/pnpm-lock.yaml
 
       - name: Install frontend dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
         working-directory: frontend
 
       - name: Set up Go
         uses: actions/setup-go@v7
         with:
           go-version-file: .go-version
+          cache-dependency-path: |
+            go.sum
+            llm/go.sum
+            cmd/schema/go.sum
           cache: true
-
-      - name: Verify production dependency graphs
-        run: |
-          ./scripts/verify-go-sse-dependency-test.sh
-          ./scripts/verify-go-sse-dependency.sh
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v7

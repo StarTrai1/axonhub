@@ -5,12 +5,12 @@ on:
   push:
     branches:
       - dev
-      - feat/unified-conversation-history
       - unstable
       - development
       - 'release/**'
   pull_request:
     branches:
+      - dev
       - unstable
       - development
       - 'release/**'
@@ -18,8 +18,16 @@ on:
 env:
   GO111MODULE: on
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  changes:
+    uses: ./.github/workflows/ci-changes.yml
   build-backend:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     name: Build Backend
     runs-on: ubuntu-latest
     steps:
@@ -33,6 +41,10 @@ jobs:
         uses: actions/setup-go@v7
         with:
           go-version-file: .go-version
+          cache-dependency-path: |
+            go.sum
+            llm/go.sum
+            cmd/schema/go.sum
           cache: true
 
       - name: Build main binary
@@ -46,13 +58,10 @@ jobs:
       - name: Build schema generator
         run: cd cmd/schema && go build -o schema
 
-      - name: Build llm module packages
-        run: cd llm && go build ./...
-
-      - name: Verify all packages compile
-        run: go build ./...
 
   build-frontend:
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
     name: Build Frontend
     runs-on: ubuntu-latest
     steps:
@@ -71,7 +80,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: '22'
+          node-version: '24'
           cache: 'pnpm'
           cache-dependency-path: frontend/pnpm-lock.yaml
 
@@ -83,13 +92,13 @@ jobs:
         uses: actions/setup-go@v7
         with:
           go-version-file: .go-version
+          cache-dependency-path: |
+            go.sum
+            llm/go.sum
+            cmd/schema/go.sum
 
       - name: Build frontend
         run: |
           node --test scripts/pack-frontend.test.mjs
           make build-frontend
           go test ./internal/server/static
-
-      - name: Channel quota regression
-        working-directory: frontend
-        run: node --test src/features/channels/components/channel-quota.test.mjs

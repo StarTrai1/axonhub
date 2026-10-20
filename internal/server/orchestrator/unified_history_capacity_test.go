@@ -48,9 +48,9 @@ func TestUnifiedHistoryCachedNotesCanExceedTargetWithoutResummarization(t *testi
 			state.CurrentCandidate.ContextTokens = 0
 			var input []json.RawMessage
 			for i := range 10 {
-				user, err := json.Marshal(map[string]string{"role": "user", "content": fmt.Sprintf("constraint_%d: ", i) + strings.Repeat("u", 50000)})
+				user, err := json.Marshal(map[string]string{"role": "user", "content": fmt.Sprintf("constraint_%d: ", i) + historyTestEntropy(50000, uint64(i))})
 				require.NoError(t, err)
-				assistant, err := json.Marshal(map[string]string{"role": "assistant", "content": fmt.Sprintf("original evidence_%d: ", i) + strings.Repeat("a", 75000)})
+				assistant, err := json.Marshal(map[string]string{"role": "assistant", "content": fmt.Sprintf("original evidence_%d: ", i) + historyTestEntropy(75000, uint64(i+100))})
 				require.NoError(t, err)
 				input = append(input, user, assistant)
 			}
@@ -65,13 +65,14 @@ func TestUnifiedHistoryCachedNotesCanExceedTargetWithoutResummarization(t *testi
 			require.True(t, supported)
 			require.Len(t, plan.segments, 9)
 			stored := make(map[string]string)
-			noteBytes := 30000
+			// Size cached notes in tokens, independently of source transport bytes.
+			noteTokens := (target-plan.mandatory)/(len(plan.segments)-1) + 1024
 			if tooLarge {
-				noteBytes = 50000
+				noteTokens = (ceiling-plan.mandatory)/(len(plan.segments)-1) + 1024
 			}
 			for i := range len(plan.segments) - 1 {
 				segment := &plan.segments[i]
-				segment.summary = fmt.Sprintf("immutable note_%d: ", i) + strings.Repeat("s", noteBytes)
+				segment.summary = fmt.Sprintf("immutable note_%d: ", i) + strings.Repeat("s ", noteTokens*4/5)
 				stored[segment.key], err = adapter.sealHistoryRecord(ctx, segment.key, []byte(segment.summary))
 				require.NoError(t, err)
 			}

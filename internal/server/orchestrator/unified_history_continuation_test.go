@@ -122,7 +122,7 @@ func unifiedLongToolHistory(t *testing.T, calls int) []byte {
 	items := []json.RawMessage{json.RawMessage(`{"role":"user","content":"preserve calibration exactly 17.125"}`)}
 	for i := range calls {
 		items = append(items, json.RawMessage(fmt.Sprintf(`{"type":"function_call","name":"inspect","call_id":"call_%d","arguments":"{}"}`, i)))
-		output, err := json.Marshal(map[string]any{"type": "function_call_output", "call_id": fmt.Sprintf("call_%d", i), "output": fmt.Sprintf("original tool evidence %d: ", i) + strings.Repeat("abcdef ", 9000)})
+		output, err := json.Marshal(map[string]any{"type": "function_call_output", "call_id": fmt.Sprintf("call_%d", i), "output": fmt.Sprintf("original tool evidence %d: ", i) + historyTestEntropy(63000, uint64(i))})
 		require.NoError(t, err)
 		items = append(items, output)
 	}

@@ -15,7 +15,7 @@ import (
 // that a larger input still leaves the full model output allowance available.
 // Token admission is independent of archive and segment byte limits.
 func unifiedHistoryInputBudgets(body []byte, candidate *ChannelModelsCandidate, modelIndex, contextTokens int) (int, int) {
-	target := min(unifiedContextMaxBytes, contextTokens-contextTokens/4)
+	target := min(unifiedContextMaxTokens, contextTokens-contextTokens/4)
 	ceiling := target
 	if modelIndex >= 0 && modelIndex < len(candidate.Models) {
 		model := candidate.Models[modelIndex].ActualModel
@@ -24,7 +24,7 @@ func unifiedHistoryInputBudgets(body []byte, candidate *ChannelModelsCandidate, 
 			known = biz.BundledModelHistoryInputLimit(model, contextTokens)
 		}
 		if known > 0 {
-			ceiling = min(unifiedContextMaxBytes, max(0, known-4096))
+			ceiling = min(unifiedContextMaxTokens, max(0, known-4096))
 			target = min(target, ceiling)
 		}
 	}

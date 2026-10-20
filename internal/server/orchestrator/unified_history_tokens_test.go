@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"encoding/json"
+	"math/rand/v2"
 	"strings"
 	"testing"
 
@@ -15,7 +16,7 @@ func TestUnifiedHistoryTokenAdmissionKeepsLargeVerbatimInstructions(t *testing.T
 	text := strings.Repeat("Preserve original instructions, exact paths and completed findings. 保留原始指令与事实。\n", 12000)
 	body, err := json.Marshal(map[string]any{"model": "gpt-6-astra", "input": []map[string]string{{"role": "developer", "content": text}, {"role": "user", "content": "Continue."}}})
 	require.NoError(t, err)
-	require.Greater(t, len(body), unifiedContextMaxBytes)
+	require.Greater(t, len(body), unifiedContextMaxTokens)
 	executor := &unifiedConcurrentExecutor{}
 	compiled, ok, err := adapter.compileUnifiedContext(ctx, body, state, executor)
 	require.NoError(t, err)
@@ -35,7 +36,26 @@ func TestUnifiedHistoryTokenAdmissionStillReservesOutput(t *testing.T) {
 	require.Empty(t, executor.summaries)
 }
 
+func TestUnifiedHistoryLargeInteractionUsesModelBudget(t *testing.T) {
+	_, _, state, _ := unifiedHistoryFixture(t)
+	output, err := json.Marshal(map[string]string{"type": "function_call_output", "call_id": "large-call", "output": historyTestEntropy(238000, 64029)})
+	require.NoError(t, err)
+	items := []json.RawMessage{
+		json.RawMessage(`{"role":"user","content":"retain the complete interaction"}`),
+		json.RawMessage(`{"type":"function_call","call_id":"large-call","name":"read","arguments":"{}"}`),
+		output,
+		json.RawMessage(`{"role":"user","content":"continue"}`),
+	}
+	plan, ok, err := planUnifiedHistory(map[string]json.RawMessage{"model": json.RawMessage(`"gpt-6-astra"`)}, items, state, state.CurrentCandidate, 750000)
+	require.NoError(t, err)
+	require.True(t, ok)
+	require.Len(t, plan.segments, 2)
+	require.Len(t, plan.segments[1].items, 2, "a large call and result stay indivisible")
+	require.Equal(t, output, plan.segments[1].items[1])
+}
+
 func TestUnifiedHistoryTokenMeasureImagesAndConcurrency(t *testing.T) {
+	t.Parallel()
 	measure := unifiedModelMeasure("gpt-6-astra")
 	image, err := json.Marshal(map[string]any{"role": "user", "content": []map[string]string{{"type": "input_image", "image_url": "data:image/png;base64," + strings.Repeat("A", 200000)}}})
 	require.NoError(t, err)
@@ -48,4 +68,16 @@ func TestUnifiedHistoryTokenMeasureImagesAndConcurrency(t *testing.T) {
 			require.Equal(t, unifiedTextTokens(raw), unifiedTextTokens(raw))
 		})
 	}
+}
+
+// High-entropy fixture records exercise actual context pressure. Repeated
+// letters compress into very few BPE tokens despite large serialized payloads.
+func historyTestEntropy(size int, seed uint64) string {
+	random := rand.New(rand.NewPCG(seed, seed+1))
+	const alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+/"
+	text := make([]byte, size)
+	for i := range text {
+		text[i] = alphabet[random.IntN(len(alphabet))]
+	}
+	return string(text)
 }

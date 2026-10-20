@@ -7,6 +7,7 @@ import (
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 
+	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
@@ -16,6 +17,9 @@ import (
 // public Responses tool declarations, not a Lite body without its Lite header.
 func (t *OutboundTransformer) normalizeResponsesContract(request *httpclient.Request) *httpclient.Request {
 	if t == nil || request == nil || !gjson.ValidBytes(request.Body) {
+		return request
+	}
+	if request.RequestType == string(llm.RequestTypeAlphaSearch) || request.RequestType == string(llm.RequestTypeCompact) || request.APIFormat == string(llm.APIFormatOpenAIResponseCompact) {
 		return request
 	}
 	lite := t.isOfficialCodex() && strings.EqualFold(request.Headers.Get(responses.ResponsesLiteHeader), "true")
@@ -55,7 +59,13 @@ func liftRelayToolDeclarations(body []byte) []byte {
 	}
 	var items []json.RawMessage
 	var definitions []json.RawMessage
+	if tools := gjson.GetBytes(body, "tools"); tools.Exists() && !tools.IsArray() {
+		return body
+	}
 	for _, tool := range gjson.GetBytes(body, "tools").Array() {
+		if !tool.IsObject() || tool.Get("type").String() == "" {
+			return body
+		}
 		definitions = append(definitions, json.RawMessage(tool.Raw))
 	}
 	lifted := false
@@ -69,11 +79,17 @@ func liftRelayToolDeclarations(body []byte) []byte {
 		}
 		lifted = true
 		for _, tool := range item.Get("tools").Array() {
+			if !tool.IsObject() || tool.Get("type").String() == "" {
+				return body
+			}
 			if tool.Get("type").String() == "namespace" && tool.Get("name").String() == "functions" {
 				if !tool.Get("tools").IsArray() {
 					return body
 				}
 				for _, child := range tool.Get("tools").Array() {
+					if !child.IsObject() || child.Get("type").String() == "" {
+						return body
+					}
 					definitions = append(definitions, json.RawMessage(child.Raw))
 				}
 			} else {
@@ -86,17 +102,7 @@ func liftRelayToolDeclarations(body []byte) []byte {
 	}
 	// Later declarations update a definition without changing its position.
 	// Keep namespaces intact; flattening arbitrary namespaces changes call names.
-	tools := make([]json.RawMessage, 0, len(definitions))
-	positions := make(map[string]int, len(definitions))
-	for _, tool := range definitions {
-		key := gjson.GetBytes(tool, "type").String() + ":" + gjson.GetBytes(tool, "name").String()
-		if index, found := positions[key]; found {
-			tools[index] = tool
-		} else {
-			positions[key] = len(tools)
-			tools = append(tools, tool)
-		}
-	}
+	tools := mergeRelayToolDefinitions(definitions)
 	for i, item := range items {
 		typ := gjson.GetBytes(item, "type").String()
 		if (typ == "function_call" || typ == "custom_tool_call") && gjson.GetBytes(item, "namespace").String() == "functions" {
@@ -116,4 +122,30 @@ func liftRelayToolDeclarations(body []byte) []byte {
 	// This field selects a private Lite reasoning mode, not reasoning effort.
 	result, _ = sjson.DeleteBytes(result, "reasoning.context")
 	return result
+}
+
+func mergeRelayToolDefinitions(definitions []json.RawMessage) []json.RawMessage {
+	tools := make([]json.RawMessage, 0, len(definitions))
+	positions := make(map[string]int, len(definitions))
+	for _, tool := range definitions {
+		typ := gjson.GetBytes(tool, "type").String()
+		key := typ + ":" + gjson.GetBytes(tool, "name").String()
+		if index, found := positions[key]; found {
+			if typ == "namespace" {
+				var children []json.RawMessage
+				for _, declaration := range []json.RawMessage{tools[index], tool} {
+					for _, child := range gjson.GetBytes(declaration, "tools").Array() {
+						children = append(children, json.RawMessage(child.Raw))
+					}
+				}
+				raw, _ := json.Marshal(mergeRelayToolDefinitions(children))
+				tool, _ = sjson.SetRawBytes(tool, "tools", raw)
+			}
+			tools[index] = tool
+		} else {
+			positions[key] = len(tools)
+			tools = append(tools, tool)
+		}
+	}
+	return tools
 }

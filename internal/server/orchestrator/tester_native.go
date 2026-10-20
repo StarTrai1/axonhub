@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/samber/lo"
 	"github.com/tidwall/gjson"
@@ -111,12 +112,12 @@ func (processor *TestChannelOrchestrator) buildNativeChannelTestInput(ctx contex
 // wire fields as a real request; probes do not fabricate a private Lite mode.
 func buildResponsesChannelTestRequest(model, systemPrompt, userPrompt string) (*httpclient.Request, error) {
 	body, err := json.Marshal(map[string]any{
-		"model": model,
-		"instructions": systemPrompt,
-		"input": []map[string]any{{"type": "message", "role": "user", "content": []map[string]string{{"type": "input_text", "text": userPrompt}}}},
-		"stream": true,
-		"store": false,
-		"tools": []any{},
+		"model":               model,
+		"instructions":        systemPrompt,
+		"input":               []map[string]any{{"type": "message", "role": "user", "content": []map[string]string{{"type": "input_text", "text": userPrompt}}}},
+		"stream":              true,
+		"store":               false,
+		"tools":               []any{},
 		"parallel_tool_calls": true,
 	})
 	if err != nil {
@@ -130,18 +131,18 @@ func channelTestResponseMessage(body []byte, apiFormat llm.APIFormat) (*string, 
 		if gjson.GetBytes(body, "status").String() != "completed" {
 			return nil, fmt.Errorf("Responses probe did not complete successfully")
 		}
-		text := ""
+		var text strings.Builder
 		for _, item := range gjson.GetBytes(body, "output").Array() {
 			for _, part := range item.Get("content").Array() {
 				if part.Get("type").String() == "output_text" {
-					text += part.Get("text").String()
+					text.WriteString(part.Get("text").String())
 				}
 			}
 		}
-		if text == "" {
+		if text.Len() == 0 {
 			return nil, fmt.Errorf("no text in Responses probe")
 		}
-		return lo.ToPtr(text), nil
+		return lo.ToPtr(text.String()), nil
 	}
 	if apiFormat == llm.APIFormatOpenAIDecisions {
 		var wire struct {

@@ -1,0 +1,34 @@
+name: Select CI checks
+on:
+  workflow_call:
+    outputs:
+      backend:
+        value: ${{ jobs.changes.outputs.backend }}
+      frontend:
+        value: ${{ jobs.changes.outputs.frontend }}
+      protocol:
+        value: ${{ jobs.changes.outputs.protocol }}
+      windows:
+        value: ${{ jobs.changes.outputs.windows }}
+      generation:
+        value: ${{ jobs.changes.outputs.generation }}
+      dependencies:
+        value: ${{ jobs.changes.outputs.dependencies }}
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.select.outputs.backend }}
+      frontend: ${{ steps.select.outputs.frontend }}
+      protocol: ${{ steps.select.outputs.protocol }}
+      windows: ${{ steps.select.outputs.windows }}
+      generation: ${{ steps.select.outputs.generation }}
+      dependencies: ${{ steps.select.outputs.dependencies }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - run: python3 -m unittest discover -s scripts/ci -p 'test_*.py'
+      - id: select
+        run: python3 scripts/ci/select_changes.py
