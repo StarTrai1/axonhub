@@ -50,8 +50,12 @@ func (a *remoteCompactionAdapter) retainNativeCompactionSource(ctx context.Conte
 	if a.systemService == nil || source == nil || len(source.body) == 0 || len(source.body) > nativeCompactionMaxSourceBytes {
 		return errors.New("native compaction source storage is unavailable or source exceeds limit")
 	}
-	source, err := a.resolveCompactionSourceContinuation(ctx, source, state)
+	unresolved := source
+ source, err := a.resolveCompactionSourceContinuation(ctx, source, state)
 	if err != nil {
+		if missingHistoryPredecessor(err) {
+			return a.retainUnresolvedNativeSource(ctx, ref, state, unresolved)
+		}
 		return err
 	}
 	owner, ownerErr := historyState(ctx)
@@ -86,6 +90,14 @@ func (a *remoteCompactionAdapter) loadNativeCompactionSource(ctx context.Context
 		}
 		if found {
 			return &remoteCompactionSource{body: body, headers: make(http.Header)}, nil
+		}
+		gapKey := historyUnresolvedNativeKey(ref)
+		entries, err := a.systemService.LoadUnifiedHistory(ctx, []string{gapKey})
+		if err != nil { return nil, err }
+		if entries[gapKey] != "" {
+			body, err := a.openHistoryRecord(ctx, gapKey, entries[gapKey], nativeCompactionMaxSourceBytes)
+			if err != nil { return nil, err }
+			return a.resolveCompactionSourceContinuation(ctx, &remoteCompactionSource{body:body, headers:make(http.Header)}, state)
 		}
 	}
 	sealed, err := a.systemService.LoadNativeCompactionSource(ctx, state.APIKey.ProjectID, state.APIKey.ID, remoteCompactionCacheKey(ref))
@@ -177,7 +189,7 @@ func (m *nativeCompactionSourceMiddleware) snapshot() (*remoteCompactionSource, 
 		return nil, nil
 	}
 	owner := &ent.APIKey{ID: state.APIKey.ID, ProjectID: state.APIKey.ProjectID}
-	return &remoteCompactionSource{body: append([]byte(nil), body...)}, &PersistenceState{APIKey: owner, unifiedHistorySource: state.unifiedHistorySource, CurrentCandidate: state.CurrentCandidate}
+	return &remoteCompactionSource{body: append([]byte(nil), body...)}, &PersistenceState{APIKey: owner, unifiedHistorySource: state.unifiedHistorySource, CurrentCandidate: state.CurrentCandidate, RawProviderRequest:raw}
 }
 
 func (m *nativeCompactionSourceMiddleware) OnOutboundRawResponse(ctx context.Context, response *httpclient.Response) (*httpclient.Response, error) {

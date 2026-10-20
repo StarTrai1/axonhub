@@ -35,6 +35,7 @@ type responsesSessionStore struct {
 	positions  map[responsesSessionKey]*list.Element
 	totalBytes int
 	load       responsesSessionLoadFunc
+ loadWindow func(context.Context, string) ([]byte, []byte, shared.ResponsesOrigin, bool, error)
 	known      func(context.Context, string) (bool, error)
 	archive    func(context.Context, []byte, []byte) error
 }
@@ -83,11 +84,16 @@ func (s *responsesSessionStore) lookupOrLoad(ctx context.Context, responseID str
 	if scope, ok := shared.GetSessionScope(ctx); !ok || strings.TrimSpace(scope) == "" {
 		return nil
 	}
-	if record := s.lookup(ctx, responseID); record != nil || s.load == nil {
+	if record := s.lookup(ctx, responseID); record != nil || s.load == nil && s.loadWindow == nil {
 		return record
 	}
 
-	requestBody, responseBody, found, err := s.load(ctx, responseID)
+	var requestBody, responseBody []byte
+ var origin shared.ResponsesOrigin
+ var found bool
+ var err error
+ if s.loadWindow != nil { requestBody, responseBody, origin, found, err = s.loadWindow(ctx, responseID) }
+ if err == nil && !found && s.load != nil { requestBody, responseBody, found, err = s.load(ctx, responseID) }
 	if err != nil {
 		log.Warn(ctx, "Failed to restore persisted Responses session", log.Cause(err))
 		return nil
@@ -104,8 +110,14 @@ func (s *responsesSessionStore) lookupOrLoad(ctx context.Context, responseID str
 	if record == nil {
 		return nil
 	}
-	s.recordSnapshot(ctx, requestBody, responseBody, false)
-	return record
+	record.origin = origin
+ if origin.ChannelID > 0 {
+ attempt := &shared.ResponsesAttempt{}
+ attempt.SetOrigin(origin)
+ ctx = shared.WithResponsesAttempt(ctx, attempt)
+ }
+ s.recordSnapshot(ctx, requestBody, responseBody, false)
+ return record
 }
 
 func decodeResponsesSessionRecord(requestBody, responseBody []byte) *responsesSessionRecord {

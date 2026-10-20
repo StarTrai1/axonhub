@@ -447,6 +447,9 @@ func (a *remoteCompactionAdapter) archiveHistoryResponse(ctx context.Context, bo
 		if err := a.saveHistorySnapshot(ctx, historyWireAlias(id, channelID), wire.body, response); err != nil {
 			return err
 		}
+ if attempt := shared.GetResponsesAttempt(ctx); attempt != nil {
+ if err := a.saveHistoryWindow(ctx, id, attempt.Origin()); err != nil { return err }
+ }
 	} else if !missingHistoryPredecessor(wireErr) {
 		return wireErr
 	}
