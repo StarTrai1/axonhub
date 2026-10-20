@@ -68,6 +68,9 @@ func TestCodexFastAliasPreservesRelayHeadersAndUnknownModels(t *testing.T) {
 	require.Equal(t, "test", result.Headers.Get("X-Request-Id"))
 	for _, model := range []string{"gpt-6-sol", "custom-fast", "codex-auto-review-fast"} {
 		request := &httpclient.Request{Body: []byte(fmt.Sprintf(`{"model":%q}`, model))}
-		require.Same(t, request, outbound.FinalizeTransportRequest(request))
+		require.Same(t, request, outbound.normalizeFastModelRequest(request))
+		wire := outbound.FinalizeTransportRequest(request)
+		require.Equal(t, model, gjson.GetBytes(wire.Body, "model").String())
+		require.False(t, gjson.GetBytes(wire.Body, "service_tier").Exists())
 	}
 }

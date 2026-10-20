@@ -149,12 +149,32 @@ jobs:
             cmd/schema/go.sum
 
       - name: Test
-        run: make test-backend-all
+        run: go test ./...
 
       - name: Verify PostgreSQL quota routing migration
         env:
           AXONHUB_TEST_PG_DSN: postgres://axonhub_test:axonhub_test@127.0.0.1:5432/axonhub_test?sslmode=disable
         run: go test ./internal/server/biz -run '^TestQuotaRoutingMigration_Postgres$|^TestUnifiedHistory.*Postgres$' -count=1 -v
+
+  test-llm:
+    name: Test LLM module
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: .go-version
+          cache-dependency-path: |
+            go.sum
+            llm/go.sum
+            cmd/schema/go.sum
+      - name: Test all LLM packages
+        working-directory: llm
+        run: go test ./...
 
   source-contract:
     name: Verify generated sources and modules
