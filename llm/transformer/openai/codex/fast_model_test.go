@@ -18,8 +18,8 @@ func TestCodexFastAliasKeepsGPT6PassThroughConstraints(t *testing.T) {
 	for _, model := range []string{"gpt-6-sol-fast", "gpt-6-luna-fast", "gpt-6.1-sol-fast"} {
 		for _, effort := range []string{"none", "high", "minimal"} {
 			request := &llm.Request{
-				Model:      model,
-				APIFormat:  llm.APIFormatOpenAIResponse,
+				Model:     model,
+				APIFormat: llm.APIFormatOpenAIResponse,
 				RawRequest: &httpclient.Request{
 					Body: []byte(fmt.Sprintf(`{"model":%q,"reasoning":{"effort":%q},"temperature":0.5}`, model, effort)),
 				},

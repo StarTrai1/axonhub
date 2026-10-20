@@ -481,9 +481,11 @@ func TestCodexOutbound_WebSocketTransportKeepsContinuationFields(t *testing.T) {
 	}
 	executor := &codexExecutor{transformer: outbound}
 
+	original := string(request.Body)
 	prepared := executor.requestForTransport(request)
-	require.Same(t, request, prepared)
+	require.Equal(t, original, string(request.Body), "required wire fields must not mutate the source request")
 	require.Equal(t, "resp_1", gjson.GetBytes(prepared.Body, "previous_response_id").String())
+	require.Equal(t, "[]", gjson.GetBytes(prepared.Body, "input").Raw)
 	require.Equal(t, responses.WebSocketBetaHeaderValue, prepared.Headers.Get("OpenAI-Beta"))
 }
 
