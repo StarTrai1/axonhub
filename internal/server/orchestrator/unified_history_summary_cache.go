@@ -37,7 +37,9 @@ func setUnifiedSummaryKeys(segment *unifiedHistorySegment, contract map[string]j
 	segment.key = key(canonical)
 	segment.legacyAlias = "summaryref:" + strings.TrimPrefix(segment.key, "summary:")
 	semantic, err := unifiedSummaryContract(contract, true)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	segment.cacheAlias = "summaryref:" + historyDigest(append([]byte("segment-facts-v3:"), semantic...))
 	segment.legacyKeys = []string{key(raw)}
 	// Agent transport used to reserialize custom calls but leave their outputs
@@ -89,11 +91,17 @@ func setUnifiedSummaryKeys(segment *unifiedHistorySegment, contract map[string]j
 			r["effort"], _ = json.Marshal(effort)
 			prior["reasoning"], _ = json.Marshal(r)
 			raw, err := json.Marshal(prior)
-			if err != nil { return err }
+			if err != nil {
+				return err
+			}
 			canonical, err := canonicalHistoryJSON(raw)
-			if err != nil { return err }
+			if err != nil {
+				return err
+			}
 			old := key(canonical)
-			if !slices.Contains(segment.legacyKeys, old) { segment.legacyKeys = append(segment.legacyKeys, old) }
+			if !slices.Contains(segment.legacyKeys, old) {
+				segment.legacyKeys = append(segment.legacyKeys, old)
+			}
 		}
 	}
 	return nil
@@ -104,7 +112,9 @@ func unifiedSummaryLookupKeys(segment *unifiedHistorySegment) []string {
 	if segment.cacheAlias != "" {
 		keys = append(keys, segment.cacheAlias)
 	}
-	if segment.legacyAlias != "" { keys = append(keys, segment.legacyAlias) }
+	if segment.legacyAlias != "" {
+		keys = append(keys, segment.legacyAlias)
+	}
 	return keys
 }
 
@@ -118,7 +128,9 @@ func (a *remoteCompactionAdapter) loadUnifiedSummary(ctx context.Context, segmen
 		keys = []string{segment.key}
 	}
 	aliasKey := segment.cacheAlias
-	if entries[aliasKey] == "" && entries[segment.legacyAlias] != "" { aliasKey = segment.legacyAlias }
+	if entries[aliasKey] == "" && entries[segment.legacyAlias] != "" {
+		aliasKey = segment.legacyAlias
+	}
 	if sealed := entries[aliasKey]; sealed != "" {
 		alias, err := a.openHistoryRecord(ctx, aliasKey, sealed, 128)
 		if err != nil {

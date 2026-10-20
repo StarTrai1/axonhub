@@ -210,13 +210,15 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawRequest(
 	replayKey.replay = true
 	knownReplay := m.hasConfirmedRecovery(ctx, replayKey)
 	local := m.outbound.GetCurrentChannel().Policies.UsesLocalRemoteCompactionBridge()
- if local && !rejected && !known && !knownReplay {
- reader, err := m.adapter.loadNativeHistoryReader(ctx, ref, m.outbound.state.CurrentCandidate)
- if err != nil { return nil, &remoteCompactionPreparationError{cause:err} }
- if reader != nil && historyExportMatches(*reader, m.outbound.state.CurrentCandidate, request) {
- return request, nil
- }
- }
+	if local && !rejected && !known && !knownReplay {
+		reader, err := m.adapter.loadNativeHistoryReader(ctx, ref, m.outbound.state.CurrentCandidate)
+		if err != nil {
+			return nil, &remoteCompactionPreparationError{cause: err}
+		}
+		if reader != nil && historyExportMatches(*reader, m.outbound.state.CurrentCandidate, request) {
+			return request, nil
+		}
+	}
 	if !local && !known && !knownReplay && !m.failedMigrations[key] {
 		migration, err := m.adapter.loadNativeMigration(ctx, key)
 		if err != nil {
@@ -270,20 +272,20 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawRequest(
 	candidate.Models = candidate.Models[state.CurrentModelIndex : state.CurrentModelIndex+1]
 	candidate.APIFormat = string(llm.APIFormatOpenAIResponse)
 	bridgeState := &PersistenceState{
-		PromptProtecter:         state.PromptProtecter,
- unifiedHistoryCandidates: state.ChannelModelsCandidates,
-		compactionRecovery:      &compactionRecoveryEvidence{},
-		RawProviderRequest:      request,
-		APIKey:                  state.APIKey,
-		ChannelService:          state.ChannelService,
-		RetryPolicyProvider:     state.RetryPolicyProvider,
-		Proxy:                   state.Proxy,
-		ChannelModelsCandidates: []*ChannelModelsCandidate{&candidate},
+		PromptProtecter:          state.PromptProtecter,
+		unifiedHistoryCandidates: state.ChannelModelsCandidates,
+		compactionRecovery:       &compactionRecoveryEvidence{},
+		RawProviderRequest:       request,
+		APIKey:                   state.APIKey,
+		ChannelService:           state.ChannelService,
+		RetryPolicyProvider:      state.RetryPolicyProvider,
+		Proxy:                    state.Proxy,
+		ChannelModelsCandidates:  []*ChannelModelsCandidate{&candidate},
 	}
-if rejected {
- reader := nativeHistoryReaderFor(state)
- bridgeState.unifiedRejectedReader = &reader
- }
+	if rejected {
+		reader := nativeHistoryReaderFor(state)
+		bridgeState.unifiedRejectedReader = &reader
+	}
 	if body, assembled, err := m.adapter.compileUnifiedContext(ctx, request.Body, bridgeState, m.executor); err != nil {
 		return nil, &remoteCompactionPreparationError{cause: err}
 	} else if assembled {

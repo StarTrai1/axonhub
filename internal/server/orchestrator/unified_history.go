@@ -427,9 +427,11 @@ func (a *remoteCompactionAdapter) archiveHistoryResponse(ctx context.Context, bo
 	channelID := 0
 	if attempt := shared.GetResponsesAttempt(ctx); attempt != nil {
 		channelID = attempt.Origin().ChannelID
- if reader, ok := ctx.Value(nativeHistoryReaderContextKey{}).(nativeHistoryReader); ok {
- if err := a.rememberNativeHistoryOrigins(ctx, body, response, reader); err != nil { return err }
- }
+		if reader, ok := ctx.Value(nativeHistoryReaderContextKey{}).(nativeHistoryReader); ok {
+			if err := a.rememberNativeHistoryOrigins(ctx, body, response, reader); err != nil {
+				return err
+			}
+		}
 	}
 	wireState := *state
 	if channelID != 0 {
@@ -437,21 +439,29 @@ func (a *remoteCompactionAdapter) archiveHistoryResponse(ctx context.Context, bo
 	}
 	wire, wireErr := a.resolveRetainedContinuation(ctx, &remoteCompactionSource{body: body}, &wireState, true)
 	if wireErr == nil {
- if hasCheckpoint {
- envelope, input, err := decodeResponsesInput(wire.body)
- if err != nil { return err }
- if len(input) > 0 && rawInputItemType(input[len(input)-1]) == remoteCompactionTriggerType {
- if err := setResponseEnvelopeInput(envelope, input[:len(input)-1]); err != nil { return err }
- wire.body, err = json.Marshal(envelope)
- if err != nil { return err }
- }
- }
+		if hasCheckpoint {
+			envelope, input, err := decodeResponsesInput(wire.body)
+			if err != nil {
+				return err
+			}
+			if len(input) > 0 && rawInputItemType(input[len(input)-1]) == remoteCompactionTriggerType {
+				if err := setResponseEnvelopeInput(envelope, input[:len(input)-1]); err != nil {
+					return err
+				}
+				wire.body, err = json.Marshal(envelope)
+				if err != nil {
+					return err
+				}
+			}
+		}
 		if err := a.saveHistorySnapshot(ctx, historyWireAlias(id, channelID), wire.body, response); err != nil {
 			return err
 		}
- if attempt := shared.GetResponsesAttempt(ctx); attempt != nil {
- if err := a.saveHistoryWindow(ctx, id, attempt.Origin()); err != nil { return err }
- }
+		if attempt := shared.GetResponsesAttempt(ctx); attempt != nil {
+			if err := a.saveHistoryWindow(ctx, id, attempt.Origin()); err != nil {
+				return err
+			}
+		}
 	} else if !missingHistoryPredecessor(wireErr) {
 		return wireErr
 	}

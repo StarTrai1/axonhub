@@ -172,12 +172,12 @@ func (m *remoteCompactionMiddleware) OnInboundLlmRequest(ctx context.Context, re
 			}
 		}
 		m.historySource, err = m.adapter.resolveCompactionSourceContinuation(ctx, &remoteCompactionSource{body: body, headers: req.RawRequest.Headers}, m.inbound.state)
- if missingHistoryPredecessor(err) && !hasLocalBridgeCodexCandidate(candidates) {
- // A live native connection may still own this delta. Its accepted output
- // must not depend on the gateway's older plaintext coverage.
- m.historySource = &remoteCompactionSource{body:body, headers:req.RawRequest.Headers}
- err = nil
- }
+		if missingHistoryPredecessor(err) && !hasLocalBridgeCodexCandidate(candidates) {
+			// A live native connection may still own this delta. Its accepted output
+			// must not depend on the gateway's older plaintext coverage.
+			m.historySource = &remoteCompactionSource{body: body, headers: req.RawRequest.Headers}
+			err = nil
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -210,14 +210,18 @@ func (m *remoteCompactionMiddleware) OnInboundLlmRequest(ctx context.Context, re
 		if err != nil {
 			return nil, err
 		}
-adapt := shouldAdaptRemoteCompactionReference(ref, candidates)
- if adapt && !isLocalCompactionReference(ref) && !isRemoteCompactionGenerationRequest(req) && len(candidates) > 0 {
- reader, lookupErr := m.adapter.loadNativeHistoryReader(ctx, ref, candidates[0])
- if lookupErr != nil { return nil, lookupErr }
- // Defer a proven native read to the outbound identity check. Compression
- // generation policy does not itself invalidate readable existing state.
- if reader != nil { adapt = false }
- }
+		adapt := shouldAdaptRemoteCompactionReference(ref, candidates)
+		if adapt && !isLocalCompactionReference(ref) && !isRemoteCompactionGenerationRequest(req) && len(candidates) > 0 {
+			reader, lookupErr := m.adapter.loadNativeHistoryReader(ctx, ref, candidates[0])
+			if lookupErr != nil {
+				return nil, lookupErr
+			}
+			// Defer a proven native read to the outbound identity check. Compression
+			// generation policy does not itself invalidate readable existing state.
+			if reader != nil {
+				adapt = false
+			}
+		}
 		if adapt {
 			req, err = m.adaptRemoteCompactionHistory(ctx, req, ref, threadID, rawModel)
 			if err != nil {
@@ -1303,9 +1307,9 @@ func (a *remoteCompactionAdapter) generateCompactionWithCandidate(
 		}
 	}
 	providerRequest.Headers.Del(remoteCompactionCacheHeader)
- if parentState.unifiedExportOrigin != nil && !historyExportMatches(*parentState.unifiedExportOrigin, candidate, providerRequest) {
- return "", errors.New("checkpoint export reader account or endpoint has changed; no upstream request was sent")
- }
+	if parentState.unifiedExportOrigin != nil && !historyExportMatches(*parentState.unifiedExportOrigin, candidate, providerRequest) {
+		return "", errors.New("checkpoint export reader account or endpoint has changed; no upstream request was sent")
+	}
 
 	customizedExecutor := outbound.CustomizeExecutor(executor)
 	perf := &biz.PerformanceRecord{

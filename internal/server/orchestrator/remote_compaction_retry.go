@@ -132,7 +132,9 @@ func canRetryLocalCompactionStream(outbound *PersistentOutboundTransformer, err 
 		return true
 	}
 	status := ExtractStatusCodeFromError(err)
- if status == http.StatusGatewayTimeout && expensiveGatewayTimeout(state, time.Now()) { return false }
+	if status == http.StatusGatewayTimeout && expensiveGatewayTimeout(state, time.Now()) {
+		return false
+	}
 	if status == http.StatusTooManyRequests || status == http.StatusServiceUnavailable {
 		return canRetryTransientRateLimit(err)
 	}

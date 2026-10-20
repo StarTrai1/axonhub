@@ -13,7 +13,7 @@ import (
 	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/internal/ent"
-"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
@@ -52,7 +52,7 @@ func (a *remoteCompactionAdapter) retainNativeCompactionSource(ctx context.Conte
 		return errors.New("native compaction source storage is unavailable or source exceeds limit")
 	}
 	unresolved := source
- source, err := a.resolveCompactionSourceContinuation(ctx, source, state)
+	source, err := a.resolveCompactionSourceContinuation(ctx, source, state)
 	if err != nil {
 		if missingHistoryPredecessor(err) {
 			return a.retainUnresolvedNativeSource(ctx, ref, state, unresolved)
@@ -94,11 +94,15 @@ func (a *remoteCompactionAdapter) loadNativeCompactionSource(ctx context.Context
 		}
 		gapKey := historyUnresolvedNativeKey(ref)
 		entries, err := a.systemService.LoadUnifiedHistory(ctx, []string{gapKey})
-		if err != nil { return nil, err }
+		if err != nil {
+			return nil, err
+		}
 		if entries[gapKey] != "" {
 			body, err := a.openHistoryRecord(ctx, gapKey, entries[gapKey], nativeCompactionMaxSourceBytes)
-			if err != nil { return nil, err }
-			return a.resolveCompactionSourceContinuation(ctx, &remoteCompactionSource{body:body, headers:make(http.Header)}, state)
+			if err != nil {
+				return nil, err
+			}
+			return a.resolveCompactionSourceContinuation(ctx, &remoteCompactionSource{body: body, headers: make(http.Header)}, state)
 		}
 	}
 	sealed, err := a.systemService.LoadNativeCompactionSource(ctx, state.APIKey.ProjectID, state.APIKey.ID, remoteCompactionCacheKey(ref))
@@ -190,7 +194,7 @@ func (m *nativeCompactionSourceMiddleware) snapshot() (*remoteCompactionSource, 
 		return nil, nil
 	}
 	owner := &ent.APIKey{ID: state.APIKey.ID, ProjectID: state.APIKey.ProjectID}
-	return &remoteCompactionSource{body: append([]byte(nil), body...)}, &PersistenceState{APIKey: owner, unifiedHistorySource: state.unifiedHistorySource, CurrentCandidate: state.CurrentCandidate, RawProviderRequest:raw}
+	return &remoteCompactionSource{body: append([]byte(nil), body...)}, &PersistenceState{APIKey: owner, unifiedHistorySource: state.unifiedHistorySource, CurrentCandidate: state.CurrentCandidate, RawProviderRequest: raw}
 }
 
 func (m *nativeCompactionSourceMiddleware) OnOutboundRawResponse(ctx context.Context, response *httpclient.Response) (*httpclient.Response, error) {
@@ -206,10 +210,10 @@ func (m *nativeCompactionSourceMiddleware) OnOutboundRawResponse(ctx context.Con
 			return nil, err
 		}
 	}
-if err := m.adapter.rememberNativeHistoryOrigins(ctx, source.body, response.Body, nativeHistoryReaderFor(state)); err != nil {
- log.Warn(ctx, "could not retain completed native checkpoint reader", log.Cause(err))
- }
- return response, nil
+	if err := m.adapter.rememberNativeHistoryOrigins(ctx, source.body, response.Body, nativeHistoryReaderFor(state)); err != nil {
+		log.Warn(ctx, "could not retain completed native checkpoint reader", log.Cause(err))
+	}
+	return response, nil
 }
 
 func (m *nativeCompactionSourceMiddleware) saveItem(ctx context.Context, source *remoteCompactionSource, state *PersistenceState, item gjson.Result) error {
@@ -275,12 +279,12 @@ func (s *nativeCompactionSourceStream) Next() bool {
 		}
 		s.saved[key] = true
 	}
-if kind == "response.completed" && gjson.GetBytes(event.Data, "response.status").String() == "completed" {
- if err := s.middleware.adapter.rememberNativeHistoryOrigins(s.ctx, s.source.body, []byte(gjson.GetBytes(event.Data, "response").Raw), nativeHistoryReaderFor(s.state)); err != nil {
- log.Warn(s.ctx, "could not retain completed native checkpoint reader", log.Cause(err))
- }
- }
- return true
+	if kind == "response.completed" && gjson.GetBytes(event.Data, "response.status").String() == "completed" {
+		if err := s.middleware.adapter.rememberNativeHistoryOrigins(s.ctx, s.source.body, []byte(gjson.GetBytes(event.Data, "response").Raw), nativeHistoryReaderFor(s.state)); err != nil {
+			log.Warn(s.ctx, "could not retain completed native checkpoint reader", log.Cause(err))
+		}
+	}
+	return true
 }
 
 func (s *nativeCompactionSourceStream) Current() *httpclient.StreamEvent {

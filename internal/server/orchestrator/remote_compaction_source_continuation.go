@@ -123,7 +123,7 @@ func (a *remoteCompactionAdapter) resolveRetainedContinuation(ctx context.Contex
 
 // Only an absent owned predecessor is an archive coverage gap. Corruption,
 // mismatched ownership, divergent threads and cycles must remain hard errors.
-type missingHistoryPredecessorError struct { error }
+type missingHistoryPredecessorError struct{ error }
 
 func (e *missingHistoryPredecessorError) Unwrap() error { return e.error }
 
