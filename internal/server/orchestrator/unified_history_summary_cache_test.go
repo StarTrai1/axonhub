@@ -30,7 +30,7 @@ func TestUnifiedHistorySummaryCacheImportsOldItemOrderWithoutGeneration(t *testi
 	require.NoError(t, adapter.systemService.SaveUnifiedHistory(ctx, map[string]string{oldKey: sealed}))
 	executor := &unifiedConcurrentExecutor{}
 	segments := []unifiedHistorySegment{current}
-	missing, supported, err := adapter.hydrateUnifiedSegments(ctx, segments, state, executor)
+	missing, supported, err := adapter.hydrateUnifiedSegments(ctx, segments, state, executor, nil)
 	require.NoError(t, err)
 	require.True(t, supported)
 	require.Zero(t, missing)
@@ -40,7 +40,7 @@ func TestUnifiedHistorySummaryCacheImportsOldItemOrderWithoutGeneration(t *testi
 	adapter = newRemoteCompactionAdapter(nil, nil, adapter.systemService)
 	thirdOrder := summaryCacheSegment(t, `[{"name":"inspect","type":"custom_tool_call","input":"literal {\"b\":2,\"a\":1}","call_id":"call_exact"},{"output":[{"type":"input_text","text":"retain 9007199254740993"}],"call_id":"call_exact","type":"custom_tool_call_output"},{"type":"function_call","name":"stats","call_id":"function_exact","arguments":"{}"},{"type":"function_call_output","call_id":"function_exact","output":"count 7"},{"type":"compaction_trigger"}]`)
 	segments = []unifiedHistorySegment{thirdOrder}
-	missing, supported, err = adapter.hydrateUnifiedSegments(ctx, segments, state, executor)
+	missing, supported, err = adapter.hydrateUnifiedSegments(ctx, segments, state, executor, nil)
 	require.NoError(t, err)
 	require.True(t, supported)
 	require.Zero(t, missing)

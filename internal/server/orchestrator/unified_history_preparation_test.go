@@ -43,7 +43,7 @@ func TestUnifiedHistoryResumedSmallBatchRemainsConcurrent(t *testing.T) {
 						err = fmt.Errorf("preparation panic: %v", value)
 					}
 				}()
-				count, supported, err = adapter.hydrateUnifiedSegments(ctx, plan.segments, state, executor)
+				count, supported, err = adapter.hydrateUnifiedSegments(ctx, plan.segments, state, executor, nil)
 				return err
 			})
 			t.Cleanup(func() { unblock(); _ = group.Wait() })
@@ -81,7 +81,7 @@ func TestUnifiedHistoryInstructionOnlySegmentStaysExactWithoutGeneration(t *test
 	require.True(t, supported)
 	require.Empty(t, plan.segments[0].key)
 	executor := &unifiedConcurrentExecutor{}
-	count, supported, err := adapter.hydrateUnifiedSegments(ctx, plan.segments, state, executor)
+	count, supported, err := adapter.hydrateUnifiedSegments(ctx, plan.segments, state, executor, nil)
 	require.NoError(t, err)
 	require.True(t, supported)
 	require.Equal(t, len(plan.segments)-1, count)

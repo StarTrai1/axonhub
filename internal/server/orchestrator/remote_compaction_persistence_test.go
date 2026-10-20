@@ -121,4 +121,25 @@ func TestRemoteCompactionPreparationFailureIsPersistedWithoutUpstreamExecution(t
 	count, err = client.RequestExecution.Query().Count(ctx)
 	require.NoError(t, err)
 	require.Zero(t, count)
+	// The real outbound path already has a parent when preparation fails.
+	// Keeping only the early-create case loses the error and leaves an empty row.
+	state.Request, err = stored.Update().SetStatus(request.StatusProcessing).
+		SetExternalID("preserved-response-id").SetResponseBody(objects.JSONRawMessage(`{}`)).Save(ctx)
+	require.NoError(t, err)
+	budgetFailure := &remoteCompactionPreparationError{cause: unifiedHistoryPreparationLimit("cached notes exceed the input budget")}
+	require.NoError(t, persistRemoteCompactionPreparationFailure(ctx, inbound, budgetFailure))
+	updated, err := client.Request.Get(ctx, stored.ID)
+	require.NoError(t, err)
+	require.Equal(t, request.StatusFailed, updated.Status)
+	require.Equal(t, "preserved-response-id", updated.ExternalID)
+	body, err = biz.DecodeStoredPayload(updated.ResponseBody)
+	require.NoError(t, err)
+	require.Equal(t, "unified_history_budget_exceeded", gjson.GetBytes(body, "error.code").String())
+	require.Equal(t, http.StatusBadRequest, inbound.TransformError(ctx, budgetFailure).StatusCode)
+	count, err = client.Request.Query().Count(ctx)
+	require.NoError(t, err)
+	require.Equal(t, 1, count)
+	count, err = client.RequestExecution.Query().Count(ctx)
+	require.NoError(t, err)
+	require.Zero(t, count)
 }

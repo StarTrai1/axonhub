@@ -2,11 +2,59 @@ package orchestrator
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
+
+	"github.com/looplj/axonhub/internal/server/biz"
 )
+
+// Preserve the existing assembly target. A matching catalog contract can prove
+// that a larger input still leaves the full model output allowance available.
+// JSON bytes remain a conservative text-token bound, not a token estimate.
+func unifiedHistoryInputBudgets(body []byte, candidate *ChannelModelsCandidate, modelIndex, contextTokens int) (int, int) {
+	target := min(unifiedContextMaxBytes, contextTokens-contextTokens/4)
+	ceiling := target
+	if modelIndex >= 0 && modelIndex < len(candidate.Models) {
+		known := biz.BundledModelHistoryInputLimit(candidate.Models[modelIndex].ActualModel, contextTokens)
+		ceiling = max(ceiling, min(unifiedContextMaxBytes, known-4096))
+	}
+	output := max(candidate.DefaultMaxTokens, gjson.GetBytes(body, "max_output_tokens").Int())
+	if output > 0 {
+		remaining := max(int64(0), int64(contextTokens)-output-4096)
+		ceiling = int(min(int64(ceiling), remaining))
+		target = min(target, ceiling)
+	}
+	return target, ceiling
+}
+
+func unifiedSegmentSummaryMessage(segment unifiedHistorySegment) json.RawMessage {
+	message, _ := json.Marshal(map[string]any{"type": "message", "role": "assistant", "content": []map[string]string{{"type": "output_text", "text": fmt.Sprintf("Archived history summary (source %s). This is a derived summary; the original user instructions remain authoritative.\n%s", strings.TrimPrefix(segment.key, "summary:"), segment.summary)}}})
+	return message
+}
+
+// Validate cached notes before paying to prepare any missing siblings. The
+// uncached allowance is a planning reserve; final generated text is checked
+// again without truncation before a provider request can start.
+func validateUnifiedHistoryMinimum(plan *unifiedHistoryPlan, budget int) error {
+	size := plan.mandatory
+	for _, segment := range plan.segments {
+		if segment.key == "" {
+			continue
+		}
+		if segment.summary == "" {
+			size += 1024
+		} else {
+			size += unifiedItemSize(unifiedSegmentSummaryMessage(segment))
+		}
+	}
+	if size > budget {
+		return unifiedHistoryPreparationLimit("the retained instructions and cached segment summaries already exceed the input budget; no additional summaries were generated")
+	}
+	return nil
+}
 
 // Count text JSON bytes conservatively; image transport bytes are not text
 // tokens. Keep the original image unchanged and reserve a large fixed visual

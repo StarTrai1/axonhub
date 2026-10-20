@@ -21,14 +21,20 @@ func persistRemoteCompactionPreparationFailure(ctx context.Context, inbound *Per
 		return nil
 	}
 	state := inbound.state
-	if state.Request != nil || state.APIKey == nil || state.LlmRequest == nil || state.RawRequest == nil {
+	if state.APIKey == nil || state.LlmRequest == nil || state.RawRequest == nil {
 		return nil
 	}
-	record, err := state.RequestService.CreateRequest(ctx, state.LlmRequest, state.RawRequest, persistedRequestAPIFormat(ctx, state.LlmRequest.APIFormat))
-	if err != nil {
-		return err
+	// The normal outbound path creates the parent before checkpoint recovery.
+	// Persist its preparation error too, even when there was no new execution.
+	record := state.Request
+	if record == nil {
+		var err error
+		record, err = state.RequestService.CreateRequest(ctx, state.LlmRequest, state.RawRequest, persistedRequestAPIFormat(ctx, state.LlmRequest.APIFormat))
+		if err != nil {
+			return err
+		}
+		state.Request = record
 	}
-	state.Request = record
 	transformed := inbound.TransformError(ctx, failure)
 	if transformed == nil {
 		return state.RequestService.UpdateRequestStatusFromError(ctx, record.ID, failure)
@@ -37,5 +43,5 @@ func persistRemoteCompactionPreparationFailure(ctx context.Context, inbound *Per
 	if errors.Is(failure, context.Canceled) {
 		status = request.StatusCanceled
 	}
-	return state.RequestService.UpdateRequestStatusExternalIDAndResponseBody(ctx, record.ID, status, "", objects.JSONRawMessage(transformed.Body), requestLatencyMetrics(state, nil))
+	return state.RequestService.UpdateRequestStatusExternalIDAndResponseBody(ctx, record.ID, status, record.ExternalID, objects.JSONRawMessage(transformed.Body), requestLatencyMetrics(state, nil))
 }

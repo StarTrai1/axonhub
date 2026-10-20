@@ -10,4 +10,10 @@ func TestBundledModelContextLimitWithoutImportedModels(t *testing.T) {
 	require.Positive(t, BundledModelContextLimit("gpt-6-astra"))
 	require.Zero(t, BundledModelContextLimit("unknown-model-without-a-window"))
 	require.Zero(t, BundledModelContextLimit("tenant/gpt-6-astra"), "do not guess through an unrelated alias")
+	window := BundledModelContextLimit("gpt-6-astra")
+	input := BundledModelHistoryInputLimit("gpt-6-astra", window)
+	require.Positive(t, input)
+	require.Less(t, input, window)
+	require.Zero(t, BundledModelHistoryInputLimit("gpt-6-astra", 372000))
+	require.Zero(t, BundledModelHistoryInputLimit("tenant/gpt-6-astra", window))
 }

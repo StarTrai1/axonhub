@@ -106,9 +106,10 @@ func (a *remoteCompactionAdapter) compileUnifiedContext(ctx context.Context, bod
 		log.Warn(ctx, "unified history assembly unavailable", log.String("reason", "unknown_model_context"))
 		return body, false, nil
 	}
-	// Reserve at least one quarter of the context for output and framing.
-	// JSON text bytes still overestimate text tokens; media has a separate cost.
-	budget := min(unifiedContextMaxBytes, contextTokens-contextTokens/4)
+	budget, ceiling := unifiedHistoryInputBudgets(body, candidate, state.CurrentModelIndex, contextTokens)
+	if budget <= 0 {
+		return nil, false, unifiedHistoryPreparationLimit("the requested output reservation leaves no input budget")
+	}
 	expanded, ok, err := a.expandUnifiedHistory(ctx, body, state, make(map[string]bool))
 	if err != nil || !ok {
 		return body, false, err
@@ -147,6 +148,9 @@ func (a *remoteCompactionAdapter) compileUnifiedContext(ctx context.Context, bod
 		return expanded, true, nil
 	}
 	plan, supported, err := planUnifiedHistory(envelope, items, state, candidate, budget)
+	if err == nil && !supported && ceiling > budget {
+		plan, supported, err = planUnifiedHistory(envelope, items, state, candidate, ceiling)
+	}
 	if err != nil || !supported {
 		log.Warn(ctx, "unified history assembly unavailable", log.String("reason", "original_history_exceeds_plan_limits"))
 		if err == nil {
@@ -155,11 +159,21 @@ func (a *remoteCompactionAdapter) compileUnifiedContext(ctx context.Context, bod
 		return nil, false, err
 	}
 	log.Info(ctx, "preparing unified history segments", log.Int("segments", len(plan.segments)), log.Int("retained_bytes", plan.mandatory), log.Int("context_budget", budget))
-	missing, supported, err := a.hydrateUnifiedSegments(ctx, plan.segments, state, executor)
+	missing, supported, err := a.hydrateUnifiedSegments(ctx, plan.segments, state, executor, func() error {
+		return validateUnifiedHistoryMinimum(plan, ceiling)
+	})
 	if err != nil || !supported {
 		return body, false, err
 	}
 	result, err := renderUnifiedHistory(envelope, plan, budget)
+	if failure, ok := errors.AsType[*llm.ResponseError](err); ok && failure.Detail.Code == "unified_history_budget_exceeded" && ceiling > budget {
+		// Keep normal views and segment identities unchanged. Extra space is
+		// used only when existing notes cannot fit the conservative target.
+		result, err = renderUnifiedHistory(envelope, plan, ceiling)
+		if err == nil {
+			log.Info(ctx, "assembled unified history within model input allowance", log.Int("target_budget", budget), log.Int("input_budget", ceiling))
+		}
+	}
 	if err != nil {
 		return nil, false, err
 	}
@@ -280,7 +294,7 @@ func planUnifiedHistory(envelope map[string]json.RawMessage, items []json.RawMes
 	return &unifiedHistoryPlan{segments: segments, recent: recent, query: query, mandatory: mandatory, capacity: len(items)}, true, nil
 }
 
-func (a *remoteCompactionAdapter) hydrateUnifiedSegments(ctx context.Context, segments []unifiedHistorySegment, state *PersistenceState, executor pipeline.Executor) (int, bool, error) {
+func (a *remoteCompactionAdapter) hydrateUnifiedSegments(ctx context.Context, segments []unifiedHistorySegment, state *PersistenceState, executor pipeline.Executor, preflight func() error) (int, bool, error) {
 	keys := make([]string, 0, len(segments))
 	for _, segment := range segments {
 		if segment.key != "" {
@@ -315,6 +329,11 @@ func (a *remoteCompactionAdapter) hydrateUnifiedSegments(ctx context.Context, se
 	}
 	if missing > unifiedMaxNewSummaries {
 		return missing, false, unifiedHistoryPreparationLimit("too many uncached history segments require generation in one request")
+	}
+	if preflight != nil {
+		if err := preflight(); err != nil {
+			return 0, false, err
+		}
 	}
 	// Check the whole plan before launching any siblings. A client resend must
 	// not repeatedly regenerate the other segments around a known failed one.
@@ -448,10 +467,10 @@ func renderUnifiedHistory(envelope map[string]json.RawMessage, plan *unifiedHist
 		}
 		// Quote a derived view as assistant material. Original user/system roles
 		// remain unchanged; tool output is never promoted to a developer message.
-		message, _ := json.Marshal(map[string]any{"type": "message", "role": "assistant", "content": []map[string]string{{"type": "output_text", "text": fmt.Sprintf("Archived history summary (source %s). This is a derived summary; the original user instructions remain authoritative.\n%s", strings.TrimPrefix(segment.key, "summary:"), segment.summary)}}})
+		message := unifiedSegmentSummaryMessage(segment)
 		remaining -= unifiedItemSize(message)
 		if remaining < 0 {
-			return nil, errors.New("unified history summaries exceed the context budget; retained source is intact")
+			return nil, unifiedHistoryPreparationLimit("the retained instructions and segment summaries exceed the input budget; original history remains intact")
 		}
 		compiled = append(compiled, segment.pinned...)
 		compiled = append(compiled, message)
@@ -488,7 +507,7 @@ func renderUnifiedHistory(envelope map[string]json.RawMessage, plan *unifiedHist
 		return nil, err
 	}
 	if unifiedContextSize(result) > budget {
-		return nil, errors.New("unified history assembled context exceeds budget; retained source is intact")
+		return nil, unifiedHistoryPreparationLimit("the assembled context exceeds the input budget; original history remains intact")
 	}
 	return result, nil
 }
