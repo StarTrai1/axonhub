@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"context"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -138,4 +139,15 @@ func TestUnifiedHistoryNativeReadingIndependentOfGenerationPolicy(t *testing.T) 
 	_, err = m.OnOutboundRawRequest(ctx, state.RawProviderRequest)
 	require.Error(t, err, "explicit subsequent rejection overrides historical read evidence")
 	require.Empty(t, executor.requests, "a rejected current checkpoint must not be exported back to the same reader")
+}
+
+func TestUnifiedHistoryCheckpointExportChecksExactSuffixBeforeGeneration(t *testing.T) {
+	ctx, _, state, adapter := unifiedHistoryFixture(t)
+	state.CurrentCandidate.ContextTokens = 4096
+	body := []byte(`{"model":"gpt-6-astra","input":[{"type":"compaction","id":"cmp_budget","encrypted_content":"private-state"},{"role":"user","content":"` + strings.Repeat("exact new evidence ", 1000) + `"}]}`)
+	executor := &unifiedExportExecutor{}
+	_, ready, err := adapter.exportUnifiedCheckpoint(ctx, body, state, executor)
+	require.False(t, ready)
+	require.ErrorContains(t, err, "exact live suffix")
+	require.Empty(t, executor.requests)
 }

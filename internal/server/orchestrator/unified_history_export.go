@@ -12,6 +12,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
@@ -89,6 +90,21 @@ func historyExportMatches(reader nativeHistoryReader, candidate *ChannelModelsCa
 		origin.Auth != "" && origin.Auth == historyReaderCredential(request, reader.OAuth) && endpoint(origin.Endpoint) == endpoint(request.URL)
 }
 
+func unifiedCheckpointInputBudget(body []byte, candidate *ChannelModelsCandidate, index int) int {
+	if candidate == nil || index < 0 || index >= len(candidate.Models) {
+		return 0
+	}
+	tokens := candidate.ContextTokens
+	if tokens <= 0 {
+		tokens = biz.BundledModelContextLimit(candidate.Models[index].ActualModel)
+	}
+	if tokens <= 0 {
+		return 0
+	}
+	_, ceiling := unifiedHistoryInputBudgets(body, candidate, index, tokens)
+	return ceiling
+}
+
 // Export only the checkpoint window, once, on a proven reader. The exact live
 // suffix is never summarized. This is a portable handoff, not decrypted or
 // lossless access to hidden reasoning. Full raw archives remain independent.
@@ -109,6 +125,21 @@ func (a *remoteCompactionAdapter) exportUnifiedCheckpoint(ctx context.Context, b
 	}
 	if count != 1 {
 		return body, false, nil
+	}
+	destination := state.CurrentCandidate
+	if destination == nil && len(state.ChannelModelsCandidates) > 0 {
+		destination = state.ChannelModelsCandidates[0]
+	}
+	inputBudget := unifiedCheckpointInputBudget(body, destination, state.CurrentModelIndex)
+	if inputBudget <= 0 {
+		return body, false, nil
+	}
+	minimum, err := replaceRemoteCompactionWithLocalSummary(body, "reserved checkpoint handoff")
+	if err != nil {
+		return nil, false, err
+	}
+	if unifiedContextSize(minimum)+1024 > inputBudget {
+		return nil, false, unifiedHistoryPreparationLimit("the exact live suffix leaves no room for a checkpoint handoff")
 	}
 	prefix := append(append([]json.RawMessage(nil), input[:ref.Index+1]...), json.RawMessage(`{"type":"compaction_trigger"}`))
 	if err := setResponseEnvelopeInput(envelope, prefix); err != nil {
@@ -186,13 +217,14 @@ func (a *remoteCompactionAdapter) exportUnifiedCheckpoint(ctx context.Context, b
 			return nil, false, err
 		}
 		// The source reader must receive only a bounded existing native window.
-		if unifiedContextSize(source) > unifiedContextMaxBytes {
+		if budget := unifiedCheckpointInputBudget(source, selected, 0); budget <= 0 || unifiedContextSize(source) > budget {
 			return body, false, nil
 		}
 		exportState := *state
 		exportState.CurrentCandidate, exportState.CurrentModelIndex = selected, 0
 		exportState.ChannelModelsCandidates = []*ChannelModelsCandidate{selected}
 		exportState.RetryPolicyProvider = nil
+		exportState.RawProviderRequest = nil
 		exportState.unifiedExportOrigin = &reader
 		exportState.compactionRecovery = &compactionRecoveryEvidence{}
 		failureKey := unifiedSegmentFailureKey(&exportState, &unifiedHistorySegment{key: key})
@@ -239,7 +271,7 @@ func (a *remoteCompactionAdapter) exportUnifiedCheckpoint(ctx context.Context, b
 	if err != nil {
 		return nil, false, err
 	}
-	if unifiedContextSize(result) > unifiedContextMaxBytes {
+	if unifiedContextSize(result) > inputBudget {
 		return nil, false, unifiedHistoryPreparationLimit("exported checkpoint and exact live suffix exceed the input budget")
 	}
 	return result, true, nil
