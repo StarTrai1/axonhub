@@ -23,7 +23,7 @@ func TestCheckpointBudgetIgnoresTransportEscaping(t *testing.T) {
 	value := map[string]any{
 		"model": "gpt-6-astra",
 		"input": []any{
-			map[string]string{"role": "user", "content": strings.Repeat("<tag>&value</tag>\n", 1000)},
+			map[string]string{"role": "user", "content": strings.Repeat("<tag>&value</tag>\n", 1200)},
 			map[string]any{"type": "function_call", "call_id": "retain-call", "name": "read", "arguments": `{"offset":9007199254740993}`},
 			map[string]string{"type": "function_call_output", "call_id": "retain-call", "output": "exact result"},
 		},
@@ -79,7 +79,10 @@ func TestCheckpointBudgetUsesFinalModelToolsAndOutput(t *testing.T) {
 	changed, err = sjson.SetBytes(changed, "input.0.content", strings.Repeat("complete exact observation ", 5000))
 	require.NoError(t, err)
 	_, err = admission.OnOutboundRawRequest(ctx, &httpclient.Request{Body: changed})
-	require.NoError(t, err, "use the final model's catalog instead of the previous model's 16k window")
+	require.ErrorContains(t, err, "input budget", "a model override must not bypass the configured 16k cap")
+	state.CurrentCandidate.ContextTokens = 0
+	_, err = admission.OnOutboundRawRequest(ctx, &httpclient.Request{Body: changed})
+	require.NoError(t, err, "without a configured cap, use the final model catalog")
 	state.checkpointSummaryGeneration = false
 	_, err = admission.OnOutboundRawRequest(ctx, &httpclient.Request{Body: largeOutput})
 	require.NoError(t, err, "ordinary requests and client memory work do not acquire a gateway summary budget")
@@ -92,7 +95,7 @@ func TestCheckpointLegacyEscapedSourceMigratesOnce(t *testing.T) {
 			req := rejectedCompactionPipelineRequest(t, llm.APIFormatOpenAIResponse)
 			ref, _, _, err := parseRemoteCompactionRequest(req.Body)
 			require.NoError(t, err)
-			observation := strings.Repeat("<tag>&value</tag>\n", 1000)
+			observation := strings.Repeat("<tag>&value</tag>\n", 1200)
 			source, err := json.Marshal(map[string]any{"model": "legacy-source-model", "input": []any{
 				map[string]string{"role": "user", "content": "retain the original task and exact tool result"},
 				map[string]string{"type": "custom_tool_call", "call_id": "source-call", "name": "inspect", "input": "<source>&exact"},

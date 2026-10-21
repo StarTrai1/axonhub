@@ -37,13 +37,11 @@ func validateCheckpointSummaryRequest(body []byte, state *PersistenceState) erro
 	}
 	model := gjson.GetBytes(body, "model").String()
 	contextTokens := candidate.ContextTokens
-	if model != candidate.Models[state.CurrentModelIndex].ActualModel {
-		// A final body override may change the model. A window configured for the
-		// original route cannot authorize input for that different model.
-		contextTokens = 0
-	}
-	if contextTokens <= 0 {
-		contextTokens = biz.BundledModelContextLimit(model)
+	catalogContext := biz.BundledModelContextLimit(model)
+	// A final model override must respect both its own catalog and any smaller
+	// operator-configured window. It cannot silently enlarge that window.
+	if contextTokens <= 0 || catalogContext > 0 && catalogContext < contextTokens {
+		contextTokens = catalogContext
 	}
 	if contextTokens <= 0 {
 		return nil // Unknown model contracts retain provider-side admission.
