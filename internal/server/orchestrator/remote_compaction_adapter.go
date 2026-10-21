@@ -397,7 +397,6 @@ func (m *remoteCompactionMiddleware) adaptLocalCompactionGeneration(ctx context.
 	m.inbound.state.LlmRequest = adapted
 	m.inbound.state.DisableResponsePassThrough = true
 	m.inbound.state.DisableStreamForcing = standalone
-	m.inbound.state.checkpointSummaryGeneration = true
 
 	threadID := adaptedRawRequest.Headers.Get("Thread-Id")
 	log.Info(ctx, "bridging remote compaction generation through regular Responses",
@@ -1251,7 +1250,6 @@ func (a *remoteCompactionAdapter) generateCompactionWithCandidate(
 		Request:                 bridgeRecord,
 		ChannelModelsCandidates: []*ChannelModelsCandidate{candidate},
 	}
-	attemptState.checkpointSummaryGeneration = !native
 	_, outbound := NewPersistentTransformers(attemptState, responses.NewInboundTransformer())
 	providerRequest, err := outbound.TransformRequest(ctx, bridgeRequest)
 	if err != nil {
@@ -1273,7 +1271,6 @@ func (a *remoteCompactionAdapter) generateCompactionWithCandidate(
 		recoverResponsesAgentMessages(outbound, a.systemService),
 		compatibility,
 		finalizeTransportRequest(outbound),
-		admitCheckpointSummary(outbound),
 	}
 	if native && parentState.RawProviderRequest != nil {
 		// Both the retained content and destination headers are already effective
@@ -1286,7 +1283,7 @@ func (a *remoteCompactionAdapter) generateCompactionWithCandidate(
 		providerRequest.Headers.Del(nativeCompactionMigrationHeader)
 		providerRequest.Headers.Del(codexTurnStateHeader)
 		requestMiddlewares = []pipeline.Middleware{
-			recoverResponsesAgentMessages(outbound, a.systemService), compatibility, finalizeTransportRequest(outbound), admitCheckpointSummary(outbound),
+			recoverResponsesAgentMessages(outbound, a.systemService), compatibility, finalizeTransportRequest(outbound),
 		}
 	}
 	for _, middleware := range requestMiddlewares {
@@ -1304,7 +1301,7 @@ func (a *remoteCompactionAdapter) generateCompactionWithCandidate(
 		Stream:    true,
 	}
 	attemptState.Perf = perf
-	stream, executionRecord, err := a.startLocalCompactionStream(ctx, outbound, providerRequest, customizedExecutor, compatibility, admitCheckpointSummary(outbound))
+	stream, executionRecord, err := a.startLocalCompactionStream(ctx, outbound, providerRequest, customizedExecutor, compatibility)
 	if err != nil {
 		err = rejectedCompactionSourceError(attemptState.RawProviderRequest, err)
 		if rejected, ok := errors.AsType[*compactionSourceRejectedError](err); ok && ctx.Err() == nil {

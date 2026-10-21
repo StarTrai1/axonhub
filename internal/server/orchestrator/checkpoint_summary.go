@@ -66,7 +66,8 @@ func (a *remoteCompactionAdapter) restoreCheckpointWindow(ctx context.Context, s
 
 // A migration can read a retained source once. It cannot publish that source as
 // a compacted prompt, split it into model requests, or truncate it to fit.
-// Token admission happens on the finalized summary request, not this archive.
+// The provider owns rendered-token admission. JSON size and a guessed tokenizer
+// are not evidence that its context window is exhausted.
 func prepareCheckpointSummarySource(ctx context.Context, source *remoteCompactionSource, state *PersistenceState) (*remoteCompactionSource, error) {
 	if source == nil {
 		return nil, checkpointSummaryError("compaction_history_unavailable", "Checkpoint source is unavailable")

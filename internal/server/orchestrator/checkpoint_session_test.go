@@ -123,7 +123,6 @@ func TestCheckpointLocalGenerationDoesNotSummarizeAncestorSeparately(t *testing.
 	got, err := middleware.OnInboundLlmRequest(ctx, req)
 	require.NoError(t, err)
 	require.NotNil(t, middleware.generation)
-	require.True(t, state.checkpointSummaryGeneration, "direct compaction must use the same final-request admission as migration")
 	require.Empty(t, executor.summaries, "preparing a new checkpoint must not generate an ancestor summary")
 	require.Empty(t, executor.continuations)
 	body := string(got.RawRequest.Body)

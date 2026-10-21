@@ -3,6 +3,7 @@ package anthropic
 import (
 	"bytes"
 	"encoding/json"
+	"strings"
 )
 
 // maxCacheControlBreakpoints is the maximum number of cache_control breakpoints allowed by Anthropic.
@@ -100,6 +101,9 @@ func normalizeAndCollectCacheControlRefs(req *MessageRequest) []cacheControlSlot
 	if req.System != nil {
 		if len(req.System.MultiplePrompts) > 0 {
 			for i := range req.System.MultiplePrompts {
+				if !isCacheableSystemPrompt(req.System.MultiplePrompts[i]) {
+					continue
+				}
 				cacheControl := &req.System.MultiplePrompts[i].CacheControl
 				refs = append(refs, newCacheControlSlot(cacheControl))
 			}
@@ -337,8 +341,12 @@ func ensureStructuralCacheControls(req *MessageRequest, remaining int) {
 
 	if len(req.System.MultiplePrompts) > 0 {
 		if !anySystemPromptHasCacheControl(req) {
-			last := len(req.System.MultiplePrompts) - 1
-			req.System.MultiplePrompts[last].CacheControl = &CacheControl{Type: "ephemeral"}
+			for i := len(req.System.MultiplePrompts) - 1; i >= 0; i-- {
+				if isCacheableSystemPrompt(req.System.MultiplePrompts[i]) {
+					req.System.MultiplePrompts[i].CacheControl = &CacheControl{Type: "ephemeral"}
+					break
+				}
+			}
 		}
 
 		return
@@ -407,9 +415,20 @@ func lastOneHourCacheControlSection(req *MessageRequest) int {
 // 在 strict mode 下用作最终安全检查，防止注入逻辑意外命中不可缓存块。
 func sanitizeUnsupportedCacheControls(req *MessageRequest) {
 	sanitizeDeferredToolCacheControls(req)
+	if req.System != nil {
+		for i := range req.System.MultiplePrompts {
+			if !isCacheableSystemPrompt(req.System.MultiplePrompts[i]) {
+				req.System.MultiplePrompts[i].CacheControl = nil
+			}
+		}
+	}
 	for i := range req.Messages {
 		sanitizeContentCacheControls(&req.Messages[i].Content)
 	}
+}
+
+func isCacheableSystemPrompt(part SystemPromptPart) bool {
+	return part.Type == "text" && strings.TrimSpace(part.Text) != ""
 }
 
 func sanitizeDeferredToolCacheControls(req *MessageRequest) {

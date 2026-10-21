@@ -15,8 +15,6 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
 
-const unifiedContextMaxTokens = 1 << 20
-
 // expandUnifiedHistory unfolds authenticated sources, not generated summaries.
 // Ambiguous retained prefixes, unsupported data and unavailable sources preserve
 // the old compatibility path; they never authorize dropping opaque state.

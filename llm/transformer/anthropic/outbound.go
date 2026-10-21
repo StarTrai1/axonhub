@@ -214,8 +214,8 @@ func (t *OutboundTransformer) TransformRequest(
 	//   3. Converted requests without cache metadata: opt into Anthropic's
 	//      automatic caching because non-Anthropic protocols have no equivalent
 	//      cache-control field to carry through the unified request.
-	// Deferred definitions cannot be prompt-cache breakpoints.
-	sanitizeDeferredToolCacheControls(anthropicReq)
+	// Invalid explicit breakpoints remain invalid alongside automatic caching.
+	sanitizeUnsupportedCacheControls(anthropicReq)
 	if anthropicReq.CacheControl == nil {
 		if countCacheControls(anthropicReq) > 0 {
 			optimizeCacheControl(anthropicReq)

@@ -61,7 +61,6 @@ require (
 	github.com/studio-b12/gowebdav v0.12.0
 	github.com/tidwall/gjson v1.20.0
 	github.com/tidwall/sjson v1.2.5
-	github.com/tiktoken-go/tokenizer v0.8.1
 	github.com/vektah/gqlparser/v2 v2.5.31
 	github.com/viterin/partial v1.1.0
 	github.com/vmihailenco/msgpack/v5 v5.4.1
