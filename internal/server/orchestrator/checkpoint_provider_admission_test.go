@@ -81,6 +81,7 @@ func TestCheckpointProviderContextRejectionDoesNotRetry(t *testing.T) {
 
 type checkpointProviderLimitExecutor struct {
 	rejectedCompactionBridgeExecutor
+
 	bodies [][]byte
 }
 
