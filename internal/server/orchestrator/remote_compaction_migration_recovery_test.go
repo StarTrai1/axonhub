@@ -14,7 +14,7 @@ import (
 )
 
 func TestNativeCompactionMigrationRecoveryBoundaries(t *testing.T) {
-	for _, mode := range []string{"unsupported", "target rejected", "overload", "incomplete"} {
+	for _, mode := range []string{"success", "unsupported", "overload", "incomplete"} {
 		t.Run(mode, func(t *testing.T) {
 			ctx, _, owner, adapter := rejectedCompactionStorage(t)
 			req := rejectedCompactionPipelineRequest(t, llm.APIFormatOpenAIResponse)
@@ -25,13 +25,14 @@ func TestNativeCompactionMigrationRecoveryBoundaries(t *testing.T) {
 			executor := &nativeMigrationBoundaryExecutor{mode: mode}
 			_, result, err := runRejectedReasoningPipeline(t, ctx, req, executor, "native-boundary-key", true, 2, func(state *PersistenceState, outbound *PersistentOutboundTransformer) pipeline.Middleware {
 				state.APIKey = owner
-				// Unknown model context exercises native migration before the legacy fallback.
+				// An unknown model must still use only one portable generation.
 				state.ChannelModelsCandidates[0].ContextTokens = 0
 				state.ChannelModelsCandidates[0].Models[0].ActualModel = "legacy-context-unknown"
 				return recoverRejectedRemoteCompaction(outbound, adapter, executor)
 			})
-			require.Equal(t, 1, executor.nativeCalls)
-			if mode == "overload" || mode == "incomplete" {
+			require.Zero(t, executor.nativeCalls)
+			require.Equal(t, 1, executor.summaryCalls)
+			if mode != "success" {
 				require.Error(t, err)
 				require.Nil(t, result)
 				require.Empty(t, executor.summaries, "capacity and partial-stream failures cannot start a second generation")
@@ -50,20 +51,25 @@ type nativeMigrationBoundaryExecutor struct {
 
 	mode        string
 	nativeCalls int
+	summaryCalls int
 }
 
 func (e *nativeMigrationBoundaryExecutor) DoStream(ctx context.Context, req *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
 	if gjson.GetBytes(req.Body, `input.#(type=="compaction_trigger")`).Exists() {
 		e.nativeCalls++
+		return nil, rejectedNativeCheckpointError()
+	}
+	if gjson.GetBytes(req.Body, "tool_choice").String() == "none" {
+		e.summaryCalls++
 		switch e.mode {
 		case "unsupported":
 			return nil, &httpclient.Error{StatusCode: 400, Body: []byte(`{"error":{"type":"invalid_request_error","code":"unsupported_compaction","message":"compaction is unavailable"}}`)}
 		case "overload":
-			return nil, &httpclient.Error{StatusCode: 429, Body: []byte(`{"error":{"type":"rate_limit_error","message":"synthetic capacity"}}`)}
+			return nil, &httpclient.Error{StatusCode: 429, Body: []byte(`{"error":{"type":"rate_limit_error","message":"Requests have exceeded the throughput limit on your Provisioned-Managed deployment."}}`)}
 		case "incomplete":
 			return streams.SliceStream([]*httpclient.StreamEvent{{Type: "response.incomplete", Data: []byte(`{"type":"response.incomplete","response":{"id":"resp_incomplete","status":"incomplete","incomplete_details":{"reason":"max_output_tokens"},"output":[]}}`)}}), nil
 		default:
-			return streams.SliceStream(rejectedReasoningCompactionEvents()), nil
+			return e.rejectedCompactionBridgeExecutor.DoStream(ctx, req)
 		}
 	}
 	if gjson.GetBytes(req.Body, `input.#(id=="cmp_output")`).Exists() {

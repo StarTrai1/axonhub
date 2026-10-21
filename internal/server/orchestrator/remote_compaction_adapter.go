@@ -1269,7 +1269,6 @@ func (a *remoteCompactionAdapter) generateCompactionWithCandidate(
 	}
 
 	compatibility := applyResponsesRejectedStatusCompatibility(outbound)
-	affinity := recoverResponsesRelayAffinity(outbound)
 	requestMiddlewares := []pipeline.Middleware{
 		applyPassThroughRequestBody(outbound, a.systemService),
 		applyOverrideRequestBody(outbound),
@@ -1277,7 +1276,6 @@ func (a *remoteCompactionAdapter) generateCompactionWithCandidate(
 		applyOverrideRequestHeaders(outbound),
 		applyCodexIdentityPolicy(outbound),
 		recoverResponsesAgentMessages(outbound, a.systemService),
-		affinity,
 		compatibility,
 		finalizeTransportRequest(outbound),
 	}
@@ -1310,7 +1308,7 @@ func (a *remoteCompactionAdapter) generateCompactionWithCandidate(
 		Stream:    true,
 	}
 	attemptState.Perf = perf
-	retryCompatibility := []pipeline.Middleware{affinity, compatibility}
+	retryCompatibility := []pipeline.Middleware{compatibility}
 	if native {
 		retryCompatibility = []pipeline.Middleware{compatibility}
 	}

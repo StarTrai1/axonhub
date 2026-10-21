@@ -208,12 +208,14 @@ func TestNativeCompactionMigrationLegacyDeltaContinuation(t *testing.T) {
 		require.NoError(t, err)
 		drainRejectedReasoningPipeline(t, result)
 	}
-	require.Zero(t, executor.nativeCalls, "the repaired source resumes directly without another model call")
-	require.Empty(t, executor.summaries)
+	require.Zero(t, executor.nativeCalls, "migration does not probe native compaction again")
+	require.Len(t, executor.summaries, 1)
 	require.Len(t, executor.continuations, 2)
 	for _, body := range executor.continuations {
+		require.Contains(t, string(body), "verified retained source summary")
 		for _, original := range []string{"original unabridged task", "first exact arguments", "first exact result", "second exact arguments", "second exact result"} {
-			require.Contains(t, string(body), original)
+			require.Contains(t, string(executor.summaries[0]), original)
+			require.NotContains(t, string(body), original)
 		}
 		require.Empty(t, gjson.GetBytes(body, "previous_response_id").String())
 		require.False(t, gjson.GetBytes(body, `input.#(type=="compaction")`).Exists())

@@ -50,11 +50,6 @@ type PersistenceState struct {
 	responsesCompactionSkipChannel      int
 	compactionRecovery                  *compactionRecoveryEvidence
 	unifiedHistorySource                *remoteCompactionSource
-	// A relay affinity recovery consumes the existing same-channel budget and
-	// stops if the replacement affinity is also explicitly overloaded.
-	responsesRelayAffinityRetryChannel     int
-	responsesRelayAffinityExhaustedChannel int
-	responsesRelayAffinityApplied          bool
 	ResponsesContinuation                  *responsesContinuation
 
 	// OriginalRequestStream stores the client's original stream intent before any

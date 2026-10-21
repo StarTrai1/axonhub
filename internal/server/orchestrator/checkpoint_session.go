@@ -19,8 +19,10 @@ func portableCheckpointSessionKey(state *PersistenceState, candidate *ChannelMod
 	if metadata.ThreadID == "" {
 		return ""
 	}
-	identity, _ := json.Marshal([]any{"portable-checkpoint-session-v1", state.APIKey.ProjectID, state.APIKey.ID,
-		metadata.ThreadID, candidate.Channel.ID, candidate.Channel.UpdatedAt, candidate.Channel.BaseURL, candidate.Models[0].ActualModel})
+	identity, _ := json.Marshal([]any{
+		"portable-checkpoint-session-v1", state.APIKey.ProjectID, state.APIKey.ID,
+		metadata.ThreadID, candidate.Channel.ID, candidate.Channel.UpdatedAt, candidate.Channel.BaseURL, candidate.Models[0].ActualModel,
+	})
 	return "view:" + historyDigest(identity)
 }
 

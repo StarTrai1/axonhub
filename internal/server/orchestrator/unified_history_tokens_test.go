@@ -46,7 +46,6 @@ func TestUnifiedHistoryLargeInteractionUsesModelBudget(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "large-call", gjson.GetBytes(source.body, "input.1.call_id").String())
 	require.JSONEq(t, string(output), gjson.GetBytes(source.body, "input.2").Raw)
-
 }
 
 func TestUnifiedHistoryTokenMeasureImagesAndConcurrency(t *testing.T) {

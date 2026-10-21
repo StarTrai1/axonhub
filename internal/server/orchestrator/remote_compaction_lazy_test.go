@@ -49,18 +49,12 @@ func TestRemoteCompactionLazyAncestorRecovery(t *testing.T) {
 				// Cold restart must reuse the sealed result, not generate again.
 				adapter = newRemoteCompactionAdapter(adapter.requestService, nil, adapter.systemService)
 			}
-			want := 1
-			if reject {
-				want = 3
+			require.Len(t, executor.bodies, 1, "one generation must survive a cold adapter restart")
+			for _, detail := range []string{"first source detail", "retained detail", "new source detail"} {
+				require.Contains(t, string(executor.bodies[0]), detail)
 			}
-			require.Len(t, executor.bodies, want)
-			require.Contains(t, string(executor.bodies[0]), "native-ancestor")
-			if reject {
-				require.Contains(t, string(executor.bodies[1]), "first source detail")
-				require.Contains(t, string(executor.bodies[2]), "verified retained source summary")
-				require.Contains(t, string(executor.bodies[2]), "new source detail")
-				require.NotContains(t, string(executor.bodies[2]), "native-ancestor")
-			}
+			require.NotContains(t, string(executor.bodies[0]), "native-ancestor")
+			require.NotContains(t, string(executor.bodies[0]), "verified retained source summary")
 		})
 	}
 }

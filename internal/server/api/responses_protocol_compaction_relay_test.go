@@ -107,14 +107,16 @@ func TestResponsesProtocolCompactionRelayContinuation(t *testing.T) {
 					}
 					mu.Lock()
 					defer mu.Unlock()
-					require.Zero(t, summaryCalls, "the complete source fits and must not be summarized")
-					require.Equal(t, 2, continuationCalls, "exact continuation, then delta continuation")
+					require.Equal(t, 1, summaryCalls, "one migration summary is reused by delta continuation")
+					require.Contains(t, string(bodies[2]), "full-source-canary")
+					require.Equal(t, 2, continuationCalls, "portable continuation, then delta continuation")
 					require.Len(t, bodies, 5)
 					for _, method := range methods {
 						require.Equal(t, http.MethodPost, method, "an HTTP relay must not receive a WS handshake")
 					}
 					for _, body := range bodies[3:] {
-						require.Contains(t, string(body), "full-source-canary")
+						require.Contains(t, string(body), "verified-summary-canary")
+						require.NotContains(t, string(body), "full-source-canary")
 						require.Contains(t, string(body), "retained-user-canary")
 						require.Contains(t, string(body), "tool-input-canary")
 						require.Contains(t, string(body), "tool-output-canary")

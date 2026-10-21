@@ -80,21 +80,20 @@ func TestResponsesProtocolNativeCompactionMigration(t *testing.T) {
 				}
 				mu.Lock()
 				defer mu.Unlock()
-				require.Equal(t, 1, compactions, "only the original compaction; continuation restores its full source")
-				require.Len(t, bodies, 4, "original, rejection, exact continuation and cached continuation")
+				require.Equal(t, 1, compactions, "only the original native compaction; migration produces a portable summary")
+				require.Len(t, bodies, 5, "original, rejection, summary, continuation and cached continuation")
 				require.Contains(t, string(bodies[2]), "full unabridged source detail")
-				for _, body := range bodies {
-					require.NotContains(t, string(body), "CONTEXT CHECKPOINT COMPACTION")
-				}
-				for _, body := range bodies[2:] {
+				require.Contains(t, string(bodies[2]), "CONTEXT CHECKPOINT COMPACTION")
+				for _, body := range bodies[3:] {
 					require.False(t, gjson.GetBytes(body, `input.#(type=="compaction")`).Exists())
-					require.Contains(t, string(body), "full unabridged source detail")
+					require.NotContains(t, string(body), "full unabridged source detail")
+					require.Contains(t, string(body), "continued with native state")
 					require.Contains(t, string(body), "unabridged tool result")
 					require.Contains(t, string(body), "call_exact")
 					require.Equal(t, "xhigh", gjson.GetBytes(body, "reasoning.effort").String())
 					require.Equal(t, "stable-migration", gjson.GetBytes(body, "prompt_cache_key").String())
 				}
-				require.JSONEq(t, gjson.GetBytes(bodies[2], "input").Raw, gjson.GetBytes(bodies[3], "input").Raw)
+				require.JSONEq(t, gjson.GetBytes(bodies[3], "input").Raw, gjson.GetBytes(bodies[4], "input").Raw)
 			})
 		}
 	}

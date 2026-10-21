@@ -175,26 +175,21 @@ func testResponsesProtocolHistoryMigration(t *testing.T, unified bool, direct ..
 					require.Contains(t, string(body), "original exact tool result")
 				}
 			}
-			if unified {
-				require.Zero(t, generations, "portable original history must not call compact or summarize")
-				successes := 0
-				for _, body := range migrated {
-					if gjson.GetBytes(body, `input.#(id=="cmp_ws_source")`).Exists() {
-						continue
-					}
-					successes++
-					require.Contains(t, string(body), "complete original source canary")
-					require.Contains(t, string(body), "original exact arguments")
-					require.Contains(t, string(body), "original exact tool result")
-					require.Contains(t, string(body), "continue-canary")
-					if len(direct) > 0 && direct[0] {
-						require.Contains(t, string(body), "current runtime canary")
-					}
+			require.Equal(t, 1, generations, "the next continuation must reuse the portable checkpoint")
+			successes := 0
+			for _, body := range migrated {
+				if gjson.GetBytes(body, `input.#(type=="compaction")`).Exists() || gjson.GetBytes(body, "tool_choice").String() == "none" {
+					continue
 				}
-				require.Equal(t, 2, successes)
-			} else {
-				require.Equal(t, 1, generations, "the next continuation must reuse the migrated checkpoint or local summary")
+				successes++
+				require.NotContains(t, string(body), "original exact arguments")
+				require.NotContains(t, string(body), "original exact tool result")
+				require.Contains(t, string(body), "continue-canary")
+				if unified && len(direct) > 0 && direct[0] {
+					require.Contains(t, string(body), "current runtime canary")
+				}
 			}
+			require.Equal(t, 2, successes)
 		})
 	}
 }

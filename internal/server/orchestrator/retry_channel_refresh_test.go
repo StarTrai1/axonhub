@@ -428,7 +428,7 @@ func TestRefreshChannelBeforeRetry_CredentiallessChannelAfterKeyedChannel(t *tes
 }
 
 func TestRefreshChannelBeforeRetry_PreservesCompatibilityScope(t *testing.T) {
-	for _, kind := range []string{"history", "affinity"} {
+	for _, kind := range []string{"history"} {
 		t.Run(kind, func(t *testing.T) {
 			ctx, client := setupTest(t)
 			service := newTestChannelServiceForChannels(client)
@@ -439,8 +439,6 @@ func TestRefreshChannelBeforeRetry_PreservesCompatibilityScope(t *testing.T) {
 			switch kind {
 			case "history":
 				transformer.state.responsesRejectedStatusRetryChannel = entity.ID
-			case "affinity":
-				transformer.state.responsesRelayAffinityRetryChannel = entity.ID
 			}
 			client.Channel.UpdateOneID(entity.ID).
 				SetDisabledAPIKeys([]objects.DisabledAPIKey{{Key: "key-1"}}).SaveX(ctx)

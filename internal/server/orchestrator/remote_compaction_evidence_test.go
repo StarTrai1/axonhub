@@ -60,33 +60,25 @@ func TestNativeCompactionMigrationReusesAncestorEvidence(t *testing.T) {
 				_, result, err := runRejectedReasoningPipeline(t, ctx, req, executor, "ancestor-evidence-key", true, 2, configure)
 				require.NoError(t, err)
 				drainRejectedReasoningPipeline(t, result)
-				require.Equal(t, 1, executor.statusRejections, "an explicitly rejected status field must not be probed again during this recovery")
-				require.Equal(t, 1, executor.ancestorRejections, "text fallback must reuse the native attempt's ancestor rejection")
-				require.Equal(t, 2, executor.nativeCalls)
-				// Without a model window contract, the legacy path cannot prove
-				// even the small ancestor fits; both generations are required.
-				wantSummaries := 2
+				require.Zero(t, executor.statusRejections)
+				require.Zero(t, executor.ancestorRejections)
+				require.Zero(t, executor.nativeCalls)
+				wantSummaries := 1
 				require.Len(t, executor.summaries, wantSummaries)
-				require.Contains(t, string(executor.summaries[0]), "unabridged first source")
-				last := executor.summaries[len(executor.summaries)-1]
+				last := executor.summaries[0]
+				require.Contains(t, string(last), "unabridged first source")
 				require.Contains(t, string(last), "new source detail")
 				require.Equal(t, "xhigh", gjson.GetBytes(last, "reasoning.effort").String())
-				if large {
-					require.Contains(t, string(last), "verified retained source summary")
-					reasoning := gjson.GetBytes(last, `input.#(type=="reasoning")`)
-					require.Equal(t, "rs_source", reasoning.Get("id").String())
-					require.Equal(t, "reasoning-cipher", reasoning.Get("encrypted_content").String())
-					require.Equal(t, "[]", reasoning.Get("summary").Raw)
-					require.False(t, reasoning.Get("status").Exists())
-				}
-				require.Contains(t, string(last), "verified retained source summary")
+				require.NotContains(t, string(last), "verified retained source summary")
+				require.NotContains(t, string(last), "ancestor-cipher")
+				require.NotContains(t, string(last), "reasoning-cipher")
 				// A new adapter and request still reuse the completed sealed summary.
 				adapter = newRemoteCompactionAdapter(adapter.requestService, nil, adapter.systemService)
 				_, result, err = runRejectedReasoningPipeline(t, ctx, req, executor, "ancestor-evidence-key", true, 2, configure)
 				require.NoError(t, err)
 				drainRejectedReasoningPipeline(t, result)
 				require.Len(t, executor.summaries, wantSummaries)
-				require.Equal(t, 1, executor.ancestorRejections)
+				require.Zero(t, executor.ancestorRejections)
 			})
 		}
 	}
@@ -165,29 +157,12 @@ func TestRemoteCompactionEvidenceDestinationIsolation(t *testing.T) {
 	}
 }
 
-func TestRemoteCompactionAncestorReplayHonorsActiveChain(t *testing.T) {
+func TestCheckpointMigrationRejectsCyclicSources(t *testing.T) {
 	ctx, _, owner, adapter := rejectedCompactionStorage(t)
-	ancestor := &remoteCompactionReference{ID: "cmp_ancestor", EncryptedContent: "ancestor-cipher"}
-	latest := &remoteCompactionReference{ID: "cmp_latest", EncryptedContent: "latest-cipher"}
-	first := []byte(`{"model":"gpt-6-astra","client_metadata":{"thread_id":"recovery-thread"},"input":[{"role":"user","content":"complete original"},{"type":"compaction_trigger"}]}`)
-	second := []byte(`{"model":"gpt-6-astra","client_metadata":{"thread_id":"recovery-thread"},"input":[{"type":"compaction","id":"cmp_ancestor","encrypted_content":"ancestor-cipher"},{"role":"user","content":"latest detail"},{"type":"compaction_trigger"}]}`)
-	candidate := &ChannelModelsCandidate{Channel: &biz.Channel{Channel: &ent.Channel{ID: 40}}, ContextTokens: 372000}
-	state := &PersistenceState{APIKey: owner, ChannelModelsCandidates: []*ChannelModelsCandidate{candidate}, RawProviderRequest: &httpclient.Request{URL: "https://example.invalid/v1/responses", Body: second}, compactionRecovery: &compactionRecoveryEvidence{}}
-	require.NoError(t, seedLegacyNativeCompactionSource(ctx, adapter, ancestor, state, &remoteCompactionSource{body: first}))
-	require.NoError(t, seedLegacyNativeCompactionSource(ctx, adapter, latest, state, &remoteCompactionSource{body: second}))
-	state.compactionRecovery.rejectSource(responsesMetadataKey(40, state.RawProviderRequest), remoteCompactionCacheKey(ancestor))
-	for _, depth := range []int{1, remoteCompactionMaxSourceDepth - 1} {
-		active := make(map[string]struct{})
-		for i := range depth {
-			active[fmt.Sprint(i)] = struct{}{}
-		}
-		if depth == 1 {
-			active = map[string]struct{}{remoteCompactionCacheKey(ancestor): {}}
-		}
-		executor := &compactionEvidenceExecutor{}
-		_, err := adapter.summaryForCompactionChain(ctx, remoteCompactionCacheKey(latest), latest, "recovery-thread", "gpt-6-astra", state, executor, active)
-		require.ErrorContains(t, err, "cyclic or excessively deep", "exact replay must count the already active summary ancestors")
-		require.Empty(t, executor.summaries)
-		require.Zero(t, executor.nativeCalls)
-	}
+	ref := &remoteCompactionReference{ID: "cmp_cycle", EncryptedContent: "cycle-cipher"}
+	body := []byte(`{"model":"gpt-6-astra","input":[{"type":"compaction","id":"cmp_cycle","encrypted_content":"cycle-cipher"},{"type":"compaction_trigger"}]}`)
+	state := &PersistenceState{APIKey: owner}
+	require.NoError(t, seedLegacyNativeCompactionSource(ctx, adapter, ref, state, &remoteCompactionSource{body: body}))
+	_, err := adapter.restoreCheckpointWindow(ctx, &remoteCompactionSource{body: body}, state)
+	require.ErrorContains(t, err, "cyclic")
 }

@@ -98,7 +98,7 @@ func TestNativeCompactionExactReplayAuthenticatedChain(t *testing.T) {
 	require.ErrorIs(t, err, context.Canceled)
 }
 
-func TestResponsesCompactionExactReplayPipeline(t *testing.T) {
+func TestCheckpointPortableMigrationPipeline(t *testing.T) {
 	for _, passThrough := range []bool{true, false} {
 		t.Run(map[bool]string{true: "raw", false: "converted"}[passThrough], func(t *testing.T) {
 			ctx, _, owner, adapter := rejectedCompactionStorage(t)
@@ -108,7 +108,7 @@ func TestResponsesCompactionExactReplayPipeline(t *testing.T) {
 			require.NoError(t, err)
 			source := &remoteCompactionSource{body: []byte(`{"model":"gpt-6-astra","input":[{"role":"user","content":"first"},{"role":"assistant","content":"complete source detail"},{"type":"compaction_trigger"}]}`)}
 			require.NoError(t, adapter.retainNativeCompactionSource(ctx, ref, &PersistenceState{APIKey: owner}, source))
-			executor := &responsesReasoningPipelineExecutor{failures: []error{resourceMismatchHTTPError()}, events: rejectedReasoningCompactionEvents()}
+			executor := &rejectedCompactionBridgeExecutor{}
 			configure := func(state *PersistenceState, outbound *PersistentOutboundTransformer) pipeline.Middleware {
 				state.APIKey = owner
 				state.ChannelModelsCandidates[0].ContextTokens = 128000
@@ -117,18 +117,20 @@ func TestResponsesCompactionExactReplayPipeline(t *testing.T) {
 			_, result, err := runRejectedReasoningPipeline(t, ctx, req, executor, "replay-credential", passThrough, 1, configure)
 			require.NoError(t, err)
 			drainRejectedReasoningPipeline(t, result)
-			require.Len(t, executor.requests, 2)
-			require.NotContains(t, string(executor.requests[1].Body), "CONTEXT CHECKPOINT COMPACTION")
-			require.Contains(t, string(executor.requests[1].Body), "complete source detail")
-			require.NotContains(t, string(executor.requests[1].Body), "native-exact")
+			require.Len(t, executor.continuations, 2)
+			require.Len(t, executor.summaries, 1)
+			require.Contains(t, string(executor.summaries[0]), "complete source detail")
+			require.Contains(t, string(executor.continuations[1]), "verified retained source summary")
+			require.NotContains(t, string(executor.continuations[1]), "complete source detail")
+			require.NotContains(t, string(executor.continuations[1]), "native-exact")
 			require.Eventually(t, func() bool { return adapter.recoveries.Len() == 1 }, time.Second, time.Millisecond)
-			warm := executor.requests[1].Body
-			executor = &responsesReasoningPipelineExecutor{events: rejectedReasoningCompactionEvents()}
+			warm := executor.continuations[1]
+			executor = &rejectedCompactionBridgeExecutor{}
 			_, result, err = runRejectedReasoningPipeline(t, ctx, req, executor, "replay-credential", passThrough, 1, configure)
 			require.NoError(t, err)
 			drainRejectedReasoningPipeline(t, result)
-			require.Len(t, executor.requests, 1)
-			require.JSONEq(t, string(warm), string(executor.requests[0].Body), "confirmed replay must keep a stable prefix")
+			require.Len(t, executor.continuations, 1)
+			require.JSONEq(t, string(warm), string(executor.continuations[0]), "confirmed replay must keep a stable prefix")
 		})
 	}
 }

@@ -150,7 +150,7 @@ func testResponsesProtocolEncryptionContinuation(t *testing.T, rejectionMessage,
 						response = responsesIntegrationTurn(t, conn, fmt.Sprintf(`{"type":"response.create","model":%q,"previous_response_id":"resp_iceberg","input":"next-turn-canary"}`, model))
 						require.Equal(t, "response.completed", gjson.GetBytes(response, "type").String(), string(response))
 					}
-					wantAttempts := 5
+					wantAttempts := 6
 					if encryptedAgents {
 						// A fresh client resends the sealed history. Confirmed checkpoint
 						// recovery must still decrypt it before checking completeness.
@@ -179,14 +179,14 @@ func testResponsesProtocolEncryptionContinuation(t *testing.T, rejectionMessage,
 					mu.Lock()
 					defer mu.Unlock()
 					require.Equal(t, 2, rejections)
-					require.Zero(t, summaries, "complete source must resume without a summary generation")
+					require.Equal(t, 1, summaries, "the migrated summary is reused")
 					require.Len(t, attempts, wantAttempts)
 					require.Contains(t, string(attempts[1]), "gAAAAABsynthetic_old_reasoning_ciphertext_0123456789abcdef0123456789abcdef")
 					require.Contains(t, string(attempts[2]), "checkpoint-cipher")
 					require.NotContains(t, string(attempts[2]), "gAAAAABsynthetic_old_reasoning_ciphertext_0123456789abcdef0123456789abcdef")
 					require.Contains(t, string(attempts[3]), "complete-source-canary")
-					for _, body := range attempts[3:] {
-						for _, text := range []string{"complete-source-canary", "retained-user-canary", "visible-reasoning-canary", "tool-input-canary", "tool-output-canary", "call_retained", "continue-canary"} {
+					for _, body := range attempts[4:] {
+						for _, text := range []string{"retained-source-summary-canary", "retained-user-canary", "visible-reasoning-canary", "tool-input-canary", "tool-output-canary", "call_retained", "continue-canary"} {
 							require.Contains(t, string(body), text)
 						}
 						require.NotContains(t, string(body), "checkpoint-cipher")
@@ -195,8 +195,8 @@ func testResponsesProtocolEncryptionContinuation(t *testing.T, rejectionMessage,
 					}
 					if encryptedAgents {
 						for index, body := range attempts {
-							if index == 0 {
-								continue // Original source request.
+							if index == 0 || index == 3 {
+								continue // Original source and its summary generation precede the new agent calls.
 							}
 							call := gjson.GetBytes(body, `input.#(call_id=="call_agent")`)
 							require.Equal(t, "exact-agent-instructions-canary", gjson.Get(call.Get("arguments").String(), "message").String())
@@ -207,7 +207,7 @@ func testResponsesProtocolEncryptionContinuation(t *testing.T, rejectionMessage,
 							require.NotContains(t, string(body), "axonhub-agent-v1.")
 						}
 					}
-					require.Contains(t, string(attempts[4]), "next-turn-canary")
+					require.Contains(t, string(attempts[5]), "next-turn-canary")
 				})
 			}
 		}

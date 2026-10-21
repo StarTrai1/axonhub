@@ -1034,8 +1034,6 @@ func (p *PersistentOutboundTransformer) NextChannel(ctx context.Context) error {
 	p.state.RequestExec = nil
 	p.state.PassThroughApplied = false
 	p.state.responsesRejectedStatusRetryChannel = 0
-	p.state.responsesRelayAffinityRetryChannel = 0
-	p.state.responsesRelayAffinityExhaustedChannel = 0
 	p.state.responsesCompactionSkipChannel = 0
 
 	candidate := p.state.ChannelModelsCandidates[p.state.CurrentCandidateIndex]
@@ -1113,8 +1111,8 @@ func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
 	if p.state.CurrentCandidate == nil {
 		return false
 	}
-	// Capacity failure must also stop affinity and compatibility overrides:
-	// changing a relay session does not make the same upstream model available.
+	// Capacity failure must also stop compatibility overrides: the same
+	// upstream model cannot make progress until capacity is available.
 	if isModelCapacityExhausted(err) {
 		return false
 	}
@@ -1125,12 +1123,6 @@ func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
 	if current := p.state.CurrentCandidate.Channel; current != nil && current.ID > 0 {
 		if p.state.responsesCompactionSkipChannel == current.ID {
 			return false
-		}
-		if p.state.responsesRelayAffinityExhaustedChannel == current.ID {
-			return false
-		}
-		if p.state.responsesRelayAffinityRetryChannel == current.ID {
-			return true
 		}
 	}
 	if p.state.CurrentCandidate.Channel != nil &&
@@ -1210,11 +1202,6 @@ func (p *PersistentOutboundTransformer) PrepareForRetry(ctx context.Context) err
 	// so it exits promptly and releases its upstream HTTP connection.
 	p.resetPassThroughStreamState()
 	p.trackCurrentChannelSelection()
-
-	if candidate != nil && candidate.Channel != nil && candidate.Channel.ID > 0 && p.state.responsesRelayAffinityRetryChannel == candidate.Channel.ID {
-		p.state.responsesRelayAffinityRetryChannel = 0
-		return nil
-	}
 
 	if candidate != nil && candidate.Channel != nil &&
 		hasResponsesRejectedStatusCompatibilityRetry(p.state, candidate.Channel.ID) {

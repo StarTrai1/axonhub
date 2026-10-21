@@ -156,7 +156,13 @@ func assertRejectedCompactionWindowPreserved(t *testing.T, before, after []byte)
 			require.Contains(t, adapted[index].Get("content.0.text").String(), "verified retained source summary")
 			continue
 		}
-		require.JSONEq(t, item.Raw, adapted[index].Raw, "retained item %d", index)
+		expected := item.Raw
+		if !adapted[index].Get("id").Exists() && responsesInputSupportsPortableID(item.Get("type").String()) {
+			var err error
+			expected, err = sjson.Delete(expected, "id")
+			require.NoError(t, err)
+		}
+		require.JSONEq(t, expected, adapted[index].Raw, "retained item %d", index)
 	}
 	for _, field := range []string{"model", "reasoning", "prompt_cache_key", "client_metadata", "store"} {
 		prior, recovered := gjson.GetBytes(before, field), gjson.GetBytes(after, field)
@@ -181,7 +187,7 @@ func TestResponsesRejectedCompactionHonorsBudgetAndMissingHistory(t *testing.T) 
 				})
 			require.Error(t, err)
 			require.Nil(t, result)
-			require.Len(t, executor.requests, min(retries+1, 2))
+			require.Len(t, executor.requests, 1, "missing history cannot justify resending the rejected checkpoint")
 			require.Equal(t, original, req.Body)
 			for _, attempt := range executor.requests {
 				require.Equal(t, "native-checkpoint-ciphertext", gjson.GetBytes(attempt.Body, "input.2.encrypted_content").String())
@@ -368,9 +374,9 @@ func TestResponsesRejectedCompactionGeneratesFromStoredHistory(t *testing.T) {
 		})
 	require.NoError(t, err)
 	drainRejectedReasoningPipeline(t, result)
-	require.Len(t, executor.continuations, 3)
+	require.Len(t, executor.continuations, 2)
 	require.Len(t, executor.summaries, 1)
-	assertRejectedCompactionWindowPreserved(t, executor.continuations[1], executor.continuations[2])
+	assertRejectedCompactionWindowPreserved(t, executor.continuations[0], executor.continuations[1])
 	require.Equal(t, "complete source history", gjson.GetBytes(executor.summaries[0], "input.0.content").String())
 	key, ok := contexts.GetChannelAPIKey(ctx)
 	require.True(t, ok)

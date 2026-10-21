@@ -37,8 +37,6 @@ func (a *remoteCompactionAdapter) startLocalCompactionStream(
 		}
 		state.RawProviderRequest = providerRequest
 		state.responsesRejectedStatusRetryChannel = 0
-		state.responsesRelayAffinityRetryChannel = 0
-		state.responsesRelayAffinityExhaustedChannel = 0
 		var execution *ent.RequestExecution
 		if state.Request != nil && a.requestService != nil {
 			candidate := state.CurrentCandidate
@@ -125,12 +123,6 @@ func canRetryLocalCompactionStream(outbound *PersistentOutboundTransformer, err 
 	}
 	state := outbound.state
 	channel := state.CurrentCandidate.Channel
-	if channel.ID > 0 && state.responsesRelayAffinityExhaustedChannel == channel.ID {
-		return false
-	}
-	if channel.ID > 0 && state.responsesRelayAffinityRetryChannel == channel.ID {
-		return true
-	}
 	if hasResponsesRejectedStatusCompatibilityRetry(state, channel.ID) {
 		return true
 	}

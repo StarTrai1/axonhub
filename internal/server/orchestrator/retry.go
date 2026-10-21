@@ -203,11 +203,15 @@ func expensiveGatewayTimeout(state *PersistenceState, now time.Time) bool {
 // HTTP 500. Replaying the same model immediately cannot create capacity.
 func isModelCapacityExhausted(err error) bool {
 	status := ExtractStatusCodeFromError(err)
+	message := strings.ToLower(ExtractErrorMessage(err))
+	if status == http.StatusTooManyRequests {
+		return strings.Contains(message, "throughput limit on your provisioned-managed deployment")
+	}
 	if status != http.StatusInternalServerError && status != http.StatusServiceUnavailable {
 		return false
 	}
-	message := strings.ToLower(ExtractErrorMessage(err))
-	return strings.Contains(message, "负载已经达到上限") ||
+	return strings.Contains(message, "currently experiencing high demand, which may cause temporary errors") ||
+		strings.Contains(message, "负载已经达到上限") ||
 		strings.Contains(message, "model capacity exhausted") ||
 		strings.Contains(message, "model capacity reached") ||
 		strings.Contains(message, "model is overloaded")

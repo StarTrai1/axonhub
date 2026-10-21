@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -31,9 +32,10 @@ func setupCodexResponsesUpstream(t *testing.T, h *codexRouteHarness) *atomic.Int
 		assert.NoError(t, err)
 		assert.Equal(t, "Bearer upstream", r.Header.Get("Authorization"))
 		assert.Equal(t, "compaction_trigger", gjson.GetBytes(body, "input.0.type").String())
-		calls.Add(1)
+		call := calls.Add(1)
+		events := strings.NewReplacer("resp_test", fmt.Sprintf("resp_test_%d", call), "cmp_test", fmt.Sprintf("cmp_test_%d", call)).Replace(codexFixtureEvents)
 		w.Header().Set("Content-Type", "text/event-stream")
-		_, _ = io.WriteString(w, codexFixtureEvents)
+		_, _ = io.WriteString(w, events)
 	}))
 	t.Cleanup(upstream.Close)
 	source := h.db.Channel.Create().SetName("responses").SetType(channel.TypeCodex).SetBaseURL(upstream.URL).SetEndpoints([]objects.ChannelEndpoint{{APIFormat: "openai/responses", Transport: objects.ChannelEndpointTransportHTTP}}).SetCredentials(objects.ChannelCredentials{APIKey: "upstream"}).SetDefaultTestModel("gpt-test").SetSupportedModels([]string{"gpt-test"}).SaveX(h.ctx)
@@ -57,7 +59,8 @@ func TestCodexRoutes_HTTPParity(t *testing.T) {
 		require.Equal(t, 200, result.Code, result.Body.String())
 		require.Contains(t, result.Body.String(), "response.completed")
 		require.Contains(t, result.Body.String(), `"type":"compaction"`)
-		bodies = append(bodies, result.Body.String())
+		normalized := strings.NewReplacer(fmt.Sprintf("resp_test_%d", calls.Load()), "resp_test", fmt.Sprintf("cmp_test_%d", calls.Load()), "cmp_test").Replace(result.Body.String())
+		bodies = append(bodies, normalized)
 	}
 	require.Equal(t, bodies[0], bodies[1])
 	require.Equal(t, int32(2), calls.Load())

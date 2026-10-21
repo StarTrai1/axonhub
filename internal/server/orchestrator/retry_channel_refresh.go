@@ -129,8 +129,7 @@ func (p *PersistentOutboundTransformer) refreshChannelBeforeRetry(ctx context.Co
 	// Compatibility recovery is scoped to the failed attempt's destination and
 	// credential. A disabled credential ends this attempt; rebuilding it with
 	// another key would invalidate the evidence used to replay encrypted history.
-	if p.state.responsesRelayAffinityRetryChannel == candidate.Channel.ID ||
-		hasResponsesRejectedStatusCompatibilityRetry(p.state, candidate.Channel.ID) {
+	if hasResponsesRejectedStatusCompatibilityRetry(p.state, candidate.Channel.ID) {
 		return errChannelUnavailableForRetry
 	}
 

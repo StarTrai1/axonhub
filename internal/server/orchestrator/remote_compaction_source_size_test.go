@@ -72,10 +72,10 @@ func TestResponsesRejectedNativeSourceLargeCheckpoint(t *testing.T) {
 				require.NoError(t, saveErr)
 				require.Same(t, response, got)
 			}
-			stored, loadErr := adapter.systemService.LoadUnifiedHistory(ctx, []string{historyCheckpointAlias(ref)})
+			stored, loadErr := adapter.systemService.LoadUnifiedHistory(ctx, []string{historyCheckpointWindowAlias(ref)})
 			require.NoError(t, loadErr)
-			require.NotEmpty(t, stored[historyCheckpointAlias(ref)])
-			require.NotContains(t, stored[historyCheckpointAlias(ref)], "complete original")
+			require.NotEmpty(t, stored[historyCheckpointWindowAlias(ref)])
+			require.NotContains(t, stored[historyCheckpointWindowAlias(ref)], "complete original")
 
 			// Reload from durable storage, with no prior request service or cache.
 			restarted := newRemoteCompactionAdapter(nil, nil, biz.NewSystemService(biz.SystemServiceParams{Ent: client}))
