@@ -375,6 +375,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		// so persistence and execution observe the same provider request.
 		verifyResponsesAttempt(outbound),
 		finalizeTransportRequest(outbound),
+		admitCheckpointSummary(outbound),
 
 		// Unified performance tracking middleware.
 		withoutResponsesRecoveryPenalty(withPerformanceRecording(outbound)),

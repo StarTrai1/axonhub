@@ -26,8 +26,9 @@ func TestUnifiedHistoryTokenAdmissionKeepsLargeVerbatimInstructions(t *testing.T
 func TestUnifiedHistoryTokenAdmissionStillReservesOutput(t *testing.T) {
 	ctx, _, state, _ := unifiedHistoryFixture(t)
 	body := []byte(`{"model":"gpt-6-astra","max_output_tokens":2000000,"input":[{"role":"user","content":"hello"}]}`)
-	_, err := prepareCheckpointSummarySource(ctx, &remoteCompactionSource{body: body}, state)
-	require.ErrorContains(t, err, "input budget")
+	source, err := prepareCheckpointSummarySource(ctx, &remoteCompactionSource{body: body}, state)
+	require.NoError(t, err)
+	require.ErrorContains(t, validateCheckpointSummaryRequest(source.body, state), "input budget")
 }
 
 func TestUnifiedHistoryLargeInteractionUsesModelBudget(t *testing.T) {

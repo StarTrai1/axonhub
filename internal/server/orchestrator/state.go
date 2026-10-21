@@ -52,6 +52,9 @@ type PersistenceState struct {
 	unifiedHistorySource                *remoteCompactionSource
 	ResponsesContinuation               *responsesContinuation
 
+	// Only gateway-authored summary requests use the checkpoint input budget.
+	checkpointSummaryGeneration bool
+
 	// OriginalRequestStream stores the client's original stream intent before any
 	// candidate-specific forcing to provider-side streaming happens.
 	OriginalRequestStream *bool

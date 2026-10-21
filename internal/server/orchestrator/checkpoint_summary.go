@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 )
 
@@ -67,6 +66,7 @@ func (a *remoteCompactionAdapter) restoreCheckpointWindow(ctx context.Context, s
 
 // A migration can read a retained source once. It cannot publish that source as
 // a compacted prompt, split it into model requests, or truncate it to fit.
+// Token admission happens on the finalized summary request, not this archive.
 func prepareCheckpointSummarySource(ctx context.Context, source *remoteCompactionSource, state *PersistenceState) (*remoteCompactionSource, error) {
 	if source == nil {
 		return nil, checkpointSummaryError("compaction_history_unavailable", "Checkpoint source is unavailable")
@@ -96,22 +96,6 @@ func prepareCheckpointSummarySource(ctx context.Context, source *remoteCompactio
 	body, err = protectUnifiedHistory(ctx, body, state)
 	if err != nil {
 		return nil, err
-	}
-	var candidate *ChannelModelsCandidate
-	if state != nil && len(state.ChannelModelsCandidates) > 0 {
-		candidate = state.ChannelModelsCandidates[0]
-	}
-	if candidate != nil && len(candidate.Models) > 0 {
-		contextTokens := candidate.ContextTokens
-		if contextTokens <= 0 {
-			contextTokens = biz.BundledModelContextLimit(candidate.Models[0].ActualModel)
-		}
-		if contextTokens > 0 {
-			_, budget := unifiedHistoryInputBudgets(body, candidate, 0, contextTokens)
-			if unifiedContextSize(body) > budget {
-				return nil, checkpointSummaryError("compaction_source_too_large", "Checkpoint source exceeds the selected model's input budget; no summary generation was started")
-			}
-		}
 	}
 	return &remoteCompactionSource{body: body, headers: source.headers}, nil
 }

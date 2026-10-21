@@ -18,6 +18,7 @@ Portable checkpoints use an authenticated AxonHub capsule. When sent through thi
 - The canonical window is the source of the next checkpoint. A previous portable summary stays a summary instead of being replaced with its old archive.
 - Standalone `/responses/compact` output remains the complete next window. Native output and opaque items are preserved as returned.
 - A portable summary targets at most 4,096 tokens and must fit a 64 KiB text limit before publication. Oversized or incomplete summaries fail without replacing the previous context. Model input admission separately reserves output space.
+- Input admission runs after summary model selection, tool conversion, prompt injection and channel overrides. Its measurement copy normalizes JSON escaping and formatting; HTML escapes do not become extra model content. The actual provider payload and cache prefix remain unchanged. Tokenizer margins, image allowances and model output reserves still apply.
 - A migration may read authenticated legacy source records, but it does not fan out into segment summaries. Missing, divergent or oversized sources produce a specific error before publishing a replacement.
 
 ## Independent archive
