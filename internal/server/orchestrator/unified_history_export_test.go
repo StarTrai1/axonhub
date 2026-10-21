@@ -2,14 +2,11 @@ package orchestrator
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
@@ -29,56 +26,6 @@ type unifiedExportExecutor struct {
 func (e *unifiedExportExecutor) DoStream(ctx context.Context, request *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
 	e.requests = append(e.requests, request)
 	return e.unifiedConcurrentExecutor.DoStream(ctx, request)
-}
-
-func TestUnifiedHistoryCheckpointExportUsesProvenReaderOnce(t *testing.T) {
-	ctx, _, state, adapter := unifiedHistoryFixture(t)
-	body := []byte(`{"model":"gpt-6-astra","input":[{"role":"user","content":"keep original exact 17.125"},{"type":"compaction","id":"cmp_export","encrypted_content":"reader-private-state"},{"role":"user","content":"new correction 17.250"}]}`)
-	executor := &unifiedExportExecutor{}
-	_, ok, err := adapter.compileUnifiedContext(ctx, body, state, executor)
-	require.NoError(t, err)
-	require.False(t, ok)
-	require.Empty(t, executor.requests, "unknown readers must not be probed with user history")
-	// A synthetic completed request supplies the exact finalized provider identity.
-	source := &remoteCompactionSource{body: []byte(`{"model":"gpt-6-astra","input":[{"type":"compaction","id":"cmp_export","encrypted_content":"reader-private-state"},{"type":"compaction_trigger"}]}`), headers: make(http.Header)}
-	_, err = adapter.generateLocalSummary(ctx, "synthetic-provenance", source, state, executor)
-	require.NoError(t, err)
-	request := executor.requests[0]
-	origin := nativeHistoryReader{Provider: historyProviderIdentity{ChannelID: state.CurrentCandidate.Channel.ID, Endpoint: request.URL, Auth: historyReaderCredential(request, false), Model: "gpt-6-astra", Format: request.APIFormat}}
-	require.NoError(t, adapter.rememberNativeHistoryOrigins(ctx, body, []byte(`{"output":[]}`), origin))
-	executor.requests = nil
-	compiled, ok, err := adapter.compileUnifiedContext(ctx, body, state, executor)
-	require.NoError(t, err)
-	require.True(t, ok)
-	require.Len(t, executor.requests, 1)
-	require.NotContains(t, string(executor.requests[0].Body), "new correction 17.250", "export must exclude the live suffix")
-	require.Contains(t, string(executor.requests[0].Body), "reader-private-state")
-	require.Contains(t, string(compiled), "original exact 17.125")
-	require.Contains(t, string(compiled), "new correction 17.250")
-	require.False(t, gjson.GetBytes(compiled, `input.#(type=="compaction")`).Exists())
-	restarted := newRemoteCompactionAdapter(nil, nil, adapter.systemService)
-	again, ok, err := restarted.compileUnifiedContext(ctx, body, state, executor)
-	require.NoError(t, err)
-	require.True(t, ok)
-	require.JSONEq(t, string(compiled), string(again))
-	require.Len(t, executor.requests, 1, "restart cannot export the same checkpoint again")
-}
-
-func TestUnifiedHistoryCheckpointExportRejectsChangedReader(t *testing.T) {
-	ctx, _, state, adapter := unifiedHistoryFixture(t)
-	body := []byte(`{"model":"gpt-6-astra","input":[{"type":"compaction","id":"cmp_export_wrong","encrypted_content":"private-state"},{"role":"user","content":"continue"}]}`)
-	origin := nativeHistoryReader{Provider: historyProviderIdentity{ChannelID: state.CurrentCandidate.Channel.ID, Endpoint: "https://foreign.invalid/responses", Auth: "changed-account", Model: "gpt-6-astra"}}
-	require.NoError(t, adapter.rememberNativeHistoryOrigins(ctx, body, []byte(`{"output":[]}`), origin))
-	executor := &unifiedExportExecutor{}
-	_, ok, err := adapter.compileUnifiedContext(ctx, body, state, executor)
-	require.False(t, ok)
-	require.ErrorContains(t, err, "no upstream request was sent")
-	require.Empty(t, executor.requests)
-	state.CurrentCandidate = nil
-	state.ChannelModelsCandidates = nil
-	_, ok, err = adapter.exportUnifiedCheckpoint(ctx, body, state, executor)
-	require.NoError(t, err)
-	require.False(t, ok, "provenance does not authorize a removed candidate")
 }
 
 func TestExpensiveGatewayTimeoutStopsSameChannelReplay(t *testing.T) {
@@ -140,45 +87,4 @@ func TestUnifiedHistoryNativeReadingIndependentOfGenerationPolicy(t *testing.T) 
 	_, err = m.OnOutboundRawRequest(ctx, state.RawProviderRequest)
 	require.Error(t, err, "explicit subsequent rejection overrides historical read evidence")
 	require.Empty(t, executor.requests, "a rejected current checkpoint must not be exported back to the same reader")
-}
-
-func TestUnifiedHistoryCheckpointExportChecksExactSuffixBeforeGeneration(t *testing.T) {
-	ctx, _, state, adapter := unifiedHistoryFixture(t)
-	state.CurrentCandidate.ContextTokens = 4096
-	body := []byte(`{"model":"gpt-6-astra","input":[{"type":"compaction","id":"cmp_budget","encrypted_content":"private-state"},{"role":"user","content":"` + strings.Repeat("exact new evidence ", 1000) + `"}]}`)
-	executor := &unifiedExportExecutor{}
-	_, ready, err := adapter.exportUnifiedCheckpoint(ctx, body, state, executor)
-	require.False(t, ready)
-	require.ErrorContains(t, err, "exact live suffix")
-	require.Empty(t, executor.requests)
-}
-
-func TestUnifiedHistoryColdArchivePrefersOneCheckpointExport(t *testing.T) {
-	ctx, _, state, adapter := unifiedHistoryFixture(t)
-	original := unifiedLongToolHistory(t, 26)
-	envelope, items, err := decodeResponsesInput(original)
-	require.NoError(t, err)
-	require.NoError(t, setResponseEnvelopeInput(envelope, append(items, json.RawMessage(`{"type":"compaction_trigger"}`))))
-	source, err := json.Marshal(envelope)
-	require.NoError(t, err)
-	ref := &remoteCompactionReference{ID: "cmp_cold_export", EncryptedContent: "source-readable-state"}
-	require.NoError(t, adapter.saveHistorySnapshot(ctx, historyCheckpointAlias(ref), source, nil))
-	body := []byte(`{"model":"gpt-6-astra","input":[{"type":"compaction","id":"cmp_cold_export","encrypted_content":"source-readable-state"},{"role":"user","content":"keep latest correction 17.250"}]}`)
-	executor := &unifiedExportExecutor{}
-	_, err = adapter.generateLocalSummary(ctx, "synthetic-reader", &remoteCompactionSource{body: []byte(`{"model":"gpt-6-astra","input":[{"type":"compaction_trigger"}]}`), headers: make(http.Header)}, state, executor)
-	require.NoError(t, err)
-	request := executor.requests[0]
-	reader := nativeHistoryReader{Provider: historyProviderIdentity{ChannelID: state.CurrentCandidate.Channel.ID, Endpoint: request.URL, Model: "gpt-6-astra", Format: request.APIFormat, Auth: historyReaderCredential(request, false)}}
-	require.NoError(t, adapter.rememberNativeHistoryOrigins(ctx, body, []byte(`{"output":[]}`), reader))
-	executor.requests = nil
-	compiled, ready, err := adapter.compileUnifiedContext(ctx, body, state, executor)
-	require.NoError(t, err)
-	require.True(t, ready)
-	require.Len(t, executor.requests, 1, "a readable current checkpoint avoids a dozen cold source summaries")
-	require.Contains(t, string(executor.requests[0].Body), "source-readable-state")
-	require.NotContains(t, string(executor.requests[0].Body), "original tool evidence")
-	require.NotContains(t, string(executor.requests[0].Body), "keep latest correction 17.250")
-	require.Contains(t, string(compiled), "preserve calibration exactly 17.125", "cost optimization must retain original user constraints verbatim")
-	require.Contains(t, string(compiled), "latest correction: use 17.250; continue")
-	require.Contains(t, string(compiled), "keep latest correction 17.250")
 }

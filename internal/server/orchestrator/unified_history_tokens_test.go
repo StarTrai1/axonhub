@@ -11,33 +11,27 @@ import (
 )
 
 func TestUnifiedHistoryTokenAdmissionKeepsLargeVerbatimInstructions(t *testing.T) {
-	ctx, _, state, adapter := unifiedHistoryFixture(t)
+	ctx, _, state, _ := unifiedHistoryFixture(t)
 	state.CurrentCandidate.ContextTokens = 0
 	text := strings.Repeat("Preserve original instructions, exact paths and completed findings. 保留原始指令与事实。\n", 12000)
 	body, err := json.Marshal(map[string]any{"model": "gpt-6-astra", "input": []map[string]string{{"role": "developer", "content": text}, {"role": "user", "content": "Continue."}}})
 	require.NoError(t, err)
 	require.Greater(t, len(body), unifiedContextMaxTokens)
-	executor := &unifiedConcurrentExecutor{}
-	compiled, ok, err := adapter.compileUnifiedContext(ctx, body, state, executor)
+	source, err := prepareCheckpointSummarySource(ctx, &remoteCompactionSource{body: body}, state)
 	require.NoError(t, err)
-	require.True(t, ok)
-	require.Equal(t, text, gjson.GetBytes(compiled, "input.0.content").String())
-	require.Empty(t, executor.summaries)
-	require.Less(t, unifiedContextSize(compiled), len(body)/2)
+	require.Equal(t, text, gjson.GetBytes(source.body, "input.0.content").String())
+	require.Less(t, unifiedContextSize(source.body), len(body)/2)
 }
 
 func TestUnifiedHistoryTokenAdmissionStillReservesOutput(t *testing.T) {
-	ctx, _, state, adapter := unifiedHistoryFixture(t)
+	ctx, _, state, _ := unifiedHistoryFixture(t)
 	body := []byte(`{"model":"gpt-6-astra","max_output_tokens":2000000,"input":[{"role":"user","content":"hello"}]}`)
-	executor := &unifiedConcurrentExecutor{}
-	_, ok, err := adapter.compileUnifiedContext(ctx, body, state, executor)
-	require.Error(t, err)
-	require.False(t, ok)
-	require.Empty(t, executor.summaries)
+	_, err := prepareCheckpointSummarySource(ctx, &remoteCompactionSource{body: body}, state)
+	require.ErrorContains(t, err, "input budget")
 }
 
 func TestUnifiedHistoryLargeInteractionUsesModelBudget(t *testing.T) {
-	_, _, state, _ := unifiedHistoryFixture(t)
+	ctx, _, state, _ := unifiedHistoryFixture(t)
 	output, err := json.Marshal(map[string]string{"type": "function_call_output", "call_id": "large-call", "output": historyTestEntropy(238000, 64029)})
 	require.NoError(t, err)
 	items := []json.RawMessage{
@@ -46,12 +40,13 @@ func TestUnifiedHistoryLargeInteractionUsesModelBudget(t *testing.T) {
 		output,
 		json.RawMessage(`{"role":"user","content":"continue"}`),
 	}
-	plan, ok, err := planUnifiedHistory(map[string]json.RawMessage{"model": json.RawMessage(`"gpt-6-astra"`)}, items, state, state.CurrentCandidate, 750000)
+	body, err := json.Marshal(map[string]any{"model": "gpt-6-astra", "input": items})
 	require.NoError(t, err)
-	require.True(t, ok)
-	require.Len(t, plan.segments, 2)
-	require.Len(t, plan.segments[1].items, 2, "a large call and result stay indivisible")
-	require.Equal(t, json.RawMessage(output), plan.segments[1].items[1])
+	source, err := prepareCheckpointSummarySource(ctx, &remoteCompactionSource{body: body}, state)
+	require.NoError(t, err)
+	require.Equal(t, "large-call", gjson.GetBytes(source.body, "input.1.call_id").String())
+	require.JSONEq(t, string(output), gjson.GetBytes(source.body, "input.2").Raw)
+
 }
 
 func TestUnifiedHistoryTokenMeasureImagesAndConcurrency(t *testing.T) {

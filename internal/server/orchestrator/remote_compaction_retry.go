@@ -120,6 +120,9 @@ func canRetryLocalCompactionStream(outbound *PersistentOutboundTransformer, err 
 		errors.Is(err, errSkipCandidateByCircuitBreaker) || isChannelQueueError(err) || isLocalRPMExhaustedError(err) {
 		return false
 	}
+	if isModelCapacityExhausted(err) {
+		return false
+	}
 	state := outbound.state
 	channel := state.CurrentCandidate.Channel
 	if channel.ID > 0 && state.responsesRelayAffinityExhaustedChannel == channel.ID {
@@ -132,9 +135,6 @@ func canRetryLocalCompactionStream(outbound *PersistentOutboundTransformer, err 
 		return true
 	}
 	status := ExtractStatusCodeFromError(err)
-	if isModelCapacityExhausted(err) {
-		return false
-	}
 	if status == http.StatusGatewayTimeout && expensiveGatewayTimeout(state, time.Now()) {
 		return false
 	}

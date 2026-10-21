@@ -48,9 +48,9 @@ func TestResponsesRejectedNativeSourceSurvivesLogsAndRestart(t *testing.T) {
 				require.Same(t, response, got)
 			}
 			ref := &remoteCompactionReference{ID: "cmp_durable", EncryptedContent: "native-ciphertext"}
-			stored, err := adapter.systemService.LoadUnifiedHistory(ctx, []string{historyCheckpointAlias(ref)})
+			stored, err := adapter.systemService.LoadUnifiedHistory(ctx, []string{historyCheckpointWindowAlias(ref)})
 			require.NoError(t, err)
-			sealed := stored[historyCheckpointAlias(ref)]
+			sealed := stored[historyCheckpointWindowAlias(ref)]
 			require.NotEmpty(t, sealed)
 			require.NotContains(t, sealed, "complete original")
 			require.NotContains(t, sealed, "must-not-store")
@@ -67,7 +67,7 @@ func TestResponsesRejectedNativeSourceSurvivesLogsAndRestart(t *testing.T) {
 				require.Nil(t, missing)
 			}
 			changed := &remoteCompactionReference{ID: ref.ID, EncryptedContent: "different-ciphertext"}
-			require.NoError(t, adapter.systemService.SaveUnifiedHistory(ctx, map[string]string{historyCheckpointAlias(changed): sealed}))
+			require.NoError(t, adapter.systemService.SaveUnifiedHistory(ctx, map[string]string{historyCheckpointWindowAlias(changed): sealed}))
 			_, err = restarted.loadNativeCompactionSource(ctx, changed, state)
 			require.Error(t, err, "ciphertext hash is authenticated, not only used for lookup")
 		})

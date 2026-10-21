@@ -29,3 +29,14 @@ func TestModelCapacityExhaustionIsNotAnOrdinaryServerRetry(t *testing.T) {
 		}
 	}
 }
+
+func TestModelCapacityStopsRelayAffinityRetry(t *testing.T) {
+	outbound := newCodexResponsesPassThroughOutbound()
+	channelID := outbound.state.CurrentCandidate.Channel.ID
+	outbound.state.responsesRelayAffinityRetryChannel = channelID
+	outbound.state.responsesRejectedStatusRetryChannel = channelID
+	err := &llm.ResponseError{StatusCode: http.StatusInternalServerError, Detail: llm.ErrorDetail{Message: "model capacity reached"}}
+	require.False(t, outbound.CanRetry(err))
+	require.False(t, canRetryLocalCompactionStream(outbound, err))
+	require.True(t, isRetryableError(err), "an independent channel remains eligible")
+}

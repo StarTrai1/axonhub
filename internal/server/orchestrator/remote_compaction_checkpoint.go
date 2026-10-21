@@ -150,6 +150,9 @@ func (a *remoteCompactionAdapter) retainLegacyCompactionSummary(ctx context.Cont
 }
 
 func (g *localCompactionGeneration) sealSummary(summary string) error {
+	if err := validateCheckpointSummary(summary); err != nil {
+		return err
+	}
 	sealed, err := sealLocalCompactionSummary(g.summaryCipher, g.associatedData, summary)
 	if err != nil {
 		return err

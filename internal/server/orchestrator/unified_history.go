@@ -387,6 +387,12 @@ func historyWireAlias(id string, channelID int) string {
 	return "wire:" + historyDigest(fmt.Appendf(nil, "%d:%s", channelID, id))
 }
 
+// A distinct immutable namespace prevents old flattened archives from being
+// mistaken for canonical checkpoint windows after an upgrade.
+func historyCheckpointWindowAlias(ref *remoteCompactionReference) string {
+	return "checkpoint:" + historyDigest([]byte("window-v2:" + remoteCompactionCacheKey(ref)))
+}
+
 func historyCheckpointAlias(ref *remoteCompactionReference) string {
 	if isLocalCompactionReference(ref) {
 		return "checkpoint:" + historyDigest([]byte(ref.ID))
@@ -470,7 +476,7 @@ func (a *remoteCompactionAdapter) archiveHistoryResponse(ctx context.Context, bo
 		return wireErr
 	}
 	body = archivalBody
-	source, err := a.flattenHistorySource(ctx, &remoteCompactionSource{body: body}, state)
+	source, err := a.resolveCompactionSourceContinuation(ctx, &remoteCompactionSource{body: body}, state)
 	if err != nil {
 		return err
 	}

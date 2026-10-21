@@ -68,9 +68,6 @@ type responsesCompactionRecoveryMiddleware struct {
 	executor         pipeline.Executor
 	rejected         map[responsesCompactionRecoveryKey]struct{}
 	adapted          *responsesCompactionRecoveryKey
-	migration        *responsesCompactionRecoveryKey
-	failedMigrations map[responsesCompactionRecoveryKey]bool
-	pendingView      string
 }
 
 func recoverRejectedRemoteCompaction(
@@ -87,7 +84,6 @@ func (m *responsesCompactionRecoveryMiddleware) Name() string {
 
 func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawError(ctx context.Context, err error) {
 	m.adapted = nil
-	m.pendingView = ""
 	if ctx.Err() != nil || m.outbound == nil || m.outbound.state == nil || m.adapter == nil || m.executor == nil {
 		return
 	}
@@ -99,44 +95,22 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawError(ctx context.C
 	if request == nil {
 		return
 	}
-	if m.migration != nil {
-		if _, rejected := errors.AsType[*compactionSourceRejectedError](rejectedCompactionSourceError(request, err)); rejected {
-			key := *m.migration
-			if m.failedMigrations == nil {
-				m.failedMigrations = make(map[responsesCompactionRecoveryKey]bool)
-			}
-			m.failedMigrations[key] = true
-			if saveErr := m.adapter.saveNativeMigration(ctx, key, nativeCompactionMigration{RejectedUntil: time.Now().Add(responsesReasoningRecoveryTTL)}); saveErr != nil {
-				log.Warn(ctx, "could not disable rejected native migration", log.Cause(saveErr))
-			}
-			if m.rejected == nil {
-				m.rejected = make(map[responsesCompactionRecoveryKey]struct{})
-			}
-			m.rejected[key] = struct{}{}
-			m.outbound.state.responsesRejectedStatusRetryChannel = key.scope.provider.channelID
-			m.migration = nil
-			return
-		}
-	}
+
 	key, ref, ok := m.recoveryKey(ctx, request)
 	if !ok {
 		return
 	}
 	exactCheckpoint := responsesRejectedCompactionMessage(request.Body, ref, code, message, param)
-	hasIDs, safe := responsesResourceHistorySupportsRecoveryWithAgents(request.Body, exactCheckpoint)
+	_, safe := responsesResourceHistorySupportsRecoveryWithAgents(request.Body, exactCheckpoint)
 	if !safe {
 		return
 	}
-	if param == "" && responsesResourceMismatch(code, message) {
-		// An ambiguous resource rejection first tries the smaller ID correction.
-		if hasIDs {
-			return
-		}
-	} else if !exactCheckpoint {
+	if !exactCheckpoint && (param != "" || !responsesResourceMismatch(code, message)) {
 		return
 	}
-	if exactCheckpoint {
-		m.rememberCheckpointRejection(ctx, key)
+	m.rememberCheckpointRejection(ctx, key)
+	if saveErr := m.adapter.requirePortableCheckpoint(ctx, m.outbound.state); saveErr != nil {
+		log.Warn(ctx, "could not retain portable checkpoint session", log.Cause(saveErr))
 	}
 	if _, alreadyRejected := m.rejected[key]; alreadyRejected {
 		return
@@ -185,8 +159,6 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawRequest(
 	request *httpclient.Request,
 ) (*httpclient.Request, error) {
 	m.adapted = nil
-	m.migration = nil
-	m.pendingView = ""
 	if m.adapter == nil || m.executor == nil {
 		return request, nil
 	}
@@ -197,12 +169,7 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawRequest(
 	if !ok {
 		return request, nil
 	}
-	if restored, err := m.restoreUnifiedView(ctx, request, key); err != nil {
-		return nil, &remoteCompactionPreparationError{cause: err}
-	} else if restored {
-		m.adapted = &key
-		return request, nil
-	}
+
 	_, rejected := m.rejected[key]
 	rejected = rejected || m.hasCheckpointRejection(ctx, key)
 	known := m.hasConfirmedRecovery(ctx, key)
@@ -210,7 +177,12 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawRequest(
 	replayKey.replay = true
 	knownReplay := m.hasConfirmedRecovery(ctx, replayKey)
 	local := m.outbound.GetCurrentChannel().Policies.UsesLocalRemoteCompactionBridge()
-	if local && !rejected && !known && !knownReplay {
+	portable, err := m.adapter.usesPortableCheckpoint(ctx, m.outbound.state, m.outbound.state.CurrentCandidate)
+	if err != nil {
+		return nil, &remoteCompactionPreparationError{cause: err}
+	}
+	local = local || portable
+	if local && !portable && !rejected && !known && !knownReplay {
 		reader, err := m.adapter.loadNativeHistoryReader(ctx, ref, m.outbound.state.CurrentCandidate)
 		if err != nil {
 			return nil, &remoteCompactionPreparationError{cause: err}
@@ -219,15 +191,7 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawRequest(
 			return request, nil
 		}
 	}
-	if !local && !known && !knownReplay && !m.failedMigrations[key] {
-		migration, err := m.adapter.loadNativeMigration(ctx, key)
-		if err != nil {
-			return nil, &remoteCompactionPreparationError{cause: err}
-		}
-		if len(migration.Item) > 0 {
-			return m.applyNativeMigration(request, ref, key, migration.Item)
-		}
-	}
+
 	if !rejected && !known && !knownReplay && !local {
 		return request, nil
 	}
@@ -235,33 +199,9 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawRequest(
 		return nil, &remoteCompactionPreparationError{cause: errors.New("cannot recover rejected compaction with unresolved Responses history")}
 	}
 	state := m.outbound.state
-	// Small, authenticated source histories can be restored exactly without an
-	// extra model call. Keep the input unchanged unless every boundary verifies.
-	if !local && !known {
-		body, replayed, err := m.adapter.replayNativeCompaction(ctx, request.Body, ref, state)
-		if err != nil && !missingHistoryPredecessor(err) {
-			return nil, &remoteCompactionPreparationError{cause: err}
-		}
-		if replayed {
-			if m.adapter.unifiedHistoryEnabled() {
-				body, err = protectUnifiedHistory(ctx, body, state)
-				if err != nil {
-					return nil, &remoteCompactionPreparationError{cause: err}
-				}
-			}
-			request.Body = body
-			if len(request.JSONBody) > 0 {
-				request.JSONBody = body
-			}
-			request.Headers.Del(codexTurnStateHeader)
-			m.adapted = &replayKey
-			log.Info(ctx, "restored exact native compaction source without summarization",
-				log.Int("channel_id", key.scope.provider.channelID))
-			return request, nil
-		}
-		// A later turn may exceed the exact-replay budget. The retained source
-		// remains authoritative; fall through to the explicit summary fallback.
-	}
+	// Recovery installs one durable summary for this checkpoint. Replaying the
+	// archived transcript here would undo compaction and immediately retrigger it.
+
 	candidate := *state.CurrentCandidate
 	if state.CurrentModelIndex < 0 || state.CurrentModelIndex >= len(candidate.Models) {
 		return nil, &remoteCompactionPreparationError{cause: errors.New("rejected compaction has no selected model")}
@@ -273,7 +213,6 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawRequest(
 	candidate.APIFormat = string(llm.APIFormatOpenAIResponse)
 	bridgeState := &PersistenceState{
 		PromptProtecter:          state.PromptProtecter,
-		unifiedHistoryCandidates: state.ChannelModelsCandidates,
 		compactionRecovery:       &compactionRecoveryEvidence{},
 		RawProviderRequest:       request,
 		APIKey:                   state.APIKey,
@@ -282,31 +221,7 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawRequest(
 		Proxy:                    state.Proxy,
 		ChannelModelsCandidates:  []*ChannelModelsCandidate{&candidate},
 	}
-	if rejected {
-		reader := nativeHistoryReaderFor(state)
-		bridgeState.unifiedRejectedReader = &reader
-	}
-	if body, assembled, err := m.adapter.compileUnifiedContext(ctx, request.Body, bridgeState, m.executor); err != nil {
-		return nil, &remoteCompactionPreparationError{cause: err}
-	} else if assembled {
-		m.prepareUnifiedView(key, request)
-		request.Body = body
-		if len(request.JSONBody) > 0 {
-			request.JSONBody = body
-		}
-		request.Headers.Del(codexTurnStateHeader)
-		m.adapted = &key
-		return request, nil
-	}
-	if !local && !known && !knownReplay && !m.failedMigrations[key] {
-		item, err := m.adapter.migrateNativeCompaction(contexts.CloneRequestContext(ctx), key, ref, bridgeState, m.executor)
-		if err != nil {
-			return nil, &remoteCompactionPreparationError{cause: err}
-		}
-		if len(item) > 0 {
-			return m.applyNativeMigration(request, ref, key, item)
-		}
-	}
+
 	summary, err := m.adapter.summaryForCompaction(
 		contexts.CloneRequestContext(ctx), key.cacheKey, ref, key.threadID,
 		key.scope.provider.model, bridgeState, m.executor,
@@ -326,20 +241,6 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawRequest(
 	if rejected && !known {
 		m.adapted = &key
 	}
-	return request, nil
-}
-
-func (m *responsesCompactionRecoveryMiddleware) applyNativeMigration(request *httpclient.Request, ref *remoteCompactionReference, key responsesCompactionRecoveryKey, item json.RawMessage) (*httpclient.Request, error) {
-	body, err := replaceNativeCompactionMigration(request.Body, ref, item)
-	if err != nil {
-		return nil, &remoteCompactionPreparationError{cause: err}
-	}
-	request.Body = body
-	if len(request.JSONBody) > 0 {
-		request.JSONBody = body
-	}
-	request.Headers.Del(codexTurnStateHeader)
-	m.migration = &key
 	return request, nil
 }
 
@@ -421,7 +322,6 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawResponse(ctx contex
 	if m.adapted != nil && response != nil && response.StatusCode >= 200 && response.StatusCode < 300 &&
 		responsesReasoningRecoverySucceeded(response.Body) {
 		m.confirmRecovery(ctx, *m.adapted)
-		m.confirmUnifiedView(ctx)
 	}
 	return response, nil
 }
@@ -433,7 +333,6 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawStream(ctx context.
 	key := *m.adapted
 	return &responsesReasoningRecoveryStream{Stream: stream, onSuccess: func() {
 		m.confirmRecovery(ctx, key)
-		m.confirmUnifiedView(ctx)
 	}}, nil
 }
 

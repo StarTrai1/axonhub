@@ -1113,6 +1113,11 @@ func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
 	if p.state.CurrentCandidate == nil {
 		return false
 	}
+	// Capacity failure must also stop affinity and compatibility overrides:
+	// changing a relay session does not make the same upstream model available.
+	if isModelCapacityExhausted(err) {
+		return false
+	}
 	if _, preparationFailed := errors.AsType[*remoteCompactionPreparationError](err); preparationFailed {
 		// The bridge already used its own bounded opening-stream retry budget.
 		return false
@@ -1134,9 +1139,6 @@ func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
 	}
 
 	status := ExtractStatusCodeFromError(err)
-	if isModelCapacityExhausted(err) {
-		return false
-	}
 	if status == http.StatusGatewayTimeout && expensiveGatewayTimeout(p.state, time.Now()) {
 		return false
 	}
@@ -1268,9 +1270,6 @@ func (p *PersistentOutboundTransformer) PrepareForRetry(ctx context.Context) err
 // e.g. the aws bedrock process need a custom executor to handle the request.
 // It implements the pipeline.ChannelCustomizedExecutor interface.
 func (p *PersistentOutboundTransformer) CustomizeExecutor(executor pipeline.Executor) pipeline.Executor {
-	if p.state != nil && p.state.unifiedCompactionSummary != "" {
-		return &unifiedCompactionExecutor{summary: p.state.unifiedCompactionSummary}
-	}
 	// Start with the default executor, then layer customizations.
 	customizedExecutor := executor
 

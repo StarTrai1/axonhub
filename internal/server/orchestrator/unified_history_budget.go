@@ -2,7 +2,6 @@ package orchestrator
 
 import (
 	"encoding/json"
-	"fmt"
 	"strings"
 
 	"github.com/tidwall/gjson"
@@ -35,32 +34,6 @@ func unifiedHistoryInputBudgets(body []byte, candidate *ChannelModelsCandidate, 
 		target = min(target, ceiling)
 	}
 	return target, ceiling
-}
-
-func unifiedSegmentSummaryMessage(segment unifiedHistorySegment) json.RawMessage {
-	message, _ := json.Marshal(map[string]any{"type": "message", "role": "assistant", "content": []map[string]string{{"type": "output_text", "text": fmt.Sprintf("Archived history summary (source %s). This is a derived summary; the original user instructions remain authoritative.\n%s", strings.TrimPrefix(segment.key, "summary:"), segment.summary)}}})
-	return message
-}
-
-// Validate cached notes before paying to prepare any missing siblings. The
-// uncached allowance is a planning reserve; final generated text is checked
-// again without truncation before a provider request can start.
-func validateUnifiedHistoryMinimum(plan *unifiedHistoryPlan, budget int) error {
-	size := plan.mandatory
-	for _, segment := range plan.segments {
-		if segment.key == "" {
-			continue
-		}
-		if segment.summary == "" {
-			size += 1024
-		} else {
-			size += plan.measure.item(unifiedSegmentSummaryMessage(segment))
-		}
-	}
-	if size > budget {
-		return unifiedHistoryPreparationLimit("the retained instructions and cached segment summaries already exceed the input budget; no additional summaries were generated")
-	}
-	return nil
 }
 
 // Count text JSON bytes conservatively; image transport bytes are not text
@@ -97,14 +70,6 @@ func unifiedItemSize(item json.RawMessage) int {
 		}
 	}
 	return size + 1
-}
-
-func unifiedItemsSize(items []json.RawMessage) int {
-	size := 2
-	for _, item := range items {
-		size += unifiedItemSize(item)
-	}
-	return size
 }
 
 func unifiedContextSize(body []byte) int {
@@ -156,31 +121,4 @@ func unifiedPortableItem(item json.RawMessage) bool {
 		}
 	}
 	return true
-}
-
-// Large coding turns split only between completed tool interactions. A call
-// and its output, including an intervening user correction, are indivisible.
-func unifiedHistoryUnits(items []json.RawMessage) [][]json.RawMessage {
-	var units [][]json.RawMessage
-	pending := make(map[string]bool)
-	start := 0
-	for i, item := range items {
-		value := gjson.ParseBytes(item)
-		switch value.Get("type").String() {
-		case "function_call", "custom_tool_call":
-			if id := value.Get("call_id").String(); id != "" {
-				pending[id] = true
-			}
-		case "function_call_output", "custom_tool_call_output":
-			delete(pending, value.Get("call_id").String())
-		}
-		if len(pending) == 0 {
-			units = append(units, items[start:i+1])
-			start = i + 1
-		}
-	}
-	if start < len(items) {
-		units = append(units, items[start:])
-	}
-	return units
 }

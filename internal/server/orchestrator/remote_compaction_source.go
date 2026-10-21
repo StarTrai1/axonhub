@@ -45,14 +45,11 @@ func nativeCompactionSourceAAD(ref *remoteCompactionReference, state *Persistenc
 }
 
 func (a *remoteCompactionAdapter) retainNativeCompactionSource(ctx context.Context, ref *remoteCompactionReference, state *PersistenceState, source *remoteCompactionSource) error {
-	if a.unifiedHistoryEnabled() && state != nil && state.unifiedHistorySource != nil {
-		source = state.unifiedHistorySource
-	}
 	if a.systemService == nil || source == nil || len(source.body) == 0 || len(source.body) > nativeCompactionMaxSourceBytes {
 		return errors.New("native compaction source storage is unavailable or source exceeds limit")
 	}
 	unresolved := source
-	source, err := a.resolveCompactionSourceContinuation(ctx, source, state)
+	source, err := a.resolveRetainedContinuation(ctx, source, state, true)
 	if err != nil {
 		if missingHistoryPredecessor(err) {
 			return a.retainUnresolvedNativeSource(ctx, ref, state, unresolved)
@@ -66,11 +63,9 @@ func (a *remoteCompactionAdapter) retainNativeCompactionSource(ctx context.Conte
 	if state == nil || state.APIKey == nil || owner.APIKey.ID != state.APIKey.ID || owner.APIKey.ProjectID != state.APIKey.ProjectID {
 		return errors.New("unified history source owner mismatch")
 	}
-	source, err = a.flattenHistorySource(ctx, source, state)
-	if err != nil {
-		return err
-	}
-	return a.saveHistorySnapshot(ctx, historyCheckpointAlias(ref), source.body, nil)
+	// Preserve the actual compacted window as the next checkpoint's source.
+	// The independent original archive must never become its runtime input.
+	return a.saveHistorySnapshot(ctx, historyCheckpointWindowAlias(ref), source.body, nil)
 }
 
 func (a *remoteCompactionAdapter) loadNativeCompactionSource(ctx context.Context, ref *remoteCompactionReference, state *PersistenceState) (*remoteCompactionSource, error) {
@@ -85,7 +80,11 @@ func (a *remoteCompactionAdapter) loadNativeCompactionSource(ctx context.Context
 		if owner.APIKey.ID != state.APIKey.ID || owner.APIKey.ProjectID != state.APIKey.ProjectID {
 			return nil, nil
 		}
-		body, _, found, err := a.loadHistorySnapshot(ctx, historyCheckpointAlias(ref))
+		body, _, found, err := a.loadHistorySnapshot(ctx, historyCheckpointWindowAlias(ref))
+		if err == nil && !found {
+			// Existing installations retain the old source archive until migrated.
+			body, _, found, err = a.loadHistorySnapshot(ctx, historyCheckpointAlias(ref))
+		}
 		if err != nil {
 			return nil, err
 		}

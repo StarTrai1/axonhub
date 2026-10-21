@@ -52,7 +52,7 @@ Include:
 - What remains to be done (clear next steps)
 - Any critical data, examples, or references needed to continue
 
-Be concise, structured, and focused on helping the next LLM seamlessly continue the work.`
+Be concise, structured, and focused on helping the next LLM seamlessly continue the work. Target at most 4096 tokens. Preserve the active task, decisions, corrections, pending work and exact references; summarize completed tool output instead of copying the transcript.`
 
 	localCompactionSummaryPrefix = "Another language model started to solve this problem and produced a summary of its thinking process. You also have access to the state of the tools that were used by that language model. Use this to build on the work that has already been done and avoid duplicating work. Here is the summary produced by the other language model, use the information in this summary to assist with your own analysis:"
 )
@@ -68,7 +68,6 @@ type remoteCompactionAdapter struct {
 	checkpointRejections     *lru.Cache[[sha256.Size]byte, time.Time]
 	nativeMigrations         *lru.Cache[responsesCompactionRecoveryKey, nativeCompactionMigrationCacheEntry]
 	nativeMigrationGenerator singleflight.Group
-	summaryFailures          *lru.Cache[unifiedSummaryFailureKey, time.Time]
 }
 
 type remoteCompactionReference struct {
@@ -120,7 +119,6 @@ func newRemoteCompactionAdapter(
 		recoveryMisses:       lo.Must(lru.New[responsesCompactionRecoveryKey, time.Time](responsesReasoningRecoveryMaxScopes)),
 		checkpointRejections: lo.Must(lru.New[[sha256.Size]byte, time.Time](responsesReasoningRecoveryMaxScopes)),
 		nativeMigrations:     lo.Must(lru.New[responsesCompactionRecoveryKey, nativeCompactionMigrationCacheEntry](64)),
-		summaryFailures:      lo.Must(lru.New[unifiedSummaryFailureKey, time.Time](1024)),
 	}
 }
 
@@ -154,6 +152,14 @@ func (m *remoteCompactionMiddleware) OnInboundLlmRequest(ctx context.Context, re
 	}
 
 	candidates := m.inbound.state.ChannelModelsCandidates
+	localBridge := hasLocalBridgeCodexCandidate(candidates)
+	if len(candidates) > 0 {
+		portable, lookupErr := m.adapter.usesPortableCheckpoint(ctx, m.inbound.state, candidates[0])
+		if lookupErr != nil {
+			return nil, lookupErr
+		}
+		localBridge = localBridge || portable
+	}
 	if m.adapter.unifiedHistoryEnabled() && req.RawRequest != nil &&
 		(req.RequestType == llm.RequestTypeCompact || bytes.Contains(rawRequestPayload(req.RawRequest), []byte(`"compaction_trigger"`))) {
 		body := append([]byte(nil), rawRequestPayload(req.RawRequest)...)
@@ -171,8 +177,8 @@ func (m *remoteCompactionMiddleware) OnInboundLlmRequest(ctx context.Context, re
 				return nil, err
 			}
 		}
-		m.historySource, err = m.adapter.resolveCompactionSourceContinuation(ctx, &remoteCompactionSource{body: body, headers: req.RawRequest.Headers}, m.inbound.state)
-		if missingHistoryPredecessor(err) && !hasLocalBridgeCodexCandidate(candidates) {
+		m.historySource, err = m.adapter.resolveRetainedContinuation(ctx, &remoteCompactionSource{body: body, headers: req.RawRequest.Headers}, m.inbound.state, true)
+		if missingHistoryPredecessor(err) && !localBridge {
 			// A live native connection may still own this delta. Its accepted output
 			// must not depend on the gateway's older plaintext coverage.
 			m.historySource = &remoteCompactionSource{body: body, headers: req.RawRequest.Headers}
@@ -182,27 +188,6 @@ func (m *remoteCompactionMiddleware) OnInboundLlmRequest(ctx context.Context, re
 			return nil, err
 		}
 		m.inbound.state.unifiedHistorySource = m.historySource
-		if hasLocalBridgeCodexCandidate(candidates) {
-			compiled, supported, compileErr := m.adapter.compileUnifiedContext(ctx, m.historySource.body, m.inbound.state, m.executor)
-			if compileErr != nil {
-				return nil, compileErr
-			}
-			if supported {
-				_, input, decodeErr := decodeResponsesInput(compiled)
-				if decodeErr != nil {
-					return nil, decodeErr
-				}
-				if len(input) > 0 && rawInputItemType(input[len(input)-1]) == remoteCompactionTriggerType {
-					input = input[:len(input)-1]
-				}
-				encoded, encodeErr := json.Marshal(input)
-				if encodeErr != nil {
-					return nil, encodeErr
-				}
-				m.inbound.state.unifiedCompactionSummary = "Archived conversation context. Preserve the original roles and chronological order of these records:\n" + string(encoded)
-				return m.adaptLocalCompactionGeneration(ctx, req)
-			}
-		}
 	}
 	if req.RawRequest != nil && len(rawRequestPayload(req.RawRequest)) > 0 &&
 		(responses.IsResponsesFormat(req.APIFormat) || req.RequestType == llm.RequestTypeCompact) {
@@ -232,7 +217,7 @@ func (m *remoteCompactionMiddleware) OnInboundLlmRequest(ctx context.Context, re
 
 	// Existing compaction state must be made compatible with the selected route
 	// before a local bridge builds the next compaction generation request.
-	if isRemoteCompactionGenerationRequest(req) && hasLocalBridgeCodexCandidate(candidates) {
+	if isRemoteCompactionGenerationRequest(req) && localBridge {
 		return m.adaptLocalCompactionGeneration(ctx, req)
 	}
 
@@ -250,29 +235,14 @@ func (m *remoteCompactionMiddleware) adaptRemoteCompactionHistory(
 		return nil, errors.New("remote compaction local fallback requires a compaction id and Codex thread id")
 	}
 
-	adaptedBody, compiled, err := m.adapter.compileUnifiedContext(ctx, rawRequestPayload(req.RawRequest), m.inbound.state, m.executor)
+	cacheKey := remoteCompactionCacheKey(ref)
+	summary, err := m.adapter.summaryForCompaction(ctx, cacheKey, ref, threadID, rawModel, m.inbound.state, m.executor)
+	if err != nil {
+		return nil, fmt.Errorf("adapt checkpoint for selected Codex channel: %w", err)
+	}
+	adaptedBody, err := replaceRemoteCompactionWithLocalSummary(rawRequestPayload(req.RawRequest), summary)
 	if err != nil {
 		return nil, err
-	}
-	if !compiled {
-		cacheKey := remoteCompactionCacheKey(ref)
-		summary, err := m.adapter.summaryForCompaction(
-			ctx,
-			cacheKey,
-			ref,
-			threadID,
-			rawModel,
-			m.inbound.state,
-			m.executor,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("adapt remote compaction for selected Codex channel: %w", err)
-		}
-
-		adaptedBody, err = replaceRemoteCompactionWithLocalSummary(rawRequestPayload(req.RawRequest), summary)
-		if err != nil {
-			return nil, err
-		}
 	}
 	adaptedRawRequest := cloneRawRequest(req.RawRequest)
 	adaptedRawRequest.Body = adaptedBody
@@ -325,7 +295,29 @@ func (m *remoteCompactionMiddleware) adaptLocalCompactionGeneration(ctx context.
 	if err != nil {
 		return nil, err
 	}
-	body, err := buildLocalCompactionGenerationRequest(rawRequestPayload(req.RawRequest), req.RequestType)
+	source := rawRequestPayload(req.RawRequest)
+	if m.historySource != nil {
+		source = m.historySource.body
+	}
+	previous, threadID, model, err := parseRemoteCompactionRequest(source)
+	if err != nil {
+		return nil, err
+	}
+	if previous != nil {
+		summary, summaryErr := m.adapter.summaryForCompaction(ctx, remoteCompactionCacheKey(previous), previous, threadID, model, m.inbound.state, m.executor)
+		if summaryErr != nil {
+			return nil, summaryErr
+		}
+		source, err = replaceRemoteCompactionWithLocalSummary(source, summary)
+		if err != nil {
+			return nil, err
+		}
+	}
+	requestType := req.RequestType
+	if m.historySource != nil {
+		requestType = llm.RequestTypeChat // The canonical window has a V2 trigger.
+	}
+	body, err := buildLocalCompactionGenerationRequest(source, requestType)
 	if err != nil {
 		return nil, err
 	}
@@ -358,7 +350,11 @@ func (m *remoteCompactionMiddleware) adaptLocalCompactionGeneration(ctx context.
 		instructions = req.Compact.Instructions
 	}
 	if standalone {
-		useResponsesEndpointForLocalCompaction(m.inbound.state.ChannelModelsCandidates)
+		for _, candidate := range m.inbound.state.ChannelModelsCandidates {
+			if candidate != nil && candidate.Channel != nil && candidate.Channel.Type == channel.TypeCodex {
+				candidate.APIFormat = llm.APIFormatOpenAIResponse.String()
+			}
+		}
 	}
 	m.generation = &localCompactionGeneration{
 		ref:            ref,
@@ -840,23 +836,9 @@ func (a *remoteCompactionAdapter) summaryForCompactionChain(
 				},
 			}
 		}
-		// Keep native ancestors unless this recovery already observed a matching
-		// rejection at the same destination. A failed native migration is also
-		// evidence; repeating that failure with a text prompt teaches us nothing.
-		previous, _, _, parseErr := parseRemoteCompactionRequest(source.body)
-		if parseErr != nil {
-			return "", parseErr
-		}
-		if isLocalCompactionReference(previous) {
-			source, err = a.adaptStoredCompactionSource(ctx, source, state, executor, ancestors)
-			if err != nil {
-				return "", err
-			}
-		} else if state != nil && state.compactionRecovery.sourceRejected(state, previous) {
-			source, err = a.restoreRejectedCompactionSource(ctx, source, previous, state, executor, ancestors)
-			if err != nil {
-				return "", err
-			}
+		source, err = a.restoreCheckpointWindow(ctx, source, state)
+		if err != nil {
+			return "", err
 		}
 	}
 
@@ -1114,23 +1096,15 @@ func (a *remoteCompactionAdapter) generateCompaction(
 	if err != nil {
 		return "", err
 	}
-	body, err := buildLocalCompactionRequest(source.body)
-	if err != nil {
-		return "", err
-	}
-	if source.headers.Get(unifiedSegmentHeader) != "" {
-		envelope, input, decodeErr := decodeResponsesInput(body)
-		if decodeErr != nil {
-			return "", decodeErr
-		}
-		input[len(input)-1] = localCompactionMessage(unifiedSegmentPrompt)
-		if err := setResponseEnvelopeInput(envelope, input); err != nil {
-			return "", err
-		}
-		body, err = json.Marshal(envelope)
+	if !native {
+		source, err = prepareCheckpointSummarySource(ctx, source, state)
 		if err != nil {
 			return "", err
 		}
+	}
+	body, err := buildLocalCompactionRequest(source.body)
+	if err != nil {
+		return "", err
 	}
 
 	headers := source.headers.Clone()
@@ -1186,6 +1160,11 @@ func (a *remoteCompactionAdapter) generateCompaction(
 			native,
 		)
 		if attemptErr == nil {
+			if !native {
+				if err := validateCheckpointSummary(summary); err != nil {
+				return "", err
+				}
+			}
 			return summary, nil
 		}
 		attemptErrors = append(attemptErrors, attemptErr)
@@ -1234,7 +1213,7 @@ func (a *remoteCompactionAdapter) generateCompactionWithCandidate(
 	}
 	rawRequest.Headers.Del(remoteCompactionCacheHeader)
 	rawRequest.Headers.Del(nativeCompactionMigrationHeader)
-	rawRequest.Headers.Del(unifiedSegmentHeader)
+	rawRequest.Headers.Del("X-Axonhub-Unified-History-Segment")
 	// Local bridge generation is a gateway-authored summary turn rather than a
 	// continuation of the client's upstream turn. Never replay an opaque state
 	// token minted by the channel that handled the preceding client request.
@@ -1307,9 +1286,6 @@ func (a *remoteCompactionAdapter) generateCompactionWithCandidate(
 		}
 	}
 	providerRequest.Headers.Del(remoteCompactionCacheHeader)
-	if parentState.unifiedExportOrigin != nil && !historyExportMatches(*parentState.unifiedExportOrigin, candidate, providerRequest) {
-		return "", errors.New("checkpoint export reader account or endpoint has changed; no upstream request was sent")
-	}
 
 	customizedExecutor := outbound.CustomizeExecutor(executor)
 	perf := &biz.PerformanceRecord{

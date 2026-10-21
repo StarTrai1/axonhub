@@ -118,7 +118,7 @@ func TestResponsesRejectedCompactionPipelineUsesRetainedSummary(t *testing.T) {
 				adapter := newRemoteCompactionAdapter(nil, nil, nil)
 				adapter.summaries.SetDefault(remoteCompactionOwnerCacheKey(&PersistenceState{APIKey: apiKey}, remoteCompactionCacheKey(ref)), "verified retained source summary")
 				executor := &responsesReasoningPipelineExecutor{
-					failures: []error{resourceMismatchHTTPError(), resourceMismatchHTTPError()},
+					failures: []error{resourceMismatchHTTPError()},
 					events:   rejectedReasoningCompactionEvents(),
 					response: &httpclient.Response{
 						StatusCode: http.StatusOK,
@@ -126,15 +126,14 @@ func TestResponsesRejectedCompactionPipelineUsesRetainedSummary(t *testing.T) {
 						Body:       []byte(`{"id":"cmp_result","object":"response.compaction","created_at":1,"model":"gpt-6-astra","output":[{"type":"message","role":"user","content":[{"type":"input_text","text":"canonical retained item"}]},{"type":"compaction","id":"cmp_next","encrypted_content":"canonical-opaque-state"}]}`),
 					},
 				}
-				_, result, err := runRejectedReasoningPipeline(t, ctx, req, executor, "compaction-recovery-credential", passThrough, 2,
+				_, result, err := runRejectedReasoningPipeline(t, ctx, req, executor, "compaction-recovery-credential", passThrough, 1,
 					func(state *PersistenceState, outbound *PersistentOutboundTransformer) pipeline.Middleware {
 						state.APIKey = apiKey
 						return recoverRejectedRemoteCompaction(outbound, adapter, executor)
 					})
 				require.NoError(t, err)
-				require.Len(t, executor.requests, 3)
-				assertPortableIDsOnlyRemoved(t, executor.requests[0].Body, executor.requests[1].Body)
-				assertRejectedCompactionWindowPreserved(t, executor.requests[1].Body, executor.requests[2].Body)
+				require.Len(t, executor.requests, 2)
+				assertRejectedCompactionWindowPreserved(t, executor.requests[0].Body, executor.requests[1].Body)
 				require.Equal(t, original, req.Body)
 				if result.Stream {
 					drainRejectedReasoningPipeline(t, result)
@@ -399,7 +398,7 @@ func (e *rejectedCompactionBridgeExecutor) DoStream(ctx context.Context, req *ht
 	isSummary := false
 	for _, item := range gjson.GetBytes(req.Body, "input").Array() {
 		text := item.Get("content.0.text").String()
-		isSummary = isSummary || text == localCompactionPrompt || text == unifiedSegmentPrompt
+		isSummary = isSummary || text == localCompactionPrompt
 	}
 	if isSummary {
 		e.summaries = append(e.summaries, append([]byte(nil), req.Body...))

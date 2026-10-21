@@ -126,7 +126,7 @@ func TestRemoteCompactionPreparationFailureIsPersistedWithoutUpstreamExecution(t
 	state.Request, err = stored.Update().SetStatus(request.StatusProcessing).
 		SetExternalID("preserved-response-id").SetResponseBody(objects.JSONRawMessage(`{}`)).Save(ctx)
 	require.NoError(t, err)
-	budgetFailure := &remoteCompactionPreparationError{cause: unifiedHistoryPreparationLimit("cached notes exceed the input budget")}
+	budgetFailure := &remoteCompactionPreparationError{cause: checkpointSummaryError("compaction_source_too_large", "cached notes exceed the input budget")}
 	require.NoError(t, persistRemoteCompactionPreparationFailure(ctx, inbound, budgetFailure))
 	updated, err := client.Request.Get(ctx, stored.ID)
 	require.NoError(t, err)
@@ -134,7 +134,7 @@ func TestRemoteCompactionPreparationFailureIsPersistedWithoutUpstreamExecution(t
 	require.Equal(t, "preserved-response-id", updated.ExternalID)
 	body, err = biz.DecodeStoredPayload(updated.ResponseBody)
 	require.NoError(t, err)
-	require.Equal(t, "unified_history_budget_exceeded", gjson.GetBytes(body, "error.code").String())
+	require.Equal(t, "compaction_source_too_large", gjson.GetBytes(body, "error.code").String())
 	require.Equal(t, http.StatusBadRequest, inbound.TransformError(ctx, budgetFailure).StatusCode)
 	count, err = client.Request.Query().Count(ctx)
 	require.NoError(t, err)

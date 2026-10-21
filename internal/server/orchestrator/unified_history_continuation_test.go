@@ -29,7 +29,7 @@ func TestUnifiedHistoryLegacyChainWithReinsertedContextAndImages(t *testing.T) {
 		body = []byte(fmt.Sprintf(`{"model":"gpt-6-astra","input":[%s,{"type":"message","id":"runtime_%d","role":"developer","content":"current runtime constraint %d"},{"type":"compaction","id":%q,"encrypted_content":%q},{"role":"user","content":"correction %d"},{"type":"compaction_trigger"}]}`, strings.ReplaceAll(imageUser, "msg_source", "msg_reassigned"), i, i, ref.ID, ref.EncryptedContent, i))
 	}
 	executor := &compactionEvidenceExecutor{}
-	compiled, ok, err := adapter.compileUnifiedContext(ctx, body, state, executor)
+	compiled, ok, err := adapter.expandUnifiedHistory(ctx, body, state, make(map[string]bool))
 	require.NoError(t, err)
 	require.True(t, ok)
 	require.Empty(t, executor.summaries, "complete inline images do not force a text summary")
@@ -63,24 +63,6 @@ func TestUnifiedHistorySplicePreservesDuplicateMessagesAndRejectsDivergence(t *t
 	require.False(t, ok, "conflicting content with the same ID must not be silently accepted")
 }
 
-func TestUnifiedHistoryPortableViewKeepsCallsWithoutHydratingOldIDs(t *testing.T) {
-	input := []json.RawMessage{
-		json.RawMessage(`{"type":"message","id":"msg_foreign","status":"completed","role":"user","content":"preserve original 17.125"}`),
-		json.RawMessage(`{"type":"function_call","id":"fc_foreign","status":"completed","call_id":"call_original","name":"inspect","arguments":"{\"value\":17.125}"}`),
-		json.RawMessage(`{"type":"function_call_output","id":"result_foreign","call_id":"call_original","output":"exact result"}`),
-	}
-	got, _, ok := unifiedPortableItems(input)
-	require.True(t, ok)
-	for _, item := range got {
-		require.False(t, gjson.GetBytes(item, "id").Exists())
-		require.False(t, gjson.GetBytes(item, "status").Exists())
-	}
-	require.Equal(t, "call_original", gjson.GetBytes(got[1], "call_id").String())
-	require.Equal(t, "call_original", gjson.GetBytes(got[2], "call_id").String())
-	require.Equal(t, gjson.GetBytes(input[1], "arguments").String(), gjson.GetBytes(got[1], "arguments").String())
-	require.True(t, gjson.GetBytes(input[0], "id").Exists(), "archive identity remains unchanged")
-}
-
 func TestUnifiedHistoryUpdatedToolsPreservesSourceAndCurrentContract(t *testing.T) {
 	source := []byte(`{"model":"gpt-6-astra","input":[{"type":"additional_tools","id":"tools","role":"developer","tools":[{"type":"custom","name":"old_tool"}]},{"role":"user","id":"user","content":"original question"},{"role":"assistant","content":"original evidence"},{"type":"compaction_trigger"}]}`)
 	body := []byte(`{"model":"gpt-6-astra","input":[{"type":"additional_tools","id":"tools","role":"developer","tools":[{"type":"custom","name":"new_tool"}]},{"role":"user","id":"user","content":"original question"},{"type":"compaction","id":"cmp_tools","encrypted_content":"cipher"},{"role":"user","content":"new turn"}]}`)
@@ -93,28 +75,6 @@ func TestUnifiedHistoryUpdatedToolsPreservesSourceAndCurrentContract(t *testing.
 	require.Equal(t, "old_tool", items[0].Get("tools.0.name").String())
 	require.Equal(t, "new_tool", items[1].Get("tools.0.name").String())
 	require.Contains(t, string(got), "original evidence")
-}
-
-func TestUnifiedHistoryRepeatedToolRefreshFlattensSources(t *testing.T) {
-	ctx, _, state, adapter := unifiedHistoryFixture(t)
-	body := []byte(`{"model":"gpt-6-astra","input":[{"type":"additional_tools","role":"developer","id":"same_tool_id","tools":[]},{"role":"user","id":"original_user","content":"original exact 17.125"},{"type":"compaction_trigger"}]}`)
-	for i := range 20 {
-		ref := &remoteCompactionReference{ID: fmt.Sprintf("cmp_tools_%d", i), EncryptedContent: "native-cipher"}
-		require.NoError(t, adapter.retainNativeCompactionSource(ctx, ref, state, &remoteCompactionSource{body: body}))
-		stored, _, found, err := adapter.loadHistorySnapshot(ctx, historyCheckpointAlias(ref))
-		require.NoError(t, err)
-		require.True(t, found)
-		require.False(t, gjson.GetBytes(stored, `input.#(type=="compaction")`).Exists())
-		require.Contains(t, string(stored), "original exact 17.125")
-		body = []byte(fmt.Sprintf(`{"model":"gpt-6-astra","input":[{"type":"additional_tools","role":"developer","id":"same_tool_id","tools":[{"type":"custom","name":"tool_%d"}]},{"role":"user","id":"original_user","content":"original exact 17.125"},{"role":"developer","id":"current_%d","content":"current runtime %d"},{"type":"compaction","id":%q,"encrypted_content":%q},{"role":"user","content":"new turn %d"},{"type":"compaction_trigger"}]}`, i, i, i, ref.ID, ref.EncryptedContent, i))
-	}
-	compiled, ok, err := adapter.compileUnifiedContext(ctx, body, state, &compactionEvidenceExecutor{})
-	require.NoError(t, err)
-	require.True(t, ok)
-	require.Equal(t, 1, strings.Count(string(compiled), "original exact 17.125"))
-	for i := range 20 {
-		require.Contains(t, string(compiled), fmt.Sprintf("new turn %d", i))
-	}
 }
 
 func unifiedLongToolHistory(t *testing.T, calls int) []byte {
@@ -130,34 +90,6 @@ func unifiedLongToolHistory(t *testing.T, calls int) []byte {
 	body, err := json.Marshal(map[string]any{"model": "gpt-6-astra", "reasoning": map[string]string{"effort": "xhigh"}, "input": items})
 	require.NoError(t, err)
 	return body
-}
-
-func TestUnifiedHistoryLongSingleTurnKeepsPairsAndReusesSegments(t *testing.T) {
-	ctx, _, state, adapter := unifiedHistoryFixture(t)
-	state.CurrentCandidate.ContextTokens = 0
-	executor := &unifiedConcurrentExecutor{}
-	body := unifiedLongToolHistory(t, 24)
-	first, ok, err := adapter.compileUnifiedContext(ctx, body, state, executor)
-	require.NoError(t, err)
-	require.True(t, ok)
-	require.Contains(t, string(first), "17.125")
-	require.Contains(t, string(first), "17.250")
-	count := len(executor.summaries)
-	require.Greater(t, count, 4, "long source needs multiple independent immutable segments")
-	for _, summary := range executor.summaries {
-		_, complete := responsesResourceHistorySupportsRecovery(summary)
-		require.True(t, complete, "a source segment cannot split a tool call from its result")
-		require.Contains(t, string(summary), unifiedSegmentPrompt)
-		require.NotContains(t, string(summary), "verified retained source summary")
-		require.Equal(t, "xhigh", gjson.GetBytes(summary, "reasoning.effort").String())
-	}
-	adapter = newRemoteCompactionAdapter(adapter.requestService, nil, adapter.systemService)
-	second, ok, err := adapter.compileUnifiedContext(ctx, body, state, executor)
-	require.NoError(t, err)
-	require.True(t, ok)
-	require.Len(t, executor.summaries, count)
-	require.JSONEq(t, string(first), string(second))
-	require.LessOrEqual(t, executor.max.Load(), int32(4))
 }
 
 type unifiedConcurrentExecutor struct {
@@ -203,14 +135,4 @@ func (e *unifiedConcurrentExecutor) DoStream(ctx context.Context, req *httpclien
 	}
 	contexts.WithChannelAPIKey(ctx, "segment-local-credential")
 	return streams.SliceStream([]*httpclient.StreamEvent{{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":{"id":"resp_segment","status":"completed","model":"gpt-6-astra","output":[{"type":"message","role":"assistant","content":[{"type":"output_text","text":"verified retained source summary"}]}]}}`)}}), nil
-}
-
-func TestUnifiedHistoryCanceledColdPlanStopsLaunchingSegments(t *testing.T) {
-	ctx, _, state, adapter := unifiedHistoryFixture(t)
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	executor := &unifiedConcurrentExecutor{cancel: cancel}
-	_, _, err := adapter.compileUnifiedContext(ctx, unifiedLongToolHistory(t, 24), state, executor)
-	require.ErrorIs(t, err, context.Canceled)
-	require.LessOrEqual(t, len(executor.summaries), 4)
 }
