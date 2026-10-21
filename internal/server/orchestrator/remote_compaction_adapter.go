@@ -207,7 +207,7 @@ func (m *remoteCompactionMiddleware) OnInboundLlmRequest(ctx context.Context, re
 				adapt = false
 			}
 		}
-		if adapt && !(isRemoteCompactionGenerationRequest(req) && localBridge) {
+		if adapt && (!isRemoteCompactionGenerationRequest(req) || !localBridge) {
 			req, err = m.adaptRemoteCompactionHistory(ctx, req, ref, threadID, rawModel)
 			if err != nil {
 				return nil, err
@@ -1301,11 +1301,7 @@ func (a *remoteCompactionAdapter) generateCompactionWithCandidate(
 		Stream:    true,
 	}
 	attemptState.Perf = perf
-	retryCompatibility := []pipeline.Middleware{compatibility}
-	if native {
-		retryCompatibility = []pipeline.Middleware{compatibility}
-	}
-	stream, executionRecord, err := a.startLocalCompactionStream(ctx, outbound, providerRequest, customizedExecutor, retryCompatibility...)
+	stream, executionRecord, err := a.startLocalCompactionStream(ctx, outbound, providerRequest, customizedExecutor, compatibility)
 	if err != nil {
 		err = rejectedCompactionSourceError(attemptState.RawProviderRequest, err)
 		if rejected, ok := errors.AsType[*compactionSourceRejectedError](err); ok && ctx.Err() == nil {

@@ -202,6 +202,9 @@ func expensiveGatewayTimeout(state *PersistenceState, now time.Time) bool {
 // Capacity exhaustion is a routing outcome, even when a relay encodes it as
 // HTTP 500. Replaying the same model immediately cannot create capacity.
 func isModelCapacityExhausted(err error) bool {
+	if err == nil {
+		return false
+	}
 	status := ExtractStatusCodeFromError(err)
 	message := strings.ToLower(ExtractErrorMessage(err))
 	if status == http.StatusTooManyRequests {

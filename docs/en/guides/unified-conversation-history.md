@@ -30,6 +30,6 @@ A summary preserves useful task state, not every original token or a provider's 
 
 ## Retry behavior
 
-Known model-capacity failures stop same-channel retries before affinity or compatibility overrides can request another attempt. Independent permitted channels remain eligible. Checkpoint recovery changes the request once; it does not retry an unchanged rejected checkpoint or restore a growing full transcript to make a request appear successful.
+Automatic relay session rotation and its resend path have been removed. Known model-capacity failures stop same-channel retries before compatibility overrides can request another attempt. Independent permitted channels remain eligible. Checkpoint recovery changes the request once; it does not retry an unchanged rejected checkpoint or restore a growing full transcript to make a request appear successful.
 
 The model catalog parser and Codex Lite `additional_tools` to Responses `tools` normalization operate independently of checkpoint continuity.

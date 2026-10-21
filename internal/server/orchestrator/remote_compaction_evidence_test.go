@@ -164,5 +164,7 @@ func TestCheckpointMigrationRejectsCyclicSources(t *testing.T) {
 	state := &PersistenceState{APIKey: owner}
 	require.NoError(t, seedLegacyNativeCompactionSource(ctx, adapter, ref, state, &remoteCompactionSource{body: body}))
 	_, err := adapter.restoreCheckpointWindow(ctx, &remoteCompactionSource{body: body}, state)
-	require.ErrorContains(t, err, "cyclic")
+	var responseErr *llm.ResponseError
+	require.ErrorAs(t, err, &responseErr)
+	require.Equal(t, "compaction_source_invalid", responseErr.Detail.Code)
 }
