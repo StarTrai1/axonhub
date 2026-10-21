@@ -207,7 +207,7 @@ func (m *remoteCompactionMiddleware) OnInboundLlmRequest(ctx context.Context, re
 				adapt = false
 			}
 		}
-		if adapt {
+		if adapt && !(isRemoteCompactionGenerationRequest(req) && localBridge) {
 			req, err = m.adaptRemoteCompactionHistory(ctx, req, ref, threadID, rawModel)
 			if err != nil {
 				return nil, err
@@ -299,20 +299,13 @@ func (m *remoteCompactionMiddleware) adaptLocalCompactionGeneration(ctx context.
 	if m.historySource != nil {
 		source = m.historySource.body
 	}
-	previous, threadID, model, err := parseRemoteCompactionRequest(source)
+	// A new checkpoint needs one generation over the current window. Resolve
+	// legacy source records without first generating an intermediate summary.
+	restored, err := m.adapter.restoreCheckpointWindow(ctx, &remoteCompactionSource{body: source, headers: req.RawRequest.Headers}, m.inbound.state)
 	if err != nil {
 		return nil, err
 	}
-	if previous != nil {
-		summary, summaryErr := m.adapter.summaryForCompaction(ctx, remoteCompactionCacheKey(previous), previous, threadID, model, m.inbound.state, m.executor)
-		if summaryErr != nil {
-			return nil, summaryErr
-		}
-		source, err = replaceRemoteCompactionWithLocalSummary(source, summary)
-		if err != nil {
-			return nil, err
-		}
-	}
+	source = restored.body
 	prepared, err := prepareCheckpointSummarySource(ctx, &remoteCompactionSource{body: source, headers: req.RawRequest.Headers}, m.inbound.state)
 	if err != nil {
 		return nil, err
@@ -405,7 +398,7 @@ func (m *remoteCompactionMiddleware) adaptLocalCompactionGeneration(ctx context.
 	m.inbound.state.DisableResponsePassThrough = true
 	m.inbound.state.DisableStreamForcing = standalone
 
-	threadID = adaptedRawRequest.Headers.Get("Thread-Id")
+	threadID := adaptedRawRequest.Headers.Get("Thread-Id")
 	log.Info(ctx, "bridging remote compaction generation through regular Responses",
 		log.String("compaction_id", ref.ID),
 		log.String("thread_id", threadID),

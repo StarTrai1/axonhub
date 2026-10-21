@@ -10,8 +10,10 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
 
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
 
 func TestCheckpointPortableSessionSurvivesRestartAndSeparatesThreads(t *testing.T) {
@@ -103,4 +105,30 @@ func TestCheckpointResourceRecoveryGeneratesOnceAndKeepsShortWindow(t *testing.T
 	require.JSONEq(t, string(first), string(got.Body))
 	_, err = middleware.OnOutboundRawResponse(ctx, &httpclient.Response{StatusCode: http.StatusOK, Body: []byte(`{"status":"completed","output":[]}`)})
 	require.NoError(t, err)
+}
+
+func TestCheckpointLocalGenerationDoesNotSummarizeAncestorSeparately(t *testing.T) {
+	ctx, _, state, adapter := unifiedHistoryFixture(t)
+	state.CurrentCandidate.Channel.Policies.RemoteCompaction = objects.RemoteCompactionPolicyLocalBridge
+	ref := &remoteCompactionReference{ID: "cmp_old_native", EncryptedContent: "native-old-window"}
+	original := []byte(`{"model":"gpt-6-astra","input":[{"role":"user","content":"original task with exact reference 17.125"},{"type":"compaction_trigger"}]}`)
+	require.NoError(t, adapter.retainNativeCompactionSource(ctx, ref, state, &remoteCompactionSource{body: original}))
+	raw := &httpclient.Request{APIFormat: string(llm.APIFormatOpenAIResponse), Headers: http.Header{"Thread-Id": {"one-generation"}}, Body: []byte(`{"model":"gpt-6-astra","stream":true,"client_metadata":{"thread_id":"one-generation"},"input":[{"type":"compaction","id":"cmp_old_native","encrypted_content":"native-old-window"},{"role":"user","content":"new correction 17.250"},{"type":"compaction_trigger"}]}`)}
+	state.RawRequest = raw
+	req, err := responses.NewInboundTransformer().TransformRequest(ctx, raw)
+	require.NoError(t, err)
+	req.RawRequest = raw
+	executor := &rejectedCompactionBridgeExecutor{}
+	middleware := &remoteCompactionMiddleware{inbound: &PersistentInboundTransformer{state: state}, adapter: adapter, executor: executor}
+	got, err := middleware.OnInboundLlmRequest(ctx, req)
+	require.NoError(t, err)
+	require.NotNil(t, middleware.generation)
+	require.Empty(t, executor.summaries, "preparing a new checkpoint must not generate an ancestor summary")
+	require.Empty(t, executor.continuations)
+	body := string(got.RawRequest.Body)
+	require.Contains(t, body, "original task with exact reference 17.125")
+	require.Contains(t, body, "new correction 17.250")
+	require.Equal(t, 1, strings.Count(body, "CONTEXT CHECKPOINT COMPACTION"))
+	require.NotContains(t, body, "native-old-window")
+	require.NotContains(t, body, "compaction_trigger")
 }

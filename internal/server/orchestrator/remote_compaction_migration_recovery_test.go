@@ -49,8 +49,8 @@ func TestNativeCompactionMigrationRecoveryBoundaries(t *testing.T) {
 type nativeMigrationBoundaryExecutor struct {
 	rejectedCompactionBridgeExecutor
 
-	mode        string
-	nativeCalls int
+	mode         string
+	nativeCalls  int
 	summaryCalls int
 }
 

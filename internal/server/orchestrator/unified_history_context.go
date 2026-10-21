@@ -107,7 +107,7 @@ func unifiedPortableItems(items []json.RawMessage) ([]json.RawMessage, int, bool
 }
 
 func protectUnifiedHistory(ctx context.Context, body []byte, state *PersistenceState) ([]byte, error) {
-	if state.PromptProtecter == nil {
+	if state == nil || state.PromptProtecter == nil {
 		return body, nil
 	}
 	raw := &httpclient.Request{Body: body, APIFormat: string(llm.APIFormatOpenAIResponse), Headers: make(http.Header)}

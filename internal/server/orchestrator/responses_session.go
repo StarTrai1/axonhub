@@ -678,3 +678,12 @@ func normalizeResponseSessionItems(items []json.RawMessage) ([]json.RawMessage, 
 	}
 	return normalized, changed
 }
+
+// Cache the exact submitted provider window for previous_response_id deltas.
+// Relay session aliases are no longer manufactured or substituted here.
+func responsesSessionProviderBody(state *PersistenceState) []byte {
+	if state == nil || state.RawProviderRequest == nil {
+		return nil
+	}
+	return state.RawProviderRequest.Body
+}

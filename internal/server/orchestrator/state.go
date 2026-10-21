@@ -50,7 +50,7 @@ type PersistenceState struct {
 	responsesCompactionSkipChannel      int
 	compactionRecovery                  *compactionRecoveryEvidence
 	unifiedHistorySource                *remoteCompactionSource
-	ResponsesContinuation                  *responsesContinuation
+	ResponsesContinuation               *responsesContinuation
 
 	// OriginalRequestStream stores the client's original stream intent before any
 	// candidate-specific forcing to provider-side streaming happens.
