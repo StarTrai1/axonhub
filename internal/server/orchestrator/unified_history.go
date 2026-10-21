@@ -390,7 +390,7 @@ func historyWireAlias(id string, channelID int) string {
 // A distinct immutable namespace prevents old flattened archives from being
 // mistaken for canonical checkpoint windows after an upgrade.
 func historyCheckpointWindowAlias(ref *remoteCompactionReference) string {
-	return "checkpoint:" + historyDigest([]byte("window-v2:" + remoteCompactionCacheKey(ref)))
+	return "checkpoint:" + historyDigest([]byte("window-v2:"+remoteCompactionCacheKey(ref)))
 }
 
 func historyCheckpointAlias(ref *remoteCompactionReference) string {

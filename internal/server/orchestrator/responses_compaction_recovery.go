@@ -63,11 +63,11 @@ func responsesRejectedCompactionMessage(body []byte, ref *remoteCompactionRefere
 type responsesCompactionRecoveryMiddleware struct {
 	pipeline.DummyMiddleware
 
-	outbound         *PersistentOutboundTransformer
-	adapter          *remoteCompactionAdapter
-	executor         pipeline.Executor
-	rejected         map[responsesCompactionRecoveryKey]struct{}
-	adapted          *responsesCompactionRecoveryKey
+	outbound *PersistentOutboundTransformer
+	adapter  *remoteCompactionAdapter
+	executor pipeline.Executor
+	rejected map[responsesCompactionRecoveryKey]struct{}
+	adapted  *responsesCompactionRecoveryKey
 }
 
 func recoverRejectedRemoteCompaction(
@@ -212,14 +212,14 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawRequest(
 	candidate.Models = candidate.Models[state.CurrentModelIndex : state.CurrentModelIndex+1]
 	candidate.APIFormat = string(llm.APIFormatOpenAIResponse)
 	bridgeState := &PersistenceState{
-		PromptProtecter:          state.PromptProtecter,
-		compactionRecovery:       &compactionRecoveryEvidence{},
-		RawProviderRequest:       request,
-		APIKey:                   state.APIKey,
-		ChannelService:           state.ChannelService,
-		RetryPolicyProvider:      state.RetryPolicyProvider,
-		Proxy:                    state.Proxy,
-		ChannelModelsCandidates:  []*ChannelModelsCandidate{&candidate},
+		PromptProtecter:         state.PromptProtecter,
+		compactionRecovery:      &compactionRecoveryEvidence{},
+		RawProviderRequest:      request,
+		APIKey:                  state.APIKey,
+		ChannelService:          state.ChannelService,
+		RetryPolicyProvider:     state.RetryPolicyProvider,
+		Proxy:                   state.Proxy,
+		ChannelModelsCandidates: []*ChannelModelsCandidate{&candidate},
 	}
 
 	summary, err := m.adapter.summaryForCompaction(

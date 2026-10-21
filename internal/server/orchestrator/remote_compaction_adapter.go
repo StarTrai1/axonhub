@@ -313,6 +313,11 @@ func (m *remoteCompactionMiddleware) adaptLocalCompactionGeneration(ctx context.
 			return nil, err
 		}
 	}
+	prepared, err := prepareCheckpointSummarySource(ctx, &remoteCompactionSource{body: source, headers: req.RawRequest.Headers}, m.inbound.state)
+	if err != nil {
+		return nil, err
+	}
+	source = prepared.body
 	requestType := req.RequestType
 	if m.historySource != nil {
 		requestType = llm.RequestTypeChat // The canonical window has a V2 trigger.
@@ -320,6 +325,17 @@ func (m *remoteCompactionMiddleware) adaptLocalCompactionGeneration(ctx context.
 	body, err := buildLocalCompactionGenerationRequest(source, requestType)
 	if err != nil {
 		return nil, err
+	}
+	if req.RequestType == llm.RequestTypeCompact {
+		envelope, _, err := decodeResponsesInput(body)
+		if err != nil {
+			return nil, err
+		}
+		setResponseEnvelopeBool(envelope, "stream", false)
+		body, err = json.Marshal(envelope)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	adaptedRawRequest := cloneRawRequest(req.RawRequest)
@@ -389,7 +405,7 @@ func (m *remoteCompactionMiddleware) adaptLocalCompactionGeneration(ctx context.
 	m.inbound.state.DisableResponsePassThrough = true
 	m.inbound.state.DisableStreamForcing = standalone
 
-	threadID := adaptedRawRequest.Headers.Get("Thread-Id")
+	threadID = adaptedRawRequest.Headers.Get("Thread-Id")
 	log.Info(ctx, "bridging remote compaction generation through regular Responses",
 		log.String("compaction_id", ref.ID),
 		log.String("thread_id", threadID),
@@ -1162,7 +1178,7 @@ func (a *remoteCompactionAdapter) generateCompaction(
 		if attemptErr == nil {
 			if !native {
 				if err := validateCheckpointSummary(summary); err != nil {
-				return "", err
+					return "", err
 				}
 			}
 			return summary, nil
