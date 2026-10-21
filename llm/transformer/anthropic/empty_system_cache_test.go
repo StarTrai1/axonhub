@@ -2,6 +2,7 @@ package anthropic
 
 import (
 	"fmt"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -18,7 +19,7 @@ func TestSystemCacheSkipsEmptyTrailingBlocks(t *testing.T) {
 				top = `,"cache_control":{"type":"ephemeral"}`
 			}
 			body := []byte(`{"model":"claude-sonnet-4-6","max_tokens":32,"system":[{"type":"text","text":"keep the actual instructions"},{"type":"text","text":" \n","cache_control":{"type":"ephemeral"}}],"messages":[{"role":"user","content":[{"type":"text","text":"continue","cache_control":{"type":"ephemeral"}}]}]` + top + `}`)
-			req, err := NewInboundTransformer().TransformRequest(t.Context(), &httpclient.Request{Body: body, ContentType: "application/json"})
+			req, err := NewInboundTransformer().TransformRequest(t.Context(), &httpclient.Request{Body: body, Headers: http.Header{"Content-Type": {"application/json"}}})
 			require.NoError(t, err)
 			outbound, err := NewOutboundTransformer("https://example.invalid", "synthetic-cache-key")
 			require.NoError(t, err)
