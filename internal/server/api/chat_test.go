@@ -395,7 +395,7 @@ func TestWriteSSEStream_OpenAIHeartbeat(t *testing.T) {
 	require.Contains(t, body, "data: [DONE]\n\n")
 	activeDeadlines := activeWriteDeadlineCount(deadlineWriter.deadlines)
 	require.GreaterOrEqual(t, activeDeadlines, 3)
-	require.GreaterOrEqual(t, len(deadlineWriter.deadlines)-activeDeadlines, activeDeadlines)
+	require.True(t, deadlineWriter.deadlines[len(deadlineWriter.deadlines)-1].IsZero())
 	requireProtectedSSEWrites(t, deadlineWriter)
 }
 
@@ -1193,8 +1193,8 @@ func TestWriteSSEStream_ServerDeadlineReportsErrorToClient(t *testing.T) {
 			errorField := parsed["error"].(map[string]any)
 			assert.Contains(t, errorField["message"], context.DeadlineExceeded.Error())
 			activeDeadlines := activeWriteDeadlineCount(deadlineWriter.deadlines)
-			require.Equal(t, 2, activeDeadlines)
-			require.GreaterOrEqual(t, len(deadlineWriter.deadlines)-activeDeadlines, activeDeadlines)
+			require.GreaterOrEqual(t, activeDeadlines, 2)
+			require.True(t, deadlineWriter.deadlines[len(deadlineWriter.deadlines)-1].IsZero())
 			requireProtectedSSEWrites(t, deadlineWriter)
 		})
 	}
@@ -1283,8 +1283,8 @@ func TestWriteSSEStream_RefreshesWriteDeadline(t *testing.T) {
 
 	require.NotEmpty(t, deadlineWriter.deadlines)
 	activeDeadlines := activeWriteDeadlineCount(deadlineWriter.deadlines)
-	require.Equal(t, 2, activeDeadlines)
-	require.GreaterOrEqual(t, len(deadlineWriter.deadlines)-activeDeadlines, activeDeadlines)
+	require.GreaterOrEqual(t, activeDeadlines, 2)
+	require.True(t, deadlineWriter.deadlines[len(deadlineWriter.deadlines)-1].IsZero())
 	requireProtectedSSEWrites(t, deadlineWriter)
 	for _, deadline := range deadlineWriter.deadlines {
 		if !deadline.IsZero() {

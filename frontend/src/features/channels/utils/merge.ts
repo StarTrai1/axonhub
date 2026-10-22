@@ -128,6 +128,7 @@ export function mergeChannelSettingsForUpdate(
     rateLimit: pick('rateLimit', existing?.rateLimit ?? null),
     retryableStatusCodes: pick('retryableStatusCodes', existing?.retryableStatusCodes ?? []),
     retryableErrorPatterns: pick('retryableErrorPatterns', existing?.retryableErrorPatterns ?? []),
+    maxSingleChannelRetries: pick('maxSingleChannelRetries', existing?.maxSingleChannelRetries ?? null),
     modelProtocols: pick('modelProtocols', existing?.modelProtocols ?? []),
     providerQuota: pick('providerQuota', existing?.providerQuota ?? null),
     codexSearchOnly: pick('codexSearchOnly', existing?.codexSearchOnly ?? false),

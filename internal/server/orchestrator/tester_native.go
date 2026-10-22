@@ -40,6 +40,21 @@ func channelTestAPIFormat(channel *biz.Channel, model string) llm.APIFormat {
 			// probe requires explicit endpoint/model selection, not mere availability.
 			endpoints = channel.Endpoints
 		}
+		hasChat := false
+		for _, endpoint := range endpoints {
+			if endpoint.APIFormat == llm.APIFormatOpenAIChatCompletion.String() {
+				hasChat = true
+				break
+			}
+		}
+		if hasChat {
+			for _, endpoint := range endpoints {
+				if endpoint.APIFormat == llm.APIFormatOpenAIDecisions.String() {
+					return llm.APIFormatOpenAIDecisions
+				}
+			}
+			return llm.APIFormatOpenAIChatCompletion
+		}
 		for _, endpoint := range endpoints {
 			if endpoint.APIFormat == llm.APIFormatOpenAIDecisions.String() {
 				return llm.APIFormatOpenAIDecisions

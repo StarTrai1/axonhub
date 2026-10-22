@@ -1,0 +1,294 @@
+[
+  {
+    "name": "gpt-load",
+    "repo": "tbphp/gpt-load",
+    "branch": "main",
+    "head": "dd33ae390c23575988b04b3f551873ae70f3eba0",
+    "previous_head": "41c82ac02be5c26bd8851256236036d404e4829b",
+    "since": "2026-10-21T12:02:00Z",
+    "frozen_at": "2026-10-22T09:46:32.842443+00:00",
+    "commits": [
+      {
+        "sha": "dd33ae390c23575988b04b3f551873ae70f3eba0",
+        "date": "2026-10-22T03:23:00Z",
+        "title": "fix(ui): round credit balances up to whole points (#899)",
+        "reviewed": true,
+        "decision": "范围不匹配",
+        "reason": "两套 Vue 订阅积分卡向上取整；本分支不是该订阅积分账户 UI。",
+        "evidence": ""
+      }
+    ],
+    "count": 1,
+    "new_count": 1
+  },
+  {
+    "name": "OmniProxy",
+    "repo": "mibgb65-cloud/OmniProxy",
+    "branch": "master",
+    "head": "56448d20ccd797bc32aae1c02a5e2f2030b8b6c8",
+    "previous_head": "56448d20ccd797bc32aae1c02a5e2f2030b8b6c8",
+    "since": "2026-10-21T12:02:00Z",
+    "frozen_at": "2026-10-22T09:46:32.966664+00:00",
+    "commits": [],
+    "count": 0,
+    "new_count": 0
+  },
+  {
+    "name": "new-api",
+    "repo": "QuantumNous/new-api",
+    "branch": "main",
+    "head": "d8e65613c09adf3663f960ea4316414a99694751",
+    "previous_head": "206e0fa5c600127a314a97f88592c067f784f4a6",
+    "since": "2026-10-21T12:02:00Z",
+    "frozen_at": "2026-10-22T09:46:32.865951+00:00",
+    "commits": [
+      {
+        "sha": "d8e65613c09adf3663f960ea4316414a99694751",
+        "date": "2026-10-22T08:23:19Z",
+        "title": "feat(web): copy model names from usage log details",
+        "reviewed": true,
+        "decision": "不扩大范围",
+        "reason": "日志模型名复制按钮属于独立 UI 增强，不修复网关协议/历史/工具/路由兼容性。",
+        "evidence": ""
+      },
+      {
+        "sha": "8802113263b8a94bf8957a1231b4ec04705d7dd9",
+        "date": "2026-10-22T08:23:19Z",
+        "title": "feat(task): let ordinary channels compete on shared plugin endpoints",
+        "reviewed": true,
+        "decision": "不同架构",
+        "reason": "JavaScript 任务插件与普通渠道竞争同一路径；本仓库没有该插件注册/执行框架。",
+        "evidence": ""
+      },
+      {
+        "sha": "eb169e74d772afdb281970d0cbe0b62fbf9fa994",
+        "date": "2026-10-22T08:23:19Z",
+        "title": "feat(pricing): adjust synced upstream prices by the site exchange rate",
+        "reviewed": true,
+        "decision": "不同业务合同",
+        "reason": "New API 站点汇率、倍率表达式和价格同步 UI；不移植计费配置架构。",
+        "evidence": "internal/server/biz/channel_price.go"
+      },
+      {
+        "sha": "e2321a5a9f590e8398868cb7ef56af3d833faa07",
+        "date": "2026-10-22T08:23:18Z",
+        "title": "chore(web): sort locale keys",
+        "reviewed": true,
+        "decision": "范围不匹配",
+        "reason": "另一项目 locale 排序；按变更文件筛除，未下载 API 省略的整份翻译。",
+        "evidence": ""
+      },
+      {
+        "sha": "db80ac8e0c4063e67938cf651c240c69f4f4cf54",
+        "date": "2026-10-22T08:23:18Z",
+        "title": "fix(task): let task plugins validate their own requests",
+        "reviewed": true,
+        "decision": "不同架构",
+        "reason": "JS 任务插件请求校验归属与 usage 表达式合同；不引入另一套任务执行器。",
+        "evidence": ""
+      },
+      {
+        "sha": "dbe97beb9b06e8a4e23b5b8f009d882cc49f70bb",
+        "date": "2026-10-22T08:23:18Z",
+        "title": "feat(task): pass client request headers to task plugin drivers",
+        "reviewed": true,
+        "decision": "不同架构",
+        "reason": "JS 驱动请求上下文增加过滤凭据的客户端头；本仓库没有该驱动上下文。",
+        "evidence": ""
+      },
+      {
+        "sha": "556517fa57d255c73428325f6a094fd8b4cab76c",
+        "date": "2026-10-22T08:23:18Z",
+        "title": "feat(task): accept multipart bodies on native plugin routes",
+        "reviewed": true,
+        "decision": "不同架构",
+        "reason": "插件原生路由 multipart 解码合同；不移植其 JS 路由层。",
+        "evidence": ""
+      },
+      {
+        "sha": "94cc3ff0906db37703d5ce2bc6a479209b7b9b23",
+        "date": "2026-10-22T08:23:18Z",
+        "title": "fix(billing): bill Claude cache writes that arrive without a 5m/1h split",
+        "reviewed": true,
+        "decision": "适配采用",
+        "reason": "缓存写总量只有部分或没有 TTL 拆分时，补足默认 5m 部分；无变体配置保持共享价格；计费不修改原始用量。",
+        "evidence": "internal/server/biz/cost_calc.go; internal/server/biz/cost_cache_split_test.go"
+      },
+      {
+        "sha": "7e6596728ff640392bd77169ebb6137a8fe0c309",
+        "date": "2026-10-22T08:23:17Z",
+        "title": "fix(relay): stop cutting off slow clients during large stream events",
+        "reviewed": true,
+        "decision": "适配采用",
+        "reason": "HTTP SSE/WS 写预算按排队字节累积；控制心跳遵循进行中的数据写期限；写入失败、刷新错误、取消、成功交付边界继续保留。",
+        "evidence": "internal/server/api/stream_write_budget.go; internal/server/api/chat.go; internal/server/api/responses_websocket.go"
+      },
+      {
+        "sha": "0c2af9780e45f6f9073528fb0fcbdcd64b5d9495",
+        "date": "2026-10-22T05:06:58Z",
+        "title": "fix(relay): finish delivered Responses streams without false disconnect errors (#7956)",
+        "reviewed": true,
+        "decision": "已有目标行为",
+        "reason": "SSE 写入/刷新及 WS WriteMessage 成功后才确认终态交付；Close/取消不能覆盖成功交付，EOF 未确认不算成功。",
+        "evidence": "internal/server/api/stream_delivery.go; internal/server/api/chat.go:487; internal/server/api/stream_delivery_e2e_test.go"
+      },
+      {
+        "sha": "7d8b91268dab69d7150f345c448b5e250163146a",
+        "date": "2026-10-21T16:24:05Z",
+        "title": "fix: upgrade Go to 1.26.10 for CVE-2026-111943 (#7942)",
+        "reviewed": true,
+        "decision": "采用安全修复",
+        "reason": "本仓库已经使用 1.27 分支，升级到修复同一 CVE 的 1.27.3，不降到另一项目的 1.26.10。",
+        "evidence": ".go-version; Dockerfile"
+      },
+      {
+        "sha": "4d36f2c5245dd6676075be1c4f668dfe56d3340a",
+        "date": "2026-10-21T16:08:51Z",
+        "title": "chore(deps-dev): bump vitest from 4.1.10 to 5.0.4 in /web (#7838)",
+        "reviewed": true,
+        "decision": "不同工具链",
+        "reason": "本项 Vitest major 升级；本前端使用 node --test 和 Playwright，没有 Vitest 依赖。",
+        "evidence": "frontend/package.json"
+      },
+      {
+        "sha": "eea05e010c7f212e1a617638fe27164f24d9478d",
+        "date": "2026-10-21T16:04:36Z",
+        "title": "chore(deps): bump github.com/klauspost/compress from 1.18.3 to 1.18.7 (#7931)",
+        "reviewed": true,
+        "decision": "采用",
+        "reason": "官方 1.18.7 为 s2.NewDict 越界读安全修复；统一 root/llm/schema 模块依赖，CI tidy/校验。",
+        "evidence": "go.mod; llm/go.mod; cmd/schema/go.mod"
+      }
+    ],
+    "count": 13,
+    "new_count": 13
+  },
+  {
+    "name": "codex2api",
+    "repo": "james-6-23/codex2api",
+    "branch": "main",
+    "head": "1bdfc85cecff2559422fa4eb39fdd880bfc2c462",
+    "previous_head": "1bdfc85cecff2559422fa4eb39fdd880bfc2c462",
+    "since": "2026-10-21T12:02:00Z",
+    "frozen_at": "2026-10-22T09:46:33.030477+00:00",
+    "commits": [],
+    "count": 0,
+    "new_count": 0
+  },
+  {
+    "name": "CLIProxyAPI",
+    "repo": "router-for-me/CLIProxyAPI",
+    "branch": "main",
+    "head": "0db19025571684b198a2ef508f99b41c717337e8",
+    "previous_head": "ce07d189b3de2a39d37fd68ae093b102ce3aabee",
+    "since": "2026-10-21T12:02:00Z",
+    "frozen_at": "2026-10-22T09:46:32.974052+00:00",
+    "commits": [
+      {
+        "sha": "0db19025571684b198a2ef508f99b41c717337e8",
+        "date": "2026-10-21T15:04:23Z",
+        "title": "fix(codex): use original oauth credentials for alpha search",
+        "reviewed": true,
+        "decision": "已有实现",
+        "reason": "Alpha Search 直接使用 OAuth AccessToken；不存在 SIWC 替换层。",
+        "evidence": "llm/transformer/openai/codex/alpha_search.go:127"
+      },
+      {
+        "sha": "d232ee109a1bab91a0b2aaff82cd48c42b9dc876",
+        "date": "2026-10-21T15:00:52Z",
+        "title": "docs(readme): add Chenju sponsor to README files",
+        "reviewed": true,
+        "decision": "范围不匹配",
+        "reason": "赞助商文档与图片。",
+        "evidence": ""
+      },
+      {
+        "sha": "009f8d7ae35f87937058e1d2989f400ee2e78114",
+        "date": "2026-10-21T12:19:05Z",
+        "title": "fix(thinking): preserve standalone Claude effort on Codex requests",
+        "reviewed": true,
+        "decision": "已有目标行为",
+        "reason": "独立 output_config.effort 写入 ReasoningEffort 并保留原生元数据；原生回传不会因此强行启用 thinking。未声称与其全部参数优先级完全等价。",
+        "evidence": "llm/transformer/anthropic/inbound_convert.go:420; llm/transformer/anthropic/outbound_convert.go:244"
+      }
+    ],
+    "count": 3,
+    "new_count": 3
+  },
+  {
+    "name": "sub2api",
+    "repo": "Wei-Shaw/sub2api",
+    "branch": "main",
+    "head": "dba770d56a0ee0ae5bad1b3dc5e11614d323163c",
+    "previous_head": "aa48a8bbd80c6ac956dbcbaba651f417b3cf78e3",
+    "since": "2026-10-21T12:02:00Z",
+    "frozen_at": "2026-10-22T09:46:33.903977+00:00",
+    "commits": [
+      {
+        "sha": "dba770d56a0ee0ae5bad1b3dc5e11614d323163c",
+        "date": "2026-10-22T02:33:03Z",
+        "title": "Merge pull request #8170 from StarryKira/fix/issue-8119-grok-fast-pricing",
+        "reviewed": true,
+        "decision": "不同价格来源",
+        "reason": "AxonHub 从渠道价目/模型库解析价格，无 unknown-Grok 硬编码家族兜底；不复制另一项目价格表。",
+        "evidence": "internal/server/biz/channel_price.go:183"
+      },
+      {
+        "sha": "21cc926933163e015d2b632be07055759c983541",
+        "date": "2026-10-22T00:44:45Z",
+        "title": "Merge pull request #8275 from apple050620312/fix/docker-go-1.27.3",
+        "reviewed": true,
+        "decision": "去重采用",
+        "reason": "合并提交与 59100d32 为同一 Docker Go 更新，补丁只审一次。",
+        "evidence": ".go-version; Dockerfile"
+      },
+      {
+        "sha": "59100d324e9fafa6776182b3d3ea2b36e3edaf14",
+        "date": "2026-10-21T14:53:30Z",
+        "title": "fix(build): 对齐上游 Go 1.27.3 镜像版本",
+        "reviewed": true,
+        "decision": "采用",
+        "reason": "官方已确认 Go 1.27.3；同步 CI/发布公共版本及 Docker。",
+        "evidence": ".go-version; Dockerfile"
+      },
+      {
+        "sha": "7da09cab4e875463baa79fc150adde700c5438df",
+        "date": "2026-10-21T12:19:37Z",
+        "title": "chore: update sponsors",
+        "reviewed": true,
+        "decision": "范围不匹配",
+        "reason": "赞助商文档与图片。",
+        "evidence": ""
+      },
+      {
+        "sha": "aa48a8bbd80c6ac956dbcbaba651f417b3cf78e3",
+        "date": "2026-10-21T12:09:19Z",
+        "title": "Merge pull request #8255 from wucm667/fix/issue-8248-cloudflare-json-403",
+        "reviewed": true,
+        "decision": "复用上轮结论",
+        "reason": "见 ../2026-10-21-upstream-64763/PEERS.md；未复查补丁。",
+        "evidence": ""
+      },
+      {
+        "sha": "888c6057333e011b8cfeb81a867f445d229d1432",
+        "date": "2026-10-21T12:09:06Z",
+        "title": "Merge pull request #8188 from wucm667/fix/issue-8187-tool-schema-constants",
+        "reviewed": true,
+        "decision": "复用上轮结论",
+        "reason": "见 ../2026-10-21-upstream-64763/PEERS.md；未复查补丁。",
+        "evidence": ""
+      },
+      {
+        "sha": "5e45fa482b186145b84ddb2d79bc93a509dba1d2",
+        "date": "2026-10-21T12:08:52Z",
+        "title": "Merge pull request #8224 from wucm667/fix/issue-8222-deepseek-image-size",
+        "reviewed": true,
+        "decision": "复用上轮结论",
+        "reason": "见 ../2026-10-21-upstream-64763/PEERS.md；未复查补丁。",
+        "evidence": ""
+      }
+    ],
+    "count": 7,
+    "new_count": 4
+  }
+]

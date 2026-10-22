@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -165,6 +166,8 @@ func serveResponsesWebSocket(
 }
 
 type responsesWebSocketWriter struct {
+	budget streamWriteBudget
+	activeWriteDeadline atomic.Int64
 	conn      responsesWebSocketMessageWriter
 	mu        sync.Mutex
 	closeOnce sync.Once
@@ -521,6 +524,11 @@ func runResponsesWebSocketPings(ctx context.Context, writer *responsesWebSocketW
 		select {
 		case <-ticker.C:
 			deadline := time.Now().Add(responsesWebSocketPingWriteTimeout)
+			// A control frame waits for an ongoing data write in gorilla/websocket.
+			// Do not let the heartbeat cancel a large event before its write budget.
+			if active := writer.activeWriteDeadline.Load(); active > deadline.UnixNano() {
+				deadline = time.Unix(0, active)
+			}
 			conn, ok := writer.conn.(interface {
 				WriteControl(int, []byte, time.Time) error
 			})
@@ -1185,7 +1193,10 @@ func writeResponsesWebSocketMessage(writer *responsesWebSocketWriter, messageTyp
 	writer.mu.Lock()
 	defer writer.mu.Unlock()
 
-	if err := writer.conn.SetWriteDeadline(time.Now().Add(responsesWebSocketWriteTimeout)); err != nil {
+	deadline := writer.budget.deadline(time.Now(), len(data), responsesWebSocketWriteTimeout)
+	writer.activeWriteDeadline.Store(deadline.UnixNano())
+	defer writer.activeWriteDeadline.Store(0)
+	if err := writer.conn.SetWriteDeadline(deadline); err != nil {
 		return err
 	}
 

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/llm"
 )
@@ -32,6 +33,10 @@ func TestModelCapacityExhaustionIsNotAnOrdinaryServerRetry(t *testing.T) {
 
 func TestModelCapacityStopsCompatibilityRetry(t *testing.T) {
 	outbound := newCodexResponsesPassThroughOutbound()
+	outbound.state.CurrentCandidate.Channel.Settings.MaxSingleChannelRetries = lo.ToPtr(5)
+	limit, overridden := outbound.SameChannelRetryLimit()
+	require.True(t, overridden)
+	require.Equal(t, 5, limit)
 	channelID := outbound.state.CurrentCandidate.Channel.ID
 	outbound.state.responsesRejectedStatusRetryChannel = channelID
 	err := &llm.ResponseError{StatusCode: http.StatusInternalServerError, Detail: llm.ErrorDetail{Message: "model capacity reached"}}

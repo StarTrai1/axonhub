@@ -181,7 +181,8 @@ func computeUsageCostWithItems(usage *llm.Usage, priceItems []objects.ModelPrice
 			quantity = usage.PromptTokens
 			if usage.PromptTokensDetails != nil {
 				quantity -= usage.PromptTokensDetails.CachedTokens
-				quantity -= usage.PromptTokensDetails.WriteCachedTokens
+				quantity -= max(usage.PromptTokensDetails.WriteCachedTokens,
+					max(0, usage.PromptTokensDetails.WriteCached5MinTokens)+max(0, usage.PromptTokensDetails.WriteCached1HourTokens))
 			}
 			// Clamp to non-negative to handle provider bugs or partial data
 			if quantity < 0 {
@@ -196,12 +197,16 @@ func computeUsageCostWithItems(usage *llm.Usage, priceItems []objects.ModelPrice
 		case objects.PriceItemCodeWriteCachedTokens:
 			// Handle write cached tokens with variant support
 			if usage.PromptTokensDetails != nil {
-				// Check if we have 5m/1h cache variants to calculate separately
-				if usage.PromptTokensDetails.WriteCached5MinTokens > 0 || usage.PromptTokensDetails.WriteCached1HourTokens > 0 {
+				// Preserve explicit TTL usage and charge any unlabelled remainder
+				// at the default 5m rate. Some providers omit all or part of the split.
+				fiveMinute := max(0, usage.PromptTokensDetails.WriteCached5MinTokens)
+				oneHour := max(0, usage.PromptTokensDetails.WriteCached1HourTokens)
+				if fiveMinute > 0 || oneHour > 0 || len(it.PromptWriteCacheVariants) > 0 && usage.PromptTokensDetails.WriteCachedTokens > 0 {
+					fiveMinute += max(0, usage.PromptTokensDetails.WriteCachedTokens-fiveMinute-oneHour)
 					// Process 5m variant if present
-					if usage.PromptTokensDetails.WriteCached5MinTokens > 0 {
+					if fiveMinute > 0 {
 						pricing := it.FindPromptWriteCacheVariantPricing(objects.PromptWriteCacheVariantCode5Min)
-						item, sub := computeItemSubtotal(usage.PromptTokensDetails.WriteCached5MinTokens, pricing)
+						item, sub := computeItemSubtotal(fiveMinute, pricing)
 						item.ItemCode = it.ItemCode
 						item.PromptWriteCacheVariantCode = objects.PromptWriteCacheVariantCode5Min
 						items = append(items, item)
@@ -209,9 +214,9 @@ func computeUsageCostWithItems(usage *llm.Usage, priceItems []objects.ModelPrice
 					}
 
 					// Process 1h variant if present
-					if usage.PromptTokensDetails.WriteCached1HourTokens > 0 {
+					if oneHour > 0 {
 						pricing := it.FindPromptWriteCacheVariantPricing(objects.PromptWriteCacheVariantCode1Hour)
-						item, sub := computeItemSubtotal(usage.PromptTokensDetails.WriteCached1HourTokens, pricing)
+						item, sub := computeItemSubtotal(oneHour, pricing)
 						item.ItemCode = it.ItemCode
 						item.PromptWriteCacheVariantCode = objects.PromptWriteCacheVariantCode1Hour
 						items = append(items, item)

@@ -298,6 +298,36 @@ function formatRetryableErrorPatterns(patterns: RetryableErrorPattern[] | null |
   return (patterns ?? []).map(({ pattern, regex }) => (regex ? `regex:${pattern}` : pattern)).join('\n');
 }
 
+// formatMaxSingleChannelRetries renders the channel override of the global
+// "max single channel retries". An empty string means "inherit the global value".
+function formatMaxSingleChannelRetries(value: number | null | undefined): string {
+  return value == null ? '' : String(value);
+}
+
+// parseMaxSingleChannelRetriesInput parses the override input. An empty input
+// means "inherit the global value" (value null, valid true). A non-negative
+// integer within the supported range is a valid override; anything else is
+// invalid.
+function parseMaxSingleChannelRetriesInput(value: string): { valid: boolean; value: number | null } {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return { valid: true, value: null };
+  }
+
+  if (!/^\d+$/.test(trimmed)) {
+    return { valid: false, value: null };
+  }
+
+  // The editor bounds the override it accepts; reads stay permissive so an
+  // out-of-range value stored through the API cannot break the channel list.
+  const parsed = Number(trimmed);
+  if (!Number.isSafeInteger(parsed) || parsed > 65535) {
+    return { valid: false, value: null };
+  }
+
+  return { valid: true, value: parsed };
+}
+
 function parseRetryableErrorPatternsInput(value: string): RetryableErrorPattern[] | null {
   const patterns: RetryableErrorPattern[] = [];
   const seen = new Set<string>();
@@ -668,6 +698,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   );
   const [retryableErrorPatternsText, setRetryableErrorPatternsText] = useState(() =>
     formatRetryableErrorPatterns(initialRow?.settings?.retryableErrorPatterns)
+  );
+  const [maxSingleChannelRetriesText, setMaxSingleChannelRetriesText] = useState(() =>
+    formatMaxSingleChannelRetries(initialRow?.settings?.maxSingleChannelRetries)
   );
   const userAgentInheritLabel = userAgentPassThroughSettings
     ? t('channels.dialogs.userAgentPassThrough.inheritWithValue', {
@@ -1584,6 +1617,13 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         return;
       }
 
+      const maxSingleChannelRetriesParsed = parseMaxSingleChannelRetriesInput(maxSingleChannelRetriesText);
+      if (!maxSingleChannelRetriesParsed.valid) {
+        toast.error(t('channels.dialogs.maxSingleChannelRetries.validation'));
+        return;
+      }
+      const maxSingleChannelRetries = maxSingleChannelRetriesParsed.value;
+
       const valuesForSubmit = isEdit
         ? values
         : {
@@ -1711,6 +1751,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           http2ConnectionShards: httpProtocol === 'http1' || http2ConnectionShards === 1 ? 0 : http2ConnectionShards,
           retryableStatusCodes,
           retryableErrorPatterns,
+          maxSingleChannelRetries,
           // Cookie edits (including clearing the saved cookie) travel through
           // the settings patch; mergeChannelSettingsForUpdate preserves the
           // field when the patch omits it and carries the null clear through.
@@ -1781,6 +1822,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           http2ConnectionShards: httpProtocol === 'http1' || http2ConnectionShards === 1 ? 0 : http2ConnectionShards,
           retryableStatusCodes,
           retryableErrorPatterns,
+          maxSingleChannelRetries,
           ...quotaRoutingModeSettingsPatch(quotaRoutingMode),
           codexSearchOnly: isCodexType ? codexSearchOnly : false,
           codexSearchModel: isCodexType ? codexSearchModel : '',
@@ -2217,6 +2259,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             setCodexSearchModel(initialRow?.settings?.codexSearchModel ?? '');
             setRetryableStatusCodesText(formatRetryableStatusCodes(initialRow?.settings?.retryableStatusCodes));
             setRetryableErrorPatternsText(formatRetryableErrorPatterns(initialRow?.settings?.retryableErrorPatterns));
+            setMaxSingleChannelRetriesText(formatMaxSingleChannelRetries(initialRow?.settings?.maxSingleChannelRetries));
             // Reset provider and API format state
             if (initialRow) {
               setSelectedProvider(getProviderFromChannelType(initialRow.type) || 'openai');
@@ -3695,6 +3738,36 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                         </div>
 
                         <div className='grid grid-cols-1 items-start gap-x-4 gap-y-4 @lg/channel-fields:grid-cols-2'>
+                          <FormItem className='min-w-0 space-y-1.5'>
+                            <div className='flex min-h-5 items-center gap-1.5'>
+                              <FormLabel className='text-sm font-medium'>
+                                {t('channels.dialogs.maxSingleChannelRetries.label')}
+                              </FormLabel>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <button
+                                    type='button'
+                                    className='text-muted-foreground hover:text-foreground inline-flex items-center'
+                                    aria-label={t('channels.dialogs.maxSingleChannelRetries.tooltip')}
+                                  >
+                                    <Info className='h-3.5 w-3.5' />
+                                  </button>
+                                </TooltipTrigger>
+                                <TooltipContent className='max-w-sm'>
+                                  <p>{t('channels.dialogs.maxSingleChannelRetries.tooltip')}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </div>
+                            <div className='min-w-0'>
+                              <Input
+                                value={maxSingleChannelRetriesText}
+                                onChange={(event) => setMaxSingleChannelRetriesText(event.target.value)}
+                                placeholder={t('channels.dialogs.maxSingleChannelRetries.placeholder')}
+                                className='font-mono text-sm'
+                              />
+                            </div>
+                          </FormItem>
+
                           <FormItem className='min-w-0 space-y-1.5'>
                             <div className='flex min-h-5 items-center gap-1.5'>
                               <FormLabel className='text-sm font-medium'>{t('channels.dialogs.retryableStatusCodes.label')}</FormLabel>

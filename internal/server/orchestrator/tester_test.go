@@ -213,3 +213,32 @@ func TestResponseBodyContainsCompactionItem(t *testing.T) {
 		})
 	}
 }
+
+func TestChannelTestAPIFormatMixedEndpointsFallback(t *testing.T) {
+	ch := &biz.Channel{Channel: &ent.Channel{
+		Type:            channel.TypeOpenai,
+		SupportedModels: []string{"test-model"},
+		Endpoints: []objects.ChannelEndpoint{
+			{APIFormat: llm.APIFormatOpenAIChatCompletion.String()},
+			{APIFormat: llm.APIFormatTypeSafeSystemOne.String(), Path: "/systemone"},
+		},
+	}}
+	require.Equal(t, llm.APIFormatOpenAIChatCompletion, channelTestAPIFormat(ch, "test-model"))
+}
+
+func TestChannelTestAPIFormatRespectsExplicitNativeProtocol(t *testing.T) {
+	for _, format := range []llm.APIFormat{llm.APIFormatTypeSafeSystemOne, llm.APIFormatOpenAIDecisions, llm.APIFormatOpenAIChatCompletion} {
+		t.Run(format.String(), func(t *testing.T) {
+			ch := &biz.Channel{Channel: &ent.Channel{
+				Type: channel.TypeOpenai, SupportedModels: []string{"test-model"},
+				Endpoints: []objects.ChannelEndpoint{
+					{APIFormat: llm.APIFormatOpenAIChatCompletion.String()},
+					{APIFormat: llm.APIFormatOpenAIDecisions.String()},
+					{APIFormat: llm.APIFormatTypeSafeSystemOne.String(), Path: "/systemone"},
+				},
+				Settings: &objects.ChannelSettings{ModelProtocols: []objects.ModelProtocol{{Model: "test-model", APIFormats: []string{format.String()}}}},
+			}}
+			require.Equal(t, format, channelTestAPIFormat(ch, "test-model"))
+		})
+	}
+}

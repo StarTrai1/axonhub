@@ -637,7 +637,11 @@ func flushResponseWriter(writer http.ResponseWriter) error {
 }
 
 func refreshSSEWriteDeadline(ctx context.Context, writer http.ResponseWriter) {
-	setSSEWriteDeadline(ctx, writer, time.Now().Add(sseWriteTimeout))
+	deadline := time.Now().Add(sseWriteTimeout)
+	if budgetWriter, ok := writer.(*sseBudgetWriter); ok {
+		deadline = budgetWriter.budget.deadline(time.Now(), 0, sseWriteTimeout)
+	}
+	setSSEWriteDeadline(ctx, writer, deadline)
 }
 
 func clearSSEWriteDeadline(ctx context.Context, writer http.ResponseWriter) {
@@ -666,6 +670,9 @@ func resetTimer(timer *time.Timer, interval time.Duration) {
 }
 
 func setSSEHeaders(c *gin.Context) {
+	if _, ok := c.Writer.(*sseBudgetWriter); !ok {
+		c.Writer = &sseBudgetWriter{ResponseWriter: c.Writer}
+	}
 	setSSEResponseHeaders(c.Writer.Header())
 }
 
