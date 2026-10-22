@@ -6,6 +6,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -92,7 +93,7 @@ func testResponsesProtocolEncryptionContinuation(t *testing.T, rejectionMessage,
 						if gjson.GetBytes(body, `input.#(type=="compaction_trigger")`).Exists() {
 							output = `[{"type":"compaction","id":"cmp_iceberg","encrypted_content":"checkpoint-cipher"}]`
 							responseID = "resp_source"
-						} else if gjson.GetBytes(body, "tool_choice").String() == "none" {
+						} else if bytes.Contains(body, []byte("You are performing a CONTEXT CHECKPOINT COMPACTION.")) {
 							summaries++
 							output = `[{"type":"message","id":"msg_summary","role":"assistant","content":[{"type":"output_text","text":"retained-source-summary-canary"}]}]`
 							responseID = "resp_summary"

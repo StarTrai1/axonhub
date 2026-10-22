@@ -37,13 +37,17 @@ func TestSSELargeEventsKeepBudgetAcrossFlushes(t *testing.T) {
 	require.NoError(t, writeSSEEvent(c.Request.Context(), c.Writer, "large", data))
 	var first time.Time
 	for _, d := range tracking.deadlines {
-		if d.After(first) { first = d }
+		if d.After(first) {
+			first = d
+		}
 	}
 	require.True(t, first.After(started.Add(150*time.Second)))
 	require.NoError(t, writeSSEEvent(c.Request.Context(), c.Writer, "large", data))
 	var last time.Time
 	for _, d := range tracking.deadlines {
-		if d.After(last) { last = d }
+		if d.After(last) {
+			last = d
+		}
 	}
 	require.True(t, last.After(first.Add(127*time.Second)))
 	require.Equal(t, 2, bytes.Count(recorder.Body.Bytes(), data))
@@ -52,9 +56,13 @@ func TestSSELargeEventsKeepBudgetAcrossFlushes(t *testing.T) {
 
 type budgetWebSocketWriter struct {
 	deadline time.Time
-	writes int
+	writes   int
 }
-func (w *budgetWebSocketWriter) SetWriteDeadline(deadline time.Time) error { w.deadline = deadline; return nil }
+
+func (w *budgetWebSocketWriter) SetWriteDeadline(deadline time.Time) error {
+	w.deadline = deadline
+	return nil
+}
 func (w *budgetWebSocketWriter) WriteMessage(_ int, _ []byte) error { w.writes++; return nil }
 
 func TestWebSocketLargeEventsShareConnectionBudget(t *testing.T) {

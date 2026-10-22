@@ -26,6 +26,7 @@ func (b *streamWriteBudget) deadline(now time.Time, bytes int, idle time.Duratio
 
 type sseBudgetWriter struct {
 	gin.ResponseWriter
+
 	budget streamWriteBudget
 }
 

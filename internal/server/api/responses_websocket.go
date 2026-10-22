@@ -166,11 +166,11 @@ func serveResponsesWebSocket(
 }
 
 type responsesWebSocketWriter struct {
-	budget streamWriteBudget
+	budget              streamWriteBudget
 	activeWriteDeadline atomic.Int64
-	conn      responsesWebSocketMessageWriter
-	mu        sync.Mutex
-	closeOnce sync.Once
+	conn                responsesWebSocketMessageWriter
+	mu                  sync.Mutex
+	closeOnce           sync.Once
 }
 
 // Control frames are safe alongside a data writer. Never wait for the data

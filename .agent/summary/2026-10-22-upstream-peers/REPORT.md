@@ -25,3 +25,14 @@
 - Go 工具链 1.27.2 → 1.27.3；三个模块 compress → 1.18.7。
 
 新增回归：大型 SSE/WS、预算排空、缓存 total-only/partial/full/split-only、设置 patch GraphQL/服务持久化、容量 veto 与渠道 retry override、显式测活协议优先级。既有协议、工具、历史、隔离、Windows 与并发 CI 继续验证。
+
+## 第一轮 CI
+
+合并提交 2b689725：Build 39763426707 通过；Test 39763426766 与 Lint 39763426665 发现以下集成问题，修复后继续验证：
+
+- 公共 Responses 无工具删 tool_choice 时遗漏 Lite additional_tools；按完整恢复后的 input 判定，保留 Lite 显式 none/auto；原 Codex Lite 断言不删除。
+- 两组恢复 fixture 用 tool_choice:none 识别摘要，公共无工具请求现在可以省略该值；改以摘要任务内容识别，保留摘要次数、隔离、内容与复用断言。
+- 共享 GraphQL fragment 前置导致本仓库操作名提取失效；操作定义前置，保留 UI 交互断言。
+- 接回 CI make generate / gofmt 的 artifact；Lint 失败时增加 formatter artifact 出口，避免本地执行工具。
+
+两版真实 Codex 离线并发、双端构建、后端并发均已通过第一轮；无生产操作。

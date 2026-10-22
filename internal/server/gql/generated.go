@@ -87985,13 +87985,48 @@ func (ec *executionContext) unmarshalInputUpdateChannelSettingsInput(ctx context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"extraModelPrefix", "modelMappings", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "lowercaseModelId", "proxy", "transformOptions", "headerOverrideOperations", "bodyOverrideOperations", "passThroughUserAgent", "passThroughBody", "rateLimit", "retryableStatusCodes", "retryableErrorPatterns", "modelProtocols", "providerQuota", "quotaRoutingMode"}
+	fieldsInOrder := [...]string{"codexSearchOnly", "codexSearchModel", "httpProtocol", "http2ConnectionShards", "maxSingleChannelRetries", "extraModelPrefix", "modelMappings", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "lowercaseModelId", "proxy", "transformOptions", "headerOverrideOperations", "bodyOverrideOperations", "passThroughUserAgent", "passThroughBody", "rateLimit", "retryableStatusCodes", "retryableErrorPatterns", "modelProtocols", "providerQuota", "quotaRoutingMode"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "codexSearchOnly":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("codexSearchOnly"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CodexSearchOnly = data
+		case "codexSearchModel":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("codexSearchModel"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CodexSearchModel = data
+		case "httpProtocol":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("httpProtocol"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HTTPProtocol = data
+		case "http2ConnectionShards":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("http2ConnectionShards"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HTTP2ConnectionShards = data
+		case "maxSingleChannelRetries":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("maxSingleChannelRetries"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MaxSingleChannelRetries = data
 		case "extraModelPrefix":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("extraModelPrefix"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)

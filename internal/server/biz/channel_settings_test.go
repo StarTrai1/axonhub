@@ -17,10 +17,10 @@ import (
 
 func TestUpdateChannelSettingsInput_Apply(t *testing.T) {
 	base := &objects.ChannelSettings{
-		CodexSearchOnly: true,
-		CodexSearchModel: "search-model",
-		HTTPProtocol: "auto",
-		HTTP2ConnectionShards: 2,
+		CodexSearchOnly:         true,
+		CodexSearchModel:        "search-model",
+		HTTPProtocol:            "auto",
+		HTTP2ConnectionShards:   2,
 		MaxSingleChannelRetries: lo.ToPtr(3),
 		ExtraModelPrefix:        "deepseek",
 		AutoTrimedModelPrefixes: []string{"openai"},

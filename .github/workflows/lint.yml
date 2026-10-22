@@ -68,3 +68,21 @@ jobs:
 
           # optionally use a specific version of Go rather than the latest one
           # go-version: '1.24.7'
+
+      - name: Export formatter corrections on failure
+        if: failure()
+        env:
+          FORMAT_BASE: ${{ github.event.pull_request.base.sha || github.event.before || 'HEAD^' }}
+        run: |
+          lint_binary=$(find "$HOME" -maxdepth 3 -type f -name golangci-lint -print -quit)
+          if [ -z "$lint_binary" ]; then exit 0; fi
+          git diff --name-only -z --diff-filter=ACMRT "$FORMAT_BASE" HEAD -- '*.go' | xargs -0 -r "$lint_binary" fmt
+          git diff --binary > "$RUNNER_TEMP/formatting.patch"
+
+      - name: Preserve formatter corrections
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: formatter-corrections
+          path: ${{ runner.temp }}/formatting.patch
+          if-no-files-found: ignore

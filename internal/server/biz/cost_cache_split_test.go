@@ -22,9 +22,9 @@ func TestCacheWriteCostPreservesUnlabelledTokens(t *testing.T) {
 			}},
 	}
 	for _, tt := range []struct {
-		name string
+		name                                  string
 		total, five, hour, wantFive, wantHour int64
-		wantCost string
+		wantCost                              string
 	}{
 		{"total only", 100, 0, 0, 100, 0, "0.0003"},
 		{"partial split", 100, 20, 30, 70, 30, "0.00036"},

@@ -2113,3 +2113,23 @@ func TestOutboundTransformer_PreservesSol61AdditionalTools(t *testing.T) {
 	require.Len(t, payload.Input, 2)
 	require.JSONEq(t, rawItem, string(payload.Input[0]))
 }
+
+func TestOutboundTransformer_ClientManagedToolsKeepChoice(t *testing.T) {
+	for _, tools := range []string{`[]`, `[{"type":"function","name":"inspect","parameters":{"type":"object"}}]`} {
+		for _, choice := range []string{"none", "auto"} {
+			t.Run(tools+"/"+choice, func(t *testing.T) {
+				inbound := &httpclient.Request{Body: []byte(`{"model":"gpt-test","tool_choice":"`+choice+`","input":[{"type":"additional_tools","role":"developer","tools":`+tools+`},{"type":"message","role":"user","content":"hello"}]}`)}
+				req, err := NewInboundTransformer().TransformRequest(t.Context(), inbound)
+				require.NoError(t, err)
+				out, err := NewOutboundTransformer("https://api.example.com", "synthetic")
+				require.NoError(t, err)
+				wire, err := out.TransformRequest(t.Context(), req)
+				require.NoError(t, err)
+				var body map[string]json.RawMessage
+				require.NoError(t, json.Unmarshal(wire.Body, &body))
+				require.JSONEq(t, `"`+choice+`"`, string(body["tool_choice"]))
+				require.Contains(t, string(body["input"]), `"additional_tools"`)
+			})
+		}
+	}
+}

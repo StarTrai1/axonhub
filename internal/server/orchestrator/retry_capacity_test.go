@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/stretchr/testify/require"
 	"github.com/samber/lo"
+	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm"
 )

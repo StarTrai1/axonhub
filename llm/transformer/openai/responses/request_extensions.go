@@ -368,16 +368,6 @@ func marshalRequestPayload(payload Request, llmReq *llm.Request) ([]byte, error)
 		obj["tools"] = toolsRaw
 	}
 
-	if !hasNonEmptyTools(obj["tools"]) {
-		// Providers reject tool_choice when no tools are sent (Responses Lite
-		// requests carry their tools inside the input instead). Omitting it is
-		// equivalent to the default "auto", so drop it. This runs after raw
-		// tools are restored, so requests that keep tools keep their choice.
-		delete(obj, "tool_choice")
-	} else if len(requestExt.RawToolChoice) > 0 &&
-		rawToolChoiceMatchesCurrentTools(requestExt.RawToolChoice, payload.ToolChoice) {
-		obj["tool_choice"] = cloneRaw(requestExt.RawToolChoice)
-	}
 
 	if input, ok := mergeRawOnlyInputItems(obj["input"], requestExt); ok {
 		inputRaw, err := json.Marshal(input)
@@ -385,6 +375,16 @@ func marshalRequestPayload(payload Request, llmReq *llm.Request) ([]byte, error)
 			return nil, err
 		}
 		obj["input"] = inputRaw
+	}
+
+	if !hasNonEmptyTools(obj["tools"]) && !hasClientManagedToolInput(obj["input"]) {
+		// Public Responses without tools must omit tool_choice. Lite input
+		// declares client-managed tools separately; preserve its explicit choice,
+		// especially "none" for text-only summaries with historical tools.
+		delete(obj, "tool_choice")
+	} else if len(requestExt.RawToolChoice) > 0 &&
+		rawToolChoiceMatchesCurrentTools(requestExt.RawToolChoice, payload.ToolChoice) {
+		obj["tool_choice"] = cloneRaw(requestExt.RawToolChoice)
 	}
 
 	return json.Marshal(obj)
@@ -601,6 +601,26 @@ func hasNonEmptyTools(raw json.RawMessage) bool {
 	}
 
 	return len(tools) > 0
+}
+
+// A Lite declaration can be empty and still select client-managed tool mode.
+func hasClientManagedToolInput(raw json.RawMessage) bool {
+	var items []struct {
+		Type string `json:"type"`
+		Tools json.RawMessage `json:"tools"`
+	}
+	if json.Unmarshal(raw, &items) != nil {
+		return false
+	}
+	for _, item := range items {
+		if item.Type == "additional_tools" {
+			var tools []json.RawMessage
+			if json.Unmarshal(item.Tools, &tools) == nil && tools != nil {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func rawToolChoiceMatchesCurrentTools(raw json.RawMessage, current *ToolChoice) bool {

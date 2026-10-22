@@ -27,11 +27,11 @@ import (
 // (mergeChannelSettingsForUpdate) and makes those semantics available to
 // direct GraphQL callers.
 type UpdateChannelSettingsInput struct {
-	CodexSearchOnly *bool `json:"codexSearchOnly"`
-	CodexSearchModel *string `json:"codexSearchModel"`
-	HTTPProtocol *string `json:"httpProtocol"`
-	HTTP2ConnectionShards *int `json:"http2ConnectionShards"`
-	MaxSingleChannelRetries *int `json:"maxSingleChannelRetries"`
+	CodexSearchOnly          *bool                                 `json:"codexSearchOnly"`
+	CodexSearchModel         *string                               `json:"codexSearchModel"`
+	HTTPProtocol             *string                               `json:"httpProtocol"`
+	HTTP2ConnectionShards    *int                                  `json:"http2ConnectionShards"`
+	MaxSingleChannelRetries  *int                                  `json:"maxSingleChannelRetries"`
 	ExtraModelPrefix         *string                               `json:"extraModelPrefix"`
 	ModelMappings            []objects.ModelMapping                `json:"modelMappings"`
 	AutoTrimedModelPrefixes  []string                              `json:"autoTrimedModelPrefixes"`

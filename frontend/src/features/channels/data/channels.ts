@@ -487,22 +487,24 @@ const CHANNEL_FIELDS_FRAGMENT = `
   }
 `;
 
-const UPDATE_CHANNEL_MUTATION = `${CHANNEL_FIELDS_FRAGMENT}
+const UPDATE_CHANNEL_MUTATION = `
   mutation UpdateChannel($id: ID!, $input: UpdateChannelInput!) {
     updateChannel(id: $id, input: $input) {
       ...ChannelMutationFields
     }
   }
+${CHANNEL_FIELDS_FRAGMENT}
 `;
 
 // Server-side settings patch: absent fields keep their stored values, so the
 // caller does not need to refetch and re-submit the whole settings object.
-const UPDATE_CHANNEL_SETTINGS_MUTATION = `${CHANNEL_FIELDS_FRAGMENT}
+const UPDATE_CHANNEL_SETTINGS_MUTATION = `
   mutation UpdateChannelSettings($id: ID!, $input: UpdateChannelSettingsInput!) {
     updateChannelSettings(id: $id, input: $input) {
       ...ChannelMutationFields
     }
   }
+${CHANNEL_FIELDS_FRAGMENT}
 `;
 
 const UPDATE_CHANNEL_STATUS_MUTATION = `

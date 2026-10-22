@@ -45,7 +45,7 @@ type RequestService struct {
 	LiveStreamRegistry    *LiveStreamRegistry
 	RequestSwitchRegistry *RequestSwitchRegistry
 	previousChannelCache  xcache.Cache[int]
-	metricClaims         *requestMetricClaims
+	metricClaims          *requestMetricClaims
 }
 
 // recordedMetricRequestsTTL bounds how long a claimed request ID is kept in
@@ -71,7 +71,7 @@ func NewRequestService(
 		LiveStreamRegistry:    liveStreamRegistry,
 		RequestSwitchRegistry: NewRequestSwitchRegistry(),
 		previousChannelCache:  xcache.NewFromConfig[int](cacheConfig),
-		metricClaims:         newRequestMetricClaims(),
+		metricClaims:          newRequestMetricClaims(),
 	}
 }
 

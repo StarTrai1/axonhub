@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -55,7 +56,7 @@ func TestResponsesProtocolCompactionRelayContinuation(t *testing.T) {
 						case gjson.GetBytes(body, `input.#(type=="compaction_trigger")`).Exists():
 							output = `[{"type":"compaction","id":"cmp_relay","encrypted_content":"native-source-ciphertext"}]`
 							responseID = "resp_checkpoint"
-						case gjson.GetBytes(body, "tool_choice").String() == "none":
+						case bytes.Contains(body, []byte("You are performing a CONTEXT CHECKPOINT COMPACTION.")):
 							summaryCalls++
 							output = `[{"type":"message","id":"msg_summary","role":"assistant","content":[{"type":"output_text","text":"verified-summary-canary"}]}]`
 							responseID = "resp_summary"
