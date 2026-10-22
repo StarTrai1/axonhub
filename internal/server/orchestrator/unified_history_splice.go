@@ -22,7 +22,13 @@ func spliceUnifiedCompactionSource(body, source []byte, ref *remoteCompactionRef
 	if err != nil {
 		return nil, false, err
 	}
-	for _, field := range []string{"model", "instructions", "tools"} {
+	// The caller authenticates the source by owner, checkpoint ID and ciphertext.
+	// Model selection and tool declarations belong to each request, not to that
+	// identity: retained windows may span model changes and additional_tools
+	// promotion into top-level tools. Keep the current envelope and reconcile the
+	// actual history below. Instructions still need to agree because this splice
+	// cannot represent a changed ancestor prompt without silently losing it.
+	for _, field := range []string{"instructions"} {
 		var left, right any
 		if len(envelope[field]) > 0 {
 			if err := json.Unmarshal(envelope[field], &left); err != nil {
