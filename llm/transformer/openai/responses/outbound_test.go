@@ -2118,7 +2118,7 @@ func TestOutboundTransformer_ClientManagedToolsKeepChoice(t *testing.T) {
 	for _, tools := range []string{`[]`, `[{"type":"function","name":"inspect","parameters":{"type":"object"}}]`} {
 		for _, choice := range []string{"none", "auto"} {
 			t.Run(tools+"/"+choice, func(t *testing.T) {
-				inbound := &httpclient.Request{Body: []byte(`{"model":"gpt-test","tool_choice":"`+choice+`","input":[{"type":"additional_tools","role":"developer","tools":`+tools+`},{"type":"message","role":"user","content":"hello"}]}`)}
+				inbound := &httpclient.Request{Body: []byte(`{"model":"gpt-test","tool_choice":"` + choice + `","input":[{"type":"additional_tools","role":"developer","tools":` + tools + `},{"type":"message","role":"user","content":"hello"}]}`)}
 				req, err := NewInboundTransformer().TransformRequest(t.Context(), inbound)
 				require.NoError(t, err)
 				out, err := NewOutboundTransformer("https://api.example.com", "synthetic")

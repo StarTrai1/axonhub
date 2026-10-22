@@ -15,8 +15,10 @@ func TestChannelSettingsPatchGraphQLPreservesForkFields(t *testing.T) {
 		"http2ConnectionShards": 0, "maxSingleChannelRetries": 0,
 	})
 	require.NoError(t, err)
-	merged := patch.Apply(&objects.ChannelSettings{CodexSearchOnly: true, CodexSearchModel: "search",
-		HTTPProtocol: "auto", HTTP2ConnectionShards: 3, MaxSingleChannelRetries: lo.ToPtr(5), ExtraModelPrefix: "keep"})
+	merged := patch.Apply(&objects.ChannelSettings{
+		CodexSearchOnly: true, CodexSearchModel: "search",
+		HTTPProtocol: "auto", HTTP2ConnectionShards: 3, MaxSingleChannelRetries: lo.ToPtr(5), ExtraModelPrefix: "keep",
+	})
 	require.False(t, merged.CodexSearchOnly)
 	require.Empty(t, merged.CodexSearchModel)
 	require.Equal(t, "http1", merged.HTTPProtocol)

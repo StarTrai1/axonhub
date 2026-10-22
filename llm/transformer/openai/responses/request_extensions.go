@@ -368,7 +368,6 @@ func marshalRequestPayload(payload Request, llmReq *llm.Request) ([]byte, error)
 		obj["tools"] = toolsRaw
 	}
 
-
 	if input, ok := mergeRawOnlyInputItems(obj["input"], requestExt); ok {
 		inputRaw, err := json.Marshal(input)
 		if err != nil {
@@ -606,7 +605,7 @@ func hasNonEmptyTools(raw json.RawMessage) bool {
 // A Lite declaration can be empty and still select client-managed tool mode.
 func hasClientManagedToolInput(raw json.RawMessage) bool {
 	var items []struct {
-		Type string `json:"type"`
+		Type  string          `json:"type"`
 		Tools json.RawMessage `json:"tools"`
 	}
 	if json.Unmarshal(raw, &items) != nil {

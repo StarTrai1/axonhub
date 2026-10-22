@@ -8,3 +8,5 @@
 - 保留 9a4d06f0 检查点来源修复；保留 tools 400 修复与容量耗尽不在同渠道重发；已完成旧 PR7 不重做。
 - 全部合并冲突已处理；新增设置 patch 字段、流写预算和缓存计费缺口修复。生成代码将在 CI 重生成后回收 artifact。
 - 后续：PR → CI 合格 → dev 快进到实际测试 SHA → annotated v1.0.0-unstable.YYYYMMDD.sha8 → 观察 Run GoReleaser in_progress 后停止。重复 dev 测试仅在核对 SHA 一致后取消。
+
+- PR #8: https://github.com/StarTrai1/axonhub/pull/8 。第二轮行为/构建检查通过，格式化产物已回收；下一步提交格式化，验证最终 SHA，dev 快进/tag/release。

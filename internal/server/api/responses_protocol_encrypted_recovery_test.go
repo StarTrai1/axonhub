@@ -1,12 +1,12 @@
 package api
 
 import (
+	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"

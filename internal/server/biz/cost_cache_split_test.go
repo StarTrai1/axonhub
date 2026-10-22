@@ -14,12 +14,14 @@ import (
 func TestCacheWriteCostPreservesUnlabelledTokens(t *testing.T) {
 	price := []objects.ModelPriceItem{
 		{ItemCode: objects.PriceItemCodeUsage, Pricing: objects.Pricing{Mode: objects.PricingModeUsagePerUnit, UsagePerUnit: lo.ToPtr(decimal.NewFromInt(1))}},
-		{ItemCode: objects.PriceItemCodeWriteCachedTokens,
-			Pricing: objects.Pricing{Mode: objects.PricingModeUsagePerUnit, UsagePerUnit: lo.ToPtr(decimal.NewFromInt(7))},
+		{
+			ItemCode: objects.PriceItemCodeWriteCachedTokens,
+			Pricing:  objects.Pricing{Mode: objects.PricingModeUsagePerUnit, UsagePerUnit: lo.ToPtr(decimal.NewFromInt(7))},
 			PromptWriteCacheVariants: []objects.PromptWriteCacheVariant{
 				{VariantCode: objects.PromptWriteCacheVariantCode5Min, Pricing: objects.Pricing{Mode: objects.PricingModeUsagePerUnit, UsagePerUnit: lo.ToPtr(decimal.NewFromInt(2))}},
 				{VariantCode: objects.PromptWriteCacheVariantCode1Hour, Pricing: objects.Pricing{Mode: objects.PricingModeUsagePerUnit, UsagePerUnit: lo.ToPtr(decimal.NewFromInt(4))}},
-			}},
+			},
+		},
 	}
 	for _, tt := range []struct {
 		name                                  string

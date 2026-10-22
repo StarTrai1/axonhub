@@ -62,7 +62,6 @@ func TestUpdateChannelSettingsInput_Apply(t *testing.T) {
 		require.Equal(t, base.HTTPProtocol, merged.HTTPProtocol)
 		require.Equal(t, base.HTTP2ConnectionShards, merged.HTTP2ConnectionShards)
 		require.Equal(t, base.MaxSingleChannelRetries, merged.MaxSingleChannelRetries)
-
 	})
 
 	t.Run("present fields replace stored values", func(t *testing.T) {

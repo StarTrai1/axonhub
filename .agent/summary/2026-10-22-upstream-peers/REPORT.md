@@ -1,6 +1,6 @@
 # 上游与同行集成
 
-状态：实现已合并，等待 GitHub CI 验证与源代码生成；尚未发布。
+状态：实现、冲突处理及 CI 生成代码已完成；第二轮行为测试通过，CI 格式化产物已取回，待最终 SHA 检查完成后发布。
 
 ## 上游 9 条提交
 
@@ -36,3 +36,9 @@
 - 接回 CI make generate / gofmt 的 artifact；Lint 失败时增加 formatter artifact 出口，避免本地执行工具。
 
 两版真实 Codex 离线并发、双端构建、后端并发均已通过第一轮；无生产操作。
+
+## 第二轮 CI
+
+c85048e9：Build 39766787719 成功；Test 39766787889 中双 Go 模块、PostgreSQL、Windows、前端单元与交互、真实 Codex 0.162.1/0.163.0 离线并发及 targeted race 检查全部成功，只有源码格式差异门未通过。Lint 39766787682 仅余 4 个格式项。已取回其 formatter-corrections，且反向校验覆盖全部 generated-source-differences；没有本地生成、格式化或执行测试。
+
+最终合格 SHA / dev 快进 / tag / Run GoReleaser 开始时间以 GitHub PR #8 和最终交付记录为准；第二轮成功不替代最终 SHA 的 CI 验证。
