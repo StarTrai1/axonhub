@@ -18,6 +18,9 @@ import (
 
 const responsesResourceMismatchMessage = "The requested item was created under a different Azure OpenAI resource. Use the same resource that created the item to access it."
 
+const responsesResourceRequestIDMessage = responsesResourceMismatchMessage + " (request id: synthetic_request-65430) [trace_id=synthetic-trace]"
+const responsesResourceRedactedMessage = "The requested item was created under a different the upstream service resource. Use the same resource that created the item to access it. [trace_id=synthetic-trace]"
+
 const responsesResourceHistoryFixture = `{
 	"model":"gpt-6-astra","stream":true,"store":false,
 	"reasoning":{"effort":"high","context":"all_turns"},
@@ -46,6 +49,10 @@ func TestResponsesRejectedResourceErrorGuards(t *testing.T) {
 	}{
 		{name: "native resource rejection", status: 400, message: responsesResourceMismatchMessage, want: true},
 		{name: "relay rejection", status: 400, message: "OpenAI Responses bad request: " + strings.ReplaceAll(responsesResourceMismatchMessage, "Azure", "***") + " [trace_id=synthetic-trace]", want: true},
+		{name: "relay request and trace IDs", status: 400, message: responsesResourceRequestIDMessage, want: true},
+		{name: "relay request ID only", status: 400, message: responsesResourceMismatchMessage + " (request id: synthetic_request)", want: true},
+		{name: "redacted resource", status: 400, message: responsesResourceRedactedMessage, want: true},
+		{name: "redacted resource with both wrappers", status: 400, message: "OpenAI Responses bad request: " + strings.ReplaceAll(responsesResourceRequestIDMessage, "Azure OpenAI", "the upstream service"), want: true},
 		{name: "generic bad request code", status: 400, code: "bad_request", message: responsesResourceMismatchMessage, want: true},
 		{name: "generic invalid request code", status: 400, code: "invalid_request_error", message: responsesResourceMismatchMessage, want: true},
 		{name: "indexed message", status: 400, message: responsesResourceMismatchMessage, param: "input[3].id", want: true},
@@ -53,6 +60,13 @@ func TestResponsesRejectedResourceErrorGuards(t *testing.T) {
 		{name: "unrelated code", status: 400, code: "permission_denied", message: responsesResourceMismatchMessage},
 		{name: "incomplete resource mention", status: 400, message: "item belongs to a different Azure resource"},
 		{name: "extra error detail", status: 400, message: responsesResourceMismatchMessage + " Another error occurred."},
+		{name: "request ID contains prose", status: 400, message: responsesResourceMismatchMessage + " (request id: another error)"},
+		{name: "empty request ID", status: 400, message: responsesResourceMismatchMessage + " (request id: )"},
+		{name: "unrecognized resource", status: 400, message: strings.ReplaceAll(responsesResourceMismatchMessage, "Azure OpenAI", "arbitrary")},
+		{name: "wrapped unrelated suffix", status: 400, message: responsesResourceRequestIDMessage + " Another error occurred."},
+		{name: "wrapped server error", status: 500, message: responsesResourceRequestIDMessage},
+		{name: "redacted permission error", status: 400, code: "permission_denied", message: responsesResourceRedactedMessage},
+		{name: "redacted conflicting parameter", status: 400, message: responsesResourceRedactedMessage, param: "previous_response_id"},
 		{name: "unrelated parameter", status: 400, message: responsesResourceMismatchMessage, param: "previous_response_id"},
 		{name: "reasoning ID is opaque", status: 400, message: responsesResourceMismatchMessage, param: "input[2].id"},
 		{name: "out of range", status: 400, message: responsesResourceMismatchMessage, param: "input[99].id"},

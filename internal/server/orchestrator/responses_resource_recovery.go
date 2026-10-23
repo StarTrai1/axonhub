@@ -9,8 +9,11 @@ import (
 )
 
 var (
+	// Compatible relays may redact the resource name and append request/trace
+	// identifiers. Keep the full rejection anchored and accept only these known
+	// wrappers; arbitrary resource mentions must not authorize history recovery.
 	responsesResourceMismatchMessagePattern = regexp.MustCompile(
-		`^(?:OpenAI Responses bad request: )?The requested item was created under a different (?:Azure|\*\*\*) OpenAI resource\. Use the same resource that created the item to access it\.(?: \[trace_id=[A-Za-z0-9_-]+\])?$`,
+		`^(?:OpenAI Responses bad request: )?The requested item was created under a different (?:(?:Azure|\*\*\*) OpenAI|the upstream service) resource\. Use the same resource that created the item to access it\.(?: \(request id: [A-Za-z0-9_-]+\))?(?: \[trace_id=[A-Za-z0-9_-]+\])?$`,
 	)
 	responsesResourceItemIDParamPattern = regexp.MustCompile(`^input\[(\d+)\]\.id$`)
 )

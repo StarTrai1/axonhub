@@ -1,0 +1,776 @@
+{
+  "checkpoint_chain": [
+    {
+      "source_kind": "current",
+      "source": {
+        "bytes": 1521580,
+        "keys": [
+          "client_metadata",
+          "include",
+          "instructions",
+          "model",
+          "parallel_tool_calls",
+          "prompt_cache_key",
+          "reasoning",
+          "store",
+          "stream",
+          "text",
+          "tool_choice",
+          "tools",
+          "input"
+        ],
+        "previous_response_id": null,
+        "id": null,
+        "status": null,
+        "model": "gpt-6.1-sol",
+        "types": {
+          "message:developer": 4,
+          "message:user": 9,
+          "compaction:": 1,
+          "reasoning:": 133,
+          "message:assistant": 6,
+          "custom_tool_call:": 53,
+          "custom_tool_call_output:": 53,
+          "function_call:": 2,
+          "function_call_output:": 2,
+          "compaction_trigger:": 1
+        },
+        "items": 264,
+        "compactions": [
+          {
+            "index": 11,
+            "id": "cmp_02593044c6df81e8006ad9e7e15a8c8193946ad6cdbb660955",
+            "bytes": 36024,
+            "local": false
+          }
+        ],
+        "trigger": true,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 0,
+          "Another language model": 0
+        }
+      }
+    },
+    {
+      "source_kind": "current",
+      "source": {
+        "bytes": 1312203,
+        "keys": [
+          "client_metadata",
+          "include",
+          "instructions",
+          "model",
+          "parallel_tool_calls",
+          "prompt_cache_key",
+          "reasoning",
+          "store",
+          "stream",
+          "text",
+          "tool_choice",
+          "tools",
+          "input"
+        ],
+        "previous_response_id": null,
+        "id": null,
+        "status": null,
+        "model": "gpt-6.1-sol",
+        "types": {
+          "message:developer": 5,
+          "message:user": 7,
+          "compaction:": 1,
+          "reasoning:": 68,
+          "message:assistant": 6,
+          "custom_tool_call:": 48,
+          "custom_tool_call_output:": 48,
+          "function_call:": 1,
+          "function_call_output:": 1,
+          "compaction_trigger:": 1
+        },
+        "items": 186,
+        "compactions": [
+          {
+            "index": 9,
+            "id": "cmp_02593044c6df81e8006ad9d9727ba88193881429277327afcd",
+            "bytes": 40184,
+            "local": false
+          }
+        ],
+        "trigger": true,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 0,
+          "Another language model": 0
+        }
+      }
+    },
+    {
+      "source_kind": "current",
+      "source": {
+        "bytes": 1224724,
+        "keys": [
+          "client_metadata",
+          "include",
+          "instructions",
+          "model",
+          "parallel_tool_calls",
+          "prompt_cache_key",
+          "reasoning",
+          "store",
+          "stream",
+          "text",
+          "tool_choice",
+          "tools",
+          "input"
+        ],
+        "previous_response_id": null,
+        "id": null,
+        "status": null,
+        "model": "gpt-6.1-sol",
+        "types": {
+          "message:developer": 6,
+          "message:user": 5,
+          "message:assistant": 10,
+          "custom_tool_call:": 33,
+          "custom_tool_call_output:": 33,
+          "reasoning:": 50,
+          "function_call:": 1,
+          "function_call_output:": 1,
+          "compaction_trigger:": 1
+        },
+        "items": 140,
+        "compactions": [],
+        "trigger": true,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 0,
+          "Another language model": 0
+        }
+      }
+    }
+  ],
+  "executions": [
+    {
+      "id": 196720,
+      "request_id": 65430,
+      "status": "failed",
+      "model_id": "gpt-6.1-sol",
+      "format": "openai/responses",
+      "error_message": "failed",
+      "response_status_code": 502,
+      "metrics_latency_ms": 78682,
+      "body": {
+        "bytes": 1564298,
+        "keys": [
+          "client_metadata",
+          "include",
+          "input",
+          "model",
+          "parallel_tool_calls",
+          "prompt_cache_key",
+          "reasoning",
+          "store",
+          "stream",
+          "text",
+          "tool_choice",
+          "tools",
+          "instructions"
+        ],
+        "previous_response_id": null,
+        "id": null,
+        "status": null,
+        "model": "gpt-6.1-sol",
+        "types": {
+          "message:developer": 5,
+          "message:user": 11,
+          "compaction:": 1,
+          "reasoning:": 130,
+          "message:assistant": 8,
+          "custom_tool_call:": 65,
+          "custom_tool_call_output:": 65,
+          "function_call:": 2,
+          "function_call_output:": 2
+        },
+        "items": 289,
+        "compactions": [
+          {
+            "index": 13,
+            "id": "cmp_02593044c6df81e8006ad9fe181cc0819397b784276de7ac85",
+            "bytes": 37112,
+            "local": false
+          }
+        ],
+        "trigger": false,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 0,
+          "Another language model": 0
+        }
+      },
+      "thread_id": [
+        "01a162bb-0b60-70c0-a49a-4f95db84d611"
+      ]
+    },
+    {
+      "id": 196721,
+      "request_id": 65430,
+      "status": "failed",
+      "model_id": "gpt-6.1-sol",
+      "format": "openai/responses",
+      "error_message": "The requested item was created under a different Azure OpenAI resource. Use the same resource that created the item to access it. (request id: 202610230336166545179419TweuAA2) [trace_id=a2ab5b7a721e9caad7b69fe1bf1181df]",
+      "response_status_code": 400,
+      "metrics_latency_ms": null,
+      "body": {
+        "bytes": 1564298,
+        "keys": [
+          "client_metadata",
+          "include",
+          "input",
+          "model",
+          "parallel_tool_calls",
+          "prompt_cache_key",
+          "reasoning",
+          "store",
+          "stream",
+          "text",
+          "tool_choice",
+          "tools",
+          "instructions"
+        ],
+        "previous_response_id": null,
+        "id": null,
+        "status": null,
+        "model": "gpt-6.1-sol",
+        "types": {
+          "message:developer": 5,
+          "message:user": 11,
+          "compaction:": 1,
+          "reasoning:": 130,
+          "message:assistant": 8,
+          "custom_tool_call:": 65,
+          "custom_tool_call_output:": 65,
+          "function_call:": 2,
+          "function_call_output:": 2
+        },
+        "items": 289,
+        "compactions": [
+          {
+            "index": 13,
+            "id": "cmp_02593044c6df81e8006ad9fe181cc0819397b784276de7ac85",
+            "bytes": 37112,
+            "local": false
+          }
+        ],
+        "trigger": false,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 0,
+          "Another language model": 0
+        }
+      },
+      "thread_id": [
+        "01a162bb-0b60-70c0-a49a-4f95db84d611"
+      ]
+    },
+    {
+      "id": 196722,
+      "request_id": 65431,
+      "status": "failed",
+      "model_id": "gpt-6.1-sol",
+      "format": "openai/responses",
+      "error_message": "The requested item was created under a different Azure OpenAI resource. Use the same resource that created the item to access it. (request id: 20261023034256386343542GiZ5JbOY) [trace_id=407de2c2db55e357c7751d234aeaba3f]",
+      "response_status_code": 400,
+      "metrics_latency_ms": null,
+      "body": {
+        "bytes": 1564252,
+        "keys": [
+          "client_metadata",
+          "include",
+          "input",
+          "model",
+          "parallel_tool_calls",
+          "prompt_cache_key",
+          "reasoning",
+          "store",
+          "stream",
+          "text",
+          "tool_choice",
+          "tools",
+          "instructions"
+        ],
+        "previous_response_id": null,
+        "id": null,
+        "status": null,
+        "model": "gpt-6.1-sol",
+        "types": {
+          "message:developer": 5,
+          "message:user": 11,
+          "compaction:": 1,
+          "reasoning:": 130,
+          "message:assistant": 8,
+          "custom_tool_call:": 65,
+          "custom_tool_call_output:": 65,
+          "function_call:": 2,
+          "function_call_output:": 2
+        },
+        "items": 289,
+        "compactions": [
+          {
+            "index": 13,
+            "id": "cmp_02593044c6df81e8006ad9fe181cc0819397b784276de7ac85",
+            "bytes": 37112,
+            "local": false
+          }
+        ],
+        "trigger": false,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 0,
+          "Another language model": 0
+        }
+      },
+      "thread_id": [
+        "01a162bb-0b60-70c0-a49a-4f95db84d611"
+      ]
+    },
+    {
+      "id": 196723,
+      "request_id": 65432,
+      "status": "failed",
+      "model_id": "gpt-6.1-sol",
+      "format": "openai/responses",
+      "error_message": "The requested item was created under a different Azure OpenAI resource. Use the same resource that created the item to access it. (request id: 202610230349316797876174uoe3QOb) [trace_id=726678d23d1ffc35ddaf404970e77232]",
+      "response_status_code": 400,
+      "metrics_latency_ms": null,
+      "body": {
+        "bytes": 1564003,
+        "keys": [
+          "client_metadata",
+          "include",
+          "input",
+          "model",
+          "parallel_tool_calls",
+          "prompt_cache_key",
+          "reasoning",
+          "store",
+          "stream",
+          "text",
+          "tool_choice",
+          "tools",
+          "instructions"
+        ],
+        "previous_response_id": null,
+        "id": null,
+        "status": null,
+        "model": "gpt-6.1-sol",
+        "types": {
+          "message:developer": 5,
+          "message:user": 11,
+          "compaction:": 1,
+          "reasoning:": 130,
+          "message:assistant": 8,
+          "custom_tool_call:": 65,
+          "custom_tool_call_output:": 65,
+          "function_call:": 2,
+          "function_call_output:": 2
+        },
+        "items": 289,
+        "compactions": [
+          {
+            "index": 13,
+            "id": "cmp_02593044c6df81e8006ad9fe181cc0819397b784276de7ac85",
+            "bytes": 37112,
+            "local": false
+          }
+        ],
+        "trigger": false,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 0,
+          "Another language model": 0
+        }
+      },
+      "thread_id": [
+        "01a162bb-0b60-70c0-a49a-4f95db84d611"
+      ]
+    },
+    {
+      "id": 196724,
+      "request_id": 65433,
+      "status": "failed",
+      "model_id": "gpt-6-astra",
+      "format": "openai/responses",
+      "error_message": "The requested item was created under a different the upstream service resource. Use the same resource that created the item to access it. [trace_id=40bb4513859d271bbb1dcaf0f05b32d6]",
+      "response_status_code": 400,
+      "metrics_latency_ms": null,
+      "body": {
+        "bytes": 1360949,
+        "keys": [
+          "client_metadata",
+          "include",
+          "input",
+          "model",
+          "parallel_tool_calls",
+          "prompt_cache_key",
+          "reasoning",
+          "store",
+          "stream",
+          "text",
+          "tool_choice",
+          "tools",
+          "instructions"
+        ],
+        "previous_response_id": null,
+        "id": null,
+        "status": null,
+        "model": "gpt-6-astra",
+        "types": {
+          "message:developer": 5,
+          "message:user": 14,
+          "message:assistant": 13,
+          "custom_tool_call:": 71,
+          "custom_tool_call_output:": 71,
+          "reasoning:": 52,
+          "function_call:": 1,
+          "function_call_output:": 1
+        },
+        "items": 228,
+        "compactions": [],
+        "trigger": false,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 3,
+          "Another language model": 2
+        }
+      },
+      "thread_id": [
+        "01a15abc-79fc-7a41-aa8f-f9cb19f0a94c"
+      ]
+    },
+    {
+      "id": 196725,
+      "request_id": 65434,
+      "status": "completed",
+      "model_id": "gpt-6-astra",
+      "format": "openai/responses",
+      "error_message": null,
+      "response_status_code": null,
+      "metrics_latency_ms": 8366,
+      "body": {
+        "bytes": 104176,
+        "keys": [
+          "client_metadata",
+          "include",
+          "input",
+          "model",
+          "parallel_tool_calls",
+          "prompt_cache_key",
+          "reasoning",
+          "store",
+          "stream",
+          "text",
+          "tool_choice",
+          "tools",
+          "instructions"
+        ],
+        "previous_response_id": null,
+        "id": null,
+        "status": null,
+        "model": "gpt-6-astra",
+        "types": {
+          "message:developer": 5,
+          "message:user": 2
+        },
+        "items": 7,
+        "compactions": [],
+        "trigger": false,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 0,
+          "Another language model": 0
+        }
+      },
+      "thread_id": [
+        "01a166e2-a4d6-7170-b458-2919cd4b7b2e"
+      ]
+    }
+  ],
+  "requests": [
+    {
+      "id": 65430,
+      "created_at": "2026-10-23 03:33:50.6259934 +0000 UTC",
+      "status": "failed",
+      "model_id": "gpt-6.1-sol",
+      "channel_id": 40,
+      "trace_id": 8605,
+      "metrics_latency_ms": 194744,
+      "body": {
+        "bytes": 1498004,
+        "keys": [
+          "type",
+          "model",
+          "stream",
+          "previous_response_id",
+          "input",
+          "tool_choice",
+          "parallel_tool_calls",
+          "reasoning",
+          "store",
+          "include",
+          "prompt_cache_key",
+          "text",
+          "client_metadata"
+        ],
+        "previous_response_id": "resp_a6d3506bcee24152a5a1eba7d5c61231",
+        "id": null,
+        "status": null,
+        "model": "gpt-6.1-sol",
+        "types": {
+          "message:user": 11,
+          "message:developer": 4,
+          "compaction:": 1,
+          "reasoning:": 130,
+          "message:assistant": 8,
+          "custom_tool_call:": 65,
+          "custom_tool_call_output:": 65,
+          "function_call:": 2,
+          "function_call_output:": 2
+        },
+        "items": 288,
+        "compactions": [
+          {
+            "index": 12,
+            "id": "cmp_02593044c6df81e8006ad9fe181cc0819397b784276de7ac85",
+            "bytes": 37112,
+            "local": false
+          }
+        ],
+        "trigger": false,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 0,
+          "Another language model": 0
+        }
+      }
+    },
+    {
+      "id": 65431,
+      "created_at": "2026-10-23 03:40:27.1875525 +0000 UTC",
+      "status": "failed",
+      "model_id": "gpt-6.1-sol",
+      "channel_id": 40,
+      "trace_id": 8605,
+      "metrics_latency_ms": 153221,
+      "body": {
+        "bytes": 1497958,
+        "keys": [
+          "type",
+          "model",
+          "stream",
+          "previous_response_id",
+          "input",
+          "tool_choice",
+          "parallel_tool_calls",
+          "reasoning",
+          "store",
+          "include",
+          "prompt_cache_key",
+          "text",
+          "client_metadata"
+        ],
+        "previous_response_id": "resp_330c3018205445eeba4fe79ce037cba3",
+        "id": null,
+        "status": null,
+        "model": "gpt-6.1-sol",
+        "types": {
+          "message:user": 11,
+          "message:developer": 4,
+          "compaction:": 1,
+          "reasoning:": 130,
+          "message:assistant": 8,
+          "custom_tool_call:": 65,
+          "custom_tool_call_output:": 65,
+          "function_call:": 2,
+          "function_call_output:": 2
+        },
+        "items": 288,
+        "compactions": [
+          {
+            "index": 12,
+            "id": "cmp_02593044c6df81e8006ad9fe181cc0819397b784276de7ac85",
+            "bytes": 37112,
+            "local": false
+          }
+        ],
+        "trigger": false,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 0,
+          "Another language model": 0
+        }
+      }
+    },
+    {
+      "id": 65432,
+      "created_at": "2026-10-23 03:48:43.2174718 +0000 UTC",
+      "status": "failed",
+      "model_id": "gpt-6.1-sol",
+      "channel_id": 40,
+      "trace_id": 8605,
+      "metrics_latency_ms": 53098,
+      "body": {
+        "bytes": 1497709,
+        "keys": [
+          "type",
+          "model",
+          "stream",
+          "previous_response_id",
+          "input",
+          "tool_choice",
+          "parallel_tool_calls",
+          "reasoning",
+          "store",
+          "include",
+          "prompt_cache_key",
+          "text",
+          "client_metadata"
+        ],
+        "previous_response_id": "resp_719fdcc911e046a28bdc3f7721f7c8f1",
+        "id": null,
+        "status": null,
+        "model": "gpt-6.1-sol",
+        "types": {
+          "message:user": 11,
+          "message:developer": 4,
+          "compaction:": 1,
+          "reasoning:": 130,
+          "message:assistant": 8,
+          "custom_tool_call:": 65,
+          "custom_tool_call_output:": 65,
+          "function_call:": 2,
+          "function_call_output:": 2
+        },
+        "items": 288,
+        "compactions": [
+          {
+            "index": 12,
+            "id": "cmp_02593044c6df81e8006ad9fe181cc0819397b784276de7ac85",
+            "bytes": 37112,
+            "local": false
+          }
+        ],
+        "trigger": false,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 0,
+          "Another language model": 0
+        }
+      }
+    },
+    {
+      "id": 65433,
+      "created_at": "2026-10-23 03:51:18.753767 +0000 UTC",
+      "status": "failed",
+      "model_id": "gpt-6-astra",
+      "channel_id": 40,
+      "trace_id": 8606,
+      "metrics_latency_ms": 11726,
+      "body": {
+        "bytes": 1362757,
+        "keys": [
+          "client_metadata",
+          "include",
+          "input",
+          "model",
+          "parallel_tool_calls",
+          "prompt_cache_key",
+          "reasoning",
+          "store",
+          "stream",
+          "text",
+          "tool_choice"
+        ],
+        "previous_response_id": null,
+        "id": null,
+        "status": null,
+        "model": "gpt-6-astra",
+        "types": {
+          "additional_tools:developer": 1,
+          "message:developer": 5,
+          "message:user": 14,
+          "message:assistant": 13,
+          "custom_tool_call:": 71,
+          "custom_tool_call_output:": 71,
+          "reasoning:": 52,
+          "function_call:": 1,
+          "function_call_output:": 1
+        },
+        "items": 229,
+        "compactions": [],
+        "trigger": false,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 3,
+          "Another language model": 2
+        }
+      }
+    },
+    {
+      "id": 65434,
+      "created_at": "2026-10-23 03:53:13.188963 +0000 UTC",
+      "status": "completed",
+      "model_id": "gpt-6-astra",
+      "channel_id": 40,
+      "trace_id": 8607,
+      "metrics_latency_ms": 8385,
+      "body": {
+        "bytes": 36741,
+        "keys": [
+          "type",
+          "model",
+          "stream",
+          "previous_response_id",
+          "input",
+          "tool_choice",
+          "parallel_tool_calls",
+          "reasoning",
+          "store",
+          "include",
+          "prompt_cache_key",
+          "text",
+          "client_metadata"
+        ],
+        "previous_response_id": "resp_d1cbd589c40a432b87cd9ec5a35c2503",
+        "id": null,
+        "status": null,
+        "model": "gpt-6-astra",
+        "types": {
+          "message:developer": 4,
+          "message:user": 2
+        },
+        "items": 6,
+        "compactions": [],
+        "trigger": false,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 0,
+          "Another language model": 0
+        }
+      }
+    }
+  ]
+}
