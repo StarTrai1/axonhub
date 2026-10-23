@@ -525,7 +525,11 @@ func (svc *ChannelService) RecordPerformance(ctx context.Context, perf *Performa
 
 	if perf.Success {
 		svc.clearAutoDisableCountsOnSuccess(ctx, perf)
-	} else if !perf.Success && !perf.Canceled {
+
+		// Let the round_robin_success strategy count this success and move
+		// its cursor once the key has served its share of successful requests.
+		svc.onAPIKeySuccess(perf.ChannelID, perf.APIKey)
+	} else if !perf.Canceled {
 		svc.evaluateAutoDisableForFailure(ctx, perf)
 	}
 

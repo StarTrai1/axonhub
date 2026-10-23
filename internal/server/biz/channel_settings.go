@@ -50,6 +50,8 @@ type UpdateChannelSettingsInput struct {
 	ModelProtocols           []objects.ModelProtocol               `json:"modelProtocols"`
 	ProviderQuota            *objects.ChannelProviderQuotaSettings `json:"providerQuota"`
 	QuotaRoutingMode         *objects.QuotaRoutingMode             `json:"quotaRoutingMode"`
+	APIKeyStrategy *string `json:"apiKeyStrategy"`
+	APIKeyRoundRobinSwitchAfter *int `json:"apiKeyRoundRobinSwitchAfter"`
 }
 
 // Apply returns the settings that result from applying the patch to base.
@@ -127,6 +129,12 @@ func (i *UpdateChannelSettingsInput) Apply(base *objects.ChannelSettings) object
 	}
 	if i.ModelProtocols != nil {
 		merged.ModelProtocols = i.ModelProtocols
+	}
+	if i.APIKeyStrategy != nil {
+		merged.APIKeyStrategy = i.APIKeyStrategy
+	}
+	if i.APIKeyRoundRobinSwitchAfter != nil {
+		merged.APIKeyRoundRobinSwitchAfter = i.APIKeyRoundRobinSwitchAfter
 	}
 	if i.ProviderQuota != nil {
 		merged.ProviderQuota = i.ProviderQuota
