@@ -61,7 +61,7 @@ func TestGeminiModelFinishReasonsRemainProtocolResults(t *testing.T) {
 			require.NotNil(t, response)
 		})
 	}
-	response, err := outbound.TransformResponse(t.Context(), &httpclient.Response{StatusCode: http.StatusOK, Body: []byte(`{"promptFeedback":{"blockReason":"SAFETY"}}`)})
+	response, err := outbound.TransformResponse(t.Context(), &httpclient.Response{StatusCode: http.StatusOK, Body: []byte(`{"candidates":[{"finishReason":"SAFETY"}],"promptFeedback":{"blockReason":"SAFETY"}}`)})
 	require.NoError(t, err)
 	require.NotNil(t, response)
 }

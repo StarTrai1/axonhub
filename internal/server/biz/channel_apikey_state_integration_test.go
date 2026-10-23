@@ -114,7 +114,7 @@ func TestRoundRobinState_SurvivesRealCacheReload(t *testing.T) {
 
 	// Unchanged snapshots are deliberately reused by this fork. Change an
 	// unrelated persisted field so the test actually exercises a rebuild.
-	require.NoError(t, client.Channel.UpdateOneID(ch.ID).SetName(ch.Name + "-renamed").Exec(ctx))
+	require.NoError(t, client.Channel.UpdateOneID(ch.ID).SetName(ch.Name+"-renamed").Exec(ctx))
 	require.NoError(t, svc.enabledChannelsCache.Load(ctx, true))
 
 	second := svc.GetEnabledChannel(ch.ID)
@@ -149,7 +149,7 @@ func TestStickyState_SurvivesRealCacheReload(t *testing.T) {
 
 	// Unchanged snapshots are deliberately reused by this fork. Change an
 	// unrelated persisted field so the test actually exercises a rebuild.
-	require.NoError(t, client.Channel.UpdateOneID(ch.ID).SetName(ch.Name + "-renamed").Exec(ctx))
+	require.NoError(t, client.Channel.UpdateOneID(ch.ID).SetName(ch.Name+"-renamed").Exec(ctx))
 	require.NoError(t, svc.enabledChannelsCache.Load(ctx, true))
 
 	second := svc.GetEnabledChannel(ch.ID)
@@ -185,7 +185,7 @@ func TestFixedState_SurvivesKeyDisableAndReload(t *testing.T) {
 	require.NoError(t, svc.DisableAPIKey(ctx, ch.ID, "k1", 401, "test"))
 	// Unchanged snapshots are deliberately reused by this fork. Change an
 	// unrelated persisted field so the test actually exercises a rebuild.
-	require.NoError(t, client.Channel.UpdateOneID(ch.ID).SetName(ch.Name + "-renamed").Exec(ctx))
+	require.NoError(t, client.Channel.UpdateOneID(ch.ID).SetName(ch.Name+"-renamed").Exec(ctx))
 	require.NoError(t, svc.enabledChannelsCache.Load(ctx, true))
 
 	second := svc.GetEnabledChannel(ch.ID)
@@ -228,7 +228,7 @@ func TestRoundRobinSuccessState_SurvivesRealCacheReload(t *testing.T) {
 
 	// Unchanged snapshots are deliberately reused by this fork. Change an
 	// unrelated persisted field so the test actually exercises a rebuild.
-	require.NoError(t, client.Channel.UpdateOneID(ch.ID).SetName(ch.Name + "-renamed").Exec(ctx))
+	require.NoError(t, client.Channel.UpdateOneID(ch.ID).SetName(ch.Name+"-renamed").Exec(ctx))
 	require.NoError(t, svc.enabledChannelsCache.Load(ctx, true))
 
 	second := svc.GetEnabledChannel(ch.ID)
