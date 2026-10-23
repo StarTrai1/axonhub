@@ -309,6 +309,18 @@ func convertLLMToGeminiRequestWithConfig(chatReq *llm.Request, config *Config) *
 		}
 	}
 
+	// Native Gemini requires this flag when hosted tools share a request with
+	// client function declarations. Do not alter an explicit calling mode.
+	var hasFunctions, hasHostedTools bool
+	for _, tool := range req.Tools {
+		hasFunctions = hasFunctions || len(tool.FunctionDeclarations) > 0
+		hasHostedTools = hasHostedTools || tool.GoogleSearch != nil || tool.CodeExecution != nil || tool.UrlContext != nil
+	}
+	if hasFunctions && hasHostedTools {
+		if req.ToolConfig == nil { req.ToolConfig = &ToolConfig{} }
+		req.ToolConfig.IncludeServerSideToolInvocations = true
+	}
+
 	// Convert safety settings from TransformerMetadata
 	if safetySettings := extractSafetySettingsFromMetadata(chatReq.TransformerMetadata); len(safetySettings) > 0 {
 		req.SafetySettings = safetySettings

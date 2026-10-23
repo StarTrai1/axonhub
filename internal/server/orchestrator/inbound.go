@@ -241,6 +241,9 @@ func classifyAcceptedTerminalEvent(event *httpclient.StreamEvent) streamTerminal
 		return streamTerminalFailed
 	}
 	if eventType == "response.incomplete" || jsonEventType == "response.incomplete" || responseStatus == "incomplete" {
+		if responseStatus == "incomplete" && gjson.GetBytes(event.Data, "response.incomplete_details.reason").String() == "interrupted" {
+			return streamTerminalCanceled
+		}
 		return streamTerminalIncomplete
 	}
 

@@ -308,7 +308,6 @@ func (svc *ChannelService) populateChannelMetrics(cm *channelMetrics, m *channel
 	if m.LastFailureAt != nil {
 		cm.aggregatedMetrics.LastFailureAt = m.LastFailureAt
 	}
-
 }
 
 // timeSlotMetrics holds metrics for a specific second.

@@ -101,7 +101,7 @@ func responsesIntegrationTurn(t *testing.T, conn *websocket.Conn, body string) [
 		_, event, err := conn.ReadMessage()
 		require.NoError(t, err)
 		switch gjson.GetBytes(event, "type").String() {
-		case "response.completed", "response.failed", "error":
+		case "response.completed", "response.incomplete", "response.cancelled", "response.failed", "error":
 			return event
 		}
 	}

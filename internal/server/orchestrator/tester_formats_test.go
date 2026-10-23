@@ -283,7 +283,7 @@ func TestChannelTestEmbeddingModel(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, llm.APIFormatOpenAIEmbedding, channelTestAPIFormat(loaded, "test-model"))
 
-			result, err := processor.TestChannel(ctx, id, nil, nil)
+			result, err := processor.TestChannel(ctx, id, nil, nil, nil)
 			require.NoError(t, err)
 			require.Equal(t, tt.wantSuccess, result.Success, "%s", lo.FromPtr(result.Error))
 			if tt.wantSuccess {

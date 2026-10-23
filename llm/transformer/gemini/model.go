@@ -221,6 +221,7 @@ type UrlContext struct{}
 
 // ToolConfig is the tool configuration.
 type ToolConfig struct {
+	IncludeServerSideToolInvocations bool `json:"includeServerSideToolInvocations,omitempty"`
 	// FunctionCallingConfig is the function calling config.
 	FunctionCallingConfig *FunctionCallingConfig `json:"functionCallingConfig,omitempty"`
 }

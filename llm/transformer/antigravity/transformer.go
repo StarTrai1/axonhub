@@ -361,6 +361,9 @@ func (t *Transformer) patchGeminiRequest(ctx context.Context, req *gemini.Genera
 		}
 	}
 
+	// Antigravity does not accept native Gemini hosted-tool invocation flags.
+	if req.ToolConfig != nil { req.ToolConfig.IncludeServerSideToolInvocations = false }
+
 	// B. Tool Config (VALIDATED mode for Claude/Antigravity)
 	if hasTools {
 		// Retain explicit NONE/ANY choices; VALIDATED still permits normal text

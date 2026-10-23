@@ -35,6 +35,7 @@ func TestPersistentStreams_ResponsesTerminalSurvivesProtocolConversion(t *testin
 		{"failed", "response.failed", "failed", `,"error":{"message":"provider failed"}`, request.StatusFailed},
 		{"incomplete", "response.incomplete", "incomplete", `,"incomplete_details":{"reason":"max_output_tokens"}`, request.StatusFailed},
 		{"content filter", "response.incomplete", "incomplete", `,"incomplete_details":{"reason":"content_filter"}`, request.StatusFailed},
+		{"interrupt", "response.incomplete", "incomplete", `,"incomplete_details":{"reason":"interrupted"}`, request.StatusCanceled},
 		{"canceled", "response.cancelled", "canceled", "", request.StatusCanceled},
 		{"completed with failed status", "response.completed", "failed", `,"error":{"message":"provider failed"}`, request.StatusFailed},
 		{"completed with incomplete status", "response.completed", "incomplete", `,"incomplete_details":{"reason":"content_filter"}`, request.StatusFailed},

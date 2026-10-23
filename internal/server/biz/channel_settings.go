@@ -27,31 +27,31 @@ import (
 // (mergeChannelSettingsForUpdate) and makes those semantics available to
 // direct GraphQL callers.
 type UpdateChannelSettingsInput struct {
-	CodexSearchOnly          *bool                                 `json:"codexSearchOnly"`
-	CodexSearchModel         *string                               `json:"codexSearchModel"`
-	HTTPProtocol             *string                               `json:"httpProtocol"`
-	HTTP2ConnectionShards    *int                                  `json:"http2ConnectionShards"`
-	MaxSingleChannelRetries  *int                                  `json:"maxSingleChannelRetries"`
-	ExtraModelPrefix         *string                               `json:"extraModelPrefix"`
-	ModelMappings            []objects.ModelMapping                `json:"modelMappings"`
-	AutoTrimedModelPrefixes  []string                              `json:"autoTrimedModelPrefixes"`
-	HideOriginalModels       *bool                                 `json:"hideOriginalModels"`
-	HideMappedModels         *bool                                 `json:"hideMappedModels"`
-	LowercaseModelID         *bool                                 `json:"lowercaseModelId"`
-	Proxy                    *httpclient.ProxyConfig               `json:"proxy"`
-	TransformOptions         *objects.TransformOptions             `json:"transformOptions"`
-	HeaderOverrideOperations []objects.OverrideOperation           `json:"headerOverrideOperations"`
-	BodyOverrideOperations   []objects.OverrideOperation           `json:"bodyOverrideOperations"`
-	PassThroughUserAgent     *bool                                 `json:"passThroughUserAgent"`
-	PassThroughBody          *bool                                 `json:"passThroughBody"`
-	RateLimit                *objects.ChannelRateLimit             `json:"rateLimit"`
-	RetryableStatusCodes     []int                                 `json:"retryableStatusCodes"`
-	RetryableErrorPatterns   []objects.RetryableErrorPattern       `json:"retryableErrorPatterns"`
-	ModelProtocols           []objects.ModelProtocol               `json:"modelProtocols"`
-	ProviderQuota            *objects.ChannelProviderQuotaSettings `json:"providerQuota"`
-	QuotaRoutingMode         *objects.QuotaRoutingMode             `json:"quotaRoutingMode"`
-	APIKeyStrategy *string `json:"apiKeyStrategy"`
-	APIKeyRoundRobinSwitchAfter *int `json:"apiKeyRoundRobinSwitchAfter"`
+	CodexSearchOnly             *bool                                 `json:"codexSearchOnly"`
+	CodexSearchModel            *string                               `json:"codexSearchModel"`
+	HTTPProtocol                *string                               `json:"httpProtocol"`
+	HTTP2ConnectionShards       *int                                  `json:"http2ConnectionShards"`
+	MaxSingleChannelRetries     *int                                  `json:"maxSingleChannelRetries"`
+	ExtraModelPrefix            *string                               `json:"extraModelPrefix"`
+	ModelMappings               []objects.ModelMapping                `json:"modelMappings"`
+	AutoTrimedModelPrefixes     []string                              `json:"autoTrimedModelPrefixes"`
+	HideOriginalModels          *bool                                 `json:"hideOriginalModels"`
+	HideMappedModels            *bool                                 `json:"hideMappedModels"`
+	LowercaseModelID            *bool                                 `json:"lowercaseModelId"`
+	Proxy                       *httpclient.ProxyConfig               `json:"proxy"`
+	TransformOptions            *objects.TransformOptions             `json:"transformOptions"`
+	HeaderOverrideOperations    []objects.OverrideOperation           `json:"headerOverrideOperations"`
+	BodyOverrideOperations      []objects.OverrideOperation           `json:"bodyOverrideOperations"`
+	PassThroughUserAgent        *bool                                 `json:"passThroughUserAgent"`
+	PassThroughBody             *bool                                 `json:"passThroughBody"`
+	RateLimit                   *objects.ChannelRateLimit             `json:"rateLimit"`
+	RetryableStatusCodes        []int                                 `json:"retryableStatusCodes"`
+	RetryableErrorPatterns      []objects.RetryableErrorPattern       `json:"retryableErrorPatterns"`
+	ModelProtocols              []objects.ModelProtocol               `json:"modelProtocols"`
+	ProviderQuota               *objects.ChannelProviderQuotaSettings `json:"providerQuota"`
+	QuotaRoutingMode            *objects.QuotaRoutingMode             `json:"quotaRoutingMode"`
+	APIKeyStrategy              *string                               `json:"apiKeyStrategy"`
+	APIKeyRoundRobinSwitchAfter *int                                  `json:"apiKeyRoundRobinSwitchAfter"`
 }
 
 // Apply returns the settings that result from applying the patch to base.

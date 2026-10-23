@@ -81,9 +81,13 @@ func (processor *TestChannelOrchestrator) buildNativeChannelTestInput(ctx contex
 			{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr(userPrompt)}},
 		}}
 		protected, err := processor.promptProtectionRuleService.Protect(ctx, prompts)
-		if err != nil { return nil, nil, err }
+		if err != nil {
+			return nil, nil, err
+		}
 		body, err := json.Marshal(openai.EmbeddingRequest{Model: model, Input: llm.EmbeddingInput{String: lo.FromPtr(protected.Messages[0].Content.Content) + "\n\n" + lo.FromPtr(protected.Messages[1].Content.Content)}})
-		if err != nil { return nil, nil, err }
+		if err != nil {
+			return nil, nil, err
+		}
 		return openai.NewEmbeddingInboundTransformer(), &httpclient.Request{Method: http.MethodPost, Path: "/v1/embeddings", Headers: http.Header{"Content-Type": {"application/json"}}, Body: body}, nil
 	}
 	if apiFormat != llm.APIFormatTypeSafeSystemOne && apiFormat != llm.APIFormatOpenAIDecisions {
@@ -158,10 +162,18 @@ func buildResponsesChannelTestRequest(model, systemPrompt, userPrompt string) (*
 func channelTestResponseMessage(body []byte, apiFormat llm.APIFormat) (*string, error) {
 	if apiFormat == llm.APIFormatOpenAIEmbedding {
 		response, err := xjson.To[llm.EmbeddingResponse](body)
-		if err != nil { return nil, err }
-		if len(response.Data) == 0 { return nil, fmt.Errorf("No embedding in response") }
-		if dimensions := len(response.Data[0].Embedding.Embedding); dimensions > 0 { return lo.ToPtr(fmt.Sprintf("Embedding OK: %d dimensions", dimensions)), nil }
-		if response.Data[0].Embedding.Base64 != "" { return lo.ToPtr("Embedding OK: base64 encoded vector"), nil }
+		if err != nil {
+			return nil, err
+		}
+		if len(response.Data) == 0 {
+			return nil, fmt.Errorf("No embedding in response")
+		}
+		if dimensions := len(response.Data[0].Embedding.Embedding); dimensions > 0 {
+			return lo.ToPtr(fmt.Sprintf("Embedding OK: %d dimensions", dimensions)), nil
+		}
+		if response.Data[0].Embedding.Base64 != "" {
+			return lo.ToPtr("Embedding OK: base64 encoded vector"), nil
+		}
 		return nil, fmt.Errorf("Empty embedding vector in response")
 	}
 	if apiFormat == llm.APIFormatOpenAIResponse {

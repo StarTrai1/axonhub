@@ -175,7 +175,7 @@ func (s *responsesSessionStore) recordSnapshot(ctx context.Context, requestBody,
 	}
 	record := decodeResponsesSessionRecord(requestBody, responseBody)
 	if record == nil {
-		if !json.Valid(responseBody) || gjson.GetBytes(responseBody, "status").String() != "completed" || gjson.GetBytes(responseBody, "id").String() == "" {
+		if !json.Valid(responseBody) || !responsesBodyCanContinue(gjson.ParseBytes(responseBody)) {
 			return
 		}
 		record = &responsesSessionRecord{}

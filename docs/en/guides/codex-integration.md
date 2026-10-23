@@ -166,7 +166,7 @@ external_web_access = true
 
 `remote_compaction = "unsupported"` keeps compaction in the client. `external_web_access` controls whether Codex may request live web search; it does not grant upstream search or account access. Omitted values retain the client's provider defaults. See the [official capability schema](https://github.com/openai/codex/blob/rust-v0.162.0/codex-rs/model-provider-info/src/capabilities.rs).
 
-The fallback Codex identity is 0.163.0. Explicit client identity and dynamic stable-version refresh remain authoritative. Hosted checks compare 0.162.1 and 0.163.0 with gpt-6-sol and gpt-6.1-sol against loopback fixtures. Both versions exercise partial-answer continuation, developer input instructions, retry timing from a gateway-generated failure frame, encrypted agent-message delivery, usage, concurrency, and cancellation. They do not establish provider account availability.
+The fallback Codex identity is 0.164.0. Explicit client identity and dynamic stable-version refresh remain authoritative. Hosted checks compare 0.162.1 and 0.163.0 with gpt-6-sol and gpt-6.1-sol against loopback fixtures. Both versions exercise partial-answer continuation, developer input instructions, retry timing from a gateway-generated failure frame, encrypted agent-message delivery, usage, concurrency, and cancellation. They do not establish provider account availability.
 
 The [0.163.0 release](https://github.com/openai/codex/releases/tag/rust-v0.163.0) enables instant steering by default and waits for cancellation acknowledgements before reusing a WebSocket. The gateway acknowledges late interrupts for responses owned by the connection and drains acknowledgements that arrive after the terminal response. Relays that omit or mismatch the acknowledgement lose that pooled connection; their terminal response and usage remain available. The gateway also preserves optional `output.encrypted_content` replay, `history_initialization` metadata, and server-provided model-catalog fields. Background compaction and tool-output retention remain client-controlled; this release does not manufacture model or Daybreak access.
 
@@ -266,3 +266,17 @@ This setting does not grant upstream search capability. When `/alpha/search` is 
 Web search policy offers **Native search**, **Other channels**, and **MCP only**. Select **Other channels** for a generation channel that cannot handle standalone search: candidate selection excludes it before dispatch, so `openai/search` goes directly to another channel allowed by the project/API key scope, tags and quotas. If none is available, routing fails without spending retries on the excluded channel. Normal generation and its search-tool declarations are preserved; this setting does not redirect hosted search performed inside an upstream generation. **MCP only** also removes native search tools from generation. The UI keeps **Search only** and **Other channels** mutually exclusive; an externally saved conflicting configuration honors the standalone-search opt-out.
 
 Stored **Compatible** policies normalize to native search. GPT-5.5 Responses search emulation, its capability cache, and Responses Lite search-tool injection/retry have been removed. An unavailable native search endpoint follows the existing cross-channel retry policy without changing to a generation request.
+
+### Codex CLI 0.164.0
+
+Codex can now drain an interrupted WebSocket response before applying queued
+agent messages. A delivered `response.incomplete` with reason `interrupted`
+retains its response ID for the next delta. AxonHub records this as canceled,
+keeps the terminal response's accepted output, and does not mark the task as
+successfully completed. Token limits and other incomplete reasons remain failures.
+
+The request's optional `prompt_cache_key` is independent of `Session-Id`: an
+explicit custom key is preserved and an omitted key is not synthesized. Client
+metadata patches are composed by Codex before transmission; AxonHub forwards the
+resulting metadata. The CI compatibility matrix includes the real 0.164.0 CLI
+against local synthetic upstreams; it makes no paid provider calls.

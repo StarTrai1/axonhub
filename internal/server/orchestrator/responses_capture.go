@@ -23,6 +23,15 @@ type responsesCompletion struct {
 	metadataOnly bool
 }
 
+// An acknowledged interrupt retains its response ID and only the output items
+// present in its authoritative terminal body. Other incomplete outcomes do not
+// establish a usable continuation, and this is not evidence of task completion.
+func responsesBodyCanContinue(body gjson.Result) bool {
+	return body.Get("id").String() != "" &&
+		(body.Get("status").String() == "completed" ||
+			body.Get("status").String() == "incomplete" && body.Get("incomplete_details.reason").String() == "interrupted")
+}
+
 func (s *responsesCompletion) observe(event *httpclient.StreamEvent) {
 	if event == nil {
 		return
@@ -33,9 +42,10 @@ func (s *responsesCompletion) observe(event *httpclient.StreamEvent) {
 	if s.bytes > responsesSessionMaxResponse {
 		s.overflow = true
 	}
-	if gjson.GetBytes(event.Data, "type").String() == "response.completed" {
+	typ := gjson.GetBytes(event.Data, "type").String()
+	if typ == "response.completed" || typ == "response.incomplete" {
 		body := gjson.GetBytes(event.Data, "response")
-		if body.Get("status").String() == "completed" && body.Get("id").String() != "" {
+		if responsesBodyCanContinue(body) {
 			if !s.overflow && !s.metadataOnly && s.budget != nil {
 				if s.budget.Replace(s.retained, len(body.Raw)) {
 					s.retained = len(body.Raw)
@@ -47,7 +57,8 @@ func (s *responsesCompletion) observe(event *httpclient.StreamEvent) {
 				s.body, _ = json.Marshal(struct {
 					ID     string `json:"id"`
 					Status string `json:"status"`
-				}{body.Get("id").String(), "completed"})
+					IncompleteDetails json.RawMessage `json:"incomplete_details,omitempty"`
+				}{body.Get("id").String(), body.Get("status").String(), json.RawMessage(body.Get("incomplete_details").Raw)})
 			} else {
 				s.body = []byte(body.Raw)
 			}
@@ -114,7 +125,7 @@ func (c *responsesContinuation) accept(ctx context.Context) {
 	c.capture.mu.Lock()
 	defer c.capture.mu.Unlock()
 	body := c.capture.body
-	if len(body) == 0 || !json.Valid(body) || gjson.GetBytes(body, "status").String() != "completed" {
+	if len(body) == 0 || !json.Valid(body) || !responsesBodyCanContinue(gjson.ParseBytes(body)) {
 		return
 	}
 	id := gjson.GetBytes(body, "id").String()

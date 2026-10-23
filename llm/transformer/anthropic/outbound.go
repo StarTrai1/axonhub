@@ -9,6 +9,7 @@ import (
 
 	// Import bedrock package to register its decoder.
 	"github.com/samber/lo"
+	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/auth"
@@ -453,6 +454,7 @@ func (t *OutboundTransformer) TransformError(ctx context.Context, rawErr *httpcl
 			Detail: llm.ErrorDetail{
 				Type:      "api_error",
 				Message:   aErr.Error.Message,
+				Code: anthropicContextOverflowCode(gjson.GetBytes(rawErr.Body, "error.code").String(), aErr.Error.Type, aErr.Error.Message),
 				RequestID: aErr.RequestID,
 			},
 		}

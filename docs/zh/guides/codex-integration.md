@@ -163,7 +163,7 @@ external_web_access = true
 
 `remote_compaction = "unsupported"` 表示在客户端执行压缩。`external_web_access` 控制 Codex 是否可以请求实时网页搜索，不授予上游搜索能力或账户权限；省略字段时保留客户端的提供商默认值。详见[官方能力定义](https://github.com/openai/codex/blob/rust-v0.162.0/codex-rs/model-provider-info/src/capabilities.rs)。
 
-缺省 Codex 身份版本为 0.163.0，显式客户端身份和动态稳定版刷新继续优先。托管检查使用 0.162.1 / 0.163.0 × gpt-6-sol / gpt-6.1-sol 回环矩阵；两个版本均检查部分回答续传、developer 输入指令、网关失败帧的重试等待、加密 agent-message 传递、用量、并发和取消，不代表真实提供商账户可用性验证。
+缺省 Codex 身份版本为 0.164.0，显式客户端身份和动态稳定版刷新继续优先。托管检查使用 0.162.1 / 0.163.0 × gpt-6-sol / gpt-6.1-sol 回环矩阵；两个版本均检查部分回答续传、developer 输入指令、网关失败帧的重试等待、加密 agent-message 传递、用量、并发和取消，不代表真实提供商账户可用性验证。
 
 [0.163.0 版本](https://github.com/openai/codex/releases/tag/rust-v0.163.0)默认启用 instant steering，并在复用 WebSocket 前等待取消确认。网关会确认属于当前连接且已经结束的响应的迟到 interrupt，并排空在终止响应之后到达的确认；中继不返回确认或确认 ID 不匹配时淘汰该连接，保留终止响应和用量。网关同时保留可选的 `output.encrypted_content` 回放、`history_initialization` 元数据及上游模型目录字段。后台压缩和工具输出保留仍由客户端控制，不凭空开启模型或 Daybreak 权限。
 
@@ -209,3 +209,14 @@ DevDay 的 Agents API 浏览器会话使用独立 `/v1/agents/sessions` 生命�
 联网搜索策略提供“原生搜索”“使用其他渠道”和“仅 MCP”。对不支持独立搜索的生成渠道，选择“使用其他渠道”会在候选筛选时排除它，`openai/search` 直接选择其他符合项目/API Key 范围、标签与配额约束的渠道；没有可用渠道时立即返回无可用路由，不在已排除渠道上消耗重试次数。该设置保留正常对话及其搜索工具声明，不控制上游自行执行的 hosted search。“仅 MCP”还会移除生成请求中的原生搜索工具。前端不会同时启用“仅搜索”和“使用其他渠道”；外部写入的冲突配置以不接收独立搜索为准。
 
 旧的“兼容搜索”配置升级后按原生搜索读取；已移除 GPT-5.5 Responses 模拟搜索、能力缓存和 Responses Lite 搜索工具注入及重试。原生搜索接口不可用时按现有跨渠道重试策略处理，不改发生成请求。
+
+### Codex CLI 0.164.0
+
+Codex 可在处理排队的 agent 消息之前，读完被中断的 WebSocket 响应。
+已交付的 `response.incomplete` 若原因是 `interrupted`，会保留响应 ID 供下一次
+增量续接。AxonHub 将其记录为已取消，保留终态确认的输出，不把中断当成任务成功。
+Token 上限及其他未完成原因仍按失败处理。
+
+可选的 `prompt_cache_key` 与 `Session-Id` 相互独立：显式自定义键原样保留，
+省略时不补造缓存键。客户端 metadata 补丁由 Codex 合并后发送，AxonHub 转发其结果。
+CI 兼容矩阵包含真实 0.164.0 CLI，使用本地模拟上游，不调用付费模型。
