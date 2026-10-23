@@ -64,6 +64,31 @@ func TestUpdateChannelSettingsInput_Apply(t *testing.T) {
 		require.Equal(t, base.MaxSingleChannelRetries, merged.MaxSingleChannelRetries)
 	})
 
+	t.Run("absent api key policy keeps stored values", func(t *testing.T) {
+		stored := &objects.ChannelSettings{
+			APIKeyStrategy:              lo.ToPtr("round_robin"),
+			APIKeyRoundRobinSwitchAfter: lo.ToPtr(3),
+		}
+		patch := &UpdateChannelSettingsInput{ExtraModelPrefix: lo.ToPtr("anthropic")}
+		merged := patch.Apply(stored)
+		require.Equal(t, "round_robin", *merged.APIKeyStrategy)
+		require.Equal(t, 3, *merged.APIKeyRoundRobinSwitchAfter)
+	})
+
+	t.Run("present api key policy replaces stored values", func(t *testing.T) {
+		stored := &objects.ChannelSettings{
+			APIKeyStrategy:              lo.ToPtr("round_robin"),
+			APIKeyRoundRobinSwitchAfter: lo.ToPtr(3),
+		}
+		patch := &UpdateChannelSettingsInput{
+			APIKeyStrategy:              lo.ToPtr("priority"),
+			APIKeyRoundRobinSwitchAfter: lo.ToPtr(1),
+		}
+		merged := patch.Apply(stored)
+		require.Equal(t, "priority", *merged.APIKeyStrategy)
+		require.Equal(t, 1, *merged.APIKeyRoundRobinSwitchAfter)
+	})
+
 	t.Run("present fields replace stored values", func(t *testing.T) {
 		patch := &UpdateChannelSettingsInput{
 			ExtraModelPrefix:   lo.ToPtr(""),

@@ -130,6 +130,8 @@ export function mergeChannelSettingsForUpdate(
     retryableErrorPatterns: pick('retryableErrorPatterns', existing?.retryableErrorPatterns ?? []),
     maxSingleChannelRetries: pick('maxSingleChannelRetries', existing?.maxSingleChannelRetries ?? null),
     modelProtocols: pick('modelProtocols', existing?.modelProtocols ?? []),
+apiKeyStrategy: pick('apiKeyStrategy', existing?.apiKeyStrategy ?? null),
+    apiKeyRoundRobinSwitchAfter: pick('apiKeyRoundRobinSwitchAfter', existing?.apiKeyRoundRobinSwitchAfter ?? null),
     providerQuota: pick('providerQuota', existing?.providerQuota ?? null),
     codexSearchOnly: pick('codexSearchOnly', existing?.codexSearchOnly ?? false),
     codexSearchModel: pick('codexSearchModel', existing?.codexSearchModel ?? ''),

@@ -414,6 +414,8 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		captureResponsesProvider(outbound),
 		agentTransport.responseMiddleware(),
 		retainNativeCompactionSources(outbound, processor.remoteCompactionAdapter),
+		// Run first on raw responses (reverse order), before capture fan-out.
+		closeCompletedAnthropicStream(outbound),
 	)
 
 	pipelineOpts = append(pipelineOpts, pipeline.WithMiddlewares(middlewares...))

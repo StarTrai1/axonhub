@@ -79,6 +79,7 @@ jobs:
         include:
           - {codex: '0.162.1', model: gpt-6-sol}
           - {codex: '0.163.0', model: gpt-6.1-sol}
+          - {codex: '0.164.0', model: gpt-6.1-sol}
     env:
       PROBE_TEST_MODEL: ${{ matrix.model }}
       PROBE_TEST_CODEX_VERSION: ${{ matrix.codex }}
@@ -193,6 +194,15 @@ jobs:
             go.sum
             llm/go.sum
             cmd/schema/go.sum
+      - uses: pnpm/action-setup@v5
+        with:
+          package_json_file: frontend/package.json
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Refresh dependency lockfile
+        if: needs.changes.outputs.dependencies == 'true'
+        run: pnpm --dir frontend install --lockfile-only --ignore-scripts --no-frozen-lockfile
       - name: Verify generation and changed Go formatting
         env:
           CHECK_DEPENDENCIES: ${{ needs.changes.outputs.dependencies }}
