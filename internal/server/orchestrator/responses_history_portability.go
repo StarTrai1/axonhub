@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/samber/lo"
+	"github.com/tidwall/gjson"
 
 	lru "github.com/hashicorp/golang-lru/v2"
 
@@ -77,9 +78,9 @@ func (m *responsesHistoryPortabilityMiddleware) OnOutboundRawRequest(ctx context
 	}
 	if c := state.ResponsesContinuation; c != nil && c.complete && c.previous != "" && c.owner != nil && c.owner.Snapshot != nil &&
 		c.owner.ID == c.previous && originMatches(c.owner.Origin, shared.ResponsesOrigin{
-			ChannelID: channel.ID, Endpoint: request.URL, Format: request.APIFormat,
-			Model: gjson.GetBytes(request.Body, "model").String(), Auth: responses.ContinuationAuthIdentity(request),
-		}) {
+		ChannelID: channel.ID, Endpoint: request.URL, Format: request.APIFormat,
+		Model: gjson.GetBytes(request.Body, "model").String(), Auth: responses.ContinuationAuthIdentity(request),
+	}) {
 		return request, nil
 	}
 	hasIDs, safe := responsesResourceHistorySupportsRecovery(request.Body)
