@@ -448,6 +448,7 @@ type PromptFeedback struct {
 	// PROHIBITED_CONTENT	Prompt was blocked due to prohibited content.
 	// IMAGE_SAFETY	Candidates blocked due to unsafe image generation content.
 	BlockReason string `json:"blockReason,omitempty"`
+	BlockReasonMessage string `json:"blockReasonMessage,omitempty"`
 
 	// SafetyRatings is the list of safety ratings for the prompt.
 	SafetyRatings []*SafetyRating `json:"safetyRatings,omitempty"`

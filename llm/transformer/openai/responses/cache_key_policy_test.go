@@ -17,12 +17,16 @@ func TestNativeResponsesCacheKeyOmission(t *testing.T) {
 	require.NoError(t, err)
 	for _, format := range []llm.APIFormat{llm.APIFormatOpenAIResponse, llm.APIFormatOpenAIResponseWebSocket, llm.APIFormatOpenAIChatCompletion} {
 		t.Run(string(format), func(t *testing.T) {
-			req := &llm.Request{Model: "synthetic", APIFormat: format, Messages: []llm.Message{{Role:"user", Content:llm.MessageContent{Content:lo.ToPtr("hello")}}}}
+			req := &llm.Request{Model: "synthetic", APIFormat: format, Messages: []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hello")}}}}
 			wire, err := outbound.TransformRequest(ctx, req)
 			require.NoError(t, err)
 			var payload Request
 			require.NoError(t, json.Unmarshal(wire.Body, &payload))
-			if IsResponsesFormat(format) { require.Nil(t, payload.PromptCacheKey) } else { require.NotNil(t, payload.PromptCacheKey) }
+			if IsResponsesFormat(format) {
+				require.Nil(t, payload.PromptCacheKey)
+			} else {
+				require.NotNil(t, payload.PromptCacheKey)
+			}
 			req.PromptCacheKey = lo.ToPtr("")
 			wire, err = outbound.TransformRequest(ctx, req)
 			require.NoError(t, err)

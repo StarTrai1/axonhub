@@ -253,7 +253,7 @@ func (processor *TestChannelOrchestrator) TestChannel(
 		}, nil
 	}
 
-	if apiFormat == llm.APIFormatTypeSafeSystemOne || apiFormat == llm.APIFormatOpenAIDecisions || apiFormat == llm.APIFormatOpenAIResponse {
+	if apiFormat == llm.APIFormatTypeSafeSystemOne || apiFormat == llm.APIFormatOpenAIDecisions || apiFormat == llm.APIFormatOpenAIResponse || apiFormat == llm.APIFormatOpenAIEmbedding {
 		message, err := channelTestResponseMessage(rawResponse.ChatCompletion.Body, apiFormat)
 		if err != nil {
 			return &TestChannelResult{Latency: latency, Success: false, Error: lo.ToPtr(err.Error())}, nil
@@ -803,7 +803,7 @@ func (processor *TestChannelOrchestrator) testSingleKey(
 
 	latency := time.Since(startTime).Seconds()
 
-	if apiFormat == llm.APIFormatTypeSafeSystemOne || apiFormat == llm.APIFormatOpenAIDecisions || apiFormat == llm.APIFormatOpenAIResponse {
+	if apiFormat == llm.APIFormatTypeSafeSystemOne || apiFormat == llm.APIFormatOpenAIDecisions || apiFormat == llm.APIFormatOpenAIResponse || apiFormat == llm.APIFormatOpenAIEmbedding {
 		_, err := channelTestResponseMessage(rawResponse.ChatCompletion.Body, apiFormat)
 		if err != nil {
 			return &TestAPIKeyResult{KeyPrefix: keyPrefix, Latency: latency, Success: false, Error: lo.ToPtr(err.Error())}

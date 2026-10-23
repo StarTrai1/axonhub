@@ -1,11 +1,13 @@
 package anthropic
 
 import (
-	"github.com/looplj/axonhub/llm/auth"
-	"github.com/looplj/axonhub/llm/httpclient"
+	"testing"
+
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
-	"testing"
+
+	"github.com/looplj/axonhub/llm/auth"
+	"github.com/looplj/axonhub/llm/httpclient"
 )
 
 func TestContextOverflowPreservesRecoverySignal(t *testing.T) {

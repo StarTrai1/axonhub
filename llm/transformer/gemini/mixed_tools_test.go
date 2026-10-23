@@ -1,9 +1,11 @@
 package gemini
 
 import (
-	"github.com/looplj/axonhub/llm"
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/stretchr/testify/require"
+
+	"github.com/looplj/axonhub/llm"
 )
 
 func TestMixedHostedAndClientToolsDeclareInvocations(t *testing.T) {

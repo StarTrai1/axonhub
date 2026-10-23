@@ -1,0 +1,662 @@
+[
+  {
+    "name": "gpt-load",
+    "repo": "tbphp/gpt-load",
+    "branch": "main",
+    "previous_head": "dd33ae390c23575988b04b3f551873ae70f3eba0",
+    "head": "5b7a5ee310e217ea0365f2bfb74cbd62fbcee7ec",
+    "since": "2026-10-22T09:30:00Z",
+    "frozen_at": "2026-10-23T18:32:29.176582+00:00",
+    "commits": [
+      {
+        "sha": "5b7a5ee310e217ea0365f2bfb74cbd62fbcee7ec",
+        "title": "fix(gateway): size the request body limit to available memory (#903)",
+        "date": "2026-10-23T12:54:16Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "skip",
+        "reason": "Memory-sized request limits and Jev auto-model parser are a different capacity policy; retain existing bounded AxonHub request readers."
+      },
+      {
+        "sha": "81aae47bfec6cccd5547d1bd8990dd0d77009f88",
+        "title": "fix(cpa): retry Codex overloads before output (#905)",
+        "date": "2026-10-23T12:37:36Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "covered",
+        "reason": "llm/pipeline Responses retry integration already buffers preamble, detects capacity errors, and vetoes replay after visible content or hosted tools."
+      },
+      {
+        "sha": "d9453eb709846aa7fc8075b1e8d0800b21dd5528",
+        "title": "fix(usage): price advisor iterations and enforce advisor model access (#904)",
+        "date": "2026-10-23T12:10:48Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "skip",
+        "reason": "Advisor iteration pricing and model ACL depend on gpt-load scheduler/receipt architecture; not a portable commit for AxonHub pricing."
+      },
+      {
+        "sha": "2a94750b4f8869bbfbdd9ec280fccc013512ef55",
+        "title": "fix(antigravity): distinguish quota window labels (#907)",
+        "date": "2026-10-23T11:17:57Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "skip",
+        "reason": "Antigravity subscription quota-window presentation; no matching subscription observation schema in this gateway."
+      }
+    ]
+  },
+  {
+    "name": "OmniProxy",
+    "repo": "mibgb65-cloud/OmniProxy",
+    "branch": "master",
+    "previous_head": "56448d20ccd797bc32aae1c02a5e2f2030b8b6c8",
+    "head": "56448d20ccd797bc32aae1c02a5e2f2030b8b6c8",
+    "since": "2026-10-22T09:30:00Z",
+    "frozen_at": "2026-10-23T18:32:29.252967+00:00",
+    "commits": []
+  },
+  {
+    "name": "new-api",
+    "repo": "QuantumNous/new-api",
+    "branch": "main",
+    "previous_head": "d8e65613c09adf3663f960ea4316414a99694751",
+    "head": "33c61a24234aa20cb10e8a644304322c476361de",
+    "since": "2026-10-22T09:30:00Z",
+    "frozen_at": "2026-10-23T18:32:29.134110+00:00",
+    "commits": [
+      {
+        "sha": "33c61a24234aa20cb10e8a644304322c476361de",
+        "title": "fix: prevent stale values when switching edit drawer records (#7989)",
+        "date": "2026-10-23T06:31:23Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "skip",
+        "reason": "New API key/redemption/model drawers and expiry contract differ; no related drawer transplant."
+      },
+      {
+        "sha": "30748c6558bc97de49ff74871cfec717e50f3322",
+        "title": "fix(logging): 隐藏访问日志中的查询凭据 (#7972)",
+        "date": "2026-10-23T05:31:23Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "covered",
+        "reason": "internal/server/middleware/access_log.go records URL.Path only, never RawQuery."
+      },
+      {
+        "sha": "7fb6e57a5ff671582131c74e00bdfaa867d4e985",
+        "title": "fix(channels): preserve advanced custom body passthrough settings (#7971)",
+        "date": "2026-10-22T16:23:08Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "skip",
+        "reason": "New API advanced JSON passthrough drawer fields do not map to AxonHub ChannelSettings/body override operations."
+      },
+      {
+        "sha": "e9d4d6353ce2c11df753d751ba1ad778e2433a88",
+        "title": "feat(billing): bill OpenAI 12-hour prompt cache writes at their own price (#7965)",
+        "date": "2026-10-22T14:41:17Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "skip",
+        "reason": "12-hour cache-write pricing is a new New API billing-expression contract; AxonHub retains total cache writes but has no matching 12-hour price slot. Not claimed as covered."
+      },
+      {
+        "sha": "d0b840e75ff36d731b04ff981ee361819acd593f",
+        "title": "fix(relay): keep the client's JSON Schema property order",
+        "date": "2026-10-22T12:21:04Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "covered",
+        "reason": "AxonHub tool Parameters/ParametersJsonSchema use json.RawMessage; native body passthrough retains schema key order. No relaykit map round-trip."
+      }
+    ]
+  },
+  {
+    "name": "codex2api",
+    "repo": "james-6-23/codex2api",
+    "branch": "main",
+    "previous_head": "1bdfc85cecff2559422fa4eb39fdd880bfc2c462",
+    "head": "1bdfc85cecff2559422fa4eb39fdd880bfc2c462",
+    "since": "2026-10-22T09:30:00Z",
+    "frozen_at": "2026-10-23T18:32:29.266706+00:00",
+    "commits": []
+  },
+  {
+    "name": "CLIProxyAPI",
+    "repo": "router-for-me/CLIProxyAPI",
+    "branch": "main",
+    "previous_head": "0db19025571684b198a2ef508f99b41c717337e8",
+    "head": "8289ec4c71ad914d0612c2776352b76ba3d355a6",
+    "since": "2026-10-22T09:30:00Z",
+    "frozen_at": "2026-10-23T18:32:29.061603+00:00",
+    "commits": [
+      {
+        "sha": "8289ec4c71ad914d0612c2776352b76ba3d355a6",
+        "title": "fix(usage): preserve interactions token semantics when merging stream usage",
+        "date": "2026-10-23T18:18:56Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "skip",
+        "reason": "CPA interactions plugin TokenBreakdown contract absent; AxonHub per-protocol usage conversion remains authoritative."
+      },
+      {
+        "sha": "888f23824d163dc1c4e569db9a96981701945437",
+        "title": "fix(api): add RESP protocol bounds validation and connection panic recovery",
+        "date": "2026-10-23T17:44:17Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "skip",
+        "reason": "CPA Redis RESP multiplexer/home certificate path absent; HTTP/WebSocket bounds unchanged."
+      },
+      {
+        "sha": "29150a2262b4e9d102986c7775d794c7122670a7",
+        "title": "fix(schema): preserve Gemini $ref sibling constraints",
+        "date": "2026-10-23T12:38:14Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "covered-native",
+        "reason": "Native Gemini ParametersJsonSchema is raw, so $ref sibling constraints remain intact. Antigravity uses a separate restricted-schema sanitizer; its allOf flattening is not claimed equivalent to JSON Schema preservation."
+      },
+      {
+        "sha": "3f5d3a161b0861f18c6fa1d101e9a0446448ad33",
+        "title": "fix(gemini/vertex): preserve non-content finish reasons and surface prompt blocks",
+        "date": "2026-10-23T10:03:10Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "adapted-partial",
+        "reason": "Existing Gemini candidate finish-reason conversion covers partless refusal; added explicit no-candidate promptFeedback rejection in HTTP and SSE paths. CPA pending usage/translation state is not transplanted."
+      },
+      {
+        "sha": "83cb1b95eb47f97a62ba01f3c07fc0bb71fb06e1",
+        "title": "fix(gemini): populate token limits in Gemini model catalog responses",
+        "date": "2026-10-23T09:09:19Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "skip",
+        "reason": "CPA /v1beta model registry response enhancement; not the AxonHub model catalog API."
+      },
+      {
+        "sha": "e5434f65c851a1483c13a4f717c49423152fcfbb",
+        "title": "fix(signature): sign the first Gemini function call after a text part",
+        "date": "2026-10-23T09:04:24Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "skip",
+        "reason": "CPA native signature sanitizer and bypass insertion absent; preserve actual signatures and existing AxonHub role/tool conversion."
+      },
+      {
+        "sha": "e1fb25219c09cdcb6b6f90d3ec612ddf670d15fc",
+        "title": "fix(claude): preserve tool arguments for implicitly open empty object schemas",
+        "date": "2026-10-23T08:19:46Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "covered",
+        "reason": "AxonHub tool arguments are preserved; no CPA parameterless-schema cleaner replaces implicitly open object arguments with {}."
+      },
+      {
+        "sha": "376015c35feac763f08cd37cafb6c65a727b7e3d",
+        "title": "fix(codex): map commentary phase messages to thinking blocks in Claude response translator",
+        "date": "2026-10-23T08:19:42Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "skip",
+        "reason": "Commentary-to-thinking changes visible content semantics and replay signatures; preserve distinct commentary and reasoning instead of reclassifying client-visible text."
+      },
+      {
+        "sha": "41a4b9f4deb68a0be6535e57407b05eaf7d39a25",
+        "title": "Merge pull request #6903 from router-for-me/home",
+        "date": "2026-10-23T03:36:12Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "merge-duplicate",
+        "reason": "Merge of e45f9426; reuse that decision, no repeated patch review."
+      },
+      {
+        "sha": "e45f942645ca646b5eeb7af58a599a1e5d2c9cb3",
+        "title": "feat(home): add cluster latency telemetry and probing",
+        "date": "2026-10-23T02:55:59Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "skip",
+        "reason": "CPA home cluster telemetry/probing absent; no live paid probes introduced."
+      },
+      {
+        "sha": "d946c4fba6fc9a5cfbca1f3d85184d62ad2fb683",
+        "title": "feat(codex): ignore use_siwc and enforce non-SIWC credentials for Codex client requests",
+        "date": "2026-10-23T00:09:28Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "skip",
+        "reason": "CPA SIWC credential eligibility/conductor is absent; no use_siwc or credential-selection policy imported."
+      },
+      {
+        "sha": "45501610f69cda06914989e9d51bacebf96f4de8",
+        "title": "fix(gemini): enable server-side tool invocations when mixing built-in and function tools",
+        "date": "2026-10-22T18:44:22Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "adapted",
+        "reason": "Mixed native Gemini hosted tools and function declarations now set includeServerSideToolInvocations; explicitly removed on Antigravity."
+      },
+      {
+        "sha": "13874f1f842a940dd737ce839fed29e92d975a61",
+        "title": "fix(pluginhost): pass decoded request body to frontend auth plugins",
+        "date": "2026-10-22T17:17:43Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "skip",
+        "reason": "CPA frontend-auth plugin ABI absent; no decoded request plugin contract to update."
+      },
+      {
+        "sha": "a014ba0e49596c81a93be0fc3cd5c34fb3fbcdbf",
+        "title": "test(pluginhost,handlers): fix flaky races in plugin load and stream cancel tests",
+        "date": "2026-10-22T17:14:58Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "skip",
+        "reason": "CPA plugin host lifecycle and its flaky tests absent."
+      },
+      {
+        "sha": "b90190dbaa013573d40f1a0654404dd6deb44a3c",
+        "title": "fix(usage): propagate claude usage.speed into response service tier",
+        "date": "2026-10-22T17:07:20Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "skip",
+        "reason": "usage.speed pricing requires mapping Anthropic fast/standard into AxonHub price tiers; not blindly substituted for service_tier. Existing fast request support retained."
+      },
+      {
+        "sha": "ceb045a129d43f805e93a5e4aef3a59b108f34f7",
+        "title": "ci(workflow): bump Go version to 1.26.10 in release pipeline",
+        "date": "2026-10-22T16:26:48Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "covered",
+        "reason": "AxonHub already pins Go 1.27.3, newer than peer 1.26.10."
+      },
+      {
+        "sha": "07b5a7a1ca267c5d9b743e38dff4ed8ff1da0c91",
+        "title": "feat(usage): report effective outbound service tier after payload rules",
+        "date": "2026-10-22T13:05:27Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "skip",
+        "reason": "CPA plugin/Redis usage sinks and outbound payload-rule service-tier reporting differ from AxonHub request/execution accounting."
+      },
+      {
+        "sha": "8bd1795599d1420d7cb5e0ecedbac41eb6a4cfb9",
+        "title": "fix(management): read Handler.cfg under h.mu in OAuth login flows and token save helpers",
+        "date": "2026-10-22T12:15:15Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "skip",
+        "reason": "CPA management Handler.cfg mutex and OAuth token-save helpers absent."
+      },
+      {
+        "sha": "57a129964fb5ca8004e6dec9700fa89fe0710bdc",
+        "title": "fix(watcher): preserve file credentials when auth directory is unreadable during full scan",
+        "date": "2026-10-22T12:06:05Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "skip",
+        "reason": "CPA filesystem credential watcher absent; AxonHub credentials are database-owned."
+      },
+      {
+        "sha": "ad09c779989e4b407828d2ba8aaeb07092d44cdb",
+        "title": "test(translator): skip replay target model allocation budget test under race detector",
+        "date": "2026-10-22T12:02:56Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "skip",
+        "reason": "CPA allocation microbenchmark is absent; no test skip introduced."
+      },
+      {
+        "sha": "43f27e3ae3abebc422fc35a12d774309f9ca25e3",
+        "title": "fix(responses): add context_length_exceeded code to Claude prompt overflow stream errors",
+        "date": "2026-10-22T11:49:25Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "adapted",
+        "reason": "Anthropic HTTP and SSE prompt-is-too-long errors acquire context_length_exceeded only when no explicit provider code exists."
+      },
+      {
+        "sha": "df860eb945dd72f15a09652decb168168e204488",
+        "title": "fix(translator): keep tool_use-deferred Claude web search open across tool outputs",
+        "date": "2026-10-22T11:48:01Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "skip",
+        "reason": "CPA deferred Claude web-search state machine differs; preserve AxonHub provider extension/tool result representation instead of transplanting translator state."
+      },
+      {
+        "sha": "88732ad57451a9040f8ab0efabe03937e61029b4",
+        "title": "fix(vertex): use regional endpoint hosts for multi-region us and eu locations",
+        "date": "2026-10-22T11:26:31Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "covered",
+        "reason": "llm/vertex/executor.go already selects aiplatform.us/eu.rep.googleapis.com for multi-region locations; configured Gemini base URL prefixes are also retained."
+      },
+      {
+        "sha": "4138edb1be52f93141f6caae0e52579764e78ded",
+        "title": "fix(auth): skip token rejection and refresh for request-scoped 401 rules",
+        "date": "2026-10-22T11:05:07Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "skip",
+        "reason": "CPA auth-conductor request-scoped 401 override rules absent; do not weaken credential rejection globally."
+      },
+      {
+        "sha": "d2e61d19b57174c5c1fb7aaff8702297167d4157",
+        "title": "fix(claude): validate cloak_mode never headers against configured defaults",
+        "date": "2026-10-22T10:33:39Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "skip",
+        "reason": "CPA cloak_mode never and device profile header policy absent; preserve explicit AxonHub client identity settings."
+      },
+      {
+        "sha": "d495e24cbc3965a28afd1ebdd4160eb2b7febb0e",
+        "title": "fix(claude): map model_context_window_exceeded to incomplete max_output_tokens on responses",
+        "date": "2026-10-22T09:40:23Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "adapted",
+        "reason": "Anthropic model_context_window_exceeded now maps to length in streamed and nonstreamed conversion; Responses renders incomplete/max_output_tokens."
+      }
+    ]
+  },
+  {
+    "name": "sub2api",
+    "repo": "Wei-Shaw/sub2api",
+    "branch": "main",
+    "previous_head": "dba770d56a0ee0ae5bad1b3dc5e11614d323163c",
+    "head": "5c185c5c5d4f5e409e2139806e0964ae944e03e8",
+    "since": "2026-10-22T09:30:00Z",
+    "frozen_at": "2026-10-23T18:32:29.016564+00:00",
+    "commits": [
+      {
+        "sha": "5c185c5c5d4f5e409e2139806e0964ae944e03e8",
+        "title": "chore: sync VERSION to 0.2.18 [skip ci]",
+        "date": "2026-10-23T07:44:16Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "skip",
+        "reason": "Peer VERSION only."
+      },
+      {
+        "sha": "ac1b8f1271be0d674fa6f074403c1410f30a3a81",
+        "title": "chore: update sponsors",
+        "date": "2026-10-23T07:24:04Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "skip",
+        "reason": "Peer sponsors/assets only."
+      },
+      {
+        "sha": "8286268047cbbca4e7f5fbb63ff0890c1ea37cf5",
+        "title": "fix(deps): bump dompurify to 3.4.17 for GHSA-cg2g-xh64-v4q7 / GHSA-mrv2-3pqr-j5jr",
+        "date": "2026-10-23T06:07:16Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "skip",
+        "reason": "DOMPurify not used by this frontend; existing rehype-sanitize contract retained."
+      },
+      {
+        "sha": "c5b811284aea2c4922561da2f0a78256334b23df",
+        "title": "Merge pull request #8305 from apple050620312/fix/openai-overload-recovery-20261023",
+        "date": "2026-10-23T05:49:37Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "merge-duplicate",
+        "reason": "Merge of c591412c; reuse decision without repeated patch review."
+      },
+      {
+        "sha": "c591412c42ab195dacdede9eb19f9cbfee221144",
+        "title": "fix(openai): 合并 Codex overload 身份与空流安全重试修复",
+        "date": "2026-10-22T17:51:48Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "covered-partial",
+        "reason": "Capacity retry/preamble and Retry-After-ms already supported. Do not force codex-tui identity to CLI: preserve explicit identity settings and real client headers; peer risk-control explanation is not provider evidence."
+      }
+    ]
+  },
+  {
+    "name": "upstream",
+    "repo": "looplj/axonhub",
+    "branch": "unstable",
+    "previous_head": "48984732291eba882d7d4d964c814e2e783311a7",
+    "head": "0d82a8e4400c039ce24b9f89a6b0745045c627f9",
+    "since": "2026-10-22T09:30:00Z",
+    "frozen_at": "2026-10-23T18:32:29.162684+00:00",
+    "commits": [
+      {
+        "sha": "0d82a8e4400c039ce24b9f89a6b0745045c627f9",
+        "title": "feat(channels): add Cloudflare Workers AI channel type (#2674)",
+        "date": "2026-10-23T16:34:05Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "merged",
+        "reason": "Integrated frozen upstream commit; conflicting fork behavior retained and CI generation required."
+      },
+      {
+        "sha": "9c1ea3bf9609473850cad264bd6b7dea7ebab7b8",
+        "title": "feat(channel): configurable multi-key selection strategies (sticky/random/round-robin/priority/fixed) (#2548)",
+        "date": "2026-10-23T16:33:47Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "merged",
+        "reason": "Integrated frozen upstream commit; conflicting fork behavior retained and CI generation required."
+      },
+      {
+        "sha": "f8f12109dc11ea0a934ada722db0fcce15fe8723",
+        "title": "fix(channels): make channel table responsive on mobile and narrow viewports (#2689)",
+        "date": "2026-10-23T16:32:39Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "merged",
+        "reason": "Integrated frozen upstream commit; conflicting fork behavior retained and CI generation required."
+      },
+      {
+        "sha": "605b828dd7f68fdb27c443eab5dfcb494e318031",
+        "title": "feat(requests): show the cache hit rate in the tokens column (#2661)",
+        "date": "2026-10-23T16:31:20Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "merged",
+        "reason": "Integrated frozen upstream commit; conflicting fork behavior retained and CI generation required."
+      },
+      {
+        "sha": "6980148ae849a267b1292977b8af866e300918eb",
+        "title": "feat(ui): categorize channels with filter pills and section headers in provider quota popover (#2688)",
+        "date": "2026-10-23T16:27:32Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "merged",
+        "reason": "Integrated frozen upstream commit; conflicting fork behavior retained and CI generation required."
+      },
+      {
+        "sha": "03437bb137793fc930084b356454233118a8ea92",
+        "title": "feat: add server-side Claude auto-mode reviewer (#2722)",
+        "date": "2026-10-23T04:30:00Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "merged",
+        "reason": "Integrated frozen upstream commit; conflicting fork behavior retained and CI generation required."
+      },
+      {
+        "sha": "a8a78c5e9bfaa8c0935650a254558c8a4c655d40",
+        "title": "chore(deps): bump @google/genai in /integration_test/gemini/node (#2739)",
+        "date": "2026-10-23T03:04:33Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "merged",
+        "reason": "Integrated frozen upstream commit; conflicting fork behavior retained and CI generation required."
+      },
+      {
+        "sha": "4d4cfb3f5f7984a8324ab1e0635b94942c54ec9e",
+        "title": "chore(deps): bump github.com/aws/aws-sdk-go-v2/feature/s3/manager in / (#2737)",
+        "date": "2026-10-23T03:04:21Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "merged",
+        "reason": "Integrated frozen upstream commit; conflicting fork behavior retained and CI generation required."
+      },
+      {
+        "sha": "c0e3374c3486b9a4cfc88955141dc6b462462e8e",
+        "title": "chore(deps): bump vite, @vitejs/plugin-react-swc and @tailwindcss/vite (#2738)",
+        "date": "2026-10-23T02:48:19Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "merged",
+        "reason": "Integrated frozen upstream commit; conflicting fork behavior retained and CI generation required."
+      },
+      {
+        "sha": "4d2c2eddd7fab6b9eed438eb8e3f9b170cad9fbd",
+        "title": "chore(deps): bump github.com/Masterminds/semver/v3 in / (#2733)",
+        "date": "2026-10-23T02:48:07Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "merged",
+        "reason": "Integrated frozen upstream commit; conflicting fork behavior retained and CI generation required."
+      },
+      {
+        "sha": "42b9bb6cd4a3a1769aa628c909f87b1a276c5bf0",
+        "title": "chore(deps): bump github.com/aws/aws-sdk-go-v2 in / (#2736)",
+        "date": "2026-10-23T02:48:01Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "merged",
+        "reason": "Integrated frozen upstream commit; conflicting fork behavior retained and CI generation required."
+      },
+      {
+        "sha": "9eaf0fb71e53d868b2a9fe87e317ec58223666a6",
+        "title": "chore(deps): bump golang.org/x/sync in / (#2730)",
+        "date": "2026-10-23T02:47:50Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "merged",
+        "reason": "Integrated frozen upstream commit; conflicting fork behavior retained and CI generation required."
+      },
+      {
+        "sha": "2acd7b9e89d6ac060df83192fb144a183acc7c57",
+        "title": "chore(deps): bump ariga.io/atlas in / (#2735)",
+        "date": "2026-10-23T02:40:17Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "merged",
+        "reason": "Integrated frozen upstream commit; conflicting fork behavior retained and CI generation required."
+      },
+      {
+        "sha": "ebdf97ef235ded013a1ffff5786a1a6c736ef22a",
+        "title": "chore(deps): bump github.com/anthropics/anthropic-sdk-go (#2727)",
+        "date": "2026-10-23T02:33:37Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "merged",
+        "reason": "Integrated frozen upstream commit; conflicting fork behavior retained and CI generation required."
+      },
+      {
+        "sha": "49cb7a31298e0839c5c8de700757519e42fa9b98",
+        "title": "chore(deps): bump node from 22-alpine to 25-alpine (#2726)",
+        "date": "2026-10-23T02:32:36Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "merged",
+        "reason": "Integrated frozen upstream commit; conflicting fork behavior retained and CI generation required."
+      },
+      {
+        "sha": "b35ced17952013a3cfe618b279fe9e7a4718727d",
+        "title": "chore(deps): bump google.golang.org/genai in /integration_test/gemini (#2728)",
+        "date": "2026-10-23T02:32:26Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "merged",
+        "reason": "Integrated frozen upstream commit; conflicting fork behavior retained and CI generation required."
+      },
+      {
+        "sha": "ef768894a154fb445045d74af33dd4ab2bc1bc45",
+        "title": "chore(deps): bump go.uber.org/zap in / (#2729)",
+        "date": "2026-10-23T02:32:09Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "merged",
+        "reason": "Integrated frozen upstream commit; conflicting fork behavior retained and CI generation required."
+      },
+      {
+        "sha": "d2e6faee03f650a26e2c204ee334e074e71b7ab4",
+        "title": "chore(deps): bump github.com/openai/openai-go/v3 (#2731)",
+        "date": "2026-10-23T02:31:59Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "merged",
+        "reason": "Integrated frozen upstream commit; conflicting fork behavior retained and CI generation required."
+      },
+      {
+        "sha": "78fd232b2416af1ef59026362955103589e37126",
+        "title": "chore(deps): bump cloud.google.com/go/storage in / (#2732)",
+        "date": "2026-10-23T02:31:48Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "merged",
+        "reason": "Integrated frozen upstream commit; conflicting fork behavior retained and CI generation required."
+      },
+      {
+        "sha": "204644b491e9de7f1449d6bf5055bcfeb342ea87",
+        "title": "chore(deps): bump github.com/alicebob/miniredis/v2 in / (#2734)",
+        "date": "2026-10-23T02:31:28Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "merged",
+        "reason": "Integrated frozen upstream commit; conflicting fork behavior retained and CI generation required."
+      },
+      {
+        "sha": "73151f77118ddc00fe537f3ba1e2671722319db0",
+        "title": "chore(deps): configure Dependabot for all dependency surfaces (#2725)",
+        "date": "2026-10-23T02:21:17Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "merged",
+        "reason": "Integrated frozen upstream commit; conflicting fork behavior retained and CI generation required."
+      },
+      {
+        "sha": "128e5d7f533e53923a2e439e230f2047d99a7203",
+        "title": "build: pin Go builder image to 1.27.3 and Alpine 3.24",
+        "date": "2026-10-22T14:28:14Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "partial-and-merged",
+        "reason": "Go 1.27.3 already pinned; adopt exact Alpine 3.24 image."
+      },
+      {
+        "sha": "57f15ffc17c6f280309ab369f736e92001675903",
+        "title": "fix(deps): synchronize compress 1.18.7 across Go modules (#2723)",
+        "date": "2026-10-22T14:08:25Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "covered-and-merged",
+        "reason": "compress 1.18.7 already pinned; retain direct root dependency and upstream ancestry."
+      },
+      {
+        "sha": "1ced75465043e37e1c34272e955bd5fabe5056df",
+        "title": "chore(deps-dev): bump vite from 7.3.5 to 7.3.7 in /frontend",
+        "date": "2026-10-22T13:23:55Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "merged",
+        "reason": "Integrated frozen upstream commit; conflicting fork behavior retained and CI generation required."
+      },
+      {
+        "sha": "6250e7d3591d7755239daaccff5188331f0f889c",
+        "title": "ci: Scope Docker GHA cache by arch in workflows (#2712)",
+        "date": "2026-10-22T10:42:33Z",
+        "already_reviewed": false,
+        "reviewed": true,
+        "decision": "merged",
+        "reason": "Integrated frozen upstream commit; conflicting fork behavior retained and CI generation required."
+      }
+    ]
+  }
+]

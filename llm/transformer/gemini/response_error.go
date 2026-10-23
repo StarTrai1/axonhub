@@ -3,9 +3,30 @@ package gemini
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/looplj/axonhub/llm"
 )
+
+// An explicit prompt block with no candidates is a provider rejection, not an
+// empty generation eligible for retry. Candidate-level endings stay separate.
+func geminiPromptBlockError(response *GenerateContentResponse) *llm.ResponseError {
+	if len(response.Candidates) != 0 || response.PromptFeedback == nil {
+		return nil
+	}
+	feedback := response.PromptFeedback
+	reason := strings.TrimSpace(feedback.BlockReason)
+	if reason == "" || reason == "BLOCK_REASON_UNSPECIFIED" {
+		return nil
+	}
+	message := "Gemini blocked the prompt: " + reason
+	if detail := strings.TrimSpace(feedback.BlockReasonMessage); detail != "" {
+		message += ": " + detail
+	}
+	return &llm.ResponseError{StatusCode: http.StatusBadRequest, Detail: llm.ErrorDetail{
+		Code: reason, Type: "invalid_request_error", Message: message,
+	}}
+}
 
 // geminiInBandError classifies an explicit Google error envelope.
 func geminiInBandError(detail *ErrorDetail) *llm.ResponseError {

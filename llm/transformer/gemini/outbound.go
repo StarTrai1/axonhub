@@ -297,6 +297,9 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *h
 	if err := geminiInBandError(geminiResp.Error); err != nil {
 		return nil, err
 	}
+	if err := geminiPromptBlockError(&geminiResp); err != nil {
+		return nil, err
+	}
 	if err := geminiMalformedToolError(&geminiResp, nil); err != nil {
 		return nil, err
 	}

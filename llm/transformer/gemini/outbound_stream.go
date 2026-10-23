@@ -68,6 +68,9 @@ func (t *OutboundTransformer) transformStreamChunkWithState(
 	if err := geminiInBandError(resp.Error); err != nil {
 		return nil, err
 	}
+	if err := geminiPromptBlockError(&resp); err != nil {
+		return nil, err
+	}
 	if state.toolCandidates == nil {
 		state.toolCandidates = make(map[int64]bool)
 	}

@@ -44,7 +44,7 @@ func responsesIntegrationServer(t *testing.T, handler http.Handler) *httptest.Se
 	return server
 }
 
-func responsesIntegrationGateway(t *testing.T, client *ent.Client, handlers *OpenAIHandlers, project *ent.Project) *httptest.Server {
+func responsesIntegrationGateway(t *testing.T, client *ent.Client, handlers *OpenAIHandlers, project *ent.Project, deadlines ...time.Duration) *httptest.Server {
 	t.Helper()
 	router := gin.New()
 	router.Use(func(c *gin.Context) {
@@ -56,7 +56,9 @@ func responsesIntegrationGateway(t *testing.T, client *ent.Client, handlers *Ope
 	})
 	router.POST("/v1/responses", handlers.CreateResponse)
 	router.POST("/v1/alpha/search", handlers.Search)
-	router.GET("/v1/responses", handlers.CreateResponseWebSocket(5*time.Second))
+	timeout := 5 * time.Second
+	if len(deadlines) > 0 { timeout = deadlines[0] }
+	router.GET("/v1/responses", handlers.CreateResponseWebSocket(timeout))
 	router.POST("/v1/images/generations", handlers.CreateImage)
 	router.POST("/v1/images/edits", handlers.CreateImageEdit)
 	return responsesIntegrationServer(t, router)

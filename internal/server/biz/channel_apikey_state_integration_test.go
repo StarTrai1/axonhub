@@ -88,7 +88,7 @@ func TestKeySelectionState_AttachedByRealChannelBuild(t *testing.T) {
 	}
 }
 
-// A real cache reload rebuilds every snapshot. The round-robin rotation must
+// A changed channel rebuilds its snapshot. The round-robin rotation must
 // carry on from where it was instead of restarting at the first key.
 func TestRoundRobinState_SurvivesRealCacheReload(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
@@ -112,6 +112,9 @@ func TestRoundRobinState_SurvivesRealCacheReload(t *testing.T) {
 	require.Equal(t, "k1", provider.Get(ctx))
 	require.Equal(t, "k2", provider.Get(ctx))
 
+	// Unchanged snapshots are deliberately reused by this fork. Change an
+	// unrelated persisted field so the test actually exercises a rebuild.
+	require.NoError(t, client.Channel.UpdateOneID(ch.ID).SetName(ch.Name + "-renamed").Exec(ctx))
 	require.NoError(t, svc.enabledChannelsCache.Load(ctx, true))
 
 	second := svc.GetEnabledChannel(ch.ID)
@@ -144,6 +147,9 @@ func TestStickyState_SurvivesRealCacheReload(t *testing.T) {
 	traceCtx := contexts.WithTrace(ctx, &ent.Trace{TraceID: "trace-reload"})
 	selected := newSharedStickyKeyProvider(first).Get(traceCtx)
 
+	// Unchanged snapshots are deliberately reused by this fork. Change an
+	// unrelated persisted field so the test actually exercises a rebuild.
+	require.NoError(t, client.Channel.UpdateOneID(ch.ID).SetName(ch.Name + "-renamed").Exec(ctx))
 	require.NoError(t, svc.enabledChannelsCache.Load(ctx, true))
 
 	second := svc.GetEnabledChannel(ch.ID)
@@ -177,6 +183,9 @@ func TestFixedState_SurvivesKeyDisableAndReload(t *testing.T) {
 
 	// Disabling a different key keeps the remembered one.
 	require.NoError(t, svc.DisableAPIKey(ctx, ch.ID, "k1", 401, "test"))
+	// Unchanged snapshots are deliberately reused by this fork. Change an
+	// unrelated persisted field so the test actually exercises a rebuild.
+	require.NoError(t, client.Channel.UpdateOneID(ch.ID).SetName(ch.Name + "-renamed").Exec(ctx))
 	require.NoError(t, svc.enabledChannelsCache.Load(ctx, true))
 
 	second := svc.GetEnabledChannel(ch.ID)
@@ -217,6 +226,9 @@ func TestRoundRobinSuccessState_SurvivesRealCacheReload(t *testing.T) {
 	// One success advances the cursor to k2.
 	svc.onAPIKeySuccess(ch.ID, "k1")
 
+	// Unchanged snapshots are deliberately reused by this fork. Change an
+	// unrelated persisted field so the test actually exercises a rebuild.
+	require.NoError(t, client.Channel.UpdateOneID(ch.ID).SetName(ch.Name + "-renamed").Exec(ctx))
 	require.NoError(t, svc.enabledChannelsCache.Load(ctx, true))
 
 	second := svc.GetEnabledChannel(ch.ID)

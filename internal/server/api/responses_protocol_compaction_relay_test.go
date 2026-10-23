@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
@@ -81,7 +82,9 @@ func TestResponsesProtocolCompactionRelayContinuation(t *testing.T) {
 					policy := handlers.SystemService.RetryPolicyOrDefault(ctx)
 					policy.Enabled, policy.MaxChannelRetries, policy.MaxSingleChannelRetries, policy.RetryDelayMs = true, 0, 3, 0
 					require.NoError(t, handlers.SystemService.SetRetryPolicy(ctx, policy))
-					gateway := responsesIntegrationGateway(t, client, handlers, project)
+					// The recovery includes several rejected attempts and an internal summary.
+					// Allow the full chain on slower Windows CI runners.
+					gateway := responsesIntegrationGateway(t, client, handlers, project, 10*time.Second)
 					root := fmt.Sprintf(`{"model":%q,"stream":false,"client_metadata":{"thread_id":"relay-thread","x-codex-window-id":"relay-window"},"input":[{"role":"user","content":"full-source-canary"},{"type":"compaction_trigger"}]}`, model)
 					status, checkpoint := responsesIntegrationPost(t, gateway, "/v1/responses", root)
 					require.Equal(t, http.StatusOK, status, string(checkpoint))
