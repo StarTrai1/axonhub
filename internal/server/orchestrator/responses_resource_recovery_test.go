@@ -18,8 +18,10 @@ import (
 
 const responsesResourceMismatchMessage = "The requested item was created under a different Azure OpenAI resource. Use the same resource that created the item to access it."
 
-const responsesResourceRequestIDMessage = responsesResourceMismatchMessage + " (request id: synthetic_request-65430) [trace_id=synthetic-trace]"
-const responsesResourceRedactedMessage = "The requested item was created under a different the upstream service resource. Use the same resource that created the item to access it. [trace_id=synthetic-trace]"
+const (
+	responsesResourceRequestIDMessage = responsesResourceMismatchMessage + " (request id: synthetic_request-65430) [trace_id=synthetic-trace]"
+	responsesResourceRedactedMessage  = "The requested item was created under a different the upstream service resource. Use the same resource that created the item to access it. [trace_id=synthetic-trace]"
+)
 
 const responsesResourceHistoryFixture = `{
 	"model":"gpt-6-astra","stream":true,"store":false,

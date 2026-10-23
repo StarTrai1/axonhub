@@ -18,6 +18,6 @@
 
 [OpenAI conversation state文档](https://developers.openai.com/api/docs/guides/conversation-state#manually-manage-conversation-state)要求普通无状态续接携带完整输出项，包括reasoning。因此本轮保持正常续接原样，只补明确资源拒绝后的错误格式识别，不采用普遍删除历史状态的策略。
 
-新增11条识别正反例与8种管线组合，覆盖HTTP/流内错误、有无checkpoint、原线程续用、正文与工具完整性及凭据保留。现有预算/隔离/缺失源保护继续适用。验证仅在GitHub CI，尚未得到结果；不宣称生产原会话已经恢复或供应商必定接受摘要。
+新增11条识别正反例与8种管线组合，覆盖HTTP/流内错误、有无checkpoint、原线程续用、正文与工具完整性及凭据保留。现有预算/隔离/缺失源保护继续适用。首轮提交187eaeb9的完整Test（39898614643）和Build（39898614620）通过，包括Windows恢复、根模块/PostgreSQL、LLM、并发race和两版Codex客户端回环。Lint（39898614544）仅测试常量分组格式失败，已回收CI生成的formatter补丁；产品代码未变化。最终SHA检查仍待完成。不宣称生产原会话已经恢复或供应商必定接受摘要。
 
-生产数据库、配置和服务未修改，没有真实模型探测。原始正文留在私有临时证据目录，仅脱敏证据进入报告。发布进度待CI更新。
+生产数据库、配置和服务未修改，没有真实模型探测。原始正文留在私有临时证据目录，仅脱敏证据进入报告。临时只读快照已按762302464字节检查后删除，确认不存在。PR #9：https://github.com/StarTrai1/axonhub/pull/9 。最终发布收据写入本目录本地DELIVERY.md/DELIVERY.json，避免改变已验证SHA。
