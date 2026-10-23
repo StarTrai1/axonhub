@@ -107,6 +107,19 @@ func newResponsesReasoningRecovery(scope responsesReasoningRecoveryScope, before
 	for hash := range encryptedResponsesReasoningHashes(after) {
 		delete(hashes, hash)
 	}
+	// Removing a stored ID can change the hash while retaining the exact native
+	// ciphertext. That success is not evidence for deleting reasoning on replay.
+	retainedCiphertexts := make(map[string]struct{})
+	for _, item := range gjson.GetBytes(after, "input").Array() {
+		if item.Get("type").String() == "reasoning" && item.Get("encrypted_content").String() != "" {
+			retainedCiphertexts[item.Get("encrypted_content").String()] = struct{}{}
+		}
+	}
+	for _, item := range gjson.GetBytes(before, "input").Array() {
+		if _, retained := retainedCiphertexts[item.Get("encrypted_content").String()]; retained && item.Get("type").String() == "reasoning" {
+			delete(hashes, responsesReasoningItemHash(item))
+		}
+	}
 	if len(hashes) == 0 || len(hashes) > responsesReasoningRecoveryMaxHashes {
 		return nil
 	}

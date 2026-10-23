@@ -108,6 +108,12 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawError(ctx context.C
 	if !exactCheckpoint && (param != "" || !responsesResourceMismatch(code, message)) {
 		return
 	}
+	if !exactCheckpoint && responsesResourceHasNativeReasoningIDs(request.Body) {
+		// The status middleware can replay stored reasoning without its optional
+		// IDs. Do not pay for a summary or persist a portable-session decision
+		// until that ciphertext-preserving correction is explicitly rejected.
+		return
+	}
 	m.rememberCheckpointRejection(ctx, key)
 	if saveErr := m.adapter.requirePortableCheckpoint(ctx, m.outbound.state); saveErr != nil {
 		log.Warn(ctx, "could not retain portable checkpoint session", log.Cause(saveErr))
@@ -367,7 +373,7 @@ func (m *responsesCompactionRecoveryMiddleware) recoveryKey(
 	// Look up the original client thread, before an OAuth identity policy can
 	// rewrite its wire identity. Explicit overrides cannot substitute another
 	// checkpoint and thereby select a different retained source.
-	original, threadID, _, err := parseRemoteCompactionRequest(rawRequestPayload(state.RawRequest))
+	original, threadID, _, err := parseRemoteCompactionRequest(checkpointRecoverySourceBody(state))
 	if err != nil || original == nil || threadID == "" ||
 		remoteCompactionCacheKey(original) != remoteCompactionCacheKey(ref) {
 		return responsesCompactionRecoveryKey{}, nil, false
@@ -376,4 +382,21 @@ func (m *responsesCompactionRecoveryMiddleware) recoveryKey(
 		scope: scope, cacheKey: remoteCompactionCacheKey(ref), threadID: threadID,
 		apiKeyID: state.APIKey.ID, projectID: state.APIKey.ProjectID,
 	}, ref, true
+}
+
+// A delta carries no checkpoint itself. Its completed, owner-scoped snapshot
+// was authenticated during prepareResponsesAttempt; use that prepared source
+// before outbound overrides. Never trust the final provider body as authority.
+func checkpointRecoverySourceBody(state *PersistenceState) []byte {
+	if state == nil || state.RawRequest == nil {
+		return nil
+	}
+	raw := rawRequestPayload(state.RawRequest)
+	c := state.ResponsesContinuation
+	if c == nil || c.previous == "" || !c.complete || c.owner == nil || c.owner.Snapshot == nil ||
+		c.owner.ID != c.previous || gjson.GetBytes(raw, "previous_response_id").String() != c.previous ||
+		gjson.GetBytes(c.effective, "previous_response_id").String() != "" {
+		return raw
+	}
+	return c.effective
 }

@@ -1,0 +1,2385 @@
+{
+  "requests": [
+    {
+      "id": 65638,
+      "created_at": "2026-10-23 07:10:49.8311738 +0000 UTC",
+      "status": "completed",
+      "model_id": "gpt-6-astra",
+      "format": "openai/responses-ws",
+      "channel_id": 40,
+      "metrics_latency_ms": 28125,
+      "metrics_first_token_latency_ms": 23366,
+      "source": "api",
+      "trace_id": 8607,
+      "request_body": {
+        "bytes": 2680,
+        "keys": [
+          "type",
+          "model",
+          "stream",
+          "previous_response_id",
+          "input",
+          "tool_choice",
+          "parallel_tool_calls",
+          "reasoning",
+          "store",
+          "include",
+          "prompt_cache_key",
+          "text",
+          "client_metadata"
+        ],
+        "previous_response_id": "resp_01bb3d642111a944006adb085329cc81958115b43c3f3894d4",
+        "id": null,
+        "status": null,
+        "model": "gpt-6-astra",
+        "types": {
+          "custom_tool_call_output:": 1
+        },
+        "items": 1,
+        "compactions": [],
+        "trigger": false,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 0,
+          "Another language model": 0
+        }
+      },
+      "response_body": {
+        "bytes": 6006,
+        "keys": [
+          "object",
+          "id",
+          "created_at",
+          "model",
+          "output",
+          "status",
+          "service_tier",
+          "usage"
+        ],
+        "previous_response_id": null,
+        "id": "resp_01bb3d642111a944006adb087e50748195a0e3eb969b900059",
+        "status": "completed",
+        "model": "gpt-6-astra",
+        "types": {
+          "reasoning:": 1,
+          "custom_tool_call:": 1
+        },
+        "items": 2,
+        "compactions": [],
+        "trigger": false,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 0,
+          "Another language model": 0
+        }
+      },
+      "usage": {
+        "input_tokens": 290545,
+        "input_tokens_details": {
+          "cache_write_tokens": 2190,
+          "cached_tokens": 288352
+        },
+        "output_tokens": 897,
+        "output_tokens_details": {
+          "reasoning_tokens": 516
+        },
+        "total_tokens": 291442
+      },
+      "response_chunks": {
+        "type": "NoneType"
+      },
+      "identity_headers": {
+        "Session-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e"
+        ],
+        "Thread-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e"
+        ],
+        "X-Codex-Window-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e:1"
+        ]
+      }
+    },
+    {
+      "id": 65639,
+      "created_at": "2026-10-23 07:11:17.9826475 +0000 UTC",
+      "status": "completed",
+      "model_id": "gpt-6-astra",
+      "format": "openai/responses-ws",
+      "channel_id": 40,
+      "metrics_latency_ms": 66206,
+      "metrics_first_token_latency_ms": 52116,
+      "source": "api",
+      "trace_id": 8607,
+      "request_body": {
+        "bytes": 4818,
+        "keys": [
+          "type",
+          "model",
+          "stream",
+          "previous_response_id",
+          "input",
+          "tool_choice",
+          "parallel_tool_calls",
+          "reasoning",
+          "store",
+          "include",
+          "prompt_cache_key",
+          "text",
+          "client_metadata"
+        ],
+        "previous_response_id": "resp_01bb3d642111a944006adb087e50748195a0e3eb969b900059",
+        "id": null,
+        "status": null,
+        "model": "gpt-6-astra",
+        "types": {
+          "custom_tool_call_output:": 1
+        },
+        "items": 1,
+        "compactions": [],
+        "trigger": false,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 0,
+          "Another language model": 0
+        }
+      },
+      "response_body": {
+        "bytes": 13728,
+        "keys": [
+          "access_programs",
+          "object",
+          "id",
+          "created_at",
+          "model",
+          "output",
+          "status",
+          "service_tier",
+          "usage"
+        ],
+        "previous_response_id": null,
+        "id": "resp_01bb3d642111a944006adb089a6eec819586151b807b45bb2e",
+        "status": "completed",
+        "model": "gpt-6-astra",
+        "types": {
+          "reasoning:": 2,
+          "custom_tool_call:": 1
+        },
+        "items": 3,
+        "compactions": [],
+        "trigger": false,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 0,
+          "Another language model": 0
+        }
+      },
+      "usage": {
+        "input_tokens": 292308,
+        "input_tokens_details": {
+          "cache_write_tokens": 1763,
+          "cached_tokens": 290542
+        },
+        "output_tokens": 2463,
+        "output_tokens_details": {
+          "reasoning_tokens": 1034
+        },
+        "total_tokens": 294771
+      },
+      "response_chunks": {
+        "type": "NoneType"
+      },
+      "identity_headers": {
+        "Session-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e"
+        ],
+        "Thread-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e"
+        ],
+        "X-Codex-Window-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e:1"
+        ]
+      }
+    },
+    {
+      "id": 65640,
+      "created_at": "2026-10-23 07:12:24.4865631 +0000 UTC",
+      "status": "completed",
+      "model_id": "gpt-6-astra",
+      "format": "openai/responses-ws",
+      "channel_id": 40,
+      "metrics_latency_ms": 14099,
+      "metrics_first_token_latency_ms": 12696,
+      "source": "api",
+      "trace_id": 8607,
+      "request_body": {
+        "bytes": 5313,
+        "keys": [
+          "type",
+          "model",
+          "stream",
+          "previous_response_id",
+          "input",
+          "tool_choice",
+          "parallel_tool_calls",
+          "reasoning",
+          "store",
+          "include",
+          "prompt_cache_key",
+          "text",
+          "client_metadata"
+        ],
+        "previous_response_id": "resp_01bb3d642111a944006adb089a6eec819586151b807b45bb2e",
+        "id": null,
+        "status": null,
+        "model": "gpt-6-astra",
+        "types": {
+          "custom_tool_call_output:": 1
+        },
+        "items": 1,
+        "compactions": [],
+        "trigger": false,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 0,
+          "Another language model": 0
+        }
+      },
+      "response_body": {
+        "bytes": 3570,
+        "keys": [
+          "access_programs",
+          "object",
+          "id",
+          "created_at",
+          "model",
+          "output",
+          "status",
+          "service_tier",
+          "usage"
+        ],
+        "previous_response_id": null,
+        "id": "resp_01bb3d642111a944006adb08dc8bf08195b358d5dc8def02de",
+        "status": "completed",
+        "model": "gpt-6-astra",
+        "types": {
+          "reasoning:": 1,
+          "custom_tool_call:": 1
+        },
+        "items": 2,
+        "compactions": [],
+        "trigger": false,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 0,
+          "Another language model": 0
+        }
+      },
+      "usage": {
+        "input_tokens": 295538,
+        "input_tokens_details": {
+          "cache_write_tokens": 3230,
+          "cached_tokens": 292305
+        },
+        "output_tokens": 419,
+        "output_tokens_details": {
+          "reasoning_tokens": 142
+        },
+        "total_tokens": 295957
+      },
+      "response_chunks": {
+        "type": "NoneType"
+      },
+      "identity_headers": {
+        "Session-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e"
+        ],
+        "Thread-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e"
+        ],
+        "X-Codex-Window-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e:1"
+        ]
+      }
+    },
+    {
+      "id": 65641,
+      "created_at": "2026-10-23 07:12:38.6010796 +0000 UTC",
+      "status": "completed",
+      "model_id": "gpt-6-astra",
+      "format": "openai/responses-ws",
+      "channel_id": 40,
+      "metrics_latency_ms": 15846,
+      "metrics_first_token_latency_ms": 15157,
+      "source": "api",
+      "trace_id": 8607,
+      "request_body": {
+        "bytes": 4158,
+        "keys": [
+          "type",
+          "model",
+          "stream",
+          "previous_response_id",
+          "input",
+          "tool_choice",
+          "parallel_tool_calls",
+          "reasoning",
+          "store",
+          "include",
+          "prompt_cache_key",
+          "text",
+          "client_metadata"
+        ],
+        "previous_response_id": "resp_01bb3d642111a944006adb08dc8bf08195b358d5dc8def02de",
+        "id": null,
+        "status": null,
+        "model": "gpt-6-astra",
+        "types": {
+          "custom_tool_call_output:": 1
+        },
+        "items": 1,
+        "compactions": [],
+        "trigger": false,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 0,
+          "Another language model": 0
+        }
+      },
+      "response_body": {
+        "bytes": 3482,
+        "keys": [
+          "access_programs",
+          "object",
+          "id",
+          "created_at",
+          "model",
+          "output",
+          "status",
+          "service_tier",
+          "usage"
+        ],
+        "previous_response_id": null,
+        "id": "resp_01bb3d642111a944006adb08eab8c881958c5df8f15b0016a1",
+        "status": "completed",
+        "model": "gpt-6-astra",
+        "types": {
+          "reasoning:": 1,
+          "custom_tool_call:": 1
+        },
+        "items": 2,
+        "compactions": [],
+        "trigger": false,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 0,
+          "Another language model": 0
+        }
+      },
+      "usage": {
+        "input_tokens": 296506,
+        "input_tokens_details": {
+          "cache_write_tokens": 968,
+          "cached_tokens": 295535
+        },
+        "output_tokens": 350,
+        "output_tokens_details": {
+          "reasoning_tokens": 166
+        },
+        "total_tokens": 296856
+      },
+      "response_chunks": {
+        "type": "NoneType"
+      },
+      "identity_headers": {
+        "Session-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e"
+        ],
+        "Thread-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e"
+        ],
+        "X-Codex-Window-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e:1"
+        ]
+      }
+    },
+    {
+      "id": 65642,
+      "created_at": "2026-10-23 07:12:55.2230178 +0000 UTC",
+      "status": "completed",
+      "model_id": "gpt-6-astra",
+      "format": "openai/responses-ws",
+      "channel_id": 40,
+      "metrics_latency_ms": 59541,
+      "metrics_first_token_latency_ms": 46548,
+      "source": "api",
+      "trace_id": 8607,
+      "request_body": {
+        "bytes": 2680,
+        "keys": [
+          "type",
+          "model",
+          "stream",
+          "previous_response_id",
+          "input",
+          "tool_choice",
+          "parallel_tool_calls",
+          "reasoning",
+          "store",
+          "include",
+          "prompt_cache_key",
+          "text",
+          "client_metadata"
+        ],
+        "previous_response_id": "resp_01bb3d642111a944006adb08eab8c881958c5df8f15b0016a1",
+        "id": null,
+        "status": null,
+        "model": "gpt-6-astra",
+        "types": {
+          "custom_tool_call_output:": 1
+        },
+        "items": 1,
+        "compactions": [],
+        "trigger": false,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 0,
+          "Another language model": 0
+        }
+      },
+      "response_body": {
+        "bytes": 13078,
+        "keys": [
+          "access_programs",
+          "object",
+          "id",
+          "created_at",
+          "model",
+          "output",
+          "status",
+          "service_tier",
+          "usage"
+        ],
+        "previous_response_id": null,
+        "id": "resp_01bb3d642111a944006adb08fbaa008195839c34dade919196",
+        "status": "completed",
+        "model": "gpt-6-astra",
+        "types": {
+          "reasoning:": 2,
+          "custom_tool_call:": 1
+        },
+        "items": 3,
+        "compactions": [],
+        "trigger": false,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 0,
+          "Another language model": 0
+        }
+      },
+      "usage": {
+        "input_tokens": 296917,
+        "input_tokens_details": {
+          "cache_write_tokens": 411,
+          "cached_tokens": 296503
+        },
+        "output_tokens": 2207,
+        "output_tokens_details": {
+          "reasoning_tokens": 882
+        },
+        "total_tokens": 299124
+      },
+      "response_chunks": {
+        "type": "NoneType"
+      },
+      "identity_headers": {
+        "Session-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e"
+        ],
+        "Thread-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e"
+        ],
+        "X-Codex-Window-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e:1"
+        ]
+      }
+    },
+    {
+      "id": 65643,
+      "created_at": "2026-10-23 07:13:54.7788936 +0000 UTC",
+      "status": "failed",
+      "model_id": "gpt-6-astra",
+      "format": "openai/responses-ws",
+      "channel_id": 40,
+      "metrics_latency_ms": 23755,
+      "metrics_first_token_latency_ms": null,
+      "source": "api",
+      "trace_id": 8607,
+      "request_body": {
+        "bytes": 3281,
+        "keys": [
+          "type",
+          "model",
+          "stream",
+          "previous_response_id",
+          "input",
+          "tool_choice",
+          "parallel_tool_calls",
+          "reasoning",
+          "store",
+          "include",
+          "prompt_cache_key",
+          "text",
+          "client_metadata"
+        ],
+        "previous_response_id": "resp_01bb3d642111a944006adb08fbaa008195839c34dade919196",
+        "id": null,
+        "status": null,
+        "model": "gpt-6-astra",
+        "types": {
+          "custom_tool_call_output:": 1
+        },
+        "items": 1,
+        "compactions": [],
+        "trigger": false,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 0,
+          "Another language model": 0
+        }
+      },
+      "response_body": {
+        "type": "NoneType"
+      },
+      "response_chunks": {
+        "type": "NoneType"
+      },
+      "identity_headers": {
+        "Session-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e"
+        ],
+        "Thread-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e"
+        ],
+        "X-Codex-Window-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e:1"
+        ]
+      }
+    },
+    {
+      "id": 65644,
+      "created_at": "2026-10-23 07:14:18.6184877 +0000 UTC",
+      "status": "completed",
+      "model_id": "gpt-6-astra",
+      "format": "openai/responses-ws",
+      "channel_id": 40,
+      "metrics_latency_ms": 137407,
+      "metrics_first_token_latency_ms": 131892,
+      "source": "api",
+      "trace_id": 8607,
+      "request_body": {
+        "bytes": 1256658,
+        "keys": [
+          "type",
+          "model",
+          "stream",
+          "input",
+          "tool_choice",
+          "parallel_tool_calls",
+          "reasoning",
+          "store",
+          "include",
+          "prompt_cache_key",
+          "text",
+          "client_metadata"
+        ],
+        "previous_response_id": null,
+        "id": null,
+        "status": null,
+        "model": "gpt-6-astra",
+        "types": {
+          "additional_tools:developer": 1,
+          "message:developer": 5,
+          "message:user": 8,
+          "compaction:": 1,
+          "custom_tool_call:": 74,
+          "custom_tool_call_output:": 74,
+          "reasoning:": 108,
+          "message:assistant": 12,
+          "function_call:": 2,
+          "function_call_output:": 2
+        },
+        "items": 287,
+        "compactions": [
+          {
+            "index": 9,
+            "id": "cmp_01bb3d642111a944006adaeba7640c819581bb9551852aafdd",
+            "bytes": 27940,
+            "local": false
+          }
+        ],
+        "trigger": false,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 0,
+          "Another language model": 0
+        }
+      },
+      "response_body": {
+        "bytes": 7024,
+        "keys": [
+          "access_programs",
+          "object",
+          "id",
+          "created_at",
+          "model",
+          "output",
+          "status",
+          "service_tier",
+          "usage"
+        ],
+        "previous_response_id": null,
+        "id": "resp_060470b2e81f0b51006adb09b4c3188197bef01ac443e6449d",
+        "status": "completed",
+        "model": "gpt-6-astra",
+        "types": {
+          "reasoning:": 1,
+          "message:assistant": 1,
+          "custom_tool_call:": 1
+        },
+        "items": 3,
+        "compactions": [],
+        "trigger": false,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 0,
+          "Another language model": 0
+        }
+      },
+      "usage": {
+        "input_tokens": 259109,
+        "input_tokens_details": {
+          "cache_write_tokens": 259106,
+          "cached_tokens": 0
+        },
+        "output_tokens": 833,
+        "output_tokens_details": {
+          "reasoning_tokens": 516
+        },
+        "total_tokens": 259942
+      },
+      "response_chunks": {
+        "type": "NoneType"
+      },
+      "identity_headers": {
+        "Session-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e"
+        ],
+        "Thread-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e"
+        ],
+        "X-Codex-Window-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e:1"
+        ]
+      }
+    },
+    {
+      "id": 65645,
+      "created_at": "2026-10-23 07:14:30.6975429 +0000 UTC",
+      "status": "completed",
+      "model_id": "gpt-6-astra",
+      "format": "openai/responses",
+      "channel_id": 40,
+      "metrics_latency_ms": 88384,
+      "metrics_first_token_latency_ms": 10874,
+      "source": "api",
+      "trace_id": 8607,
+      "request_body": {
+        "bytes": 1019489,
+        "keys": [
+          "client_metadata",
+          "include",
+          "input",
+          "instructions",
+          "model",
+          "parallel_tool_calls",
+          "prompt_cache_key",
+          "reasoning",
+          "store",
+          "stream",
+          "text",
+          "tool_choice",
+          "tools"
+        ],
+        "previous_response_id": null,
+        "id": null,
+        "status": null,
+        "model": "gpt-6-astra",
+        "types": {
+          "message:developer": 6,
+          "message:user": 5,
+          "message:assistant": 22,
+          "custom_tool_call:": 57,
+          "custom_tool_call_output:": 57,
+          "function_call:": 2,
+          "function_call_output:": 2
+        },
+        "items": 151,
+        "compactions": [],
+        "trigger": false,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 1,
+          "Another language model": 0
+        }
+      },
+      "response_body": {
+        "bytes": 18392,
+        "keys": [
+          "object",
+          "id",
+          "created_at",
+          "model",
+          "output",
+          "status",
+          "service_tier",
+          "usage"
+        ],
+        "previous_response_id": null,
+        "id": "resp_02e002490b4878e9006adb095906a881979b8c5bd951a5256e",
+        "status": "completed",
+        "model": "gpt-6-astra",
+        "types": {
+          "reasoning:": 1,
+          "message:assistant": 1
+        },
+        "items": 2,
+        "compactions": [],
+        "trigger": false,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 0,
+          "Another language model": 0
+        }
+      },
+      "usage": {
+        "input_tokens": 330110,
+        "input_tokens_details": {
+          "cache_write_tokens": 330035,
+          "cached_tokens": 0
+        },
+        "output_tokens": 3998,
+        "output_tokens_details": {
+          "reasoning_tokens": 345
+        },
+        "total_tokens": 334108
+      },
+      "response_chunks": {
+        "type": "NoneType"
+      },
+      "identity_headers": {}
+    },
+    {
+      "id": 65646,
+      "created_at": "2026-10-23 07:16:36.0052561 +0000 UTC",
+      "status": "completed",
+      "model_id": "gpt-6-astra",
+      "format": "openai/responses-ws",
+      "channel_id": 40,
+      "metrics_latency_ms": 115995,
+      "metrics_first_token_latency_ms": 25498,
+      "source": "api",
+      "trace_id": 8607,
+      "request_body": {
+        "bytes": 12710,
+        "keys": [
+          "type",
+          "model",
+          "stream",
+          "previous_response_id",
+          "input",
+          "tool_choice",
+          "parallel_tool_calls",
+          "reasoning",
+          "store",
+          "include",
+          "prompt_cache_key",
+          "text",
+          "client_metadata"
+        ],
+        "previous_response_id": "resp_060470b2e81f0b51006adb09b4c3188197bef01ac443e6449d",
+        "id": null,
+        "status": null,
+        "model": "gpt-6-astra",
+        "types": {
+          "custom_tool_call_output:": 1
+        },
+        "items": 1,
+        "compactions": [],
+        "trigger": false,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 0,
+          "Another language model": 0
+        }
+      },
+      "response_body": {
+        "bytes": 23015,
+        "keys": [
+          "access_programs",
+          "object",
+          "id",
+          "created_at",
+          "model",
+          "output",
+          "status",
+          "service_tier",
+          "usage"
+        ],
+        "previous_response_id": null,
+        "id": "resp_0589ca79605904b8006adb09d864208194b85b47cac8549bf1",
+        "status": "completed",
+        "model": "gpt-6-astra",
+        "types": {
+          "reasoning:": 1,
+          "custom_tool_call:": 1
+        },
+        "items": 2,
+        "compactions": [],
+        "trigger": false,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 0,
+          "Another language model": 0
+        }
+      },
+      "usage": {
+        "input_tokens": 263226,
+        "input_tokens_details": {
+          "cache_write_tokens": 4117,
+          "cached_tokens": 259106
+        },
+        "output_tokens": 5912,
+        "output_tokens_details": {
+          "reasoning_tokens": 516
+        },
+        "total_tokens": 269138
+      },
+      "response_chunks": {
+        "type": "NoneType"
+      },
+      "identity_headers": {
+        "Session-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e"
+        ],
+        "Thread-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e"
+        ],
+        "X-Codex-Window-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e:1"
+        ]
+      }
+    },
+    {
+      "id": 65647,
+      "created_at": "2026-10-23 07:18:32.0172531 +0000 UTC",
+      "status": "completed",
+      "model_id": "gpt-6-astra",
+      "format": "openai/responses-ws",
+      "channel_id": 40,
+      "metrics_latency_ms": 24857,
+      "metrics_first_token_latency_ms": 21731,
+      "source": "api",
+      "trace_id": 8607,
+      "request_body": {
+        "bytes": 2521,
+        "keys": [
+          "type",
+          "model",
+          "stream",
+          "previous_response_id",
+          "input",
+          "tool_choice",
+          "parallel_tool_calls",
+          "reasoning",
+          "store",
+          "include",
+          "prompt_cache_key",
+          "text",
+          "client_metadata"
+        ],
+        "previous_response_id": "resp_0589ca79605904b8006adb09d864208194b85b47cac8549bf1",
+        "id": null,
+        "status": null,
+        "model": "gpt-6-astra",
+        "types": {
+          "custom_tool_call_output:": 1
+        },
+        "items": 1,
+        "compactions": [],
+        "trigger": false,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 0,
+          "Another language model": 0
+        }
+      },
+      "response_body": {
+        "bytes": 6475,
+        "keys": [
+          "access_programs",
+          "object",
+          "id",
+          "created_at",
+          "model",
+          "output",
+          "status",
+          "service_tier",
+          "usage"
+        ],
+        "previous_response_id": null,
+        "id": "resp_088b9e311df66290006adb0a4be55c8195965d2f645db4fab0",
+        "status": "completed",
+        "model": "gpt-6-astra",
+        "types": {
+          "reasoning:": 1,
+          "custom_tool_call:": 1
+        },
+        "items": 2,
+        "compactions": [],
+        "trigger": false,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 0,
+          "Another language model": 0
+        }
+      },
+      "usage": {
+        "input_tokens": 268644,
+        "input_tokens_details": {
+          "cache_write_tokens": 5418,
+          "cached_tokens": 263223
+        },
+        "output_tokens": 845,
+        "output_tokens_details": {
+          "reasoning_tokens": 484
+        },
+        "total_tokens": 269489
+      },
+      "response_chunks": {
+        "type": "NoneType"
+      },
+      "identity_headers": {
+        "Session-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e"
+        ],
+        "Thread-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e"
+        ],
+        "X-Codex-Window-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e:1"
+        ]
+      }
+    }
+  ],
+  "executions": [
+    {
+      "id": 196977,
+      "created_at": "2026-10-23 07:10:50.081164 +0000 UTC",
+      "status": "completed",
+      "model_id": "gpt-6-astra",
+      "format": "openai/responses",
+      "channel_id": 40,
+      "metrics_latency_ms": 27896,
+      "metrics_first_token_latency_ms": 23136,
+      "request_id": 65638,
+      "error_message": null,
+      "response_status_code": null,
+      "request_body": {
+        "bytes": 1201808,
+        "keys": [
+          "client_metadata",
+          "include",
+          "input",
+          "model",
+          "parallel_tool_calls",
+          "prompt_cache_key",
+          "reasoning",
+          "store",
+          "stream",
+          "text",
+          "tool_choice",
+          "tools",
+          "instructions"
+        ],
+        "previous_response_id": null,
+        "id": null,
+        "status": null,
+        "model": "gpt-6-astra",
+        "types": {
+          "message:developer": 5,
+          "message:user": 7,
+          "compaction:": 1,
+          "custom_tool_call:": 69,
+          "custom_tool_call_output:": 69,
+          "reasoning:": 101,
+          "message:assistant": 12,
+          "function_call:": 2,
+          "function_call_output:": 2
+        },
+        "items": 268,
+        "compactions": [
+          {
+            "index": 8,
+            "id": "cmp_01bb3d642111a944006adaeba7640c819581bb9551852aafdd",
+            "bytes": 27940,
+            "local": false
+          }
+        ],
+        "trigger": false,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 0,
+          "Another language model": 0
+        }
+      },
+      "response_body": {
+        "bytes": 6031,
+        "keys": [
+          "object",
+          "id",
+          "created_at",
+          "model",
+          "output",
+          "status",
+          "service_tier",
+          "usage"
+        ],
+        "previous_response_id": null,
+        "id": "resp_01bb3d642111a944006adb087e50748195a0e3eb969b900059",
+        "status": "completed",
+        "model": "gpt-6-astra",
+        "types": {
+          "reasoning:": 1,
+          "custom_tool_call:": 1
+        },
+        "items": 2,
+        "compactions": [],
+        "trigger": false,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 0,
+          "Another language model": 0
+        }
+      },
+      "usage": {
+        "input_tokens": 290545,
+        "input_tokens_details": {
+          "cache_write_tokens": 2190,
+          "cached_tokens": 288352
+        },
+        "output_tokens": 897,
+        "output_tokens_details": {
+          "reasoning_tokens": 516
+        },
+        "total_tokens": 291442
+      },
+      "response_chunks": {
+        "type": "NoneType"
+      },
+      "identity_headers": {
+        "Session-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e"
+        ],
+        "Thread-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e"
+        ],
+        "Version": [
+          "0.164.0"
+        ],
+        "X-Codex-Window-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e:1"
+        ]
+      }
+    },
+    {
+      "id": 196978,
+      "created_at": "2026-10-23 07:11:18.2000781 +0000 UTC",
+      "status": "completed",
+      "model_id": "gpt-6-astra",
+      "format": "openai/responses",
+      "channel_id": 40,
+      "metrics_latency_ms": 66011,
+      "metrics_first_token_latency_ms": 51920,
+      "request_id": 65639,
+      "error_message": null,
+      "response_status_code": null,
+      "request_body": {
+        "bytes": 1210093,
+        "keys": [
+          "client_metadata",
+          "include",
+          "input",
+          "model",
+          "parallel_tool_calls",
+          "prompt_cache_key",
+          "reasoning",
+          "store",
+          "stream",
+          "text",
+          "tool_choice",
+          "tools",
+          "instructions"
+        ],
+        "previous_response_id": null,
+        "id": null,
+        "status": null,
+        "model": "gpt-6-astra",
+        "types": {
+          "message:developer": 5,
+          "message:user": 7,
+          "compaction:": 1,
+          "custom_tool_call:": 70,
+          "custom_tool_call_output:": 70,
+          "reasoning:": 102,
+          "message:assistant": 12,
+          "function_call:": 2,
+          "function_call_output:": 2
+        },
+        "items": 271,
+        "compactions": [
+          {
+            "index": 8,
+            "id": "cmp_01bb3d642111a944006adaeba7640c819581bb9551852aafdd",
+            "bytes": 27940,
+            "local": false
+          }
+        ],
+        "trigger": false,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 0,
+          "Another language model": 0
+        }
+      },
+      "response_body": {
+        "bytes": 13753,
+        "keys": [
+          "access_programs",
+          "object",
+          "id",
+          "created_at",
+          "model",
+          "output",
+          "status",
+          "service_tier",
+          "usage"
+        ],
+        "previous_response_id": null,
+        "id": "resp_01bb3d642111a944006adb089a6eec819586151b807b45bb2e",
+        "status": "completed",
+        "model": "gpt-6-astra",
+        "types": {
+          "reasoning:": 2,
+          "custom_tool_call:": 1
+        },
+        "items": 3,
+        "compactions": [],
+        "trigger": false,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 0,
+          "Another language model": 0
+        }
+      },
+      "usage": {
+        "input_tokens": 292308,
+        "input_tokens_details": {
+          "cache_write_tokens": 1763,
+          "cached_tokens": 290542
+        },
+        "output_tokens": 2463,
+        "output_tokens_details": {
+          "reasoning_tokens": 1034
+        },
+        "total_tokens": 294771
+      },
+      "response_chunks": {
+        "type": "NoneType"
+      },
+      "identity_headers": {
+        "Session-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e"
+        ],
+        "Thread-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e"
+        ],
+        "Version": [
+          "0.164.0"
+        ],
+        "X-Codex-Window-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e:1"
+        ]
+      }
+    },
+    {
+      "id": 196979,
+      "created_at": "2026-10-23 07:12:24.7439562 +0000 UTC",
+      "status": "completed",
+      "model_id": "gpt-6-astra",
+      "format": "openai/responses",
+      "channel_id": 40,
+      "metrics_latency_ms": 13855,
+      "metrics_first_token_latency_ms": 12452,
+      "request_id": 65640,
+      "error_message": null,
+      "response_status_code": null,
+      "request_body": {
+        "bytes": 1226558,
+        "keys": [
+          "client_metadata",
+          "include",
+          "input",
+          "model",
+          "parallel_tool_calls",
+          "prompt_cache_key",
+          "reasoning",
+          "store",
+          "stream",
+          "text",
+          "tool_choice",
+          "tools",
+          "instructions"
+        ],
+        "previous_response_id": null,
+        "id": null,
+        "status": null,
+        "model": "gpt-6-astra",
+        "types": {
+          "message:developer": 5,
+          "message:user": 7,
+          "compaction:": 1,
+          "custom_tool_call:": 71,
+          "custom_tool_call_output:": 71,
+          "reasoning:": 104,
+          "message:assistant": 12,
+          "function_call:": 2,
+          "function_call_output:": 2
+        },
+        "items": 275,
+        "compactions": [
+          {
+            "index": 8,
+            "id": "cmp_01bb3d642111a944006adaeba7640c819581bb9551852aafdd",
+            "bytes": 27940,
+            "local": false
+          }
+        ],
+        "trigger": false,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 0,
+          "Another language model": 0
+        }
+      },
+      "response_body": {
+        "bytes": 3595,
+        "keys": [
+          "access_programs",
+          "object",
+          "id",
+          "created_at",
+          "model",
+          "output",
+          "status",
+          "service_tier",
+          "usage"
+        ],
+        "previous_response_id": null,
+        "id": "resp_01bb3d642111a944006adb08dc8bf08195b358d5dc8def02de",
+        "status": "completed",
+        "model": "gpt-6-astra",
+        "types": {
+          "reasoning:": 1,
+          "custom_tool_call:": 1
+        },
+        "items": 2,
+        "compactions": [],
+        "trigger": false,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 0,
+          "Another language model": 0
+        }
+      },
+      "usage": {
+        "input_tokens": 295538,
+        "input_tokens_details": {
+          "cache_write_tokens": 3230,
+          "cached_tokens": 292305
+        },
+        "output_tokens": 419,
+        "output_tokens_details": {
+          "reasoning_tokens": 142
+        },
+        "total_tokens": 295957
+      },
+      "response_chunks": {
+        "type": "NoneType"
+      },
+      "identity_headers": {
+        "Session-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e"
+        ],
+        "Thread-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e"
+        ],
+        "Version": [
+          "0.164.0"
+        ],
+        "X-Codex-Window-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e:1"
+        ]
+      }
+    },
+    {
+      "id": 196980,
+      "created_at": "2026-10-23 07:12:38.8423948 +0000 UTC",
+      "status": "completed",
+      "model_id": "gpt-6-astra",
+      "format": "openai/responses",
+      "channel_id": 40,
+      "metrics_latency_ms": 15617,
+      "metrics_first_token_latency_ms": 14928,
+      "request_id": 65641,
+      "error_message": null,
+      "response_status_code": null,
+      "request_body": {
+        "bytes": 1231722,
+        "keys": [
+          "client_metadata",
+          "include",
+          "input",
+          "model",
+          "parallel_tool_calls",
+          "prompt_cache_key",
+          "reasoning",
+          "store",
+          "stream",
+          "text",
+          "tool_choice",
+          "tools",
+          "instructions"
+        ],
+        "previous_response_id": null,
+        "id": null,
+        "status": null,
+        "model": "gpt-6-astra",
+        "types": {
+          "message:developer": 5,
+          "message:user": 7,
+          "compaction:": 1,
+          "custom_tool_call:": 72,
+          "custom_tool_call_output:": 72,
+          "reasoning:": 105,
+          "message:assistant": 12,
+          "function_call:": 2,
+          "function_call_output:": 2
+        },
+        "items": 278,
+        "compactions": [
+          {
+            "index": 8,
+            "id": "cmp_01bb3d642111a944006adaeba7640c819581bb9551852aafdd",
+            "bytes": 27940,
+            "local": false
+          }
+        ],
+        "trigger": false,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 0,
+          "Another language model": 0
+        }
+      },
+      "response_body": {
+        "bytes": 3507,
+        "keys": [
+          "access_programs",
+          "object",
+          "id",
+          "created_at",
+          "model",
+          "output",
+          "status",
+          "service_tier",
+          "usage"
+        ],
+        "previous_response_id": null,
+        "id": "resp_01bb3d642111a944006adb08eab8c881958c5df8f15b0016a1",
+        "status": "completed",
+        "model": "gpt-6-astra",
+        "types": {
+          "reasoning:": 1,
+          "custom_tool_call:": 1
+        },
+        "items": 2,
+        "compactions": [],
+        "trigger": false,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 0,
+          "Another language model": 0
+        }
+      },
+      "usage": {
+        "input_tokens": 296506,
+        "input_tokens_details": {
+          "cache_write_tokens": 968,
+          "cached_tokens": 295535
+        },
+        "output_tokens": 350,
+        "output_tokens_details": {
+          "reasoning_tokens": 166
+        },
+        "total_tokens": 296856
+      },
+      "response_chunks": {
+        "type": "NoneType"
+      },
+      "identity_headers": {
+        "Session-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e"
+        ],
+        "Thread-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e"
+        ],
+        "Version": [
+          "0.164.0"
+        ],
+        "X-Codex-Window-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e:1"
+        ]
+      }
+    },
+    {
+      "id": 196981,
+      "created_at": "2026-10-23 07:12:55.503459 +0000 UTC",
+      "status": "completed",
+      "model_id": "gpt-6-astra",
+      "format": "openai/responses",
+      "channel_id": 40,
+      "metrics_latency_ms": 59275,
+      "metrics_first_token_latency_ms": 46281,
+      "request_id": 65642,
+      "error_message": null,
+      "response_status_code": null,
+      "request_body": {
+        "bytes": 1235321,
+        "keys": [
+          "client_metadata",
+          "include",
+          "input",
+          "model",
+          "parallel_tool_calls",
+          "prompt_cache_key",
+          "reasoning",
+          "store",
+          "stream",
+          "text",
+          "tool_choice",
+          "tools",
+          "instructions"
+        ],
+        "previous_response_id": null,
+        "id": null,
+        "status": null,
+        "model": "gpt-6-astra",
+        "types": {
+          "message:developer": 5,
+          "message:user": 7,
+          "compaction:": 1,
+          "custom_tool_call:": 73,
+          "custom_tool_call_output:": 73,
+          "reasoning:": 106,
+          "message:assistant": 12,
+          "function_call:": 2,
+          "function_call_output:": 2
+        },
+        "items": 281,
+        "compactions": [
+          {
+            "index": 8,
+            "id": "cmp_01bb3d642111a944006adaeba7640c819581bb9551852aafdd",
+            "bytes": 27940,
+            "local": false
+          }
+        ],
+        "trigger": false,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 0,
+          "Another language model": 0
+        }
+      },
+      "response_body": {
+        "bytes": 13103,
+        "keys": [
+          "access_programs",
+          "object",
+          "id",
+          "created_at",
+          "model",
+          "output",
+          "status",
+          "service_tier",
+          "usage"
+        ],
+        "previous_response_id": null,
+        "id": "resp_01bb3d642111a944006adb08fbaa008195839c34dade919196",
+        "status": "completed",
+        "model": "gpt-6-astra",
+        "types": {
+          "reasoning:": 2,
+          "custom_tool_call:": 1
+        },
+        "items": 3,
+        "compactions": [],
+        "trigger": false,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 0,
+          "Another language model": 0
+        }
+      },
+      "usage": {
+        "input_tokens": 296917,
+        "input_tokens_details": {
+          "cache_write_tokens": 411,
+          "cached_tokens": 296503
+        },
+        "output_tokens": 2207,
+        "output_tokens_details": {
+          "reasoning_tokens": 882
+        },
+        "total_tokens": 299124
+      },
+      "response_chunks": {
+        "type": "NoneType"
+      },
+      "identity_headers": {
+        "Session-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e"
+        ],
+        "Thread-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e"
+        ],
+        "Version": [
+          "0.164.0"
+        ],
+        "X-Codex-Window-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e:1"
+        ]
+      }
+    },
+    {
+      "id": 196982,
+      "created_at": "2026-10-23 07:13:55.0310009 +0000 UTC",
+      "status": "failed",
+      "model_id": "gpt-6-astra",
+      "format": "openai/responses",
+      "channel_id": 40,
+      "metrics_latency_ms": null,
+      "metrics_first_token_latency_ms": null,
+      "request_id": 65643,
+      "error_message": "The requested item was created under a different the upstream service resource. Use the same resource that created the item to access it. [trace_id=535b51cad836cd8d12d39d015f7da424]",
+      "response_status_code": 400,
+      "request_body": {
+        "bytes": 1249106,
+        "keys": [
+          "client_metadata",
+          "include",
+          "input",
+          "model",
+          "parallel_tool_calls",
+          "prompt_cache_key",
+          "reasoning",
+          "store",
+          "stream",
+          "text",
+          "tool_choice",
+          "tools",
+          "instructions"
+        ],
+        "previous_response_id": null,
+        "id": null,
+        "status": null,
+        "model": "gpt-6-astra",
+        "types": {
+          "message:developer": 5,
+          "message:user": 7,
+          "compaction:": 1,
+          "custom_tool_call:": 74,
+          "custom_tool_call_output:": 74,
+          "reasoning:": 108,
+          "message:assistant": 12,
+          "function_call:": 2,
+          "function_call_output:": 2
+        },
+        "items": 285,
+        "compactions": [
+          {
+            "index": 8,
+            "id": "cmp_01bb3d642111a944006adaeba7640c819581bb9551852aafdd",
+            "bytes": 27940,
+            "local": false
+          }
+        ],
+        "trigger": false,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 0,
+          "Another language model": 0
+        }
+      },
+      "response_body": {
+        "type": "NoneType"
+      },
+      "response_chunks": {
+        "type": "NoneType"
+      },
+      "identity_headers": {
+        "Session-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e"
+        ],
+        "Thread-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e"
+        ],
+        "Version": [
+          "0.164.0"
+        ],
+        "X-Codex-Window-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e:1"
+        ]
+      }
+    },
+    {
+      "id": 196983,
+      "created_at": "2026-10-23 07:14:09.7216603 +0000 UTC",
+      "status": "failed",
+      "model_id": "gpt-6-astra",
+      "format": "openai/responses",
+      "channel_id": 40,
+      "metrics_latency_ms": null,
+      "metrics_first_token_latency_ms": null,
+      "request_id": 65643,
+      "error_message": "The requested item was created under a different Azure OpenAI resource. Use the same resource that created the item to access it. [trace_id=477ded38dd38318755dbe970152454ee]",
+      "response_status_code": 400,
+      "request_body": {
+        "bytes": 1239002,
+        "keys": [
+          "client_metadata",
+          "include",
+          "input",
+          "model",
+          "parallel_tool_calls",
+          "prompt_cache_key",
+          "reasoning",
+          "store",
+          "stream",
+          "text",
+          "tool_choice",
+          "tools",
+          "instructions"
+        ],
+        "previous_response_id": null,
+        "id": null,
+        "status": null,
+        "model": "gpt-6-astra",
+        "types": {
+          "message:developer": 5,
+          "message:user": 7,
+          "compaction:": 1,
+          "custom_tool_call:": 74,
+          "custom_tool_call_output:": 74,
+          "reasoning:": 108,
+          "message:assistant": 12,
+          "function_call:": 2,
+          "function_call_output:": 2
+        },
+        "items": 285,
+        "compactions": [
+          {
+            "index": 8,
+            "id": "cmp_01bb3d642111a944006adaeba7640c819581bb9551852aafdd",
+            "bytes": 27940,
+            "local": false
+          }
+        ],
+        "trigger": false,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 0,
+          "Another language model": 0
+        }
+      },
+      "response_body": {
+        "type": "NoneType"
+      },
+      "response_chunks": {
+        "type": "NoneType"
+      },
+      "identity_headers": {
+        "Session-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e"
+        ],
+        "Thread-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e"
+        ],
+        "Version": [
+          "0.164.0"
+        ],
+        "X-Codex-Window-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e:1"
+        ]
+      }
+    },
+    {
+      "id": 196984,
+      "created_at": "2026-10-23 07:14:18.850672 +0000 UTC",
+      "status": "failed",
+      "model_id": "gpt-6-astra",
+      "format": "openai/responses",
+      "channel_id": 40,
+      "metrics_latency_ms": null,
+      "metrics_first_token_latency_ms": null,
+      "request_id": 65644,
+      "error_message": "The requested item was created under a different Azure OpenAI resource. Use the same resource that created the item to access it. [trace_id=3d44065eae887864b1b43330172bc1a7]",
+      "response_status_code": 400,
+      "request_body": {
+        "bytes": 1254754,
+        "keys": [
+          "client_metadata",
+          "include",
+          "input",
+          "model",
+          "parallel_tool_calls",
+          "prompt_cache_key",
+          "reasoning",
+          "store",
+          "stream",
+          "text",
+          "tool_choice",
+          "tools",
+          "instructions"
+        ],
+        "previous_response_id": null,
+        "id": null,
+        "status": null,
+        "model": "gpt-6-astra",
+        "types": {
+          "message:developer": 5,
+          "message:user": 8,
+          "compaction:": 1,
+          "custom_tool_call:": 74,
+          "custom_tool_call_output:": 74,
+          "reasoning:": 108,
+          "message:assistant": 12,
+          "function_call:": 2,
+          "function_call_output:": 2
+        },
+        "items": 286,
+        "compactions": [
+          {
+            "index": 8,
+            "id": "cmp_01bb3d642111a944006adaeba7640c819581bb9551852aafdd",
+            "bytes": 27940,
+            "local": false
+          }
+        ],
+        "trigger": false,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 0,
+          "Another language model": 0
+        }
+      },
+      "response_body": {
+        "type": "NoneType"
+      },
+      "response_chunks": {
+        "type": "NoneType"
+      },
+      "identity_headers": {
+        "Session-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e"
+        ],
+        "Thread-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e"
+        ],
+        "Version": [
+          "0.164.0"
+        ],
+        "X-Codex-Window-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e:1"
+        ]
+      }
+    },
+    {
+      "id": 196986,
+      "created_at": "2026-10-23 07:15:59.3317412 +0000 UTC",
+      "status": "completed",
+      "model_id": "gpt-6-astra",
+      "format": "openai/responses",
+      "channel_id": 40,
+      "metrics_latency_ms": 36670,
+      "metrics_first_token_latency_ms": 31154,
+      "request_id": 65644,
+      "error_message": null,
+      "response_status_code": null,
+      "request_body": {
+        "bytes": 853966,
+        "keys": [
+          "client_metadata",
+          "include",
+          "input",
+          "model",
+          "parallel_tool_calls",
+          "prompt_cache_key",
+          "reasoning",
+          "store",
+          "stream",
+          "text",
+          "tool_choice",
+          "tools",
+          "instructions"
+        ],
+        "previous_response_id": null,
+        "id": null,
+        "status": null,
+        "model": "gpt-6-astra",
+        "types": {
+          "message:developer": 5,
+          "message:user": 9,
+          "custom_tool_call:": 74,
+          "custom_tool_call_output:": 74,
+          "message:assistant": 12,
+          "function_call:": 2,
+          "function_call_output:": 2
+        },
+        "items": 178,
+        "compactions": [],
+        "trigger": false,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 0,
+          "Another language model": 1
+        }
+      },
+      "response_body": {
+        "bytes": 7098,
+        "keys": [
+          "access_programs",
+          "object",
+          "id",
+          "created_at",
+          "model",
+          "output",
+          "status",
+          "service_tier",
+          "usage"
+        ],
+        "previous_response_id": null,
+        "id": "resp_060470b2e81f0b51006adb09b4c3188197bef01ac443e6449d",
+        "status": "completed",
+        "model": "gpt-6-astra",
+        "types": {
+          "reasoning:": 1,
+          "message:assistant": 1,
+          "custom_tool_call:": 1
+        },
+        "items": 3,
+        "compactions": [],
+        "trigger": false,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 0,
+          "Another language model": 0
+        }
+      },
+      "usage": {
+        "input_tokens": 259109,
+        "input_tokens_details": {
+          "cache_write_tokens": 259106,
+          "cached_tokens": 0
+        },
+        "output_tokens": 833,
+        "output_tokens_details": {
+          "reasoning_tokens": 516
+        },
+        "total_tokens": 259942
+      },
+      "response_chunks": {
+        "type": "NoneType"
+      },
+      "identity_headers": {
+        "Session-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e"
+        ],
+        "Thread-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e"
+        ],
+        "Version": [
+          "0.164.0"
+        ],
+        "X-Codex-Window-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e:1"
+        ]
+      }
+    },
+    {
+      "id": 196985,
+      "created_at": "2026-10-23 07:14:30.7876538 +0000 UTC",
+      "status": "completed",
+      "model_id": "gpt-6-astra",
+      "format": "openai/responses",
+      "channel_id": 40,
+      "metrics_latency_ms": 88384,
+      "metrics_first_token_latency_ms": 10874,
+      "request_id": 65645,
+      "error_message": null,
+      "response_status_code": null,
+      "request_body": {
+        "bytes": 1019489,
+        "keys": [
+          "client_metadata",
+          "include",
+          "input",
+          "instructions",
+          "model",
+          "parallel_tool_calls",
+          "prompt_cache_key",
+          "reasoning",
+          "store",
+          "stream",
+          "text",
+          "tool_choice",
+          "tools"
+        ],
+        "previous_response_id": null,
+        "id": null,
+        "status": null,
+        "model": "gpt-6-astra",
+        "types": {
+          "message:developer": 6,
+          "message:user": 5,
+          "message:assistant": 22,
+          "custom_tool_call:": 57,
+          "custom_tool_call_output:": 57,
+          "function_call:": 2,
+          "function_call_output:": 2
+        },
+        "items": 151,
+        "compactions": [],
+        "trigger": false,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 1,
+          "Another language model": 0
+        }
+      },
+      "response_body": {
+        "bytes": 18392,
+        "keys": [
+          "object",
+          "id",
+          "created_at",
+          "model",
+          "output",
+          "status",
+          "service_tier",
+          "usage"
+        ],
+        "previous_response_id": null,
+        "id": "resp_02e002490b4878e9006adb095906a881979b8c5bd951a5256e",
+        "status": "completed",
+        "model": "gpt-6-astra",
+        "types": {
+          "reasoning:": 1,
+          "message:assistant": 1
+        },
+        "items": 2,
+        "compactions": [],
+        "trigger": false,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 0,
+          "Another language model": 0
+        }
+      },
+      "usage": {
+        "input_tokens": 330110,
+        "input_tokens_details": {
+          "cache_write_tokens": 330035,
+          "cached_tokens": 0
+        },
+        "output_tokens": 3998,
+        "output_tokens_details": {
+          "reasoning_tokens": 345
+        },
+        "total_tokens": 334108
+      },
+      "response_chunks": {
+        "type": "NoneType"
+      },
+      "identity_headers": {
+        "Session-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e"
+        ],
+        "Thread-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e"
+        ],
+        "Version": [
+          "0.164.0"
+        ],
+        "X-Codex-Window-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e:0"
+        ]
+      }
+    },
+    {
+      "id": 196987,
+      "created_at": "2026-10-23 07:16:36.2549928 +0000 UTC",
+      "status": "completed",
+      "model_id": "gpt-6-astra",
+      "format": "openai/responses",
+      "channel_id": 40,
+      "metrics_latency_ms": 115753,
+      "metrics_first_token_latency_ms": 25256,
+      "request_id": 65646,
+      "error_message": null,
+      "response_status_code": null,
+      "request_body": {
+        "bytes": 866384,
+        "keys": [
+          "client_metadata",
+          "include",
+          "input",
+          "model",
+          "parallel_tool_calls",
+          "prompt_cache_key",
+          "reasoning",
+          "store",
+          "stream",
+          "text",
+          "tool_choice",
+          "tools",
+          "instructions"
+        ],
+        "previous_response_id": null,
+        "id": null,
+        "status": null,
+        "model": "gpt-6-astra",
+        "types": {
+          "message:developer": 5,
+          "message:user": 9,
+          "custom_tool_call:": 75,
+          "custom_tool_call_output:": 75,
+          "message:assistant": 14,
+          "function_call:": 2,
+          "function_call_output:": 2
+        },
+        "items": 182,
+        "compactions": [],
+        "trigger": false,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 0,
+          "Another language model": 1
+        }
+      },
+      "response_body": {
+        "bytes": 23040,
+        "keys": [
+          "access_programs",
+          "object",
+          "id",
+          "created_at",
+          "model",
+          "output",
+          "status",
+          "service_tier",
+          "usage"
+        ],
+        "previous_response_id": null,
+        "id": "resp_0589ca79605904b8006adb09d864208194b85b47cac8549bf1",
+        "status": "completed",
+        "model": "gpt-6-astra",
+        "types": {
+          "reasoning:": 1,
+          "custom_tool_call:": 1
+        },
+        "items": 2,
+        "compactions": [],
+        "trigger": false,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 0,
+          "Another language model": 0
+        }
+      },
+      "usage": {
+        "input_tokens": 263226,
+        "input_tokens_details": {
+          "cache_write_tokens": 4117,
+          "cached_tokens": 259106
+        },
+        "output_tokens": 5912,
+        "output_tokens_details": {
+          "reasoning_tokens": 516
+        },
+        "total_tokens": 269138
+      },
+      "response_chunks": {
+        "type": "NoneType"
+      },
+      "identity_headers": {
+        "Session-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e"
+        ],
+        "Thread-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e"
+        ],
+        "Version": [
+          "0.164.0"
+        ],
+        "X-Codex-Window-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e:1"
+        ]
+      }
+    },
+    {
+      "id": 196988,
+      "created_at": "2026-10-23 07:18:32.2674101 +0000 UTC",
+      "status": "completed",
+      "model_id": "gpt-6-astra",
+      "format": "openai/responses",
+      "channel_id": 40,
+      "metrics_latency_ms": 24619,
+      "metrics_first_token_latency_ms": 21493,
+      "request_id": 65647,
+      "error_message": null,
+      "response_status_code": null,
+      "request_body": {
+        "bytes": 884391,
+        "keys": [
+          "client_metadata",
+          "include",
+          "input",
+          "model",
+          "parallel_tool_calls",
+          "prompt_cache_key",
+          "reasoning",
+          "store",
+          "stream",
+          "text",
+          "tool_choice",
+          "tools",
+          "instructions"
+        ],
+        "previous_response_id": null,
+        "id": null,
+        "status": null,
+        "model": "gpt-6-astra",
+        "types": {
+          "message:developer": 5,
+          "message:user": 9,
+          "custom_tool_call:": 76,
+          "custom_tool_call_output:": 76,
+          "message:assistant": 14,
+          "function_call:": 2,
+          "function_call_output:": 2
+        },
+        "items": 184,
+        "compactions": [],
+        "trigger": false,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 0,
+          "Another language model": 1
+        }
+      },
+      "response_body": {
+        "bytes": 6500,
+        "keys": [
+          "access_programs",
+          "object",
+          "id",
+          "created_at",
+          "model",
+          "output",
+          "status",
+          "service_tier",
+          "usage"
+        ],
+        "previous_response_id": null,
+        "id": "resp_088b9e311df66290006adb0a4be55c8195965d2f645db4fab0",
+        "status": "completed",
+        "model": "gpt-6-astra",
+        "types": {
+          "reasoning:": 1,
+          "custom_tool_call:": 1
+        },
+        "items": 2,
+        "compactions": [],
+        "trigger": false,
+        "summary_markers": {
+          "Archived conversation context": 0,
+          "immutable segment": 0,
+          "CONTEXT CHECKPOINT COMPACTION": 0,
+          "Another language model": 0
+        }
+      },
+      "usage": {
+        "input_tokens": 268644,
+        "input_tokens_details": {
+          "cache_write_tokens": 5418,
+          "cached_tokens": 263223
+        },
+        "output_tokens": 845,
+        "output_tokens_details": {
+          "reasoning_tokens": 484
+        },
+        "total_tokens": 269489
+      },
+      "response_chunks": {
+        "type": "NoneType"
+      },
+      "identity_headers": {
+        "Session-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e"
+        ],
+        "Thread-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e"
+        ],
+        "Version": [
+          "0.164.0"
+        ],
+        "X-Codex-Window-Id": [
+          "01a166e2-a4d6-7170-b458-2919cd4b7b2e:1"
+        ]
+      }
+    }
+  ],
+  "usage": [
+    {
+      "request_id": 65638,
+      "prompt_tokens": 290545,
+      "prompt_cached_tokens": 288352,
+      "completion_tokens": 897,
+      "total_cost": null
+    },
+    {
+      "request_id": 65639,
+      "prompt_tokens": 292308,
+      "prompt_cached_tokens": 290542,
+      "completion_tokens": 2463,
+      "total_cost": null
+    },
+    {
+      "request_id": 65640,
+      "prompt_tokens": 295538,
+      "prompt_cached_tokens": 292305,
+      "completion_tokens": 419,
+      "total_cost": null
+    },
+    {
+      "request_id": 65641,
+      "prompt_tokens": 296506,
+      "prompt_cached_tokens": 295535,
+      "completion_tokens": 350,
+      "total_cost": null
+    },
+    {
+      "request_id": 65642,
+      "prompt_tokens": 296917,
+      "prompt_cached_tokens": 296503,
+      "completion_tokens": 2207,
+      "total_cost": null
+    },
+    {
+      "request_id": 65644,
+      "prompt_tokens": 259109,
+      "prompt_cached_tokens": 0,
+      "completion_tokens": 833,
+      "total_cost": null
+    },
+    {
+      "request_id": 65645,
+      "prompt_tokens": 330110,
+      "prompt_cached_tokens": 0,
+      "completion_tokens": 3998,
+      "total_cost": null
+    },
+    {
+      "request_id": 65646,
+      "prompt_tokens": 263226,
+      "prompt_cached_tokens": 259106,
+      "completion_tokens": 5912,
+      "total_cost": null
+    },
+    {
+      "request_id": 65647,
+      "prompt_tokens": 268644,
+      "prompt_cached_tokens": 263223,
+      "completion_tokens": 845,
+      "total_cost": null
+    },
+    {
+      "request_id": 65648,
+      "prompt_tokens": 170281,
+      "prompt_cached_tokens": 0,
+      "completion_tokens": 321,
+      "total_cost": null
+    }
+  ]
+}

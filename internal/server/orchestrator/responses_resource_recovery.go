@@ -44,12 +44,39 @@ func responsesRejectedResourceRule(body []byte, code, message, param string) (re
 		}
 	}
 	if hasIDs {
-		return responsesRejectedStatusRule{index: -1, field: "id"}, true
+		return responsesRejectedStatusRule{index: -1, field: "id", detachReasoningID: param == "" && responsesResourceHasNativeReasoningIDs(body)}, true
+	}
+	if responsesResourceHasNativeReasoningIDs(body) {
+		return responsesRejectedStatusRule{index: -1, field: "id", detachReasoningID: true}, true
 	}
 	// When no portable IDs remain, this explicit rejection permits the existing
 	// complete-history reasoning recovery. Never infer this
 	// from a 500, or discard native compaction to make a request pass validation.
 	return responsesRejectedReasoningRule(body, "")
+}
+
+// A generic resource error does not identify the checkpoint as invalid. When
+// the current window also has stored reasoning IDs, try their self-contained
+// ciphertext first. Keep the checkpoint, summaries and every tool byte intact.
+func responsesResourceHasNativeReasoningIDs(body []byte) bool {
+	if _, safe := responsesResourceHistorySupportsRecovery(body); !safe {
+		return false
+	}
+	ref, _, _, err := parseRemoteCompactionRequest(body)
+	if err != nil || ref == nil || isLocalCompactionReference(ref) {
+		return false
+	}
+	checkpoints := 0
+	hasReasoningID := false
+	for _, item := range gjson.GetBytes(body, "input").Array() {
+		switch item.Get("type").String() {
+		case remoteCompactionItemType, legacyRemoteCompactionSummaryType:
+			checkpoints++
+		case "reasoning":
+			hasReasoningID = hasReasoningID || item.Get("id").String() != "" && item.Get("encrypted_content").String() != ""
+		}
+	}
+	return checkpoints == 1 && hasReasoningID
 }
 
 func responsesResourceMismatch(code, message string) bool {

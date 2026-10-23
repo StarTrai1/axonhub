@@ -22,6 +22,7 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 type responsesHistoryPolicy struct {
@@ -65,6 +66,20 @@ func (m *responsesHistoryPortabilityMiddleware) OnOutboundRawRequest(ctx context
 	channel := m.outbound.GetCurrentChannel()
 	if channel == nil || channel.Type != entchannel.TypeCodex || channel.Credentials.IsOAuth() || channel.UpdatedAt.IsZero() ||
 		state.RequestService == nil || state.APIKey == nil || state.APIKey.ID <= 0 || state.APIKey.ProjectID <= 0 {
+		return request, nil
+	}
+	// A checkpoint correction does not reject the native reasoning after it.
+	// Nor may unrelated historical failures rewrite a completed wire snapshot
+	// that this exact destination has just accepted. Request-scoped rejection
+	// handling still runs next if the provider rejects the preserved state.
+	if ref, _, _, err := parseRemoteCompactionRequest(checkpointRecoverySourceBody(state)); err == nil && ref != nil {
+		return request, nil
+	}
+	if c := state.ResponsesContinuation; c != nil && c.complete && c.previous != "" && c.owner != nil && c.owner.Snapshot != nil &&
+		c.owner.ID == c.previous && originMatches(c.owner.Origin, shared.ResponsesOrigin{
+			ChannelID: channel.ID, Endpoint: request.URL, Format: request.APIFormat,
+			Model: gjson.GetBytes(request.Body, "model").String(), Auth: responses.ContinuationAuthIdentity(request),
+		}) {
 		return request, nil
 	}
 	hasIDs, safe := responsesResourceHistorySupportsRecovery(request.Body)
