@@ -317,7 +317,9 @@ func convertLLMToGeminiRequestWithConfig(chatReq *llm.Request, config *Config) *
 		hasHostedTools = hasHostedTools || tool.GoogleSearch != nil || tool.CodeExecution != nil || tool.UrlContext != nil
 	}
 	if hasFunctions && hasHostedTools {
-		if req.ToolConfig == nil { req.ToolConfig = &ToolConfig{} }
+		if req.ToolConfig == nil {
+			req.ToolConfig = &ToolConfig{}
+		}
 		req.ToolConfig.IncludeServerSideToolInvocations = true
 	}
 

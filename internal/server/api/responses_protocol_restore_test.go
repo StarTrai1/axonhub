@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -22,11 +23,13 @@ import (
 
 func TestUnifiedHistoryProtocolLostNativeContinuationReplaysAcceptedCheckpoint(t *testing.T) {
 	for _, fresh := range []bool{false, true} {
-		t.Run(map[bool]string{false: "upstream-lost", true: "new-client-connection"}[fresh], func(t *testing.T) { testUnifiedHistoryLostNativeContinuation(t, fresh) })
+		for _, interrupted := range []bool{false, true} {
+			t.Run(fmt.Sprintf("fresh=%t/interrupted=%t", fresh, interrupted), func(t *testing.T) { testUnifiedHistoryLostNativeContinuation(t, fresh, interrupted) })
+		}
 	}
 }
 
-func testUnifiedHistoryLostNativeContinuation(t *testing.T, fresh bool) {
+func testUnifiedHistoryLostNativeContinuation(t *testing.T, fresh, interrupted bool) {
 	t.Helper()
 	var calls atomic.Int32
 	frames := make(chan []byte, 4)
@@ -45,6 +48,10 @@ func testUnifiedHistoryLostNativeContinuation(t *testing.T, fresh bool) {
 			frames <- body
 			n := calls.Add(1)
 			response := `{"type":"response.completed","response":{"id":"resp_accepted","status":"completed","output":[{"type":"function_call","id":"fc_exact","call_id":"call_exact","name":"inspect","arguments":"{}"}]}}`
+			if interrupted && n == 1 {
+				response = strings.Replace(response, `"type":"response.completed"`, `"type":"response.incomplete"`, 1)
+				response = strings.Replace(response, `"status":"completed"`, `"status":"incomplete","incomplete_details":{"reason":"interrupted"}`, 1)
+			}
 			if n > 1 {
 				response = `{"type":"response.completed","response":{"id":"resp_restored","status":"completed","output":[{"type":"message","role":"assistant","content":[{"type":"output_text","text":"continued without another summary"}]}]}}`
 				if gjson.GetBytes(body, "previous_response_id").Exists() {
@@ -93,7 +100,7 @@ func testUnifiedHistoryLostNativeContinuation(t *testing.T, fresh bool) {
 	// fixture's asynchronous persistence before simulating lost connection state.
 	require.Eventually(t, func() bool {
 		row, err := client.Request.Query().Where(request.ExternalIDEQ("resp_accepted")).Only(ctx)
-		return err == nil && row.Status == request.StatusCompleted
+		return err == nil && row.Status == lo.Ternary(interrupted, request.StatusCanceled, request.StatusCompleted)
 	}, 2*time.Second, 10*time.Millisecond)
 	if fresh {
 		require.NoError(t, conn.Close())

@@ -516,7 +516,18 @@ func (s *responsesSessionStream) terminalSnapshot() ([]byte, bool) {
 		Type     string          `json:"type"`
 		Response json.RawMessage `json:"response"`
 	}
-	if json.Unmarshal(s.current.Data, &event) != nil || event.Type != "response.completed" {
+	if json.Unmarshal(s.current.Data, &event) != nil {
+		return nil, false
+	}
+	if event.Type == "response.incomplete" {
+		if !responsesBodyCanContinue(gjson.ParseBytes(event.Response)) {
+			return nil, true
+		}
+		// The interrupt's terminal output is authoritative. Previously streamed
+		// items may have been discarded; never fill them back into this snapshot.
+		return event.Response, false
+	}
+	if event.Type != "response.completed" {
 		return nil, false
 	}
 	var snapshot struct {

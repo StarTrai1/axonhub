@@ -404,7 +404,7 @@ func (a *remoteCompactionAdapter) archiveHistoryResponse(ctx context.Context, bo
 	if !a.unifiedHistoryEnabled() {
 		return nil
 	}
-	if gjson.GetBytes(response, "status").String() != "completed" || gjson.GetBytes(response, "error").Type != gjson.Null {
+	if !responsesBodyCanContinue(gjson.ParseBytes(response)) {
 		return nil
 	}
 	id := gjson.GetBytes(response, "id").String()

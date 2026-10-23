@@ -804,7 +804,7 @@ export const createColumns = (
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.name')} />,
       cell: ({ row }: { row: Row<Channel> }) => <NameCell row={row} globalDefaultMode={globalDefaultMode} />,
       meta: {
-        className: 'w-[15%] min-w-40 text-left',
+        className: 'w-[13%] min-w-40 text-left',
       },
       enableHiding: false,
       enableSorting: true,
@@ -815,7 +815,7 @@ export const createColumns = (
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.provider')} className='justify-center' />,
       cell: ProviderCell,
       meta: {
-        className: 'w-[19%] min-w-28 text-center',
+        className: 'w-[9%] min-w-28 text-center',
       },
       filterFn: (row, _id, value) => {
         return value.includes(row.original.type);
@@ -828,7 +828,7 @@ export const createColumns = (
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.status')} className='justify-center' />,
       cell: StatusSwitchCell,
       meta: {
-        className: 'w-[15%] min-w-20 text-center',
+        className: 'w-[8%] min-w-20 text-center',
       },
       enableSorting: true,
       enableHiding: false,
@@ -839,7 +839,7 @@ export const createColumns = (
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.tags')} className='justify-center' />,
       cell: TagsCell,
       meta: {
-        className: 'w-[10%] min-w-28 text-center',
+        className: 'min-w-28 text-center',
       },
       filterFn: (row, id, value) => {
         const tags = (row.getValue(id) as string[]) || [];
@@ -867,7 +867,7 @@ export const createColumns = (
       ),
       cell: SupportedModelsCell,
       meta: {
-        className: 'w-[18%] min-w-48 max-w-none text-center',
+        className: 'w-[20%] min-w-48 max-w-none text-center',
       },
       enableSorting: false,
     },
@@ -890,7 +890,7 @@ export const createColumns = (
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.proxy')} className='justify-center' />,
       cell: ProxyCell,
       meta: {
-        className: 'w-[13%] min-w-28 text-center',
+        className: 'min-w-28 text-center',
       },
       enableSorting: false,
       enableHiding: true,

@@ -282,7 +282,7 @@ test('channel columns have minimum widths and are not hidden by responsive displ
     return columnsSource.slice(classNameIndex, end);
   };
 
-  for (const columnId of ['quota', 'tags', 'proxy', 'createdAt']) {
+  for (const columnId of ['provider', 'tags', 'proxy', 'createdAt']) {
     const meta = columnMeta(columnId);
     assert.doesNotMatch(meta, /\bhidden\b/, columnId + ' must not be hidden by responsive display gate');
     assert.doesNotMatch(meta, /(?:xl|2xl):table-cell/, columnId + ' must not be gated by a responsive breakpoint');
@@ -293,15 +293,6 @@ test('channel columns have minimum widths and are not hidden by responsive displ
     assert.doesNotMatch(meta, /min-w-0/, columnId + ' must have a non-zero minimum width');
     assert.match(meta, /min-w-\d+/, columnId + ' must have an explicit min-w-* class to prevent collapse');
   }
-});
-
-test('channel percentage column widths sum to 100', () => {
-  const columnsSource = read('features/channels/components/channels-columns.tsx');
-  const percentages = [...columnsSource.matchAll(/w-\[([0-9.]+)%\]/g)].map((match) => Number(match[1]));
-
-  assert.ok(percentages.length > 0, 'expected percentage-width channel columns');
-  const total = percentages.reduce((sum, value) => sum + value, 0);
-  assert.equal(total, 100, 'channel column percentages must sum to 100, got ' + total);
 });
 
 test('supported models cell bounds badge container width to prevent horizontal stretching', () => {

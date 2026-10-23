@@ -312,7 +312,9 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		Truncation:           xmap.GetStringPtr(llmReq.TransformerMetadata, "truncation"),
 	}
 
-	if lo.FromPtr(payload.PromptCacheKey) == "" {
+	// Native Responses clients own the cache-key policy, including omission
+	// (Codex 0.164+). Only synthesize a key when translating another protocol.
+	if payload.PromptCacheKey == nil && !IsResponsesFormat(llmReq.APIFormat) {
 		if sessionID, ok := shared.GetSessionID(ctx); ok {
 			// A session may multiplex several concurrent conversations
 			// (e.g. Claude Code subagents); scope the cache key to the

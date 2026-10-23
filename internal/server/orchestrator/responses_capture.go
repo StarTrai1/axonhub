@@ -27,7 +27,7 @@ type responsesCompletion struct {
 // present in its authoritative terminal body. Other incomplete outcomes do not
 // establish a usable continuation, and this is not evidence of task completion.
 func responsesBodyCanContinue(body gjson.Result) bool {
-	return body.Get("id").String() != "" &&
+	return body.Get("id").String() != "" && body.Get("error").Type == gjson.Null &&
 		(body.Get("status").String() == "completed" ||
 			body.Get("status").String() == "incomplete" && body.Get("incomplete_details.reason").String() == "interrupted")
 }
@@ -55,8 +55,8 @@ func (s *responsesCompletion) observe(event *httpclient.StreamEvent) {
 			}
 			if s.overflow || s.metadataOnly {
 				s.body, _ = json.Marshal(struct {
-					ID     string `json:"id"`
-					Status string `json:"status"`
+					ID                string          `json:"id"`
+					Status            string          `json:"status"`
 					IncompleteDetails json.RawMessage `json:"incomplete_details,omitempty"`
 				}{body.Get("id").String(), body.Get("status").String(), json.RawMessage(body.Get("incomplete_details").Raw)})
 			} else {

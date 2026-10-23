@@ -454,7 +454,7 @@ func (t *OutboundTransformer) TransformError(ctx context.Context, rawErr *httpcl
 			Detail: llm.ErrorDetail{
 				Type:      "api_error",
 				Message:   aErr.Error.Message,
-				Code: anthropicContextOverflowCode(gjson.GetBytes(rawErr.Body, "error.code").String(), aErr.Error.Type, aErr.Error.Message),
+				Code:      anthropicContextOverflowCode(gjson.GetBytes(rawErr.Body, "error.code").String(), aErr.Error.Type, aErr.Error.Message),
 				RequestID: aErr.RequestID,
 			},
 		}

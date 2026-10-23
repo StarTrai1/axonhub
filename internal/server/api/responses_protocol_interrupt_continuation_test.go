@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/require"
@@ -61,6 +62,10 @@ func TestResponsesProtocolInterruptedContinuation(t *testing.T) {
 				}
 				require.Equal(t, int32(2), calls.Load(), "the delta must not fail locally or force a full client replay")
 				ctx := authz.WithTestBypass(ent.NewContext(t.Context(), client))
+				require.Eventually(t, func() bool {
+					records, err := client.Request.Query().Order(ent.Asc(request.FieldID)).All(ctx)
+					return err == nil && len(records) == 2 && records[0].Status == request.StatusCanceled && records[1].Status == request.StatusCompleted
+				}, 2*time.Second, 10*time.Millisecond)
 				records, err := client.Request.Query().Order(ent.Asc(request.FieldID)).All(ctx); require.NoError(t, err); require.Len(t, records, 2)
 				require.Equal(t, request.StatusCanceled, records[0].Status)
 				require.Equal(t, request.StatusCompleted, records[1].Status)
