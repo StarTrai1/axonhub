@@ -6,7 +6,9 @@ test('model icons retain the catalog and update after lazy loading', async ({ pa
   await page.goto('/tests/interactions/model-icons.html');
   for (const name of ['OpenAI', 'Anthropic', 'Qwen', 'AionLabs', 'Dolphin']) {
     const icon = page.getByTestId(name).locator('svg').first();
-    await expect(icon).toBeVisible();
+    // The dev server loads the full brand module graph on the first visit.
+    // Keep readiness bounded separately from the subsequent interaction checks.
+    await expect(icon).toBeVisible({ timeout: 15000 });
     await expect(icon).toHaveCSS('width', '20px');
   }
   await expect(page.getByTestId('missing-icon')).toHaveText('-');
