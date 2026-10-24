@@ -74,7 +74,15 @@ func TestResponsesCapacityRetryPreservesHistoryAndAffinity(t *testing.T) {
 						drainRejectedReasoningPipeline(t, result)
 						require.Len(t, executor.requests, 2)
 						require.Equal(t, executor.requests[0].Body, executor.requests[1].Body)
-						require.Equal(t, executor.requests[0].Headers, executor.requests[1].Headers)
+						firstHeaders, retryHeaders := executor.requests[0].Headers.Clone(), executor.requests[1].Headers.Clone()
+						// An attempt gets its own diagnostic ID; session/window affinity
+						// and all other headers must stay stable through the retry.
+						require.NotEmpty(t, firstHeaders.Get("X-Client-Request-Id"))
+						require.NotEmpty(t, retryHeaders.Get("X-Client-Request-Id"))
+						require.NotEqual(t, firstHeaders.Get("X-Client-Request-Id"), retryHeaders.Get("X-Client-Request-Id"))
+						firstHeaders.Del("X-Client-Request-Id")
+						retryHeaders.Del("X-Client-Request-Id")
+						require.Equal(t, firstHeaders, retryHeaders)
 					} else {
 						require.Error(t, err)
 						require.Nil(t, result)
