@@ -1,6 +1,7 @@
 package openai
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -53,6 +54,10 @@ func (t *InboundTransformer) TransformRequest(
 	err := json.Unmarshal(httpReq.Body, &oaiReq)
 	if err != nil {
 		return nil, fmt.Errorf("%w: failed to decode openai request: %w", transformer.ErrInvalidRequest, err)
+	}
+
+	if raw := bytes.TrimSpace(oaiReq.ImageConfig); len(raw) > 0 && string(raw) != "null" {
+		if raw[0] != '{' { return nil, fmt.Errorf("%w: imageConfig must be an object", transformer.ErrInvalidRequest) }
 	}
 
 	// Validate required fields

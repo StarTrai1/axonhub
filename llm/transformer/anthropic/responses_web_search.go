@@ -1,8 +1,8 @@
 package anthropic
 
 import (
-	"encoding/json"
 	"encoding/hex"
+	"encoding/json"
 	"net/url"
 	"slices"
 	"strings"
@@ -29,7 +29,9 @@ const responsesWebSearchMetadataKey = "openai_responses_web_search_calls"
 
 type responsesSearchCall struct {
 	Results json.RawMessage `json:"results"`
-	Error struct { Code string `json:"code"` } `json:"error"`
+	Error   struct {
+		Code string `json:"code"`
+	} `json:"error"`
 	ID     string                 `json:"id"`
 	Status string                 `json:"status"`
 	Action *responsesSearchAction `json:"action"`
@@ -60,8 +62,12 @@ func responsesSearchBlocks(metadata map[string]any, seen map[string]responsesSea
 				if !exists {
 					state.order = len(seen)
 				}
-				if len(call.Results) == 0 { call.Results = state.call.Results }
-				if call.Error.Code == "" { call.Error = state.call.Error }
+				if len(call.Results) == 0 {
+					call.Results = state.call.Results
+				}
+				if call.Error.Code == "" {
+					call.Error = state.call.Error
+				}
 				if call.Status == "" || state.call.Status == "completed" || state.call.Status == "failed" || state.call.Status == "incomplete" {
 					call.Status = state.call.Status
 				}
@@ -110,7 +116,9 @@ func responsesSearchBlocks(metadata map[string]any, seen map[string]responsesSea
 					input["query"] = call.Action.Queries[0]
 				}
 				if len(call.Action.Queries) > 1 {
-					if call.Action.Query == "" { input["query"] = strings.Join(call.Action.Queries, " ") }
+					if call.Action.Query == "" {
+						input["query"] = strings.Join(call.Action.Queries, " ")
+					}
 					input["queries"] = call.Action.Queries
 				}
 			}
@@ -124,9 +132,10 @@ func responsesSearchBlocks(metadata map[string]any, seen map[string]responsesSea
 				code := call.Error.Code
 				switch code {
 				case "too_many_requests", "invalid_tool_input", "max_uses_exceeded", "query_too_long", "request_too_large", "unavailable":
-				default: code = "unavailable"
+				default:
+					code = "unavailable"
 				}
-				encoded, _ := json.Marshal(map[string]string{"type":"web_search_tool_result_error", "error_code":code})
+				encoded, _ := json.Marshal(map[string]string{"type": "web_search_tool_result_error", "error_code": code})
 				content.SetRaw(encoded)
 			} else {
 				// OpenAI does not provide Anthropic's encrypted_content. Do not fabricate
@@ -173,14 +182,20 @@ func responsesSearchBlocks(metadata map[string]any, seen map[string]responsesSea
 					var opaque []map[string]json.RawMessage
 					for _, result := range results {
 						var encrypted string
-						if json.Unmarshal(result["encrypted_content"], &encrypted) != nil || encrypted == "" { continue }
+						if json.Unmarshal(result["encrypted_content"], &encrypted) != nil || encrypted == "" {
+							continue
+						}
 						entry := map[string]json.RawMessage{"type": json.RawMessage(`"web_search_result"`)}
 						for _, key := range []string{"url", "title", "page_age", "encrypted_content"} {
-							if value, ok := result[key]; ok { entry[key] = value }
+							if value, ok := result[key]; ok {
+								entry[key] = value
+							}
 						}
 						opaque = append(opaque, entry)
 					}
-					if len(opaque) > 0 { encoded, _ = json.Marshal(opaque) }
+					if len(opaque) > 0 {
+						encoded, _ = json.Marshal(opaque)
+					}
 				}
 				content.SetRaw(encoded)
 			}
@@ -218,7 +233,9 @@ func (s *anthropicInboundStream) emitResponsesSearchBlocks(metadata map[string]a
 	if len(blocks) == 0 {
 		return nil
 	}
-	if err := s.flushBufferedReasoningItems(); err != nil { return err }
+	if err := s.flushBufferedReasoningItems(); err != nil {
+		return err
+	}
 	if err := s.closeOpenContentBlocks(); err != nil {
 		return err
 	}

@@ -1,9 +1,11 @@
 package openai
 
 import (
+	"encoding/json"
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // ToLLMToolCall converts OpenAI ToolCall to unified llm.ToolCall.
@@ -66,6 +68,10 @@ func (r *Request) ToLLMRequest() *llm.Request {
 		Stream:              r.Stream,
 		ParallelToolCalls:   r.ParallelToolCalls,
 		Verbosity:           r.Verbosity,
+	}
+
+	if len(r.ImageConfig) > 0 {
+		req.TransformerMetadata = map[string]any{shared.ChatImageConfigMetadataKey: append(json.RawMessage(nil), r.ImageConfig...)}
 	}
 
 	// Convert messages

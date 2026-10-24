@@ -296,8 +296,10 @@ func NewHttpClientWithProxy(proxyConfig *ProxyConfig, opts ...ClientOption) *Htt
 		opt(&options)
 	}
 	client := &http.Client{Transport: buildHTTPRoundTripper(proxyConfig, options, proxyConfig == nil)}
-	if options.rejectHTTPSDowngrade {
-		client.CheckRedirect = rejectHTTPSDowngrade
+	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		if err := protectRedirectCredentials(req, via); err != nil { return err }
+		if options.rejectHTTPSDowngrade { return rejectHTTPSDowngrade(req, via) }
+		return nil
 	}
 
 	return &HttpClient{
@@ -453,22 +455,19 @@ func getProxyFunc(config *ProxyConfig) func(*http.Request) (*url.URL, error) {
 
 // NewHttpClient creates a new HTTP client.
 func NewHttpClient(opts ...ClientOption) *HttpClient {
-	var options clientOptions
-	for _, opt := range opts {
-		opt(&options)
-	}
-
-	return &HttpClient{
-		client: &http.Client{Transport: buildHTTPRoundTripper(nil, options, true)},
-		opts:   opts,
-	}
+	return NewHttpClientWithProxy(nil, opts...)
 }
 
 // NewHttpClientWithClient creates a new HTTP client with a custom http.Client.
 func NewHttpClientWithClient(client *http.Client) *HttpClient {
-	return &HttpClient{
-		client: client,
+	copy := *client
+	previous := client.CheckRedirect
+	copy.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		if err := protectRedirectCredentials(req, via); err != nil { return err }
+		if previous != nil { return previous(req, via) }
+		return nil
 	}
+	return &HttpClient{client: &copy}
 }
 
 // Do executes the HTTP request.

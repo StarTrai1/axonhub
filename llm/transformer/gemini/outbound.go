@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/tidwall/sjson"
+
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -177,6 +179,11 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	}
 
 	// Prepare headers
+	if imageConfig := shared.ChatImageConfig(llmReq.TransformerMetadata); len(imageConfig) > 0 {
+		body, err = sjson.SetRawBytes(body, "generationConfig.imageConfig", imageConfig)
+		if err != nil { return nil, fmt.Errorf("encode Gemini imageConfig: %w", err) }
+	}
+
 	headers := make(http.Header)
 	headers.Set("Content-Type", "application/json")
 	headers.Set("Accept", "application/json")

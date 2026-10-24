@@ -55,8 +55,7 @@ func TestAnthropicWebSearchTwoTurnHistory(t *testing.T) {
 			}
 			require.Equal(t, 1, calls)
 			require.Equal(t, 1, results)
-			
-			
+
 			require.Contains(t, history, "Answer")
 			if status == "completed" {
 				require.Contains(t, history, "https://debian.org")

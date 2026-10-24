@@ -511,11 +511,11 @@ func (b *MessageContentBlock) UnmarshalJSON(data []byte) error {
 		if err := json.Unmarshal(data, &result); err != nil {
 			return err
 		}
-		if trimmed := bytes.TrimSpace(result.Content); len(trimmed) > 0 && trimmed[0] == '{' {
-			*b = MessageContentBlock(result.blockAlias)
+		*b = MessageContentBlock(result.blockAlias)
+		if trimmed := bytes.TrimSpace(result.Content); len(trimmed) > 0 && string(trimmed) != "null" {
 			b.Content = &MessageContent{Raw: append(json.RawMessage(nil), result.Content...)}
-			return nil
 		}
+		return nil
 	}
 	var decoded blockAlias
 	if err := json.Unmarshal(data, &decoded); err != nil {

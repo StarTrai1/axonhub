@@ -133,6 +133,19 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: axonhub_test
+          MYSQL_ROOT_HOST: '%'
+          MYSQL_DATABASE: axonhub_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -paxonhub_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v7
         with:
@@ -156,6 +169,12 @@ jobs:
         env:
           AXONHUB_TEST_PG_DSN: postgres://axonhub_test:axonhub_test@127.0.0.1:5432/axonhub_test?sslmode=disable
         run: go test ./internal/server/biz -run '^TestQuotaRoutingMigration_Postgres$|^TestUnifiedHistory.*Postgres$' -count=1 -v
+
+      - name: Verify retired quota cleanup on MySQL and PostgreSQL
+        env:
+          AXONHUB_TEST_MYSQL_DSN: root:axonhub_test@tcp(127.0.0.1:3306)/axonhub_test?parseTime=true
+          AXONHUB_TEST_PG_DSN: postgres://axonhub_test:axonhub_test@127.0.0.1:5432/axonhub_test?sslmode=disable
+        run: go test ./internal/server/db -run '^TestCleanupRemovedProviderQuotaTypes' -count=1 -v
 
   test-llm:
     name: Test LLM module

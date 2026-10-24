@@ -785,8 +785,12 @@ func appendResponseWebSearchCallMetadata(metadata map[string]any, item Item) {
 		if existing.ID != call.ID {
 			continue
 		}
-		if len(call.Results) == 0 { call.Results = existing.Results }
-		if call.Error == nil { call.Error = existing.Error }
+		if len(call.Results) == 0 {
+			call.Results = existing.Results
+		}
+		if call.Error == nil {
+			call.Error = existing.Error
+		}
 		if call.Action == nil {
 			call.Action = existing.Action
 		} else if existing.Action != nil && existing.Action.WebSearch != nil {
@@ -795,8 +799,12 @@ func appendResponseWebSearchCallMetadata(metadata map[string]any, item Item) {
 			if action.Type == "" {
 				action.Type = earlier.Type
 			}
-			if action.URL == "" { action.URL = earlier.URL }
-			if action.Pattern == "" { action.Pattern = earlier.Pattern }
+			if action.URL == "" {
+				action.URL = earlier.URL
+			}
+			if action.Pattern == "" {
+				action.Pattern = earlier.Pattern
+			}
 			if action.Query == "" {
 				action.Query = earlier.Query
 			}

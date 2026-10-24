@@ -13,6 +13,10 @@ const TransformerMetadataKeyCitations = "citations"
 // Request represents an OpenAI chat completion request.
 // This is a clean OpenAI-specific model without helper fields.
 type Request struct {
+	// ImageConfig is the Gemini-compatible Chat extension. Preserve its object
+	// without dropping provider fields introduced after this gateway version.
+	ImageConfig json.RawMessage `json:"imageConfig,omitempty"`
+
 	// Messages is a list of messages to send to the model.
 	Messages []Message `json:"messages" validator:"required,min=1"`
 

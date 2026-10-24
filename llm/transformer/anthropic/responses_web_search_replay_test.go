@@ -76,12 +76,18 @@ func TestResponsesHostedSearchAnthropicTerminalAndReplay(t *testing.T) {
 					require.NoError(t, encoded.Close())
 				}
 				if status == "in_progress" {
-					for _, block := range content { require.NotEqual(t, "web_search_tool_result", block.Type) }
+					for _, block := range content {
+						require.NotEqual(t, "web_search_tool_result", block.Type)
+					}
 					return
 				}
 				require.Len(t, content, 3, "search pair emitted once even when metadata is repeated at completion")
 				var search []MessageContentBlock
-				for _, block := range content { if block.Type == "server_tool_use" || block.Type == "web_search_tool_result" { search = append(search, block) } }
+				for _, block := range content {
+					if block.Type == "server_tool_use" || block.Type == "web_search_tool_result" {
+						search = append(search, block)
+					}
+				}
 				content = search
 				require.Equal(t, "server_tool_use", content[0].Type)
 				require.Equal(t, "web_search_tool_result", content[1].Type)

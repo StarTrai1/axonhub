@@ -1105,14 +1105,24 @@ func anthropicWebSearchCallItem(toolCall llm.ToolCall, inlineResults []llm.Inlin
 }
 
 func replayableAnthropicWebSearchCall(toolCall llm.ToolCall, results []llm.InlineToolResult) (Item, bool) {
-	if !strings.HasPrefix(toolCall.ID, "srvtoolu_oai_") { return Item{}, false }
+	if !strings.HasPrefix(toolCall.ID, "srvtoolu_oai_") {
+		return Item{}, false
+	}
 	item, ok := anthropicWebSearchCallItem(toolCall, results)
-	if !ok { return Item{}, false }
-	if item.Error != nil { return item, true }
-	var entries []struct { Encrypted string `json:"encrypted_content"` }
+	if !ok {
+		return Item{}, false
+	}
+	if item.Error != nil {
+		return item, true
+	}
+	var entries []struct {
+		Encrypted string `json:"encrypted_content"`
+	}
 	if json.Unmarshal(item.Results, &entries) == nil {
 		for _, entry := range entries {
-			if entry.Encrypted != "" { return item, true }
+			if entry.Encrypted != "" {
+				return item, true
+			}
 		}
 	}
 	return Item{}, false
