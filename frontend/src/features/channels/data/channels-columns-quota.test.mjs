@@ -256,11 +256,13 @@ test('normalized parser preserves every limit without a five-row cap', () => {
   assert.deepEqual(limits.map((limit) => limit.window), ['5h', '7d', '30d', 'daily', 'weekly', 'monthly']);
 });
 
-test('the search quota reaches the table with its production label', () => {
+test('the search quota reaches the shared provider popover with its production label', () => {
+  const quotaSource = read('components/quota-badges.tsx');
+  assert.match(quotaSource, /const searchHourly = qd\.search\?\.hourly/);
   assert.match(
-    columnsSource,
-    /search_hourly:\s*'quota\.window\.search_hourly'/,
-    'the table must map the search window through the production label map'
+    quotaSource,
+    /t\('quota\.label\.search_requests'\)/,
+    'the shared provider popover must translate the hourly search label'
   );
 
   const limits = parseQuotaLimits({
