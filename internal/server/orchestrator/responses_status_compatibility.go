@@ -31,7 +31,7 @@ import (
 var (
 	responsesRejectedStatusParamPattern   = regexp.MustCompile(`(?i)^input\[(\d+)\]\.(status|internal_chat_message_metadata_passthrough)(?:\.[a-z_]+)?$`)
 	responsesRejectedStatusMessagePattern = regexp.MustCompile(
-		`(?i)(?:unknown|unsupported)[ _-]+parameter\s*(?::|=|is)?\s*["']?(input\[\d+\]\.status)(?:["']|\b)`,
+		`(?i)(?:unknown|unsupported)[ _-]+parameter\s*(?::|=|is)?\s*["']?(input\[\d+\]\.[a-z_][a-z_0-9]*(?:\.[a-z_][a-z_0-9]*|\[\d+\])*)(?:["']|\s|[.,;:]|$)`,
 	)
 )
 

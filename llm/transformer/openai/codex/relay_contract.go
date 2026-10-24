@@ -41,9 +41,6 @@ func (t *OutboundTransformer) normalizeResponsesContract(request *httpclient.Req
 	if !gjson.GetBytes(body, "parallel_tool_calls").Exists() {
 		body, _ = sjson.SetBytes(body, "parallel_tool_calls", true)
 	}
-	if len(gjson.GetBytes(body, "tools").Array()) == 0 && gjson.GetBytes(body, "tool_choice").String() == "auto" {
-		body, _ = sjson.DeleteBytes(body, "tool_choice")
-	}
 	clone := *request
 	clone.Body = body
 	if len(request.JSONBody) > 0 {

@@ -119,7 +119,7 @@ func canRetryLocalCompactionStream(outbound *PersistentOutboundTransformer, err 
 		return false
 	}
 	if isModelCapacityExhausted(err) {
-		return false
+		return !outbound.HasAlternativeChannel() && canRetryModelCapacity(err)
 	}
 	state := outbound.state
 	channel := state.CurrentCandidate.Channel

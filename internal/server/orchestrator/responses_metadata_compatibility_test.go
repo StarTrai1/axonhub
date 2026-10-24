@@ -15,7 +15,7 @@ import (
 )
 
 func TestResponsesRejectedCodexMetadataRetriesWithoutChangingContent(t *testing.T) {
-	body := []byte(`{"model":"gpt-6-astra","input":[{"type":"message","role":"developer","content":[{"type":"input_text","text":"rules"}],"status":"completed","internal_chat_message_metadata_passthrough":{"content_item_kinds":["permissions.instructions"],"turn_id":"turn"}},{"type":"message","role":"user","content":"hello","internal_chat_message_metadata_passthrough":{"turn_id":"turn"}},{"type":"compaction","encrypted_content":"opaque"}],"tools":[{"type":"function","name":"run"}],"prompt_cache_key":"stable"}`)
+	body := []byte(`{"model":"gpt-6-astra","input":[{"type":"message","role":"developer","content":[{"type":"input_text","text":"rules"}],"status":"completed","internal_chat_message_metadata_passthrough":{"content_item_kinds":["permissions.instructions"],"content_item_metadata":[{"provenance":{"type":"harness","hook":false}}],"turn_id":"turn"}},{"type":"message","role":"user","content":"hello","internal_chat_message_metadata_passthrough":{"turn_id":"turn"}},{"type":"compaction","encrypted_content":"opaque"}],"tools":[{"type":"function","name":"run"}],"prompt_cache_key":"stable"}`)
 	channel := new(biz.Channel)
 	channel.Channel = new(ent.Channel)
 	channel.ID = 29
@@ -31,7 +31,7 @@ func TestResponsesRejectedCodexMetadataRetriesWithoutChangingContent(t *testing.
 	middleware := applyResponsesRejectedStatusCompatibility(outbound)
 	providerErr := new(httpclient.Error)
 	providerErr.StatusCode = http.StatusBadRequest
-	providerErr.Body = []byte(`{"error":{"message":"bad response status code 400","param":"input[0].internal_chat_message_metadata_passthrough.content_item_kinds","code":"unknown_parameter"}}`)
+	providerErr.Body = []byte(`{"error":{"message":"Unknown parameter: 'input[0].internal_chat_message_metadata_passthrough.content_item_metadata'. (request id: synthetic)"}}`)
 
 	middleware.OnOutboundRawError(t.Context(), providerErr)
 	require.True(t, outbound.CanRetry(providerErr))
@@ -55,6 +55,31 @@ func TestResponsesRejectedCodexMetadataRetriesWithoutChangingContent(t *testing.
 	untouched, err := middleware.OnOutboundRawRequest(t.Context(), request)
 	require.NoError(t, err)
 	require.Equal(t, body, untouched.Body)
+}
+
+func TestResponsesRejectedMetadataParameterFromMessage(t *testing.T) {
+	body := []byte(`{"input":[{"type":"message","role":"developer","content":"rules","status":"completed","internal_chat_message_metadata_passthrough":{"content_item_metadata":[],"turn_id":"keep"}}]}`)
+	for _, test := range []struct {
+		name    string
+		message string
+		param   string
+		want    bool
+	}{
+		{"new metadata", "Unknown parameter: 'input[0].internal_chat_message_metadata_passthrough.content_item_metadata'.", "", true},
+		{"metadata parent", "Unsupported parameter: input[0].internal_chat_message_metadata_passthrough", "", true},
+		{"status", "Unknown parameter: 'input[0].status'.", "", true},
+		{"conflicting index", "Unknown parameter: 'input[0].internal_chat_message_metadata_passthrough.content_item_metadata'.", "input[1].internal_chat_message_metadata_passthrough", false},
+		{"nested status", "Unknown parameter: 'input[0].status.nested'.", "", false},
+		{"indexed metadata child", "Unknown parameter: 'input[0].internal_chat_message_metadata_passthrough.content[0]'.", "", false},
+		{"deep metadata child", "Unknown parameter: 'input[0].internal_chat_message_metadata_passthrough.content_item_metadata.unknown'.", "", false},
+		{"semantic input", "Unknown parameter: 'input[0].content'.", "", false},
+		{"generic error", "invalid codex request", "", false},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			_, ok := responsesRejectedStatusRuleForDetails(body, "", test.message, test.param)
+			require.Equal(t, test.want, ok)
+		})
+	}
 }
 
 func TestResponsesRejectedMetadataRejectsSemanticAndUnrelatedErrors(t *testing.T) {

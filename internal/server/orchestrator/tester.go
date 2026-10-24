@@ -28,6 +28,7 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/openai"
 	"github.com/looplj/axonhub/llm/transformer/openai/codex"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 const (
@@ -1004,8 +1005,11 @@ func buildRemoteCompactionChannelTestRequest(model string, systemPrompt string, 
 }
 
 func isCodexStyleTestModel(model string) bool {
+	if shared.IsGPT6Model(normalizeChannelTestModel(model)) {
+		return true
+	}
 	switch normalizeChannelTestModel(model) {
-	case "gpt-5.5", "gpt-5.6", "gpt-5.6-sol", "gpt-5.6-luna", "gpt-5.6-terra", "gpt-6-astra":
+	case "gpt-5.5", "gpt-5.6", "gpt-5.6-sol", "gpt-5.6-luna", "gpt-5.6-terra":
 		return true
 	default:
 		return false
@@ -1013,8 +1017,11 @@ func isCodexStyleTestModel(model string) bool {
 }
 
 func isResponsesLiteTestModel(model string) bool {
+	if shared.IsGPT6Model(normalizeChannelTestModel(model)) {
+		return true
+	}
 	switch normalizeChannelTestModel(model) {
-	case "gpt-5.6", "gpt-5.6-sol", "gpt-5.6-luna", "gpt-5.6-terra", "gpt-6-astra":
+	case "gpt-5.6", "gpt-5.6-sol", "gpt-5.6-luna", "gpt-5.6-terra":
 		return true
 	default:
 		return false

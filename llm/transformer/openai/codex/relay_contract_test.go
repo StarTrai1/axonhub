@@ -41,7 +41,7 @@ func TestRelayResponsesContractUserOnlyProbe(t *testing.T) {
 	require.Equal(t, gjson.String, gjson.GetBytes(result.Body, "instructions").Type)
 	require.Equal(t, "[]", gjson.GetBytes(result.Body, "tools").Raw)
 	require.True(t, gjson.GetBytes(result.Body, "parallel_tool_calls").Bool())
-	require.False(t, gjson.GetBytes(result.Body, "tool_choice").Exists())
+	require.Equal(t, "auto", gjson.GetBytes(result.Body, "tool_choice").String())
 }
 
 func TestRelayResponsesContractKeepsOtherEndpoints(t *testing.T) {

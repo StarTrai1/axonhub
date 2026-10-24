@@ -389,16 +389,42 @@ class Events:
                        self.http_status if status != "success" else None)
 
 
-def config_text(args: argparse.Namespace, effort: str) -> str:
+def probe_model_catalog(model: str, effort: str) -> dict:
+    # Model-owned tool_mode/experimental_supported_tools override CLI feature
+    # switches in current Codex. These fixed-bank questions need no tools.
+    # Keep the real model ID and requested effort, using a private per-attempt
+    # catalog to prevent catalog updates from enabling tools in the probe.
+    instructions = "Answer the user's question directly. No tools are available."
+    return {"models": [{
+        "slug": model, "display_name": model, "description": "Isolated question probe",
+        "default_reasoning_level": effort,
+        "supported_reasoning_levels": [{"effort": effort, "description": "Requested probe effort"}],
+        "shell_type": "disabled", "visibility": "hide", "supported_in_api": True,
+        "priority": 0, "base_instructions": instructions,
+        "model_messages": {"instructions_template": instructions},
+        "supports_reasoning_summaries": False, "supports_reasoning_summary_parameter": False,
+        "support_verbosity": True, "default_verbosity": "low",
+        "truncation_policy": {"mode": "bytes", "limit": 10000},
+        "experimental_supported_tools": [], "tool_mode": "direct",
+        "use_responses_lite": True, "input_modalities": ["text"],
+    }]}
+
+
+def config_text(args: argparse.Namespace, effort: str, catalog_path: Path | None = None) -> str:
     # TOML strings use JSON-compatible escaping. Never include the secret key.
     q = lambda value: json.dumps(value, ensure_ascii=False)
     return f'''model = {q(args.model)}
 model_provider = "axonhub_probe"
 model_reasoning_effort = {q(effort)}
 model_verbosity = "low"
+{f'model_catalog_json = {q(str(catalog_path))}' if catalog_path else ''}
 approval_policy = "never"
 sandbox_mode = "read-only"
 web_search = "disabled"
+[tools.experimental_request_user_input]
+enabled = false
+[tools.update_plan]
+enabled = false
 [history]
 persistence = "none"
 [analytics]
@@ -406,6 +432,15 @@ enabled = false
 [feedback]
 enabled = false
 [features]
+code_mode = false
+code_mode_only = false
+current_time_reminder = false
+sleep_tool = false
+send_message_to_user_async = false
+view_image = false
+deferred_executor = false
+request_permissions_tool = false
+token_budget = false
 shell_tool = false
 unified_exec = false
 apps = false
@@ -478,7 +513,9 @@ class Runner:
         stderr_errors = StderrErrors(self.key)
         outcome = Outcome("error")
         try:
-            (job / "codex-home/config.toml").write_text(config_text(self.args, effort), encoding="utf-8")
+            catalog_path = job / "codex-home/probe-models.json"
+            atomic_json(catalog_path, probe_model_catalog(self.args.model, effort))
+            (job / "codex-home/config.toml").write_text(config_text(self.args, effort, catalog_path), encoding="utf-8")
             # A dedicated child environment uses CODEX_HOME for its intended purpose;
             # the caller's HOME, CODEX_HOME, files, config and credentials are untouched.
             env = {k: v for k, v in os.environ.items() if not k.startswith(("CODEX_", "OPENAI_")) and k != self.args.key_env}

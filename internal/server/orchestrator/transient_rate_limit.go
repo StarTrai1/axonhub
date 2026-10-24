@@ -37,7 +37,7 @@ func canRetryTransientRateLimit(err error) bool {
 
 func transientRateLimitRetryAfter(err error, now time.Time) (time.Duration, bool) {
 	var raw *httpclient.Error
-	if !errors.As(err, &raw) || (raw.StatusCode != http.StatusTooManyRequests && raw.StatusCode != http.StatusServiceUnavailable) {
+	if !errors.As(err, &raw) || (raw.StatusCode != http.StatusTooManyRequests && raw.StatusCode != http.StatusServiceUnavailable && !isModelCapacityExhausted(err)) {
 		return 0, false
 	}
 	for _, header := range []string{"Retry-After", "Retry-After-Ms", "X-Ms-Retry-After-Ms"} {
@@ -68,7 +68,7 @@ func transientRateLimitRetryAfter(err error, now time.Time) (time.Duration, bool
 
 func (p *PersistentOutboundTransformer) SameChannelRetryDelay(err error, attempt int) time.Duration {
 	status := ExtractStatusCodeFromError(err)
-	if status != http.StatusTooManyRequests && status != http.StatusServiceUnavailable {
+	if status != http.StatusTooManyRequests && status != http.StatusServiceUnavailable && !isModelCapacityExhausted(err) {
 		return 0
 	}
 	delay := time.Second * time.Duration(1<<min(max(attempt, 1), 5))

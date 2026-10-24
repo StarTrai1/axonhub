@@ -128,6 +128,11 @@ class CLIIntegrationTest(unittest.IsolatedAsyncioTestCase):
                     self.assertEqual(requests[0][0]["authorization"].lower(), "bearer synthetic-test-key")
                     self.assertEqual(requests[0][1]["model"], model)
                     self.assertNotIn("access_programs", requests[0][1])
+                    for _, request in requests:
+                        self.assertFalse(request.get("tools"), "question probes must not advertise tools")
+                        for item in request["input"]:
+                            if item.get("type") == "additional_tools":
+                                self.assertEqual(item["tools"], [], "incremental tools must also be empty")
                     self.assertEqual(errors, [])
                     self.assertEqual(runner.active_attempts, 0)
                     self.assertFalse(list(state.root.glob("attempt-*")))
@@ -204,7 +209,11 @@ class CLIIntegrationTest(unittest.IsolatedAsyncioTestCase):
                     runner = Runner(args, state, "synthetic-test-key")
                     from probe_common import config_text
                     def agent_config(*values):
-                        return config_text(*values).replace(
+                        # This separate transport fixture deliberately enables agents;
+                        # ordinary probe tests above exercise the private no-tool catalog.
+                        config = "\n".join(line for line in config_text(*values).splitlines()
+                                           if not line.startswith("model_catalog_json =")) + "\n"
+                        return config.replace(
                             "multi_agent_v2 = false",
                             'multi_agent_v2 = { enabled = true, tool_namespace = "agents", message_board_in_memory = true }',
                         )

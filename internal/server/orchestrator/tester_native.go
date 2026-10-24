@@ -17,6 +17,7 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/openai"
+	"github.com/looplj/axonhub/llm/transformer/openai/codex"
 	"github.com/looplj/axonhub/llm/transformer/openai/decisions"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 	"github.com/looplj/axonhub/llm/transformer/typesafe"
@@ -140,23 +141,39 @@ func (processor *TestChannelOrchestrator) buildNativeChannelTestInput(ctx contex
 	return inbound, &httpclient.Request{Method: http.MethodPost, Headers: http.Header{"Content-Type": {"application/json"}}, Body: body, RequestType: string(map[llm.APIFormat]llm.RequestType{llm.APIFormatTypeSafeSystemOne: llm.RequestTypeSystemOne, llm.APIFormatOpenAIDecisions: llm.RequestTypeDecisions}[apiFormat]), APIFormat: string(apiFormat)}, nil
 }
 
-// Probe the selected channel's protocol, independently of model name lists.
-// The normal Codex transport finalizer supplies the same identity and required
-// wire fields as a real request; probes do not fabricate a private Lite mode.
+// Native Responses probes retain the normal test identity and model settings.
+// They use the standard dialect; the transport finalizer owns relay adaptation.
 func buildResponsesChannelTestRequest(model, systemPrompt, userPrompt string) (*httpclient.Request, error) {
-	body, err := json.Marshal(map[string]any{
+	request, err := buildChannelTestRequest(model, true, systemPrompt, userPrompt, false)
+	if err != nil {
+		return nil, err
+	}
+	request.Headers.Del(responses.ResponsesLiteHeader)
+	payload := map[string]any{
 		"model":               model,
 		"instructions":        systemPrompt,
 		"input":               []map[string]any{{"type": "message", "role": "user", "content": []map[string]string{{"type": "input_text", "text": userPrompt}}}},
 		"stream":              true,
 		"store":               false,
 		"tools":               []any{},
-		"parallel_tool_calls": true,
-	})
+		"parallel_tool_calls": false,
+		"tool_choice":         "auto",
+	}
+	if isCodexStyleTestModel(model) {
+		payload["reasoning"] = map[string]string{"effort": "low"}
+		payload["text"] = map[string]string{"verbosity": "low"}
+		payload["include"] = []string{"reasoning.encrypted_content"}
+		payload["prompt_cache_key"] = request.Headers.Get(codex.SessionHeaderHyphen)
+	}
+	body, err := json.Marshal(payload)
 	if err != nil {
 		return nil, err
 	}
-	return &httpclient.Request{Method: http.MethodPost, Headers: http.Header{"Content-Type": {"application/json"}}, Body: body, APIFormat: llm.APIFormatOpenAIResponse.String(), Metadata: map[string]string{channelTestRequestMetadataKey: "true"}}, nil
+	request.Method = http.MethodPost
+	request.Body = body
+	request.APIFormat = llm.APIFormatOpenAIResponse.String()
+	request.Metadata = map[string]string{channelTestRequestMetadataKey: "true"}
+	return request, nil
 }
 
 func channelTestResponseMessage(body []byte, apiFormat llm.APIFormat) (*string, error) {

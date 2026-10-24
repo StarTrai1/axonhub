@@ -19,6 +19,8 @@ python3 scripts/codex-probes/keepalive.py \
 
 `--check` 检查本地配置、题库与 CLI 版本；不发模型请求。`--codex /absolute/path/to/codex` 可指定二进制。未指定时优先 `~/.codex/packages/standalone/current/codex`，不存在才从 PATH 查找；启动时解析并固定实际路径，`codex_version.executable` 会打印所用文件。npm 与 standalone 可以共存，运行中更新 current 不会改变本进程选用的版本。先使用你渠道实际支持的 model/effort；脚本不会猜测模型别名、修改 service tier 或伪造能力。
 
+题库探测使用每次会话独有的无工具模型目录：保留 `--model` 和本阶段的推理强度，使用简短答题指令，不声明 Code Mode、时钟、交互询问、子代理或其他工具。Codex 0.164.0 的模型目录可以覆盖部分功能开关，所以仅设 `shell_tool=false` 等不足以禁用工具。目录与临时会话一起清理，不修改常用 Codex 配置。GitHub CI 用真实 CLI 检查最终 HTTP 请求的顶层及增量工具列表均为空。
+
 ## 1. any 两阶段循环
 
 ```bash

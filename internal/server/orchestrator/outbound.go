@@ -1124,11 +1124,6 @@ func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
 	if p.state.CurrentCandidate == nil {
 		return false
 	}
-	// Capacity failure must also stop compatibility overrides: the same
-	// upstream model cannot make progress until capacity is available.
-	if isModelCapacityExhausted(err) {
-		return false
-	}
 	if _, preparationFailed := errors.AsType[*remoteCompactionPreparationError](err); preparationFailed {
 		// The bridge already used its own bounded opening-stream retry budget.
 		return false
@@ -1137,6 +1132,11 @@ func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
 		if p.state.responsesCompactionSkipChannel == current.ID {
 			return false
 		}
+	}
+	if isModelCapacityExhausted(err) {
+		// Prefer another resource when available; a last-channel temporary
+		// overload uses the configured retry budget and exponential backoff.
+		return !p.HasAlternativeChannel() && canRetryModelCapacity(err)
 	}
 	if p.state.CurrentCandidate.Channel != nil &&
 		hasResponsesRejectedStatusCompatibilityRetry(p.state, p.state.CurrentCandidate.Channel.ID) {

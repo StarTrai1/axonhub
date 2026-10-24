@@ -199,8 +199,8 @@ func expensiveGatewayTimeout(state *PersistenceState, now time.Time) bool {
 	return state != nil && state.Perf != nil && !state.Perf.StartTime.IsZero() && now.Sub(state.Perf.StartTime) >= 30*time.Second
 }
 
-// Capacity exhaustion is a routing outcome, even when a relay encodes it as
-// HTTP 500. Replaying the same model immediately cannot create capacity.
+// Relays may encode temporary model overload as HTTP 500. Keep this distinct
+// from ordinary server errors so retries wait for capacity instead of spinning.
 func isModelCapacityExhausted(err error) bool {
 	if err == nil {
 		return false
@@ -218,4 +218,10 @@ func isModelCapacityExhausted(err error) bool {
 		strings.Contains(message, "model capacity exhausted") ||
 		strings.Contains(message, "model capacity reached") ||
 		strings.Contains(message, "model is overloaded")
+}
+
+func canRetryModelCapacity(err error) bool {
+	// Provisioned throughput exhaustion still requires a different deployment.
+	// Temporary 500/503 overload may recover within the normal retry budget.
+	return ExtractStatusCodeFromError(err) != http.StatusTooManyRequests && canRetryTransientRateLimit(err)
 }
