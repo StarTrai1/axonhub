@@ -31,7 +31,7 @@ import (
 var (
 	responsesRejectedStatusParamPattern   = regexp.MustCompile(`(?i)^input\[(\d+)\]\.(status|internal_chat_message_metadata_passthrough)(?:\.[a-z_]+)?$`)
 	responsesRejectedStatusMessagePattern = regexp.MustCompile(
-		`(?i)(?:unknown|unsupported)[ _-]+parameter\s*(?::|=|is)?\s*["']?(input\[\d+\]\.[a-z_][a-z_0-9]*(?:\.[a-z_][a-z_0-9]*|\[\d+\])*)(?:["']|\s|[.,;:]|$)`,
+		`(?i)(?:unknown|unsupported)[ _-]+parameter\s*(?::|=|is)?\s*["']?(input\[\d+\]\.[^"'\s]+)(["']?)`,
 	)
 )
 
@@ -327,11 +327,16 @@ func responsesRejectedStatusRuleForDetails(requestBody []byte, code, message, pa
 
 func responsesRejectedStatusParamFromMessage(message string) string {
 	match := responsesRejectedStatusMessagePattern.FindStringSubmatch(strings.TrimSpace(message))
-	if len(match) != 2 {
+	if len(match) != 3 {
 		return ""
 	}
-
-	return strings.ToLower(strings.TrimSpace(match[1]))
+	// Capture the entire token before validating it. Matching a supported prefix
+	// of an unsupported nested path must not authorize a compatibility retry.
+	param := strings.ToLower(match[1])
+	if match[2] == "" {
+		param = strings.TrimSuffix(param, ".")
+	}
+	return param
 }
 
 func rememberResponsesRejectedStatusRule(state *PersistenceState, channelID int, rule responsesRejectedStatusRule) bool {

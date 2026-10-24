@@ -53,7 +53,7 @@ func relayAffinityRequest(t *testing.T) *httpclient.Request {
 	return request
 }
 
-func TestResponsesCapacityDoesNotRotateOrResend(t *testing.T) {
+func TestResponsesCapacityRetryPreservesHistoryAndAffinity(t *testing.T) {
 	for _, raw := range []bool{false, true} {
 		for _, failure := range []*httpclient.Error{
 			relayAffinityOverload(),
@@ -69,10 +69,18 @@ func TestResponsesCapacityDoesNotRotateOrResend(t *testing.T) {
 						func(*PersistenceState, *PersistentOutboundTransformer) pipeline.Middleware {
 							return &relayReplayTestDestination{}
 						})
-					require.Error(t, err)
-					require.Nil(t, result)
-					require.Equal(t, failure.StatusCode, ExtractStatusCodeFromError(err))
-					require.Len(t, executor.requests, 1)
+					if retries > 0 && failure.StatusCode == http.StatusInternalServerError {
+						require.NoError(t, err)
+						drainRejectedReasoningPipeline(t, result)
+						require.Len(t, executor.requests, 2)
+						require.Equal(t, executor.requests[0].Body, executor.requests[1].Body)
+						require.Equal(t, executor.requests[0].Headers, executor.requests[1].Headers)
+					} else {
+						require.Error(t, err)
+						require.Nil(t, result)
+						require.Equal(t, failure.StatusCode, ExtractStatusCodeFromError(err))
+						require.Len(t, executor.requests, 1)
+					}
 					require.Equal(t, original, request.Body)
 					require.Equal(t, headers, request.Headers)
 					require.Equal(t, headers.Get("Thread-Id"), executor.requests[0].Headers.Get("Thread-Id"))
@@ -83,7 +91,7 @@ func TestResponsesCapacityDoesNotRotateOrResend(t *testing.T) {
 	}
 }
 
-func TestResponsesCapacityStopsLocalCompaction(t *testing.T) {
+func TestResponsesCapacityRetriesLocalCompactionWithoutChangingHistory(t *testing.T) {
 	outbound := newCodexResponsesPassThroughOutbound()
 	outbound.wrapped = new(responses.OutboundTransformer)
 	outbound.state.RetryPolicyProvider = &mockRetryPolicyProvider{policy: &biz.RetryPolicy{Enabled: true, MaxSingleChannelRetries: 4}}
@@ -92,12 +100,14 @@ func TestResponsesCapacityStopsLocalCompaction(t *testing.T) {
 	executor := &responsesReasoningPipelineExecutor{failures: []error{relayAffinityOverload()}, events: rejectedReasoningCompactionEvents()}
 	adapter := newRemoteCompactionAdapter(nil, nil, nil)
 	stream, _, err := adapter.startLocalCompactionStream(t.Context(), outbound, request, executor, applyResponsesRejectedStatusCompatibility(outbound))
-	require.Error(t, err)
-	require.Nil(t, stream)
-	require.Len(t, executor.requests, 1)
+	require.NoError(t, err)
+	require.NoError(t, stream.Close())
+	require.Len(t, executor.requests, 2)
+	require.Equal(t, executor.requests[0].Body, executor.requests[1].Body)
+	require.Equal(t, executor.requests[0].Headers, executor.requests[1].Headers)
 }
 
-func TestResponsesCapacityHTTPDoesNotResend(t *testing.T) {
+func TestResponsesCapacityHTTPHonorsConfiguredRetryBudget(t *testing.T) {
 	var calls atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls.Add(1)
@@ -109,7 +119,7 @@ func TestResponsesCapacityHTTPDoesNotResend(t *testing.T) {
 	}))
 	defer server.Close()
 	executor := httpclient.NewHttpClientWithProxy(&httpclient.ProxyConfig{Type: httpclient.ProxyTypeDisabled})
-	_, result, err := runRejectedReasoningPipeline(t, t.Context(), relayAffinityRequest(t), executor, "capacity-http", true, 5,
+	_, result, err := runRejectedReasoningPipeline(t, t.Context(), relayAffinityRequest(t), executor, "capacity-http", true, 2,
 		func(*PersistenceState, *PersistentOutboundTransformer) pipeline.Middleware {
 			return pipeline.OnRawRequest("test-capacity-destination", func(_ context.Context, request *httpclient.Request) (*httpclient.Request, error) {
 				request.URL = server.URL + "/v1/responses"
@@ -118,5 +128,5 @@ func TestResponsesCapacityHTTPDoesNotResend(t *testing.T) {
 		})
 	require.Error(t, err)
 	require.Nil(t, result)
-	require.Equal(t, int32(1), calls.Load())
+	require.Equal(t, int32(3), calls.Load())
 }

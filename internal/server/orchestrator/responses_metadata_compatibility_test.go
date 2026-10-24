@@ -68,10 +68,13 @@ func TestResponsesRejectedMetadataParameterFromMessage(t *testing.T) {
 		{"new metadata", "Unknown parameter: 'input[0].internal_chat_message_metadata_passthrough.content_item_metadata'.", "", true},
 		{"metadata parent", "Unsupported parameter: input[0].internal_chat_message_metadata_passthrough", "", true},
 		{"status", "Unknown parameter: 'input[0].status'.", "", true},
+		{"unquoted status", "Unknown parameter: input[0].status.", "", true},
+		{"quoted trailing dot", "Unknown parameter: 'input[0].status.'.", "", false},
 		{"conflicting index", "Unknown parameter: 'input[0].internal_chat_message_metadata_passthrough.content_item_metadata'.", "input[1].internal_chat_message_metadata_passthrough", false},
 		{"nested status", "Unknown parameter: 'input[0].status.nested'.", "", false},
 		{"indexed metadata child", "Unknown parameter: 'input[0].internal_chat_message_metadata_passthrough.content[0]'.", "", false},
 		{"deep metadata child", "Unknown parameter: 'input[0].internal_chat_message_metadata_passthrough.content_item_metadata.unknown'.", "", false},
+		{"malformed metadata child", "Unknown parameter: 'input[0].internal_chat_message_metadata_passthrough.content_item_metadata[bad]'.", "", false},
 		{"semantic input", "Unknown parameter: 'input[0].content'.", "", false},
 		{"generic error", "invalid codex request", "", false},
 	} {
