@@ -175,10 +175,10 @@ func TestCodexCatalog_CredentialConflictWithAPIKeySwitchClearsOAuthWinner(t *tes
 	require.Equal(t, admin.UpdatedAt, source.UpdatedAt)
 }
 
-func TestCodexCatalog_DefaultClientRedirectGap(t *testing.T) {
-	var propagated bool
+func TestCodexCatalog_DefaultClientStripsCrossOriginCredentials(t *testing.T) {
+	propagated := make(chan bool, 1)
 	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		propagated = r.Header.Get("Authorization") != ""
+		propagated <- r.Header.Get("Authorization") != ""
 		_, _ = w.Write([]byte(`{}`))
 	}))
 	defer target.Close()
@@ -186,5 +186,5 @@ func TestCodexCatalog_DefaultClientRedirectGap(t *testing.T) {
 	defer origin.Close()
 	_, err := httpclient.NewHttpClient().Do(t.Context(), &httpclient.Request{Method: "GET", URL: origin.URL, Headers: http.Header{"Authorization": []string{"Bearer synthetic"}}})
 	require.NoError(t, err)
-	require.True(t, propagated, "existing client forwards authorization across same-host different-port origins")
+	require.False(t, <-propagated, "default client must strip authorization across same-host different-port origins")
 }

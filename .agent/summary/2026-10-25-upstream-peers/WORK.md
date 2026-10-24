@@ -8,4 +8,5 @@
 - Peer adaptations: cross-origin HTTP credential stripping; Chat-to-Gemini imageConfig; Vite 8.3.5 minimum. Details and all skip/coverage boundaries are frozen in PEERS.md / peers-ledger.json.
 - Validation, formatting, dependency and code generation run only in GitHub Actions. MySQL and PostgreSQL temporary service tests added for retired-quota migration.
 - No local build/test/lint/format/generation, production database/config modification, service restart, binary install or paid upstream probe.
-- Delivery follows prior exact-tested-SHA dev fast-forward/tag/GoReleaser-start contract. Pending CI completion.
+- Test 40115042390: LLM, all three real CLI loopback versions, offline probes and concurrency checks passed. Lint 40115042418 passed. Backend identified an old test asserting the previously known default-client redirect leak; inverted it to require credential stripping and synchronized its observation. Applied the second CI-generated artifact (lockfile/formatting).
+- Delivery follows prior exact-tested-SHA dev fast-forward/tag/GoReleaser-start contract. Pending final CI completion.
