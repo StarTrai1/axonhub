@@ -1,0 +1,899 @@
+[
+  {
+    "name": "upstream",
+    "repo": "looplj/axonhub",
+    "branch": "unstable",
+    "previous_head": "0d82a8e4400c039ce24b9f89a6b0745045c627f9",
+    "previous_frozen_at": "2026-10-23T18:32:29.162684+00:00",
+    "head": "a7ad1f9b7a49fcb7bf305d5e25ae266cb1d97580",
+    "frozen_at": "2026-10-24T16:08:57.337157+00:00",
+    "commits": [
+      {
+        "sha": "6c137e3162c20c4663437233ae3bf56f0724d7db",
+        "title": "feat(quota): support Synthetic search and weekly credits (#2743)",
+        "date": "2026-10-23T22:43:50Z",
+        "parents": [
+          "0d82a8e4400c039ce24b9f89a6b0745045c627f9"
+        ],
+        "decision": "merged",
+        "reason": "Synthetic search counters are display-only; weekly monetary credits retain provider units. Preserve existing quota popup and no duplicate table column.",
+        "evidence": "internal/server/biz/provider_quota/synthetic_checker.go; frontend/src/components/quota-badges.tsx"
+      },
+      {
+        "sha": "5b9b2e96d8985fb950817c2f9711a7540830284b",
+        "title": "fix(build): restore Corepack and validate Docker builds (#2744)",
+        "date": "2026-10-24T01:10:28Z",
+        "parents": [
+          "6c137e3162c20c4663437233ae3bf56f0724d7db"
+        ],
+        "decision": "merged-adapted",
+        "reason": "Restore Node 24 Corepack and native Docker build matrix; enable PR build on fork dev.",
+        "evidence": "Dockerfile; .github/workflows/docker-pr.yml"
+      },
+      {
+        "sha": "e06cf9eb744db6d09c90a7d1b23e5054f1ea2a23",
+        "title": "feat(provider-quota): remove Wafer quota provider (#2745)",
+        "date": "2026-10-24T01:11:09Z",
+        "parents": [
+          "5b9b2e96d8985fb950817c2f9711a7540830284b"
+        ],
+        "decision": "merged",
+        "reason": "Retire Wafer provider. Startup removes only retired quota snapshots before enum migration; CI exercises SQLite, MySQL and PostgreSQL; no production migration performed.",
+        "evidence": "internal/server/db/removed_provider_quotas.go; .github/workflows/test.yml"
+      },
+      {
+        "sha": "5503b112ed10d1dabf6e9cbad0b3b82d7c14a582",
+        "title": "docs: document OpenCode V1 and V2 tracing config (#2748)",
+        "date": "2026-10-24T14:38:25Z",
+        "parents": [
+          "e06cf9eb744db6d09c90a7d1b23e5054f1ea2a23"
+        ],
+        "decision": "merged",
+        "reason": "OpenCode V1/V2 tracing documentation.",
+        "evidence": "docs/en/guides/opencode-integration.md; docs/zh/guides/opencode-integration.md"
+      },
+      {
+        "sha": "513a7822977dbb039c1a0db1b915e153693526f5",
+        "title": "fix: support Claude Code WebSearch through Responses backends (#2750)",
+        "date": "2026-10-24T14:38:38Z",
+        "parents": [
+          "5503b112ed10d1dabf6e9cbad0b3b82d7c14a582"
+        ],
+        "decision": "merged-adapted",
+        "reason": "Add search progress, late sources and citations without duplicate blocks; retain authentic encrypted results, original IDs and buffered reasoning. Link-only/native Anthropic history becomes completed text. Existing document-aware content decoder subsumes the added decoder; merge raw server result/null support into it.",
+        "evidence": "llm/transformer/anthropic/responses_web_search.go; llm/transformer/anthropic/model.go; llm/transformer/openai/responses/outbound_convert.go"
+      },
+      {
+        "sha": "847e59198d7be88cf27cfebeb2f7007fcb72bb9a",
+        "title": "fix(anthropic): estimate and calibrate initial input usage for Claude Code (#2749)",
+        "date": "2026-10-24T14:38:46Z",
+        "parents": [
+          "513a7822977dbb039c1a0db1b915e153693526f5"
+        ],
+        "decision": "merged",
+        "reason": "Display-only initial Anthropic token estimate/calibration, scoped to final route; authoritative persisted/billed usage remains upstream totals. Preserve Codex successful-turn tracking alongside new route snapshot.",
+        "evidence": "internal/server/api/anthropic_input_usage.go; internal/server/api/anthropic_input_calibration.go; internal/server/orchestrator/orchestrator.go"
+      },
+      {
+        "sha": "a7ad1f9b7a49fcb7bf305d5e25ae266cb1d97580",
+        "title": "chore(deps): bump zod from 4.3.6 to 4.6.6 in /frontend (#2746)",
+        "date": "2026-10-24T14:39:01Z",
+        "parents": [
+          "847e59198d7be88cf27cfebeb2f7007fcb72bb9a"
+        ],
+        "decision": "merged",
+        "reason": "Zod upgrade; lockfile regenerated exclusively by CI.",
+        "evidence": "frontend/package.json"
+      }
+    ]
+  },
+  {
+    "name": "sub2api",
+    "repo": "Wei-Shaw/sub2api",
+    "branch": "main",
+    "previous_head": "5c185c5c5d4f5e409e2139806e0964ae944e03e8",
+    "previous_frozen_at": "2026-10-23T18:32:29.016564+00:00",
+    "head": "37067e8e340e9440d173a92b4faa05e8ce58368f",
+    "frozen_at": "2026-10-24T16:09:01.807855+00:00",
+    "commits": [
+      {
+        "sha": "e445cc3e2d9c9f330f2af069d6693bfdeb2245ad",
+        "title": "新增按操作与资源范围授权的管理员 API 密钥",
+        "date": "2026-10-23T11:16:57Z",
+        "parents": [
+          "5c185c5c5d4f5e409e2139806e0964ae944e03e8"
+        ],
+        "decision": "skip-architecture",
+        "reason": "Scoped administrative API-key grants require peer auth schema/routes/migration and Vue administration UI. Fork uses Ent privacy/scopes; retain its authorization model instead of transplanting this feature wholesale.",
+        "evidence": "internal/scopes; internal/ent/privacy; peer backend admin API-key policy and migration 247",
+        "cached_patch_sha256": "555a1350221c6bb6ecbbcdea8578b3420196526f6ba3d545a7684948b98a21d1"
+      },
+      {
+        "sha": "37067e8e340e9440d173a92b4faa05e8ce58368f",
+        "title": "Merge pull request #8319 from lyen1688/feat/scoped-admin-api-keys",
+        "date": "2026-10-24T02:12:37Z",
+        "parents": [
+          "5c185c5c5d4f5e409e2139806e0964ae944e03e8",
+          "e445cc3e2d9c9f330f2af069d6693bfdeb2245ad"
+        ],
+        "decision": "merge-duplicate",
+        "reason": "Reuse constituent decisions; do not review merge-carried patches a second time.",
+        "evidence": "parents: 5c185c5c5d4f5e409e2139806e0964ae944e03e8, e445cc3e2d9c9f330f2af069d6693bfdeb2245ad"
+      }
+    ]
+  },
+  {
+    "name": "CLIProxyAPI",
+    "repo": "router-for-me/CLIProxyAPI",
+    "branch": "main",
+    "previous_head": "8289ec4c71ad914d0612c2776352b76ba3d355a6",
+    "previous_frozen_at": "2026-10-23T18:32:29.061603+00:00",
+    "head": "bc0643405a1d0adf77dd0f109972ac3313d66397",
+    "frozen_at": "2026-10-24T16:08:57.122356+00:00",
+    "commits": [
+      {
+        "sha": "0d3ca1d3b7cf94feef80fb44bfa4b125c5165751",
+        "title": "fix(store,home): handle repository index and packfile corruption and wrap Redis connections with cancelable dialer",
+        "date": "2026-10-24T06:30:26Z",
+        "parents": [
+          "8289ec4c71ad914d0612c2776352b76ba3d355a6"
+        ],
+        "decision": "skip",
+        "reason": "CPA GitStore repository repair and Home Redis dialer subsystems are absent.",
+        "evidence": "peer internal/store and internal/home paths",
+        "cached_patch_sha256": "f54b3378463ba3f6febd2be2339a45dd7f9d17b5d49e4bb932d36e96195c370e"
+      },
+      {
+        "sha": "ab139b45057b30a1a84ff628a5af8694fc7407a2",
+        "title": "fix(kimi): share thinking replay across K3.1 Pro variants",
+        "date": "2026-10-24T06:43:50Z",
+        "parents": [
+          "0d3ca1d3b7cf94feef80fb44bfa4b125c5165751"
+        ],
+        "decision": "skip",
+        "reason": "CPA Kimi replay cache/model-family sharing is absent; no opaque state sharing across models is introduced.",
+        "evidence": "peer internal/runtime/executor Kimi replay paths",
+        "cached_patch_sha256": "29bc3d1af1b68973bd831495805ee0ac7236a447aebb6574a81b01bb6d37ea54"
+      },
+      {
+        "sha": "da21f1e58ed5551426bd41f12db9d655e146415a",
+        "title": "fix(antigravity): restore non-stream tool signatures and preserve stream call indices",
+        "date": "2026-10-24T12:42:16Z",
+        "parents": [
+          "ab139b45057b30a1a84ff628a5af8694fc7407a2"
+        ],
+        "decision": "covered-partial",
+        "reason": "Gemini already tracks stream-wide call indices, preserves provided call IDs and actual signatures. CPA Antigravity accumulator borrowing signatures from preceding thoughts is a different cache policy and is not imported.",
+        "evidence": "llm/transformer/gemini/outbound_stream.go; llm/transformer/gemini/outbound_convert.go",
+        "cached_patch_sha256": "60bcec6facc4bcfd65001b5e4fee9494b27de757a0661b7ffb176e27d966916a"
+      },
+      {
+        "sha": "9d08f0d430ed1e7942d621e4b8559aa3879fa849",
+        "title": "fix(pluginhost): strip credential headers across cross-origin redirects",
+        "date": "2026-10-24T12:42:17Z",
+        "parents": [
+          "da21f1e58ed5551426bd41f12db9d655e146415a"
+        ],
+        "decision": "adapted",
+        "reason": "Strip credential headers across origin changes, including return hops and noncanonical keys; preserve same-origin credentials, tracing and existing redirect rejection callbacks. Applied to normal/proxied/injected HTTP clients.",
+        "evidence": "llm/httpclient/redirect_credentials.go; llm/httpclient/redirect_credentials_test.go",
+        "cached_patch_sha256": "bb573e86cce4eb826845c7fb166f1cb8b6bce3985040ca306c0608054dd1160b"
+      },
+      {
+        "sha": "44d1ddf53887bd276e3493f84f100a17a2716df0",
+        "title": "fix(pluginhost): translate plugin count_tokens replies as token counts",
+        "date": "2026-10-24T12:42:19Z",
+        "parents": [
+          "9d08f0d430ed1e7942d621e4b8559aa3879fa849"
+        ],
+        "decision": "skip",
+        "reason": "CPA pluginhost/plugin ABI absent; no matching plugin execution/count/metadata contract. Native HTTP Retry-After behavior remains unchanged.",
+        "evidence": "peer internal/pluginhost and pluginabi paths; llm/pipeline/retry.go",
+        "cached_patch_sha256": "bc602d39c3914386d51f4881ad81e5fa89316f82ad62faf053ae1b50da821581"
+      },
+      {
+        "sha": "35e834da2466f89f909cfeed34bb38c499863595",
+        "title": "feat(pluginabi): carry retry-after metadata from plugin executor errors",
+        "date": "2026-10-24T12:42:20Z",
+        "parents": [
+          "44d1ddf53887bd276e3493f84f100a17a2716df0"
+        ],
+        "decision": "skip",
+        "reason": "CPA pluginhost/plugin ABI absent; no matching plugin execution/count/metadata contract. Native HTTP Retry-After behavior remains unchanged.",
+        "evidence": "peer internal/pluginhost and pluginabi paths; llm/pipeline/retry.go",
+        "cached_patch_sha256": "783fa14b4d6091de2ae2155739966ac09d31bb94e2dff25e7f4764a377bea47f"
+      },
+      {
+        "sha": "50147aec62b672e12ffd6ee2d457ebc3079570c5",
+        "title": "fix(home): close underlying transport synchronously when canceling rebalance RPCs",
+        "date": "2026-10-24T13:10:06Z",
+        "parents": [
+          "35e834da2466f89f909cfeed34bb38c499863595"
+        ],
+        "decision": "skip",
+        "reason": "CPA Home rebalance RPC transport absent.",
+        "evidence": "peer internal/home paths",
+        "cached_patch_sha256": "4228799c5d33c30b4914671c8b97dafae508f4543f2b360c0d5dcb25a86eb690"
+      },
+      {
+        "sha": "e42eee6e1ce7f98c1fc211ac266404de9989eaa4",
+        "title": "fix(pluginhost): apply user payload rules to plugin executor requests",
+        "date": "2026-10-24T13:10:45Z",
+        "parents": [
+          "50147aec62b672e12ffd6ee2d457ebc3079570c5"
+        ],
+        "decision": "skip",
+        "reason": "CPA pluginhost/plugin ABI absent; no matching plugin execution/count/metadata contract. Native HTTP Retry-After behavior remains unchanged.",
+        "evidence": "peer internal/pluginhost and pluginabi paths; llm/pipeline/retry.go",
+        "cached_patch_sha256": "1a96a0687dfe31df57b6e38ab06d9cee0f6eea5ed23be16f81c12c88d03f0d77"
+      },
+      {
+        "sha": "c9af5290a6d28cc305fa1c92d971e236e6727277",
+        "title": "fix(pluginhost): run canonical thinking pipeline before plugin execution",
+        "date": "2026-10-24T13:38:42Z",
+        "parents": [
+          "e42eee6e1ce7f98c1fc211ac266404de9989eaa4"
+        ],
+        "decision": "skip",
+        "reason": "CPA pluginhost/plugin ABI absent; no matching plugin execution/count/metadata contract. Native HTTP Retry-After behavior remains unchanged.",
+        "evidence": "peer internal/pluginhost and pluginabi paths; llm/pipeline/retry.go",
+        "cached_patch_sha256": "fb3d9461686ed17c7abb6ab942770710d0aeed5331c35ca9fdf32db449dd96ef"
+      },
+      {
+        "sha": "179d43dc744695b719bddb3e3e4be0239af04a73",
+        "title": "fix(logging): prevent path traversal vulnerabilities in request log filenames",
+        "date": "2026-10-24T13:54:22Z",
+        "parents": [
+          "c9af5290a6d28cc305fa1c92d971e236e6727277"
+        ],
+        "decision": "skip-no-matching-sink",
+        "reason": "CPA per-request filenames derive from URL/request ID; AxonHub logger uses configured outputs and DB request storage. No equivalent filename sink was found.",
+        "evidence": "internal/log/logger.go; internal/server/middleware/access_log.go",
+        "cached_patch_sha256": "b6814840c8511fcba119541315ee5034ff3880c3baff1e1c0f05be14b7fa4c4b"
+      },
+      {
+        "sha": "bc0643405a1d0adf77dd0f109972ac3313d66397",
+        "title": "docs: remove outdated third-party extensions and apps from readmes",
+        "date": "2026-10-24T14:17:57Z",
+        "parents": [
+          "179d43dc744695b719bddb3e3e4be0239af04a73"
+        ],
+        "decision": "skip",
+        "reason": "CPA application directory documentation is project-specific.",
+        "evidence": "peer README files",
+        "cached_patch_sha256": "187cf5417311f68b6527a0d02564d5bc7191a32a87cad0a35cc442cff40d3fe5"
+      }
+    ]
+  },
+  {
+    "name": "OmniProxy",
+    "repo": "mibgb65-cloud/OmniProxy",
+    "branch": "master",
+    "previous_head": "56448d20ccd797bc32aae1c02a5e2f2030b8b6c8",
+    "previous_frozen_at": "2026-10-23T18:32:29.252967+00:00",
+    "head": "56448d20ccd797bc32aae1c02a5e2f2030b8b6c8",
+    "frozen_at": "2026-10-24T16:08:57.161235+00:00",
+    "commits": []
+  },
+  {
+    "name": "codex2api",
+    "repo": "james-6-23/codex2api",
+    "branch": "main",
+    "previous_head": "1bdfc85cecff2559422fa4eb39fdd880bfc2c462",
+    "previous_frozen_at": "2026-10-23T18:32:29.266706+00:00",
+    "head": "1511374d878ad5a27fc7a3293aa2fb67eb5f96d4",
+    "frozen_at": "2026-10-24T16:08:57.471922+00:00",
+    "commits": [
+      {
+        "sha": "5f6b375203856534935f071f93a2412a9cb484b5",
+        "title": "feat(proxy): 增加可选的 Codex Multi-Agent v2 明文兼容",
+        "date": "2026-10-18T07:07:16Z",
+        "parents": [
+          "5ee6c29273773a2398531d061d23f199ca8c25f7"
+        ],
+        "decision": "skip-semantic-change",
+        "reason": "Optional parent collaboration plaintext/namespace rewriting changes encrypted multi-agent semantics. Keep native namespaces, explicit encrypted_function_args and opaque agent history; do not infer plaintext from ciphertext heuristics or enable a new mode.",
+        "evidence": "llm/transformer/openai/responses/request_extensions.go; model.go; internal/server/orchestrator/responses_status_compatibility.go",
+        "cached_patch_sha256": "07b47cdb185122ac13b8c4f19f94f0ecbcd8cc2723781bc4842b77675de0c35c"
+      },
+      {
+        "sha": "f8dd147e798c4d01adce44c9bb3596bb9c55e832",
+        "title": "fix(proxy): 补齐 tool_choice 回显与扁平双下划线还原",
+        "date": "2026-10-18T07:10:29Z",
+        "parents": [
+          "5f6b375203856534935f071f93a2412a9cb484b5"
+        ],
+        "decision": "skip-semantic-change",
+        "reason": "Optional parent collaboration plaintext/namespace rewriting changes encrypted multi-agent semantics. Keep native namespaces, explicit encrypted_function_args and opaque agent history; do not infer plaintext from ciphertext heuristics or enable a new mode.",
+        "evidence": "llm/transformer/openai/responses/request_extensions.go; model.go; internal/server/orchestrator/responses_status_compatibility.go",
+        "cached_patch_sha256": "a5798b853efe40d70b65c5a1ddee4ef9b960348e8a6ae3b791c3375d7c8bb438"
+      },
+      {
+        "sha": "e1cebd81b357cb02c98b8d08a802d8d6c4ca9b61",
+        "title": "fix(proxy): 补全上游省略的 encrypted_function_args",
+        "date": "2026-10-18T07:38:34Z",
+        "parents": [
+          "f8dd147e798c4d01adce44c9bb3596bb9c55e832"
+        ],
+        "decision": "skip-semantic-change",
+        "reason": "Optional parent collaboration plaintext/namespace rewriting changes encrypted multi-agent semantics. Keep native namespaces, explicit encrypted_function_args and opaque agent history; do not infer plaintext from ciphertext heuristics or enable a new mode.",
+        "evidence": "llm/transformer/openai/responses/request_extensions.go; model.go; internal/server/orchestrator/responses_status_compatibility.go",
+        "cached_patch_sha256": "a22e3d0e421f3cbfeac90815ea4f4ae570aaa6ed3c4cc5fe06394340949c02d3"
+      },
+      {
+        "sha": "b0c96aea9a1fc7a08f36ad86b5fa0075b2fe6209",
+        "title": "fix(proxy): 覆盖 collaboration 归一的明文标记补全",
+        "date": "2026-10-18T07:53:07Z",
+        "parents": [
+          "e1cebd81b357cb02c98b8d08a802d8d6c4ca9b61"
+        ],
+        "decision": "skip-semantic-change",
+        "reason": "Optional parent collaboration plaintext/namespace rewriting changes encrypted multi-agent semantics. Keep native namespaces, explicit encrypted_function_args and opaque agent history; do not infer plaintext from ciphertext heuristics or enable a new mode.",
+        "evidence": "llm/transformer/openai/responses/request_extensions.go; model.go; internal/server/orchestrator/responses_status_compatibility.go",
+        "cached_patch_sha256": "83bdbe6d375592eb0575ee40e3b2ab2025d950d6813a20c6c241e652b1792982"
+      },
+      {
+        "sha": "099f83bfd5048ca95ae3e3321731e6da4460c629",
+        "title": "docs: record completed multi-agent integration checks",
+        "date": "2026-10-18T13:22:13Z",
+        "parents": [
+          "b0c96aea9a1fc7a08f36ad86b5fa0075b2fe6209"
+        ],
+        "decision": "skip",
+        "reason": "Documentation/test cleanup belongs to the unadopted optional plaintext adapter.",
+        "evidence": "peer multi-agent adapter docs/tests",
+        "cached_patch_sha256": "5431516b68188cf582a84947499c05efa522f3e5bfe170469cb1aaebf399ebf7"
+      },
+      {
+        "sha": "4e0aa4d597712b20daadf52eec1bd4885ea82443",
+        "title": "refactor(proxy): keep multi-agent compatibility scoped to parent transport",
+        "date": "2026-10-18T13:36:10Z",
+        "parents": [
+          "099f83bfd5048ca95ae3e3321731e6da4460c629"
+        ],
+        "decision": "skip-semantic-change",
+        "reason": "Optional parent collaboration plaintext/namespace rewriting changes encrypted multi-agent semantics. Keep native namespaces, explicit encrypted_function_args and opaque agent history; do not infer plaintext from ciphertext heuristics or enable a new mode.",
+        "evidence": "llm/transformer/openai/responses/request_extensions.go; model.go; internal/server/orchestrator/responses_status_compatibility.go",
+        "cached_patch_sha256": "69b122e56d4a1663ba758ca98e223ca7b29fe4fbc135c674e33ff7f93418a478"
+      },
+      {
+        "sha": "61ebfcb5904312641c7d18c1b7bcff20e6b12379",
+        "title": "test(proxy): remove unused child-adapter test import",
+        "date": "2026-10-18T13:36:58Z",
+        "parents": [
+          "4e0aa4d597712b20daadf52eec1bd4885ea82443"
+        ],
+        "decision": "skip",
+        "reason": "Documentation/test cleanup belongs to the unadopted optional plaintext adapter.",
+        "evidence": "peer multi-agent adapter docs/tests",
+        "cached_patch_sha256": "1e1417a4b36431134553aee08d4f352eff93909b40d96042ff5449acd31c9690"
+      },
+      {
+        "sha": "58f7926b1cb08deaaad187fde6f130a7d7511142",
+        "title": "docs: keep reproduction guide independent of PR staging",
+        "date": "2026-10-18T13:49:32Z",
+        "parents": [
+          "61ebfcb5904312641c7d18c1b7bcff20e6b12379"
+        ],
+        "decision": "skip",
+        "reason": "Documentation/test cleanup belongs to the unadopted optional plaintext adapter.",
+        "evidence": "peer multi-agent adapter docs/tests",
+        "cached_patch_sha256": "14fb3a5b08a1233e5baa91435c01cea119f6431d72b954ce2e5838a6db801758"
+      },
+      {
+        "sha": "4abf1f3963cf1b77ce4ba766ef28c41af1a3fcdd",
+        "title": "fix(pricing): read OpenAI price columns by header; service tiers cover both context tiers",
+        "date": "2026-10-21T07:56:43Z",
+        "parents": [
+          "1bdfc85cecff2559422fa4eb39fdd880bfc2c462"
+        ],
+        "decision": "skip-no-matching-pipeline",
+        "reason": "Codex2API official HTML pricing scraper, Daybreak alias defaults and reference fallback/UI do not map to AxonHub model-price configuration/JSON sources. No provider price or billing policy is inferred or overwritten.",
+        "evidence": "internal/server/biz/channel_price.go; peer official_model_pricing/pricing_validation/default_model_pricing paths",
+        "cached_patch_sha256": "4b5c89231a8e0dacdfada64007463cfc565abfbec0baec1ea1866dc34c9d0f36"
+      },
+      {
+        "sha": "4aa8b0b085f52aef5416e18afc9cd488726db89f",
+        "title": "docs(antigravity): 新增账户配额自动刷新与耗尽回避设计规格与 TDD 执行计划",
+        "date": "2026-10-22T03:23:53Z",
+        "parents": [
+          "1bdfc85cecff2559422fa4eb39fdd880bfc2c462"
+        ],
+        "decision": "skip-architecture",
+        "reason": "Codex2API account quota generation/epoch CAS, Store flight scheduler, soft weights and administrative clear API form a separate subsystem. Fork already has provider quota scheduling and independent Antigravity pools; not claimed a full superset of the new control plane.",
+        "evidence": "internal/server/biz/provider_quota.go; internal/server/biz/provider_quota/antigravity_summary.go; peer auth/antigravity_quota*",
+        "cached_patch_sha256": "b59895ebd1173a8ec95764154140b6ef957d0c7f3328b6296336dcda582512ee"
+      },
+      {
+        "sha": "e350ab522bf68219cc3b658c4ad3d61519459b33",
+        "title": "feat(antigravity): 实现账户配额自动刷新、耗尽回避硬门禁与调度权重增强",
+        "date": "2026-10-22T03:24:10Z",
+        "parents": [
+          "4aa8b0b085f52aef5416e18afc9cd488726db89f"
+        ],
+        "decision": "skip-architecture",
+        "reason": "Codex2API account quota generation/epoch CAS, Store flight scheduler, soft weights and administrative clear API form a separate subsystem. Fork already has provider quota scheduling and independent Antigravity pools; not claimed a full superset of the new control plane.",
+        "evidence": "internal/server/biz/provider_quota.go; internal/server/biz/provider_quota/antigravity_summary.go; peer auth/antigravity_quota*",
+        "cached_patch_sha256": "40ed063e7cc65b95b0ae39400e69a1c728657052702508f48e1764ebf9c0a225"
+      },
+      {
+        "sha": "c51c2ebcf98d165e03f1876aad2d34ee3faa5d27",
+        "title": "feat(auth): wire Antigravity quota summary scheduler into store lifecycle",
+        "date": "2026-10-22T04:47:58Z",
+        "parents": [
+          "e350ab522bf68219cc3b658c4ad3d61519459b33"
+        ],
+        "decision": "skip-architecture",
+        "reason": "Codex2API account quota generation/epoch CAS, Store flight scheduler, soft weights and administrative clear API form a separate subsystem. Fork already has provider quota scheduling and independent Antigravity pools; not claimed a full superset of the new control plane.",
+        "evidence": "internal/server/biz/provider_quota.go; internal/server/biz/provider_quota/antigravity_summary.go; peer auth/antigravity_quota*",
+        "cached_patch_sha256": "1ab808ec138e90e24231e08ca4a8da179b89e3afaf749f4f435007d12a5187ec"
+      },
+      {
+        "sha": "c09ab2a79374608c91ccdb313c29d0fa794eda45",
+        "title": "fix(auth): prevent quota scheduler coverage double-skip and add guard tests",
+        "date": "2026-10-22T05:45:52Z",
+        "parents": [
+          "c51c2ebcf98d165e03f1876aad2d34ee3faa5d27"
+        ],
+        "decision": "skip-architecture",
+        "reason": "Codex2API account quota generation/epoch CAS, Store flight scheduler, soft weights and administrative clear API form a separate subsystem. Fork already has provider quota scheduling and independent Antigravity pools; not claimed a full superset of the new control plane.",
+        "evidence": "internal/server/biz/provider_quota.go; internal/server/biz/provider_quota/antigravity_summary.go; peer auth/antigravity_quota*",
+        "cached_patch_sha256": "b6baea53844dfbe0b957dd63c4453cff51da8e3b918751678ef50909b6c9b098"
+      },
+      {
+        "sha": "ced2f11bbf46f28a783154d47c6433c8654da23e",
+        "title": "fix(auth): recover expired Antigravity credentials in quota summary refresh",
+        "date": "2026-10-22T06:32:40Z",
+        "parents": [
+          "c09ab2a79374608c91ccdb313c29d0fa794eda45"
+        ],
+        "decision": "skip-architecture",
+        "reason": "Codex2API account quota generation/epoch CAS, Store flight scheduler, soft weights and administrative clear API form a separate subsystem. Fork already has provider quota scheduling and independent Antigravity pools; not claimed a full superset of the new control plane.",
+        "evidence": "internal/server/biz/provider_quota.go; internal/server/biz/provider_quota/antigravity_summary.go; peer auth/antigravity_quota*",
+        "cached_patch_sha256": "744f29259b031310a963db1894ee91014f6d8b7726f1fac62f01b696def520dc"
+      },
+      {
+        "sha": "314e6beb7acf6a2afb2fc2e56b5080df9798aade",
+        "title": "feat(auth): add ops logging for Antigravity quota scheduler dispatch",
+        "date": "2026-10-22T07:06:01Z",
+        "parents": [
+          "ced2f11bbf46f28a783154d47c6433c8654da23e"
+        ],
+        "decision": "skip-architecture",
+        "reason": "Codex2API account quota generation/epoch CAS, Store flight scheduler, soft weights and administrative clear API form a separate subsystem. Fork already has provider quota scheduling and independent Antigravity pools; not claimed a full superset of the new control plane.",
+        "evidence": "internal/server/biz/provider_quota.go; internal/server/biz/provider_quota/antigravity_summary.go; peer auth/antigravity_quota*",
+        "cached_patch_sha256": "73634f6f5fe51ef052979d25f4f84cac857b4e470b1a66980a4ae228f4d75cee"
+      },
+      {
+        "sha": "290ea09c46ce4dd8f35f23d210abdfb7c7468563",
+        "title": "docs: 补全 diff 触及函数 docstring 注释以满足 CI 门槛",
+        "date": "2026-10-22T11:35:04Z",
+        "parents": [
+          "314e6beb7acf6a2afb2fc2e56b5080df9798aade"
+        ],
+        "decision": "skip-architecture",
+        "reason": "Codex2API account quota generation/epoch CAS, Store flight scheduler, soft weights and administrative clear API form a separate subsystem. Fork already has provider quota scheduling and independent Antigravity pools; not claimed a full superset of the new control plane.",
+        "evidence": "internal/server/biz/provider_quota.go; internal/server/biz/provider_quota/antigravity_summary.go; peer auth/antigravity_quota*",
+        "cached_patch_sha256": "9a24ecbb4b6fa12eabec095553951e4ae4d4139a3b4c4702dc6455380c500827"
+      },
+      {
+        "sha": "c3cd577bfc8527980c974f63ca9edcef9cf355fc",
+        "title": "fix(security): bump Go toolchain to 1.26.10 and upgrade vite to 8.3.5 for security scan",
+        "date": "2026-10-22T13:11:13Z",
+        "parents": [
+          "290ea09c46ce4dd8f35f23d210abdfb7c7468563"
+        ],
+        "decision": "adapted-partial",
+        "reason": "Go 1.27.3 already exceeds peer 1.26.10; raise Vite minimum from 8.3.4 to 8.3.5 and let CI regenerate lockfile.",
+        "evidence": "frontend/package.json; .go-version",
+        "cached_patch_sha256": "9a62c3cba1db8de583b60b104d282e0f43539b5d4a46270800405cb9ea8e4c01"
+      },
+      {
+        "sha": "eba6cab671f240297b3a393762c6e9ffb9a35a43",
+        "title": "build(frontend): restore official npm registry in package-lock.json",
+        "date": "2026-10-22T13:24:41Z",
+        "parents": [
+          "c3cd577bfc8527980c974f63ca9edcef9cf355fc"
+        ],
+        "decision": "skip",
+        "reason": "npm package-lock registry rewrite does not apply to pnpm lockfile.",
+        "evidence": "frontend/pnpm-lock.yaml",
+        "cached_patch_sha256": "5adc0bbd8ba7515ed108616f8680ae7ae976208a99f7427faccf1c4b445b8a6a"
+      },
+      {
+        "sha": "fe2e2b66265b5e099715f2c7d1cea87c2363a54c",
+        "title": "ci: retry frontend workflow",
+        "date": "2026-10-22T13:37:00Z",
+        "parents": [
+          "eba6cab671f240297b3a393762c6e9ffb9a35a43"
+        ],
+        "decision": "skip",
+        "reason": "Peer empty CI rerun commit has no portable change.",
+        "evidence": "peer commit",
+        "cached_patch_sha256": "edf7cb801c5170c0c2846123386342d18631da3cdab492f0cb844be1a8b2687c"
+      },
+      {
+        "sha": "d4d331cf853d0c2ac12cc31f2f7bce4c2f104f72",
+        "title": "fix(billing): 完善 Daybreak 别名和 Cyber 默认定价",
+        "date": "2026-10-22T13:48:52Z",
+        "parents": [
+          "1bdfc85cecff2559422fa4eb39fdd880bfc2c462"
+        ],
+        "decision": "skip-no-matching-pipeline",
+        "reason": "Codex2API official HTML pricing scraper, Daybreak alias defaults and reference fallback/UI do not map to AxonHub model-price configuration/JSON sources. No provider price or billing policy is inferred or overwritten.",
+        "evidence": "internal/server/biz/channel_price.go; peer official_model_pricing/pricing_validation/default_model_pricing paths",
+        "cached_patch_sha256": "f988149cc719adbbee6a65bf7a019aa2e9e091f87a9cccf01f8385b969b127ea"
+      },
+      {
+        "sha": "41471db34ba5823d087977accf0a59a5ced3576b",
+        "title": "fix(pricing): 校验官方完整价格并按参考 JSON 逐级回退",
+        "date": "2026-10-22T13:48:52Z",
+        "parents": [
+          "d4d331cf853d0c2ac12cc31f2f7bce4c2f104f72"
+        ],
+        "decision": "skip-no-matching-pipeline",
+        "reason": "Codex2API official HTML pricing scraper, Daybreak alias defaults and reference fallback/UI do not map to AxonHub model-price configuration/JSON sources. No provider price or billing policy is inferred or overwritten.",
+        "evidence": "internal/server/biz/channel_price.go; peer official_model_pricing/pricing_validation/default_model_pricing paths",
+        "cached_patch_sha256": "baf0860da3196017f309b7cfcca5a0c0cca0d94ef953f76fea840c3e0f7ea323"
+      },
+      {
+        "sha": "af89a503791c4f9f862359e941a39ed6f6a23b96",
+        "title": "feat(admin): 展示 LiteLLM 来源和价格同步回退结果",
+        "date": "2026-10-22T13:49:06Z",
+        "parents": [
+          "41471db34ba5823d087977accf0a59a5ced3576b"
+        ],
+        "decision": "skip-no-matching-pipeline",
+        "reason": "Codex2API official HTML pricing scraper, Daybreak alias defaults and reference fallback/UI do not map to AxonHub model-price configuration/JSON sources. No provider price or billing policy is inferred or overwritten.",
+        "evidence": "internal/server/biz/channel_price.go; peer official_model_pricing/pricing_validation/default_model_pricing paths",
+        "cached_patch_sha256": "607d1b0a45088b1bd048128f51104f3ece59d63c173dd1f8836080f361fdd7f4"
+      },
+      {
+        "sha": "ef6b042c34f92c3d869422e4ac257061264b9ad9",
+        "title": "docs(pricing): 说明价格校验、来源回退和别名继承",
+        "date": "2026-10-22T13:49:06Z",
+        "parents": [
+          "af89a503791c4f9f862359e941a39ed6f6a23b96"
+        ],
+        "decision": "skip-no-matching-pipeline",
+        "reason": "Codex2API official HTML pricing scraper, Daybreak alias defaults and reference fallback/UI do not map to AxonHub model-price configuration/JSON sources. No provider price or billing policy is inferred or overwritten.",
+        "evidence": "internal/server/biz/channel_price.go; peer official_model_pricing/pricing_validation/default_model_pricing paths",
+        "cached_patch_sha256": "8c4b07a63b7bc85010027df317c020b122ed6ed9d65bf636fadea8de213ea522"
+      },
+      {
+        "sha": "3b253ca0eb28d76edc65f962db42330ae50d10fe",
+        "title": "fix(proxy): persist Codex capability snapshots during account sync",
+        "date": "2026-10-22T22:03:11Z",
+        "parents": [
+          "1bdfc85cecff2559422fa4eb39fdd880bfc2c462"
+        ],
+        "decision": "skip-architecture",
+        "reason": "Peer persistent account capability snapshots and credential-generation schema are absent; do not bolt in a second model capability registry or claim persistence already equivalent.",
+        "evidence": "internal/server/biz/model_fetcher.go; peer database/model_capabilities.go",
+        "cached_patch_sha256": "86c58c28eb62b2d7e2ab09008a1a8aca1cca0327c2315fda558271fd00137e7d"
+      },
+      {
+        "sha": "9431363be00a72d265a2daf95e52beac6eb3cf1d",
+        "title": "fix(api): 放行 configuration_update 输入类型",
+        "date": "2026-10-23T07:36:00Z",
+        "parents": [
+          "1bdfc85cecff2559422fa4eb39fdd880bfc2c462"
+        ],
+        "decision": "covered",
+        "reason": "Native Responses configuration_update is already accepted/preserved by the GPT6 request path.",
+        "evidence": "llm/transformer/openai/responses/gpt6.go; request_extensions.go",
+        "cached_patch_sha256": "28f45eae4cd70721db69deab8f46933494ef2789598f28d5aeb748513f3c1752"
+      },
+      {
+        "sha": "e76bc5d7e449535316af3ffe9c8752b5839aadbb",
+        "title": "fix(auto-reset): 窗口用尽自动重置不再以 applicable_available_count 为拦截条件",
+        "date": "2026-10-24T08:24:21Z",
+        "parents": [
+          "1bdfc85cecff2559422fa4eb39fdd880bfc2c462"
+        ],
+        "decision": "skip",
+        "reason": "Peer automatic quota-window reset/consume operation is absent; no upstream quota consumption is introduced.",
+        "evidence": "peer admin/auto_reset_exhausted.go",
+        "cached_patch_sha256": "f993453064ede79258c92b52f2b0debd5663ca4014f77530653f53490d42d500"
+      },
+      {
+        "sha": "bd664a8cc786d15f4207a02a7d0169c3d35118c5",
+        "title": "Merge branch 'main' into feature/codex-multi-agent-v2-compat",
+        "date": "2026-10-24T08:28:32Z",
+        "parents": [
+          "58f7926b1cb08deaaad187fde6f130a7d7511142",
+          "1bdfc85cecff2559422fa4eb39fdd880bfc2c462"
+        ],
+        "decision": "merge-duplicate",
+        "reason": "Reuse constituent decisions; do not review merge-carried patches a second time.",
+        "evidence": "parents: 58f7926b1cb08deaaad187fde6f130a7d7511142, 1bdfc85cecff2559422fa4eb39fdd880bfc2c462"
+      },
+      {
+        "sha": "4518f92ff9ae8e45740fb6dbd8e537dea2a8f0ce",
+        "title": "Merge pull request #803 from DeliciousBuding/feature/codex-multi-agent-v2-compat",
+        "date": "2026-10-24T08:37:50Z",
+        "parents": [
+          "1bdfc85cecff2559422fa4eb39fdd880bfc2c462",
+          "bd664a8cc786d15f4207a02a7d0169c3d35118c5"
+        ],
+        "decision": "merge-duplicate",
+        "reason": "Reuse constituent decisions; do not review merge-carried patches a second time.",
+        "evidence": "parents: 1bdfc85cecff2559422fa4eb39fdd880bfc2c462, bd664a8cc786d15f4207a02a7d0169c3d35118c5"
+      },
+      {
+        "sha": "0db8892666f2e96bf36c4304e0c2a7fda193ba45",
+        "title": "fix(security): bump Go to 1.26.10 and vite to 8.3.5",
+        "date": "2026-10-24T08:37:58Z",
+        "parents": [
+          "4518f92ff9ae8e45740fb6dbd8e537dea2a8f0ce"
+        ],
+        "decision": "adapted-partial",
+        "reason": "Go 1.27.3 already exceeds peer 1.26.10; raise Vite minimum from 8.3.4 to 8.3.5 and let CI regenerate lockfile.",
+        "evidence": "frontend/package.json; .go-version",
+        "cached_patch_sha256": "0cc687322bd36946e857ab53fbd9fdeb9a8b0b03582352755ce9cbc35e81aa48"
+      },
+      {
+        "sha": "98ddcdd59aaa67a5d48bf25a0b53b128cb88e882",
+        "title": "Merge pull request #812 from ifThink404/pr/openai-pricing-columns",
+        "date": "2026-10-24T08:41:46Z",
+        "parents": [
+          "0db8892666f2e96bf36c4304e0c2a7fda193ba45",
+          "4abf1f3963cf1b77ce4ba766ef28c41af1a3fcdd"
+        ],
+        "decision": "merge-duplicate",
+        "reason": "Reuse constituent decisions; do not review merge-carried patches a second time.",
+        "evidence": "parents: 0db8892666f2e96bf36c4304e0c2a7fda193ba45, 4abf1f3963cf1b77ce4ba766ef28c41af1a3fcdd"
+      },
+      {
+        "sha": "4df4c12cf9cdf2c77f68469148e29cc3a12b4ad4",
+        "title": "Merge pull request #817 from ggg17226/feat/antigravity-quota-refresh-and-scheduling",
+        "date": "2026-10-24T08:42:04Z",
+        "parents": [
+          "98ddcdd59aaa67a5d48bf25a0b53b128cb88e882",
+          "fe2e2b66265b5e099715f2c7d1cea87c2363a54c"
+        ],
+        "decision": "merge-duplicate",
+        "reason": "Reuse constituent decisions; do not review merge-carried patches a second time.",
+        "evidence": "parents: 98ddcdd59aaa67a5d48bf25a0b53b128cb88e882, fe2e2b66265b5e099715f2c7d1cea87c2363a54c"
+      },
+      {
+        "sha": "f60972c69ea08d99d8fb21690402bae514504c8e",
+        "title": "Merge pull request #819 from wille2creo/wille2creo/fix/codex-capability-snapshot-refresh",
+        "date": "2026-10-24T08:42:42Z",
+        "parents": [
+          "4df4c12cf9cdf2c77f68469148e29cc3a12b4ad4",
+          "3b253ca0eb28d76edc65f962db42330ae50d10fe"
+        ],
+        "decision": "merge-duplicate",
+        "reason": "Reuse constituent decisions; do not review merge-carried patches a second time.",
+        "evidence": "parents: 4df4c12cf9cdf2c77f68469148e29cc3a12b4ad4, 3b253ca0eb28d76edc65f962db42330ae50d10fe"
+      },
+      {
+        "sha": "d3475f68042ba40c6e8c3fa44ec384107b01add0",
+        "title": "Merge pull request #822 from bxb1337/fix/configuration-update-input",
+        "date": "2026-10-24T08:42:57Z",
+        "parents": [
+          "f60972c69ea08d99d8fb21690402bae514504c8e",
+          "9431363be00a72d265a2daf95e52beac6eb3cf1d"
+        ],
+        "decision": "merge-duplicate",
+        "reason": "Reuse constituent decisions; do not review merge-carried patches a second time.",
+        "evidence": "parents: f60972c69ea08d99d8fb21690402bae514504c8e, 9431363be00a72d265a2daf95e52beac6eb3cf1d"
+      },
+      {
+        "sha": "c60b13938cfb12ee5f0f70c4bf900446249f256b",
+        "title": "Merge pull request #824 from eshao731/fix/auto-reset-ignore-applicable",
+        "date": "2026-10-24T08:43:11Z",
+        "parents": [
+          "d3475f68042ba40c6e8c3fa44ec384107b01add0",
+          "e76bc5d7e449535316af3ffe9c8752b5839aadbb"
+        ],
+        "decision": "merge-duplicate",
+        "reason": "Reuse constituent decisions; do not review merge-carried patches a second time.",
+        "evidence": "parents: d3475f68042ba40c6e8c3fa44ec384107b01add0, e76bc5d7e449535316af3ffe9c8752b5839aadbb"
+      },
+      {
+        "sha": "22e62710febdf49e6e665b657c5d7b0a2e94f726",
+        "title": "Merge branch 'main' into fix/pricing-validation-json-fallback",
+        "date": "2026-10-24T08:56:27Z",
+        "parents": [
+          "ef6b042c34f92c3d869422e4ac257061264b9ad9",
+          "c60b13938cfb12ee5f0f70c4bf900446249f256b"
+        ],
+        "decision": "merge-duplicate",
+        "reason": "Reuse constituent decisions; do not review merge-carried patches a second time.",
+        "evidence": "parents: ef6b042c34f92c3d869422e4ac257061264b9ad9, c60b13938cfb12ee5f0f70c4bf900446249f256b"
+      },
+      {
+        "sha": "130fe7d141330b7f98969b5d3590ffbf4fa7014d",
+        "title": "Merge pull request #818 from bxb1337/fix/pricing-validation-json-fallback",
+        "date": "2026-10-24T09:02:37Z",
+        "parents": [
+          "c60b13938cfb12ee5f0f70c4bf900446249f256b",
+          "22e62710febdf49e6e665b657c5d7b0a2e94f726"
+        ],
+        "decision": "merge-duplicate",
+        "reason": "Reuse constituent decisions; do not review merge-carried patches a second time.",
+        "evidence": "parents: c60b13938cfb12ee5f0f70c4bf900446249f256b, 22e62710febdf49e6e665b657c5d7b0a2e94f726"
+      },
+      {
+        "sha": "1511374d878ad5a27fc7a3293aa2fb67eb5f96d4",
+        "title": "fix(intelligence): 自动降智检测跳过已禁用账号 (#814)",
+        "date": "2026-10-24T11:52:46Z",
+        "parents": [
+          "130fe7d141330b7f98969b5d3590ffbf4fa7014d"
+        ],
+        "decision": "skip",
+        "reason": "Peer intelligence-check automatic paid probe queue is absent; current keepalive/offline probe controls remain unchanged.",
+        "evidence": "scripts/codex-probes; peer database/intelligence_check_runs.go",
+        "cached_patch_sha256": "31d5c815142295eb94d778c5bce61bfe13ada36e0bd228d4801da2acbd3ddff8"
+      }
+    ]
+  },
+  {
+    "name": "gpt-load",
+    "repo": "tbphp/gpt-load",
+    "branch": "main",
+    "previous_head": "5b7a5ee310e217ea0365f2bfb74cbd62fbcee7ec",
+    "previous_frozen_at": "2026-10-23T18:32:29.176582+00:00",
+    "head": "7ba66c3f7a6315a08b89bdf29f8da92c1aaede1b",
+    "frozen_at": "2026-10-24T16:08:57.617858+00:00",
+    "commits": [
+      {
+        "sha": "0e4b5bb572da6e5acad647c3b118fdd0a6839fed",
+        "title": "fix(ui): draw quota history as a step line (#909)",
+        "date": "2026-10-24T02:46:34Z",
+        "parents": [
+          "5b7a5ee310e217ea0365f2bfb74cbd62fbcee7ec"
+        ],
+        "decision": "skip",
+        "reason": "Vue quota-history step-line chart is absent from the fork; no unrelated chart transplant.",
+        "evidence": "peer changed paths: frontend quota chart; frontend/src/components/quota-badges.tsx",
+        "cached_patch_sha256": "82e1745f17c8bef7f2946dcdd7e58f64d791902875e0ec3df535a072187795c7"
+      },
+      {
+        "sha": "b4eda1cf242faaac1c700354e1433150fbb276ae",
+        "title": "fix(gateway): recover Responses context after credential switches (#879)",
+        "date": "2026-10-24T05:41:51Z",
+        "parents": [
+          "0e4b5bb572da6e5acad647c3b118fdd0a6839fed"
+        ],
+        "decision": "retain-scoped-existing",
+        "reason": "Peer removes rejected encrypted reasoning/tool/agent state and remembers hashes. Keep narrower explicit rejection/complete-history recovery and retained checkpoint reconstruction; do not label broad encrypted-agent stripping as covered.",
+        "evidence": "internal/server/orchestrator/responses_encrypted_recovery.go; responses_reasoning_recovery.go; responses_compaction_recovery.go; responses_status_compatibility.go",
+        "cached_patch_sha256": "00f98575afd313bfad11f871a42f2079117e476d234d08bec273a267bcdcfbaa"
+      },
+      {
+        "sha": "197d2092746c55b5bbbbb612a3ea0b41266bf626",
+        "title": "fix(cpa): recover Codex history rejections after the stream prelude (#910)",
+        "date": "2026-10-24T13:00:10Z",
+        "parents": [
+          "b4eda1cf242faaac1c700354e1433150fbb276ae"
+        ],
+        "decision": "covered-boundary",
+        "reason": "Existing pipeline pre-read returns pre-content provider errors to retry/recovery before delivery; visible content ends replay eligibility. Prior PR13 capacity correction is retained, rather than relying on the earlier incorrect blanket coverage claim.",
+        "evidence": "llm/pipeline/stream.go: preReadLlmStream; internal/server/orchestrator/responses_reasoning_recovery_test.go",
+        "cached_patch_sha256": "6867b40406ccddd9d2129efa7febcd50b0ec18b6c2945bf1f09dae0802b150dc"
+      },
+      {
+        "sha": "7ba66c3f7a6315a08b89bdf29f8da92c1aaede1b",
+        "title": "fix(gateway): recover rejected Responses context over WebSocket (#911)",
+        "date": "2026-10-24T13:05:46Z",
+        "parents": [
+          "197d2092746c55b5bbbbb612a3ea0b41266bf626"
+        ],
+        "decision": "retain-scoped-existing",
+        "reason": "HTTP/WS share fork persistence/recovery policy and retry channel refresh. Do not import peer first-connection sanitizer/lineage store, which has different encrypted-agent semantics.",
+        "evidence": "internal/server/orchestrator/retry_channel_refresh.go; responses_compaction_recovery.go; internal/server/api/responses_websocket.go",
+        "cached_patch_sha256": "45148f36062cb514e4c9b928423ba9708faa139154494d55e46a1727d17a2b67"
+      }
+    ]
+  },
+  {
+    "name": "new-api",
+    "repo": "QuantumNous/new-api",
+    "branch": "main",
+    "previous_head": "33c61a24234aa20cb10e8a644304322c476361de",
+    "previous_frozen_at": "2026-10-23T18:32:29.134110+00:00",
+    "head": "e835b1bfc43b565d625537830dbfb19328925134",
+    "frozen_at": "2026-10-24T16:08:57.556495+00:00",
+    "commits": [
+      {
+        "sha": "a404460413fb7c0c2182e935bb373ba51904df70",
+        "title": "chore(web): upgrade Bun to 1.4.4 and use bun check",
+        "date": "2026-10-24T13:07:03Z",
+        "parents": [
+          "33c61a24234aa20cb10e8a644304322c476361de"
+        ],
+        "decision": "skip",
+        "reason": "Bun toolchain/linter differs from this pnpm/Vite frontend.",
+        "evidence": "frontend/package.json",
+        "cached_patch_sha256": "d54636c47f3bf167a1148a0dbdf67ece015708272f393e0226426b3c4e33e584"
+      },
+      {
+        "sha": "0034b24914981078e6ef1a3794e43afe28df43af",
+        "title": "fix(task): wait up to 72 hours before timing out tasks",
+        "date": "2026-10-24T13:07:04Z",
+        "parents": [
+          "a404460413fb7c0c2182e935bb373ba51904df70"
+        ],
+        "decision": "skip",
+        "reason": "Peer vendor asynchronous-task timeout/refund policy has no matching task subsystem here.",
+        "evidence": "peer relaykit task changes",
+        "cached_patch_sha256": "7f2376aa81663dba9c5ddf831e3962ad785b99b1074ad31f80a38068744e4a17"
+      },
+      {
+        "sha": "1dafb19a429aa7c17b3f4efa457078984b6a4fd3",
+        "title": "fix(gemini): preserve top-level imageConfig in chat conversion",
+        "date": "2026-10-24T14:29:27Z",
+        "parents": [
+          "0034b24914981078e6ef1a3794e43afe28df43af"
+        ],
+        "decision": "adapted",
+        "reason": "Preserve top-level Chat imageConfig through Gemini conversion and Chat replay, including future object fields and persisted metadata; reject scalar/array values.",
+        "evidence": "llm/transformer/shared/chat_image_config.go; llm/transformer/gemini/chat_image_config_test.go",
+        "cached_patch_sha256": "ef86a235b29252a33eab22b76a0dd78e0073b970d1b65c73e3c7c1f11553f814"
+      },
+      {
+        "sha": "b6b85cae5931cd27e9adf21cfccfede800980a83",
+        "title": "chore(deps): bump react-resizable-panels from 4.12.2 to 4.14.6 in /web (#7982)",
+        "date": "2026-10-24T14:48:53Z",
+        "parents": [
+          "1dafb19a429aa7c17b3f4efa457078984b6a4fd3"
+        ],
+        "decision": "skip",
+        "reason": "Dependency/API surface absent in this frontend; retain fork dependencies.",
+        "evidence": "frontend/package.json",
+        "cached_patch_sha256": "9a262d728862f5590ba01807086fbc0bfe8b24c4e0ffefb455ceee12defeca2f"
+      },
+      {
+        "sha": "4105bd089cce1a7c1067e77babf45ebd8d4455ec",
+        "title": "chore(deps): bump input-otp from 1.4.2 to 1.5.0 in /web (#7980)",
+        "date": "2026-10-24T14:49:01Z",
+        "parents": [
+          "b6b85cae5931cd27e9adf21cfccfede800980a83"
+        ],
+        "decision": "skip",
+        "reason": "Dependency/API surface absent in this frontend; retain fork dependencies.",
+        "evidence": "frontend/package.json",
+        "cached_patch_sha256": "1d33ad184bd6cd4b8ee72bd9813a02ebd9dd98222dedc7649efec29c23430b66"
+      },
+      {
+        "sha": "0b667ca478d6dbce6f60a2e3c4a217a7aab64031",
+        "title": "chore(deps): bump i18next from 26.3.6 to 26.5.3 in /web (#7979)",
+        "date": "2026-10-24T14:49:08Z",
+        "parents": [
+          "4105bd089cce1a7c1067e77babf45ebd8d4455ec"
+        ],
+        "decision": "skip",
+        "reason": "Peer i18next/react-i18next major-version baseline differs. Do not bundle an unrelated localization migration; current UI and translations are preserved.",
+        "evidence": "frontend/package.json",
+        "cached_patch_sha256": "a33d81a2d231cf6f23ab78ebc9c7be96702c0e73c9098f823b5d38cc0ff89a16"
+      },
+      {
+        "sha": "5c8032d7002f82fb04fabf9a9c9b143de78547fe",
+        "title": "chore(deps): bump react-i18next from 17.0.10 to 17.1.0 in /web (#7981)",
+        "date": "2026-10-24T14:49:15Z",
+        "parents": [
+          "0b667ca478d6dbce6f60a2e3c4a217a7aab64031"
+        ],
+        "decision": "skip",
+        "reason": "Peer i18next/react-i18next major-version baseline differs. Do not bundle an unrelated localization migration; current UI and translations are preserved.",
+        "evidence": "frontend/package.json",
+        "cached_patch_sha256": "29ca66b5157971b8f451c5c3ff16dcd89b81f1439ca4c2ebd426ead366724aa2"
+      },
+      {
+        "sha": "e835b1bfc43b565d625537830dbfb19328925134",
+        "title": "chore(deps): bump axios from 1.18.1 to 1.20.0 in /web (#7835)",
+        "date": "2026-10-24T15:10:05Z",
+        "parents": [
+          "5c8032d7002f82fb04fabf9a9c9b143de78547fe"
+        ],
+        "decision": "skip",
+        "reason": "Dependency/API surface absent in this frontend; retain fork dependencies.",
+        "evidence": "frontend/package.json",
+        "cached_patch_sha256": "23d79e82a78263501bdc0d91e5bcc598ff36cf7f96595d95f41306f2c5dfafed"
+      }
+    ]
+  }
+]

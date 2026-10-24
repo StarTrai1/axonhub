@@ -11,15 +11,14 @@ import (
 
 func TestRedirectCredentialsNeverReturnAfterCrossOrigin(t *testing.T) {
  var original *httptest.Server
- var observed http.Header
+ observed := make(chan http.Header, 2)
  other := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-  observed = r.Header.Clone()
+  observed <- r.Header.Clone()
   http.Redirect(w, r, original.URL+"/return", http.StatusTemporaryRedirect)
  }))
  defer other.Close()
- var returned http.Header
- original = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-  if r.URL.Path == "/return" { returned = r.Header.Clone(); w.WriteHeader(http.StatusNoContent); return }
+  original = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+  if r.URL.Path == "/return" { observed <- r.Header.Clone(); w.WriteHeader(http.StatusNoContent); return }
   http.Redirect(w, r, other.URL, http.StatusTemporaryRedirect)
  }))
  defer original.Close()
@@ -30,7 +29,7 @@ func TestRedirectCredentialsNeverReturnAfterCrossOrigin(t *testing.T) {
  response, err := NewHttpClient().GetNativeClient().Do(req)
  require.NoError(t, err)
  defer response.Body.Close()
- for _, headers := range []http.Header{observed, returned} {
+ for _, headers := range []http.Header{<-observed, <-observed} {
   require.Equal(t, "trace", headers.Get("X-Request-Id"))
   for name := range req.Header { if name != "X-Request-Id" { require.Empty(t, headers.Get(name), name) } }
  }
@@ -53,4 +52,22 @@ func TestRedirectCredentialOriginAndNoncanonicalHeaders(t *testing.T) {
  }
  client := NewHttpClient().WithRejectHTTPSDowngrade()
  require.Error(t, client.GetNativeClient().CheckRedirect(&http.Request{URL: parse("http://example.org")}, []*http.Request{{URL:parse("https://example.org")}}))
+}
+
+func TestInjectedRedirectPolicyIsPreserved(t *testing.T) {
+ called := false
+ original := &http.Client{CheckRedirect: func(req *http.Request, via []*http.Request) error {
+  called = true
+  require.Empty(t, req.Header.Get("X-Api-Key"))
+  return http.ErrUseLastResponse
+ }}
+ wrapped := NewHttpClientWithClient(original)
+ first, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "https://first.example", nil)
+ require.NoError(t, err)
+ next, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "https://second.example", nil)
+ require.NoError(t, err)
+ next.Header.Set("X-Api-Key", "fixture")
+ require.ErrorIs(t, wrapped.GetNativeClient().CheckRedirect(next, []*http.Request{first}), http.ErrUseLastResponse)
+ require.True(t, called)
+ require.NotSame(t, original, wrapped.GetNativeClient())
 }
