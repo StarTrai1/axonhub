@@ -124,7 +124,7 @@ func TestResponsesRejectedLocalCompactionRetriesTransientOpeningFailures(t *test
 		{"transient server error exhausted", bridgeTransientError(), 3, 2, false, 3, false},
 		{"zero retry budget", bridgeTransientError(), 1, 0, false, 1, false},
 		{"disabled retries", bridgeTransientError(), 1, 2, true, 1, false},
-		{"model capacity reached", bridgeOverloadError(), 1, 2, false, 1, false},
+		{"model capacity reached then recovered", bridgeOverloadError(), 1, 2, false, 2, true},
 		{"opening EOF", io.ErrUnexpectedEOF, 1, 2, false, 2, true},
 		{"relay wrapped upstream timeout", &httpclient.Error{StatusCode: 400, Body: []byte(`{"error":{"type":"invalid_request_error","message":"OpenAI Responses HTTP error [408]: The operation was timeout. [trace_id=synthetic]"}}`)}, 1, 2, false, 2, true},
 		{"ordinary validation", &httpclient.Error{StatusCode: 400, Body: []byte(`{"error":{"message":"invalid input"}}`)}, 1, 2, false, 1, false},

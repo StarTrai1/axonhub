@@ -1,0 +1,489 @@
+{
+  "snapshot": {
+    "bytes": 1628332032,
+    "quick_check": "ok",
+    "max_request_id": 67565
+  },
+  "retry_policy": {
+    "enabled": true,
+    "max_channel_retries": 6,
+    "max_single_channel_retries": 10,
+    "retry_delay_ms": 1000
+  },
+  "requests": [
+    {
+      "id": 67515,
+      "source": "api",
+      "model_id": "gpt-6.1-sol",
+      "status": "failed",
+      "format": "openai/responses-ws",
+      "channel_id": 40,
+      "executions": [
+        {
+          "id": 198987,
+          "response_status_code": 400,
+          "status": "failed",
+          "pass_through_applied": 1,
+          "error": "Unknown parameter: 'input[0].internal_chat_message_metadata_passthrough.content_item_metadata'.",
+          "request_keys": [
+            "client_metadata",
+            "include",
+            "input",
+            "instructions",
+            "model",
+            "parallel_tool_calls",
+            "prompt_cache_key",
+            "reasoning",
+            "store",
+            "stream",
+            "text",
+            "tool_choice",
+            "tools"
+          ],
+          "input_item_count": 7,
+          "input_metadata_keys": [
+            "content_item_kinds",
+            "content_item_metadata",
+            "create_time",
+            "turn_id"
+          ],
+          "tools": [
+            {
+              "type": "custom",
+              "name": "exec"
+            },
+            {
+              "type": "function",
+              "name": "wait"
+            },
+            {
+              "type": "function",
+              "name": "request_user_input"
+            },
+            {
+              "type": "function",
+              "name": "request_user_input_async"
+            },
+            {
+              "type": "function",
+              "name": "send_message_to_user_async"
+            },
+            {
+              "type": "namespace",
+              "name": "clock"
+            },
+            {
+              "type": "namespace",
+              "name": "agents"
+            }
+          ],
+          "parallel_tool_calls": false,
+          "has_reasoning_effort": true,
+          "has_tool_choice": true,
+          "has_turn_metadata": true,
+          "user_agent": [
+            "codex_vscode/0.164.0-alpha.11.1 (Ubuntu 24.4.0; x86_64) xterm-256color (VS Code; 26.1021.22027)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 67519,
+      "source": "api",
+      "model_id": "gpt-6.1-sol",
+      "status": "failed",
+      "format": "openai/responses-ws",
+      "channel_id": 40,
+      "executions": [
+        {
+          "id": 198991,
+          "response_status_code": 400,
+          "status": "failed",
+          "pass_through_applied": 1,
+          "error": "Unknown parameter: 'input[0].internal_chat_message_metadata_passthrough.content_item_metadata'.",
+          "request_keys": [
+            "client_metadata",
+            "include",
+            "input",
+            "instructions",
+            "model",
+            "parallel_tool_calls",
+            "prompt_cache_key",
+            "reasoning",
+            "store",
+            "stream",
+            "text",
+            "tool_choice",
+            "tools"
+          ],
+          "input_item_count": 7,
+          "input_metadata_keys": [
+            "content_item_kinds",
+            "content_item_metadata",
+            "create_time",
+            "turn_id"
+          ],
+          "tools": [
+            {
+              "type": "custom",
+              "name": "exec"
+            },
+            {
+              "type": "function",
+              "name": "wait"
+            },
+            {
+              "type": "function",
+              "name": "request_user_input"
+            },
+            {
+              "type": "function",
+              "name": "request_user_input_async"
+            },
+            {
+              "type": "function",
+              "name": "send_message_to_user_async"
+            },
+            {
+              "type": "namespace",
+              "name": "clock"
+            },
+            {
+              "type": "namespace",
+              "name": "agents"
+            }
+          ],
+          "parallel_tool_calls": false,
+          "has_reasoning_effort": true,
+          "has_tool_choice": true,
+          "has_turn_metadata": true,
+          "user_agent": [
+            "codex_vscode/0.164.0-alpha.11.1 (Ubuntu 24.4.0; x86_64) xterm-256color (VS Code; 26.1021.22027)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 67521,
+      "source": "api",
+      "model_id": "gpt-6.1-sol",
+      "status": "failed",
+      "format": "openai/responses-ws",
+      "channel_id": 40,
+      "executions": [
+        {
+          "id": 198995,
+          "response_status_code": 400,
+          "status": "failed",
+          "pass_through_applied": 1,
+          "error": "Unknown parameter: 'input[0].internal_chat_message_metadata_passthrough.content_item_metadata'.",
+          "request_keys": [
+            "client_metadata",
+            "include",
+            "input",
+            "instructions",
+            "model",
+            "parallel_tool_calls",
+            "prompt_cache_key",
+            "reasoning",
+            "store",
+            "stream",
+            "text",
+            "tool_choice",
+            "tools"
+          ],
+          "input_item_count": 7,
+          "input_metadata_keys": [
+            "content_item_kinds",
+            "content_item_metadata",
+            "create_time",
+            "turn_id"
+          ],
+          "tools": [
+            {
+              "type": "custom",
+              "name": "exec"
+            },
+            {
+              "type": "function",
+              "name": "wait"
+            },
+            {
+              "type": "function",
+              "name": "request_user_input"
+            },
+            {
+              "type": "function",
+              "name": "request_user_input_async"
+            },
+            {
+              "type": "function",
+              "name": "send_message_to_user_async"
+            },
+            {
+              "type": "namespace",
+              "name": "clock"
+            },
+            {
+              "type": "namespace",
+              "name": "agents"
+            }
+          ],
+          "parallel_tool_calls": false,
+          "has_reasoning_effort": true,
+          "has_tool_choice": true,
+          "has_turn_metadata": true,
+          "user_agent": [
+            "codex_vscode/0.164.0-alpha.11.1 (Ubuntu 24.4.0; x86_64) xterm-256color (VS Code; 26.1021.22027)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 67455,
+      "source": "api",
+      "model_id": "gpt-6.1-sol",
+      "status": "failed",
+      "format": "openai/responses",
+      "channel_id": 29,
+      "executions": [
+        {
+          "id": 198920,
+          "response_status_code": 400,
+          "status": "failed",
+          "pass_through_applied": 1,
+          "error": "bad response status code 400 [param=tools]",
+          "request_keys": [
+            "client_metadata",
+            "include",
+            "input",
+            "instructions",
+            "model",
+            "parallel_tool_calls",
+            "prompt_cache_key",
+            "reasoning",
+            "store",
+            "stream",
+            "text",
+            "tool_choice",
+            "tools"
+          ],
+          "input_item_count": 6,
+          "input_metadata_keys": [],
+          "tools": [
+            {
+              "type": "custom",
+              "name": "exec"
+            },
+            {
+              "type": "function",
+              "name": "wait"
+            },
+            {
+              "type": "function",
+              "name": "request_user_input"
+            },
+            {
+              "type": "function",
+              "name": "request_user_input_async"
+            },
+            {
+              "type": "namespace",
+              "name": "clock"
+            },
+            {
+              "type": "namespace",
+              "name": "collaboration"
+            }
+          ],
+          "parallel_tool_calls": false,
+          "has_reasoning_effort": true,
+          "has_tool_choice": true,
+          "has_turn_metadata": true,
+          "user_agent": [
+            "codex_exec/0.164.0 (Ubuntu 24.4.0; x86_64) vscode/1.142.0 (codex_exec; 0.164.0)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 67464,
+      "source": "test",
+      "model_id": "gpt-6.1-sol",
+      "status": "failed",
+      "format": "openai/responses",
+      "channel_id": 29,
+      "executions": [
+        {
+          "id": 198930,
+          "response_status_code": 400,
+          "status": "failed",
+          "pass_through_applied": 1,
+          "error": "invalid codex request",
+          "request_keys": [
+            "input",
+            "instructions",
+            "model",
+            "parallel_tool_calls",
+            "store",
+            "stream",
+            "tools"
+          ],
+          "input_item_count": 1,
+          "input_metadata_keys": [],
+          "tools": [],
+          "parallel_tool_calls": true,
+          "has_reasoning_effort": false,
+          "has_tool_choice": false,
+          "has_turn_metadata": true,
+          "user_agent": [
+            "codex_cli_rs/0.164.0"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 67465,
+      "source": "test",
+      "model_id": "gpt-6.1-sol",
+      "status": "failed",
+      "format": "openai/responses",
+      "channel_id": 29,
+      "executions": [
+        {
+          "id": 198932,
+          "response_status_code": 400,
+          "status": "failed",
+          "pass_through_applied": 1,
+          "error": "invalid codex request",
+          "request_keys": [
+            "input",
+            "instructions",
+            "model",
+            "parallel_tool_calls",
+            "store",
+            "stream",
+            "tools"
+          ],
+          "input_item_count": 1,
+          "input_metadata_keys": [],
+          "tools": [],
+          "parallel_tool_calls": true,
+          "has_reasoning_effort": false,
+          "has_tool_choice": false,
+          "has_turn_metadata": true,
+          "user_agent": [
+            "codex_cli_rs/0.164.0"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 67466,
+      "source": "test",
+      "model_id": "gpt-6.1-sol",
+      "status": "failed",
+      "format": "openai/responses",
+      "channel_id": 29,
+      "executions": [
+        {
+          "id": 198933,
+          "response_status_code": 400,
+          "status": "failed",
+          "pass_through_applied": 1,
+          "error": "invalid codex request",
+          "request_keys": [
+            "input",
+            "instructions",
+            "model",
+            "parallel_tool_calls",
+            "store",
+            "stream",
+            "tools"
+          ],
+          "input_item_count": 1,
+          "input_metadata_keys": [],
+          "tools": [],
+          "parallel_tool_calls": true,
+          "has_reasoning_effort": false,
+          "has_tool_choice": false,
+          "has_turn_metadata": true,
+          "user_agent": [
+            "codex_cli_rs/0.164.0"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 67457,
+      "source": "api",
+      "model_id": "gpt-6.1-sol",
+      "status": "failed",
+      "format": "openai/responses",
+      "channel_id": 29,
+      "executions": [
+        {
+          "id": 198922,
+          "response_status_code": 500,
+          "status": "failed",
+          "pass_through_applied": 1,
+          "error": "当前模型 gpt-6.1-sol 负载已经达到上限，请稍后重试",
+          "request_keys": [
+            "client_metadata",
+            "include",
+            "input",
+            "instructions",
+            "model",
+            "parallel_tool_calls",
+            "prompt_cache_key",
+            "reasoning",
+            "store",
+            "stream",
+            "text",
+            "tool_choice",
+            "tools"
+          ],
+          "input_item_count": 6,
+          "input_metadata_keys": [],
+          "tools": [
+            {
+              "type": "custom",
+              "name": "exec"
+            },
+            {
+              "type": "function",
+              "name": "wait"
+            },
+            {
+              "type": "function",
+              "name": "request_user_input"
+            },
+            {
+              "type": "function",
+              "name": "request_user_input_async"
+            },
+            {
+              "type": "namespace",
+              "name": "clock"
+            },
+            {
+              "type": "namespace",
+              "name": "collaboration"
+            }
+          ],
+          "parallel_tool_calls": false,
+          "has_reasoning_effort": true,
+          "has_tool_choice": true,
+          "has_turn_metadata": true,
+          "user_agent": [
+            "codex_exec/0.164.0 (Ubuntu 24.4.0; x86_64) vscode/1.142.0 (codex_exec; 0.164.0)"
+          ]
+        }
+      ]
+    }
+  ],
+  "limits": [
+    "Failed executions did not retain raw upstream response bodies; error details are from persisted error_message.",
+    "No paid upstream replay performed."
+  ]
+}

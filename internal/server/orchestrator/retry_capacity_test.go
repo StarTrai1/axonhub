@@ -104,9 +104,9 @@ func TestModelCapacityPipelineActuallyRetriesAndHonorsBudget(t *testing.T) {
 			provider, err := responses.NewOutboundTransformer("https://example.invalid", "synthetic")
 			require.NoError(t, err)
 			candidate := &ChannelModelsCandidate{
-				Channel: &biz.Channel{Channel: &ent.Channel{ID: 29}, Outbound: provider},
+				Channel:   &biz.Channel{Channel: &ent.Channel{ID: 29}, Outbound: provider},
 				APIFormat: llm.APIFormatOpenAIResponse.String(),
-				Models: []biz.ChannelModelEntry{{RequestModel: "gpt-6.1-sol", ActualModel: "gpt-6.1-sol"}},
+				Models:    []biz.ChannelModelEntry{{RequestModel: "gpt-6.1-sol", ActualModel: "gpt-6.1-sol"}},
 			}
 			inbound, outbound := NewPersistentTransformers(&PersistenceState{ChannelModelsCandidates: []*ChannelModelsCandidate{candidate}}, responses.NewInboundTransformer())
 			executor := &localCompactionRetryExecutor{events: []*httpclient.StreamEvent{{
@@ -121,9 +121,9 @@ func TestModelCapacityPipelineActuallyRetriesAndHonorsBudget(t *testing.T) {
 			require.Len(t, executor.bodies, test.wantCalls)
 			if test.wantResult {
 				require.NoError(t, err)
-				_, err = streams.All(result.ChatCompletionStream)
+				_, err = streams.All(result.EventStream)
 				require.NoError(t, err)
-				require.NoError(t, result.ChatCompletionStream.Close())
+				require.NoError(t, result.EventStream.Close())
 				require.Equal(t, executor.bodies[0], executor.bodies[1])
 			} else {
 				require.Error(t, err)

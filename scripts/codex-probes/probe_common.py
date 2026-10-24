@@ -441,6 +441,7 @@ view_image = false
 deferred_executor = false
 request_permissions_tool = false
 token_budget = false
+goals = false
 shell_tool = false
 unified_exec = false
 apps = false
