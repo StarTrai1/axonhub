@@ -181,7 +181,9 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	// Prepare headers
 	if imageConfig := shared.ChatImageConfig(llmReq.TransformerMetadata); len(imageConfig) > 0 {
 		body, err = sjson.SetRawBytes(body, "generationConfig.imageConfig", imageConfig)
-		if err != nil { return nil, fmt.Errorf("encode Gemini imageConfig: %w", err) }
+		if err != nil {
+			return nil, fmt.Errorf("encode Gemini imageConfig: %w", err)
+		}
 	}
 
 	headers := make(http.Header)

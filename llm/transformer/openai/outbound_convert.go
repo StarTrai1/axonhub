@@ -22,7 +22,7 @@ func RequestFromLLM(ctx context.Context, r *llm.Request, reasoningField Reasonin
 
 	req := &Request{
 		Model:               r.Model,
-		ImageConfig: shared.ChatImageConfig(r.TransformerMetadata),
+		ImageConfig:         shared.ChatImageConfig(r.TransformerMetadata),
 		FrequencyPenalty:    r.FrequencyPenalty,
 		Logprobs:            r.Logprobs,
 		MaxCompletionTokens: r.MaxCompletionTokens,

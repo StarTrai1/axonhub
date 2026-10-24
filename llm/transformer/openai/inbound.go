@@ -57,7 +57,9 @@ func (t *InboundTransformer) TransformRequest(
 	}
 
 	if raw := bytes.TrimSpace(oaiReq.ImageConfig); len(raw) > 0 && string(raw) != "null" {
-		if raw[0] != '{' { return nil, fmt.Errorf("%w: imageConfig must be an object", transformer.ErrInvalidRequest) }
+		if raw[0] != '{' {
+			return nil, fmt.Errorf("%w: imageConfig must be an object", transformer.ErrInvalidRequest)
+		}
 	}
 
 	// Validate required fields

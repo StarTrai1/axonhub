@@ -216,20 +216,27 @@ func TestAnthropicWebSearchUsesCitationsWhenSourcesOmitted(t *testing.T) {
 }
 
 func TestWebSearchSparseSnapshotRetainsOpaqueResults(t *testing.T) {
- metadata := make(map[string]any)
- completed := "completed"
- results := json.RawMessage(`[{"url":"https://example.org","encrypted_content":"opaque-fixture"}]`)
- appendResponseWebSearchCallMetadata(metadata, Item{ID:"ws_replay", Type:"web_search_call", Status:&completed, Results:results, Error:&Error{Code:"max_uses_exceeded"}, Action:NewWebSearchAction(&WebSearchAction{Type:"search", Query:"query", URL:"https://example.org", Pattern:"needle"})})
- published := metadata[responsesWebSearchCallsTransformerMetadataKey].([]Item)
- appendResponseWebSearchCallMetadata(metadata, Item{ID:"ws_replay", Type:"web_search_call", Action:NewWebSearchAction(&WebSearchAction{Sources:[]WebSearchSource{{URL:"https://example.org",Title:"Late"}}})})
- latest := metadata[responsesWebSearchCallsTransformerMetadataKey].([]Item)
- require.Len(t, latest, 1)
- require.JSONEq(t, string(results), string(latest[0].Results))
- require.Equal(t, "max_uses_exceeded", latest[0].Error.Code)
- require.Equal(t, "completed", *latest[0].Status)
- require.Equal(t, "query", latest[0].Action.WebSearch.Query)
- require.Equal(t, "https://example.org", latest[0].Action.WebSearch.URL)
- require.Equal(t, "needle", latest[0].Action.WebSearch.Pattern)
- require.Len(t, latest[0].Action.WebSearch.Sources, 1)
- require.Empty(t, published[0].Action.WebSearch.Sources)
+	metadata := make(map[string]any)
+	completed := "completed"
+	results := json.RawMessage(`[{"url":"https://example.org","encrypted_content":"opaque-fixture"}]`)
+	appendResponseWebSearchCallMetadata(metadata, Item{
+		ID: "ws_replay", Type: "web_search_call", Status: &completed, Results: results,
+		Error:  &Error{Code: "max_uses_exceeded"},
+		Action: NewWebSearchAction(&WebSearchAction{Type: "search", Query: "query", URL: "https://example.org", Pattern: "needle"}),
+	})
+	published := metadata[responsesWebSearchCallsTransformerMetadataKey].([]Item)
+	appendResponseWebSearchCallMetadata(metadata, Item{
+		ID: "ws_replay", Type: "web_search_call",
+		Action: NewWebSearchAction(&WebSearchAction{Sources: []WebSearchSource{{URL: "https://example.org", Title: "Late"}}}),
+	})
+	latest := metadata[responsesWebSearchCallsTransformerMetadataKey].([]Item)
+	require.Len(t, latest, 1)
+	require.JSONEq(t, string(results), string(latest[0].Results))
+	require.Equal(t, "max_uses_exceeded", latest[0].Error.Code)
+	require.Equal(t, "completed", *latest[0].Status)
+	require.Equal(t, "query", latest[0].Action.WebSearch.Query)
+	require.Equal(t, "https://example.org", latest[0].Action.WebSearch.URL)
+	require.Equal(t, "needle", latest[0].Action.WebSearch.Pattern)
+	require.Len(t, latest[0].Action.WebSearch.Sources, 1)
+	require.Empty(t, published[0].Action.WebSearch.Sources)
 }

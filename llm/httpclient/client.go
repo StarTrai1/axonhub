@@ -297,8 +297,12 @@ func NewHttpClientWithProxy(proxyConfig *ProxyConfig, opts ...ClientOption) *Htt
 	}
 	client := &http.Client{Transport: buildHTTPRoundTripper(proxyConfig, options, proxyConfig == nil)}
 	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
-		if err := protectRedirectCredentials(req, via); err != nil { return err }
-		if options.rejectHTTPSDowngrade { return rejectHTTPSDowngrade(req, via) }
+		if err := protectRedirectCredentials(req, via); err != nil {
+			return err
+		}
+		if options.rejectHTTPSDowngrade {
+			return rejectHTTPSDowngrade(req, via)
+		}
 		return nil
 	}
 
@@ -463,8 +467,12 @@ func NewHttpClientWithClient(client *http.Client) *HttpClient {
 	copy := *client
 	previous := client.CheckRedirect
 	copy.CheckRedirect = func(req *http.Request, via []*http.Request) error {
-		if err := protectRedirectCredentials(req, via); err != nil { return err }
-		if previous != nil { return previous(req, via) }
+		if err := protectRedirectCredentials(req, via); err != nil {
+			return err
+		}
+		if previous != nil {
+			return previous(req, via)
+		}
 		return nil
 	}
 	return &HttpClient{client: &copy}
