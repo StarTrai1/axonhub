@@ -2,132 +2,177 @@ package anthropic
 
 import (
 	"encoding/json"
-	"fmt"
-	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
 
-	"github.com/looplj/axonhub/llm/auth"
-	"github.com/looplj/axonhub/llm/httpclient"
-	"github.com/looplj/axonhub/llm/streams"
-	"github.com/looplj/axonhub/llm/transformer/openai/responses"
+	"github.com/looplj/axonhub/llm"
 )
 
-func TestAnthropicNamedHostedSearchUsesResponsesAllowlist(t *testing.T) {
-	out, err := responses.NewOutboundTransformerWithConfig(&responses.Config{BaseURL: "https://relay.example/v1", APIKeyProvider: auth.NewStaticKeyProvider("fixture")})
+func TestResponsesSearchBlocksTrackOnlyObservedCalls(t *testing.T) {
+	seen := make(map[string]responsesSearchState)
+	blocks := func(raw string) []MessageContentBlock {
+		return responsesSearchBlocks(map[string]any{"openai_responses_web_search_calls": json.RawMessage(raw)}, seen, true, nil)
+	}
+	require.Empty(t, blocks(`[{"status":"completed"}]`), "missing IDs must not fabricate searches")
+	started := blocks(`[{"id":"ws_a","status":"in_progress"}]`)
+	require.Len(t, started, 1)
+	require.Equal(t, "server_tool_use", started[0].Type)
+	require.JSONEq(t, `{}`, string(started[0].Input), "unknown queries must not be invented")
+	require.Empty(t, blocks(`[{"id":"ws_a","status":"in_progress"}]`))
+	completed := blocks(`[{"id":"ws_a","status":"completed"}]`)
+	require.Len(t, completed, 1)
+	require.Equal(t, "web_search_tool_result", completed[0].Type)
+	raw, err := json.Marshal(completed[0].Content)
 	require.NoError(t, err)
-	for _, kind := range []string{"web_search_20250305", "web_search_20260209", ""} {
-		t.Run(kind, func(t *testing.T) {
-			body := fmt.Sprintf(`{"model":"gpt-6.1-sol","max_tokens":128,"messages":[{"role":"user","content":"search"}],"tools":[{"type":%q,"name":"web_search","input_schema":{"type":"object"}},{"name":"other","input_schema":{"type":"object"}}],"tool_choice":{"type":"tool","name":"web_search"}}`, kind)
-			req, err := NewInboundTransformer().TransformRequest(t.Context(), &httpclient.Request{Body: []byte(body), Headers: http.Header{"Content-Type": {"application/json"}}})
-			require.NoError(t, err)
-			encoded, err := out.TransformRequest(t.Context(), req)
-			require.NoError(t, err)
-			want := `{"type":"allowed_tools","mode":"required","tools":[{"type":"web_search"}]}`
-			if kind == "" {
-				want = `{"type":"function","name":"web_search"}`
-			}
-			require.JSONEq(t, want, gjson.GetBytes(encoded.Body, "tool_choice").Raw)
-			native := convertToAnthropicRequestWithConfig(req, &Config{Type: PlatformDirect})
-			require.Equal(t, "tool", native.ToolChoice.Type)
-			require.Equal(t, "web_search", *native.ToolChoice.Name)
+	require.JSONEq(t, `[]`, string(raw))
+	require.Empty(t, blocks(`[{"id":"ws_a","status":"completed"}]`), "repeated snapshots must not count twice")
+	failed := blocks(`[{"id":"ws_b","status":"failed"}]`)
+	require.Len(t, failed, 2)
+	raw, err = json.Marshal(failed[1].Content)
+	require.NoError(t, err)
+	require.Equal(t, "web_search_tool_result_error", gjson.GetBytes(raw, "type").String())
+	require.Len(t, seen, 2)
+}
+
+func TestResponsesSearchBlocksPreserveSourcesWithoutFabricatingEncryption(t *testing.T) {
+	blocks := responsesSearchBlocks(map[string]any{"openai_responses_web_search_calls": json.RawMessage(`[{"id":"ws_a","status":"completed","action":{"queries":["Debian"],"sources":[{"url":"https://debian.org","title":"Debian"},{"url":"https://debian.org","title":"Duplicate"},{"title":"No URL"}]}}]`)}, make(map[string]responsesSearchState), true, nil)
+	require.Len(t, blocks, 2)
+	require.JSONEq(t, `{"query":"Debian"}`, string(blocks[0].Input))
+	raw, err := json.Marshal(blocks[1].Content)
+	require.NoError(t, err)
+	require.JSONEq(t, `[{"type":"web_search_result","url":"https://debian.org","title":"Debian"}]`, string(raw))
+}
+
+func TestResponsesSearchBlocksFillMissingSourceTitles(t *testing.T) {
+	seen := make(map[string]responsesSearchState)
+	metadata := map[string]any{"openai_responses_web_search_calls": json.RawMessage(`[
+		{"id":"a","status":"completed","action":{"query":"Debian","sources":[
+			{"url":"https://debian.org/","title":"Original"},
+			{"url":"https://debian.org/releases/"},
+			{"url":"https://debian.org/distrib/","title":" \t"}
+		]}},
+		{"id":"b","status":"completed","action":{"query":"Other","sources":[{"url":"https://example.org/"}]}}
+	]`)}
+	// Titles may arrive in answer citations after the search completes.
+	responsesSearchBlocks(metadata, seen, false, nil)
+	cited := []responsesSearchSource{
+		{URL: "https://debian.org/", Title: "Replacement"},
+		{URL: "https://debian.org/releases/?utm_source=openai", Title: "Debian Releases"},
+		{URL: "https://debian.org/distrib", Title: "Not an exact match"},
+		{URL: "https://example.org/", Title: "Example"},
+		{URL: "https://unrelated.org/", Title: "Unrelated"},
+	}
+	blocks := responsesSearchBlocks(nil, seen, true, cited)
+	require.Len(t, blocks, 2)
+	raw, err := json.Marshal(blocks[0].Content)
+	require.NoError(t, err)
+	require.JSONEq(t, `[
+		{"type":"web_search_result","url":"https://debian.org/","title":"Original"},
+		{"type":"web_search_result","url":"https://debian.org/releases/","title":"Debian Releases"},
+		{"type":"web_search_result","url":"https://debian.org/distrib/","title":"https://debian.org/distrib/"}
+	]`, string(raw))
+	raw, err = json.Marshal(blocks[1].Content)
+	require.NoError(t, err)
+	require.JSONEq(t, `[{"type":"web_search_result","url":"https://example.org/","title":"Example"}]`, string(raw))
+}
+
+func TestResponsesSearchTitleURL(t *testing.T) {
+	for _, tc := range []struct {
+		name, source, citation string
+		match                  bool
+	}{
+		{"tracking", "https://example.org/?page=2", "https://example.org/?utm_source=openai&page=2&utm_medium=search", true},
+		{"query order", "https://example.org/?a=1&b=2", "https://example.org/?b=2&a=1", true},
+		{"different page", "https://example.org/?page=2", "https://example.org/?page=3&utm_source=openai", false},
+		{"unknown parameter", "https://example.org/", "https://example.org/?source=other", false},
+		{"fragment", "https://example.org/#one", "https://example.org/#two", false},
+		{"path", "https://example.org/one", "https://example.org/two", false},
+		{"host", "https://example.org/", "https://other.org/", false},
+		{"scheme", "https://example.org/", "http://example.org/", false},
+		{"malformed query", "https://example.org/", "https://example.org/?utm_source=%zz", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.match, responsesSearchTitleURL(tc.source) == responsesSearchTitleURL(tc.citation))
 		})
 	}
 }
 
-func TestResponsesHostedSearchAnthropicTerminalAndReplay(t *testing.T) {
-	out, err := responses.NewOutboundTransformerWithConfig(&responses.Config{BaseURL: "https://relay.example/v1", APIKeyProvider: auth.NewStaticKeyProvider("fixture")})
+func TestResponsesSearchBlocksWaitForLateDetails(t *testing.T) {
+	seen := make(map[string]responsesSearchState)
+	snapshot := func(raw string, final bool) []MessageContentBlock {
+		return responsesSearchBlocks(map[string]any{"openai_responses_web_search_calls": json.RawMessage(raw)}, seen, final, nil)
+	}
+	require.Empty(t, snapshot(`[{"id":"late","status":"in_progress"}]`, false), "do not close an empty query before the real query arrives")
+	started := snapshot(`[{"id":"late","status":"completed","action":{"query":"actual query","sources":[{"url":"https://example.org/one"}]}}]`, false)
+	require.Len(t, started, 1, "query progress can stream, but results must wait for the terminal snapshot")
+	require.Equal(t, "server_tool_use", started[0].Type)
+	require.JSONEq(t, `{"query":"actual query"}`, string(started[0].Input))
+	require.Empty(t, snapshot(`[{"id":"late","status":"in_progress","action":{"sources":[{"url":"https://example.org/two","title":"Two"},{"url":"https://example.org/one","title":"One"}]}}]`, false))
+	results := responsesSearchBlocks(nil, seen, true, nil)
+	require.Len(t, results, 1)
+	require.Equal(t, "web_search_tool_result", results[0].Type)
+	raw, err := json.Marshal(results[0].Content)
 	require.NoError(t, err)
-	for _, status := range []string{"completed", "failed", "incomplete", "in_progress"} {
-		for _, streaming := range []bool{false, true} {
-			t.Run(fmt.Sprintf("%s/stream=%v", status, streaming), func(t *testing.T) {
-				item := fmt.Sprintf(`{"type":"web_search_call","id":"ws_original-id","status":%q,"action":{"type":"search","queries":["first","second"],"sources":[{"url":"https://invented.example"}]},"results":[{"url":"https://result.example","title":"Result","encrypted_content":"opaque-fixture"},{"url":"https://unreplayable.example"}],"error":{"code":"max_uses_exceeded"}}`, status)
-				textItem := `{"type":"message","id":"msg_1","role":"assistant","content":[{"type":"output_text","text":"answer"}]}`
-				body := `{"id":"resp_1","model":"gpt-6.1-sol","status":"completed","output":[` + item + `,` + textItem + `]}`
-				var content []MessageContentBlock
-				if !streaming {
-					unified, err := out.TransformResponse(t.Context(), &httpclient.Response{StatusCode: 200, Body: []byte(body)})
-					require.NoError(t, err)
-					content = convertToAnthropicResponse(unified).Content
-				} else {
-					events := []*httpclient.StreamEvent{
-						{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_1","model":"gpt-6.1-sol"}}`)},
-						{Type: "response.output_item.done", Data: []byte(`{"type":"response.output_item.done","output_index":0,"item":` + item + `}`)},
-						{Type: "response.output_text.delta", Data: []byte(`{"type":"response.output_text.delta","item_id":"msg_1","output_index":1,"content_index":0,"delta":"answer"}`)},
-						{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":` + body + `}`)},
-					}
-					unified, err := out.TransformStream(t.Context(), nil, streams.SliceStream(events))
-					require.NoError(t, err)
-					encoded, err := NewInboundTransformer().TransformStream(t.Context(), unified)
-					require.NoError(t, err)
-					for encoded.Next() {
-						var event StreamEvent
-						require.NoError(t, json.Unmarshal(encoded.Current().Data, &event))
-						if event.Type == "content_block_start" && event.ContentBlock != nil {
-							content = append(content, *event.ContentBlock)
-						}
-					}
-					require.NoError(t, encoded.Err())
-					require.NoError(t, encoded.Close())
+	require.JSONEq(t, `[{"type":"web_search_result","url":"https://example.org/one","title":"One"},{"type":"web_search_result","url":"https://example.org/two","title":"Two"}]`, string(raw))
+	require.Empty(t, responsesSearchBlocks(nil, seen, true, nil), "flush only once")
+}
+
+func TestResponsesSearchBlocksFlushUnknownQueryInCallOrder(t *testing.T) {
+	seen := make(map[string]responsesSearchState)
+	require.Empty(t, responsesSearchBlocks(map[string]any{"openai_responses_web_search_calls": json.RawMessage(`[{"id":"second_alphabetically","status":"completed"},{"id":"first_alphabetically","status":"failed"}]`)}, seen, false, nil))
+	blocks := responsesSearchBlocks(nil, seen, true, nil)
+	require.Len(t, blocks, 4)
+	require.Equal(t, "srvtoolu_oai_7365636f6e645f616c7068616265746963616c6c79", blocks[0].ID)
+	require.Equal(t, "srvtoolu_oai_66697273745f616c7068616265746963616c6c79", blocks[2].ID)
+	require.JSONEq(t, `{}`, string(blocks[0].Input))
+	require.Empty(t, responsesSearchBlocks(nil, seen, true, nil))
+}
+
+func TestResponsesSearchCitationFallbackBoundaries(t *testing.T) {
+	cited := []responsesSearchSource{{URL: "https://example.org/cited", Title: "Cited"}}
+	for _, tc := range []struct {
+		name, raw string
+		wantURL   string
+		results   int
+	}{
+		{"single search", `[{"id":"a","status":"completed"}]`, "https://example.org/cited", 1},
+		{"explicit sources win", `[{"id":"a","status":"completed","action":{"sources":[{"url":"https://example.org/explicit","title":"Explicit"}]}}]`, "https://example.org/explicit", 1},
+		{"multiple searches are ambiguous", `[{"id":"a","status":"completed"},{"id":"b","status":"completed"}]`, "", 2},
+		{"no search must not invent one", `[]`, "", 0},
+		{"failed search stays failed", `[{"id":"a","status":"failed"}]`, "", 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			blocks := responsesSearchBlocks(map[string]any{"openai_responses_web_search_calls": json.RawMessage(tc.raw)}, make(map[string]responsesSearchState), true, cited)
+			count := 0
+			for _, block := range blocks {
+				if block.Type != "web_search_tool_result" {
+					continue
 				}
-				if status == "in_progress" {
-					require.Len(t, content, 1)
-					return
+				count++
+				raw, err := json.Marshal(block.Content)
+				require.NoError(t, err)
+				require.Equal(t, tc.wantURL, gjson.GetBytes(raw, "0.url").String())
+				if tc.name == "failed search stays failed" {
+					require.Equal(t, "web_search_tool_result_error", gjson.GetBytes(raw, "type").String())
 				}
-				require.Len(t, content, 3, "search pair emitted once even when metadata is repeated at completion")
-				require.Equal(t, "server_tool_use", content[0].Type)
-				require.Equal(t, "web_search_tool_result", content[1].Type)
-				require.Equal(t, content[0].ID, *content[1].ToolUseID)
-				require.JSONEq(t, `{"query":"first second"}`, string(content[0].Input))
-				result, err := json.Marshal(content[1].Content)
-				require.NoError(t, err)
-				if status == "completed" {
-					require.JSONEq(t, `[{"type":"web_search_result","url":"https://result.example","title":"Result","encrypted_content":"opaque-fixture"}]`, string(result))
-				} else {
-					require.JSONEq(t, `{"type":"web_search_tool_result_error","error_code":"max_uses_exceeded"}`, string(result))
-				}
-				// Replay emitted search blocks as hosted history, preserving the upstream ID.
-				unified, err := convertToLLMRequest(&MessageRequest{Model: "gpt-6.1-sol", MaxTokens: 128, Messages: []MessageParam{{Role: "assistant", Content: MessageContent{MultipleContent: content[:2]}}, {Role: "user", Content: MessageContent{Content: new("continue")}}}})
-				require.NoError(t, err)
-				req, err := out.TransformRequest(t.Context(), unified)
-				require.NoError(t, err)
-				require.Equal(t, "web_search_call", gjson.GetBytes(req.Body, "input.0.type").String())
-				require.Equal(t, "ws_original-id", gjson.GetBytes(req.Body, "input.0.id").String())
-				require.NotContains(t, string(req.Body), "function_call")
-			})
-		}
+			}
+			require.Equal(t, tc.results, count)
+		})
 	}
 }
 
-func TestResponsesHostedSearchEmptyAndUnknownFailure(t *testing.T) {
-	for _, tc := range []struct{ status, want string }{{"completed", "[]"}, {"failed", `{"type":"web_search_tool_result_error","error_code":"unavailable"}`}} {
-		var raw any
-		require.NoError(t, json.Unmarshal([]byte(`[{"type":"web_search_call","id":"ws_1","status":"`+tc.status+`","results":null,"error":{"code":"internal_private"}}]`), &raw))
-		blocks := responsesWebSearchBlocks(map[string]any{responsesWebSearchMetadataKey: raw}, nil)
-		require.Len(t, blocks, 2)
-		content, err := json.Marshal(blocks[1].Content)
-		require.NoError(t, err)
-		require.JSONEq(t, tc.want, string(content))
+func TestResponsesSearchCitationsOnlyUseStructuredWebURLs(t *testing.T) {
+	annotations := []llm.Annotation{
+		{Type: "url_citation", URLCitation: &llm.URLCitation{URL: "https://example.org"}},
+		{Type: "url_citation", URLCitation: &llm.URLCitation{URL: "https://example.org", Title: "Example"}},
+		{Type: "url_citation", URLCitation: &llm.URLCitation{URL: "javascript:alert(1)"}},
+		{Type: "url_citation", URLCitation: &llm.URLCitation{URL: "file:///tmp/private"}},
+		{Type: "url_citation", URLCitation: &llm.URLCitation{URL: "/relative"}},
+		{Type: "file_citation", URLCitation: &llm.URLCitation{URL: "https://example.org/wrong-kind"}},
 	}
-}
-
-func TestResponsesHostedSearchOnlyTerminalEnvelope(t *testing.T) {
-	out, err := responses.NewOutboundTransformerWithConfig(&responses.Config{BaseURL: "https://relay.example/v1", APIKeyProvider: auth.NewStaticKeyProvider("fixture")})
-	require.NoError(t, err)
-	unified, err := out.TransformStream(t.Context(), nil, streams.SliceStream([]*httpclient.StreamEvent{{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":{"id":"resp_search","model":"gpt-6.1-sol","status":"completed","output":[{"type":"web_search_call","id":"ws_only","status":"completed","action":{"type":"search","query":"fixture"}}]}}`)}}))
-	require.NoError(t, err)
-	encoded, err := NewInboundTransformer().TransformStream(t.Context(), unified)
-	require.NoError(t, err)
-	var blocks []string
-	for encoded.Next() {
-		result := gjson.GetBytes(encoded.Current().Data, "content_block.type")
-		if result.Exists() {
-			blocks = append(blocks, result.String())
-		}
-	}
-	require.NoError(t, encoded.Err())
-	require.Equal(t, []string{"server_tool_use", "web_search_tool_result"}, blocks)
-	require.NoError(t, encoded.Close())
+	sources := appendResponsesSearchCitations(nil, annotations)
+	require.Equal(t, []responsesSearchSource{{URL: "https://example.org", Title: "Example"}}, sources)
+	require.Equal(t, sources, appendResponsesSearchCitations(sources, annotations))
 }

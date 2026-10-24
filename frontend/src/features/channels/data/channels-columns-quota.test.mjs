@@ -256,6 +256,22 @@ test('normalized parser preserves every limit without a five-row cap', () => {
   assert.deepEqual(limits.map((limit) => limit.window), ['5h', '7d', '30d', 'daily', 'weekly', 'monthly']);
 });
 
+test('the search quota reaches the table with its production label', () => {
+  assert.match(
+    columnsSource,
+    /search_hourly:\s*'quota\.window\.search_hourly'/,
+    'the table must map the search window through the production label map'
+  );
+
+  const limits = parseQuotaLimits({
+    _limits: [{ type: 'search', window: 'search_hourly', status: 'available', ready: true, usageRatio: 0.4 }],
+  });
+  assert.deepEqual(
+    limits.map(({ type, window, usageRatio }) => ({ type, window, usageRatio })),
+    [{ type: 'search', window: 'search_hourly', usageRatio: 0.4 }]
+  );
+});
+
 test('channels table container allows horizontal scroll and wraps in min-w-max without table-fixed', () => {
   const tableSource = read('features/channels/components/channels-table.tsx');
   assert.doesNotMatch(tableSource, /overflow-x-hidden/, 'table container must not disable horizontal scroll');

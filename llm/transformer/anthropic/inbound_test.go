@@ -1981,6 +1981,8 @@ func TestConvertToAnthropicResponse_NormalizesOpenAIWebSearchCitationType(t *tes
 	resp := convertToAnthropicResponse(chatResp)
 	require.NotNil(t, resp)
 	require.Len(t, resp.Content, 3)
+	require.Equal(t, "server_tool_use", resp.Content[0].Type)
+	require.Equal(t, "web_search_tool_result", resp.Content[1].Type)
 	require.Equal(t, "text", resp.Content[2].Type)
 	require.Len(t, resp.Content[2].Citations, 1)
 	require.Equal(t, TextCitation{

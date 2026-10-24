@@ -354,7 +354,9 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 		chatReq.ToolChoice = convertAnthropicToolChoiceToLLM(anthropicReq.ToolChoice)
 		// A named hosted tool must remain hosted when converted to Responses.
 		// A client function also named web_search keeps its function identity.
-		if choice := chatReq.ToolChoice; choice != nil && choice.NamedToolChoice != nil {
+		if choice := chatReq.ToolChoice; choice != nil && choice.NamedToolChoice != nil && !lo.ContainsBy(chatReq.Tools, func(tool llm.Tool) bool {
+			return tool.Type == llm.ToolTypeFunction && tool.Function.Name == choice.NamedToolChoice.Function.Name
+		}) {
 			for _, tool := range anthropicReq.Tools {
 				if (tool.Type == ToolTypeWebSearch20250305 || tool.Type == "web_search_20260209" || tool.Type == WebSearchFunctionName) &&
 					tool.Name == choice.NamedToolChoice.Function.Name {
@@ -605,7 +607,7 @@ func getAnthropicResponseContentFromMetadata(metadata map[string]any) []MessageC
 func mergeAnthropicResponseContentBlocks(contentBlocks []MessageContentBlock, metadata map[string]any, annotations []llm.Annotation) []MessageContentBlock {
 	providerBlocks := getAnthropicResponseContentFromMetadata(metadata)
 	if len(providerBlocks) == 0 {
-		return append(responsesWebSearchBlocks(metadata, make(map[string]bool)), attachCitationsToFirstAnthropicTextBlock(contentBlocks, annotations, metadata)...)
+		return attachCitationsToFirstAnthropicTextBlock(contentBlocks, annotations, metadata)
 	}
 
 	providerBlocks = attachCitationsToFirstAnthropicTextBlock(providerBlocks, annotations, metadata)
@@ -620,6 +622,7 @@ func convertToAnthropicResponse(chatResp *llm.Response) *Message {
 		Model: chatResp.Model,
 	}
 
+	var searchCitations []responsesSearchSource
 	// Convert choices to content blocks
 	if len(chatResp.Choices) > 0 {
 		choice := chatResp.Choices[0]
@@ -633,6 +636,7 @@ func convertToAnthropicResponse(chatResp *llm.Response) *Message {
 		}
 
 		if message != nil {
+			searchCitations = appendResponsesSearchCitations(nil, message.Annotations)
 			var contentBlocks []MessageContentBlock
 
 			// Handle reasoning content (thinking) first if present
@@ -796,6 +800,9 @@ func convertToAnthropicResponse(chatResp *llm.Response) *Message {
 			resp.StopReason = lo.ToPtr("tool_use")
 		}
 	}
+
+	searchBlocks := responsesSearchBlocks(chatResp.TransformerMetadata, make(map[string]responsesSearchState), true, searchCitations)
+	resp.Content = append(searchBlocks, resp.Content...)
 
 	// Convert usage
 	if chatResp.Usage != nil {
