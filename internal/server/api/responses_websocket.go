@@ -553,6 +553,9 @@ func runResponsesWebSocketPings(ctx context.Context, writer *responsesWebSocketW
 }
 
 func responsesWebSocketEnvelope(message []byte) (string, string, *httpclient.Error) {
+	if err := validateResponsesWebSocketControlFields(message); err != nil {
+		return "", "", err
+	}
 	var payload map[string]json.RawMessage
 	if err := json.Unmarshal(message, &payload); err != nil || payload == nil {
 		return "", "", invalidResponsesWebSocketRequest("invalid Responses WebSocket event JSON payload", "")

@@ -834,6 +834,10 @@ type Response struct {
 	// without semantic output or an error. It is internal retry metadata.
 	EmptyCompletionCandidate bool `json:"-"`
 
+	// IntentionalStop identifies an explicit provider decision to end a turn,
+	// even without output. Empty-response detection must not replay that turn.
+	IntentionalStop bool `json:"-"`
+
 	// RawResponsesEvent carries GPT-6 Astra WebSocket steering acknowledgements
 	// and lifecycle events that do not have a unified chat representation.
 	RawResponsesEvent json.RawMessage `json:"-"`

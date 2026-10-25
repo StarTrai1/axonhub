@@ -12,6 +12,9 @@ import (
 // routeInterrupt binds a Codex interrupt to a response on this connection.
 // A late interrupt for a recently finished response receives an idempotent acknowledgement.
 func (d *responsesWebSocketDispatcher) routeInterrupt(message []byte) *httpclient.Error {
+	if err := validateResponsesWebSocketControlFields(message); err != nil {
+		return err
+	}
 	var raw map[string]json.RawMessage
 	if err := json.Unmarshal(message, &raw); err != nil || raw == nil {
 		return invalidResponsesWebSocketRequest("invalid response.interrupt JSON payload", "")

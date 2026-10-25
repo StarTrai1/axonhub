@@ -21,6 +21,9 @@ func TestPromptTokensDetailsCacheWriteTokensJSONCompatibility(t *testing.T) {
 		{name: "legacy AxonHub", body: `{"write_cached_tokens":12}`, want: 12},
 		{name: "cache creation alias", body: `{"cache_creation_tokens":13}`, want: 13},
 		{name: "cached creation alias", body: `{"cached_creation_tokens":14}`, want: 14},
+		{name: "cache creation input alias", body: `{"cache_creation_input_tokens":16}`, want: 16},
+		{name: "aliases are not summed", body: `{"cache_write_tokens":11,"cache_creation_input_tokens":16}`, want: 11},
+		{name: "new alias respects explicit zero", body: `{"cache_write_tokens":0,"cache_creation_input_tokens":16}`, want: 0},
 		{
 			name: "official zero takes precedence",
 			body: `{"cache_write_tokens":0,"write_cached_tokens":15}`,

@@ -1552,12 +1552,22 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 			switch *choice.FinishReason {
 			case "stop":
 				resp.Status = lo.ToPtr("completed")
-			case "length", "pause_turn":
+			case "length", "pause_turn", "content_filter":
 				resp.Status = lo.ToPtr("incomplete")
 			case "tool_calls":
 				resp.Status = lo.ToPtr("completed")
 			case "error":
 				resp.Status = lo.ToPtr("failed")
+			}
+		}
+	}
+
+	if raw, ok := chatResp.TransformerMetadata[responsesTerminalDetailsTransformerMetadataKey]; ok {
+		data, err := json.Marshal(raw)
+		if err == nil {
+			var details responsesTerminalDetails
+			if json.Unmarshal(data, &details) == nil {
+				resp.IncompleteDetails = details.IncompleteDetails
 			}
 		}
 	}

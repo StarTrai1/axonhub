@@ -34,6 +34,7 @@ func (d *PromptTokensDetails) UnmarshalJSON(data []byte) error {
 		WriteCachedTokens    *int64                   `json:"write_cached_tokens"`
 		CacheCreationTokens  *int64                   `json:"cache_creation_tokens"`
 		CachedCreationTokens *int64                   `json:"cached_creation_tokens"`
+		CacheCreationInputTokens *int64               `json:"cache_creation_input_tokens"`
 	}
 	if err := json.Unmarshal(data, &wire); err != nil {
 		return err
@@ -50,6 +51,7 @@ func (d *PromptTokensDetails) UnmarshalJSON(data []byte) error {
 		wire.WriteCachedTokens,
 		wire.CacheCreationTokens,
 		wire.CachedCreationTokens,
+		wire.CacheCreationInputTokens,
 	} {
 		if value != nil {
 			d.WriteCachedTokens = *value

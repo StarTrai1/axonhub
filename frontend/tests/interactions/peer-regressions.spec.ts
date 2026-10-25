@@ -45,6 +45,30 @@ for (const kind of ['free', 'strict']) {
   });
 }
 
+test('server-searched selection survives empty pages and restores its label on dismissal', async ({ page }) => {
+  await page.goto('/tests/interactions/peer-regressions.html?case=server-select');
+  const dialog = page.getByTestId('server-select-dialog');
+  const input = page.getByRole('combobox', { name: 'User' });
+  await expect(input).toHaveAccessibleDescription('Choose an existing account');
+  await input.click();
+  // The popover must remain in the dialog's focus and scroll scope.
+  await dialog.getByRole('option', { name: 'Fixture User (my@example.com)' }).click();
+  await expect(page.getByTestId('server-selection')).toHaveText('user-1');
+  await expect(input).toHaveValue('Fixture User (my@example.com)');
+  for (const dismiss of ['escape', 'blur']) {
+    await input.click();
+    await input.fill('no-such-user');
+    await expect(dialog.getByRole('option')).toHaveCount(0);
+    if (dismiss === 'escape') await input.press('Escape');
+    else await dialog.getByRole('heading').click();
+    await expect(input).toHaveValue('Fixture User (my@example.com)');
+    await expect(page.getByTestId('server-selection')).toHaveText('user-1');
+  }
+  await page.getByTestId('clear-server-selection').click();
+  await expect(input).toHaveValue('');
+  await expect(page.getByTestId('server-selection')).toHaveText('');
+});
+
 test('Markdown renders math and diagrams with the patched dependency graph', async ({ page }) => {
   await page.goto('/tests/interactions/peer-regressions.html?case=rendering');
   const response = page.getByTestId('rendering-response');

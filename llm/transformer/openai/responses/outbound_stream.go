@@ -1015,6 +1015,10 @@ func (s *responsesOutboundStream) transformStreamEvent(event *httpclient.StreamE
 
 	if s.responseCompleted && streamEvent.Response != nil &&
 		(streamEvent.Response.Error != nil || streamEvent.Response.IncompleteDetails != nil) {
+		resp.IntentionalStop = streamEvent.Response.Error == nil &&
+			(streamEvent.Type == StreamEventTypeResponseIncomplete ||
+				(streamEvent.Response.Status != nil && *streamEvent.Response.Status == "incomplete")) &&
+			isIntentionalIncomplete(streamEvent.Response.IncompleteDetails)
 		if resp.TransformerMetadata == nil {
 			resp.TransformerMetadata = make(map[string]any)
 		}

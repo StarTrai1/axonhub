@@ -13,7 +13,7 @@ import (
 )
 
 func TestResponsesUsageCacheWriteAliases(t *testing.T) {
-	for _, field := range []string{"cache_write_tokens", "write_cached_tokens", "cache_creation_tokens", "cached_creation_tokens"} {
+	for _, field := range []string{"cache_write_tokens", "write_cached_tokens", "cache_creation_tokens", "cached_creation_tokens", "cache_creation_input_tokens"} {
 		t.Run(field, func(t *testing.T) {
 			body := []byte(fmt.Sprintf(`{"id":"resp_test","object":"response","status":"completed","output":[],"usage":{"input_tokens":100,"output_tokens":5,"total_tokens":105,"input_tokens_details":{"cached_tokens":30,%q:20}}}`, field))
 			outbound, err := NewOutboundTransformer("https://example.invalid", "synthetic-key")

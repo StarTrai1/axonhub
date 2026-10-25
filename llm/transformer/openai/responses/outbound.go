@@ -510,6 +510,12 @@ func (t *OutboundTransformer) transformStandardResponse(
 	if httpResp.Request != nil && httpResp.Request.TransformerMetadata != nil {
 		llmResp.TransformerMetadata = maps.Clone(httpResp.Request.TransformerMetadata)
 	}
+	if resp.Status != nil && *resp.Status == "incomplete" {
+		llmResp.IntentionalStop = isIntentionalIncomplete(resp.IncompleteDetails)
+		llmResp.TransformerMetadata[responsesTerminalDetailsTransformerMetadataKey] = responsesTerminalDetails{
+			IncompleteDetails: resp.IncompleteDetails,
+		}
+	}
 
 	msg := convertOutputToMessage(resp.Output, llmResp.TransformerMetadata)
 
@@ -528,6 +534,9 @@ func (t *OutboundTransformer) transformStandardResponse(
 			choice.FinishReason = lo.ToPtr("error")
 		case "incomplete":
 			choice.FinishReason = lo.ToPtr("length")
+			if resp.IncompleteDetails != nil && resp.IncompleteDetails.Reason == "content_filter" {
+				choice.FinishReason = lo.ToPtr("content_filter")
+			}
 		case "canceled", "cancelled":
 			choice.FinishReason = lo.ToPtr("cancelled")
 		}

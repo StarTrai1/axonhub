@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type InputHTMLAttributes } from 'react';
 import { Command as CommandPrimitive } from 'cmdk';
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -19,6 +19,8 @@ type Props<T extends string> = {
   portalContainer?: HTMLElement | null;
   /** 自定义输入框的 className */
   inputClassName?: string;
+  /** 透传给输入框的属性（如表单 a11y：id / aria-invalid / aria-describedby） */
+  inputProps?: InputHTMLAttributes<HTMLInputElement>;
   searchValue?: string;
   onSearchValueChange?: (value: string) => void;
   hasMore?: boolean;
@@ -37,6 +39,7 @@ export function AutoCompleteSelect<T extends string>({
   placeholder = 'Search...',
   portalContainer,
   inputClassName,
+  inputProps,
   searchValue: controlledSearchValue,
   onSearchValueChange,
   hasMore = false,
@@ -46,6 +49,7 @@ export function AutoCompleteSelect<T extends string>({
 }: Props<T>) {
   const [open, setOpen] = useState(false);
   const [internalSearchValue, setInternalSearchValue] = useState('');
+  const resolvedSelection = useRef({ value: '', label: '' });
   const searchValue = controlledSearchValue ?? internalSearchValue;
   const setSearchValue = onSearchValueChange ?? setInternalSearchValue;
   const isServerSearch = !!onSearchValueChange;
@@ -77,9 +81,11 @@ export function AutoCompleteSelect<T extends string>({
 
   const onInputBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     // Strict mode: on blur, revert input text to the selected label
-    // unless focus moves within the list
+    // unless focus moves within the list. Server-searched options can omit the
+    // selected value, so retain its last resolved label across those pages.
     if (!e.relatedTarget?.hasAttribute('cmdk-list')) {
-      setSearchValue(labels[selectedValue] ?? '');
+      const label = labels[selectedValue] ?? (resolvedSelection.current.value === selectedValue ? resolvedSelection.current.label : '');
+      setSearchValue(selectedValue ? label : '');
     }
   };
 
@@ -87,14 +93,21 @@ export function AutoCompleteSelect<T extends string>({
     // Only accept values from list
     const exists = items.some((it) => it.value === inputValue);
     if (!exists) return;
+    resolvedSelection.current = { value: inputValue, label: labels[inputValue] ?? '' };
     onSelectedValueChange(inputValue as T);
     setSearchValue(labels[inputValue] ?? '');
     handleOpenChange(false);
   };
 
-  // Keep the closed input synchronized with the selection without overwriting an active server search.
+  // Remember the resolved selection across server search pages. Closing an empty
+  // search must restore that label, never leave unselected search text in the field.
   useEffect(() => {
-    if (!open) setSearchValue(labels[selectedValue] ?? '');
+    if (labels[selectedValue] !== undefined) {
+      resolvedSelection.current = { value: selectedValue, label: labels[selectedValue] };
+    }
+    if (open) return;
+    const label = labels[selectedValue] ?? (resolvedSelection.current.value === selectedValue ? resolvedSelection.current.label : '');
+    setSearchValue(selectedValue ? label : '');
   }, [labels, open, selectedValue]);
 
   return (
@@ -119,10 +132,9 @@ export function AutoCompleteSelect<T extends string>({
                   handleOpenChange(true);
                 }
               }}
-              onFocus={() => handleOpenChange(true)}
               onBlur={onInputBlur}
             >
-              <Input placeholder={placeholder} className={cn('w-full', inputClassName)} />
+              <Input placeholder={placeholder} className={cn('w-full', inputClassName)} {...inputProps} />
             </CommandPrimitive.Input>
           </PopoverAnchor>
           {!open && <CommandList aria-hidden='true' className='hidden' />}

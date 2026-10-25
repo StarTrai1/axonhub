@@ -76,6 +76,22 @@ export const userConnectionSchema = z.object({
   pageInfo: pageInfoSchema,
 });
 
+// Minimal schema for the AllUsers query (id/email/names/status only) used by
+// the add-to-project picker; userSchema above additionally requires
+// createdAt/updatedAt which that query does not fetch.
+export const userOptionSchema = z.object({
+  id: z.string(),
+  email: z.string(),
+  firstName: z.string().nullable(),
+  lastName: z.string().nullable(),
+  status: userStatusSchema,
+});
+
+export const userOptionConnectionSchema = z.object({
+  edges: z.array(z.object({ node: userOptionSchema })),
+  pageInfo: pageInfoSchema,
+});
+
 // 前端表单验证模式（包含 confirmPassword）
 export const createUserFormSchema = z
   .object({
@@ -142,6 +158,7 @@ export const updateUserInputSchema = z.object({
 export type ProjectUser = z.infer<typeof projectUserSchema>;
 export type User = z.infer<typeof userSchema>;
 export type UserConnection = z.infer<typeof userConnectionSchema>;
+export type UserOptionConnection = z.infer<typeof userOptionConnectionSchema>;
 export type CreateUserForm = z.infer<typeof createUserFormSchema>;
 export type CreateUserInput = z.infer<typeof createUserInputSchema>;
 export type UpdateUserInput = z.infer<typeof updateUserInputSchema>;

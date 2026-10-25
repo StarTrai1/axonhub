@@ -1,0 +1,419 @@
+{
+  "user_cutoff": "2026-10-25T00:07:00+08:00",
+  "boundary": "previous frozen head ancestry, not author timestamps; prior API freezes were 00:08:57–00:09:01 Beijing. Late merged commits with older author dates remain included.",
+  "review_policy": "One frozen pass; do not refresh remote heads or re-review decided records.",
+  "base": "690ef4a502ba5af1edae520e067e39a4e3cbffc7",
+  "upstream_records": 5,
+  "peer_records": 25,
+  "peer_merge_duplicates": 3,
+  "repositories": [
+    {
+      "name": "upstream",
+      "repo": "looplj/axonhub",
+      "branch": "unstable",
+      "previous_head": "a7ad1f9b7a49fcb7bf305d5e25ae266cb1d97580",
+      "previous_frozen_at": "2026-10-24T16:08:57.337157+00:00",
+      "head": "66ad2fc37ce0f7683a52a9238e8b38fc17e7ccef",
+      "frozen_at": "2026-10-25T13:51:28.567092+00:00",
+      "commits": [
+        {
+          "sha": "e6c67fe43b909de811cd9d6358c37e744feb9fa4",
+          "title": "fix(ui): repair provider quota popover grouping and sort (#2751)",
+          "date": "2026-10-24T18:29:41Z",
+          "parents": [
+            "a7ad1f9b7a49fcb7bf305d5e25ae266cb1d97580"
+          ],
+          "decision": "merge",
+          "evidence": "Quota grouping/sorting and persisted display controls; retain fork paid-reset AlertDialog and account presentation.",
+          "url": "https://github.com/looplj/axonhub/commit/e6c67fe43b909de811cd9d6358c37e744feb9fa4"
+        },
+        {
+          "sha": "3cd5b590fdf73e084e3862fb43bea69c70ae3d7c",
+          "title": "ci: add Go vulnerability scanning (#2753)",
+          "date": "2026-10-24T19:28:33Z",
+          "parents": [
+            "e6c67fe43b909de811cd9d6358c37e744feb9fa4"
+          ],
+          "decision": "merge-adapt",
+          "evidence": "Go vulnerability scanning and x/* updates; enable dev triggers and use .go-version. Dependency reconciliation stays in CI.",
+          "url": "https://github.com/looplj/axonhub/commit/3cd5b590fdf73e084e3862fb43bea69c70ae3d7c"
+        },
+        {
+          "sha": "1c41403da1463f70429548de6b459b0605d456d5",
+          "title": "fix(users): use AutoCompleteSelect for Add User picker (#2752)",
+          "date": "2026-10-24T19:30:54Z",
+          "parents": [
+            "3cd5b590fdf73e084e3862fb43bea69c70ae3d7c"
+          ],
+          "decision": "merge-adapt",
+          "evidence": "Paginated server email search in project Add User; preserve IME guards, add cached selected label across empty pages, dialog portal/a11y regression and schema-inferred query type.",
+          "url": "https://github.com/looplj/axonhub/commit/1c41403da1463f70429548de6b459b0605d456d5"
+        },
+        {
+          "sha": "07ce14d8ae048983c23eb275629fe11fc3cdc2a0",
+          "title": "fix(system): raise the per-channel max retry limit to 10 (#2663)",
+          "date": "2026-10-24T19:33:36Z",
+          "parents": [
+            "1c41403da1463f70429548de6b459b0605d456d5"
+          ],
+          "decision": "covered",
+          "evidence": "Per-channel maximum retry count of 10 already present on baseline; upstream adds no behavior.",
+          "url": "https://github.com/looplj/axonhub/commit/07ce14d8ae048983c23eb275629fe11fc3cdc2a0"
+        },
+        {
+          "sha": "66ad2fc37ce0f7683a52a9238e8b38fc17e7ccef",
+          "title": "chore: sync model developers data (#2693)",
+          "date": "2026-10-24T19:37:22Z",
+          "parents": [
+            "07ce14d8ae048983c23eb275629fe11fc3cdc2a0"
+          ],
+          "decision": "merge-adapt",
+          "evidence": "Merge catalog updates with newer fork entries; restore malformed Chinese structured-output label in both catalog copies.",
+          "url": "https://github.com/looplj/axonhub/commit/66ad2fc37ce0f7683a52a9238e8b38fc17e7ccef"
+        }
+      ]
+    },
+    {
+      "name": "sub2api",
+      "repo": "Wei-Shaw/sub2api",
+      "branch": "main",
+      "previous_head": "37067e8e340e9440d173a92b4faa05e8ce58368f",
+      "previous_frozen_at": "2026-10-24T16:09:01.807855+00:00",
+      "head": "ba81c7fd758e425d67f856d601147ef0c5263d3f",
+      "frozen_at": "2026-10-25T13:51:28.638200+00:00",
+      "commits": [
+        {
+          "sha": "fd998129ec8375c6623e061c7e5e391752dc954a",
+          "title": "feat(billing): support per-image billing for multi-image requests",
+          "date": "2026-10-24T03:35:27Z",
+          "parents": [
+            "37067e8e340e9440d173a92b4faa05e8ce58368f"
+          ],
+          "decision": "skip-architecture",
+          "evidence": "Peer introduces group image_count_billing, endpoint/pricing gates and count fallback policy. AxonHub cost_calc.go uses token price items and lacks this group override/per-image billing pipeline. Not claimed a superset; do not silently introduce charging policy.",
+          "url": "https://github.com/Wei-Shaw/sub2api/commit/fd998129ec8375c6623e061c7e5e391752dc954a"
+        },
+        {
+          "sha": "1487fa511bffbb26ebcebb82a717264c84ffb3a0",
+          "title": "fix(billing): count only images returned in upstream response",
+          "date": "2026-10-24T04:23:30Z",
+          "parents": [
+            "fd998129ec8375c6623e061c7e5e391752dc954a"
+          ],
+          "decision": "skip-architecture",
+          "evidence": "Peer introduces group image_count_billing, endpoint/pricing gates and count fallback policy. AxonHub cost_calc.go uses token price items and lacks this group override/per-image billing pipeline. Not claimed a superset; do not silently introduce charging policy.",
+          "url": "https://github.com/Wei-Shaw/sub2api/commit/1487fa511bffbb26ebcebb82a717264c84ffb3a0"
+        },
+        {
+          "sha": "cb2959245f7ab452e152a2e77bf811f9be66cbfa",
+          "title": "test(api): include image_count_billing in available groups contract",
+          "date": "2026-10-24T04:40:01Z",
+          "parents": [
+            "1487fa511bffbb26ebcebb82a717264c84ffb3a0"
+          ],
+          "decision": "skip-architecture",
+          "evidence": "API tests depend on peer image_count_billing group contract, which this fork does not implement.",
+          "url": "https://github.com/Wei-Shaw/sub2api/commit/cb2959245f7ab452e152a2e77bf811f9be66cbfa"
+        },
+        {
+          "sha": "aa1a1b11c864a009ddd83e1f9010b0f92bd1da0b",
+          "title": "fix(billing): gate per-image billing by endpoint and pricing mode",
+          "date": "2026-10-24T10:56:31Z",
+          "parents": [
+            "cb2959245f7ab452e152a2e77bf811f9be66cbfa"
+          ],
+          "decision": "skip-architecture",
+          "evidence": "Peer introduces group image_count_billing, endpoint/pricing gates and count fallback policy. AxonHub cost_calc.go uses token price items and lacks this group override/per-image billing pipeline. Not claimed a superset; do not silently introduce charging policy.",
+          "url": "https://github.com/Wei-Shaw/sub2api/commit/aa1a1b11c864a009ddd83e1f9010b0f92bd1da0b"
+        },
+        {
+          "sha": "3f1c8f36ce8c2cd378015830a90e89970b9a9ea7",
+          "title": "chore: update Sponsors",
+          "date": "2026-10-25T05:32:13Z",
+          "parents": [
+            "37067e8e340e9440d173a92b4faa05e8ce58368f"
+          ],
+          "decision": "skip-doc-assets",
+          "evidence": "Sponsor updates have no runtime relevance to this fork.",
+          "url": "https://github.com/Wei-Shaw/sub2api/commit/3f1c8f36ce8c2cd378015830a90e89970b9a9ea7"
+        },
+        {
+          "sha": "3ce09c8aff085ce42538d539d515742d8650e6f0",
+          "title": "fix(billing): keep tokens for channel per-request image tiers",
+          "date": "2026-10-25T13:30:45Z",
+          "parents": [
+            "aa1a1b11c864a009ddd83e1f9010b0f92bd1da0b"
+          ],
+          "decision": "skip-architecture",
+          "evidence": "Peer introduces group image_count_billing, endpoint/pricing gates and count fallback policy. AxonHub cost_calc.go uses token price items and lacks this group override/per-image billing pipeline. Not claimed a superset; do not silently introduce charging policy.",
+          "url": "https://github.com/Wei-Shaw/sub2api/commit/3ce09c8aff085ce42538d539d515742d8650e6f0"
+        },
+        {
+          "sha": "ba81c7fd758e425d67f856d601147ef0c5263d3f",
+          "title": "Merge pull request #8323 from wx-11/images-price",
+          "date": "2026-10-25T13:48:55Z",
+          "parents": [
+            "3f1c8f36ce8c2cd378015830a90e89970b9a9ea7",
+            "3ce09c8aff085ce42538d539d515742d8650e6f0"
+          ],
+          "decision": "merge-duplicate",
+          "evidence": "Merge record reuses decisions for its already reviewed component commits; not counted as an independent patch review.",
+          "url": "https://github.com/Wei-Shaw/sub2api/commit/ba81c7fd758e425d67f856d601147ef0c5263d3f"
+        }
+      ]
+    },
+    {
+      "name": "CLIProxyAPI",
+      "repo": "router-for-me/CLIProxyAPI",
+      "branch": "main",
+      "previous_head": "bc0643405a1d0adf77dd0f109972ac3313d66397",
+      "previous_frozen_at": "2026-10-24T16:08:57.122356+00:00",
+      "head": "bc0643405a1d0adf77dd0f109972ac3313d66397",
+      "frozen_at": "2026-10-25T13:51:28.480331+00:00",
+      "commits": []
+    },
+    {
+      "name": "OmniProxy",
+      "repo": "mibgb65-cloud/OmniProxy",
+      "branch": "master",
+      "previous_head": "56448d20ccd797bc32aae1c02a5e2f2030b8b6c8",
+      "previous_frozen_at": "2026-10-24T16:08:57.161235+00:00",
+      "head": "56448d20ccd797bc32aae1c02a5e2f2030b8b6c8",
+      "frozen_at": "2026-10-25T13:51:28.686552+00:00",
+      "commits": []
+    },
+    {
+      "name": "codex2api",
+      "repo": "james-6-23/codex2api",
+      "branch": "main",
+      "previous_head": "1511374d878ad5a27fc7a3293aa2fb67eb5f96d4",
+      "previous_frozen_at": "2026-10-24T16:08:57.471922+00:00",
+      "head": "d94e6ccd20339867389896d9b1cbe5464da7a797",
+      "frozen_at": "2026-10-25T13:51:28.758394+00:00",
+      "commits": [
+        {
+          "sha": "1957d8d7fd5c8c1b7876d4b1870d429837aae80d",
+          "title": "feat(proxy): 统一 Codex 出站 attestation",
+          "date": "2026-10-24T14:50:58Z",
+          "parents": [
+            "1511374d878ad5a27fc7a3293aa2fb67eb5f96d4"
+          ],
+          "decision": "skip-architecture",
+          "evidence": "Peer native Live sideband/generated platform attestation subsystem is absent. Do not synthesize device identity, transplant OS attestation, or broaden default Live permissions without the corresponding protocol/permission architecture.",
+          "url": "https://github.com/james-6-23/codex2api/commit/1957d8d7fd5c8c1b7876d4b1870d429837aae80d"
+        },
+        {
+          "sha": "6a4d8a15c1d7700b3fd66b7f09eccc7502925b02",
+          "title": "feat(proxy): 接入统一 Live attestation 与会话快照",
+          "date": "2026-10-24T15:08:16Z",
+          "parents": [
+            "1957d8d7fd5c8c1b7876d4b1870d429837aae80d"
+          ],
+          "decision": "skip-architecture",
+          "evidence": "Peer native Live sideband/generated platform attestation subsystem is absent. Do not synthesize device identity, transplant OS attestation, or broaden default Live permissions without the corresponding protocol/permission architecture.",
+          "url": "https://github.com/james-6-23/codex2api/commit/6a4d8a15c1d7700b3fd66b7f09eccc7502925b02"
+        },
+        {
+          "sha": "317b0815f2dad948d42361bbef3cfd4e4787e719",
+          "title": "fix(proxy): 修正 Codex OAuth Live sideband 端点",
+          "date": "2026-10-24T15:46:30Z",
+          "parents": [
+            "6a4d8a15c1d7700b3fd66b7f09eccc7502925b02"
+          ],
+          "decision": "skip-architecture",
+          "evidence": "Peer native Live sideband/generated platform attestation subsystem is absent. Do not synthesize device identity, transplant OS attestation, or broaden default Live permissions without the corresponding protocol/permission architecture.",
+          "url": "https://github.com/james-6-23/codex2api/commit/317b0815f2dad948d42361bbef3cfd4e4787e719"
+        },
+        {
+          "sha": "2b19913e5444d5709b38ca67a0263dec3124a1e1",
+          "title": "feat(admin): 默认允许自动渠道 API Key 使用 ChatGPT Live",
+          "date": "2026-10-25T02:53:04Z",
+          "parents": [
+            "317b0815f2dad948d42361bbef3cfd4e4787e719"
+          ],
+          "decision": "skip-architecture",
+          "evidence": "Peer native Live sideband/generated platform attestation subsystem is absent. Do not synthesize device identity, transplant OS attestation, or broaden default Live permissions without the corresponding protocol/permission architecture.",
+          "url": "https://github.com/james-6-23/codex2api/commit/2b19913e5444d5709b38ca67a0263dec3124a1e1"
+        },
+        {
+          "sha": "73c9ae32d2b72208e479713466e012645effe019",
+          "title": "fix(admin): 精简 ChatGPT Live 权限提示文案",
+          "date": "2026-10-25T02:59:05Z",
+          "parents": [
+            "2b19913e5444d5709b38ca67a0263dec3124a1e1"
+          ],
+          "decision": "skip-architecture",
+          "evidence": "Peer native Live sideband/generated platform attestation subsystem is absent. Do not synthesize device identity, transplant OS attestation, or broaden default Live permissions without the corresponding protocol/permission architecture.",
+          "url": "https://github.com/james-6-23/codex2api/commit/73c9ae32d2b72208e479713466e012645effe019"
+        },
+        {
+          "sha": "33444ca9fd5c83e171da909879aced8ca6bba019",
+          "title": "fix(proxy): 仅使用本项目生成的 Codex attestation",
+          "date": "2026-10-25T03:19:41Z",
+          "parents": [
+            "73c9ae32d2b72208e479713466e012645effe019"
+          ],
+          "decision": "skip-architecture",
+          "evidence": "Peer native Live sideband/generated platform attestation subsystem is absent. Do not synthesize device identity, transplant OS attestation, or broaden default Live permissions without the corresponding protocol/permission architecture.",
+          "url": "https://github.com/james-6-23/codex2api/commit/33444ca9fd5c83e171da909879aced8ca6bba019"
+        },
+        {
+          "sha": "fe8695331d80fa493c420b87b241ca4f6e119510",
+          "title": "fix(proxy): 保留 Responses 主动中止的零输出终态",
+          "date": "2026-10-25T08:31:19Z",
+          "parents": [
+            "1511374d878ad5a27fc7a3293aa2fb67eb5f96d4"
+          ],
+          "decision": "adapt",
+          "evidence": "Explicit incomplete interrupted/steered/content_filter/max_messages outcomes bypass empty retry in HTTP/SSE while preserving reasons and usage. Ordinary empty completed/max_output_tokens/unknown outcomes retain retry. Pipeline tests assert attempt counts and terminal data.",
+          "url": "https://github.com/james-6-23/codex2api/commit/fe8695331d80fa493c420b87b241ca4f6e119510"
+        },
+        {
+          "sha": "6794275a4abfbfe7523596f991439eabac9ec5a9",
+          "title": "fix(proxy): 按 Codex 协议支持 Responses WebSocket 中断",
+          "date": "2026-10-25T08:31:19Z",
+          "parents": [
+            "fe8695331d80fa493c420b87b241ca4f6e119510"
+          ],
+          "decision": "adapt-partial-covered",
+          "evidence": "Connection-bound interruption, stale response protection, terminal idempotency and late-ack drain already exist. Add missing top-level duplicate/case-ambiguous control validation, including escaped duplicates, before routing; nested tool/user JSON remains opaque.",
+          "url": "https://github.com/james-6-23/codex2api/commit/6794275a4abfbfe7523596f991439eabac9ec5a9"
+        },
+        {
+          "sha": "c592242fd10465cccf93223cf6f8af845c01abb1",
+          "title": "Merge pull request #827 from bxb1337/feat/unified-codex-attestation",
+          "date": "2026-10-25T12:46:54Z",
+          "parents": [
+            "1511374d878ad5a27fc7a3293aa2fb67eb5f96d4",
+            "33444ca9fd5c83e171da909879aced8ca6bba019"
+          ],
+          "decision": "merge-duplicate",
+          "evidence": "Merge record reuses decisions for its already reviewed component commits; not counted as an independent patch review.",
+          "url": "https://github.com/james-6-23/codex2api/commit/c592242fd10465cccf93223cf6f8af845c01abb1"
+        },
+        {
+          "sha": "d94e6ccd20339867389896d9b1cbe5464da7a797",
+          "title": "Merge pull request #829 from bxb1337/fix/responses-ws-interrupt",
+          "date": "2026-10-25T12:47:08Z",
+          "parents": [
+            "c592242fd10465cccf93223cf6f8af845c01abb1",
+            "6794275a4abfbfe7523596f991439eabac9ec5a9"
+          ],
+          "decision": "merge-duplicate",
+          "evidence": "Merge record reuses decisions for its already reviewed component commits; not counted as an independent patch review.",
+          "url": "https://github.com/james-6-23/codex2api/commit/d94e6ccd20339867389896d9b1cbe5464da7a797"
+        }
+      ]
+    },
+    {
+      "name": "gpt-load",
+      "repo": "tbphp/gpt-load",
+      "branch": "main",
+      "previous_head": "7ba66c3f7a6315a08b89bdf29f8da92c1aaede1b",
+      "previous_frozen_at": "2026-10-24T16:08:57.617858+00:00",
+      "head": "d3307afa7991e3100a1564bd4f3190b19e78890f",
+      "frozen_at": "2026-10-25T13:51:28.648121+00:00",
+      "commits": [
+        {
+          "sha": "39941b659d1b80bc43a478b783ae0758166e3c17",
+          "title": "chore(web): bump the web-minor-and-patch group in /web with 5 updates (#915)",
+          "date": "2026-10-25T06:10:06Z",
+          "parents": [
+            "7ba66c3f7a6315a08b89bdf29f8da92c1aaede1b"
+          ],
+          "decision": "skip-or-covered",
+          "evidence": "Vue packages absent; Vite 8.3.5 already integrated; no blind ESLint 9-to-10 ecosystem migration.",
+          "url": "https://github.com/tbphp/gpt-load/commit/39941b659d1b80bc43a478b783ae0758166e3c17"
+        },
+        {
+          "sha": "d3307afa7991e3100a1564bd4f3190b19e78890f",
+          "title": "chore(deps): bump the go-minor-and-patch group with 4 updates (#914)",
+          "date": "2026-10-25T11:55:08Z",
+          "parents": [
+            "39941b659d1b80bc43a478b783ae0758166e3c17"
+          ],
+          "decision": "skip-or-covered",
+          "evidence": "Pion WebRTC and embedded CPA SDK absent. Codex 0.164 identity already covered; peer Claude/Grok/Antigravity version strings alone do not establish this fork client compatibility.",
+          "url": "https://github.com/tbphp/gpt-load/commit/d3307afa7991e3100a1564bd4f3190b19e78890f"
+        }
+      ]
+    },
+    {
+      "name": "new-api",
+      "repo": "QuantumNous/new-api",
+      "branch": "main",
+      "previous_head": "e835b1bfc43b565d625537830dbfb19328925134",
+      "previous_frozen_at": "2026-10-24T16:08:57.556495+00:00",
+      "head": "34003e9c2eed2c20e617f583fdfe54bf1bf42237",
+      "frozen_at": "2026-10-25T13:51:28.666644+00:00",
+      "commits": [
+        {
+          "sha": "9823ebc7ea4ac7102d5d8478d395c7d7eaf6c285",
+          "title": "fix(billing): bill cache_creation_input_tokens reported in prompt_tokens_details (#7909)",
+          "date": "2026-10-25T09:22:51Z",
+          "parents": [
+            "e835b1bfc43b565d625537830dbfb19328925134"
+          ],
+          "decision": "adapt",
+          "evidence": "Accept cache_creation_input_tokens in shared Chat/Responses prompt usage decoding. Preserve existing first-present precedence (including canonical explicit zero), never sum aliases. Added round-trip and billing quantity/cost regression.",
+          "url": "https://github.com/QuantumNous/new-api/commit/9823ebc7ea4ac7102d5d8478d395c7d7eaf6c285"
+        },
+        {
+          "sha": "bc795cc1185a0ecef0ca51f73d337667026ec62f",
+          "title": "fix:修复stop为非字符串和[]string的协议转换问题 (#7935)",
+          "date": "2026-10-25T11:18:19Z",
+          "parents": [
+            "9823ebc7ea4ac7102d5d8478d395c7d7eaf6c285"
+          ],
+          "decision": "covered",
+          "evidence": "llm/transformer/openai/model.go Stop.UnmarshalJSON decodes string/[]string and rejects invalid scalar/list types; no unchecked []any assertion.",
+          "url": "https://github.com/QuantumNous/new-api/commit/bc795cc1185a0ecef0ca51f73d337667026ec62f"
+        },
+        {
+          "sha": "f1569d1ea7e87cd1a73c5f89d989b6b3bdaf68b3",
+          "title": "fix(pricing): classify dynamic per-request billing correctly (#8010)",
+          "date": "2026-10-25T12:41:57Z",
+          "parents": [
+            "bc795cc1185a0ecef0ca51f73d337667026ec62f"
+          ],
+          "decision": "skip-architecture",
+          "evidence": "Peer dynamic per-request expression pricing classifier/UI has no matching AxonHub pricing expression engine.",
+          "url": "https://github.com/QuantumNous/new-api/commit/f1569d1ea7e87cd1a73c5f89d989b6b3bdaf68b3"
+        },
+        {
+          "sha": "4d962e464de7a16ff8bf16c660307899d49108ba",
+          "title": "fix(relaykit): preserve tool argument numbers in Claude responses (#7996)",
+          "date": "2026-10-25T13:00:00Z",
+          "parents": [
+            "f1569d1ea7e87cd1a73c5f89d989b6b3bdaf68b3"
+          ],
+          "decision": "covered",
+          "evidence": "Anthropic inbound_convert.go passes tool arguments via xjson.SafeJSONRawMessage, avoiding float64 round trips.",
+          "url": "https://github.com/QuantumNous/new-api/commit/4d962e464de7a16ff8bf16c660307899d49108ba"
+        },
+        {
+          "sha": "0165fef98d41b02a7368e89dc5fa2df651f8587b",
+          "title": "fix(relaykit): preserve Gemini text alongside tool calls (#7998)",
+          "date": "2026-10-25T13:01:06Z",
+          "parents": [
+            "4d962e464de7a16ff8bf16c660307899d49108ba"
+          ],
+          "decision": "covered",
+          "evidence": "Gemini outbound_convert.go sets message text and tool calls independently; outgoing conversion also appends tool parts after text.",
+          "url": "https://github.com/QuantumNous/new-api/commit/0165fef98d41b02a7368e89dc5fa2df651f8587b"
+        },
+        {
+          "sha": "34003e9c2eed2c20e617f583fdfe54bf1bf42237",
+          "title": "test: stabilize channel affinity cache keys (#8009)",
+          "date": "2026-10-25T13:29:23Z",
+          "parents": [
+            "0165fef98d41b02a7368e89dc5fa2df651f8587b"
+          ],
+          "decision": "skip-peer-test",
+          "evidence": "Fix is a collision in peer-specific test cache keys; matching global/test setup is absent.",
+          "url": "https://github.com/QuantumNous/new-api/commit/34003e9c2eed2c20e617f583fdfe54bf1bf42237"
+        }
+      ]
+    }
+  ]
+}
