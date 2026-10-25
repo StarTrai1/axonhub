@@ -73,6 +73,7 @@ func TestResponsesIntentionalStopsDoNotRetry(t *testing.T) {
 				require.NotNil(t, terminal)
 				require.Equal(t, "incomplete", gjson.GetBytes(terminal.Body, "status").String())
 				require.Equal(t, reason, gjson.GetBytes(terminal.Body, "incomplete_details.reason").String())
+				require.JSONEq(t, `[]`, gjson.GetBytes(terminal.Body, "output").Raw, "zero-output stops must not invent assistant history")
 				require.Equal(t, int64(8), gjson.GetBytes(terminal.Body, "usage.input_tokens").Int())
 			})
 		}

@@ -1574,6 +1574,12 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 
 	// If no output items were created, create an empty message
 	if len(resp.Output) == 0 {
+		// An explicit zero-output stop must not fabricate a completed assistant
+		// item that the client could retain as generated conversation history.
+		if chatResp.IntentionalStop {
+			resp.Output = []Item{}
+			return resp
+		}
 		emptyText := ""
 		resp.Output = []Item{
 			{

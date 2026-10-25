@@ -9,4 +9,5 @@
 - Existing .agent rules loaded; ~/.codex/rules has no Markdown candidate. No Jev routing or subagents.
 - Initial CI Test 40202288715: LLM, offline probes, real CLI loopback versions and concurrency passed; both Govulncheck jobs passed. Applied generated-source artifact (checksum tidy and Go formatting). Lint 40202288734 reported only the same formatting and its artifact is already covered.
 - Browser regression exposed cmdk empty internal aria-labelledby overriding the form label. Preserve explicit caller labeling and aria-expanded on the actual input; keep the accessible-name assertion and verify expanded state. No timeout/assertion relaxation.
+- Follow-up boundary inspection found native HTTP reconstruction fabricated an empty completed assistant item for intentional stops. Preserve output: [] and assert exact empty output in HTTP/SSE pipeline tests, alongside reason, usage and attempt count.
 - Final CI and exact-SHA release receipt pending.
