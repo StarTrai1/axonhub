@@ -17,9 +17,11 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
 
-type retryEmptyResponsesOutbound struct { transformer.Outbound }
+type retryEmptyResponsesOutbound struct{ transformer.Outbound }
 
-func (*retryEmptyResponsesOutbound) CanRetry(err error) bool { return errors.Is(err, pipeline.ErrEmptyResponse) }
+func (*retryEmptyResponsesOutbound) CanRetry(err error) bool {
+	return errors.Is(err, pipeline.ErrEmptyResponse)
+}
 func (*retryEmptyResponsesOutbound) PrepareForRetry(context.Context) error { return nil }
 
 func TestResponsesIntentionalStopsDoNotRetry(t *testing.T) {
@@ -27,7 +29,9 @@ func TestResponsesIntentionalStopsDoNotRetry(t *testing.T) {
 		for _, reason := range []string{"interrupted", "steered", "content_filter", "max_messages", "max_output_tokens", "unknown", ""} {
 			t.Run(transport+"/"+reason, func(t *testing.T) {
 				status := "incomplete"
-				if reason == "" { status = "completed" }
+				if reason == "" {
+					status = "completed"
+				}
 				payload := fmt.Appendf(nil, `{"id":"resp_stop","model":"gpt-test","status":%q,"incomplete_details":{"reason":%q},"output":[],"usage":{"input_tokens":8,"output_tokens":0,"total_tokens":8}}`, status, reason)
 				calls := 0
 				executor := &mockExecutor{
@@ -38,7 +42,9 @@ func TestResponsesIntentionalStopsDoNotRetry(t *testing.T) {
 					doStreamFunc: func(context.Context, *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
 						calls++
 						eventType := "response.incomplete"
-						if transport == "sse-completed" || reason == "" { eventType = "response.completed" }
+						if transport == "sse-completed" || reason == "" {
+							eventType = "response.completed"
+						}
 						return streams.SliceStream([]*httpclient.StreamEvent{{Type: eventType, Data: fmt.Appendf(nil, `{"type":%q,"response":%s}`, eventType, payload)}}), nil
 					},
 				}

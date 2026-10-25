@@ -50,11 +50,14 @@ test('server-searched selection survives empty pages and restores its label on d
   const dialog = page.getByTestId('server-select-dialog');
   const input = page.getByRole('combobox', { name: 'User' });
   await expect(input).toHaveAccessibleDescription('Choose an existing account');
+  await expect(input).toHaveAttribute('aria-expanded', 'false');
   await input.click();
+  await expect(input).toHaveAttribute('aria-expanded', 'true');
   // The popover must remain in the dialog's focus and scroll scope.
   await dialog.getByRole('option', { name: 'Fixture User (my@example.com)' }).click();
   await expect(page.getByTestId('server-selection')).toHaveText('user-1');
   await expect(input).toHaveValue('Fixture User (my@example.com)');
+  await expect(input).toHaveAttribute('aria-expanded', 'false');
   for (const dismiss of ['escape', 'blur']) {
     await input.click();
     await input.fill('no-such-user');

@@ -22,7 +22,9 @@ func TestCacheCreationInputAliasBilledOnce(t *testing.T) {
 	}
 	items, total := computeUsageCostWithItems(wire.ToLLMUsage(), price)
 	quantities := make(map[objects.PriceItemCode]int64)
-	for _, item := range items { quantities[item.ItemCode] += item.Quantity }
+	for _, item := range items {
+		quantities[item.ItemCode] += item.Quantity
+	}
 	require.Equal(t, int64(500), quantities[objects.PriceItemCodeUsage])
 	require.Equal(t, int64(300), quantities[objects.PriceItemCodePromptCachedToken])
 	require.Equal(t, int64(200), quantities[objects.PriceItemCodeWriteCachedTokens])

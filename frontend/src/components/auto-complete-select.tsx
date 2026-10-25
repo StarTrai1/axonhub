@@ -134,7 +134,15 @@ export function AutoCompleteSelect<T extends string>({
               }}
               onBlur={onInputBlur}
             >
-              <Input placeholder={placeholder} className={cn('w-full', inputClassName)} {...inputProps} />
+              <Input
+                placeholder={placeholder}
+                className={cn('w-full', inputClassName)}
+                aria-expanded={open}
+                // cmdk's empty internal label otherwise overrides the external
+                // form label. Explicit caller aria-labelledby still takes priority.
+                {...(inputProps?.id || inputProps?.['aria-label'] ? { 'aria-labelledby': undefined } : {})}
+                {...inputProps}
+              />
             </CommandPrimitive.Input>
           </PopoverAnchor>
           {!open && <CommandList aria-hidden='true' className='hidden' />}

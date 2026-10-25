@@ -7,4 +7,6 @@
 - Seven merge conflicts resolved: quota popup imports retain both sets; root/schema/llm x/* dependencies use upstream newer versions, llm x/net stays direct, checksum unions await CI tidy.
 - Peer adaptations and selected-label follow-up implemented with focused regressions; all execution deferred to CI.
 - Existing .agent rules loaded; ~/.codex/rules has no Markdown candidate. No Jev routing or subagents.
-- CI pending. Final receipt will record exact tested SHA and release start.
+- Initial CI Test 40202288715: LLM, offline probes, real CLI loopback versions and concurrency passed; both Govulncheck jobs passed. Applied generated-source artifact (checksum tidy and Go formatting). Lint 40202288734 reported only the same formatting and its artifact is already covered.
+- Browser regression exposed cmdk empty internal aria-labelledby overriding the form label. Preserve explicit caller labeling and aria-expanded on the actual input; keep the accessible-name assertion and verify expanded state. No timeout/assertion relaxation.
+- Final CI and exact-SHA release receipt pending.

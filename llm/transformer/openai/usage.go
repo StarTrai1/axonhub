@@ -25,16 +25,16 @@ type PromptTokensDetails struct {
 // emitted by older or third-party OpenAI-compatible gateways.
 func (d *PromptTokensDetails) UnmarshalJSON(data []byte) error {
 	var wire struct {
-		AudioTokens          int64                    `json:"audio_tokens"`
-		CachedTokens         int64                    `json:"cached_tokens"`
-		ImageTokens          int64                    `json:"image_tokens"`
-		TextTokens           int64                    `json:"text_tokens"`
-		CachedTokensDetails  *llm.CachedTokensDetails `json:"cached_tokens_details"`
-		CacheWriteTokens     *int64                   `json:"cache_write_tokens"`
-		WriteCachedTokens    *int64                   `json:"write_cached_tokens"`
-		CacheCreationTokens  *int64                   `json:"cache_creation_tokens"`
-		CachedCreationTokens *int64                   `json:"cached_creation_tokens"`
-		CacheCreationInputTokens *int64               `json:"cache_creation_input_tokens"`
+		AudioTokens              int64                    `json:"audio_tokens"`
+		CachedTokens             int64                    `json:"cached_tokens"`
+		ImageTokens              int64                    `json:"image_tokens"`
+		TextTokens               int64                    `json:"text_tokens"`
+		CachedTokensDetails      *llm.CachedTokensDetails `json:"cached_tokens_details"`
+		CacheWriteTokens         *int64                   `json:"cache_write_tokens"`
+		WriteCachedTokens        *int64                   `json:"write_cached_tokens"`
+		CacheCreationTokens      *int64                   `json:"cache_creation_tokens"`
+		CachedCreationTokens     *int64                   `json:"cached_creation_tokens"`
+		CacheCreationInputTokens *int64                   `json:"cache_creation_input_tokens"`
 	}
 	if err := json.Unmarshal(data, &wire); err != nil {
 		return err
