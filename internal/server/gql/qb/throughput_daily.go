@@ -126,7 +126,7 @@ func buildDailyPerformanceStatsRowNumberQuery(dateExpr string, config DailyQuery
 		"        se.metrics_first_token_latency_ms,\n" +
 		"        se.stream,\n" +
 		"        " + dateExpr + " as exec_date,\n" +
-		"        ROW_NUMBER() OVER (PARTITION BY se.request_id ORDER BY se.created_at DESC) as rn\n" +
+		"        ROW_NUMBER() OVER (PARTITION BY se.request_id ORDER BY se.created_at DESC, se.id DESC) as rn\n" +
 		"    FROM request_executions se\n" +
 		joinRequests +
 		"    WHERE se.status = 'completed'\n" +
