@@ -463,10 +463,10 @@ func (s *responsesOutboundStream) transformStreamEvent(event *httpclient.StreamE
 			// Custom tool call - initialize tracking, input will be streamed via delta events
 			toolCallIdx := len(s.state.toolCalls)
 			s.state.toolCalls[item.CallID] = &llm.ToolCall{
-				ID:    item.CallID,
-				Type:  llm.ToolTypeResponsesCustomTool,
+				ID:                  item.CallID,
+				Type:                llm.ToolTypeResponsesCustomTool,
 				TransformerMetadata: customToolItemMetadata(item.ID),
-				Async: item.Async,
+				Async:               item.Async,
 				ResponseCustomToolCall: &llm.ResponseCustomToolCall{
 					CallID: item.CallID,
 					Name:   item.Name,
@@ -482,11 +482,11 @@ func (s *responsesOutboundStream) transformStreamEvent(event *httpclient.StreamE
 					Delta: &llm.Message{
 						ToolCalls: []llm.ToolCall{
 							{
-								ID:    item.CallID,
-								Type:  llm.ToolTypeResponsesCustomTool,
+								ID:                  item.CallID,
+								Type:                llm.ToolTypeResponsesCustomTool,
 								TransformerMetadata: customToolItemMetadata(item.ID),
-								Async: item.Async,
-								Index: toolCallIdx,
+								Async:               item.Async,
+								Index:               toolCallIdx,
 								ResponseCustomToolCall: &llm.ResponseCustomToolCall{
 									CallID: item.CallID,
 									Name:   item.Name,

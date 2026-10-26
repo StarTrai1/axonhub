@@ -918,10 +918,10 @@ func convertOutputToMessage(output []Item, transformerMetadata map[string]any) l
 			}
 
 			toolCalls = append(toolCalls, llm.ToolCall{
-				ID:    outputItem.CallID,
-				Type:  llm.ToolTypeResponsesCustomTool,
+				ID:                  outputItem.CallID,
+				Type:                llm.ToolTypeResponsesCustomTool,
 				TransformerMetadata: customToolItemMetadata(outputItem.ID),
-				Async: outputItem.Async,
+				Async:               outputItem.Async,
 				ResponseCustomToolCall: &llm.ResponseCustomToolCall{
 					CallID: outputItem.CallID,
 					Name:   outputItem.Name,

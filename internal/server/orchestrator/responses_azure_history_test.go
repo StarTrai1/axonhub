@@ -73,6 +73,7 @@ func TestAzureHistoryCompatibilityDistinguishesToolDataFromProtocolParts(t *test
 		reject bool
 	}{
 		{`{"id":"business","encrypted_content":"business","file_id":"business"}`, false},
+		{`{"type":"encrypted_content","encrypted_content":"business object"}`, false},
 		{`[{"id":"business","encrypted_content":"business","file_id":"business"}]`, false},
 		{`[{"type":"input_text","text":"opaque business text"}]`, false},
 		{`[{"type":"encrypted_content","encrypted_content":"protocol cipher"}]`, true},

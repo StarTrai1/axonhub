@@ -154,7 +154,7 @@ func responsesHistorySupportsRecoveryWithAgents(body []byte, preserveCompaction,
 		// A tool output object/string is application data, but an output array
 		// can contain protocol content parts. Inspect explicit part types only;
 		// ordinary business fields must remain opaque.
-		if itemType == "function_call_output" || itemType == "custom_tool_call_output" {
+		if (itemType == "function_call_output" || itemType == "custom_tool_call_output") && item.Get("output").IsArray() {
 			for _, part := range item.Get("output").Array() {
 				switch part.Get("type").String() {
 				case "encrypted_content", "item_reference":

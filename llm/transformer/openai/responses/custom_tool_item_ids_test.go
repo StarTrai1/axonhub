@@ -53,7 +53,7 @@ func TestCustomToolItemIdentitySurvivesStreamConversion(t *testing.T) {
 			events, err := streams.All(downstream)
 			require.NoError(t, err)
 			identity := ""
-			seen := make(map[string]bool)
+			seen := make(map[StreamEventType]bool)
 			for _, event := range events {
 				var decoded StreamEvent
 				if string(event.Data) == "[DONE]" {

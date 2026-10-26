@@ -590,10 +590,10 @@ func convertReasoningWithFollowing(items []Item, startIdx int) (*llm.Message, in
 			}
 
 			msg.ToolCalls = append(msg.ToolCalls, llm.ToolCall{
-				ID:    nextItem.CallID,
-				Type:  llm.ToolTypeResponsesCustomTool,
+				ID:                  nextItem.CallID,
+				Type:                llm.ToolTypeResponsesCustomTool,
 				TransformerMetadata: customToolItemMetadata(nextItem.ID),
-				Async: nextItem.Async,
+				Async:               nextItem.Async,
 				ResponseCustomToolCall: &llm.ResponseCustomToolCall{
 					CallID: nextItem.CallID,
 					Name:   nextItem.Name,
@@ -716,10 +716,10 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 			Role: "assistant",
 			ToolCalls: []llm.ToolCall{
 				{
-					ID:    item.CallID,
-					Type:  llm.ToolTypeResponsesCustomTool,
+					ID:                  item.CallID,
+					Type:                llm.ToolTypeResponsesCustomTool,
 					TransformerMetadata: customToolItemMetadata(item.ID),
-					Async: item.Async,
+					Async:               item.Async,
 					ResponseCustomToolCall: &llm.ResponseCustomToolCall{
 						CallID: item.CallID,
 						Name:   item.Name,

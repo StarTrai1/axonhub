@@ -1385,9 +1385,9 @@ func (s *responsesInboundStream) closeCurrentOutputItem() error {
 		}
 
 		itemID := tc.ID
-	if tc.ResponseCustomToolCall != nil {
-		itemID = customToolItemID(*tc)
-	}
+		if tc.ResponseCustomToolCall != nil {
+			itemID = customToolItemID(*tc)
+		}
 		if itemID == "" {
 			itemID = s.currentItemID
 		}
