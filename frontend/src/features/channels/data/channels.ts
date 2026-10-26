@@ -1052,6 +1052,7 @@ const BULK_UPDATE_CHANNEL_AUTO_DISABLE_MUTATION = `
         name
         policies {
           stream
+          azureHistoryCompatibility
           apiKeyAutoDisableMode
           apiKeyAutoDisableRules {
             statusCodes
@@ -1322,6 +1323,7 @@ const CHANNEL_QUERY_LIST_NODE_BASE_SELECTION = `
           defaultTestModel
           policies {
             routingTier
+            azureHistoryCompatibility
           }
           errorMessage
           disabledAPIKeys {

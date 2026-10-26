@@ -30,7 +30,7 @@ func TestWebSocketStatelessPreservesFullHistoryOnReusedConnection(t *testing.T) 
 			require.Len(t, payload["input"], i+1)
 			require.NoError(t, conn.WriteJSON(map[string]any{
 				"type": "response.completed", "response": map[string]any{
-					"id": fmt.Sprintf("resp_%d", i+1), "status":"completed", "output": []any{},
+					"id": fmt.Sprintf("resp_%d", i+1), "status": "completed", "output": []any{},
 				},
 			}))
 		}
@@ -43,7 +43,7 @@ func TestWebSocketStatelessPreservesFullHistoryOnReusedConnection(t *testing.T) 
 		`{"model":"gpt-test","input":[{"role":"user","content":"first"},{"role":"user","content":"next"}]}`,
 	} {
 		stream, err := executor.DoStream(ctx, &httpclient.Request{
-			Method: http.MethodPost, URL: server.URL+"/v1/responses", Body: []byte(body), ResponsesStateless: true,
+			Method: http.MethodPost, URL: server.URL + "/v1/responses", Body: []byte(body), ResponsesStateless: true,
 			Headers: http.Header{webSocketSessionHeader: {"stateless-history"}},
 		})
 		require.NoError(t, err)
@@ -57,8 +57,8 @@ func TestWebSocketStatelessPreservesFullHistoryOnReusedConnection(t *testing.T) 
 }
 
 func TestWebSocketStatelessRejectsUnresolvedID(t *testing.T) {
-	payload := map[string]any{"previous_response_id":"resource-bound", "input":"delta"}
-	err := prepareWebSocketPayloadForLease(payload, &webSocketLease{stateless:true})
+	payload := map[string]any{"previous_response_id": "resource-bound", "input": "delta"}
+	err := prepareWebSocketPayloadForLease(payload, &webSocketLease{stateless: true})
 	require.ErrorIs(t, err, shared.ErrResponsesContinuationUnavailable)
 	require.Equal(t, "resource-bound", payload["previous_response_id"])
 }

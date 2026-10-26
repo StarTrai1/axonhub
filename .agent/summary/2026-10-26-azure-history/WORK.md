@@ -6,4 +6,6 @@
 - Reference source frozen once at fce8f0217307638a603a1c4db3a5cb38255edc5f; native web and GitHub API used. No peer/upstream integration pass requested this turn.
 - Private diagnostics under /tmp/axonhub-azure-history-20261026; source DB opened read-only by native Windows Python online backup. Only sanitized metadata exported to repo.
 - User authorized channel-level opt-in; do not enable it in production. Preserve exact tested-SHA dev fast-forward / annotated tag / stop at GoReleaser-start delivery contract.
-- CI and generation pending.
+- Initial CI 40312639239: LLM, three CLI loopback versions and offline probes passed; both builds, Docker and Govulncheck passed. Windows/race/lint blocked by unused test import; removed. Browser save fixture omitted the required pre-save QueryChannels response; supplied it without weakening assertions. Applied CI generated GraphQL and Go formatting artifact.
+- Auxiliary compaction summary requests now use the same compatibility middleware, including retry; ancestor checkpoints are restored before portable summary generation. Partial list/bulk policy reads also carry the new flag.
+- Final CI pending.

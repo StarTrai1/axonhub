@@ -849,6 +849,18 @@ func (a *remoteCompactionAdapter) summaryForCompactionChain(
 		if err != nil {
 			return "", err
 		}
+		for _, candidate := range state.ChannelModelsCandidates {
+			if candidate == nil || !usesAzureHistoryCompatibility(candidate.Channel) {
+				continue
+			}
+			// Restore earlier checkpoints before generating a portable summary;
+			// sending their opaque state first would repeat the resource failure.
+			source, err = a.adaptStoredCompactionSource(ctx, source, state, executor, ancestors)
+			if err != nil {
+				return "", err
+			}
+			break
+		}
 	}
 
 	sourceDepth := len(ancestors)
@@ -1262,6 +1274,7 @@ func (a *remoteCompactionAdapter) generateCompactionWithCandidate(
 	}
 
 	compatibility := applyResponsesRejectedStatusCompatibility(outbound)
+	azureHistory := applyAzureResponsesHistoryCompatibility(outbound)
 	requestMiddlewares := []pipeline.Middleware{
 		applyPassThroughRequestBody(outbound, a.systemService),
 		applyOverrideRequestBody(outbound),
@@ -1270,6 +1283,7 @@ func (a *remoteCompactionAdapter) generateCompactionWithCandidate(
 		applyCodexIdentityPolicy(outbound),
 		recoverResponsesAgentMessages(outbound, a.systemService),
 		compatibility,
+		azureHistory,
 		finalizeTransportRequest(outbound),
 	}
 	if native && parentState.RawProviderRequest != nil {
@@ -1283,7 +1297,7 @@ func (a *remoteCompactionAdapter) generateCompactionWithCandidate(
 		providerRequest.Headers.Del(nativeCompactionMigrationHeader)
 		providerRequest.Headers.Del(codexTurnStateHeader)
 		requestMiddlewares = []pipeline.Middleware{
-			recoverResponsesAgentMessages(outbound, a.systemService), compatibility, finalizeTransportRequest(outbound),
+			recoverResponsesAgentMessages(outbound, a.systemService), compatibility, azureHistory, finalizeTransportRequest(outbound),
 		}
 	}
 	for _, middleware := range requestMiddlewares {
@@ -1301,7 +1315,7 @@ func (a *remoteCompactionAdapter) generateCompactionWithCandidate(
 		Stream:    true,
 	}
 	attemptState.Perf = perf
-	stream, executionRecord, err := a.startLocalCompactionStream(ctx, outbound, providerRequest, customizedExecutor, compatibility)
+	stream, executionRecord, err := a.startLocalCompactionStream(ctx, outbound, providerRequest, customizedExecutor, compatibility, azureHistory)
 	if err != nil {
 		err = rejectedCompactionSourceError(attemptState.RawProviderRequest, err)
 		if rejected, ok := errors.AsType[*compactionSourceRejectedError](err); ok && ctx.Err() == nil {

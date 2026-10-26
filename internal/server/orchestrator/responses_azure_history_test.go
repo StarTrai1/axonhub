@@ -13,7 +13,6 @@ import (
 	entchannel "github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm"
-	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/looplj/axonhub/llm/transformer/shared"
 )
@@ -77,8 +76,12 @@ func TestAzureHistoryCompatibilityIsOptInAndChannelScoped(t *testing.T) {
 			if scenario == "oauth" {
 				channel.Credentials = objects.ChannelCredentials{APIKey: `{"access_token":"synthetic"}`}
 			}
-			if scenario == "other-channel" { channel.Type = entchannel.TypeOpenai }
-			if scenario == "other-format" { request.APIFormat = string(llm.APIFormatOpenAIChatCompletion) }
+			if scenario == "other-channel" {
+				channel.Type = entchannel.TypeOpenai
+			}
+			if scenario == "other-format" {
+				request.APIFormat = string(llm.APIFormatOpenAIChatCompletion)
+			}
 			original := append([]byte(nil), request.Body...)
 			request.JSONBody = request.Body
 			result, err := applyAzureResponsesHistoryCompatibility(outbound).OnOutboundRawRequest(t.Context(), request)
@@ -101,7 +104,7 @@ func TestAzureHistoryCompatibilityIsOptInAndChannelScoped(t *testing.T) {
 func TestAzureHistoryCompatibilityRunsBeforeFirstUpstreamAttempt(t *testing.T) {
 	for _, format := range []llm.APIFormat{llm.APIFormatOpenAIResponse, llm.APIFormatOpenAIResponseWebSocket} {
 		for _, passThrough := range []bool{true, false} {
-			t.Run(string(format)+"/"+map[bool]string{true:"native",false:"converted"}[passThrough], func(t *testing.T) {
+			t.Run(string(format)+"/"+map[bool]string{true: "native", false: "converted"}[passThrough], func(t *testing.T) {
 				request := rejectedReasoningPipelineRequest(t, format)
 				request.Body = []byte(portableHistoryBefore)
 				var err error
@@ -173,7 +176,7 @@ func TestAzureHistoryCompatibilityRetainsNativeFullHistory(t *testing.T) {
 	c := newResponsesContinuation(store, []byte(`{"model":"gpt-6-astra","previous_response_id":"resp_first","input":"next"}`))
 	outbound.state.ResponsesContinuation = c
 	result, err := prepareResponsesAttemptBody(ctx, outbound, responsesAttemptTarget{
-		origin: shared.ResponsesOrigin{ChannelID: outbound.GetCurrentChannel().ID, Format: string(llm.APIFormatOpenAIResponseWebSocket)},
+		origin:     shared.ResponsesOrigin{ChannelID: outbound.GetCurrentChannel().ID, Format: string(llm.APIFormatOpenAIResponseWebSocket)},
 		forwardsID: false,
 	})
 	require.NoError(t, err)

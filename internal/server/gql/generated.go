@@ -517,15 +517,16 @@ type ComplexityRoot struct {
 	}
 
 	ChannelPolicies struct {
-		APIKeyAutoDisableMode    func(childComplexity int) int
-		APIKeyAutoDisableRules   func(childComplexity int) int
-		CodexIdentity            func(childComplexity int) int
-		RemoteCompaction         func(childComplexity int) int
-		RoutingTier              func(childComplexity int) int
-		Stream                   func(childComplexity int) int
-		SupportsRemoteCompaction func(childComplexity int) int
-		SupportsWebSearch        func(childComplexity int) int
-		WebSearch                func(childComplexity int) int
+		APIKeyAutoDisableMode     func(childComplexity int) int
+		APIKeyAutoDisableRules    func(childComplexity int) int
+		AzureHistoryCompatibility func(childComplexity int) int
+		CodexIdentity             func(childComplexity int) int
+		RemoteCompaction          func(childComplexity int) int
+		RoutingTier               func(childComplexity int) int
+		Stream                    func(childComplexity int) int
+		SupportsRemoteCompaction  func(childComplexity int) int
+		SupportsWebSearch         func(childComplexity int) int
+		WebSearch                 func(childComplexity int) int
 	}
 
 	ChannelProbe struct {
@@ -4282,6 +4283,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelPolicies.APIKeyAutoDisableRules(childComplexity), true
+	case "ChannelPolicies.azureHistoryCompatibility":
+		if e.complexity.ChannelPolicies.AzureHistoryCompatibility == nil {
+			break
+		}
+
+		return e.complexity.ChannelPolicies.AzureHistoryCompatibility(childComplexity), true
 	case "ChannelPolicies.codexIdentity":
 		if e.complexity.ChannelPolicies.CodexIdentity == nil {
 			break
@@ -21336,6 +21343,8 @@ func (ec *executionContext) fieldContext_Channel_policies(_ context.Context, fie
 				return ec.fieldContext_ChannelPolicies_supportsWebSearch(ctx, field)
 			case "codexIdentity":
 				return ec.fieldContext_ChannelPolicies_codexIdentity(ctx, field)
+			case "azureHistoryCompatibility":
+				return ec.fieldContext_ChannelPolicies_azureHistoryCompatibility(ctx, field)
 			case "apiKeyAutoDisableMode":
 				return ec.fieldContext_ChannelPolicies_apiKeyAutoDisableMode(ctx, field)
 			case "apiKeyAutoDisableRules":
@@ -24976,6 +24985,35 @@ func (ec *executionContext) fieldContext_ChannelPolicies_codexIdentity(_ context
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type CodexIdentityPolicy does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelPolicies_azureHistoryCompatibility(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelPolicies) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelPolicies_azureHistoryCompatibility,
+		func(ctx context.Context) (any, error) {
+			return obj.AzureHistoryCompatibility, nil
+		},
+		nil,
+		ec.marshalOBoolean2bool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelPolicies_azureHistoryCompatibility(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelPolicies",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -70520,7 +70558,7 @@ func (ec *executionContext) unmarshalInputChannelPoliciesInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"routingTier", "stream", "remoteCompaction", "supportsRemoteCompaction", "webSearch", "supportsWebSearch", "codexIdentity", "apiKeyAutoDisableMode", "apiKeyAutoDisableRules"}
+	fieldsInOrder := [...]string{"routingTier", "stream", "remoteCompaction", "supportsRemoteCompaction", "webSearch", "supportsWebSearch", "codexIdentity", "azureHistoryCompatibility", "apiKeyAutoDisableMode", "apiKeyAutoDisableRules"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -70576,6 +70614,13 @@ func (ec *executionContext) unmarshalInputChannelPoliciesInput(ctx context.Conte
 				return it, err
 			}
 			it.CodexIdentity = data
+		case "azureHistoryCompatibility":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("azureHistoryCompatibility"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AzureHistoryCompatibility = data
 		case "apiKeyAutoDisableMode":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiKeyAutoDisableMode"))
 			data, err := ec.unmarshalOAPIKeyAutoDisableMode2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐAPIKeyAutoDisableMode(ctx, v)
@@ -97798,6 +97843,8 @@ func (ec *executionContext) _ChannelPolicies(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._ChannelPolicies_supportsWebSearch(ctx, field, obj)
 		case "codexIdentity":
 			out.Values[i] = ec._ChannelPolicies_codexIdentity(ctx, field, obj)
+		case "azureHistoryCompatibility":
+			out.Values[i] = ec._ChannelPolicies_azureHistoryCompatibility(ctx, field, obj)
 		case "apiKeyAutoDisableMode":
 			out.Values[i] = ec._ChannelPolicies_apiKeyAutoDisableMode(ctx, field, obj)
 		case "apiKeyAutoDisableRules":

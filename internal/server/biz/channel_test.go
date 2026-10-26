@@ -598,7 +598,7 @@ func TestChannelService_UpdateChannelRefreshesRoutingPolicyBeforeReturn(t *testi
 
 	updated, err := svc.UpdateChannel(ctx, created.ID, &ent.UpdateChannelInput{
 		Policies: &objects.ChannelPolicies{
-			RemoteCompaction: objects.RemoteCompactionPolicyLocalBridge,
+			RemoteCompaction:          objects.RemoteCompactionPolicyLocalBridge,
 			AzureHistoryCompatibility: true,
 		},
 	})
