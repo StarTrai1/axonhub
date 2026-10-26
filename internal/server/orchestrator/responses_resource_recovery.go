@@ -134,10 +134,11 @@ func responsesResourceHistorySupportsRecoveryWithAgents(body []byte, preserveAge
 		default:
 			return false, false
 		}
-		// File IDs and encrypted tool results have their own resource ownership;
-		// this recovery cannot materialize them by removing an outer item ID.
-		for _, field := range []string{"content", "output"} {
-			for _, part := range item.Get(field).Array() {
+		// Only message content uses Responses content-part semantics. Tool output
+		// is opaque application data and may legitimately contain fields named
+		// file_id or encrypted_content; never reinterpret it as protocol state.
+		if itemType == "" || itemType == "message" {
+			for _, part := range item.Get("content").Array() {
 				if part.Get("file_id").String() != "" || part.Get("encrypted_content").String() != "" ||
 					part.Get("type").String() == "encrypted_content" || part.Get("type").String() == "item_reference" {
 					return false, false
