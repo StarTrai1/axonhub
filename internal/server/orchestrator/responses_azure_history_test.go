@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -13,8 +14,8 @@ import (
 	entchannel "github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
-	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 func TestAzureHistoryCompatibilityPreservesSemanticPayloads(t *testing.T) {
@@ -91,70 +92,95 @@ func TestAzureHistoryCompatibilityDistinguishesToolDataFromProtocolParts(t *test
 	}
 }
 
-func TestAzureHistoryCompatibilityIsOptInAndChannelScoped(t *testing.T) {
-	for _, scenario := range []string{"enabled", "disabled", "oauth", "other-channel", "other-format"} {
-		t.Run(scenario, func(t *testing.T) {
-			outbound, request := portableHistoryOutbound(nil, nil)
-			channel := outbound.GetCurrentChannel()
-			channel.Policies.AzureHistoryCompatibility = scenario != "disabled"
-			if scenario == "oauth" {
-				channel.Credentials = objects.ChannelCredentials{APIKey: `{"access_token":"synthetic"}`}
+func markAzureRecovery(t *testing.T, outbound *PersistentOutboundTransformer, request *httpclient.Request) {
+	t.Helper()
+	outbound.state.RawProviderRequest = request
+	require.True(t, requestAzureHistoryRecovery(t.Context(), outbound, resourceMismatchHTTPError()))
+}
+
+func TestAzureRecoveryPreservesInitialRequestAndScopesRetry(t *testing.T) {
+	outbound, request := portableHistoryOutbound(nil, nil)
+	middleware := applyAzureResponsesHistoryCompatibility(outbound)
+	initial, err := middleware.OnOutboundRawRequest(t.Context(), request)
+	require.NoError(t, err)
+	require.Same(t, request, initial)
+	markAzureRecovery(t, outbound, request)
+	for _, change := range []string{"same", "url", "model", "credential"} {
+		t.Run(change, func(t *testing.T) {
+			retry := *request
+			retry.Headers = request.Headers.Clone()
+			retry.JSONBody = retry.Body
+			switch change {
+			case "url": retry.URL += "/other"
+			case "model": retry.Body, err = sjson.SetBytes(retry.Body, "model", "other")
+			case "credential": retry.Headers.Set("Authorization", "Bearer other")
 			}
-			if scenario == "other-channel" {
-				channel.Type = entchannel.TypeOpenai
-			}
-			if scenario == "other-format" {
-				request.APIFormat = string(llm.APIFormatOpenAIChatCompletion)
-			}
-			original := append([]byte(nil), request.Body...)
-			request.JSONBody = request.Body
-			result, err := applyAzureResponsesHistoryCompatibility(outbound).OnOutboundRawRequest(t.Context(), request)
 			require.NoError(t, err)
-			require.Equal(t, original, request.Body, "the source request remains reusable on another channel")
-			require.NotEmpty(t, request.Headers.Get(codexTurnStateHeader))
-			if scenario == "enabled" {
-				require.NotEqual(t, original, result.Body)
+			result, err := middleware.OnOutboundRawRequest(t.Context(), &retry)
+			require.NoError(t, err)
+			if change == "same" {
+				require.JSONEq(t, portableHistoryAfter, string(result.Body))
 				require.Equal(t, result.Body, result.JSONBody)
 				require.Empty(t, result.Headers.Get(codexTurnStateHeader))
 				require.True(t, result.ResponsesStateless)
-			} else {
-				require.Same(t, request, result)
-				require.False(t, result.ResponsesStateless)
-			}
+			} else { require.Same(t, &retry, result) }
 		})
 	}
+	next, fresh := portableHistoryOutbound(nil, nil)
+	result, err := applyAzureResponsesHistoryCompatibility(next).OnOutboundRawRequest(t.Context(), fresh)
+	require.NoError(t, err)
+	require.Same(t, fresh, result)
 }
 
-func TestAzureHistoryCompatibilityRunsBeforeFirstUpstreamAttempt(t *testing.T) {
+func TestAzureRecoveryRunsOnlyAfterResourceError(t *testing.T) {
 	for _, format := range []llm.APIFormat{llm.APIFormatOpenAIResponse, llm.APIFormatOpenAIResponseWebSocket} {
-		for _, passThrough := range []bool{true, false} {
-			t.Run(string(format)+"/"+map[bool]string{true: "native", false: "converted"}[passThrough], func(t *testing.T) {
+		for _, repeat := range []bool{false, true} {
+			t.Run(string(format)+fmt.Sprint(repeat), func(t *testing.T) {
 				request := rejectedReasoningPipelineRequest(t, format)
 				request.Body = []byte(portableHistoryBefore)
-				var err error
-				request.Body, err = sjson.SetBytes(request.Body, "include", []string{"reasoning.encrypted_content"})
-				require.NoError(t, err)
-				executor := &responsesReasoningPipelineExecutor{events: rejectedReasoningCompactionEvents()}
-				_, result, err := runRejectedReasoningPipeline(t, t.Context(), request, executor, "synthetic", passThrough, 0,
+				executor := &responsesReasoningPipelineExecutor{failures: []error{resourceMismatchHTTPError()}, events: rejectedReasoningCompactionEvents()}
+				if repeat { executor.failures = append(executor.failures, resourceMismatchHTTPError()) }
+				_, result, err := runRejectedReasoningPipeline(t, t.Context(), request, executor, "synthetic", true, 4,
 					func(state *PersistenceState, outbound *PersistentOutboundTransformer) pipeline.Middleware {
-						state.ChannelModelsCandidates[0].Channel.Policies.AzureHistoryCompatibility = true
-						return applyAzureResponsesHistoryCompatibility(outbound)
-					})
-				require.NoError(t, err)
-				drainRejectedReasoningPipeline(t, result)
-				require.Len(t, executor.requests, 1)
-				require.JSONEq(t, gjson.Get(portableHistoryAfter, "input").Raw, gjson.GetBytes(executor.requests[0].Body, "input").Raw)
-				require.False(t, gjson.GetBytes(executor.requests[0].Body, "include").Exists())
-				require.True(t, executor.requests[0].ResponsesStateless)
+						state.ChannelModelsCandidates[0].Channel.Credentials = objects.ChannelCredentials{APIKey: "synthetic"}
+						return pipeline.OnRawRequest("relay-target", func(_ context.Context, req *httpclient.Request) (*httpclient.Request, error) { req.URL = "https://relay.example/v1/responses"; return req, nil })
+					},
+					func(_ *PersistenceState, outbound *PersistentOutboundTransformer) pipeline.Middleware { return applyAzureResponsesHistoryCompatibility(outbound) })
+				require.Len(t, executor.requests, 2, "one recovery even when the provider rejects it again")
+				require.JSONEq(t, gjson.Get(portableHistoryBefore, "input").Raw, gjson.GetBytes(executor.requests[0].Body, "input").Raw)
+				require.JSONEq(t, gjson.Get(portableHistoryAfter, "input").Raw, gjson.GetBytes(executor.requests[1].Body, "input").Raw)
+				if repeat { require.Error(t, err); require.Nil(t, result) } else { require.NoError(t, err); drainRejectedReasoningPipeline(t, result) }
 			})
 		}
 	}
 }
 
-func TestAzureHistoryCompatibilityFailureDoesNotMutateRequest(t *testing.T) {
+func TestAzureRecoveryDoesNotAuthorizeOtherFailures(t *testing.T) {
+	for _, scenario := range []string{"500", "unrelated", "oauth", "other-channel", "other-format", "canceled", "bad-param"} {
+		t.Run(scenario, func(t *testing.T) {
+			outbound, request := portableHistoryOutbound(nil, nil)
+			outbound.state.RawProviderRequest = request
+			failure := resourceMismatchHTTPError()
+			ctx := t.Context()
+			switch scenario {
+			case "500": failure.StatusCode = 500
+			case "unrelated": failure.Body = []byte(`{"error":{"message":"different Azure resource"}}`)
+			case "oauth": outbound.GetCurrentChannel().Credentials = objects.ChannelCredentials{APIKey: `{"access_token":"synthetic"}`}
+			case "other-channel": outbound.GetCurrentChannel().Type = entchannel.TypeOpenai
+			case "other-format": request.APIFormat = string(llm.APIFormatOpenAIChatCompletion)
+			case "canceled": var cancel context.CancelFunc; ctx, cancel = context.WithCancel(ctx); cancel()
+			case "bad-param": failure.Body, _ = sjson.SetBytes(failure.Body, "error.param", "previous_response_id")
+			}
+			require.False(t, requestAzureHistoryRecovery(ctx, outbound, failure))
+			require.False(t, usesAzureHistoryCompatibility(outbound))
+		})
+	}
+}
+
+func TestAzureRecoveryFailureDoesNotMutateRequest(t *testing.T) {
 	outbound, request := portableHistoryOutbound(nil, nil)
-	outbound.GetCurrentChannel().Policies.AzureHistoryCompatibility = true
-	request.Body = []byte(`{"previous_response_id":"missing","input":"next"}`)
+	markAzureRecovery(t, outbound, request)
+	request.Body = []byte(`{"model":"gpt-6-astra","previous_response_id":"missing","input":"next"}`)
 	_, err := applyAzureResponsesHistoryCompatibility(outbound).OnOutboundRawRequest(context.Background(), request)
 	var responseErr *llm.ResponseError
 	require.ErrorAs(t, err, &responseErr)
@@ -162,52 +188,4 @@ func TestAzureHistoryCompatibilityFailureDoesNotMutateRequest(t *testing.T) {
 	require.Equal(t, "azure_history_unavailable", responseErr.Detail.Code)
 	require.True(t, json.Valid(request.Body))
 	require.Equal(t, "missing", gjson.GetBytes(request.Body, "previous_response_id").String())
-}
-
-func TestAzureHistoryCompatibilityPreparesCheckpointWithoutRejection(t *testing.T) {
-	ctx, client, apiKey, adapter := rejectedCompactionStorage(t)
-	seedRejectedCompactionSource(t, ctx, client, apiKey, "completed", "native-checkpoint-ciphertext")
-	executor := &rejectedCompactionBridgeExecutor{}
-	for range 2 {
-		req := rejectedCompactionPipelineRequest(t, llm.APIFormatOpenAIResponse)
-		_, result, err := runRejectedReasoningPipeline(t, ctx, req, executor, "native-bridge-credential", true, 0,
-			func(state *PersistenceState, outbound *PersistentOutboundTransformer) pipeline.Middleware {
-				state.APIKey = apiKey
-				state.ChannelModelsCandidates[0].Channel.Policies.AzureHistoryCompatibility = true
-				return recoverRejectedRemoteCompaction(outbound, adapter, executor)
-			},
-			func(_ *PersistenceState, outbound *PersistentOutboundTransformer) pipeline.Middleware {
-				return applyAzureResponsesHistoryCompatibility(outbound)
-			})
-		require.NoError(t, err)
-		drainRejectedReasoningPipeline(t, result)
-	}
-	require.Len(t, executor.continuations, 2, "each user turn reaches upstream once")
-	require.Len(t, executor.summaries, 1, "reuse the retained checkpoint summary")
-	for _, body := range executor.continuations {
-		require.False(t, gjson.GetBytes(body, `input.#(type=="compaction")`).Exists())
-		require.Contains(t, string(body), "verified retained source summary")
-	}
-}
-
-func TestAzureHistoryCompatibilityRetainsNativeFullHistory(t *testing.T) {
-	outbound, _ := portableHistoryOutbound(nil, nil)
-	outbound.GetCurrentChannel().Policies.AzureHistoryCompatibility = true
-	store := newResponsesSessionStore()
-	ctx := shared.WithResponsesWebSocket(shared.WithSessionScope(t.Context(), "azure-native-owner"))
-	body := []byte(`{"model":"gpt-6-astra","input":[{"role":"user","content":"first"}]}`)
-	store.record(ctx, body, []byte(`{"id":"resp_first","status":"completed","output":[{"type":"message","role":"assistant","content":[{"type":"output_text","text":"answer"}]}]}`))
-	c := newResponsesContinuation(store, []byte(`{"model":"gpt-6-astra","previous_response_id":"resp_first","input":"next"}`))
-	outbound.state.ResponsesContinuation = c
-	result, err := prepareResponsesAttemptBody(ctx, outbound, responsesAttemptTarget{
-		origin:     shared.ResponsesOrigin{ChannelID: outbound.GetCurrentChannel().ID, Format: string(llm.APIFormatOpenAIResponseWebSocket)},
-		forwardsID: false,
-	})
-	require.NoError(t, err)
-	require.True(t, c.complete)
-	require.True(t, c.retain)
-	require.False(t, gjson.GetBytes(result, "previous_response_id").Exists())
-	require.Len(t, gjson.GetBytes(result, "input").Array(), 3)
-	_, err = azureCompatibleResponsesHistory(result)
-	require.NoError(t, err)
 }

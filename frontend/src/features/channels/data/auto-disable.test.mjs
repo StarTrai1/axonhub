@@ -149,19 +149,12 @@ test('channel and retry-policy GraphQL selections load the new auto-disable fiel
   const policySelections = channelsData.match(/policies\s*\{[\s\S]*?\}/g) ?? [];
   assert.ok(policySelections.length >= 5, 'channel queries should select policies in list/detail/create/update paths');
   for (const selection of policySelections) {
-    // Channel-list rows select routingTier and the compatibility flag;
+    // Channel-list rows select routingTier;
     // dialogs fetch a complete snapshot before reading availability policies.
     if (!/stream|apiKeyAutoDisableMode/.test(selection)) {
       assert.match(selection, /routingTier/);
-      if (/azureHistoryCompatibility/.test(selection)) {
-        assert.match(selection, /routingTier[\s\S]*azureHistoryCompatibility/);
-      } else {
-        assert.match(selection, /policies\s*\{\s*routingTier\s*\}/);
-      }
+      assert.match(selection, /policies\s*\{\s*routingTier\s*\}/);
       continue;
-    }
-    if (/stream/.test(selection)) {
-      assert.match(selection, /azureHistoryCompatibility/, 'channel policy snapshots should include the Codex history policy');
     }
     assert.match(selection, /apiKeyAutoDisableMode/, 'channel policies selection should include mode');
     assert.match(selection, /apiKeyAutoDisableRules/, 'channel policies selection should include rules');

@@ -74,7 +74,7 @@ func portableHistoryOutbound(apiKey *ent.APIKey, service *biz.RequestService) (*
 	return outbound, request
 }
 
-func TestResponsesRejectedHistoryPortabilityFirstAttemptAfterRestart(t *testing.T) {
+func TestAzureResourceRecoveryDoesNotBecomePolicyAfterRestart(t *testing.T) {
 	for _, passThrough := range []bool{true, false} {
 		t.Run(map[bool]string{true: "native", false: "converted"}[passThrough], func(t *testing.T) {
 			ctx, client, apiKey, adapter := rejectedCompactionStorage(t)
@@ -105,7 +105,7 @@ func TestResponsesRejectedHistoryPortabilityFirstAttemptAfterRestart(t *testing.
 			require.NoError(t, err)
 			drainRejectedReasoningPipeline(t, result)
 			require.Len(t, executor.requests, 1, "must succeed with a zero retry budget and new IDs/ciphertext")
-			require.JSONEq(t, gjson.Get(portableHistoryAfter, "input").Raw, gjson.GetBytes(executor.requests[0].Body, "input").Raw)
+			require.JSONEq(t, gjson.GetBytes(req.Body, "input").Raw, gjson.GetBytes(executor.requests[0].Body, "input").Raw)
 			require.Equal(t, "gpt-6-astra", gjson.GetBytes(executor.requests[0].Body, "model").String())
 			require.Zero(t, state.responsesRejectedStatusRetryChannel)
 			require.Contains(t, string(req.Body), "new-ciphertext", "client history stays intact")
@@ -149,13 +149,7 @@ func TestResponsesRejectedHistoryPortabilityIsolation(t *testing.T) {
 			request.JSONBody = append([]byte(nil), request.Body...)
 			result, err := applyResponsesHistoryPortability(outbound).OnOutboundRawRequest(ctx, request)
 			require.NoError(t, err)
-			if name == "same" {
-				require.JSONEq(t, portableHistoryAfter, string(result.Body))
-				require.Equal(t, result.Body, result.JSONBody)
-				require.Empty(t, result.Headers.Get(codexTurnStateHeader))
-			} else {
-				require.Equal(t, original, string(result.Body))
-			}
+			require.Equal(t, original, string(result.Body))
 			require.Zero(t, outbound.state.responsesRejectedStatusRetryChannel)
 		})
 	}
@@ -217,7 +211,7 @@ func TestResponsesRejectedHistoryPortabilityPreservesOpaqueHistory(t *testing.T)
 	require.JSONEq(t, portableHistoryAfter, string(result))
 }
 
-func TestResponsesRejectedHistoryPortabilityLearnsFieldsIndependently(t *testing.T) {
+func TestAzureResourceRecoveryDoesNotLearnIDRemoval(t *testing.T) {
 	ctx, client, apiKey, adapter := rejectedCompactionStorage(t)
 	idsOnly := `{"model":"gpt-6-astra","stream":true,"store":false,"input":[
 {"type":"message","role":"user","content":"complete task"},
@@ -231,7 +225,7 @@ func TestResponsesRejectedHistoryPortabilityLearnsFieldsIndependently(t *testing
 	outbound, request := portableHistoryOutbound(apiKey, adapter.requestService)
 	result, err := applyResponsesHistoryPortability(outbound).OnOutboundRawRequest(ctx, request)
 	require.NoError(t, err)
-	require.JSONEq(t, idsOnly, string(result.Body), "ID-only evidence must retain native reasoning")
+	require.JSONEq(t, portableHistoryBefore, string(result.Body), "past resource errors must preserve this request")
 }
 
 func TestResponsesRejectedHistoryPortabilityRejectsNumericOptionChanges(t *testing.T) {
@@ -244,7 +238,7 @@ func TestResponsesRejectedHistoryPortabilityRejectsNumericOptionChanges(t *testi
 	require.False(t, policy.dropReasoning)
 }
 
-func TestResponsesRejectedHistoryPortabilityUsesRetainedEvidenceAfterCacheExpiry(t *testing.T) {
+func TestAzureResourceRecoveryDoesNotReviveAfterCacheExpiry(t *testing.T) {
 	ctx, client, apiKey, adapter := rejectedCompactionStorage(t)
 	for range 2 {
 		seedPortableHistoryPair(t, ctx, client, apiKey, portableHistoryBefore, portableHistoryAfter, responsesResourceMismatchMessage, time.Now().Add(-12*time.Hour))
@@ -254,5 +248,5 @@ func TestResponsesRejectedHistoryPortabilityUsesRetainedEvidenceAfterCacheExpiry
 	outbound.GetCurrentChannel().UpdatedAt = time.Now().Add(-24 * time.Hour)
 	result, err := applyResponsesHistoryPortability(outbound).OnOutboundRawRequest(ctx, request)
 	require.NoError(t, err)
-	require.JSONEq(t, portableHistoryAfter, string(result.Body), "cache expiry must not require new failing requests")
+	require.JSONEq(t, portableHistoryBefore, string(result.Body), "past resource errors must not rewrite new requests")
 }

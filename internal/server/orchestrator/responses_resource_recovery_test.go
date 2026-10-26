@@ -12,6 +12,7 @@ import (
 
 	entchannel "github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer/shared"
 )
@@ -233,6 +234,7 @@ func TestResponsesRejectedResourcePipelineStandaloneCompact(t *testing.T) {
 
 func TestResponsesRejectedResourceRuleStaysWithinRequestAndDestination(t *testing.T) {
 	outbound := newCodexResponsesPassThroughOutbound()
+	outbound.GetCurrentChannel().Credentials = objects.ChannelCredentials{APIKey: `{"access_token":"synthetic"}`}
 	original := &httpclient.Request{
 		URL: "https://example.invalid/v1/responses", APIFormat: string(llm.APIFormatOpenAIResponse),
 		Headers: http.Header{"Authorization": {"Bearer synthetic-original"}}, Body: []byte(responsesResourceHistoryFixture),

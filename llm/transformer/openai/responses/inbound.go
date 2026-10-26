@@ -1610,6 +1610,10 @@ func generateItemID() string {
 	return fmt.Sprintf("item_%s", lo.RandomString(16, lo.AlphanumericCharset))
 }
 
+func generateReasoningItemID() string {
+	return fmt.Sprintf("rs_%s", lo.RandomString(16, lo.AlphanumericCharset))
+}
+
 // buildReasoningItems creates reasoning Items from a message. ReasoningItems
 // preserves the one-to-one association between a summary and its opaque
 // encrypted content; the scalar fields are retained as a legacy fallback.
@@ -1638,7 +1642,7 @@ func buildReasoningItems(msg llm.Message) []Item {
 
 		itemID := reasoningItem.ID
 		if itemID == "" {
-			itemID = generateItemID()
+			itemID = generateReasoningItemID()
 		}
 
 		item := Item{

@@ -998,6 +998,7 @@ func convertOutputToMessage(output []Item, transformerMetadata map[string]any) l
 					Type: "image_url",
 					ImageURL: &llm.ImageURL{
 						URL: *outputItem.ImageURL,
+						Detail: outputItem.Detail,
 					},
 				})
 			}

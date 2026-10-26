@@ -704,7 +704,7 @@ func (s *responsesInboundStream) ensureReasoningItemStarted(sourceID string) err
 
 	s.currentItemID = sourceID
 	if s.currentItemID == "" {
-		s.currentItemID = generateItemID()
+		s.currentItemID = generateReasoningItemID()
 	}
 	item := &Item{
 		ID:      s.currentItemID,

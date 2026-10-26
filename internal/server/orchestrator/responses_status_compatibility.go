@@ -188,6 +188,9 @@ func (m *responsesRejectedStatusCompatibilityMiddleware) OnOutboundRawError(ctx 
 		return
 	}
 
+	if requestAzureHistoryRecovery(ctx, m.outbound, err) {
+		return
+	}
 	rule, ok := responsesRejectedStatusRuleFromError(err, state.RawProviderRequest.Body)
 	if !ok && ctx.Err() == nil && channel.Type == entchannel.TypeCodex && !channel.Credentials.IsOAuth() &&
 		responses.IsResponsesFormat(llm.APIFormat(state.RawProviderRequest.APIFormat)) {

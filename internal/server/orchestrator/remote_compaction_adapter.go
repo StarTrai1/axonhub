@@ -850,7 +850,7 @@ func (a *remoteCompactionAdapter) summaryForCompactionChain(
 			return "", err
 		}
 		for _, candidate := range state.ChannelModelsCandidates {
-			if candidate == nil || !usesAzureHistoryCompatibility(candidate.Channel) {
+			if candidate == nil || !azureHistoryRecoveryRequested(state, candidate.Channel) {
 				continue
 			}
 			// Restore earlier checkpoints before generating a portable summary;
@@ -1247,6 +1247,7 @@ func (a *remoteCompactionAdapter) generateCompactionWithCandidate(
 	bridgeRequest.RawRequest = rawRequest
 
 	attemptState := &PersistenceState{
+		responsesRejectedStatusRules: parentState.responsesRejectedStatusRules,
 		compactionRecovery:      parentState.compactionRecovery,
 		APIKey:                  parentState.APIKey,
 		RequestService:          a.requestService,

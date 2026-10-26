@@ -62,3 +62,20 @@ test('GPT-6.1 Sol and Astra modes preserve official prices across both catalogs'
     );
   }
 });
+
+test('GPT-6.1 Terra keeps its own reasoning, limits and Standard/Fast prices', () => {
+  const front = JSON.parse(readFileSync(providersJsonPath, 'utf8'));
+  const back = JSON.parse(readFileSync(join(import.meta.dirname, '../../../../../internal/server/biz/catalogdata/providers.json'), 'utf8'));
+  const terra = front.providers.openai.models.find((model) => model.id === 'gpt-6.1-terra');
+  assert.deepEqual(terra, back.providers.openai.models.find((model) => model.id === terra.id));
+  assert.deepEqual(terra.reasoning_options[0].values, ['none', 'low', 'medium', 'high', 'xhigh', 'max']);
+  assert.deepEqual(terra.limit, { context: 1050000, input: 922000, output: 128000 });
+  assert.equal(terra.cost.input, 1);
+  assert.equal(terra.cost.cache_read, 0.05);
+  assert.equal(terra.cost.cache_write, 1.25);
+  assert.equal(terra.cost.output, 5);
+  assert.deepEqual(terra.cost.tiers, [{ cache_read: 0.1, cache_write: 2.5, input: 2, output: 7.5, tier: { size: 272000, type: 'context' } }]);
+  assert.equal(terra.experimental.modes.fast.cost.input, 2);
+  assert.equal(terra.experimental.modes.fast.cost.tiers[0].output, 15);
+  assert.equal(terra.experimental.modes.ultrafast, undefined);
+});

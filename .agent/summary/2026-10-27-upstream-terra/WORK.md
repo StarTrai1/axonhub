@@ -1,0 +1,13 @@
+# Work in progress
+
+- Base: dev 53527915a96247ce1c0c829703e0c6ad6439f842 (PR16).
+- Branch: sync/upstream-terra-20261027.
+- Contract: CI-only tests/build/lint/format/tidy/generation, exact passing SHA fast-forward to dev, annotated tag, stop monitoring at GoReleaser start. No production mutation or paid probes.
+- YCE gate passed exit 0: /tmp/yce-results/yce-search-20261026T200902-4079267-ca6708.xml, 34681 bytes, SHA256 d016650be155b9e8535b30334cdd9237c9572ac5a7e6e4dd68133c27004c4754, fully read through EOF. First output receipt was truncated by combined tool output; retried from cache. No task anchor.
+- Applicable repository Go/biz/cache/frontend/GraphQL/docs rules read. ~/.codex/rules contains no Markdown candidates. No Jev routing or delegation.
+- Frozen peer API responses cached once at /tmp/axonhub-sync-20261027; prior boundaries from 2026-10-25-upstream-peers-next/peers-ledger.json. 1 upstream commit, 46 existing-peer records, 152 magpie records. Commit decisions pending completion of the one pass; no head refresh.
+- Upstream 532a80328d360bcddc517a99fdf1ede7586fe432 merged as 9f417d2b. Preserve motion/react and the fork's replacement daily ranking implementation; no reintroduction of dead query functions.
+- Official GPT-6.1 Terra model page, guide and pricing fetched. Six efforts (none/low/medium/high/xhigh/max), 1,050,000 context, 922,000 input, 128,000 output. Standard USD/MTok input 1, cache-read .05, cache-write 1.25 at 30m, output 5; >272K input doubles input/cache and multiplies output by 1.5; Fast 2x. No Terra Ultrafast capability inferred.
+- Read-only Windows SQLite backup verified quick_check=ok (1,496,350,720 bytes, max request 68904). #68865 execution201837, #68868 execution201846 (502) then201847 (400), #68869 execution201848 (400). Each has 26 locally generated reasoning item_* IDs, no ciphertext in those items, five native rs_* ciphertext items and one native compaction. First invalid index32. Private decoded bodies at /tmp/axonhub-68865-audit, sanitized evidence.json available.
+- Repairs staged: remove Azure UI/schema option and ignore legacy stored flag; resource mismatch triggers request/destination-scoped one-shot recovery, no learned Azure policy on subsequent requests. Reasoning output uses rs_ IDs; old item_ reasoning strips only optional IDs while preserving item references and opaque state. Terra catalog/capability normalization and Chat tools guard. Adapt magpie image detail original->high for Chat and preserve detail in returned input_image items.
+- Validation pending CI. Legacy Go policy tombstone must be removed after CI GraphQL generation artifact is applied.

@@ -15,7 +15,7 @@ import (
 func TestGPT6ChatSamplingAndPassThrough(t *testing.T) {
 	outbound, err := NewOutboundTransformer("https://example.test/v1", "fake-key")
 	require.NoError(t, err)
-	for _, model := range []string{"gpt-6-sol", "gpt-6-luna", "gpt-6-astra", "gpt-6.1-sol"} {
+	for _, model := range []string{"gpt-6-sol", "gpt-6-luna", "gpt-6-astra", "gpt-6.1-sol", "gpt-6.1-terra"} {
 		for _, effort := range []string{"", "none", "minimal", "high"} {
 			t.Run(model+"/"+effort, func(t *testing.T) {
 				body := []byte(fmt.Sprintf(`{"model":%q,"reasoning_effort":%q,"temperature":0.7,"top_p":0.8,"top_logprobs":2,"logprobs":true,"messages":[{"role":"user","content":"hello"}]}`, model, effort))
@@ -53,7 +53,7 @@ func TestSol61ChatToolCallsRequireResponses(t *testing.T) {
 func TestGPT6ChatCompletionTokenLimit(t *testing.T) {
 	outbound, err := NewOutboundTransformer("https://example.test/v1", "fake-key")
 	require.NoError(t, err)
-	for _, model := range []string{"gpt-6-astra", "gpt-6-sol", "gpt-6-luna", "gpt-6.1-sol"} {
+	for _, model := range []string{"gpt-6-astra", "gpt-6-sol", "gpt-6-luna", "gpt-6.1-sol", "gpt-6.1-terra"} {
 		for _, limits := range []struct {
 			fields string
 			want   int64
@@ -74,5 +74,22 @@ func TestGPT6ChatCompletionTokenLimit(t *testing.T) {
 				require.Equal(t, body, request.RawRequest.Body)
 			})
 		}
+	}
+}
+
+func TestTerra61ChatToolCallsRequireResponses(t *testing.T) {
+	outbound, err := NewOutboundTransformer("https://example.test/v1", "fake-key")
+	require.NoError(t, err)
+	for _, body := range []string{
+		`{"model":"gpt-6.1-terra","messages":[{"role":"user","content":"hello"}],"tools":[{"type":"function","function":{"name":"lookup","parameters":{"type":"object"}}}]}`,
+		`{"model":"gpt-6.1-terra","reasoning_effort":"none","messages":[{"role":"user","content":"hello"}],"tools":[{"type":"function","function":{"name":"lookup","parameters":{"type":"object"}}}]}`,
+		`{"model":"gpt-6.1-terra","messages":[{"role":"assistant","tool_calls":[{"id":"call_1","type":"function","function":{"name":"lookup","arguments":"{}"}}]},{"role":"tool","tool_call_id":"call_1","content":"found"}]}`,
+	} {
+		request, err := NewInboundTransformer().TransformRequest(t.Context(), &httpclient.Request{Body: []byte(body), Headers: http.Header{"Content-Type": {"application/json"}}})
+		require.NoError(t, err)
+		wire, err := outbound.TransformRequest(t.Context(), request)
+		require.ErrorIs(t, err, transformer.ErrInvalidRequest)
+		require.ErrorContains(t, err, "tool calls require a Responses endpoint")
+		require.Nil(t, wire)
 	}
 }

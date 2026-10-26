@@ -490,8 +490,6 @@
   "channels.dialogs.fields.webSearchPolicy.options.other_channels.description": "Send standalone search directly to other eligible channels. Keep this channel available for conversation and preserve its search tools.",
   "channels.dialogs.fields.webSearchPolicy.options.mcp_only.label": "MCP only",
   "channels.dialogs.fields.webSearchPolicy.options.mcp_only.description": "Block standalone and hosted web search while preserving client-configured MCP search tools.",
-  "channels.dialogs.fields.azureHistoryCompatibility.label": "Azure history compatibility",
-  "channels.dialogs.fields.azureHistoryCompatibility.description": "For third-party Codex relays that switch Azure resources. Replay readable history without stored item IDs or encrypted reasoning, preserving messages and tool calls. Native checkpoints use retained history to prepare a reusable summary; this may add a summary request. Cannot remove upstream rate limits or recover history that was not retained.",
   "channels.dialogs.fields.codexIdentityPolicy.label": "Codex identity policy",
   "channels.dialogs.fields.codexIdentityPolicy.description": "Converges OAuth-only Codex identity carriers for this channel. It never applies to third-party API-key channels or changes non-identity metadata.",
   "channels.dialogs.fields.codexIdentityPolicy.options.off.label": "Pass through",

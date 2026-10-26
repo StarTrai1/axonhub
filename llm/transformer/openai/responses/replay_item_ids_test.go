@@ -39,7 +39,7 @@ func TestPrepareReplayItemIDsLeavesOtherContractsUntouched(t *testing.T) {
 		url  string
 		body string
 	}{
-		{name: "relay", url: "https://relay.example/v1/responses", body: `{"input":[{"type":"reasoning","id":"item_relay","summary":[]}]}`},
+		{name: "reference-only relay", url: "https://relay.example/v1/responses", body: `{"input":[{"type":"reasoning","id":"item_relay"}]}`},
 		{name: "lookalike host", url: "https://chatgpt.com.example/responses", body: `{"input":[{"type":"reasoning","id":"item_relay"}]}`},
 		{name: "native IDs", url: "https://api.openai.com/v1/responses", body: `{"input":[{"type":"reasoning","id":"rs_native"},{"type":"message","id":"msg_native","content":"item_literal"}]}`},
 		{name: "unknown item", url: "https://api.openai.com/v1/responses", body: `{"input":[{"type":"future_type","id":"item_future"}]}`},

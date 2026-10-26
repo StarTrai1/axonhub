@@ -183,7 +183,7 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawRequest(
 	replayKey.replay = true
 	knownReplay := m.hasConfirmedRecovery(ctx, replayKey)
 	local := m.outbound.GetCurrentChannel().Policies.UsesLocalRemoteCompactionBridge()
-	azureHistory := usesAzureHistoryCompatibility(m.outbound.GetCurrentChannel())
+	azureHistory := usesAzureHistoryCompatibility(m.outbound)
 	portable, err := m.adapter.usesPortableCheckpoint(ctx, m.outbound.state, m.outbound.state.CurrentCandidate)
 	if err != nil {
 		return nil, &remoteCompactionPreparationError{cause: err}

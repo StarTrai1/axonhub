@@ -52,7 +52,16 @@ func PrepareReplayItemIDs(request *httpclient.Request) *httpclient.Request {
 			strings.HasPrefix(identifier.Str, "call_") && len(identifier.Str) > len("call_") &&
 			identifier.Str == item.Get("call_id").String() && item.Get("name").String() != "" &&
 			item.Get("input").Type == gjson.String && !references[identifier.Str]
-		if !legacyCustom && (!stripSynthetic || !strings.HasPrefix(identifier.Str, "item_") || len(identifier.Str) <= len("item_")) {
+		// Older converted reasoning used the generic output-item prefix. The ID
+		// is optional on replay; remove only that legacy identity, preserving
+		// every summary and ciphertext byte and any referenced item.
+		legacyReasoning := item.Get("type").String() == "reasoning" &&
+			strings.HasPrefix(identifier.Str, "item_") && len(identifier.Str) > len("item_") &&
+			(item.Get("summary").IsArray() || item.Get("encrypted_content").Type == gjson.String)
+		if references[identifier.Str] {
+			return true
+		}
+		if !legacyCustom && !legacyReasoning && (!stripSynthetic || !strings.HasPrefix(identifier.Str, "item_") || len(identifier.Str) <= len("item_")) {
 			return true
 		}
 

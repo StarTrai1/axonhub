@@ -716,10 +716,9 @@ type ChannelPolicies struct {
 	// fields. Empty and unknown values preserve historical pass-through behavior.
 	CodexIdentity CodexIdentityPolicy `json:"codexIdentity,omitempty"`
 
-	// AzureHistoryCompatibility proactively replays materialized history for
-	// third-party Codex relays whose Azure resource can change between turns.
-	// Opt-in only: zero keeps native encrypted continuation unchanged.
-	AzureHistoryCompatibility bool `json:"azureHistoryCompatibility,omitempty"`
+	// AzureHistoryCompatibility is an ignored legacy field retained only until
+	// generated GraphQL code is refreshed. Recovery is request-scoped.
+	AzureHistoryCompatibility bool `json:"-"`
 
 	// APIKeyAutoDisableMode selects how this channel combines with the global
 	// auto-disable rules: inherit (global only), custom (channel first, then

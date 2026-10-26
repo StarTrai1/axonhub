@@ -132,6 +132,8 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     defaultModels: [
       'gpt-6.1-sol',
       'gpt-6.1-sol-fast',
+      'gpt-6.1-terra',
+      'gpt-6.1-terra-fast',
       'gpt-5.2',
       'gpt-5.2-codex',
       'gpt-5.6-sol',

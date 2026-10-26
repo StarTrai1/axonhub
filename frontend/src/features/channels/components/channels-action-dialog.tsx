@@ -1026,7 +1026,6 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               webSearch: currentRow.policies?.webSearch ?? 'native',
               supportsWebSearch: currentRow.policies?.supportsWebSearch ?? true,
               codexIdentity: currentRow.policies?.codexIdentity ?? 'off',
-              azureHistoryCompatibility: currentRow.policies?.azureHistoryCompatibility ?? false,
             },
             supportedModels: currentRow.supportedModels,
             autoSyncSupportedModels: currentRow.autoSyncSupportedModels,
@@ -1063,7 +1062,6 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                 webSearch: duplicateFromRow.policies?.webSearch ?? 'native',
                 supportsWebSearch: duplicateFromRow.policies?.supportsWebSearch ?? true,
                 codexIdentity: duplicateFromRow.policies?.codexIdentity ?? 'off',
-                azureHistoryCompatibility: duplicateFromRow.policies?.azureHistoryCompatibility ?? false,
               },
               supportedModels: duplicateFromRow.supportedModels,
               autoSyncSupportedModels: duplicateFromRow.autoSyncSupportedModels,
@@ -1097,7 +1095,6 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                 webSearch: 'native',
                 supportsWebSearch: true,
                 codexIdentity: 'off',
-                azureHistoryCompatibility: false,
               },
               credentials: {
                 apiKeys: [],
@@ -1701,8 +1698,6 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         webSearch: webSearchPolicy,
         supportsWebSearch: webSearchPolicy === 'native',
         codexIdentity: codexIdentityPolicy,
-        azureHistoryCompatibility:
-          effectiveChannelType === 'codex' && authMode === 'third-party' && !!dataWithModels.policies?.azureHistoryCompatibility,
       };
       // The Command Code / Ollama quota cookie is a browser-session credential
       // that only belongs on its own channel type. Never let a
@@ -3511,26 +3506,6 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                     </FormItem>
                                   )}
                                 />
-                                {authMode === 'third-party' && (
-                                  <FormField
-                                    control={form.control}
-                                    name='policies.azureHistoryCompatibility'
-                                    render={({ field }) => (
-                                      <FormItem className='flex min-w-0 flex-wrap items-center space-y-0 gap-x-2 gap-y-1.5'>
-                                        <FormControl>
-                                          <Checkbox checked={field.value ?? false} onCheckedChange={field.onChange}
-                                            data-testid='azure-history-compatibility-toggle' />
-                                        </FormControl>
-                                        <PolicyFieldHeader
-                                          label={t('channels.dialogs.fields.azureHistoryCompatibility.label')}
-                                          description={t('channels.dialogs.fields.azureHistoryCompatibility.description')}
-                                          testId='azure-history-compatibility-tip'
-                                        />
-                                        <FormMessage />
-                                      </FormItem>
-                                    )}
-                                  />
-                                )}
                                 {authMode !== 'third-party' && (
                                   <FormField
                                     control={form.control}

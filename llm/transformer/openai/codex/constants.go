@@ -11,6 +11,7 @@ var fastModelPairs = []fastModelPair{
 	{model: "gpt-5.6-luna", alias: "gpt-5.6-luna-fast"},
 	{model: "gpt-6-astra", alias: "gpt-6-astra-fast"},
 	{model: "gpt-6.1-sol", alias: "gpt-6.1-sol-fast"},
+	{model: "gpt-6.1-terra", alias: "gpt-6.1-terra-fast"},
 	{model: "gpt-6-sol", alias: "gpt-6-sol-fast"},
 	{model: "gpt-6-luna", alias: "gpt-6-luna-fast"},
 }
@@ -37,6 +38,7 @@ func DefaultModels() []string {
 		"gpt-5.6-luna",
 		"gpt-6-astra",
 		"gpt-6.1-sol",
+		"gpt-6.1-terra",
 		"gpt-6-sol",
 		"gpt-6-luna",
 		"gpt-reserve",

@@ -182,14 +182,14 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		return nil, err
 	}
 
-	// Sol 6.1 tool calling is only available through Responses, including replayed calls.
-	if llmReq.Model == "gpt-6.1-sol" {
+	// These models require Responses for tools, including replayed calls.
+	if llmReq.Model == "gpt-6.1-sol" || llmReq.Model == "gpt-6.1-terra" || llmReq.Model == "gpt-6-astra" {
 		hasTools := len(llmReq.Tools) > 0
 		for _, message := range llmReq.Messages {
 			hasTools = hasTools || len(message.ToolCalls) > 0 || message.Role == "tool"
 		}
 		if hasTools {
-			return nil, fmt.Errorf("%w: gpt-6.1-sol tool calls require a Responses endpoint", transformer.ErrInvalidRequest)
+			return nil, fmt.Errorf("%w: %s tool calls require a Responses endpoint", transformer.ErrInvalidRequest, llmReq.Model)
 		}
 	}
 

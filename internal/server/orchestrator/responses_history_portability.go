@@ -229,6 +229,9 @@ func loadResponsesHistoryPolicy(ctx context.Context, key responsesHistoryPolicyK
 }
 
 func confirmedResponsesHistoryCorrection(before, after []byte, message string) responsesHistoryPolicy {
+	if responsesResourceMismatch("", message) {
+		return responsesHistoryPolicy{}
+	}
 	_, rejectedReasoning := responsesRejectedReasoningMessageRule(before, "", message, "")
 	beforeIDs, beforeSafe := responsesResourceHistorySupportsRecovery(before)
 	afterIDs, afterSafe := responsesResourceHistorySupportsRecovery(after)

@@ -13,7 +13,7 @@ import (
 func TestGPT6SolLunaSamplingFollowsEffectiveReasoning(t *testing.T) {
 	outbound, err := NewOutboundTransformer("https://example.test/v1", "fake-key")
 	require.NoError(t, err)
-	for _, model := range []string{"gpt-6-sol", "gpt-6-luna", "gpt-6-astra", "gpt-6.1-sol"} {
+	for _, model := range []string{"gpt-6-sol", "gpt-6-luna", "gpt-6-astra", "gpt-6.1-sol", "gpt-6.1-terra"} {
 		for _, tc := range []struct {
 			name       string
 			effort     string

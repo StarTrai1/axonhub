@@ -11,7 +11,7 @@ import (
 // IsGPT6Model only matches published model IDs, not unrelated provider aliases.
 func IsGPT6Model(model string) bool {
 	switch strings.ToLower(strings.TrimSpace(model)) {
-	case "gpt-6-astra", "gpt-6.1-sol", "gpt-6-sol", "gpt-6-luna":
+	case "gpt-6-astra", "gpt-6.1-sol", "gpt-6.1-terra", "gpt-6-sol", "gpt-6-luna":
 		return true
 	default:
 		return false

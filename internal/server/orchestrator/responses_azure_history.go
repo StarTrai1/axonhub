@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
+	"strings"
 
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
@@ -16,15 +18,72 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
 
-func usesAzureHistoryCompatibility(channel *biz.Channel) bool {
-	return channel != nil && channel.Type == entchannel.TypeCodex && !channel.Credentials.IsOAuth() &&
-		channel.Policies.AzureHistoryCompatibility
+const azureHistoryReplayField = "azure_history_replay"
+
+func usesAzureHistoryCompatibility(outbound *PersistentOutboundTransformer) bool {
+	return outbound != nil && azureHistoryRecoveryRequested(outbound.state, outbound.GetCurrentChannel())
+}
+
+func azureHistoryRecoveryRequested(state *PersistenceState, channel *biz.Channel) bool {
+	if state == nil || channel == nil || channel.Type != entchannel.TypeCodex || channel.Credentials.IsOAuth() {
+		return false
+	}
+	for _, rule := range state.responsesRejectedStatusRules[channel.ID] {
+		if rule.fieldName() == azureHistoryReplayField {
+			return true
+		}
+	}
+	return false
+}
+
+// An explicit resource rejection permits one recovery on this exact request
+// and destination. It never becomes a channel-wide or learned cache policy.
+func requestAzureHistoryRecovery(ctx context.Context, outbound *PersistentOutboundTransformer, failure error) bool {
+	state := outbound.state
+	channel := outbound.GetCurrentChannel()
+	if ctx.Err() != nil || channel == nil || channel.Type != entchannel.TypeCodex || channel.Credentials.IsOAuth() ||
+		state.RawProviderRequest == nil || !responses.IsResponsesFormat(llm.APIFormat(state.RawProviderRequest.APIFormat)) {
+		return false
+	}
+	target, parseErr := url.Parse(state.RawProviderRequest.URL)
+	if parseErr != nil || target.Hostname() == "" || strings.EqualFold(target.Hostname(), "chatgpt.com") || strings.EqualFold(target.Hostname(), "api.openai.com") {
+		return false
+	}
+	code, message, param, badRequest := responsesBadRequestDetails(failure)
+	if !badRequest || !responsesResourceMismatch(code, message) {
+		return false
+	}
+	if param != "" {
+		match := responsesResourceItemIDParamPattern.FindStringSubmatch(param)
+		if len(match) != 2 {
+			return false
+		}
+		item := gjson.GetBytes(state.RawProviderRequest.Body, "input."+match[1])
+		if !item.IsObject() || item.Get("id").Type != gjson.String || item.Get("id").String() == "" {
+			return false
+		}
+	}
+	scope := responsesMetadataKey(channel.ID, state.RawProviderRequest)
+	if rememberResponsesRejectedStatusRule(state, channel.ID, responsesRejectedStatusRule{
+		index: -1, field: azureHistoryReplayField, resourceScope: &scope,
+	}) {
+		state.responsesRejectedStatusRetryChannel = channel.ID
+	}
+	return true
 }
 
 func applyAzureResponsesHistoryCompatibility(outbound *PersistentOutboundTransformer) pipeline.Middleware {
 	return pipeline.OnRawRequest("azure-responses-history-compatibility", func(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error) {
-		if request == nil || !usesAzureHistoryCompatibility(outbound.GetCurrentChannel()) ||
+		if request == nil || !usesAzureHistoryCompatibility(outbound) ||
 			!responses.IsResponsesFormat(llm.APIFormat(request.APIFormat)) {
+			return request, nil
+		}
+		scope := responsesMetadataKey(outbound.GetCurrentChannel().ID, request)
+		matched := false
+		for _, rule := range outbound.state.responsesRejectedStatusRules[scope.channelID] {
+			matched = matched || rule.fieldName() == azureHistoryReplayField && rule.resourceScope != nil && *rule.resourceScope == scope
+		}
+		if !matched {
 			return request, nil
 		}
 		if err := ctx.Err(); err != nil {

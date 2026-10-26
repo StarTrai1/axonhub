@@ -378,7 +378,7 @@ func MessageContentPartFromLLM(p llm.MessageContentPart) MessageContentPart {
 	if p.ImageURL != nil {
 		part.ImageURL = &ImageURL{
 			URL:    p.ImageURL.URL,
-			Detail: p.ImageURL.Detail,
+			Detail: chatImageDetail(p.ImageURL.Detail),
 		}
 	}
 
@@ -611,4 +611,11 @@ func toLLMLogprobs(lp *Logprobs) *llm.LogprobsContent {
 			}
 		}),
 	}
+}
+
+// Responses accepts original image detail; Chat Completions uses high as the
+// closest supported value. Preserve omission and every other client value.
+func chatImageDetail(detail *string) *string {
+	if detail != nil && *detail == "original" { return lo.ToPtr("high") }
+	return detail
 }
