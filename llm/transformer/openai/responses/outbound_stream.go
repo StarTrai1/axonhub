@@ -465,6 +465,7 @@ func (s *responsesOutboundStream) transformStreamEvent(event *httpclient.StreamE
 			s.state.toolCalls[item.CallID] = &llm.ToolCall{
 				ID:    item.CallID,
 				Type:  llm.ToolTypeResponsesCustomTool,
+				TransformerMetadata: customToolItemMetadata(item.ID),
 				Async: item.Async,
 				ResponseCustomToolCall: &llm.ResponseCustomToolCall{
 					CallID: item.CallID,
@@ -483,6 +484,7 @@ func (s *responsesOutboundStream) transformStreamEvent(event *httpclient.StreamE
 							{
 								ID:    item.CallID,
 								Type:  llm.ToolTypeResponsesCustomTool,
+								TransformerMetadata: customToolItemMetadata(item.ID),
 								Async: item.Async,
 								Index: toolCallIdx,
 								ResponseCustomToolCall: &llm.ResponseCustomToolCall{

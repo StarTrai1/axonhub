@@ -151,6 +151,21 @@ func responsesHistorySupportsRecoveryWithAgents(body []byte, preserveCompaction,
 		if item.Get("encrypted_function_args").Exists() {
 			return false, false
 		}
+		// A tool output object/string is application data, but an output array
+		// can contain protocol content parts. Inspect explicit part types only;
+		// ordinary business fields must remain opaque.
+		if itemType == "function_call_output" || itemType == "custom_tool_call_output" {
+			for _, part := range item.Get("output").Array() {
+				switch part.Get("type").String() {
+				case "encrypted_content", "item_reference":
+					return false, false
+				case "input_file":
+					if part.Get("file_id").String() != "" {
+						return false, false
+					}
+				}
+			}
+		}
 		switch itemType {
 		case "additional_tools":
 			if !item.Get("tools").IsArray() {

@@ -67,6 +67,29 @@ func TestAzureHistoryCompatibilityRejectsUnresolvedHistory(t *testing.T) {
 	}
 }
 
+func TestAzureHistoryCompatibilityDistinguishesToolDataFromProtocolParts(t *testing.T) {
+	for _, scenario := range []struct {
+		output string
+		reject bool
+	}{
+		{`{"id":"business","encrypted_content":"business","file_id":"business"}`, false},
+		{`[{"id":"business","encrypted_content":"business","file_id":"business"}]`, false},
+		{`[{"type":"input_text","text":"opaque business text"}]`, false},
+		{`[{"type":"encrypted_content","encrypted_content":"protocol cipher"}]`, true},
+		{`[{"type":"item_reference","id":"external"}]`, true},
+		{`[{"type":"input_file","file_id":"external"}]`, true},
+	} {
+		body := []byte(`{"input":[{"role":"user","content":"task"},{"type":"function_call","id":"fc_old","call_id":"call_pair","name":"exec","arguments":"{}"},{"type":"function_call_output","call_id":"call_pair","output":` + scenario.output + `}]}`)
+		result, err := azureCompatibleResponsesHistory(body)
+		if scenario.reject {
+			require.Error(t, err)
+		} else {
+			require.NoError(t, err)
+			require.Equal(t, scenario.output, gjson.GetBytes(result, "input.2.output").Raw)
+		}
+	}
+}
+
 func TestAzureHistoryCompatibilityIsOptInAndChannelScoped(t *testing.T) {
 	for _, scenario := range []string{"enabled", "disabled", "oauth", "other-channel", "other-format"} {
 		t.Run(scenario, func(t *testing.T) {

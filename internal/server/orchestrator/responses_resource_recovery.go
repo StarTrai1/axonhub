@@ -134,9 +134,6 @@ func responsesResourceHistorySupportsRecoveryWithAgents(body []byte, preserveAge
 		default:
 			return false, false
 		}
-		// Only message content uses Responses content-part semantics. Tool output
-		// is opaque application data and may legitimately contain fields named
-		// file_id or encrypted_content; never reinterpret it as protocol state.
 		if itemType == "" || itemType == "message" {
 			for _, part := range item.Get("content").Array() {
 				if part.Get("file_id").String() != "" || part.Get("encrypted_content").String() != "" ||

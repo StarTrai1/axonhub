@@ -26,3 +26,9 @@ Reviewed https://github.com/Lester0504/codex-api-compat at `fce8f0217307638a603a
 ## Validation and delivery
 
 All build/test/lint/format/tidy/code generation runs only in GitHub CI. Added pipeline first-attempt tests, opaque-history guards, storage/cache enable/disable, checkpoint summary reuse, real WebSocket full-history transport and three-width browser save/reopen/disable/a11y coverage. Exact-SHA CI checks, annotated release tag and GoReleaser start are recorded in DELIVERY.md/json. No production configuration/database edits, installation, restart or paid probe.
+
+## Key-channel continuation repair (#68661–#68662)
+
+Both requests failed once on channel 39 with invalid_id_prefix at input[35].id. Each carries 29 custom_tool_call items whose id equals call_id and starts with call_. Responses conversion used the correlation ID as output-item identity, losing the native ctc_ ID. Preserve native identity in transformer metadata for HTTP and streaming responses, including delta/done/completed events. Persisted malformed calls are repaired at final transport preparation by removing only their optional item ID; call_id and all input/output bytes remain intact. Native IDs, unknown shapes and item-reference targets remain unchanged. This repair is independent of the optional Azure history policy.
+
+CI follow-up also restores the shared guard for explicit encrypted/reference/file protocol parts in tool-output arrays while permitting arbitrary business objects and fields. The pending frontend contract correction distinguishes full policy snapshots from auto-disable-only selections.

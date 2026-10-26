@@ -13,7 +13,7 @@ import (
 )
 
 func PrepareReplayItemIDs(request *httpclient.Request) *httpclient.Request {
-	if request == nil || !bytes.Contains(request.Body, []byte("item_")) {
+	if request == nil || (!bytes.Contains(request.Body, []byte("item_")) && !bytes.Contains(request.Body, []byte("call_"))) {
 		return request
 	}
 
@@ -22,10 +22,10 @@ func PrepareReplayItemIDs(request *httpclient.Request) *httpclient.Request {
 		return request
 	}
 
+	stripSynthetic := false
 	switch strings.ToLower(target.Hostname()) {
 	case "api.openai.com", "chatgpt.com", "chat.openai.com":
-	default:
-		return request
+		stripSynthetic = true
 	}
 
 	input := gjson.GetBytes(request.Body, "input")
@@ -34,9 +34,25 @@ func PrepareReplayItemIDs(request *httpclient.Request) *httpclient.Request {
 	}
 
 	body := request.Body
+	references := make(map[string]bool)
+	for _, item := range input.Array() {
+		if item.Get("type").String() == "item_reference" {
+			references[item.Get("id").String()] = true
+		}
+	}
 	input.ForEach(func(index, item gjson.Result) bool {
 		identifier := item.Get("id")
-		if identifier.Type != gjson.String || !strings.HasPrefix(identifier.Str, "item_") || len(identifier.Str) <= len("item_") {
+		if identifier.Type != gjson.String {
+			return true
+		}
+		// Earlier converted responses reused call_id as custom-tool item ID.
+		// Repair persisted history on compatible relays as well as native hosts,
+		// but only for fully materialized calls with this exact legacy shape.
+		legacyCustom := item.Get("type").String() == "custom_tool_call" &&
+			strings.HasPrefix(identifier.Str, "call_") && len(identifier.Str) > len("call_") &&
+			identifier.Str == item.Get("call_id").String() && item.Get("name").String() != "" &&
+			item.Get("input").Type == gjson.String && !references[identifier.Str]
+		if !legacyCustom && (!stripSynthetic || !strings.HasPrefix(identifier.Str, "item_") || len(identifier.Str) <= len("item_")) {
 			return true
 		}
 
@@ -55,6 +71,9 @@ func PrepareReplayItemIDs(request *httpclient.Request) *httpclient.Request {
 
 	cloned := *request
 	cloned.Body = body
+	if len(cloned.JSONBody) > 0 {
+		cloned.JSONBody = body
+	}
 
 	return &cloned
 }

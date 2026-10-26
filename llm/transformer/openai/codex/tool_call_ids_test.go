@@ -18,6 +18,24 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
 
+func TestCodexTransportRepairsLegacyCustomItemIDs(t *testing.T) {
+	for _, transport := range []string{responses.TransportHTTP, responses.TransportWebSocket} {
+		t.Run(transport, func(t *testing.T) {
+			outbound := newTestCodexOutbound(t)
+			outbound.transport = transport
+			body := []byte(`{"input":[{"type":"custom_tool_call","id":"call_legacy","call_id":"call_legacy","name":"exec","input":"exact input"},{"type":"custom_tool_call_output","call_id":"call_legacy","output":"exact output"}]}`)
+			request := &httpclient.Request{URL: "https://relay.example/v1/responses", Body: body}
+			wire := outbound.FinalizeTransportRequest(request)
+			require.False(t, gjson.GetBytes(wire.Body, "input.0.id").Exists())
+			require.Equal(t, "call_legacy", gjson.GetBytes(wire.Body, "input.0.call_id").String())
+			require.Equal(t, "call_legacy", gjson.GetBytes(wire.Body, "input.1.call_id").String())
+			require.Equal(t, "exact input", gjson.GetBytes(wire.Body, "input.0.input").String())
+			require.Equal(t, "exact output", gjson.GetBytes(wire.Body, "input.1.output").String())
+			require.Equal(t, body, request.Body)
+		})
+	}
+}
+
 func TestCodexChatToolCallIDsPreservePairingAcrossAttempts(t *testing.T) {
 	longA := strings.Repeat("a", 70) + "A"
 	longB := strings.Repeat("a", 70) + "B"

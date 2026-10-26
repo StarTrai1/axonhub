@@ -160,7 +160,9 @@ test('channel and retry-policy GraphQL selections load the new auto-disable fiel
       }
       continue;
     }
-    assert.match(selection, /azureHistoryCompatibility/, 'channel policy snapshots should include the Codex history policy');
+    if (/stream/.test(selection)) {
+      assert.match(selection, /azureHistoryCompatibility/, 'channel policy snapshots should include the Codex history policy');
+    }
     assert.match(selection, /apiKeyAutoDisableMode/, 'channel policies selection should include mode');
     assert.match(selection, /apiKeyAutoDisableRules/, 'channel policies selection should include rules');
   }

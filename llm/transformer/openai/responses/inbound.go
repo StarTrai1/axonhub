@@ -592,6 +592,7 @@ func convertReasoningWithFollowing(items []Item, startIdx int) (*llm.Message, in
 			msg.ToolCalls = append(msg.ToolCalls, llm.ToolCall{
 				ID:    nextItem.CallID,
 				Type:  llm.ToolTypeResponsesCustomTool,
+				TransformerMetadata: customToolItemMetadata(nextItem.ID),
 				Async: nextItem.Async,
 				ResponseCustomToolCall: &llm.ResponseCustomToolCall{
 					CallID: nextItem.CallID,
@@ -717,6 +718,7 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 				{
 					ID:    item.CallID,
 					Type:  llm.ToolTypeResponsesCustomTool,
+					TransformerMetadata: customToolItemMetadata(item.ID),
 					Async: item.Async,
 					ResponseCustomToolCall: &llm.ResponseCustomToolCall{
 						CallID: item.CallID,
@@ -1443,7 +1445,7 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 					resp.Output = append(resp.Output, item)
 				} else if toolCall.ResponseCustomToolCall != nil {
 					resp.Output = append(resp.Output, Item{
-						ID:     toolCall.ID,
+						ID:     customToolItemID(toolCall),
 						Type:   "custom_tool_call",
 						CallID: toolCall.ResponseCustomToolCall.CallID,
 						Name:   toolCall.ResponseCustomToolCall.Name,

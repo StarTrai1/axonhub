@@ -967,6 +967,9 @@ func (s *responsesInboundStream) startToolCallItem(toolCallIndex int) error {
 	tc := s.toolCalls[toolCallIndex]
 
 	itemID := tc.ID
+	if tc.ResponseCustomToolCall != nil {
+		itemID = customToolItemID(*tc)
+	}
 	if itemID == "" {
 		itemID = generateItemID()
 	}
@@ -1147,7 +1150,7 @@ func (s *responsesInboundStream) handleCustomToolCallDelta(tc llm.ToolCall) erro
 	s.toolCalls[toolCallIndex].ResponseCustomToolCall.Input += tc.ResponseCustomToolCall.Input
 
 	if tc.ResponseCustomToolCall.Input != "" {
-		itemID := s.toolCalls[toolCallIndex].ID
+		itemID := customToolItemID(*s.toolCalls[toolCallIndex])
 		if itemID == "" {
 			itemID = s.currentItemID
 		}
@@ -1382,6 +1385,9 @@ func (s *responsesInboundStream) closeCurrentOutputItem() error {
 		}
 
 		itemID := tc.ID
+	if tc.ResponseCustomToolCall != nil {
+		itemID = customToolItemID(*tc)
+	}
 		if itemID == "" {
 			itemID = s.currentItemID
 		}
