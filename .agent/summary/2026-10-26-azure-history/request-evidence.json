@@ -1,0 +1,849 @@
+{
+  "snapshot": {
+    "method": "native Windows SQLite online backup from mode=ro source",
+    "quick_check": "ok",
+    "max_request": 68395,
+    "bytes": 993837056
+  },
+  "requests": [
+    {
+      "request_id": 68359,
+      "channel_id": 40,
+      "status": "canceled",
+      "latency_ms": 312793,
+      "attempts": 9,
+      "status_counts": {
+        "429": 8,
+        "400": 1
+      },
+      "executions": [
+        {
+          "id": 200754,
+          "status": "failed",
+          "http_status": 429,
+          "error_kind": "token_rate_limit",
+          "input_items": 270,
+          "input_types": {
+            "message": 130,
+            "custom_tool_call": 69,
+            "custom_tool_call_output": 69,
+            "function_call": 1,
+            "function_call_output": 1
+          },
+          "item_id_count": 3,
+          "encrypted_item_count": 0,
+          "include": [
+            "reasoning.encrypted_content"
+          ],
+          "has_previous_response_id": false,
+          "bytes": 831055
+        },
+        {
+          "id": 200755,
+          "status": "failed",
+          "http_status": 400,
+          "error_kind": "azure_resource_mismatch",
+          "input_items": 270,
+          "input_types": {
+            "message": 130,
+            "custom_tool_call": 69,
+            "custom_tool_call_output": 69,
+            "function_call": 1,
+            "function_call_output": 1
+          },
+          "item_id_count": 3,
+          "encrypted_item_count": 0,
+          "include": [
+            "reasoning.encrypted_content"
+          ],
+          "has_previous_response_id": false,
+          "bytes": 831055
+        },
+        {
+          "id": 200760,
+          "status": "failed",
+          "http_status": 429,
+          "error_kind": "token_rate_limit",
+          "input_items": 270,
+          "input_types": {
+            "message": 130,
+            "custom_tool_call": 69,
+            "custom_tool_call_output": 69,
+            "function_call": 1,
+            "function_call_output": 1
+          },
+          "item_id_count": 0,
+          "encrypted_item_count": 0,
+          "include": [
+            "reasoning.encrypted_content"
+          ],
+          "has_previous_response_id": false,
+          "bytes": 830876
+        },
+        {
+          "id": 200761,
+          "status": "failed",
+          "http_status": 429,
+          "error_kind": "token_rate_limit",
+          "input_items": 270,
+          "input_types": {
+            "message": 130,
+            "custom_tool_call": 69,
+            "custom_tool_call_output": 69,
+            "function_call": 1,
+            "function_call_output": 1
+          },
+          "item_id_count": 0,
+          "encrypted_item_count": 0,
+          "include": [
+            "reasoning.encrypted_content"
+          ],
+          "has_previous_response_id": false,
+          "bytes": 830876
+        },
+        {
+          "id": 200764,
+          "status": "failed",
+          "http_status": 429,
+          "error_kind": "token_rate_limit",
+          "input_items": 270,
+          "input_types": {
+            "message": 130,
+            "custom_tool_call": 69,
+            "custom_tool_call_output": 69,
+            "function_call": 1,
+            "function_call_output": 1
+          },
+          "item_id_count": 0,
+          "encrypted_item_count": 0,
+          "include": [
+            "reasoning.encrypted_content"
+          ],
+          "has_previous_response_id": false,
+          "bytes": 830876
+        },
+        {
+          "id": 200770,
+          "status": "failed",
+          "http_status": 429,
+          "error_kind": "token_rate_limit",
+          "input_items": 270,
+          "input_types": {
+            "message": 130,
+            "custom_tool_call": 69,
+            "custom_tool_call_output": 69,
+            "function_call": 1,
+            "function_call_output": 1
+          },
+          "item_id_count": 0,
+          "encrypted_item_count": 0,
+          "include": [
+            "reasoning.encrypted_content"
+          ],
+          "has_previous_response_id": false,
+          "bytes": 830876
+        },
+        {
+          "id": 200774,
+          "status": "failed",
+          "http_status": 429,
+          "error_kind": "token_rate_limit",
+          "input_items": 270,
+          "input_types": {
+            "message": 130,
+            "custom_tool_call": 69,
+            "custom_tool_call_output": 69,
+            "function_call": 1,
+            "function_call_output": 1
+          },
+          "item_id_count": 0,
+          "encrypted_item_count": 0,
+          "include": [
+            "reasoning.encrypted_content"
+          ],
+          "has_previous_response_id": false,
+          "bytes": 830876
+        },
+        {
+          "id": 200777,
+          "status": "failed",
+          "http_status": 429,
+          "error_kind": "token_rate_limit",
+          "input_items": 270,
+          "input_types": {
+            "message": 130,
+            "custom_tool_call": 69,
+            "custom_tool_call_output": 69,
+            "function_call": 1,
+            "function_call_output": 1
+          },
+          "item_id_count": 0,
+          "encrypted_item_count": 0,
+          "include": [
+            "reasoning.encrypted_content"
+          ],
+          "has_previous_response_id": false,
+          "bytes": 830876
+        },
+        {
+          "id": 200778,
+          "status": "failed",
+          "http_status": 429,
+          "error_kind": "token_rate_limit",
+          "input_items": 270,
+          "input_types": {
+            "message": 130,
+            "custom_tool_call": 69,
+            "custom_tool_call_output": 69,
+            "function_call": 1,
+            "function_call_output": 1
+          },
+          "item_id_count": 0,
+          "encrypted_item_count": 0,
+          "include": [
+            "reasoning.encrypted_content"
+          ],
+          "has_previous_response_id": false,
+          "bytes": 830876
+        }
+      ]
+    },
+    {
+      "request_id": 68365,
+      "channel_id": 40,
+      "status": "canceled",
+      "latency_ms": 312385,
+      "attempts": 8,
+      "status_counts": {
+        "502": 1,
+        "400": 2,
+        "429": 5
+      },
+      "executions": [
+        {
+          "id": 200782,
+          "status": "failed",
+          "http_status": 502,
+          "error_kind": "bad_gateway",
+          "input_items": 271,
+          "input_types": {
+            "message": 129,
+            "custom_tool_call": 69,
+            "custom_tool_call_output": 69,
+            "function_call": 1,
+            "function_call_output": 1,
+            "reasoning": 2
+          },
+          "item_id_count": 61,
+          "encrypted_item_count": 2,
+          "include": [
+            "reasoning.encrypted_content"
+          ],
+          "has_previous_response_id": false,
+          "bytes": 838125
+        },
+        {
+          "id": 200784,
+          "status": "failed",
+          "http_status": 400,
+          "error_kind": "azure_resource_mismatch",
+          "input_items": 271,
+          "input_types": {
+            "message": 129,
+            "custom_tool_call": 69,
+            "custom_tool_call_output": 69,
+            "function_call": 1,
+            "function_call_output": 1,
+            "reasoning": 2
+          },
+          "item_id_count": 61,
+          "encrypted_item_count": 2,
+          "include": [
+            "reasoning.encrypted_content"
+          ],
+          "has_previous_response_id": false,
+          "bytes": 838125
+        },
+        {
+          "id": 200785,
+          "status": "failed",
+          "http_status": 400,
+          "error_kind": "azure_resource_mismatch",
+          "input_items": 271,
+          "input_types": {
+            "message": 129,
+            "custom_tool_call": 69,
+            "custom_tool_call_output": 69,
+            "function_call": 1,
+            "function_call_output": 1,
+            "reasoning": 2
+          },
+          "item_id_count": 2,
+          "encrypted_item_count": 2,
+          "include": [
+            "reasoning.encrypted_content"
+          ],
+          "has_previous_response_id": false,
+          "bytes": 835088
+        },
+        {
+          "id": 200786,
+          "status": "failed",
+          "http_status": 429,
+          "error_kind": "token_rate_limit",
+          "input_items": 270,
+          "input_types": {
+            "message": 130,
+            "custom_tool_call": 69,
+            "custom_tool_call_output": 69,
+            "function_call": 1,
+            "function_call_output": 1
+          },
+          "item_id_count": 0,
+          "encrypted_item_count": 0,
+          "include": [
+            "reasoning.encrypted_content"
+          ],
+          "has_previous_response_id": false,
+          "bytes": 830876
+        },
+        {
+          "id": 200787,
+          "status": "failed",
+          "http_status": 429,
+          "error_kind": "token_rate_limit",
+          "input_items": 270,
+          "input_types": {
+            "message": 130,
+            "custom_tool_call": 69,
+            "custom_tool_call_output": 69,
+            "function_call": 1,
+            "function_call_output": 1
+          },
+          "item_id_count": 0,
+          "encrypted_item_count": 0,
+          "include": [
+            "reasoning.encrypted_content"
+          ],
+          "has_previous_response_id": false,
+          "bytes": 830876
+        },
+        {
+          "id": 200788,
+          "status": "failed",
+          "http_status": 429,
+          "error_kind": "token_rate_limit",
+          "input_items": 270,
+          "input_types": {
+            "message": 130,
+            "custom_tool_call": 69,
+            "custom_tool_call_output": 69,
+            "function_call": 1,
+            "function_call_output": 1
+          },
+          "item_id_count": 0,
+          "encrypted_item_count": 0,
+          "include": [
+            "reasoning.encrypted_content"
+          ],
+          "has_previous_response_id": false,
+          "bytes": 830876
+        },
+        {
+          "id": 200789,
+          "status": "failed",
+          "http_status": 429,
+          "error_kind": "token_rate_limit",
+          "input_items": 270,
+          "input_types": {
+            "message": 130,
+            "custom_tool_call": 69,
+            "custom_tool_call_output": 69,
+            "function_call": 1,
+            "function_call_output": 1
+          },
+          "item_id_count": 0,
+          "encrypted_item_count": 0,
+          "include": [
+            "reasoning.encrypted_content"
+          ],
+          "has_previous_response_id": false,
+          "bytes": 830876
+        },
+        {
+          "id": 200790,
+          "status": "failed",
+          "http_status": 429,
+          "error_kind": "token_rate_limit",
+          "input_items": 270,
+          "input_types": {
+            "message": 130,
+            "custom_tool_call": 69,
+            "custom_tool_call_output": 69,
+            "function_call": 1,
+            "function_call_output": 1
+          },
+          "item_id_count": 0,
+          "encrypted_item_count": 0,
+          "include": [
+            "reasoning.encrypted_content"
+          ],
+          "has_previous_response_id": false,
+          "bytes": 830876
+        }
+      ]
+    },
+    {
+      "request_id": 68366,
+      "channel_id": 40,
+      "status": "canceled",
+      "latency_ms": 312427,
+      "attempts": 11,
+      "status_counts": {
+        "400": 2,
+        "429": 8,
+        "None": 1
+      },
+      "executions": [
+        {
+          "id": 200791,
+          "status": "failed",
+          "http_status": 400,
+          "error_kind": "azure_resource_mismatch",
+          "input_items": 271,
+          "input_types": {
+            "message": 129,
+            "custom_tool_call": 69,
+            "custom_tool_call_output": 69,
+            "function_call": 1,
+            "function_call_output": 1,
+            "reasoning": 2
+          },
+          "item_id_count": 61,
+          "encrypted_item_count": 2,
+          "include": [
+            "reasoning.encrypted_content"
+          ],
+          "has_previous_response_id": false,
+          "bytes": 838125
+        },
+        {
+          "id": 200792,
+          "status": "failed",
+          "http_status": 400,
+          "error_kind": "azure_resource_mismatch",
+          "input_items": 271,
+          "input_types": {
+            "message": 129,
+            "custom_tool_call": 69,
+            "custom_tool_call_output": 69,
+            "function_call": 1,
+            "function_call_output": 1,
+            "reasoning": 2
+          },
+          "item_id_count": 2,
+          "encrypted_item_count": 2,
+          "include": [
+            "reasoning.encrypted_content"
+          ],
+          "has_previous_response_id": false,
+          "bytes": 835088
+        },
+        {
+          "id": 200793,
+          "status": "failed",
+          "http_status": 429,
+          "error_kind": "token_rate_limit",
+          "input_items": 270,
+          "input_types": {
+            "message": 130,
+            "custom_tool_call": 69,
+            "custom_tool_call_output": 69,
+            "function_call": 1,
+            "function_call_output": 1
+          },
+          "item_id_count": 0,
+          "encrypted_item_count": 0,
+          "include": [
+            "reasoning.encrypted_content"
+          ],
+          "has_previous_response_id": false,
+          "bytes": 830876
+        },
+        {
+          "id": 200794,
+          "status": "failed",
+          "http_status": 429,
+          "error_kind": "token_rate_limit",
+          "input_items": 270,
+          "input_types": {
+            "message": 130,
+            "custom_tool_call": 69,
+            "custom_tool_call_output": 69,
+            "function_call": 1,
+            "function_call_output": 1
+          },
+          "item_id_count": 0,
+          "encrypted_item_count": 0,
+          "include": [
+            "reasoning.encrypted_content"
+          ],
+          "has_previous_response_id": false,
+          "bytes": 830876
+        },
+        {
+          "id": 200795,
+          "status": "failed",
+          "http_status": 429,
+          "error_kind": "token_rate_limit",
+          "input_items": 270,
+          "input_types": {
+            "message": 130,
+            "custom_tool_call": 69,
+            "custom_tool_call_output": 69,
+            "function_call": 1,
+            "function_call_output": 1
+          },
+          "item_id_count": 0,
+          "encrypted_item_count": 0,
+          "include": [
+            "reasoning.encrypted_content"
+          ],
+          "has_previous_response_id": false,
+          "bytes": 830876
+        },
+        {
+          "id": 200796,
+          "status": "failed",
+          "http_status": 429,
+          "error_kind": "token_rate_limit",
+          "input_items": 270,
+          "input_types": {
+            "message": 130,
+            "custom_tool_call": 69,
+            "custom_tool_call_output": 69,
+            "function_call": 1,
+            "function_call_output": 1
+          },
+          "item_id_count": 0,
+          "encrypted_item_count": 0,
+          "include": [
+            "reasoning.encrypted_content"
+          ],
+          "has_previous_response_id": false,
+          "bytes": 830876
+        },
+        {
+          "id": 200797,
+          "status": "failed",
+          "http_status": 429,
+          "error_kind": "token_rate_limit",
+          "input_items": 270,
+          "input_types": {
+            "message": 130,
+            "custom_tool_call": 69,
+            "custom_tool_call_output": 69,
+            "function_call": 1,
+            "function_call_output": 1
+          },
+          "item_id_count": 0,
+          "encrypted_item_count": 0,
+          "include": [
+            "reasoning.encrypted_content"
+          ],
+          "has_previous_response_id": false,
+          "bytes": 830876
+        },
+        {
+          "id": 200798,
+          "status": "failed",
+          "http_status": 429,
+          "error_kind": "token_rate_limit",
+          "input_items": 270,
+          "input_types": {
+            "message": 130,
+            "custom_tool_call": 69,
+            "custom_tool_call_output": 69,
+            "function_call": 1,
+            "function_call_output": 1
+          },
+          "item_id_count": 0,
+          "encrypted_item_count": 0,
+          "include": [
+            "reasoning.encrypted_content"
+          ],
+          "has_previous_response_id": false,
+          "bytes": 830876
+        },
+        {
+          "id": 200799,
+          "status": "failed",
+          "http_status": 429,
+          "error_kind": "token_rate_limit",
+          "input_items": 270,
+          "input_types": {
+            "message": 130,
+            "custom_tool_call": 69,
+            "custom_tool_call_output": 69,
+            "function_call": 1,
+            "function_call_output": 1
+          },
+          "item_id_count": 0,
+          "encrypted_item_count": 0,
+          "include": [
+            "reasoning.encrypted_content"
+          ],
+          "has_previous_response_id": false,
+          "bytes": 830876
+        },
+        {
+          "id": 200800,
+          "status": "failed",
+          "http_status": 429,
+          "error_kind": "token_rate_limit",
+          "input_items": 270,
+          "input_types": {
+            "message": 130,
+            "custom_tool_call": 69,
+            "custom_tool_call_output": 69,
+            "function_call": 1,
+            "function_call_output": 1
+          },
+          "item_id_count": 0,
+          "encrypted_item_count": 0,
+          "include": [
+            "reasoning.encrypted_content"
+          ],
+          "has_previous_response_id": false,
+          "bytes": 830876
+        },
+        {
+          "id": 200801,
+          "status": "canceled",
+          "http_status": null,
+          "error_kind": "canceled",
+          "input_items": 270,
+          "input_types": {
+            "message": 130,
+            "custom_tool_call": 69,
+            "custom_tool_call_output": 69,
+            "function_call": 1,
+            "function_call_output": 1
+          },
+          "item_id_count": 0,
+          "encrypted_item_count": 0,
+          "include": [
+            "reasoning.encrypted_content"
+          ],
+          "has_previous_response_id": false,
+          "bytes": 830876
+        }
+      ]
+    },
+    {
+      "request_id": 68367,
+      "channel_id": 40,
+      "status": "canceled",
+      "latency_ms": 312385,
+      "attempts": 2,
+      "status_counts": {
+        "400": 1,
+        "None": 1
+      },
+      "executions": [
+        {
+          "id": 200802,
+          "status": "failed",
+          "http_status": 400,
+          "error_kind": "azure_resource_mismatch",
+          "input_items": 271,
+          "input_types": {
+            "message": 129,
+            "custom_tool_call": 69,
+            "custom_tool_call_output": 69,
+            "function_call": 1,
+            "function_call_output": 1,
+            "reasoning": 2
+          },
+          "item_id_count": 61,
+          "encrypted_item_count": 2,
+          "include": [
+            "reasoning.encrypted_content"
+          ],
+          "has_previous_response_id": false,
+          "bytes": 838125
+        },
+        {
+          "id": 200803,
+          "status": "canceled",
+          "http_status": null,
+          "error_kind": "canceled",
+          "input_items": 271,
+          "input_types": {
+            "message": 129,
+            "custom_tool_call": 69,
+            "custom_tool_call_output": 69,
+            "function_call": 1,
+            "function_call_output": 1,
+            "reasoning": 2
+          },
+          "item_id_count": 2,
+          "encrypted_item_count": 2,
+          "include": [
+            "reasoning.encrypted_content"
+          ],
+          "has_previous_response_id": false,
+          "bytes": 835088
+        }
+      ]
+    },
+    {
+      "request_id": 68368,
+      "channel_id": 40,
+      "status": "canceled",
+      "latency_ms": 274080,
+      "attempts": 2,
+      "status_counts": {
+        "400": 1,
+        "None": 1
+      },
+      "executions": [
+        {
+          "id": 200804,
+          "status": "failed",
+          "http_status": 400,
+          "error_kind": "azure_resource_mismatch",
+          "input_items": 271,
+          "input_types": {
+            "message": 129,
+            "custom_tool_call": 69,
+            "custom_tool_call_output": 69,
+            "function_call": 1,
+            "function_call_output": 1,
+            "reasoning": 2
+          },
+          "item_id_count": 61,
+          "encrypted_item_count": 2,
+          "include": [
+            "reasoning.encrypted_content"
+          ],
+          "has_previous_response_id": false,
+          "bytes": 838125
+        },
+        {
+          "id": 200805,
+          "status": "canceled",
+          "http_status": null,
+          "error_kind": "canceled",
+          "input_items": 271,
+          "input_types": {
+            "message": 129,
+            "custom_tool_call": 69,
+            "custom_tool_call_output": 69,
+            "function_call": 1,
+            "function_call_output": 1,
+            "reasoning": 2
+          },
+          "item_id_count": 2,
+          "encrypted_item_count": 2,
+          "include": [
+            "reasoning.encrypted_content"
+          ],
+          "has_previous_response_id": false,
+          "bytes": 835088
+        }
+      ]
+    },
+    {
+      "request_id": 68369,
+      "channel_id": 40,
+      "status": "canceled",
+      "latency_ms": 313788,
+      "attempts": 2,
+      "status_counts": {
+        "400": 1,
+        "None": 1
+      },
+      "executions": [
+        {
+          "id": 200806,
+          "status": "failed",
+          "http_status": 400,
+          "error_kind": "azure_resource_mismatch",
+          "input_items": 272,
+          "input_types": {
+            "message": 130,
+            "custom_tool_call": 69,
+            "custom_tool_call_output": 69,
+            "function_call": 1,
+            "function_call_output": 1,
+            "reasoning": 2
+          },
+          "item_id_count": 62,
+          "encrypted_item_count": 2,
+          "include": [
+            "reasoning.encrypted_content"
+          ],
+          "has_previous_response_id": false,
+          "bytes": 838453
+        },
+        {
+          "id": 200807,
+          "status": "canceled",
+          "http_status": null,
+          "error_kind": "canceled",
+          "input_items": 272,
+          "input_types": {
+            "message": 130,
+            "custom_tool_call": 69,
+            "custom_tool_call_output": 69,
+            "function_call": 1,
+            "function_call_output": 1,
+            "reasoning": 2
+          },
+          "item_id_count": 2,
+          "encrypted_item_count": 2,
+          "include": [
+            "reasoning.encrypted_content"
+          ],
+          "has_previous_response_id": false,
+          "bytes": 835366
+        }
+      ]
+    },
+    {
+      "request_id": 68370,
+      "channel_id": 40,
+      "status": "canceled",
+      "latency_ms": 119000,
+      "attempts": 1,
+      "status_counts": {
+        "None": 1
+      },
+      "executions": [
+        {
+          "id": 200808,
+          "status": "canceled",
+          "http_status": null,
+          "error_kind": "canceled",
+          "input_items": 272,
+          "input_types": {
+            "message": 130,
+            "custom_tool_call": 69,
+            "custom_tool_call_output": 69,
+            "function_call": 1,
+            "function_call_output": 1,
+            "reasoning": 2
+          },
+          "item_id_count": 62,
+          "encrypted_item_count": 2,
+          "include": [
+            "reasoning.encrypted_content"
+          ],
+          "has_previous_response_id": false,
+          "bytes": 838453
+        }
+      ]
+    }
+  ]
+}

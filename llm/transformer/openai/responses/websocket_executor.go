@@ -423,6 +423,7 @@ type webSocketLease struct {
 	once          sync.Once
 	generation    uint64
 	native        bool
+	stateless     bool
 }
 
 func (l *webSocketLease) writeJSON(value any) error {
@@ -493,6 +494,7 @@ func (e *WebSocketExecutor) acquirePreparedLease(ctx context.Context, request *h
 	}
 
 	lease.native = shared.IsResponsesWebSocket(ctx)
+	lease.stateless = request.ResponsesStateless
 	if err := prepareWebSocketPayloadForLease(payload, lease); err != nil {
 		lease.release(true)
 		var reconnectErr *webSocketReconnectRequiredError
@@ -506,6 +508,7 @@ func (e *WebSocketExecutor) acquirePreparedLease(ctx context.Context, request *h
 			return nil, err
 		}
 		lease.native = shared.IsResponsesWebSocket(ctx)
+		lease.stateless = request.ResponsesStateless
 		if err := prepareWebSocketPayloadForLease(payload, lease); err != nil {
 			lease.release(true)
 			return nil, err
@@ -1063,6 +1066,13 @@ func (e *webSocketReconnectRequiredError) Error() string {
 }
 
 func prepareWebSocketPayloadForLease(payload map[string]any, lease *webSocketLease) error {
+	if lease != nil && lease.stateless {
+		if explicitPreviousResponseID(payload) != "" {
+			return shared.ResponsesRecoveryError()
+		}
+		// Keep the complete sanitized request on reused connections too.
+		return nil
+	}
 	if explicitID := explicitPreviousResponseID(payload); explicitID != "" {
 		if lease == nil || lease.pooled == nil || !lease.reused {
 			return shared.ResponsesRecoveryError()

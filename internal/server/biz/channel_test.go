@@ -599,6 +599,7 @@ func TestChannelService_UpdateChannelRefreshesRoutingPolicyBeforeReturn(t *testi
 	updated, err := svc.UpdateChannel(ctx, created.ID, &ent.UpdateChannelInput{
 		Policies: &objects.ChannelPolicies{
 			RemoteCompaction: objects.RemoteCompactionPolicyLocalBridge,
+			AzureHistoryCompatibility: true,
 		},
 	})
 	require.NoError(t, err)
@@ -607,6 +608,16 @@ func TestChannelService_UpdateChannelRefreshesRoutingPolicyBeforeReturn(t *testi
 	cached := svc.GetEnabledChannel(created.ID)
 	require.NotNil(t, cached)
 	require.Equal(t, objects.RemoteCompactionPolicyLocalBridge, cached.Policies.EffectiveRemoteCompactionPolicy())
+	require.True(t, updated.Policies.AzureHistoryCompatibility)
+	require.True(t, cached.Policies.AzureHistoryCompatibility)
+	stored, err := client.Channel.Get(ctx, created.ID)
+	require.NoError(t, err)
+	require.True(t, stored.Policies.AzureHistoryCompatibility)
+	_, err = svc.UpdateChannel(ctx, created.ID, &ent.UpdateChannelInput{
+		Policies: &objects.ChannelPolicies{RemoteCompaction: objects.RemoteCompactionPolicyLocalBridge},
+	})
+	require.NoError(t, err)
+	require.False(t, svc.GetEnabledChannel(created.ID).Policies.AzureHistoryCompatibility)
 }
 
 func TestChannelService_UpdateChannel_PreservesManagementKeyWhenOmitted(t *testing.T) {

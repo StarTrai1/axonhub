@@ -300,6 +300,7 @@ type ChannelPolicies {
   webSearch: WebSearchPolicy
   supportsWebSearch: Boolean
   codexIdentity: CodexIdentityPolicy
+  azureHistoryCompatibility: Boolean
   apiKeyAutoDisableMode: APIKeyAutoDisableMode
   apiKeyAutoDisableRules: [APIKeyAutoDisableRule!]
 }
@@ -312,6 +313,7 @@ input ChannelPoliciesInput {
   webSearch: WebSearchPolicy
   supportsWebSearch: Boolean
   codexIdentity: CodexIdentityPolicy
+  azureHistoryCompatibility: Boolean
   apiKeyAutoDisableMode: APIKeyAutoDisableMode
   apiKeyAutoDisableRules: [APIKeyAutoDisableRuleInput!]
 }

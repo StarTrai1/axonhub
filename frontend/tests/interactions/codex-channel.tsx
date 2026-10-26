@@ -20,6 +20,10 @@ const row = channelSchema.parse({
   policies: { webSearch: 'auto' },
   supportedModels: ['gpt-6-sol', 'gpt-5.5'], defaultTestModel: 'gpt-6-sol', settings: { codexSearchOnly: false },
 });
+if (new URLSearchParams(window.location.search).get('auth') === 'third-party') {
+  row.baseURL = 'https://relay.example/v1';
+  row.credentials = { apiKeys: ['synthetic-relay-key'] };
+}
 function Fixture() {
   const {setTheme} = useTheme();
   const [open, setOpen] = useState(true);

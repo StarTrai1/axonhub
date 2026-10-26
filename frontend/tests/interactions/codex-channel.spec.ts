@@ -100,3 +100,55 @@ for (const width of [1280, 768, 390]) {
     await page.screenshot({ path: testInfo.outputPath('codex-channel-zh-dark.png') });
   });
 }
+
+for (const width of [1280, 768, 390]) {
+  test(`Azure history compatibility persists and keeps compact layout at ${width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 1100 });
+    let saved = {
+      id: 'channel-preview', createdAt: '2026-10-17T00:00:00Z', updatedAt: '2026-10-17T00:00:00Z',
+      name: 'Codex fixture', type: 'codex', status: 'enabled', baseURL: 'https://relay.example/v1',
+      credentials: { apiKeys: ['synthetic-relay-key'] }, policies: { webSearch: 'auto', azureHistoryCompatibility: false },
+      supportedModels: ['gpt-6-sol', 'gpt-5.5'], defaultTestModel: 'gpt-6-sol', settings: {},
+    };
+    const choices: boolean[] = [];
+    await page.route('**/fixture/channel', (route) => route.fulfill({ json: saved }));
+    await page.route('**/admin/graphql', async (route) => {
+      const body = route.request().postDataJSON();
+      if (body.operationName === 'UpdateChannel') {
+        choices.push(body.variables.input.policies.azureHistoryCompatibility);
+        saved = { ...saved, ...body.variables.input };
+        await route.fulfill({ json: { data: { updateChannel: saved } } });
+      } else {
+        await route.fulfill({ json: { data: { allChannelTags: [], channelDisabledAPIKeys: [], proxyPresets: [] } } });
+      }
+    });
+    await page.goto('/tests/interactions/codex-channel.html?auth=third-party');
+    const toggle = page.getByTestId('azure-history-compatibility-toggle');
+    await toggle.scrollIntoViewIfNeeded();
+    await expect(toggle).toHaveAccessibleName('Azure history compatibility');
+    await expect(toggle).toHaveAttribute('aria-checked', 'false');
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-checked', 'true');
+    const policies = page.getByTestId('codex-policy-settings');
+    expect(await policies.evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+    expect(await policies.boundingBox().then((box) => box!.height)).toBeLessThan(250);
+    await page.getByTestId('azure-history-compatibility-tip').hover();
+    await expect(page.getByRole('tooltip')).toContainText('Cannot remove upstream rate limits');
+    await page.keyboard.press('Escape');
+    await page.getByTestId('channel-submit-button').click();
+    await expect.poll(() => choices).toEqual([true]);
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await page.getByTestId('reopen-codex').click();
+    await toggle.scrollIntoViewIfNeeded();
+    await expect(toggle).toHaveAttribute('aria-checked', 'true');
+    await page.getByTestId('zh-locale').evaluate((el) => (el as HTMLButtonElement).click());
+    await page.getByTestId('dark-theme').evaluate((el) => (el as HTMLButtonElement).click());
+    await expect(toggle).toHaveAccessibleName('Azure 历史兼容');
+    await page.screenshot({ path: testInfo.outputPath('azure-history-zh-dark.png') });
+    await toggle.click();
+    await page.getByTestId('channel-submit-button').click();
+    await expect.poll(() => choices).toEqual([true, false]);
+    await page.getByTestId('reopen-codex').click();
+    await expect(toggle).toHaveAttribute('aria-checked', 'false');
+  });
+}

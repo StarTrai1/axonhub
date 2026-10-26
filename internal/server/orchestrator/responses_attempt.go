@@ -140,7 +140,8 @@ func prepareResponsesAttemptBodyWithRequest(ctx context.Context, p *PersistentOu
 		}
 	}
 	c.effective = body
-	native := shared.IsResponsesWebSocket(ctx) && target.origin.Format == string(llm.APIFormatOpenAIResponseWebSocket)
+	native := shared.IsResponsesWebSocket(ctx) && target.origin.Format == string(llm.APIFormatOpenAIResponseWebSocket) &&
+		!usesAzureHistoryCompatibility(p.GetCurrentChannel())
 	if c.complete && !native {
 		encoded, err := json.Marshal(payload)
 		if err != nil {
@@ -261,7 +262,9 @@ func prepareResponsesAttempt(ctx context.Context, p *PersistentOutboundTransform
 	if p.state.CurrentCandidate.APIFormat != "" {
 		origin.Format = p.state.CurrentCandidate.APIFormat
 	}
-	body, err := prepareResponsesAttemptBodyWithRequest(ctx, p, request, responsesAttemptTarget{origin: origin, forwardsID: forwardsResponsesID(p.wrapped)})
+	body, err := prepareResponsesAttemptBodyWithRequest(ctx, p, request, responsesAttemptTarget{
+		origin: origin, forwardsID: forwardsResponsesID(p.wrapped) && !usesAzureHistoryCompatibility(p.GetCurrentChannel()),
+	})
 	if err != nil {
 		return nil, err
 	}

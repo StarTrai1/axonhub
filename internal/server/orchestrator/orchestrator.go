@@ -385,6 +385,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		// already confirmed ID/reasoning corrections to its retained messages.
 		applyResponsesHistoryPortability(outbound),
 		applyResponsesRejectedStatusCompatibility(outbound),
+		applyAzureResponsesHistoryCompatibility(outbound),
 		agentTransport.requestMiddleware(),
 		// Remove transport-incompatible fields after pass-through and overrides,
 		// so persistence and execution observe the same provider request.

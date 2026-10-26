@@ -183,12 +183,13 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawRequest(
 	replayKey.replay = true
 	knownReplay := m.hasConfirmedRecovery(ctx, replayKey)
 	local := m.outbound.GetCurrentChannel().Policies.UsesLocalRemoteCompactionBridge()
+	azureHistory := usesAzureHistoryCompatibility(m.outbound.GetCurrentChannel())
 	portable, err := m.adapter.usesPortableCheckpoint(ctx, m.outbound.state, m.outbound.state.CurrentCandidate)
 	if err != nil {
 		return nil, &remoteCompactionPreparationError{cause: err}
 	}
-	local = local || portable
-	if local && !portable && !rejected && !known && !knownReplay {
+	local = local || portable || azureHistory
+	if local && !azureHistory && !portable && !rejected && !known && !knownReplay {
 		reader, err := m.adapter.loadNativeHistoryReader(ctx, ref, m.outbound.state.CurrentCandidate)
 		if err != nil {
 			return nil, &remoteCompactionPreparationError{cause: err}

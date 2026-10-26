@@ -60,6 +60,10 @@ type Request struct {
 	SkipInboundQueryMerge bool     `json:"-"`
 	SkipInboundHeaders    []string `json:"-"`
 
+	// ResponsesStateless prevents a WebSocket transport from replacing explicit
+	// full history with a resource-bound previous_response_id optimization.
+	ResponsesStateless bool `json:"-"`
+
 	// DetachedStreamTimeout keeps an upstream stream alive after the inbound request is
 	// canceled, bounded by this timeout. It is reserved for protocols that must drain a
 	// delayed terminal event after the client-facing stream has already completed.

@@ -487,6 +487,8 @@
   "channels.dialogs.fields.webSearchPolicy.options.other_channels.description": "独立搜索直接交给其他可用渠道；本渠道继续处理对话，并保留对话中的搜索工具。",
   "channels.dialogs.fields.webSearchPolicy.options.mcp_only.label": "仅 MCP",
   "channels.dialogs.fields.webSearchPolicy.options.mcp_only.description": "禁止独立搜索和 hosted web_search，仅保留客户端配置的 MCP 搜索工具。",
+  "channels.dialogs.fields.azureHistoryCompatibility.label": "Azure 历史兼容",
+  "channels.dialogs.fields.azureHistoryCompatibility.description": "适用于会切换 Azure 资源的第三方 Codex 渠道。使用可读历史续接，移除旧条目标识和加密推理，保留消息与工具调用。原生压缩检查点会从已保留历史生成可复用摘要，可能增加一次摘要请求；无法消除上游限流或恢复未保留的历史。",
   "channels.dialogs.fields.codexIdentityPolicy.label": "Codex 身份策略",
   "channels.dialogs.fields.codexIdentityPolicy.description": "仅对本渠道的 Codex OAuth 身份载体进行收敛；不会作用于第三方 API Key 渠道，也不会改写非身份元数据。",
   "channels.dialogs.fields.codexIdentityPolicy.options.off.label": "原样透传",

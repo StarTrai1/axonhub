@@ -227,6 +227,7 @@ export const channelPoliciesSchema = z
       .nullish()
       .transform((value) => value ?? true),
     codexIdentity: codexIdentityPolicySchema.nullish(),
+    azureHistoryCompatibility: z.boolean().optional(),
     apiKeyAutoDisableMode: z.preprocess(coerceApiKeyAutoDisableMode, apiKeyAutoDisableModeSchema.optional().nullable()),
     apiKeyAutoDisableRules: z.array(apiKeyAutoDisableRuleSchema).optional().nullable(),
   })
