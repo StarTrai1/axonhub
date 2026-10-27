@@ -341,6 +341,10 @@ jobs:
         working-directory: frontend
         run: pnpm exec playwright test --config playwright.interactions.config.ts
 
+      - name: Verify mocked Claude Code settings lifecycle
+        working-directory: frontend
+        run: pnpm exec playwright test --config playwright.mocked.config.ts
+
       - name: Upload UI regression diagnostics
         if: failure()
         uses: actions/upload-artifact@v6

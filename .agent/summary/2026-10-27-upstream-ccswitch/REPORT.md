@@ -23,4 +23,4 @@ sub2api's new Terra implementation is covered by existing model/capability/prici
 
 ## Verification and release boundary
 
-All tests/builds/lint/format/tidy/generation run only in GitHub CI. The release is fast-forward of the exact passing commit to dev, annotated tag, monitor until GoReleaser starts. Production binaries, processes, database/configuration and paid inference are outside this delivery. Check DELIVERY.md for final run URLs and release identity.
+All tests/builds/lint/format/tidy/generation run only in GitHub CI. The upstream Claude Code settings browser test is explicitly included via playwright.mocked.config.ts, with test-owned API mocks and no backend initialization; the existing interactions harness remains enabled. The release is fast-forward of the exact passing commit to dev, annotated tag, monitor until GoReleaser starts. Production binaries, processes, database/configuration and paid inference are outside this delivery. Check DELIVERY.md for final run URLs and release identity.
