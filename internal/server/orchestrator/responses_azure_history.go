@@ -53,7 +53,7 @@ func requestAzureHistoryRecovery(ctx context.Context, outbound *PersistentOutbou
 	if !badRequest || !responsesResourceMismatch(code, message) {
 		return false
 	}
-	if param != "" {
+	if param != "" && param != "input" {
 		match := responsesResourceItemIDParamPattern.FindStringSubmatch(param)
 		if len(match) != 2 {
 			return false

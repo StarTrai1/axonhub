@@ -31,6 +31,13 @@ var AllowedDailyQueryConfigs = map[DailyThroughputQueryType]DailyQueryFragmentCo
 	},
 }
 
+// isDistinctOnDialect reports whether the dialect supports PostgreSQL's
+// DISTINCT ON clause. Only PostgreSQL dialects do; other dialects fall back
+// to the ROW_NUMBER() behavior.
+func isDistinctOnDialect(dialect string) bool {
+	return dialect == "postgres" || dialect == "postgresql"
+}
+
 // getDateExpression returns the dialect-specific date expression for grouping by day.
 // The dateExpr should include the column reference (e.g., "se.created_at").
 //
@@ -91,7 +98,8 @@ func throughputCalculationSQL(seTable string) string {
 //   - offsetSeconds: timezone offset in seconds
 //   - queryType: DailyThroughputByModel or DailyThroughputByChannel
 //   - placeholder: parameter placeholder ("?" or "$1")
-//   - mode: which SQL pattern to use (ROW_NUMBER or MAX_ID)
+//   - mode: which SQL pattern to use (ROW_NUMBER, MAX_ID, or PostgreSQL DISTINCT ON).
+//     Non-PostgreSQL dialects fall back to ROW_NUMBER.
 //
 // Returns: SQL query string ready for execution
 func BuildDailyPerformanceStatsQuery(dialect string, timezone string, offsetSeconds int, queryType DailyThroughputQueryType, placeholder string, mode ThroughputQueryMode) string {
@@ -111,6 +119,11 @@ func BuildDailyPerformanceStatsQuery(dialect string, timezone string, offsetSeco
 
 	if mode == ThroughputModeMaxID {
 		return buildDailyPerformanceStatsMaxIDQuery(dateExpr, config, queryType, placeholder, joinRequests, throughputSQL)
+	}
+
+	// DISTINCT ON is PostgreSQL-only; fall back to ROW_NUMBER for other dialects.
+	if mode == ThroughputModeDistinctOn && isDistinctOnDialect(dialect) {
+		return buildDailyPerformanceStatsDistinctOnQuery(dateExpr, config, queryType, placeholder, joinRequests, throughputSQL)
 	}
 
 	return buildDailyPerformanceStatsRowNumberQuery(dateExpr, config, queryType, placeholder, joinRequests, throughputSQL)
@@ -153,6 +166,54 @@ func buildDailyPerformanceStatsRowNumberQuery(dateExpr string, config DailyQuery
 		"    FROM successful_execs se\n" +
 		"    JOIN usage_logs ul ON se.request_id = ul.request_id\n" +
 		"    WHERE se.rn = 1\n" +
+		"    GROUP BY exec_date, se." + getIDColumnName(queryType) + "\n" +
+		")\n" +
+		"SELECT date, id, tokens_count, latency_ms, ttft_ms, request_count, throughput\n" +
+		"FROM daily\n" +
+		"WHERE daily.throughput IS NOT NULL\n" +
+		"    AND daily.throughput > 0\n" +
+		"ORDER BY date DESC, throughput DESC"
+}
+
+// buildDailyPerformanceStatsDistinctOnQuery constructs the PostgreSQL
+// DISTINCT ON (request_id) version of the daily performance stats query, with
+// exact ordering request_id, created_at DESC, id DESC. The aggregation,
+// grouping, and day-level structure are identical to the ROW_NUMBER version.
+func buildDailyPerformanceStatsDistinctOnQuery(dateExpr string, config DailyQueryFragmentConfig, queryType DailyThroughputQueryType, placeholder string, joinRequests string, throughputSQL string) string {
+	return "WITH successful_execs AS (\n" +
+		"    SELECT DISTINCT ON (se.request_id)\n" +
+		"        se.request_id,\n" +
+		"        " + config.IDColumn + ",\n" +
+		"        se.metrics_latency_ms,\n" +
+		"        se.metrics_first_token_latency_ms,\n" +
+		"        se.stream,\n" +
+		"        " + dateExpr + " as exec_date\n" +
+		"    FROM request_executions se\n" +
+		joinRequests +
+		"    WHERE se.status = 'completed'\n" +
+		"        AND se.metrics_latency_ms > 0\n" +
+		"        AND se.created_at >= " + placeholder + "\n" +
+		"    ORDER BY se.request_id, se.created_at DESC, se.id DESC\n" +
+		"),\n" +
+		"daily AS (\n" +
+		"    SELECT\n" +
+		"        exec_date as date,\n" +
+		"        se." + getIDColumnName(queryType) + " as id,\n" +
+		"        SUM(ul.completion_tokens) as tokens_count,\n" +
+		"        SUM(se.metrics_latency_ms) as latency_ms,\n" +
+		"        SUM(CASE\n" +
+		"            WHEN se.metrics_first_token_latency_ms IS NOT NULL AND se.metrics_first_token_latency_ms > 0\n" +
+		"            THEN se.metrics_first_token_latency_ms\n" +
+		"            ELSE 0\n" +
+		"        END) / NULLIF(SUM(CASE\n" +
+		"            WHEN se.metrics_first_token_latency_ms IS NOT NULL AND se.metrics_first_token_latency_ms > 0\n" +
+		"            THEN 1\n" +
+		"            ELSE 0\n" +
+		"        END), 0) as ttft_ms,\n" +
+		"        COUNT(DISTINCT se.request_id) as request_count,\n" +
+		"        " + throughputSQL + " as throughput\n" +
+		"    FROM successful_execs se\n" +
+		"    JOIN usage_logs ul ON se.request_id = ul.request_id\n" +
 		"    GROUP BY exec_date, se." + getIDColumnName(queryType) + "\n" +
 		")\n" +
 		"SELECT date, id, tokens_count, latency_ms, ttft_ms, request_count, throughput\n" +

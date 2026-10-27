@@ -92,8 +92,12 @@ func (t *OutboundTransformer) transformStreamChunkWithState(
 	llmResp, nextIndex := convertGeminiToLLMResponseWithState(&resp, true, state.toolCallIndex)
 	state.toolCallIndex = nextIndex
 	for i, candidate := range resp.Candidates {
-		if candidate != nil && candidate.FinishReason == "MALFORMED_FUNCTION_CALL" && state.toolCandidates[candidate.Index] {
-			llmResp.Choices[i].FinishReason = lo.ToPtr("tool_calls")
+		if candidate != nil && state.toolCandidates[candidate.Index] {
+			if candidate.FinishReason == "MALFORMED_FUNCTION_CALL" {
+				llmResp.Choices[i].FinishReason = lo.ToPtr("tool_calls")
+			} else {
+				llmResp.Choices[i].FinishReason = convertGeminiFinishReasonToLLM(candidate.FinishReason, true)
+			}
 		}
 	}
 

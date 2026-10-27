@@ -12,6 +12,7 @@ import (
 	"sync"
 
 	"github.com/klauspost/compress/zstd"
+	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
@@ -49,9 +50,10 @@ var (
 	databasePayloadDecoderPool         sync.Pool
 )
 
-// CompressStoredPayload losslessly compresses large JSON payloads for database persistence.
+// CompressStoredPayload losslessly encodes large or JSON-NUL-containing payloads for database persistence.
 func CompressStoredPayload(raw []byte) (objects.JSONRawMessage, error) {
-	if len(raw) < databasePayloadCompressionThreshold || isCompressedStoredPayload(raw) {
+	needsEnvelope := hasJSONNulEscape(raw)
+	if (len(raw) < databasePayloadCompressionThreshold && !needsEnvelope) || isCompressedStoredPayload(raw) {
 		return objects.JSONRawMessage(raw), nil
 	}
 
@@ -73,7 +75,7 @@ func CompressStoredPayload(raw []byte) (objects.JSONRawMessage, error) {
 	compressed := zstdEncoder.EncodeAll(raw, nil)
 	databasePayloadEncoderPool.Put(zstdEncoder)
 
-	if base64.RawStdEncoding.EncodedLen(len(compressed)) >= len(raw) {
+	if !needsEnvelope && base64.RawStdEncoding.EncodedLen(len(compressed)) >= len(raw) {
 		return objects.JSONRawMessage(raw), nil
 	}
 	encoded := base64.RawStdEncoding.EncodeToString(compressed)
@@ -90,11 +92,29 @@ func CompressStoredPayload(raw []byte) (objects.JSONRawMessage, error) {
 	if err != nil {
 		return nil, fmt.Errorf("marshal compressed payload envelope: %w", err)
 	}
-	if len(envelope) >= len(raw) {
+	if !needsEnvelope && len(envelope) >= len(raw) {
 		return objects.JSONRawMessage(raw), nil
 	}
 
 	return objects.JSONRawMessage(envelope), nil
+}
+
+// PostgreSQL jsonb rejects actual U+0000 escapes. Encode the complete original
+// bytes instead of deleting text, so tool payloads and replay/cache prefixes survive.
+// Escaped backslashes followed by u0000 are ordinary text and need no envelope.
+func hasJSONNulEscape(raw []byte) bool {
+	if !bytes.Contains(raw, []byte(`\u0000`)) {
+		return false
+	}
+	for i := 0; i+1 < len(raw); i++ {
+		if raw[i] == '\\' {
+			if bytes.HasPrefix(raw[i:], []byte(`\u0000`)) {
+				return true
+			}
+			i++
+		}
+	}
+	return false
 }
 
 // DecodeStoredPayload transparently decodes payloads compressed by CompressStoredPayload.
@@ -228,7 +248,7 @@ func rawPayloadIdentity(raw []byte) (int, string) {
 }
 
 func decodeStoredRequestBodyReference(raw []byte) (databaseRequestBodyReferenceEnvelope, bool, error) {
-	if !bytes.HasPrefix(bytes.TrimSpace(raw), databaseRequestBodyReferencePrefix) {
+	if !storedPayloadHasMarker(raw, databaseRequestBodyReferencePrefix, databaseRequestBodyReferenceMarker) {
 		return databaseRequestBodyReferenceEnvelope{}, false, nil
 	}
 
@@ -305,7 +325,17 @@ func isSHA256Hex(value string) bool {
 }
 
 func isCompressedStoredPayload(raw []byte) bool {
-	return bytes.HasPrefix(bytes.TrimSpace(raw), databasePayloadEnvelopePrefix)
+	return storedPayloadHasMarker(raw, databasePayloadEnvelopePrefix, databasePayloadCodecMarker)
+}
+
+func storedPayloadHasMarker(raw, prefix []byte, marker string) bool {
+	if bytes.HasPrefix(bytes.TrimSpace(raw), prefix) {
+		return true
+	}
+	// PostgreSQL jsonb reorders object keys and adds spaces. Keep the cheap
+	// serializer-prefix path, then identify normalized envelopes by their field.
+	return bytes.Contains(raw, []byte(`"_axonhub_payload"`)) &&
+		gjson.GetBytes(raw, "_axonhub_payload").String() == marker
 }
 
 func compressStoredPayloadForDatabase(ctx context.Context, raw objects.JSONRawMessage) objects.JSONRawMessage {

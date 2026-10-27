@@ -425,7 +425,9 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 			chatReq.TransformerMetadata[TransformerMetadataKeyOutputConfigEffort] = anthropicReq.OutputConfig.Effort
 			// Preserve the explicit value (including "max") so the channel-level
 			// reasoning mapping can translate it for the selected provider.
-			chatReq.ReasoningEffort = anthropicReq.OutputConfig.Effort
+			if anthropicReq.Thinking == nil || anthropicReq.Thinking.Type != "between_tools" {
+				chatReq.ReasoningEffort = anthropicReq.OutputConfig.Effort
+			}
 		}
 
 		if format := anthropicReq.OutputConfig.Format; format != nil && format.Type == "json_schema" && len(format.Schema) > 0 {

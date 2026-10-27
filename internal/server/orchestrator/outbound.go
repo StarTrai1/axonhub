@@ -1149,7 +1149,7 @@ func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
 	}
 	if status == http.StatusTooManyRequests || status == http.StatusServiceUnavailable {
 		return !isChannelQueueError(err) && !isLocalRPMExhaustedError(err) &&
-			!p.HasAlternativeChannel() && canRetryTransientRateLimit(err)
+			(!p.HasAlternativeChannel() || status == http.StatusTooManyRequests && channelRetriesOn429(p.state.CurrentCandidate.Channel)) && canRetryTransientRateLimit(err)
 	}
 	if isRetryableTransportError(err) && p.state.CurrentCandidate.TraceSticky {
 		return !p.HasAlternativeChannel()

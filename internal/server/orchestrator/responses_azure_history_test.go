@@ -142,13 +142,16 @@ func TestAzureRecoveryPreservesInitialRequestAndScopesRetry(t *testing.T) {
 
 func TestAzureRecoveryRunsOnlyAfterResourceError(t *testing.T) {
 	for _, format := range []llm.APIFormat{llm.APIFormatOpenAIResponse, llm.APIFormatOpenAIResponseWebSocket} {
+		for _, param := range []string{"", "input", "input[0].id"} {
 		for _, repeat := range []bool{false, true} {
-			t.Run(string(format)+fmt.Sprint(repeat), func(t *testing.T) {
+			t.Run(string(format)+"/"+param+fmt.Sprint(repeat), func(t *testing.T) {
 				request := rejectedReasoningPipelineRequest(t, format)
 				request.Body = []byte(portableHistoryBefore)
-				executor := &responsesReasoningPipelineExecutor{failures: []error{resourceMismatchHTTPError()}, events: rejectedReasoningCompactionEvents()}
+				failure := resourceMismatchHTTPError()
+				failure.Body, _ = sjson.SetBytes(failure.Body, "error.param", param)
+				executor := &responsesReasoningPipelineExecutor{failures: []error{failure}, events: rejectedReasoningCompactionEvents()}
 				if repeat {
-					executor.failures = append(executor.failures, resourceMismatchHTTPError())
+					executor.failures = append(executor.failures, failure)
 				}
 				_, result, err := runRejectedReasoningPipeline(t, t.Context(), request, executor, "synthetic", true, 4,
 					func(state *PersistenceState, outbound *PersistentOutboundTransformer) pipeline.Middleware {
@@ -174,6 +177,7 @@ func TestAzureRecoveryRunsOnlyAfterResourceError(t *testing.T) {
 			})
 		}
 	}
+}
 }
 
 func TestAzureRecoveryDoesNotAuthorizeOtherFailures(t *testing.T) {
