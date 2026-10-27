@@ -2,11 +2,9 @@ package gql
 
 import (
 	"context"
-	"fmt"
-	"sort"
-	"time"
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
+	"fmt"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
@@ -16,6 +14,8 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/xtime"
 	"github.com/looplj/axonhub/internal/server/gql/qb"
 	"github.com/samber/lo"
+	"sort"
+	"time"
 )
 
 func (r *queryResolver) dailyRequestStats(ctx context.Context) ([]*DailyRequestStats, error) {

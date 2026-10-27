@@ -11,8 +11,8 @@ import (
 	"github.com/tidwall/sjson"
 
 	entchannel "github.com/looplj/axonhub/internal/ent/channel"
-	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer/shared"
 )

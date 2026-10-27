@@ -598,7 +598,7 @@ func TestChannelService_UpdateChannelRefreshesRoutingPolicyBeforeReturn(t *testi
 
 	updated, err := svc.UpdateChannel(ctx, created.ID, &ent.UpdateChannelInput{
 		Policies: &objects.ChannelPolicies{
-			RemoteCompaction:          objects.RemoteCompactionPolicyLocalBridge,
+			RemoteCompaction: objects.RemoteCompactionPolicyLocalBridge,
 		},
 	})
 	require.NoError(t, err)
@@ -609,6 +609,7 @@ func TestChannelService_UpdateChannelRefreshesRoutingPolicyBeforeReturn(t *testi
 	require.Equal(t, objects.RemoteCompactionPolicyLocalBridge, cached.Policies.EffectiveRemoteCompactionPolicy())
 	stored, err := client.Channel.Get(ctx, created.ID)
 	require.NoError(t, err)
+	require.Equal(t, objects.RemoteCompactionPolicyLocalBridge, stored.Policies.EffectiveRemoteCompactionPolicy())
 	_, err = svc.UpdateChannel(ctx, created.ID, &ent.UpdateChannelInput{
 		Policies: &objects.ChannelPolicies{RemoteCompaction: objects.RemoteCompactionPolicyLocalBridge},
 	})

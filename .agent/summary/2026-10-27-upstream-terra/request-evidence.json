@@ -1,0 +1,50 @@
+[
+  {
+    "id": 201837,
+    "request_id": 68865,
+    "channel_id": 40,
+    "error_message": "Invalid 'input[32].id': 'item_9LAvofCOR76ckkeR'. Expected an ID that begins with 'rs'.",
+    "response_status_code": 400,
+    "pass_through_applied": 1,
+    "bad_reasoning_count": 26,
+    "first_index": 32,
+    "encrypted_bad_count": 0,
+    "native_reasoning_count": 5
+  },
+  {
+    "id": 201846,
+    "request_id": 68868,
+    "channel_id": 40,
+    "error_message": "upstream error",
+    "response_status_code": 502,
+    "pass_through_applied": 1,
+    "bad_reasoning_count": 26,
+    "first_index": 32,
+    "encrypted_bad_count": 0,
+    "native_reasoning_count": 5
+  },
+  {
+    "id": 201847,
+    "request_id": 68868,
+    "channel_id": 40,
+    "error_message": "Invalid 'input[32].id': 'item_9LAvofCOR76ckkeR'. Expected an ID that begins with 'rs'.",
+    "response_status_code": 400,
+    "pass_through_applied": 1,
+    "bad_reasoning_count": 26,
+    "first_index": 32,
+    "encrypted_bad_count": 0,
+    "native_reasoning_count": 5
+  },
+  {
+    "id": 201848,
+    "request_id": 68869,
+    "channel_id": 40,
+    "error_message": "Invalid 'input[32].id': 'item_9LAvofCOR76ckkeR'. Expected an ID that begins with 'rs'.",
+    "response_status_code": 400,
+    "pass_through_applied": 1,
+    "bad_reasoning_count": 26,
+    "first_index": 32,
+    "encrypted_bad_count": 0,
+    "native_reasoning_count": 5
+  }
+]

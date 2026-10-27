@@ -13,3 +13,5 @@
 - Validation pending CI. Legacy Go policy tombstone must be removed after CI GraphQL generation artifact is applied.
 
 - CI1 c65228f1: Build/Docker/Govulncheck passed; generation exposed an upstream standalone helper being removed by gqlgen, and lint exposed a test for a daily query entrypoint previously replaced by this fork. Moved private dashboard helpers outside generated resolvers and retained the live query tie-break regression. Updated protocol tests for the requested one-step Azure recovery, asserting full source reaches the summary and newly accepted ciphertext remains on the next turn. Kept the pre-existing Astra Chat behavior outside this Terra change.
+
+- CI3 35f4542e: Build/Docker/Govulncheck and protocol/Windows/LLM checks passed. Remaining backend test compile error was a now-unused storage snapshot variable; restore a meaningful RemoteCompaction persistence assertion. Applied generated-source-differences artifact from Test40453337071 (GraphQL removal and formatting), then removed the legacy Go field. Added old JSON true -> unchanged initial request regression.

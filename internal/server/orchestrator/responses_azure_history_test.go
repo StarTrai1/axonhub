@@ -100,6 +100,9 @@ func markAzureRecovery(t *testing.T, outbound *PersistentOutboundTransformer, re
 
 func TestAzureRecoveryPreservesInitialRequestAndScopesRetry(t *testing.T) {
 	outbound, request := portableHistoryOutbound(nil, nil)
+	// Old database/cache JSON cannot revive a removed channel-wide policy.
+	require.NoError(t, json.Unmarshal([]byte(`{"azureHistoryCompatibility":true}`), &outbound.GetCurrentChannel().Policies))
+
 	middleware := applyAzureResponsesHistoryCompatibility(outbound)
 	initial, err := middleware.OnOutboundRawRequest(t.Context(), request)
 	require.NoError(t, err)
@@ -111,9 +114,12 @@ func TestAzureRecoveryPreservesInitialRequestAndScopesRetry(t *testing.T) {
 			retry.Headers = request.Headers.Clone()
 			retry.JSONBody = retry.Body
 			switch change {
-			case "url": retry.URL += "/other"
-			case "model": retry.Body, err = sjson.SetBytes(retry.Body, "model", "other")
-			case "credential": retry.Headers.Set("Authorization", "Bearer other")
+			case "url":
+				retry.URL += "/other"
+			case "model":
+				retry.Body, err = sjson.SetBytes(retry.Body, "model", "other")
+			case "credential":
+				retry.Headers.Set("Authorization", "Bearer other")
 			}
 			require.NoError(t, err)
 			result, err := middleware.OnOutboundRawRequest(t.Context(), &retry)
@@ -123,7 +129,9 @@ func TestAzureRecoveryPreservesInitialRequestAndScopesRetry(t *testing.T) {
 				require.Equal(t, result.Body, result.JSONBody)
 				require.Empty(t, result.Headers.Get(codexTurnStateHeader))
 				require.True(t, result.ResponsesStateless)
-			} else { require.Same(t, &retry, result) }
+			} else {
+				require.Same(t, &retry, result)
+			}
 		})
 	}
 	next, fresh := portableHistoryOutbound(nil, nil)
@@ -139,17 +147,30 @@ func TestAzureRecoveryRunsOnlyAfterResourceError(t *testing.T) {
 				request := rejectedReasoningPipelineRequest(t, format)
 				request.Body = []byte(portableHistoryBefore)
 				executor := &responsesReasoningPipelineExecutor{failures: []error{resourceMismatchHTTPError()}, events: rejectedReasoningCompactionEvents()}
-				if repeat { executor.failures = append(executor.failures, resourceMismatchHTTPError()) }
+				if repeat {
+					executor.failures = append(executor.failures, resourceMismatchHTTPError())
+				}
 				_, result, err := runRejectedReasoningPipeline(t, t.Context(), request, executor, "synthetic", true, 4,
 					func(state *PersistenceState, outbound *PersistentOutboundTransformer) pipeline.Middleware {
 						state.ChannelModelsCandidates[0].Channel.Credentials = objects.ChannelCredentials{APIKey: "synthetic"}
-						return pipeline.OnRawRequest("relay-target", func(_ context.Context, req *httpclient.Request) (*httpclient.Request, error) { req.URL = "https://relay.example/v1/responses"; return req, nil })
+						return pipeline.OnRawRequest("relay-target", func(_ context.Context, req *httpclient.Request) (*httpclient.Request, error) {
+							req.URL = "https://relay.example/v1/responses"
+							return req, nil
+						})
 					},
-					func(_ *PersistenceState, outbound *PersistentOutboundTransformer) pipeline.Middleware { return applyAzureResponsesHistoryCompatibility(outbound) })
+					func(_ *PersistenceState, outbound *PersistentOutboundTransformer) pipeline.Middleware {
+						return applyAzureResponsesHistoryCompatibility(outbound)
+					})
 				require.Len(t, executor.requests, 2, "one recovery even when the provider rejects it again")
 				require.JSONEq(t, gjson.Get(portableHistoryBefore, "input").Raw, gjson.GetBytes(executor.requests[0].Body, "input").Raw)
 				require.JSONEq(t, gjson.Get(portableHistoryAfter, "input").Raw, gjson.GetBytes(executor.requests[1].Body, "input").Raw)
-				if repeat { require.Error(t, err); require.Nil(t, result) } else { require.NoError(t, err); drainRejectedReasoningPipeline(t, result) }
+				if repeat {
+					require.Error(t, err)
+					require.Nil(t, result)
+				} else {
+					require.NoError(t, err)
+					drainRejectedReasoningPipeline(t, result)
+				}
 			})
 		}
 	}
@@ -163,13 +184,22 @@ func TestAzureRecoveryDoesNotAuthorizeOtherFailures(t *testing.T) {
 			failure := resourceMismatchHTTPError()
 			ctx := t.Context()
 			switch scenario {
-			case "500": failure.StatusCode = 500
-			case "unrelated": failure.Body = []byte(`{"error":{"message":"different Azure resource"}}`)
-			case "oauth": outbound.GetCurrentChannel().Credentials = objects.ChannelCredentials{APIKey: `{"access_token":"synthetic"}`}
-			case "other-channel": outbound.GetCurrentChannel().Type = entchannel.TypeOpenai
-			case "other-format": request.APIFormat = string(llm.APIFormatOpenAIChatCompletion)
-			case "canceled": var cancel context.CancelFunc; ctx, cancel = context.WithCancel(ctx); cancel()
-			case "bad-param": failure.Body, _ = sjson.SetBytes(failure.Body, "error.param", "previous_response_id")
+			case "500":
+				failure.StatusCode = 500
+			case "unrelated":
+				failure.Body = []byte(`{"error":{"message":"different Azure resource"}}`)
+			case "oauth":
+				outbound.GetCurrentChannel().Credentials = objects.ChannelCredentials{APIKey: `{"access_token":"synthetic"}`}
+			case "other-channel":
+				outbound.GetCurrentChannel().Type = entchannel.TypeOpenai
+			case "other-format":
+				request.APIFormat = string(llm.APIFormatOpenAIChatCompletion)
+			case "canceled":
+				var cancel context.CancelFunc
+				ctx, cancel = context.WithCancel(ctx)
+				cancel()
+			case "bad-param":
+				failure.Body, _ = sjson.SetBytes(failure.Body, "error.param", "previous_response_id")
 			}
 			require.False(t, requestAzureHistoryRecovery(ctx, outbound, failure))
 			require.False(t, usesAzureHistoryCompatibility(outbound))
@@ -191,23 +221,30 @@ func TestAzureRecoveryFailureDoesNotMutateRequest(t *testing.T) {
 }
 
 func TestAzureRecoveryMaterializesCheckpointOnlyAfterRejection(t *testing.T) {
- ctx, client, apiKey, adapter := rejectedCompactionStorage(t)
- seedRejectedCompactionSource(t, ctx, client, apiKey, "completed", "native-checkpoint-ciphertext")
- executor := &rejectedCompactionBridgeExecutor{}
- req := rejectedCompactionPipelineRequest(t, llm.APIFormatOpenAIResponse)
- _, result, err := runRejectedReasoningPipeline(t, ctx, req, executor, "native-bridge-credential", true, 2,
-  func(state *PersistenceState, outbound *PersistentOutboundTransformer) pipeline.Middleware {
-   state.APIKey = apiKey
-   state.ChannelModelsCandidates[0].Channel.Credentials = objects.ChannelCredentials{APIKey: "native-bridge-credential"}
-   return pipeline.OnRawRequest("relay-target", func(_ context.Context, req *httpclient.Request) (*httpclient.Request, error) { req.URL = "https://relay.example/v1/responses"; return req, nil })
-  },
-  func(_ *PersistenceState, outbound *PersistentOutboundTransformer) pipeline.Middleware { return recoverRejectedRemoteCompaction(outbound, adapter, executor) },
-  func(_ *PersistenceState, outbound *PersistentOutboundTransformer) pipeline.Middleware { return applyAzureResponsesHistoryCompatibility(outbound) })
- require.NoError(t, err)
- drainRejectedReasoningPipeline(t, result)
- require.Len(t, executor.continuations, 2)
- require.Len(t, executor.summaries, 1)
- require.True(t, gjson.GetBytes(executor.continuations[0], `input.#(type=="compaction")`).Exists())
- require.False(t, gjson.GetBytes(executor.continuations[1], `input.#(type=="compaction")`).Exists())
- require.Contains(t, string(executor.continuations[1]), "verified retained source summary")
+	ctx, client, apiKey, adapter := rejectedCompactionStorage(t)
+	seedRejectedCompactionSource(t, ctx, client, apiKey, "completed", "native-checkpoint-ciphertext")
+	executor := &rejectedCompactionBridgeExecutor{}
+	req := rejectedCompactionPipelineRequest(t, llm.APIFormatOpenAIResponse)
+	_, result, err := runRejectedReasoningPipeline(t, ctx, req, executor, "native-bridge-credential", true, 2,
+		func(state *PersistenceState, outbound *PersistentOutboundTransformer) pipeline.Middleware {
+			state.APIKey = apiKey
+			state.ChannelModelsCandidates[0].Channel.Credentials = objects.ChannelCredentials{APIKey: "native-bridge-credential"}
+			return pipeline.OnRawRequest("relay-target", func(_ context.Context, req *httpclient.Request) (*httpclient.Request, error) {
+				req.URL = "https://relay.example/v1/responses"
+				return req, nil
+			})
+		},
+		func(_ *PersistenceState, outbound *PersistentOutboundTransformer) pipeline.Middleware {
+			return recoverRejectedRemoteCompaction(outbound, adapter, executor)
+		},
+		func(_ *PersistenceState, outbound *PersistentOutboundTransformer) pipeline.Middleware {
+			return applyAzureResponsesHistoryCompatibility(outbound)
+		})
+	require.NoError(t, err)
+	drainRejectedReasoningPipeline(t, result)
+	require.Len(t, executor.continuations, 2)
+	require.Len(t, executor.summaries, 1)
+	require.True(t, gjson.GetBytes(executor.continuations[0], `input.#(type=="compaction")`).Exists())
+	require.False(t, gjson.GetBytes(executor.continuations[1], `input.#(type=="compaction")`).Exists())
+	require.Contains(t, string(executor.continuations[1]), "verified retained source summary")
 }

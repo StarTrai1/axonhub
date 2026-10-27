@@ -616,6 +616,8 @@ func toLLMLogprobs(lp *Logprobs) *llm.LogprobsContent {
 // Responses accepts original image detail; Chat Completions uses high as the
 // closest supported value. Preserve omission and every other client value.
 func chatImageDetail(detail *string) *string {
-	if detail != nil && *detail == "original" { return lo.ToPtr("high") }
+	if detail != nil && *detail == "original" {
+		return lo.ToPtr("high")
+	}
 	return detail
 }

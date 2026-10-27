@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
 	"entgo.io/ent/dialect/sql"
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/looplj/axonhub/internal/authz"
@@ -342,7 +343,6 @@ func (r *queryResolver) DailyRequestStats(ctx context.Context) ([]*DailyRequestS
 	return cachedDashboardQuery(ctx, key, dashboardCacheTTL, r.dailyRequestStats)
 }
 
-
 // TopRequestsProjects is the resolver for the topRequestsProjects field.
 // Note: Uses usage_logs table for project-level request statistics.
 // Provides result-only request counts per project.
@@ -637,8 +637,6 @@ func (r *queryResolver) ChannelSuccessRates(ctx context.Context, timeWindow *str
 	})
 }
 
-
-
 // FastestChannels is the resolver for the fastestChannels field.
 // Returns the fastest channels by throughput (tokens per second) based on completed request executions.
 // Groups by channel_id and calculates throughput from usage_log.completion_tokens and request_execution.metrics_latency_ms.
@@ -657,7 +655,6 @@ func (r *queryResolver) FastestChannels(ctx context.Context, input FastestChanne
 		return r.fastestChannels(ctx, input)
 	})
 }
-
 
 // FastestModels is the resolver for the fastestModels field.
 // Returns the fastest models by throughput (tokens per second) based on completed request executions.
@@ -678,7 +675,6 @@ func (r *queryResolver) FastestModels(ctx context.Context, input FastestChannels
 	})
 }
 
-
 // ModelPerformanceStats is the resolver for the modelPerformanceStats field.
 // Returns daily performance statistics for the top models over the last 30 days.
 // Aggregates by date and model_id, calculating throughput (tokens per second).
@@ -694,7 +690,6 @@ func (r *queryResolver) ModelPerformanceStats(ctx context.Context) ([]*ModelPerf
 	return cachedDashboardQuery(ctx, key, dashboardSlowCacheTTL, r.modelPerformanceStats)
 }
 
-
 // ChannelPerformanceStats is the resolver for the channelPerformanceStats field.
 func (r *queryResolver) ChannelPerformanceStats(ctx context.Context) ([]*ChannelPerformanceStat, error) {
 	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
@@ -706,7 +701,6 @@ func (r *queryResolver) ChannelPerformanceStats(ctx context.Context) ([]*Channel
 
 	return cachedDashboardQuery(ctx, key, dashboardSlowCacheTTL, r.channelPerformanceStats)
 }
-
 
 // TokenStatsByChannel is the resolver for the tokenStatsByChannel field.
 func (r *queryResolver) TokenStatsByChannel(ctx context.Context, timeWindow *string) ([]*TokenStatsByChannel, error) {
