@@ -568,7 +568,6 @@ func (s *responsesInboundStream) handleReasoningContent(content *string, metadat
 }
 
 func (s *responsesInboundStream) emitReasoningContent(content *string, sourceID string) error {
-
 	if err := s.ensureReasoningItemStarted(sourceID); err != nil {
 		return err
 	}

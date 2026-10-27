@@ -1,10 +1,12 @@
 package openai
 
 import (
-	"github.com/looplj/axonhub/llm"
+	"testing"
+
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
-	"testing"
+
+	"github.com/looplj/axonhub/llm"
 )
 
 func TestChatImageDetailPreservesClientSelection(t *testing.T) {

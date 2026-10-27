@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
@@ -82,7 +83,7 @@ func TestResponsesProtocolCompactionRelayDeltaKeepsNativeCachePrefix(t *testing.
 				policy := handlers.SystemService.RetryPolicyOrDefault(ctx)
 				policy.Enabled, policy.MaxChannelRetries, policy.MaxSingleChannelRetries, policy.RetryDelayMs = true, 0, 3, 0
 				require.NoError(t, handlers.SystemService.SetRetryPolicy(ctx, policy))
-				gateway := responsesIntegrationGateway(t, client, handlers, project)
+				gateway := responsesIntegrationGateway(t, client, handlers, project, 10*time.Second)
 				metadata := `"client_metadata":{"thread_id":"native-cache-thread","x-codex-window-id":"native-cache-window"}`
 				root := `{"model":"gpt-6-astra","stream":false,` + metadata + `,"input":[{"role":"user","content":"source-archive-canary"},{"type":"compaction_trigger"}]}`
 				status, checkpoint := responsesIntegrationPost(t, gateway, "/v1/responses", root)
@@ -134,7 +135,6 @@ func TestResponsesProtocolCompactionRelayDeltaKeepsNativeCachePrefix(t *testing.
 				require.Equal(t, "rs_fresh", gjson.GetBytes(last, `input.#(type=="reasoning").id`).String(), "the next request keeps newly accepted reasoning")
 				require.Equal(t, "fresh-native-ciphertext", gjson.GetBytes(last, `input.#(type=="reasoning").encrypted_content`).String())
 				require.Equal(t, "ct_next", gjson.GetBytes(last, `input.#(call_id=="call_next").id`).String())
-
 			})
 		}
 	}

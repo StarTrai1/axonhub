@@ -2,9 +2,14 @@ package gql
 
 import (
 	"context"
+	"fmt"
+	"sort"
+	"time"
+
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
-	"fmt"
+	"github.com/samber/lo"
+
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
@@ -13,9 +18,6 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xtime"
 	"github.com/looplj/axonhub/internal/server/gql/qb"
-	"github.com/samber/lo"
-	"sort"
-	"time"
 )
 
 func (r *queryResolver) dailyRequestStats(ctx context.Context) ([]*DailyRequestStats, error) {
@@ -427,9 +429,7 @@ func (r *queryResolver) fastestModels(ctx context.Context, input FastestChannels
 	// Build query with dialect-aware timestamp placeholder
 	// Fetch more items than needed to allow confidence-based filtering
 	sqlLimit := *input.Limit * 4
-	if sqlLimit < 20 {
-		sqlLimit = 20
-	}
+	sqlLimit = max(sqlLimit, 20)
 
 	query := qb.BuildThroughputQuery(
 		useDollarPlaceholders,

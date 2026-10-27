@@ -418,6 +418,7 @@ func TestChannelService_CreateChannel(t *testing.T) {
 		})
 	}
 }
+
 func TestChannelService_CommandCodeRequiresHTTPS(t *testing.T) {
 	svc, client := setupTestChannelService(t)
 	defer client.Close()
