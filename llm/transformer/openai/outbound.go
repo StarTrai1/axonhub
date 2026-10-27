@@ -183,7 +183,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	}
 
 	// These models require Responses for tools, including replayed calls.
-	if llmReq.Model == "gpt-6.1-sol" || llmReq.Model == "gpt-6.1-terra" || llmReq.Model == "gpt-6-astra" {
+	if llmReq.Model == "gpt-6.1-sol" || llmReq.Model == "gpt-6.1-terra" {
 		hasTools := len(llmReq.Tools) > 0
 		for _, message := range llmReq.Messages {
 			hasTools = hasTools || len(message.ToolCalls) > 0 || message.Role == "tool"

@@ -100,4 +100,3 @@ for (const width of [1280, 768, 390]) {
     await page.screenshot({ path: testInfo.outputPath('codex-channel-zh-dark.png') });
   });
 }
-

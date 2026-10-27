@@ -280,3 +280,11 @@ explicit custom key is preserved and an omitted key is not synthesized. Client
 metadata patches are composed by Codex before transmission; AxonHub forwards the
 resulting metadata. The CI compatibility matrix includes the real 0.164.0 CLI
 against local synthetic upstreams; it makes no paid provider calls.
+
+### GPT-6.1 Terra and resource recovery
+
+`gpt-6.1-terra` supports `none`, `low`, `medium` (default), `high`, `xhigh`, and `max`. Use a Responses channel for tool calls; Chat Completions supports text requests but cannot carry this model's tool calls. The gateway retains `none`, normalizes legacy `minimal` to `low`, and keeps the original reasoning prefix when applying `configuration_update` items. The `gpt-6.1-terra-fast` alias selects the same model with the priority service tier.
+
+The bundled model catalog uses Standard prices of $1 input, $0.05 cached input, $1.25 cache write (30 minutes), and $5 output per million tokens. Requests exceeding 272,000 input tokens use twice the input/cache prices and 1.5 times the output price for the whole request. Fast costs twice Standard. A 12-hour cache write is $2.50 per million tokens before long-context or tier adjustments; configure matching channel prices when using that retention. See the [official model page](https://developers.openai.com/api/docs/models/gpt-6.1-terra).
+
+Azure history compatibility is now automatic for an explicit resource-mismatch rejection from a third-party Codex channel. The channel-wide switch has been removed and old saved values are ignored. The initial attempt retains native history; a rejected request can retry once with readable retained history. Native checkpoints may require a retained-history summary request. This correction does not become a policy that strips IDs and encrypted reasoning from later requests, and it does not change `prompt_cache_key` or relax retry budgets. Missing retained history returns an error instead of silently dropping context.

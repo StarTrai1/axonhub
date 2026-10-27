@@ -189,3 +189,25 @@ func TestAzureRecoveryFailureDoesNotMutateRequest(t *testing.T) {
 	require.True(t, json.Valid(request.Body))
 	require.Equal(t, "missing", gjson.GetBytes(request.Body, "previous_response_id").String())
 }
+
+func TestAzureRecoveryMaterializesCheckpointOnlyAfterRejection(t *testing.T) {
+ ctx, client, apiKey, adapter := rejectedCompactionStorage(t)
+ seedRejectedCompactionSource(t, ctx, client, apiKey, "completed", "native-checkpoint-ciphertext")
+ executor := &rejectedCompactionBridgeExecutor{}
+ req := rejectedCompactionPipelineRequest(t, llm.APIFormatOpenAIResponse)
+ _, result, err := runRejectedReasoningPipeline(t, ctx, req, executor, "native-bridge-credential", true, 2,
+  func(state *PersistenceState, outbound *PersistentOutboundTransformer) pipeline.Middleware {
+   state.APIKey = apiKey
+   state.ChannelModelsCandidates[0].Channel.Credentials = objects.ChannelCredentials{APIKey: "native-bridge-credential"}
+   return pipeline.OnRawRequest("relay-target", func(_ context.Context, req *httpclient.Request) (*httpclient.Request, error) { req.URL = "https://relay.example/v1/responses"; return req, nil })
+  },
+  func(_ *PersistenceState, outbound *PersistentOutboundTransformer) pipeline.Middleware { return recoverRejectedRemoteCompaction(outbound, adapter, executor) },
+  func(_ *PersistenceState, outbound *PersistentOutboundTransformer) pipeline.Middleware { return applyAzureResponsesHistoryCompatibility(outbound) })
+ require.NoError(t, err)
+ drainRejectedReasoningPipeline(t, result)
+ require.Len(t, executor.continuations, 2)
+ require.Len(t, executor.summaries, 1)
+ require.True(t, gjson.GetBytes(executor.continuations[0], `input.#(type=="compaction")`).Exists())
+ require.False(t, gjson.GetBytes(executor.continuations[1], `input.#(type=="compaction")`).Exists())
+ require.Contains(t, string(executor.continuations[1]), "verified retained source summary")
+}

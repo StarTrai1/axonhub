@@ -24,7 +24,7 @@ func TestResponsesProtocolCompactionRelayDeltaKeepsNativeCachePrefix(t *testing.
 			t.Run(fmt.Sprintf("%s/second-rejection=%s", downstream, rejection), func(t *testing.T) {
 				rejectCheckpoint := rejection != "none"
 				var mu sync.Mutex
-				var deltaBodies [][]byte
+				var deltaBodies, summaryBodies [][]byte
 				var summaryCalls, nextCalls int
 				upstream := responsesIntegrationServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					body, err := readRequestBody(r)
@@ -40,6 +40,7 @@ func TestResponsesProtocolCompactionRelayDeltaKeepsNativeCachePrefix(t *testing.
 					switch {
 					case bytes.Contains(body, []byte("CONTEXT CHECKPOINT COMPACTION")):
 						summaryCalls++
+						summaryBodies = append(summaryBodies, body)
 						responseID, cached = "resp_summary", 0
 						output = `[{"type":"message","id":"msg_summary","role":"assistant","content":[{"type":"output_text","text":"verified-source-summary"}]}]`
 					case gjson.GetBytes(body, `input.#(type=="compaction_trigger")`).Exists():
@@ -67,7 +68,7 @@ func TestResponsesProtocolCompactionRelayDeltaKeepsNativeCachePrefix(t *testing.
 							return
 						}
 						responseID = "resp_delta"
-						output = `[{"type":"custom_tool_call","id":"ct_next","call_id":"call_next","name":"inspect","input":"next-command"}]`
+						output = `[{"type":"reasoning","id":"rs_fresh","encrypted_content":"fresh-native-ciphertext","summary":[]},{"type":"custom_tool_call","id":"ct_next","call_id":"call_next","name":"inspect","input":"next-command"}]`
 					}
 					w.Header().Set("Content-Type", "text/event-stream")
 					_, _ = fmt.Fprintf(w, "data: {\"type\":\"response.completed\",\"response\":{\"id\":%q,\"object\":\"response\",\"model\":\"gpt-6-astra\",\"status\":\"completed\",\"output\":%s,\"usage\":{\"input_tokens\":10100,\"input_tokens_details\":{\"cached_tokens\":%d},\"output_tokens\":10,\"total_tokens\":10110}}}\n\n", responseID, output, cached)
@@ -111,37 +112,29 @@ func TestResponsesProtocolCompactionRelayDeltaKeepsNativeCachePrefix(t *testing.
 				}
 				mu.Lock()
 				defer mu.Unlock()
-				wantSummaries := 0
-				if rejectCheckpoint {
-					wantSummaries = 1
-				}
-				require.Equal(t, wantSummaries, summaryCalls)
+				require.Equal(t, 1, summaryCalls, "one resource repair replaces the rejected checkpoint")
+				require.Contains(t, string(summaryBodies[0]), "source-archive-canary")
 				require.Equal(t, 1, nextCalls)
-				require.Len(t, deltaBodies, 3+wantSummaries)
-				var expected map[string]any
-				require.NoError(t, json.Unmarshal(deltaBodies[0], &expected))
-				for _, value := range expected["input"].([]any) {
-					item := value.(map[string]any)
-					if item["type"] != "compaction" {
-						delete(item, "id")
-					}
-				}
-				encoded, err := json.Marshal(expected)
-				require.NoError(t, err)
-				require.JSONEq(t, string(encoded), string(deltaBodies[1]), "first recovery changes only optional IDs, preserving all ciphertext and context")
+				require.Len(t, deltaBodies, 3)
+				require.Contains(t, string(deltaBodies[0]), "native_reasoning_ciphertext", "initial native history is unchanged")
+				require.Contains(t, string(deltaBodies[0]), "native-checkpoint-ciphertext")
 				for _, body := range deltaBodies {
-					require.Contains(t, string(body), "native_reasoning_ciphertext")
 					require.Contains(t, string(body), "tool-output-canary")
 					require.Contains(t, string(body), "first-delta-canary")
 					require.Equal(t, "stable-cache", gjson.GetBytes(body, "prompt_cache_key").String())
 					require.False(t, gjson.GetBytes(body, "previous_response_id").Exists())
 				}
-				last := deltaBodies[len(deltaBodies)-1]
-				require.Equal(t, !rejectCheckpoint, gjson.GetBytes(last, `input.#(type=="compaction")`).Exists())
-				if rejectCheckpoint {
-					require.Contains(t, string(last), "verified-source-summary")
-					require.NotContains(t, string(last), "source-archive-canary")
+				for _, body := range deltaBodies[1:] {
+					require.False(t, gjson.GetBytes(body, `input.#(type=="compaction")`).Exists())
+					require.Contains(t, string(body), "verified-source-summary")
+					require.NotContains(t, string(body), "source-archive-canary")
+					require.NotContains(t, string(body), "native_reasoning_ciphertext")
 				}
+				last := deltaBodies[2]
+				require.Equal(t, "rs_fresh", gjson.GetBytes(last, `input.#(type=="reasoning").id`).String(), "the next request keeps newly accepted reasoning")
+				require.Equal(t, "fresh-native-ciphertext", gjson.GetBytes(last, `input.#(type=="reasoning").encrypted_content`).String())
+				require.Equal(t, "ct_next", gjson.GetBytes(last, `input.#(call_id=="call_next").id`).String())
+
 			})
 		}
 	}

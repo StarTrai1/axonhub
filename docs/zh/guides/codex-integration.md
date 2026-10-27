@@ -220,3 +220,11 @@ Token 上限及其他未完成原因仍按失败处理。
 可选的 `prompt_cache_key` 与 `Session-Id` 相互独立：显式自定义键原样保留，
 省略时不补造缓存键。客户端 metadata 补丁由 Codex 合并后发送，AxonHub 转发其结果。
 CI 兼容矩阵包含真实 0.164.0 CLI，使用本地模拟上游，不调用付费模型。
+
+### GPT-6.1 Terra 与资源不匹配恢复
+
+`gpt-6.1-terra` 支持 `none`、`low`、`medium`（默认）、`high`、`xhigh` 和 `max`。工具调用应使用 Responses 渠道；Chat Completions 可处理文本请求，但不支持该模型的工具调用。网关保留 `none`，将旧 `minimal` 映射为 `low`，处理 `configuration_update` 时保留原始推理前缀。`gpt-6.1-terra-fast` 别名使用同一模型与 priority 服务档位。
+
+内置模型目录的 Standard 单价为每百万 token：输入 $1、缓存读取 $0.05、30 分钟缓存写入 $1.25、输出 $5。输入超过 272,000 token 时，整次请求的输入及缓存单价翻倍、输出单价乘以 1.5；Fast 为 Standard 的两倍。12 小时缓存写入基础价为 $2.50，另计长上下文及档位倍率；使用该保留时间时应配置对应渠道价格。详见[官方模型文档](https://developers.openai.com/api/docs/models/gpt-6.1-terra)。
+
+第三方 Codex 渠道明确返回 Azure 资源不匹配后，网关自动恢复该次请求。原渠道开关已删除，旧保存值也不再生效。首次请求保留原生历史；被拒绝的请求可使用可读的保留历史兼容重试一次。原生压缩检查点可能需要额外的历史摘要请求。这次修正不会形成对后续请求持续删除条目 ID 与加密推理的策略，也不改变 `prompt_cache_key` 或放宽重试预算。缺少保留历史时明确报错，不静默丢弃上下文。

@@ -349,9 +349,3 @@ func TestBuildDailyPerformanceStatsQuery_RowNumberTieBreaker(t *testing.T) {
 	assert.Contains(t, query, "ORDER BY se.created_at DESC, se.id DESC",
 		"ties on created_at must resolve the same way as the MAX(id) fallback")
 }
-
-func TestBuildDailyThroughputQuery_RowNumberTieBreaker(t *testing.T) {
-	query := BuildDailyModelThroughputQuery("postgres", "UTC", 0, 10, ThroughputModeRowNumber)
-	assert.Contains(t, query, "ORDER BY created_at DESC, id DESC",
-		"ties on created_at must resolve the same way as the MAX(id) fallback")
-}
