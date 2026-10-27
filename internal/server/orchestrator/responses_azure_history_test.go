@@ -143,41 +143,41 @@ func TestAzureRecoveryPreservesInitialRequestAndScopesRetry(t *testing.T) {
 func TestAzureRecoveryRunsOnlyAfterResourceError(t *testing.T) {
 	for _, format := range []llm.APIFormat{llm.APIFormatOpenAIResponse, llm.APIFormatOpenAIResponseWebSocket} {
 		for _, param := range []string{"", "input", "input[0].id"} {
-		for _, repeat := range []bool{false, true} {
-			t.Run(string(format)+"/"+param+fmt.Sprint(repeat), func(t *testing.T) {
-				request := rejectedReasoningPipelineRequest(t, format)
-				request.Body = []byte(portableHistoryBefore)
-				failure := resourceMismatchHTTPError()
-				failure.Body, _ = sjson.SetBytes(failure.Body, "error.param", param)
-				executor := &responsesReasoningPipelineExecutor{failures: []error{failure}, events: rejectedReasoningCompactionEvents()}
-				if repeat {
-					executor.failures = append(executor.failures, failure)
-				}
-				_, result, err := runRejectedReasoningPipeline(t, t.Context(), request, executor, "synthetic", true, 4,
-					func(state *PersistenceState, outbound *PersistentOutboundTransformer) pipeline.Middleware {
-						state.ChannelModelsCandidates[0].Channel.Credentials = objects.ChannelCredentials{APIKey: "synthetic"}
-						return pipeline.OnRawRequest("relay-target", func(_ context.Context, req *httpclient.Request) (*httpclient.Request, error) {
-							req.URL = "https://relay.example/v1/responses"
-							return req, nil
+			for _, repeat := range []bool{false, true} {
+				t.Run(string(format)+"/"+param+fmt.Sprint(repeat), func(t *testing.T) {
+					request := rejectedReasoningPipelineRequest(t, format)
+					request.Body = []byte(portableHistoryBefore)
+					failure := resourceMismatchHTTPError()
+					failure.Body, _ = sjson.SetBytes(failure.Body, "error.param", param)
+					executor := &responsesReasoningPipelineExecutor{failures: []error{failure}, events: rejectedReasoningCompactionEvents()}
+					if repeat {
+						executor.failures = append(executor.failures, failure)
+					}
+					_, result, err := runRejectedReasoningPipeline(t, t.Context(), request, executor, "synthetic", true, 4,
+						func(state *PersistenceState, outbound *PersistentOutboundTransformer) pipeline.Middleware {
+							state.ChannelModelsCandidates[0].Channel.Credentials = objects.ChannelCredentials{APIKey: "synthetic"}
+							return pipeline.OnRawRequest("relay-target", func(_ context.Context, req *httpclient.Request) (*httpclient.Request, error) {
+								req.URL = "https://relay.example/v1/responses"
+								return req, nil
+							})
+						},
+						func(_ *PersistenceState, outbound *PersistentOutboundTransformer) pipeline.Middleware {
+							return applyAzureResponsesHistoryCompatibility(outbound)
 						})
-					},
-					func(_ *PersistenceState, outbound *PersistentOutboundTransformer) pipeline.Middleware {
-						return applyAzureResponsesHistoryCompatibility(outbound)
-					})
-				require.Len(t, executor.requests, 2, "one recovery even when the provider rejects it again")
-				require.JSONEq(t, gjson.Get(portableHistoryBefore, "input").Raw, gjson.GetBytes(executor.requests[0].Body, "input").Raw)
-				require.JSONEq(t, gjson.Get(portableHistoryAfter, "input").Raw, gjson.GetBytes(executor.requests[1].Body, "input").Raw)
-				if repeat {
-					require.Error(t, err)
-					require.Nil(t, result)
-				} else {
-					require.NoError(t, err)
-					drainRejectedReasoningPipeline(t, result)
-				}
-			})
+					require.Len(t, executor.requests, 2, "one recovery even when the provider rejects it again")
+					require.JSONEq(t, gjson.Get(portableHistoryBefore, "input").Raw, gjson.GetBytes(executor.requests[0].Body, "input").Raw)
+					require.JSONEq(t, gjson.Get(portableHistoryAfter, "input").Raw, gjson.GetBytes(executor.requests[1].Body, "input").Raw)
+					if repeat {
+						require.Error(t, err)
+						require.Nil(t, result)
+					} else {
+						require.NoError(t, err)
+						drainRejectedReasoningPipeline(t, result)
+					}
+				})
+			}
 		}
 	}
-}
 }
 
 func TestAzureRecoveryDoesNotAuthorizeOtherFailures(t *testing.T) {

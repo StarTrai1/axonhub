@@ -934,7 +934,7 @@ func TestPersistentOutboundTransformer_CanRetry(t *testing.T) {
 			return &PersistentOutboundTransformer{
 				wrapped: &mockTransformer{},
 				state: &PersistenceState{
-					CurrentCandidate: candidate,
+					CurrentCandidate:        candidate,
 					ChannelModelsCandidates: []*ChannelModelsCandidate{candidate, {Channel: &biz.Channel{Channel: &ent.Channel{ID: 99}}}},
 				},
 			}

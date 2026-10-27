@@ -442,6 +442,7 @@ func writeEncodedSSEStreamWithHeartbeat(
 	terminalSeen := false
 	terminalTracker := orchestrator.NewStreamTerminalTracker(streamExpectedChoices(stream))
 	heartbeatCount := 0
+	anthropicMessageStarted := false
 
 	for {
 		select {
@@ -486,13 +487,22 @@ func writeEncodedSSEStreamWithHeartbeat(
 				return
 			}
 			log.Debug(ctx, "write stream event", log.Any("event", cur))
+			if cur.Type == "message_start" || gjson.GetBytes(cur.Data, "type").String() == "message_start" {
+				anthropicMessageStarted = true
+			}
 
 			if timerC != nil {
 				resetTimer(timer, interval)
 			}
 
 		case <-timerC:
-			if err := writeSSEHeartbeatEvent(ctx, c.Writer, heartbeatFormat); err != nil {
+			format := heartbeatFormat
+			if format == sseHeartbeatAnthropic && !anthropicMessageStarted {
+				// A comment keeps the connection alive before message_start
+				// without introducing an out-of-order Anthropic event.
+				format = sseHeartbeatOpenAI
+			}
+			if err := writeSSEHeartbeatEvent(ctx, c.Writer, format); err != nil {
 				clientDisconnected = true
 				log.Warn(ctx, "Failed to write SSE heartbeat", log.Cause(err))
 				return

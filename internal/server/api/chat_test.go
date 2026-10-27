@@ -399,7 +399,7 @@ func TestWriteSSEStream_OpenAIHeartbeat(t *testing.T) {
 	requireProtectedSSEWrites(t, deadlineWriter)
 }
 
-func TestWriteSSEStream_AnthropicHeartbeat(t *testing.T) {
+func TestWriteSSEStream_AnthropicHeartbeatBeforeStart(t *testing.T) {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = httptest.NewRequest(http.MethodGet, "/", nil)
@@ -415,8 +415,32 @@ func TestWriteSSEStream_AnthropicHeartbeat(t *testing.T) {
 	}, sseHeartbeatAnthropic)
 
 	body := w.Body.String()
-	require.Contains(t, body, "event: ping\ndata: {\"type\":\"ping\"}\n\n")
+	require.Contains(t, body, ": keep-alive\n\n")
+	require.NotContains(t, body, "event: ping")
 	require.Contains(t, body, "event:message_stop\ndata: {\"type\":\"message_stop\"}\n\n")
+}
+
+func TestWriteSSEStream_AnthropicHeartbeatAfterStart(t *testing.T) {
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodGet, "/", nil)
+	source := streams.Map(streams.SliceStream([]*httpclient.StreamEvent{
+		{Type: "message_start", Data: []byte(`{"type":"message_start"}`)},
+		{Type: "message_stop", Data: []byte(`{"type":"message_stop"}`)},
+	}), func(event *httpclient.StreamEvent) *httpclient.StreamEvent {
+		if event.Type == "message_stop" {
+			time.Sleep(25 * time.Millisecond)
+		}
+		return event
+	})
+	writeSSEStream(c, source, FormatStreamError, SSEKeepAliveConfig{Enabled: true, Interval: 5 * time.Millisecond}, sseHeartbeatAnthropic)
+	body := w.Body.String()
+	start := strings.Index(body, "event:message_start")
+	ping := strings.Index(body, "event: ping\ndata: {\"type\":\"ping\"}")
+	stop := strings.Index(body, "event:message_stop")
+	require.GreaterOrEqual(t, start, 0)
+	require.Greater(t, ping, start)
+	require.Greater(t, stop, ping)
 }
 
 func TestWriteSSEStream_HeartbeatWriteErrorWaitsForReader(t *testing.T) {

@@ -3,15 +3,17 @@ package biz
 import (
 	"database/sql"
 	"os"
+	"strings"
 	"testing"
 
-	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/stretchr/testify/require"
+
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 func TestStoredPayloadPreservesNul(t *testing.T) {
 	for _, tc := range []struct {
-		body string
+		body    string
 		encoded bool
 	}{
 		{`{"text":"hello\u0000world","call_id":"call_1"}`, true},
@@ -58,4 +60,20 @@ func TestStoredPayloadNul_Postgres(t *testing.T) {
 	decoded, err := DecodeStoredPayload([]byte(result))
 	require.NoError(t, err)
 	require.Equal(t, raw, decoded)
+
+	// Duplicate execution bodies can reference a parent envelope returned by
+	// jsonb. Both envelope kinds must survive its normalization.
+	raw = []byte(`{"input":"` + strings.Repeat(`stable\u0000prefix `, 5000) + `"}`)
+	stored, err = CompressStoredPayload(raw)
+	require.NoError(t, err)
+	require.NoError(t, db.QueryRowContext(t.Context(), "SELECT $1::jsonb::text", string(stored)).Scan(&result))
+	reference, ok, err := referenceStoredRequestBody(17, []byte(result), raw)
+	require.NoError(t, err)
+	require.True(t, ok)
+	require.NoError(t, db.QueryRowContext(t.Context(), "SELECT $1::jsonb::text", string(reference)).Scan(&result))
+	parsed, ok, err := decodeStoredRequestBodyReference([]byte(result))
+	require.NoError(t, err)
+	require.True(t, ok)
+	require.Equal(t, 17, parsed.RequestID)
+	require.NoError(t, validateStoredRequestBodyReference(parsed, raw))
 }

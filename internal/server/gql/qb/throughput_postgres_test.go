@@ -525,8 +525,6 @@ func TestThroughputQueryDistinctOnParity_Postgres(t *testing.T) {
 			paritySince)
 	})
 
-
-
 	t.Run("daily_performance_stats_model", func(t *testing.T) {
 		assertPGParity(t, db, "daily-perf-model",
 			BuildDailyPerformanceStatsQuery("postgres", "UTC", 0, DailyThroughputByModel, "$1", ThroughputModeRowNumber),
@@ -639,8 +637,6 @@ func TestThroughputQueryDistinctOnParity_Postgres(t *testing.T) {
 		// effective latency, leaving 6000.
 		check("m3", "model-three", 700, 6800, 2, 116.66666666666667)
 	})
-
-
 
 	t.Run("expected_daily_performance_stats", func(t *testing.T) {
 		ctx := context.Background()
