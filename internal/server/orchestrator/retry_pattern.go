@@ -3,8 +3,9 @@ package orchestrator
 import (
 	"regexp"
 
-	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/samber/lo"
+
+	lru "github.com/hashicorp/golang-lru/v2"
 )
 
 const maxCachedRetryPatterns = 1024

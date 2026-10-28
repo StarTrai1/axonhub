@@ -806,7 +806,7 @@ func convertGeminiCandidateToLLMChoiceWithState(candidate *Candidate, isStream b
 
 			case part.FileData != nil && isImageMIMEType(part.FileData.MIMEType) && strings.TrimSpace(part.FileData.FileURI) != "":
 				contentParts = append(contentParts, llm.MessageContentPart{
-					Type: "image_url",
+					Type:     "image_url",
 					ImageURL: &llm.ImageURL{URL: part.FileData.FileURI},
 				})
 

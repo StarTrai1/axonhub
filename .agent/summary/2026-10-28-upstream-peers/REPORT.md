@@ -1,6 +1,6 @@
 # Upstream, peer gateways and agent compaction — 2026-10-28
 
-Base: dev `f198fe95b0652727a6b3e1cbb6b2c6d0b03e9af0` (PR18). Branch: `sync/upstream-peers-20261028`. Final CI and release identity are recorded separately in DELIVERY.md/DELIVERY.json, so the release can use the exact tested commit.
+Base: dev `f198fe95b0652727a6b3e1cbb6b2c6d0b03e9af0` (PR18). Branch: `sync/upstream-peers-20261028`. PR: https://github.com/StarTrai1/axonhub/pull/19. Final CI and release identity are recorded separately in DELIVERY.md/DELIVERY.json, so the release can use the exact tested commit.
 
 ## Frozen incremental scope
 

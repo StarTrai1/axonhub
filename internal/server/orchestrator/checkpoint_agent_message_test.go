@@ -92,29 +92,41 @@ func TestCheckpointAgentRecoveryRejectsUnprovenPlaintext(t *testing.T) {
 			sealState := *state
 			owner := *state.APIKey
 			sealState.APIKey = &owner
-			if scenario == "other project" { owner.ProjectID++ }
-			if scenario == "other key" { owner.ID++ }
+			if scenario == "other project" {
+				owner.ProjectID++
+			}
+			if scenario == "other key" {
+				owner.ID++
+			}
 			aad, err := responsesAgentMessageAAD(&sealState, "")
 			require.NoError(t, err)
 			sealed, err := sealResponsesAgentMessage(aead, aad, "only authenticated original content")
 			require.NoError(t, err)
-			if scenario == "tampered" { sealed = responsesAgentMessagePrefix + "invalid" }
-			if scenario == "unknown seal" { sealed = "opaque-provider-ciphertext" }
+			if scenario == "tampered" {
+				sealed = responsesAgentMessagePrefix + "invalid"
+			}
+			if scenario == "unknown seal" {
+				sealed = "opaque-provider-ciphertext"
+			}
 			args, err := json.Marshal(map[string]string{"message": sealed})
 			require.NoError(t, err)
 			marker := []string{"message"}
-			if scenario == "unsupported marker" { marker = append(marker, "recipient") }
+			if scenario == "unsupported marker" {
+				marker = append(marker, "recipient")
+			}
 			callID := "call_agent"
-			if scenario == "orphan result" { callID = "unknown_call" }
+			if scenario == "orphan result" {
+				callID = "unknown_call"
+			}
 			body, err := json.Marshal(map[string]any{"model": "gpt-6.1-sol", "input": []any{
-				map[string]string{"role":"user", "content":"retained question"},
-				map[string]any{"type":"function_call", "call_id":"call_agent", "namespace":"agents", "name":"spawn_agent", "arguments":string(args), "encrypted_function_args":marker},
-				map[string]string{"type":"function_call_output", "call_id":callID, "output":"result"},
-				map[string]string{"type":"compaction_trigger"},
+				map[string]string{"role": "user", "content": "retained question"},
+				map[string]any{"type": "function_call", "call_id": "call_agent", "namespace": "agents", "name": "spawn_agent", "arguments": string(args), "encrypted_function_args": marker},
+				map[string]string{"type": "function_call_output", "call_id": callID, "output": "result"},
+				map[string]string{"type": "compaction_trigger"},
 			}})
 			require.NoError(t, err)
 			// Use the same checkpoint completeness boundary as the failing requests.
-			ref := &remoteCompactionReference{ID:"cmp_guard", EncryptedContent:"native"}
+			ref := &remoteCompactionReference{ID: "cmp_guard", EncryptedContent: "native"}
 			source := []byte(`{"model":"gpt-6.1-sol","input":[{"role":"user","content":"retained question"},{"type":"compaction_trigger"}]}`)
 			require.NoError(t, adapter.saveHistorySnapshot(ctx, historyCheckpointWindowAlias(ref), source, nil))
 			var root map[string]json.RawMessage
@@ -126,7 +138,7 @@ func TestCheckpointAgentRecoveryRejectsUnprovenPlaintext(t *testing.T) {
 			require.NoError(t, err)
 			body, err = json.Marshal(root)
 			require.NoError(t, err)
-			restored, err := adapter.restoreCheckpointWindow(ctx, &remoteCompactionSource{body:body}, &PersistenceState{APIKey:&ent.APIKey{ID:state.APIKey.ID, ProjectID:state.APIKey.ProjectID}})
+			restored, err := adapter.restoreCheckpointWindow(ctx, &remoteCompactionSource{body: body}, &PersistenceState{APIKey: &ent.APIKey{ID: state.APIKey.ID, ProjectID: state.APIKey.ProjectID}})
 			require.Error(t, err)
 			require.Nil(t, restored)
 		})

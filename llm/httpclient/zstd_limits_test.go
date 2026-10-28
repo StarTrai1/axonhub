@@ -11,15 +11,13 @@ import (
 )
 
 func TestReadHTTPRequestRejectsOversizedZstdWindow(t *testing.T) {
-	// A streaming encoder omits the single-segment shortcut, so the advertised
-	// window is independent of this tiny, otherwise valid JSON request.
-	var compressed bytes.Buffer
-	encoder, err := zstd.NewWriter(&compressed, zstd.WithWindowSize(2*maxRequestZstdWindowSize), zstd.WithEncoderConcurrency(1))
-	require.NoError(t, err)
-	_, err = encoder.Write([]byte(`{"model":"test","input":"hello"}`))
-	require.NoError(t, err)
-	require.NoError(t, encoder.Close())
-	request := httptest.NewRequest(http.MethodPost, "/v1/responses", bytes.NewReader(compressed.Bytes()))
+	// A valid raw-block frame with an explicit 128 MiB window (descriptor
+	// 0x88). The encoder shrinks small inputs, so use the wire fixture itself.
+	compressed := []byte{0x28, 0xb5, 0x2f, 0xfd, 0x00, 0x88, 0x11, 0x00, 0x00, '{', '}'}
+	var header zstd.Header
+	require.NoError(t, header.Decode(compressed))
+	require.EqualValues(t, 2*maxRequestZstdWindowSize, header.WindowSize)
+	request := httptest.NewRequest(http.MethodPost, "/v1/responses", bytes.NewReader(compressed))
 	request.Header.Set("Content-Encoding", "zstd")
 	result, err := ReadHTTPRequest(request)
 	require.ErrorIs(t, err, zstd.ErrWindowSizeExceeded)

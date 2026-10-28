@@ -23,7 +23,10 @@ func applyXAIReasoningContent() pipeline.Middleware {
 			return request, nil
 		}
 		destination, err := url.Parse(request.URL)
-		if err != nil || !strings.EqualFold(destination.Hostname(), "api.x.ai") {
+		if err != nil {
+			return nil, fmt.Errorf("parse reasoning replay destination: %w", err)
+		}
+		if !strings.EqualFold(destination.Hostname(), "api.x.ai") {
 			return request, nil
 		}
 		body := request.Body
