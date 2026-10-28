@@ -1,0 +1,136 @@
+{
+  "requests": [
+    70000,
+    70002
+  ],
+  "snapshot": {
+    "quick_check": "ok",
+    "bytes": 1483264000,
+    "max_request": 70034,
+    "read_only_source": true
+  },
+  "error": {
+    "code": "compaction_source_invalid",
+    "message": "The retained checkpoint source does not match the current window",
+    "param": "input"
+  },
+  "executions": 0,
+  "usage_logs": 0,
+  "request_format": "openai/responses",
+  "model": "gpt-6.1-sol",
+  "agent_tool_namespace": "agents",
+  "boundaries": [
+    {
+      "request": 70000,
+      "retained_checkpoint_authenticated": true,
+      "source_items": 224,
+      "prefix_items": 10,
+      "matched_prefix_positions": [
+        [
+          1,
+          1
+        ],
+        [
+          2,
+          7
+        ],
+        [
+          3,
+          62
+        ],
+        [
+          4,
+          73
+        ],
+        [
+          9,
+          179
+        ]
+      ],
+      "expanded_items": 483,
+      "blocking_fields": [
+        {
+          "index": 480,
+          "reason": "encrypted_function_args",
+          "type": "function_call",
+          "name": "spawn_agent"
+        }
+      ],
+      "tool_pairs_complete": true
+    },
+    {
+      "request": 70002,
+      "retained_checkpoint_authenticated": true,
+      "source_items": 224,
+      "prefix_items": 10,
+      "matched_prefix_positions": [
+        [
+          1,
+          1
+        ],
+        [
+          2,
+          7
+        ],
+        [
+          3,
+          62
+        ],
+        [
+          4,
+          73
+        ],
+        [
+          9,
+          179
+        ]
+      ],
+      "expanded_items": 485,
+      "blocking_fields": [
+        {
+          "index": 480,
+          "reason": "encrypted_function_args",
+          "type": "function_call",
+          "name": "spawn_agent"
+        }
+      ],
+      "tool_pairs_complete": true
+    }
+  ],
+  "agent_seal_evidence": [
+    {
+      "request": 70000,
+      "index": 263,
+      "local_seal": true,
+      "marker": [
+        "message"
+      ],
+      "authenticated": true,
+      "plaintext_bytes": 4681,
+      "plaintext_sha256": "61054e5ec4ad0e2e90bdc17616eff63fdd2d38ef80187fc2ed98b1c5223fdb4b"
+    },
+    {
+      "request": 70002,
+      "index": 263,
+      "local_seal": true,
+      "marker": [
+        "message"
+      ],
+      "authenticated": true,
+      "plaintext_bytes": 4681,
+      "plaintext_sha256": "61054e5ec4ad0e2e90bdc17616eff63fdd2d38ef80187fc2ed98b1c5223fdb4b"
+    }
+  ],
+  "binary_metadata": {
+    "vcs.revision=[a-f0-9]{40}": [
+      "vcs.revision=f198fe95b0652727a6b3e1cbb6b2c6d0b03e9af0"
+    ],
+    "vcs.modified=(?:true|false)": [
+      "vcs.modified=true"
+    ],
+    "v1\\.0\\.0-unstable\\.202610[0-9]{2}\\.[a-f0-9]{8}": [
+      "v1.0.0-unstable.20261027.f198fe95"
+    ]
+  },
+  "privacy": "Original prompts, keys, tool output and ciphertext remain private and are not committed."
+}

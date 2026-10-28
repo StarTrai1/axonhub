@@ -17,7 +17,12 @@ const checkpointSummaryMaxBytes = 64 << 10
 func (a *remoteCompactionAdapter) restoreCheckpointWindow(ctx context.Context, source *remoteCompactionSource, state *PersistenceState) (*remoteCompactionSource, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	body := source.body
+	// Locally sealed agent arguments are readable in this owner's scope. Open
+	// them before completeness checks, which must still reject unknown seals.
+	body, err := recoverResponsesAgentMessageBody(ctx, source.body, state, a.systemService)
+	if err != nil {
+		return nil, err
+	}
 	seen := make(map[string]bool)
 	for {
 		if err := ctx.Err(); err != nil {
@@ -53,7 +58,11 @@ func (a *remoteCompactionAdapter) restoreCheckpointWindow(ctx context.Context, s
 		if retained == nil {
 			return nil, checkpointSummaryError("compaction_history_unavailable", "The native checkpoint has no retained source for portable migration; continue with its original resource")
 		}
-		expanded, complete, err := spliceUnifiedCompactionSource(body, retained.body, ref)
+		retainedBody, err := recoverResponsesAgentMessageBody(ctx, retained.body, state, a.systemService)
+		if err != nil {
+			return nil, err
+		}
+		expanded, complete, err := spliceUnifiedCompactionSource(body, retainedBody, ref)
 		if err != nil {
 			return nil, err
 		}

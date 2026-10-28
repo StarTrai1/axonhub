@@ -282,14 +282,21 @@ func transformImageGenerationResponse(httpResp *httpclient.Response) (*llm.Respo
 
 	// Extract images from the response candidates
 	for _, candidate := range geminiResp.Candidates {
-		if candidate.Content == nil {
+		if candidate == nil || candidate.Content == nil {
 			continue
 		}
 
 		for _, part := range candidate.Content.Parts {
-			if part.InlineData != nil && strings.HasPrefix(part.InlineData.MIMEType, "image/") {
+			if part == nil {
+				continue
+			}
+			if part.InlineData != nil && isImageMIMEType(part.InlineData.MIMEType) && strings.TrimSpace(part.InlineData.Data) != "" {
 				imageResponse.Data = append(imageResponse.Data, llm.ImageData{
 					B64JSON: part.InlineData.Data,
+				})
+			} else if part.FileData != nil && isImageMIMEType(part.FileData.MIMEType) && strings.TrimSpace(part.FileData.FileURI) != "" {
+				imageResponse.Data = append(imageResponse.Data, llm.ImageData{
+					URL: part.FileData.FileURI,
 				})
 			}
 		}

@@ -23,7 +23,7 @@ import (
 func applyStrictChatRoles(outbound *PersistentOutboundTransformer) pipeline.Middleware {
 	return pipeline.OnRawRequest("strict-chat-roles", func(_ context.Context, request *httpclient.Request) (*httpclient.Request, error) {
 		if request == nil || request.APIFormat != string(llm.APIFormatOpenAIChatCompletion) ||
-			!requiresSystemChatRole(outbound.GetCurrentChannel(), request.URL) {
+			!requiresSystemChatRole(outbound.GetCurrentChannel(), request.URL, gjson.GetBytes(request.Body, "model").String()) {
 			return request, nil
 		}
 
@@ -52,10 +52,13 @@ func applyStrictChatRoles(outbound *PersistentOutboundTransformer) pipeline.Midd
 	})
 }
 
-func requiresSystemChatRole(selected *biz.Channel, targetURL string) bool {
+func requiresSystemChatRole(selected *biz.Channel, targetURL, model string) bool {
+	deepseek := strings.HasPrefix(strings.ToLower(model), "deepseek-")
 	if selected != nil && selected.Channel != nil {
 		//nolint:exhaustive // Only these provider types require this adaptation.
 		switch selected.Type {
+		case channel.TypeOpencodeGo:
+			return deepseek
 		case channel.TypeDeepseek, channel.TypeDeepseekAnthropic,
 			channel.TypeMoonshot, channel.TypeMoonshotAnthropic, channel.TypeMoonshotCoding,
 			channel.TypeZhipu, channel.TypeZhipuAnthropic, channel.TypeZai, channel.TypeZaiAnthropic:
@@ -67,6 +70,8 @@ func requiresSystemChatRole(selected *biz.Channel, targetURL string) bool {
 		return false
 	}
 	switch strings.ToLower(parsed.Hostname()) {
+	case "opencode.ai":
+		return deepseek
 	case "api.deepseek.com", "api.kimi.com", "api.moonshot.cn", "api.moonshot.ai", "open.bigmodel.cn", "api.z.ai":
 		return true
 	default:

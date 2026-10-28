@@ -37,3 +37,7 @@ func imageMIMEType(image *llm.ImageURL) string {
 		return strings.HasPrefix(mediaType, "image/")
 	})
 }
+
+func isImageMIMEType(value string) bool {
+	return strings.HasPrefix(strings.ToLower(strings.TrimSpace(value)), "image/")
+}

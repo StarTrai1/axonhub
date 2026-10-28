@@ -19,6 +19,10 @@ import (
 
 var maxRequestBodySize = 64 * 1024 * 1024
 
+// Bound decoder working memory as well as decompressed output. A small zstd
+// frame can advertise a window much larger than the request body limit.
+const maxRequestZstdWindowSize = 64 * 1024 * 1024
+
 var ErrRequestBodyTooLarge = errors.New("request body too large")
 
 func ReadHTTPRequest(rawReq *http.Request) (*Request, error) {
@@ -96,7 +100,10 @@ func decodeRequestBody(body []byte, headers http.Header) ([]byte, error) {
 		return decoded, nil
 
 	case "zstd":
-		decoder, err := zstd.NewReader(bytes.NewReader(body))
+		decoder, err := zstd.NewReader(bytes.NewReader(body),
+			zstd.WithDecoderConcurrency(1),
+			zstd.WithDecoderMaxWindow(maxRequestZstdWindowSize),
+			zstd.WithDecoderMaxMemory(maxRequestZstdWindowSize))
 		if err != nil {
 			return nil, fmt.Errorf("failed to create zstd decoder: %w", err)
 		}

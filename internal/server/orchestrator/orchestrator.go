@@ -359,6 +359,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		applyOverrideRequestBody(outbound),
 		applyStrictChatRoles(outbound),
 		applyXAIHostedToolChoice(outbound),
+		applyXAIReasoningContent(),
 		repairInvalidOpenAIToolSchemas(),
 		stripUnsupportedCodexPromptCacheOptions(outbound),
 		// applyUserAgentPassThrough runs before header overrides to set the initial

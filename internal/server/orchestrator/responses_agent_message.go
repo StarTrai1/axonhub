@@ -110,109 +110,9 @@ func recoverResponsesAgentMessages(outbound *PersistentOutboundTransformer, serv
 		if channel == nil || channel.Type != entchannel.TypeCodex || state.APIKey == nil || state.APIKey.ID <= 0 || state.APIKey.ProjectID <= 0 {
 			return request, nil
 		}
-		body := request.Body
-		var aead cipher.AEAD
-		lookupCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
-		defer cancel()
-		loadCipher := func() error {
-			if aead != nil {
-				return nil
-			}
-			secret, err := service.SecretKey(authz.WithSystemBypass(lookupCtx, "agent-message-encryption-key"))
-			if err != nil {
-				return err
-			}
-			aead, err = newResponsesAgentMessageCipher(secret)
-			return err
-		}
-		for i, item := range gjson.GetBytes(body, "input").Array() {
-			if item.Get("type").String() == "function_call" && responsesAgentTool(item.Get("namespace").String(), item.Get("name").String()) {
-				arguments := item.Get("arguments").String()
-				sealed := gjson.Get(arguments, "message").String()
-				if strings.HasPrefix(sealed, responsesAgentMessagePrefix) {
-					if marker := item.Get("encrypted_function_args"); marker.Exists() {
-						fields := marker.Array()
-						if !marker.IsArray() || len(fields) != 1 || fields[0].Type != gjson.String || fields[0].String() != "message" {
-							return nil, errors.New("unsupported encrypted agent tool arguments")
-						}
-					}
-					if err := loadCipher(); err != nil {
-						return nil, err
-					}
-					aad, err := responsesAgentMessageAAD(state, "")
-					if err != nil {
-						return nil, err
-					}
-					plaintext, err := openResponsesAgentMessage(aead, aad, sealed)
-					if err != nil {
-						return nil, err
-					}
-					arguments, err = sjson.Set(arguments, "message", plaintext)
-					if err != nil {
-						return nil, err
-					}
-					body, err = sjson.SetBytes(body, fmt.Sprintf("input.%d.arguments", i), arguments)
-					if err != nil {
-						return nil, err
-					}
-					body, err = sjson.DeleteBytes(body, fmt.Sprintf("input.%d.encrypted_function_args", i))
-					if err != nil {
-						return nil, err
-					}
-				}
-			}
-			if item.Get("type").String() != "agent_message" {
-				continue
-			}
-			for j, part := range item.Get("content").Array() {
-				if part.Get("type").String() != "encrypted_content" {
-					continue
-				}
-				sealed := part.Get("encrypted_content").String()
-				recovery := ""
-				if !strings.HasPrefix(sealed, responsesAgentMessagePrefix) {
-					recovery = responsesAgentMessageRecoveryDigest(item, sealed)
-					if recovery == "" {
-						continue
-					}
-					var err error
-					sealed, err = service.LoadAgentMessageRecovery(lookupCtx, state.APIKey.ProjectID, state.APIKey.ID, recovery)
-					if err != nil {
-						return nil, fmt.Errorf("load agent message recovery: %w", err)
-					}
-					if sealed == "" {
-						continue
-					}
-				}
-				if err := loadCipher(); err != nil {
-					return nil, err
-				}
-				aad, err := responsesAgentMessageAAD(state, recovery)
-				if err != nil {
-					return nil, err
-				}
-				plaintext, err := openResponsesAgentMessage(aead, aad, sealed)
-				if err != nil {
-					return nil, err
-				}
-				path := fmt.Sprintf("input.%d.content.%d", i, j)
-				restored, err := sjson.Set(part.Raw, "type", "input_text")
-				if err != nil {
-					return nil, err
-				}
-				restored, err = sjson.Set(restored, "text", plaintext)
-				if err != nil {
-					return nil, err
-				}
-				restored, err = sjson.Delete(restored, "encrypted_content")
-				if err != nil {
-					return nil, err
-				}
-				body, err = sjson.SetRawBytes(body, path, []byte(restored))
-				if err != nil {
-					return nil, err
-				}
-			}
+		body, err := recoverResponsesAgentMessageBody(ctx, request.Body, state, service)
+		if err != nil {
+			return nil, err
 		}
 		if bytes.Equal(body, request.Body) {
 			return request, nil
@@ -227,4 +127,116 @@ func recoverResponsesAgentMessages(outbound *PersistentOutboundTransformer, serv
 		updated.Headers.Del(codexTurnStateHeader)
 		return &updated, nil
 	})
+}
+
+// Recovery is authenticated by installation, API key and project. Local
+// compaction needs the same materialization before a destination is selected.
+func recoverResponsesAgentMessageBody(ctx context.Context, body []byte, state *PersistenceState, service *biz.SystemService) ([]byte, error) {
+	if service == nil || state == nil || state.APIKey == nil || state.APIKey.ID <= 0 || state.APIKey.ProjectID <= 0 {
+		return body, nil
+	}
+	var aead cipher.AEAD
+	lookupCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	loadCipher := func() error {
+		if aead != nil {
+			return nil
+		}
+		secret, err := service.SecretKey(authz.WithSystemBypass(lookupCtx, "agent-message-encryption-key"))
+		if err != nil {
+			return err
+		}
+		aead, err = newResponsesAgentMessageCipher(secret)
+		return err
+	}
+	for i, item := range gjson.GetBytes(body, "input").Array() {
+		if item.Get("type").String() == "function_call" && responsesAgentTool(item.Get("namespace").String(), item.Get("name").String()) {
+			arguments := item.Get("arguments").String()
+			sealed := gjson.Get(arguments, "message").String()
+			if strings.HasPrefix(sealed, responsesAgentMessagePrefix) {
+				if marker := item.Get("encrypted_function_args"); marker.Exists() {
+					fields := marker.Array()
+					if !marker.IsArray() || len(fields) != 1 || fields[0].Type != gjson.String || fields[0].String() != "message" {
+						return nil, errors.New("unsupported encrypted agent tool arguments")
+					}
+				}
+				if err := loadCipher(); err != nil {
+					return nil, err
+				}
+				aad, err := responsesAgentMessageAAD(state, "")
+				if err != nil {
+					return nil, err
+				}
+				plaintext, err := openResponsesAgentMessage(aead, aad, sealed)
+				if err != nil {
+					return nil, err
+				}
+				arguments, err = sjson.Set(arguments, "message", plaintext)
+				if err != nil {
+					return nil, err
+				}
+				body, err = sjson.SetBytes(body, fmt.Sprintf("input.%d.arguments", i), arguments)
+				if err != nil {
+					return nil, err
+				}
+				body, err = sjson.DeleteBytes(body, fmt.Sprintf("input.%d.encrypted_function_args", i))
+				if err != nil {
+					return nil, err
+				}
+			}
+		}
+		if item.Get("type").String() != "agent_message" {
+			continue
+		}
+		for j, part := range item.Get("content").Array() {
+			if part.Get("type").String() != "encrypted_content" {
+				continue
+			}
+			sealed := part.Get("encrypted_content").String()
+			recovery := ""
+			if !strings.HasPrefix(sealed, responsesAgentMessagePrefix) {
+				recovery = responsesAgentMessageRecoveryDigest(item, sealed)
+				if recovery == "" {
+					continue
+				}
+				var err error
+				sealed, err = service.LoadAgentMessageRecovery(lookupCtx, state.APIKey.ProjectID, state.APIKey.ID, recovery)
+				if err != nil {
+					return nil, fmt.Errorf("load agent message recovery: %w", err)
+				}
+				if sealed == "" {
+					continue
+				}
+			}
+			if err := loadCipher(); err != nil {
+				return nil, err
+			}
+			aad, err := responsesAgentMessageAAD(state, recovery)
+			if err != nil {
+				return nil, err
+			}
+			plaintext, err := openResponsesAgentMessage(aead, aad, sealed)
+			if err != nil {
+				return nil, err
+			}
+			path := fmt.Sprintf("input.%d.content.%d", i, j)
+			restored, err := sjson.Set(part.Raw, "type", "input_text")
+			if err != nil {
+				return nil, err
+			}
+			restored, err = sjson.Set(restored, "text", plaintext)
+			if err != nil {
+				return nil, err
+			}
+			restored, err = sjson.Delete(restored, "encrypted_content")
+			if err != nil {
+				return nil, err
+			}
+			body, err = sjson.SetRawBytes(body, path, []byte(restored))
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+	return body, nil
 }

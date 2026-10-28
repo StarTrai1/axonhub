@@ -225,18 +225,21 @@ func parseMinimaxResponse(body []byte) (QuotaData, error) {
 
 		overallStatus = worseStatus(overallStatus, intervalStatus)
 
-		// Weekly window: only when status == 1; status 2/3 means no weekly limit for this plan.
+		// Weekly status 2 is an exhausted window; only status 3 means no weekly limit.
 		var weeklyTotalPercent, weeklyUsedPercent, weeklyRatio, weeklyBarPercent float64
 		var weeklyStatus string
 		var weeklyResetAt *time.Time
 		var weeklyResetAtStr *string
 
-		if model.CurrentWeeklyStatus == 1 {
+		if model.CurrentWeeklyStatus == 1 || model.CurrentWeeklyStatus == 2 {
 			weeklyTotalPercent = minimaxTotalPercent(model.WeeklyBoostPermille)
 			weeklyUsedPercent = 100.0 - float64(model.CurrentWeeklyRemainingPercent)
 			weeklyBarPercent = weeklyUsedPercent / weeklyTotalPercent * 100.0
 			weeklyRatio = weeklyBarPercent / 100.0
 			weeklyStatus = minimaxStatusForRatio(model.CurrentWeeklyStatus, weeklyRatio)
+			if model.CurrentWeeklyStatus == 2 {
+				weeklyStatus = "exhausted"
+			}
 
 			if model.WeeklyEndTime > 0 {
 				t := time.UnixMilli(model.WeeklyEndTime)

@@ -121,8 +121,8 @@ func matchesRetryableErrorPattern(err error, patterns []objects.RetryableErrorPa
 		}
 
 		if pattern.Regex {
-			matched, regexErr := regexp.MatchString(pattern.Pattern, message)
-			if regexErr == nil && matched {
+			compiled := compiledRetryPattern(pattern.Pattern)
+			if compiled != nil && compiled.MatchString(message) {
 				return true
 			}
 
