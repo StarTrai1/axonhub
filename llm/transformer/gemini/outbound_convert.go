@@ -237,7 +237,7 @@ func convertLLMToGeminiRequestWithConfig(chatReq *llm.Request, config *Config) *
 	}
 
 	req.SystemInstruction = systemInstruction
-	req.Contents = contents
+	req.Contents = splitGeminiToolResponseMedia(contents)
 
 	// Convert tools
 	if len(chatReq.Tools) > 0 {

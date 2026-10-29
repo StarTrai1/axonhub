@@ -990,6 +990,7 @@ func convertToolsToLLM(tools []Tool) ([]llm.Tool, error) {
 			webSearch := &llm.WebSearch{}
 			if tool.Filters != nil {
 				webSearch.AllowedDomains = append(webSearch.AllowedDomains, tool.Filters.AllowedDomains...)
+				webSearch.BlockedDomains = append(webSearch.BlockedDomains, tool.Filters.BlockedDomains...)
 			}
 			if tool.UserLocation != nil {
 				locationType := tool.UserLocation.Type

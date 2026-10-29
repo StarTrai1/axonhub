@@ -82,11 +82,21 @@ func (c *CodexCatalog) Intersect(ids []string) ([]byte, error) {
 }
 
 func (svc *ChannelService) FetchCodexCatalog(ctx context.Context, channelID int, version string) (*CodexCatalog, error) {
-	result := svc.codexCatalogSF.DoChan(fmt.Sprintf("%d:%s", channelID, version), func() (any, error) {
+	return svc.FetchCodexCatalogForOriginator(ctx, channelID, version, "")
+}
+
+// FetchCodexCatalogForOriginator keeps the caller's model instructions and tool
+// catalog together. Codex 0.165 partitions catalogs by thread originator; two
+// callers using the same source and version must not share an in-flight result.
+func (svc *ChannelService) FetchCodexCatalogForOriginator(ctx context.Context, channelID int, version, originator string) (*CodexCatalog, error) {
+	if originator == "" {
+		originator = codex.AxonHubOriginator
+	}
+	result := svc.codexCatalogSF.DoChan(fmt.Sprintf("%d:%q:%q", channelID, version, originator), func() (any, error) {
 		fetchCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
 		defer cancel()
 		fetchCtx = ent.NewContext(fetchCtx, svc.db)
-		return svc.fetchCodexCatalog(fetchCtx, channelID, version)
+		return svc.fetchCodexCatalog(fetchCtx, channelID, version, originator)
 	})
 	select {
 	case <-ctx.Done():
@@ -103,7 +113,7 @@ func (svc *ChannelService) FetchCodexCatalog(ctx context.Context, channelID int,
 	}
 }
 
-func (svc *ChannelService) fetchCodexCatalog(ctx context.Context, channelID int, version string) (*CodexCatalog, error) {
+func (svc *ChannelService) fetchCodexCatalog(ctx context.Context, channelID int, version, originator string) (*CodexCatalog, error) {
 	entity, err := svc.db.Channel.Get(ctx, channelID)
 	if err != nil || entity.Type != channel.TypeCodex {
 		return nil, &CodexCatalogError{Status: 503, Message: "Codex catalog source is unavailable"}
@@ -135,6 +145,7 @@ func (svc *ChannelService) fetchCodexCatalog(ctx context.Context, channelID int,
 	if err != nil {
 		return nil, &CodexCatalogError{Status: 502, Message: "Codex catalog authentication failed"}
 	}
+	req.Headers.Set("Originator", originator)
 	parsed, err := url.Parse(req.URL)
 	if err != nil {
 		return nil, &CodexCatalogError{Status: 502, Message: "invalid Codex catalog URL"}

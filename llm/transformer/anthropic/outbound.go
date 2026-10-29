@@ -182,6 +182,8 @@ func (t *OutboundTransformer) TransformRequest(
 		return nil, err
 	}
 
+	llmReq = shared.WithResponsesEffortForConversion(llmReq)
+
 	// Convert to Anthropic request format
 	anthropicReq := convertToAnthropicRequestWithConfig(llmReq, t.config)
 	if err := restoreStructuredOutput(llmReq, anthropicReq, t.config); err != nil {

@@ -205,6 +205,8 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		reasoningField = ReasoningFieldContent
 	}
 
+	llmReq = shared.WithResponsesEffortForConversion(llmReq)
+
 	// Convert to OpenAI Request format (this strips helper fields)
 	oaiReq := RequestFromLLM(ctx, llmReq, reasoningField)
 	//nolint:exhaustive // Checked.

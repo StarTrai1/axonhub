@@ -110,7 +110,7 @@ func (h *CodexCompatibilityHandlers) ListModels(c *gin.Context) {
 		if settings.ChannelID == nil {
 			return nil, &biz.CodexCatalogError{Status: 503, Message: "Codex catalog source is unavailable"}
 		}
-		return h.Channels.FetchCodexCatalog(bypassCtx, *settings.ChannelID, c.Query("client_version"))
+		return h.Channels.FetchCodexCatalogForOriginator(bypassCtx, *settings.ChannelID, c.Query("client_version"), c.GetHeader("Originator"))
 	})
 	if err != nil {
 		if catalogErr, ok := errors.AsType[*biz.CodexCatalogError](err); ok {

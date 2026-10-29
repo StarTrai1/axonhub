@@ -496,9 +496,10 @@ func convertWebSearchToTool(src llm.Tool) Tool {
 		return tool
 	}
 
-	if len(src.WebSearch.AllowedDomains) > 0 {
+	if len(src.WebSearch.AllowedDomains) > 0 || len(src.WebSearch.BlockedDomains) > 0 {
 		tool.Filters = &WebSearchFilters{
 			AllowedDomains: append([]string(nil), src.WebSearch.AllowedDomains...),
+			BlockedDomains: append([]string(nil), src.WebSearch.BlockedDomains...),
 		}
 	}
 

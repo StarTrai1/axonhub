@@ -156,6 +156,8 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	if err != nil {
 		return nil, err
 	}
+	llmReq = shared.WithResponsesEffortForConversion(llmReq)
+
 	geminiReq := convertLLMToGeminiRequestWithConfig(llmReq, &t.config)
 
 	// System and developer messages become systemInstruction, so a request made

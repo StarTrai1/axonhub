@@ -74,6 +74,7 @@ type Tool struct {
 
 type WebSearchFilters struct {
 	AllowedDomains []string `json:"allowed_domains,omitempty"`
+	BlockedDomains []string `json:"blocked_domains,omitempty"`
 }
 
 type WebSearchUserLocation struct {
