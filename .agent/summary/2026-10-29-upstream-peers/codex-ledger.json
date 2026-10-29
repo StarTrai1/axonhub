@@ -1,0 +1,1736 @@
+{
+  "name": "codex",
+  "repo": "openai/codex",
+  "branch": "rust-v0.165.0",
+  "previous_head": "6aaac694803004a63c6f393d153c96d22521a6b9",
+  "head": "360319d8dee62d87e2d59fc0c21805d79519cfed",
+  "commits": [
+    {
+      "sha": "b4ad33d1a3c10c9652dd57f7afd7a949f8f26895",
+      "title": "Cache decrypted Codex auth and managed secrets (#56081)",
+      "parents": [
+        "342ed69a174c206c1de52a59491b131e0753cfa5"
+      ],
+      "files": [
+        "codex-rs/login/src/auth/storage_policy_tests.rs",
+        "codex-rs/secrets/src/lib.rs",
+        "codex-rs/secrets/src/local.rs",
+        "codex-rs/secrets/src/local_cache_tests.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/b4ad33d1a3c10c9652dd57f7afd7a949f8f26895",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "47a1f6bb77baa8ba237757196a62cadf97dc854b",
+      "title": "Honor server approval reviewer defaults on fresh TUI startup (#56090)",
+      "parents": [
+        "b4ad33d1a3c10c9652dd57f7afd7a949f8f26895"
+      ],
+      "files": [
+        "codex-rs/tui/src/app/tests/startup_defaults_tests.rs",
+        "codex-rs/tui/src/app_server_session.rs",
+        "codex-rs/tui/src/app_server_session/startup_launch.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/47a1f6bb77baa8ba237757196a62cadf97dc854b",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "c2d5ea52e1b7ab11ee2d71dc44ea1ef00f9c8eb3",
+      "title": "Keep TUI preferences editable when execution settings are invalid (#56091)",
+      "parents": [
+        "47a1f6bb77baa8ba237757196a62cadf97dc854b"
+      ],
+      "files": [
+        "codex-rs/tui/src/app/config_panel.rs",
+        "codex-rs/tui/src/app/config_panel_tests.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/c2d5ea52e1b7ab11ee2d71dc44ea1ef00f9c8eb3",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "86e17e98c7f901277aeeb4649cf1b01462b082f2",
+      "title": "Prepare TUI startup to accept multiple backend sessions (#56097)",
+      "parents": [
+        "c2d5ea52e1b7ab11ee2d71dc44ea1ef00f9c8eb3"
+      ],
+      "files": [
+        "codex-rs/core/config.schema.json",
+        "codex-rs/features/src/lib.rs",
+        "codex-rs/tui/src/app.rs",
+        "codex-rs/tui/src/app/backend_sessions.rs",
+        "codex-rs/tui/src/app/startup.rs",
+        "codex-rs/tui/src/app/tests/backend_ownership_tests.rs",
+        "codex-rs/tui/src/app/tests/backend_sessions_tests.rs",
+        "codex-rs/tui/src/app/tests/startup_defaults_tests.rs",
+        "codex-rs/tui/src/lib.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/86e17e98c7f901277aeeb4649cf1b01462b082f2",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "07316174c6f62deb20278c53add2dbd9dcf6da70",
+      "title": "Forward Guardian reviewer events to parent raw-event subscribers (#56124)",
+      "parents": [
+        "86e17e98c7f901277aeeb4649cf1b01462b082f2"
+      ],
+      "files": [
+        "codex-rs/app-server/src/bespoke_event_handling.rs",
+        "codex-rs/app-server/src/request_processors/thread_lifecycle.rs",
+        "codex-rs/app-server/tests/suite/v2/guardian_sync_session_tests.rs",
+        "codex-rs/core/config.schema.json",
+        "codex-rs/core/src/guardian/review_session_setup.rs",
+        "codex-rs/core/src/responses_metadata.rs",
+        "codex-rs/core/src/session/mod.rs",
+        "codex-rs/core/src/session/session.rs",
+        "codex-rs/core/src/session/tests.rs",
+        "codex-rs/core/src/session/turn.rs",
+        "codex-rs/features/src/lib.rs",
+        "codex-rs/protocol/src/protocol.rs",
+        "codex-rs/rollout-trace/src/protocol_event.rs",
+        "codex-rs/rollout/src/policy.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/07316174c6f62deb20278c53add2dbd9dcf6da70",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "c260087efe8cc6dcc0526e7018ae9e0e3fc134e3",
+      "title": "Avoid blocking EMA auth status checks on account refresh (#56127)",
+      "parents": [
+        "07316174c6f62deb20278c53add2dbd9dcf6da70"
+      ],
+      "files": [
+        "codex-rs/codex-mcp/src/mcp/auth.rs",
+        "codex-rs/codex-mcp/src/mcp/mod_tests.rs",
+        "codex-rs/login/src/auth/manager.rs",
+        "codex-rs/login/tests/suite/auth_refresh.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/c260087efe8cc6dcc0526e7018ae9e0e3fc134e3",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "2dbe6bfa44195e0c63b9a2ee59f46482bfd64fae",
+      "title": "Cancel MCP tool requests when response futures are dropped (#56132)",
+      "parents": [
+        "c260087efe8cc6dcc0526e7018ae9e0e3fc134e3"
+      ],
+      "files": [
+        "codex-rs/rmcp-client/src/lib.rs",
+        "codex-rs/rmcp-client/src/ordered_byte_transport.rs",
+        "codex-rs/rmcp-client/src/ordered_byte_transport_tests.rs",
+        "codex-rs/rmcp-client/src/rmcp_client.rs",
+        "codex-rs/rmcp-client/src/tool_input.rs",
+        "codex-rs/rmcp-client/src/tool_request.rs",
+        "codex-rs/rmcp-client/src/user_verification_cancellation_tests.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/2dbe6bfa44195e0c63b9a2ee59f46482bfd64fae",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "b337fe06b7d8d6e5b42295e04c5e92c2b9c46567",
+      "title": "Defer agent mail after empty final answers (#56133)",
+      "parents": [
+        "2dbe6bfa44195e0c63b9a2ee59f46482bfd64fae"
+      ],
+      "files": [
+        "codex-rs/core/src/state/turn.rs",
+        "codex-rs/core/src/stream_events_utils.rs",
+        "codex-rs/core/src/stream_events_utils_tests.rs",
+        "codex-rs/core/tests/suite/pending_input.rs",
+        "codex-rs/core/tests/suite/scenarios_agent_message_board.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/b337fe06b7d8d6e5b42295e04c5e92c2b9c46567",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "61f34c35af77777db4d77d0ea2aeb8547a6b4523",
+      "title": "Fix the MCP auth status test's IdP OAuth configuration (#56139)",
+      "parents": [
+        "b337fe06b7d8d6e5b42295e04c5e92c2b9c46567"
+      ],
+      "files": [
+        "codex-rs/codex-mcp/src/mcp/mod_tests.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/61f34c35af77777db4d77d0ea2aeb8547a6b4523",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "67fb9da4b6442c16c4032b1e074f9b1c80a43bbc",
+      "title": "Preserve safe enterprise MCP authentication error details (#56153)",
+      "parents": [
+        "61f34c35af77777db4d77d0ea2aeb8547a6b4523"
+      ],
+      "files": [
+        "codex-rs/app-server/src/request_processors/account_processor/enterprise_login.rs",
+        "codex-rs/app-server/src/request_processors/mcp_processor.rs",
+        "codex-rs/app-server/tests/suite/v2/account_enterprise_tests.rs",
+        "codex-rs/codex-mcp/src/ema_auth.rs",
+        "codex-rs/codex-mcp/src/ema_token_source.rs",
+        "codex-rs/rmcp-client/src/ema_auth.rs",
+        "codex-rs/rmcp-client/src/ema_auth_policy.rs",
+        "codex-rs/rmcp-client/src/ema_auth_tests.rs",
+        "codex-rs/rmcp-client/src/ema_exchange_tests.rs",
+        "codex-rs/rmcp-client/src/ema_identity.rs",
+        "codex-rs/rmcp-client/src/enterprise_oauth_login.rs",
+        "codex-rs/rmcp-client/src/enterprise_oauth_login_tests.rs",
+        "codex-rs/rmcp-client/src/lib.rs",
+        "codex-rs/rmcp-client/src/oauth/ema_identity.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/67fb9da4b6442c16c4032b1e074f9b1c80a43bbc",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "94350a910143c406013683ae634708320f93f1f6",
+      "title": "Add managed network review domains before allow rules (#56154)",
+      "parents": [
+        "67fb9da4b6442c16c4032b1e074f9b1c80a43bbc"
+      ],
+      "files": [
+        "codex-rs/app-server-protocol/schema/json/codex_app_server_protocol.schemas.json",
+        "codex-rs/app-server-protocol/schema/json/codex_app_server_protocol.v2.schemas.json",
+        "codex-rs/app-server-protocol/schema/json/v2/ConfigRequirementsReadResponse.json",
+        "codex-rs/app-server-protocol/schema/precomputed/app-server-exports-experimental.json.zst",
+        "codex-rs/app-server-protocol/schema/precomputed/app-server-exports-stable.json.zst",
+        "codex-rs/app-server-protocol/schema/typescript/v2/NetworkRequirements.ts",
+        "codex-rs/app-server-protocol/src/protocol/v2/config.rs",
+        "codex-rs/app-server-protocol/src/protocol/v2/tests.rs",
+        "codex-rs/app-server/src/request_processors/config_processor.rs",
+        "codex-rs/app-server/tests/suite/v2/config_rpc.rs",
+        "codex-rs/config/src/config_requirements.rs",
+        "codex-rs/core/src/config/network_proxy_spec.rs",
+        "codex-rs/core/src/config/network_proxy_spec_tests.rs",
+        "codex-rs/core/src/tools/network_approval.rs",
+        "codex-rs/core/tests/suite/hooks.rs",
+        "codex-rs/core/tests/suite/network_approval.rs",
+        "codex-rs/exec-server-protocol/src/protocol.rs",
+        "codex-rs/exec-server/src/client.rs",
+        "codex-rs/network-proxy/src/config.rs",
+        "codex-rs/network-proxy/src/connect_policy.rs",
+        "codex-rs/network-proxy/src/environment_policy.rs",
+        "codex-rs/network-proxy/src/host_policy_tests.rs",
+        "codex-rs/network-proxy/src/remote_config.rs",
+        "codex-rs/network-proxy/src/remote_config_tests.rs",
+        "codex-rs/network-proxy/src/runtime.rs",
+        "codex-rs/network-proxy/src/state.rs",
+        "codex-rs/tui/src/debug_config.rs",
+        "codex-rs/tui/src/snapshots/codex_tui__debug_config__tests__debug_config_requirement_sources.snap",
+        "sdk/python/src/openai_codex/generated/v2_all.py"
+      ],
+      "url": "https://github.com/openai/codex/commit/94350a910143c406013683ae634708320f93f1f6",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "2f3fb111be71d277c80bd5b96d9019748b921f5a",
+      "title": "Enable reasoning effort overrides by default (#56163)",
+      "parents": [
+        "94350a910143c406013683ae634708320f93f1f6"
+      ],
+      "files": [
+        "codex-rs/core/tests/suite/reasoning_effort_override.rs",
+        "codex-rs/core/tests/suite/snapshots/all__suite__scenarios__agent_message_board__remote__remote_board_permissions_direct.snap",
+        "codex-rs/core/tests/suite/snapshots/all__suite__scenarios__astra_active_environment_selection.snap",
+        "codex-rs/core/tests/suite/snapshots/all__suite__scenarios__astra_async_compaction_with_live_suffix.snap",
+        "codex-rs/core/tests/suite/snapshots/all__suite__scenarios__astra_async_question_and_answer.snap",
+        "codex-rs/core/tests/suite/snapshots/all__suite__scenarios__astra_code_mode_call_timing.snap",
+        "codex-rs/core/tests/suite/snapshots/all__suite__scenarios__astra_disabled_executor_skills.snap",
+        "codex-rs/core/tests/suite/snapshots/all__suite__scenarios__astra_executor_plugin_policy_refresh.snap",
+        "codex-rs/core/tests/suite/snapshots/all__suite__scenarios__astra_input_interrupts_response.snap",
+        "codex-rs/core/tests/suite/snapshots/all__suite__scenarios__astra_input_yields_code_mode_cell.snap",
+        "codex-rs/core/tests/suite/snapshots/all__suite__scenarios__astra_kickoff_remote_compaction_windows.snap",
+        "codex-rs/core/tests/suite/snapshots/all__suite__scenarios__astra_plugin_policy_limits_visible_skills.snap",
+        "codex-rs/core/tests/suite/snapshots/all__suite__scenarios__astra_plugin_refresh.snap",
+        "codex-rs/core/tests/suite/snapshots/all__suite__scenarios__astra_settings_release_check_tool_shapes.snap",
+        "codex-rs/core/tests/suite/snapshots/all__suite__scenarios__child_completion_wakes_parent_after_final_answer.snap",
+        "codex-rs/core/tests/suite/snapshots/all__suite__scenarios__code_mode_catalog_messages.snap",
+        "codex-rs/core/tests/suite/snapshots/all__suite__scenarios__code_mode_catalog_messages_ranked_search.snap",
+        "codex-rs/core/tests/suite/snapshots/all__suite__scenarios__code_mode_settled_helpers__code_mode_settled_helpers.snap",
+        "codex-rs/core/tests/suite/snapshots/all__suite__scenarios__compaction__remote_slash_compact.snap",
+        "codex-rs/core/tests/suite/snapshots/all__suite__scenarios__frozen_cloud_skills__frozen_cloud_skills_with_named_executor_request_history.snap",
+        "codex-rs/core/tests/suite/snapshots/all__suite__scenarios__mcp_ema__enterprise_failure_preserves_ordinary_mcp_history.snap",
+        "codex-rs/core/tests/suite/snapshots/all__suite__scenarios__mcp_ema__enterprise_revocation_preserves_history_and_ordinary_tools.snap",
+        "codex-rs/core/tests/suite/snapshots/all__suite__scenarios__mcp_resource_messages__mcp_resource_messages.snap",
+        "codex-rs/core/tests/suite/snapshots/all__suite__scenarios__multi_agent_catalog_parameters.snap",
+        "codex-rs/core/tests/suite/snapshots/all__suite__scenarios__multi_agent_native_tools_hidden.snap",
+        "codex-rs/core/tests/suite/snapshots/all__suite__scenarios__prediction_fork_preserves_context_above_compaction_threshold.snap",
+        "codex-rs/core/tests/suite/snapshots/all__suite__scenarios__retained_tool_outputs__retained_tool_output_retention_disabled.snap",
+        "codex-rs/core/tests/suite/snapshots/all__suite__scenarios__retained_tool_outputs__retained_tool_output_survives_compaction_and_resume.snap",
+        "codex-rs/core/tests/suite/snapshots/all__suite__scenarios__skill_catalog_dedup__dedup_before_budgeting.snap",
+        "codex-rs/core/tests/suite/snapshots/all__suite__scenarios__skill_read_installation_recovery_request_history.snap",
+        "codex-rs/core/tests/suite/snapshots/all__suite__scenarios__strict_3p_cache__strict_3p_mcp_catalog_cache.snap",
+        "codex-rs/features/src/lib.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/2f3fb111be71d277c80bd5b96d9019748b921f5a",
+      "decision": "adapt",
+      "rationale": "Reasoning updates now default on. Resolve last valid update only for cross-protocol conversion; preserve native request prefix and explicit gateway overrides.",
+      "review_basis": "selected protocol/runtime hunks"
+    },
+    {
+      "sha": "9a8a85bc539325f2819dd0717f88b6ba6286495e",
+      "title": "Add AWS SigV4 signing to network proxy MITM hooks (#56182)",
+      "parents": [
+        "2f3fb111be71d277c80bd5b96d9019748b921f5a"
+      ],
+      "files": [
+        "codex-rs/Cargo.lock",
+        "codex-rs/network-proxy/Cargo.toml",
+        "codex-rs/network-proxy/src/aws_sigv4.rs",
+        "codex-rs/network-proxy/src/aws_sigv4_tests.rs",
+        "codex-rs/network-proxy/src/body_budget.rs",
+        "codex-rs/network-proxy/src/lib.rs",
+        "codex-rs/network-proxy/src/mitm.rs",
+        "codex-rs/network-proxy/src/mitm_hook.rs",
+        "codex-rs/network-proxy/src/mitm_tests.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/9a8a85bc539325f2819dd0717f88b6ba6286495e",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "8ba7aed55f85cdea4876c906a26275fac291d82c",
+      "title": "Stabilize the marketplace staging cleanup test (#56210)",
+      "parents": [
+        "9a8a85bc539325f2819dd0717f88b6ba6286495e"
+      ],
+      "files": [
+        "codex-rs/core-plugins/src/marketplace_staging_tests.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/8ba7aed55f85cdea4876c906a26275fac291d82c",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "a390571745da105cfdc85443dd1d38bf78e5ea6e",
+      "title": "Default fresh memory profiles to v2 (#56211)",
+      "parents": [
+        "8ba7aed55f85cdea4876c906a26275fac291d82c"
+      ],
+      "files": [
+        "codex-rs/app-server/src/request_processors/memory_status.rs",
+        "codex-rs/app-server/tests/suite/v2/memory_read.rs",
+        "codex-rs/app-server/tests/suite/v2/memory_reset.rs",
+        "codex-rs/config/src/types.rs",
+        "codex-rs/core/config.schema.json",
+        "codex-rs/core/src/config/config_tests.rs",
+        "codex-rs/core/src/config/mod.rs",
+        "codex-rs/memories/write/src/control.rs",
+        "codex-rs/memories/write/src/startup_dual_write_tests.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/a390571745da105cfdc85443dd1d38bf78e5ea6e",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "be537fb60c96d2f89c2ee4be161edb7206bf791e",
+      "title": "Remove the `u64` cast from WSL DrvFS detection (#56214)",
+      "parents": [
+        "a390571745da105cfdc85443dd1d38bf78e5ea6e"
+      ],
+      "files": [
+        "codex-rs/tui/src/daemon_startup.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/be537fb60c96d2f89c2ee4be161edb7206bf791e",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "96a0d8d551a1419e78c5d83f8dc3bdc066826324",
+      "title": "Use cargo_bin in the Windows sandbox manifest test (#56220)",
+      "parents": [
+        "be537fb60c96d2f89c2ee4be161edb7206bf791e"
+      ],
+      "files": [
+        "codex-rs/windows-sandbox-rs/tests/helper_manifest.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/96a0d8d551a1419e78c5d83f8dc3bdc066826324",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "9cb547349e7b16d7b00738e7a11b1a1dd28e6366",
+      "title": "Consolidate Bazel CI setup into `prepare-bazel-ci` (#56222)",
+      "parents": [
+        "96a0d8d551a1419e78c5d83f8dc3bdc066826324"
+      ],
+      "files": [
+        ".github/actions/prepare-bazel-ci/action.yml",
+        ".github/actions/setup-bazel-ci/action.yml",
+        ".github/scripts/compute-bazel-windows-path.ps1",
+        ".github/scripts/v8_canary_changes.py"
+      ],
+      "url": "https://github.com/openai/codex/commit/9cb547349e7b16d7b00738e7a11b1a1dd28e6366",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "ffda54f5b8d5595eb0963594de32e206f98cc77f",
+      "title": "Reuse current model context across paginated resume config loading (#56224)",
+      "parents": [
+        "9cb547349e7b16d7b00738e7a11b1a1dd28e6366"
+      ],
+      "files": [
+        "codex-rs/app-server/src/request_processors/thread_processor.rs",
+        "codex-rs/app-server/tests/suite/v2/mcp_resource.rs",
+        "codex-rs/thread-store/src/local/mod.rs",
+        "codex-rs/thread-store/src/local/model_context_tests.rs",
+        "codex-rs/thread-store/src/store.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/ffda54f5b8d5595eb0963594de32e206f98cc77f",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "7ace9c6aa2e30b2381364d640930fe99c7b534ef",
+      "title": "Make Opus encoder test timestamps follow sample time (#56233)",
+      "parents": [
+        "ffda54f5b8d5595eb0963594de32e206f98cc77f"
+      ],
+      "files": [
+        "codex-rs/voice-host/src/processing_tests.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/7ace9c6aa2e30b2381364d640930fe99c7b534ef",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "8c7affbe1b8a912e92dbfd75b8d0cceb9ca34507",
+      "title": "Emit prompt telemetry only after hooks accept input (#56234)",
+      "parents": [
+        "7ace9c6aa2e30b2381364d640930fe99c7b534ef"
+      ],
+      "files": [
+        "codex-rs/core/src/session/turn.rs",
+        "codex-rs/core/src/session/turn_input.rs",
+        "codex-rs/core/tests/suite/guardian_review.rs",
+        "codex-rs/core/tests/suite/hooks.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/8c7affbe1b8a912e92dbfd75b8d0cceb9ca34507",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "a3d93e1e692f1144cf8685175a5d1f6bf7294f57",
+      "title": "Make the code mode yield/resume test yield explicitly between phases (#56236)",
+      "parents": [
+        "8c7affbe1b8a912e92dbfd75b8d0cceb9ca34507"
+      ],
+      "files": [
+        "codex-rs/core/tests/suite/code_mode.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/a3d93e1e692f1144cf8685175a5d1f6bf7294f57",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "22db5847c834266986a53b782f2de21e8e834e0a",
+      "title": "Bump Bazelisk to 1.30.0 in the Bazel CI setup action (#56246)",
+      "parents": [
+        "a3d93e1e692f1144cf8685175a5d1f6bf7294f57"
+      ],
+      "files": [
+        ".github/actions/prepare-bazel-ci/action.yml"
+      ],
+      "url": "https://github.com/openai/codex/commit/22db5847c834266986a53b782f2de21e8e834e0a",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "c227654800307e23f440efaaa86131fabbd9388c",
+      "title": "Consolidate Rust unit tests under dedicated test modules (#56247)",
+      "parents": [
+        "22db5847c834266986a53b782f2de21e8e834e0a"
+      ],
+      "files": [
+        "codex-rs/app-server-protocol/src/lib.rs",
+        "codex-rs/app-server-protocol/src/lib_tests.rs",
+        "codex-rs/app-server/src/lib.rs",
+        "codex-rs/app-server/src/lib_tests.rs",
+        "codex-rs/app-server/src/stderr_logging_tests.rs",
+        "codex-rs/aws-auth/src/lib.rs",
+        "codex-rs/aws-auth/src/lib_tests.rs",
+        "codex-rs/aws-auth/src/network_policy_tests.rs",
+        "codex-rs/ext/mcp/src/lib.rs",
+        "codex-rs/ext/mcp/src/lib_tests.rs",
+        "codex-rs/ext/mcp/src/stream_manager_tests.rs",
+        "codex-rs/feedback/src/lib.rs",
+        "codex-rs/feedback/src/lib_tests.rs",
+        "codex-rs/feedback/src/metadata_tests.rs",
+        "codex-rs/feedback/src/rollout_attachment_tests.rs",
+        "codex-rs/feedback/src/save_rollout_tests.rs",
+        "codex-rs/file-search/src/lib.rs",
+        "codex-rs/file-search/src/lib_tests.rs",
+        "codex-rs/file-search/src/matcher_tests.rs",
+        "codex-rs/install-context/src/bundle_tests.rs",
+        "codex-rs/install-context/src/lib.rs",
+        "codex-rs/install-context/src/lib_tests.rs",
+        "codex-rs/mermaid/src/families_tests.rs",
+        "codex-rs/mermaid/src/lib.rs",
+        "codex-rs/mermaid/src/snapshots/codex_mermaid__tests__families_tests__LR.snap",
+        "codex-rs/mermaid/src/snapshots/codex_mermaid__tests__families_tests__class.snap",
+        "codex-rs/mermaid/src/snapshots/codex_mermaid__tests__families_tests__er.snap",
+        "codex-rs/mermaid/src/snapshots/codex_mermaid__tests__families_tests__sequence.snap",
+        "codex-rs/mermaid/src/snapshots/codex_mermaid__tests__families_tests__state.snap",
+        "codex-rs/mermaid/src/tests.rs",
+        "codex-rs/message-history/src/batch_tests.rs",
+        "codex-rs/message-history/src/lib.rs",
+        "codex-rs/message-history/src/tests.rs",
+        "codex-rs/tui/src/daemon_startup_tests.rs",
+        "codex-rs/tui/src/lib.rs",
+        "codex-rs/tui/src/lib_tests.rs",
+        "codex-rs/tui/src/snapshots/codex_tui__tests__daemon_startup_tests__daemon_exclusion_warning.snap",
+        "codex-rs/tui/src/snapshots/codex_tui__tests__daemon_startup_tests__daemon_feature_mismatch_error.snap",
+        "codex-rs/utils/cache/src/initialization_tests.rs",
+        "codex-rs/utils/cache/src/lib.rs",
+        "codex-rs/utils/cache/src/lib_tests.rs",
+        "codex-rs/utils/pty/src/lib.rs",
+        "codex-rs/utils/pty/src/spawn_helper_tests.rs",
+        "codex-rs/utils/pty/src/tests.rs",
+        "codex-rs/websocket-client/src/lib.rs",
+        "codex-rs/websocket-client/src/lib_tests.rs",
+        "codex-rs/websocket-client/src/network_policy_tests.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/c227654800307e23f440efaaa86131fabbd9388c",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "8eaf5fd115f036d207be236009938261758e30f2",
+      "title": "Bump uv to 0.13.5 in CI and release workflows (#56248)",
+      "parents": [
+        "c227654800307e23f440efaaa86131fabbd9388c"
+      ],
+      "files": [
+        ".github/actions/build-codex-packages/action.yml",
+        ".github/actions/publish-dotslash/action.yml",
+        ".github/workflows/python-runtime-release.yml",
+        ".github/workflows/python-sdk-cli-release.yml",
+        ".github/workflows/python-sdk-release.yml",
+        ".github/workflows/repo-checks.yml",
+        ".github/workflows/rust-release-provisioned-macos.yml",
+        ".github/workflows/sdk.yml",
+        "sdk/python/tests/requirements-uv.txt"
+      ],
+      "url": "https://github.com/openai/codex/commit/8eaf5fd115f036d207be236009938261758e30f2",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "40db507eeca2ff778c040c325449eb72e90c0590",
+      "title": "Avoid redundant settings checkpoints when resuming threads (#56250)",
+      "parents": [
+        "8eaf5fd115f036d207be236009938261758e30f2"
+      ],
+      "files": [
+        "codex-rs/app-server/tests/suite/v2/thread_resume.rs",
+        "codex-rs/core/src/session/mod.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/40db507eeca2ff778c040c325449eb72e90c0590",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "85de07048c21c349f491e24b4eb4e5b674fd5a28",
+      "title": "Isolate V8 source dependencies and their C++ runtime settings (#56261)",
+      "parents": [
+        "40db507eeca2ff778c040c325449eb72e90c0590"
+      ],
+      "files": [
+        "MODULE.bazel",
+        "MODULE.bazel.lock",
+        "patches/BUILD.bazel",
+        "patches/rules_cc_rusty_v8_custom_libcxx.patch",
+        "patches/v8_bazel_rules.patch",
+        "patches/v8_module_deps.patch",
+        "third_party/v8/BUILD.bazel",
+        "third_party/v8/README.md",
+        "third_party/v8/abseil.BUILD.bazel",
+        "third_party/v8/abseil_repository.bzl",
+        "third_party/v8/dependencies.bzl",
+        "third_party/v8/dependency_config.bzl",
+        "third_party/v8/dragonbox.BUILD.bazel",
+        "third_party/v8/fast_float.BUILD.bazel",
+        "third_party/v8/fp16.BUILD.bazel",
+        "third_party/v8/highway.BUILD.bazel",
+        "third_party/v8/simdutf.BUILD.bazel"
+      ],
+      "url": "https://github.com/openai/codex/commit/85de07048c21c349f491e24b4eb4e5b674fd5a28",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "61a991990fa4fd0c511ccaaab3875371796be956",
+      "title": "Reject backslashes in HTTP(S) marketplace URL userinfo (#56263)",
+      "parents": [
+        "85de07048c21c349f491e24b4eb4e5b674fd5a28"
+      ],
+      "files": [
+        "codex-rs/core-plugins/src/marketplace_add.rs",
+        "codex-rs/core-plugins/src/marketplace_policy.rs",
+        "codex-rs/core-plugins/src/marketplace_policy_tests.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/61a991990fa4fd0c511ccaaab3875371796be956",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "3fd148a20c18cfc72beb7dedfa52951b1f9c4cb1",
+      "title": "Add a built-in Google Cloud Vertex AI provider (#56265)",
+      "parents": [
+        "61a991990fa4fd0c511ccaaab3875371796be956"
+      ],
+      "files": [
+        "codex-rs/app-server-protocol/schema/json/codex_app_server_protocol.schemas.json",
+        "codex-rs/app-server-protocol/schema/json/codex_app_server_protocol.v2.schemas.json",
+        "codex-rs/app-server-protocol/schema/json/v2/GetAccountResponse.json",
+        "codex-rs/app-server-protocol/schema/precomputed/app-server-exports-experimental.json.zst",
+        "codex-rs/app-server-protocol/schema/precomputed/app-server-exports-stable.json.zst",
+        "codex-rs/app-server-protocol/schema/typescript/v2/Account.ts",
+        "codex-rs/app-server-protocol/src/protocol/v2/account.rs",
+        "codex-rs/app-server/tests/suite/v2/account_gcp.rs",
+        "codex-rs/app-server/tests/suite/v2/mod.rs",
+        "codex-rs/config/src/config_toml.rs",
+        "codex-rs/core/src/client.rs",
+        "codex-rs/core/src/config/config_tests.rs",
+        "codex-rs/core/src/config/mod.rs",
+        "codex-rs/core/tests/suite/client.rs",
+        "codex-rs/core/tests/suite/compact_remote.rs",
+        "codex-rs/core/tests/suite/gcp.rs",
+        "codex-rs/core/tests/suite/mod.rs",
+        "codex-rs/core/tests/suite/snapshots/all__suite__gcp__gcp_model_picker.snap",
+        "codex-rs/exec/src/daybreak.rs",
+        "codex-rs/model-provider-info/src/lib.rs",
+        "codex-rs/model-provider-info/src/model_provider_info_tests.rs",
+        "codex-rs/model-provider/src/amazon_bedrock/mod.rs",
+        "codex-rs/model-provider/src/capabilities.rs",
+        "codex-rs/model-provider/src/gcp/gcp_tests.rs",
+        "codex-rs/model-provider/src/gcp/mod.rs",
+        "codex-rs/model-provider/src/lib.rs",
+        "codex-rs/model-provider/src/provider.rs",
+        "codex-rs/protocol/src/account.rs",
+        "codex-rs/tui/src/app_server_session.rs",
+        "codex-rs/tui/src/dynamic_tools.rs",
+        "codex-rs/tui/src/lib.rs",
+        "sdk/python/src/openai_codex/generated/v2_all.py"
+      ],
+      "url": "https://github.com/openai/codex/commit/3fd148a20c18cfc72beb7dedfa52951b1f9c4cb1",
+      "decision": "client-provider",
+      "rationale": "Built-in GCP uses Google project/location/ADC and OpenAI-compatible Responses, remote compaction v2. AxonHub custom Responses endpoints already supported; do not modify native Gemini routing or add client ADC policy.",
+      "review_basis": "selected protocol/runtime hunks"
+    },
+    {
+      "sha": "cb2581dae8de14ca5282332ec329c335bf04195f",
+      "title": "Preserve MCP disable reasons across runtime overlays (#56266)",
+      "parents": [
+        "3fd148a20c18cfc72beb7dedfa52951b1f9c4cb1"
+      ],
+      "files": [
+        "codex-rs/codex-mcp/src/catalog.rs",
+        "codex-rs/codex-mcp/src/catalog_tests.rs",
+        "codex-rs/codex-mcp/src/runtime.rs",
+        "codex-rs/config/src/mcp_types.rs",
+        "codex-rs/core/src/config/config_tests.rs",
+        "codex-rs/core/src/config/mod.rs",
+        "codex-rs/ext/mcp/src/cloud_plugin_tests.rs",
+        "codex-rs/ext/mcp/tests/hosted_apps_mcp.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/cb2581dae8de14ca5282332ec329c335bf04195f",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "0eb98b46176fd41fc285e5e2f82218bf0ccd70f5",
+      "title": "Upgrade Python SDK model generation to datamodel-code-generator 0.64.0 (#56272)",
+      "parents": [
+        "cb2581dae8de14ca5282332ec329c335bf04195f"
+      ],
+      "files": [
+        "sdk/python/pyproject.toml",
+        "sdk/python/scripts/update_sdk_artifacts.py",
+        "sdk/python/src/openai_codex/generated/v2_all.py",
+        "sdk/python/tests/test_artifact_workflow_and_binaries.py",
+        "sdk/python/uv.lock"
+      ],
+      "url": "https://github.com/openai/codex/commit/0eb98b46176fd41fc285e5e2f82218bf0ccd70f5",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "ca87ef86e101c4e0b18847116fadcff078abaeaa",
+      "title": "Wait for cloud config refresh cancellation in loader lifetime tests (#56274)",
+      "parents": [
+        "0eb98b46176fd41fc285e5e2f82218bf0ccd70f5"
+      ],
+      "files": [
+        "codex-rs/cloud-config/src/bundle_loader.rs",
+        "codex-rs/cloud-config/src/service_tests.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/ca87ef86e101c4e0b18847116fadcff078abaeaa",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "129220bf057daf978e097d5395295d0a2f2f07c8",
+      "title": "Support bounded request bodies in AWS SigV4 signing (#56277)",
+      "parents": [
+        "ca87ef86e101c4e0b18847116fadcff078abaeaa"
+      ],
+      "files": [
+        "codex-rs/network-proxy/Cargo.toml",
+        "codex-rs/network-proxy/src/aws_sigv4.rs",
+        "codex-rs/network-proxy/src/aws_sigv4_tests.rs",
+        "codex-rs/network-proxy/src/body_budget.rs",
+        "codex-rs/network-proxy/src/body_budget_tests.rs",
+        "codex-rs/network-proxy/src/mitm.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/129220bf057daf978e097d5395295d0a2f2f07c8",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "d124fe9de1c1253d5ddc0a013d33fb32b0ff46e6",
+      "title": "Add negotiated network policy metadata support for MCP calls (#56278)",
+      "parents": [
+        "129220bf057daf978e097d5395295d0a2f2f07c8"
+      ],
+      "files": [
+        "codex-rs/Cargo.lock",
+        "codex-rs/app-server/src/request_processors/apps_processor/installed.rs",
+        "codex-rs/codex-mcp/Cargo.toml",
+        "codex-rs/codex-mcp/src/binding.rs",
+        "codex-rs/codex-mcp/src/binding_tests.rs",
+        "codex-rs/codex-mcp/src/client_capabilities.rs",
+        "codex-rs/codex-mcp/src/client_capabilities_tests.rs",
+        "codex-rs/codex-mcp/src/connection_manager.rs",
+        "codex-rs/codex-mcp/src/connection_manager/network_policy.rs",
+        "codex-rs/codex-mcp/src/connection_manager/network_policy_tests.rs",
+        "codex-rs/codex-mcp/src/connection_manager_tests.rs",
+        "codex-rs/codex-mcp/src/lib.rs",
+        "codex-rs/codex-mcp/src/mcp/mod.rs",
+        "codex-rs/codex-mcp/src/rmcp_client.rs",
+        "codex-rs/codex-mcp/src/runtime.rs",
+        "codex-rs/core/src/connectors.rs",
+        "codex-rs/core/src/session/mcp_runtime.rs",
+        "codex-rs/core/tests/mcp_trace_propagation.rs",
+        "codex-rs/core/tests/suite/mcp_auth_refresh.rs",
+        "codex-rs/ext/mcp/src/event_stream_tests.rs",
+        "codex-rs/rmcp-client/src/rmcp_client.rs",
+        "codex-rs/rmcp-client/tests/mcp_2026_discovery.rs",
+        "codex-rs/rmcp-client/tests/mcp_2026_discovery/tool_call_session_meta_tests.rs",
+        "codex-rs/rmcp-client/tests/mcp_2026_mrtr.rs",
+        "codex-rs/rmcp-client/tests/mcp_2026_mrtr/native_verification_tests.rs",
+        "codex-rs/rmcp-client/tests/mcp_2026_stdio.rs",
+        "codex-rs/rmcp-client/tests/mcp_2026_stdio_discovery.rs",
+        "codex-rs/rmcp-client/tests/process_group_cleanup.rs",
+        "codex-rs/rmcp-client/tests/stdio_descriptor_boundary.rs",
+        "codex-rs/rmcp-client/tests/streamable_http_oauth_startup.rs",
+        "codex-rs/rmcp-client/tests/streamable_http_oauth_tool_call.rs",
+        "codex-rs/rmcp-client/tests/streamable_http_test_support.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/d124fe9de1c1253d5ddc0a013d33fb32b0ff46e6",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "35e21028080ccbda9de04d2239b0a0b2336d868f",
+      "title": "Group consecutive transcript prompts into one background block (#56280)",
+      "parents": [
+        "d124fe9de1c1253d5ddc0a013d33fb32b0ff46e6"
+      ],
+      "files": [
+        "codex-rs/tui/src/app/snapshots/codex_tui__app__owned_transcript__tests__browsing__browsing_footer.snap",
+        "codex-rs/tui/src/app/snapshots/codex_tui__app__owned_transcript__tests__prompt_navigation.snap",
+        "codex-rs/tui/src/app/snapshots/codex_tui__app__tests__owned_prompt_revert_retained_history.snap",
+        "codex-rs/tui/src/app/tests/snapshots/codex_tui__app__tests__transcript_composer__transcript_flag_off_viewer.snap",
+        "codex-rs/tui/src/snapshots/codex_tui__transcript_view__tests__consecutive_user_prompts_share_one_background_block.snap",
+        "codex-rs/tui/src/transcript_view/layout.rs",
+        "codex-rs/tui/src/transcript_view/layout_tests.rs",
+        "codex-rs/tui/src/transcript_view/search_presentation.rs",
+        "codex-rs/tui/src/transcript_view/search_tests.rs",
+        "codex-rs/tui/src/transcript_view/snapshots/codex_tui__transcript_view__prompt_header__tests__prompt_header_tracks_reading_and_yields_to_visible_prompts_and_short_screens.snap",
+        "codex-rs/tui/src/transcript_view/text.rs",
+        "codex-rs/tui/src/transcript_view_tests.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/35e21028080ccbda9de04d2239b0a0b2336d868f",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "2326a3f74b4b7dd79de063ef20685b6ccad7da12",
+      "title": "Scope model catalogs and caches by thread originator (#56284)",
+      "parents": [
+        "35e21028080ccbda9de04d2239b0a0b2336d868f"
+      ],
+      "files": [
+        "codex-rs/core-plugins/src/marketplace_staging_tests.rs",
+        "codex-rs/core/src/thread_manager.rs",
+        "codex-rs/core/src/thread_manager_tests.rs",
+        "codex-rs/core/tests/suite/scenarios_model_instructions.rs",
+        "codex-rs/core/tests/suite/snapshots/all__suite__scenarios__model_instructions__originator_catalog_instructions_and_tools.snap",
+        "codex-rs/model-provider/src/models_endpoint.rs",
+        "codex-rs/model-provider/src/models_originator_tests.rs",
+        "codex-rs/models-manager/src/cache.rs",
+        "codex-rs/models-manager/src/lib.rs",
+        "codex-rs/models-manager/src/manager.rs",
+        "codex-rs/models-manager/src/originator.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/2326a3f74b4b7dd79de063ef20685b6ccad7da12",
+      "decision": "adapt",
+      "rationale": "Forward Originator and partition catalog singleflight by source/version/originator; preserve default when absent.",
+      "review_basis": "selected protocol/runtime hunks"
+    },
+    {
+      "sha": "e0fdd608e8d255f8b4b2c8fa5eecc855efb89fb9",
+      "title": "Bump `@modelcontextprotocol/sdk` to `1.32.0` (#56286)",
+      "parents": [
+        "2326a3f74b4b7dd79de063ef20685b6ccad7da12"
+      ],
+      "files": [
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "url": "https://github.com/openai/codex/commit/e0fdd608e8d255f8b4b2c8fa5eecc855efb89fb9",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "9100b9c3d38c0a9c33653f1760be307f195ee7a6",
+      "title": "Pin Linux artifact signing to Cosign v3.1.4 (#56288)",
+      "parents": [
+        "e0fdd608e8d255f8b4b2c8fa5eecc855efb89fb9"
+      ],
+      "files": [
+        ".github/actions/linux-code-sign/action.yml"
+      ],
+      "url": "https://github.com/openai/codex/commit/9100b9c3d38c0a9c33653f1760be307f195ee7a6",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "66f6da60364847b5244d550497fb742cbbae4119",
+      "title": "Lock Python release build tools with uv (#56290)",
+      "parents": [
+        "9100b9c3d38c0a9c33653f1760be307f195ee7a6"
+      ],
+      "files": [
+        ".github/actions/setup-python-release-tools/action.yml",
+        ".github/actions/setup-python-release-tools/pyproject.toml",
+        ".github/actions/setup-python-release-tools/uv.lock",
+        ".github/workflows/python-runtime-build.yml",
+        ".github/workflows/python-sdk-build.yml",
+        ".github/workflows/rust-release-windows.yml",
+        ".github/workflows/rust-release.yml"
+      ],
+      "url": "https://github.com/openai/codex/commit/66f6da60364847b5244d550497fb742cbbae4119",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "ef33e43a159beeeb95dddf7cde05926cc9871929",
+      "title": "Fix MCP cancellation tests to use the metadata callback (#56292)",
+      "parents": [
+        "66f6da60364847b5244d550497fb742cbbae4119"
+      ],
+      "files": [
+        "codex-rs/rmcp-client/src/user_verification_cancellation_tests.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/ef33e43a159beeeb95dddf7cde05926cc9871929",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "eca79b000c48bace74eaef474ec4c5d1ae5ba34a",
+      "title": "Use fixed-token auth fixtures in Vertex tests (#56293)",
+      "parents": [
+        "ef33e43a159beeeb95dddf7cde05926cc9871929"
+      ],
+      "files": [
+        "codex-rs/core/tests/suite/client.rs",
+        "codex-rs/core/tests/suite/gcp.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/eca79b000c48bace74eaef474ec4c5d1ae5ba34a",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "5a1c247dd5fd682c22a34af93df697dd06300a32",
+      "title": "Decouple managed configuration loading from ChatGPT authentication (#56295)",
+      "parents": [
+        "eca79b000c48bace74eaef474ec4c5d1ae5ba34a"
+      ],
+      "files": [
+        "codex-rs/cloud-config/src/backend.rs",
+        "codex-rs/cloud-config/src/bundle_loader.rs",
+        "codex-rs/cloud-config/src/cache.rs",
+        "codex-rs/cloud-config/src/chatgpt.rs",
+        "codex-rs/cloud-config/src/config_source.rs",
+        "codex-rs/cloud-config/src/lib.rs",
+        "codex-rs/cloud-config/src/service.rs",
+        "codex-rs/cloud-config/src/service_tests.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/5a1c247dd5fd682c22a34af93df697dd06300a32",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "e4deed398182c5275c52bcb77c6733680e2715f5",
+      "title": "Mark built-in dummy credentials and strengthen collision checks (#56297)",
+      "parents": [
+        "5a1c247dd5fd682c22a34af93df697dd06300a32"
+      ],
+      "files": [
+        "codex-rs/core/tests/suite/scenarios_credential_masking.rs",
+        "codex-rs/exec-server/tests/exec_process.rs",
+        "codex-rs/network-proxy/src/credential_broker.rs",
+        "codex-rs/network-proxy/src/credential_broker/configured_tests.rs",
+        "codex-rs/network-proxy/src/credential_broker/providers.rs",
+        "codex-rs/network-proxy/src/credential_broker_tests.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/e4deed398182c5275c52bcb77c6733680e2715f5",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "dc4844c907f8ce118c52619ed139f296dcb37705",
+      "title": "Add TLS forwarding tests for MITM SigV4 requests (#56301)",
+      "parents": [
+        "e4deed398182c5275c52bcb77c6733680e2715f5"
+      ],
+      "files": [
+        "codex-rs/network-proxy/src/certs.rs",
+        "codex-rs/network-proxy/src/mitm.rs",
+        "codex-rs/network-proxy/src/mitm_forwarding_tests.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/dc4844c907f8ce118c52619ed139f296dcb37705",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "7a5860da3507ce49213178c204a2bbac130e72f1",
+      "title": "Add hook configuration to environment attachments (#56302)",
+      "parents": [
+        "dc4844c907f8ce118c52619ed139f296dcb37705"
+      ],
+      "files": [
+        "codex-rs/config/src/hook_config.rs",
+        "codex-rs/core/src/agents_md_tests.rs",
+        "codex-rs/core/src/environment_selection.rs",
+        "codex-rs/core/src/mcp_tool_call_tests.rs",
+        "codex-rs/core/src/session/session.rs",
+        "codex-rs/core/src/shell_snapshot_tests.rs",
+        "codex-rs/core/src/thread_manager_tests.rs",
+        "codex-rs/core/src/tools/runtimes/apply_patch_tests.rs",
+        "codex-rs/core/src/tools/runtimes/unified_exec.rs",
+        "codex-rs/core/tests/common/test_codex.rs",
+        "codex-rs/core/tests/suite/agent_execution.rs",
+        "codex-rs/core/tests/suite/exec_policy.rs",
+        "codex-rs/core/tests/suite/executor_discovery_v2.rs",
+        "codex-rs/core/tests/suite/guardian_review.rs",
+        "codex-rs/core/tests/suite/hooks_executor.rs",
+        "codex-rs/core/tests/suite/mcp_startup_refresh_http_proxy.rs",
+        "codex-rs/core/tests/suite/mcp_tool_exposure.rs",
+        "codex-rs/core/tests/suite/network_approval.rs",
+        "codex-rs/core/tests/suite/remote_env.rs",
+        "codex-rs/core/tests/suite/rmcp_client.rs",
+        "codex-rs/core/tests/suite/shell_snapshot.rs",
+        "codex-rs/core/tests/suite/unified_exec.rs",
+        "codex-rs/core/tests/suite/workspace_roots.rs",
+        "codex-rs/ext/extension-api/tests/registry.rs",
+        "codex-rs/ext/mcp/tests/plugin_mcp.rs",
+        "codex-rs/protocol/src/environment.rs",
+        "codex-rs/protocol/src/hooks.rs",
+        "codex-rs/protocol/src/lib.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/7a5860da3507ce49213178c204a2bbac130e72f1",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "75a4146411d22e4c487ba86f026201594cdbaa85",
+      "title": "Add support for environment-scoped managed hooks (#56304)",
+      "parents": [
+        "7a5860da3507ce49213178c204a2bbac130e72f1"
+      ],
+      "files": [
+        "codex-rs/core/src/session/environment.rs",
+        "codex-rs/core/src/session/session.rs",
+        "codex-rs/core/src/session/step_activation.rs",
+        "codex-rs/core/tests/suite/hooks_executor.rs",
+        "codex-rs/hooks/src/engine/command_runner.rs",
+        "codex-rs/hooks/src/engine/command_runner_tests.rs",
+        "codex-rs/hooks/src/engine/discovery.rs",
+        "codex-rs/hooks/src/engine/dispatcher.rs",
+        "codex-rs/hooks/src/engine/mcp_runner.rs",
+        "codex-rs/hooks/src/engine/mcp_runner_tests.rs",
+        "codex-rs/hooks/src/engine/mod.rs",
+        "codex-rs/hooks/src/engine/mod_tests.rs",
+        "codex-rs/hooks/src/environment.rs",
+        "codex-rs/hooks/src/events/common.rs",
+        "codex-rs/hooks/src/events/compact.rs",
+        "codex-rs/hooks/src/events/interrupt.rs",
+        "codex-rs/hooks/src/events/model_request.rs",
+        "codex-rs/hooks/src/events/permission_request.rs",
+        "codex-rs/hooks/src/events/post_tool_use.rs",
+        "codex-rs/hooks/src/events/pre_tool_use.rs",
+        "codex-rs/hooks/src/events/session_end.rs",
+        "codex-rs/hooks/src/events/session_start.rs",
+        "codex-rs/hooks/src/events/stop.rs",
+        "codex-rs/hooks/src/events/user_prompt_submit.rs",
+        "codex-rs/hooks/src/lib.rs",
+        "codex-rs/hooks/src/registry.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/75a4146411d22e4c487ba86f026201594cdbaa85",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "334527705c4a2d077efce577925247d87f10d2b1",
+      "title": "Separate directory and repository scopes in the TUI (#56308)",
+      "parents": [
+        "75a4146411d22e4c487ba86f026201594cdbaa85"
+      ],
+      "files": [
+        "codex-rs/tui/src/app/agent_center/render.rs",
+        "codex-rs/tui/src/app/agent_center/rows.rs",
+        "codex-rs/tui/src/app/agents_overview_actions_tests.rs",
+        "codex-rs/tui/src/app/agents_overview_grouping.rs",
+        "codex-rs/tui/src/app/agents_overview_tests.rs",
+        "codex-rs/tui/src/app/agents_overview_view.rs",
+        "codex-rs/tui/src/app/snapshots/codex_tui__app__agents_overview__tests__actions__hiding_tasks_keeps_selection_adjacent_in_display_order.snap",
+        "codex-rs/tui/src/keymap_setup/actions.rs",
+        "codex-rs/tui/src/lib.rs",
+        "codex-rs/tui/src/lib_tests.rs",
+        "codex-rs/tui/src/resume_picker.rs",
+        "codex-rs/tui/src/resume_picker/archive_tests.rs",
+        "codex-rs/tui/src/resume_picker/page_loading.rs",
+        "codex-rs/tui/src/resume_picker/page_loading_tests.rs",
+        "codex-rs/tui/src/snapshots/codex_tui__app__agents_overview__tests__agents_overview_directory_grouping.snap",
+        "codex-rs/tui/src/snapshots/codex_tui__app__agents_overview__tests__agents_overview_worktree_grouping.snap",
+        "codex-rs/tui/src/snapshots/codex_tui__keymap_setup__tests__keymap_picker_agents_actions.snap",
+        "codex-rs/tui/src/snapshots/codex_tui__resume_picker__tests__resume_picker_search_line_sort_filter_tabs.snap"
+      ],
+      "url": "https://github.com/openai/codex/commit/334527705c4a2d077efce577925247d87f10d2b1",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "878070b5a6623d52c34151b79ce618a5485f9cea",
+      "title": "Support model-specific writable-root permission wording (#56309)",
+      "parents": [
+        "334527705c4a2d077efce577925247d87f10d2b1"
+      ],
+      "files": [
+        "codex-rs/core/src/context/world_state/permissions_tests.rs",
+        "codex-rs/core/src/session/world_state.rs",
+        "codex-rs/core/tests/suite/catalog_permission_messages.rs",
+        "codex-rs/core/tests/suite/permissions_messages.rs",
+        "codex-rs/core/tests/suite/scenarios.rs",
+        "codex-rs/core/tests/suite/settings_constraints.rs",
+        "codex-rs/core/tests/suite/snapshots/all__suite__scenarios__catalog_writable_roots_follow_selected_model.snap",
+        "codex-rs/models-manager/src/model_info_tests.rs",
+        "codex-rs/prompts/src/model_messages/permissions.rs",
+        "codex-rs/prompts/src/permissions_instructions.rs",
+        "codex-rs/prompts/src/permissions_instructions/writable_roots.rs",
+        "codex-rs/prompts/src/permissions_instructions/writable_roots_tests.rs",
+        "codex-rs/prompts/src/permissions_instructions_tests.rs",
+        "codex-rs/protocol/src/openai_models.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/878070b5a6623d52c34151b79ce618a5485f9cea",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "5b792948f9414288b9196ae0559f218439affe20",
+      "title": "Track accepted conversation history in rollout traces (#56312)",
+      "parents": [
+        "878070b5a6623d52c34151b79ce618a5485f9cea"
+      ],
+      "files": [
+        "codex-rs/Cargo.lock",
+        "codex-rs/cli/Cargo.toml",
+        "codex-rs/cli/tests/rollout_trace.rs",
+        "codex-rs/core/src/client.rs",
+        "codex-rs/core/src/client_tests.rs",
+        "codex-rs/rollout-trace/src/bundle.rs",
+        "codex-rs/rollout-trace/src/model/conversation.rs",
+        "codex-rs/rollout-trace/src/model/session.rs",
+        "codex-rs/rollout-trace/src/protocol_event.rs",
+        "codex-rs/rollout-trace/src/raw_event.rs",
+        "codex-rs/rollout-trace/src/reducer/acceptance_tests.rs",
+        "codex-rs/rollout-trace/src/reducer/conversation.rs",
+        "codex-rs/rollout-trace/src/reducer/conversation/normalize.rs",
+        "codex-rs/rollout-trace/src/reducer/conversation_tests.rs",
+        "codex-rs/rollout-trace/src/reducer/inference_tests.rs",
+        "codex-rs/rollout-trace/src/reducer/mod.rs",
+        "codex-rs/rollout-trace/src/thread.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/5b792948f9414288b9196ae0559f218439affe20",
+      "decision": "client-tracing",
+      "rationale": "Accepted-history rollout traces are local client observability, no gateway wire contract change.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "e103bbc06f2f516afe47eb9b1d8d172128912023",
+      "title": "Apply model catalog overrides to history, notes, and context tools (#56313)",
+      "parents": [
+        "5b792948f9414288b9196ae0559f218439affe20"
+      ],
+      "files": [
+        "codex-rs/Cargo.lock",
+        "codex-rs/core/src/session/mod.rs",
+        "codex-rs/core/src/tools/catalog_parameters.rs",
+        "codex-rs/core/src/tools/code_mode/wait_spec.rs",
+        "codex-rs/core/src/tools/handlers/get_context_remaining.rs",
+        "codex-rs/core/src/tools/handlers/get_context_remaining_spec.rs",
+        "codex-rs/core/src/tools/handlers/mcp_resource_spec.rs",
+        "codex-rs/core/src/tools/handlers/mcp_resource_spec_tests.rs",
+        "codex-rs/core/src/tools/handlers/new_context_window.rs",
+        "codex-rs/core/src/tools/handlers/new_context_window_spec.rs",
+        "codex-rs/core/src/tools/handlers/request_user_input_async.rs",
+        "codex-rs/core/src/tools/mod.rs",
+        "codex-rs/core/src/tools/multi_agent_tool.rs",
+        "codex-rs/core/src/tools/spec_plan.rs",
+        "codex-rs/core/src/tools/spec_plan_tests.rs",
+        "codex-rs/core/tests/suite/scenarios.rs",
+        "codex-rs/core/tests/suite/scenarios_context_management_tools.rs",
+        "codex-rs/core/tests/suite/snapshots/all__suite__scenarios__context_management_tools__catalog_context_tool_definitions_follow_captured_models.snap",
+        "codex-rs/ext/history-notes/Cargo.toml",
+        "codex-rs/ext/history-notes/src/extension.rs",
+        "codex-rs/ext/history-notes/src/tools.rs",
+        "codex-rs/ext/history-notes/src/tools_tests.rs",
+        "codex-rs/ext/history-notes/tests/history_notes_extension.rs",
+        "codex-rs/ext/history-notes/tests/image_model_input.rs",
+        "codex-rs/ext/history-notes/tests/snapshots/image_model_input__history_images_reach_the_next_model_request.snap",
+        "codex-rs/prompts/src/model_messages.rs",
+        "codex-rs/protocol/src/openai_models.rs",
+        "codex-rs/protocol/src/openai_models/memento_v2.rs",
+        "codex-rs/protocol/src/openai_models/memento_v2_tests.rs",
+        "codex-rs/tools/Cargo.toml",
+        "codex-rs/tools/src/catalog_tool_message.rs",
+        "codex-rs/tools/src/catalog_tool_message_tests.rs",
+        "codex-rs/tools/src/json_schema.rs",
+        "codex-rs/tools/src/json_schema_tests.rs",
+        "codex-rs/tools/src/lib.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/e103bbc06f2f516afe47eb9b1d8d172128912023",
+      "decision": "covered",
+      "rationale": "Model-message/tool/context overrides remain opaque in raw catalog and Responses additional_tools; client-owned implementation.",
+      "review_basis": "selected protocol/runtime hunks"
+    },
+    {
+      "sha": "f3a90545aed3188ee1e5c119ec89a742de399cdc",
+      "title": "Add managed configuration loaders for custom config servers (#56314)",
+      "parents": [
+        "e103bbc06f2f516afe47eb9b1d8d172128912023"
+      ],
+      "files": [
+        "codex-rs/Cargo.lock",
+        "codex-rs/backend-client/src/client.rs",
+        "codex-rs/backend-client/src/client/rate_limit_resets_tests.rs",
+        "codex-rs/cloud-config/Cargo.toml",
+        "codex-rs/cloud-config/src/backend.rs",
+        "codex-rs/cloud-config/src/bundle_loader.rs",
+        "codex-rs/cloud-config/src/config_server.rs",
+        "codex-rs/cloud-config/src/config_server_tests.rs",
+        "codex-rs/cloud-config/src/lib.rs",
+        "codex-rs/cloud-config/src/service_tests.rs",
+        "codex-rs/cloud-config/src/validation.rs",
+        "codex-rs/config/src/config_server.rs",
+        "codex-rs/login/src/outbound_proxy.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/f3a90545aed3188ee1e5c119ec89a742de399cdc",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "8531184b49bcb160175a84e140b659a83a426df7",
+      "title": "Make agent-message wakes respect interrupts and Plan mode (#56330)",
+      "parents": [
+        "f3a90545aed3188ee1e5c119ec89a742de399cdc"
+      ],
+      "files": [
+        "codex-rs/core/src/session/turn_context.rs",
+        "codex-rs/core/src/session/turn_input.rs",
+        "codex-rs/core/src/tasks/mod.rs",
+        "codex-rs/core/tests/suite/agent_message_wake.rs",
+        "codex-rs/core/tests/suite/mod.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/8531184b49bcb160175a84e140b659a83a426df7",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "e5ea2ed50b3a28092b13a4dd64463748b060b7af",
+      "title": "Match rollout trace image content across request snapshots (#56342)",
+      "parents": [
+        "8531184b49bcb160175a84e140b659a83a426df7"
+      ],
+      "files": [
+        "codex-rs/Cargo.lock",
+        "codex-rs/rollout-trace/Cargo.toml",
+        "codex-rs/rollout-trace/src/model/conversation.rs",
+        "codex-rs/rollout-trace/src/reducer/conversation.rs",
+        "codex-rs/rollout-trace/src/reducer/conversation/normalize.rs",
+        "codex-rs/rollout-trace/src/reducer/conversation_tests.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/e5ea2ed50b3a28092b13a4dd64463748b060b7af",
+      "decision": "client-tracing",
+      "rationale": "Image identity matching is in rollout-trace normalization, no outbound image encoding change.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "4610b573e59b211bf9430cf6ffb97cfb84623090",
+      "title": "Run environment hooks on their owning executors (#56343)",
+      "parents": [
+        "e5ea2ed50b3a28092b13a4dd64463748b060b7af"
+      ],
+      "files": [
+        "codex-rs/codex-mcp/src/binding.rs",
+        "codex-rs/codex-mcp/src/connection_manager/resources.rs",
+        "codex-rs/core/src/guardian/permissions.rs",
+        "codex-rs/core/src/hook_environment_executor.rs",
+        "codex-rs/core/src/hook_runtime.rs",
+        "codex-rs/core/src/lib.rs",
+        "codex-rs/core/src/mcp_tool_call.rs",
+        "codex-rs/core/src/mcp_tool_call_tests.rs",
+        "codex-rs/core/src/session/step_context.rs",
+        "codex-rs/core/src/session/tests.rs",
+        "codex-rs/core/src/session/tests/guardian_tests.rs",
+        "codex-rs/core/src/tools/approvals.rs",
+        "codex-rs/core/src/tools/approvals_tests.rs",
+        "codex-rs/core/src/tools/context.rs",
+        "codex-rs/core/src/tools/handlers/apply_patch.rs",
+        "codex-rs/core/src/tools/handlers/apply_patch_tests.rs",
+        "codex-rs/core/src/tools/handlers/extension_tools.rs",
+        "codex-rs/core/src/tools/handlers/mcp.rs",
+        "codex-rs/core/src/tools/handlers/mcp_resource.rs",
+        "codex-rs/core/src/tools/handlers/mcp_resource/list_mcp_resource_templates.rs",
+        "codex-rs/core/src/tools/handlers/mcp_resource/list_mcp_resources.rs",
+        "codex-rs/core/src/tools/handlers/mcp_resource/read_mcp_resource.rs",
+        "codex-rs/core/src/tools/handlers/mod.rs",
+        "codex-rs/core/src/tools/handlers/multi_agents_tests.rs",
+        "codex-rs/core/src/tools/handlers/request_permissions.rs",
+        "codex-rs/core/src/tools/handlers/request_plugin_install_tests.rs",
+        "codex-rs/core/src/tools/handlers/request_user_input_tests.rs",
+        "codex-rs/core/src/tools/handlers/unified_exec.rs",
+        "codex-rs/core/src/tools/handlers/unified_exec/exec_command.rs",
+        "codex-rs/core/src/tools/handlers/unified_exec/write_stdin.rs",
+        "codex-rs/core/src/tools/handlers/unified_exec_tests.rs",
+        "codex-rs/core/src/tools/handlers/view_image.rs",
+        "codex-rs/core/src/tools/lifecycle.rs",
+        "codex-rs/core/src/tools/network_approval.rs",
+        "codex-rs/core/src/tools/registry.rs",
+        "codex-rs/core/src/tools/registry_tests.rs",
+        "codex-rs/core/src/tools/router.rs",
+        "codex-rs/core/src/tools/runtimes/unified_exec.rs",
+        "codex-rs/core/src/tools/tool_dispatch_trace_tests.rs",
+        "codex-rs/core/src/unified_exec/mod.rs",
+        "codex-rs/core/src/unified_exec/mod_tests.rs",
+        "codex-rs/core/src/unified_exec/process_manager.rs",
+        "codex-rs/core/tests/suite/guardian_connector_trust.rs",
+        "codex-rs/core/tests/suite/hooks_executor.rs",
+        "codex-rs/ext/multi-env-copy-file/src/tool.rs",
+        "codex-rs/ext/multi-env-copy-file/tests/suite/transfers.rs",
+        "codex-rs/tools/src/tool_executor.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/4610b573e59b211bf9430cf6ffb97cfb84623090",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "30587d78850abf2bfc484ffb0ab0f71497cc9c05",
+      "title": "Add experimental attached thread forks (#56351)",
+      "parents": [
+        "4610b573e59b211bf9430cf6ffb97cfb84623090"
+      ],
+      "files": [
+        "codex-rs/app-server-protocol/schema/precomputed/app-server-exports-experimental.json.zst",
+        "codex-rs/app-server-protocol/schema/precomputed/app-server-exports-stable.json.zst",
+        "codex-rs/app-server-protocol/src/protocol/v2/thread.rs",
+        "codex-rs/app-server-test-client/src/lib.rs",
+        "codex-rs/app-server/src/external_agent_migration/session_importer.rs",
+        "codex-rs/app-server/src/request_processors/thread_delete.rs",
+        "codex-rs/app-server/src/request_processors/thread_processor.rs",
+        "codex-rs/app-server/tests/common/rollout.rs",
+        "codex-rs/app-server/tests/suite/conversation_summary.rs",
+        "codex-rs/app-server/tests/suite/v2/attached_thread_tests.rs",
+        "codex-rs/app-server/tests/suite/v2/external_agent_config.rs",
+        "codex-rs/app-server/tests/suite/v2/mod.rs",
+        "codex-rs/app-server/tests/suite/v2/projects.rs",
+        "codex-rs/app-server/tests/suite/v2/remote_thread_store.rs",
+        "codex-rs/app-server/tests/suite/v2/sqlite_recovery.rs",
+        "codex-rs/app-server/tests/suite/v2/thread_fork.rs",
+        "codex-rs/app-server/tests/suite/v2/thread_list.rs",
+        "codex-rs/app-server/tests/suite/v2/thread_metadata_update.rs",
+        "codex-rs/app-server/tests/suite/v2/thread_read.rs",
+        "codex-rs/app-server/tests/suite/v2/thread_resume.rs",
+        "codex-rs/app-server/tests/suite/v2/thread_timeline.rs",
+        "codex-rs/app-server/tests/suite/v2/thread_unarchive.rs",
+        "codex-rs/app-server/tests/suite/v2/turn_start.rs",
+        "codex-rs/cli/tests/queue.rs",
+        "codex-rs/core/src/codex_delegate.rs",
+        "codex-rs/core/src/session/mod.rs",
+        "codex-rs/core/src/session/session.rs",
+        "codex-rs/core/src/session/tests.rs",
+        "codex-rs/core/src/session/tests/guardian_tests.rs",
+        "codex-rs/core/src/thread_manager.rs",
+        "codex-rs/core/tests/suite/sqlite_state.rs",
+        "codex-rs/exec/src/lib.rs",
+        "codex-rs/protocol/src/protocol.rs",
+        "codex-rs/rollout/src/compression_tests.rs",
+        "codex-rs/rollout/src/list.rs",
+        "codex-rs/rollout/src/metadata_tests.rs",
+        "codex-rs/rollout/src/recorder.rs",
+        "codex-rs/rollout/src/recorder_tests.rs",
+        "codex-rs/rollout/src/rollout_reference_index.rs",
+        "codex-rs/rollout/src/session_index.rs",
+        "codex-rs/rollout/src/session_index_tests.rs",
+        "codex-rs/rollout/src/state_db_tests.rs",
+        "codex-rs/rollout/src/tests.rs",
+        "codex-rs/state/migrations/0062_threads_attached_parent.sql",
+        "codex-rs/state/src/extract.rs",
+        "codex-rs/state/src/model/thread_metadata.rs",
+        "codex-rs/state/src/runtime/memories.rs",
+        "codex-rs/state/src/runtime/test_support.rs",
+        "codex-rs/state/src/runtime/threads.rs",
+        "codex-rs/thread-store/src/in_memory.rs",
+        "codex-rs/thread-store/src/local/create_thread.rs",
+        "codex-rs/thread-store/src/local/delete_thread.rs",
+        "codex-rs/thread-store/src/local/list_threads.rs",
+        "codex-rs/thread-store/src/local/live_writer.rs",
+        "codex-rs/thread-store/src/local/mod.rs",
+        "codex-rs/thread-store/src/local/pending_thread_metadata_tests.rs",
+        "codex-rs/thread-store/src/local/revert_thread.rs",
+        "codex-rs/thread-store/src/local/revert_thread_tests.rs",
+        "codex-rs/thread-store/src/local/thread_history_materialization_tests.rs",
+        "codex-rs/thread-store/src/local/update_thread_metadata.rs",
+        "codex-rs/thread-store/src/thread_metadata_sync.rs",
+        "codex-rs/thread-store/src/types.rs",
+        "codex-rs/tui/src/analytics/chats.rs",
+        "codex-rs/tui/src/app/agent_picker.rs",
+        "codex-rs/tui/src/app/agents_overview_discovery.rs",
+        "codex-rs/tui/src/dynamic_tools.rs",
+        "codex-rs/tui/src/lib.rs",
+        "codex-rs/tui/src/named_session_lookup.rs",
+        "codex-rs/tui/src/resume_picker.rs",
+        "codex-rs/tui/src/task_mentions.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/30587d78850abf2bfc484ffb0ab0f71497cc9c05",
+      "decision": "client-app-server",
+      "rationale": "Experimental attached forks are app-server/thread-store lifecycle, not gateway-owned sessions.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "a96fa4f220700544a1202ec7ae411e432715151f",
+      "title": "Allow callers to set the thread source for sampling (#56364)",
+      "parents": [
+        "30587d78850abf2bfc484ffb0ab0f71497cc9c05"
+      ],
+      "files": [
+        "codex-rs/app-server-protocol/schema/precomputed/app-server-exports-experimental.json.zst",
+        "codex-rs/app-server-protocol/src/protocol/v2/thread_sample.rs",
+        "codex-rs/app-server/src/thread_sample.rs",
+        "codex-rs/app-server/tests/suite/v2/thread_sample.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/a96fa4f220700544a1202ec7ae411e432715151f",
+      "decision": "client-app-server",
+      "rationale": "Optional thread_source is an app-server sampling parameter, not a Responses request field.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "d6817454d76885e9d0e118bbf82e507aed6f715a",
+      "title": "Make the Guardian review timeout configurable (#56371)",
+      "parents": [
+        "a96fa4f220700544a1202ec7ae411e432715151f"
+      ],
+      "files": [
+        "codex-rs/analytics/src/events.rs",
+        "codex-rs/config/src/config_toml.rs",
+        "codex-rs/core/config.schema.json",
+        "codex-rs/core/src/config/config_tests.rs",
+        "codex-rs/core/src/config/mod.rs",
+        "codex-rs/core/src/guardian/decision.rs",
+        "codex-rs/core/src/guardian/review.rs",
+        "codex-rs/core/src/guardian/review_request.rs",
+        "codex-rs/core/src/guardian/review_session.rs",
+        "codex-rs/core/src/guardian/review_session_setup.rs",
+        "codex-rs/core/src/guardian/review_session_tests.rs",
+        "codex-rs/core/tests/suite/guardian_retry.rs",
+        "codex-rs/ext/guardian-reviewer/src/deadline.rs",
+        "codex-rs/ext/guardian-reviewer/src/deadline_tests.rs",
+        "codex-rs/ext/guardian-reviewer/src/execution.rs",
+        "codex-rs/ext/guardian-reviewer/src/lib.rs",
+        "codex-rs/ext/guardian-reviewer/src/metrics.rs",
+        "codex-rs/ext/guardian-reviewer/src/pool.rs",
+        "codex-rs/ext/guardian-reviewer/src/pool_tests.rs",
+        "codex-rs/ext/guardian-reviewer/src/reporting.rs",
+        "codex-rs/ext/guardian-reviewer/src/reporting_tests.rs",
+        "codex-rs/ext/guardian-reviewer/src/retry.rs",
+        "codex-rs/ext/guardian-reviewer/src/retry_tests.rs",
+        "codex-rs/ext/guardian-reviewer/src/review.rs",
+        "codex-rs/ext/guardian-reviewer/src/review_tests.rs",
+        "codex-rs/ext/guardian-reviewer/src/routing.rs",
+        "codex-rs/thread-manager-sample/src/main.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/d6817454d76885e9d0e118bbf82e507aed6f715a",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "e6ebdfe00b520e21ed50ac0362656f32dd64d2fc",
+      "title": "Support memory v2 in external-agent memory imports (#56414)",
+      "parents": [
+        "d6817454d76885e9d0e118bbf82e507aed6f715a"
+      ],
+      "files": [
+        "codex-rs/app-server/src/external_agent_migration/processor.rs",
+        "codex-rs/app-server/tests/suite/v2/external_agent_config.rs",
+        "codex-rs/app-server/tests/suite/v2/memory_reset.rs",
+        "codex-rs/external-agent-migration/src/detect/memory.rs",
+        "codex-rs/external-agent-migration/src/detect/mod.rs",
+        "codex-rs/external-agent-migration/src/memory_import.rs",
+        "codex-rs/external-agent-migration/src/memory_import_tests.rs",
+        "codex-rs/external-agent-migration/src/service.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/e6ebdfe00b520e21ed50ac0362656f32dd64d2fc",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "ca9d103f39fde8a65f84b5e65eb9a30268cf70fb",
+      "title": "Update `ctutils` from 0.4.2 to 0.4.5 (#56439)",
+      "parents": [
+        "e6ebdfe00b520e21ed50ac0362656f32dd64d2fc"
+      ],
+      "files": [
+        "MODULE.bazel.lock",
+        "codex-rs/Cargo.lock"
+      ],
+      "url": "https://github.com/openai/codex/commit/ca9d103f39fde8a65f84b5e65eb9a30268cf70fb",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "60adfa8513f77c27826f0c5b770e7a7d4eca538e",
+      "title": "Treat model-not-found provider errors as terminal failures (#56445)",
+      "parents": [
+        "ca9d103f39fde8a65f84b5e65eb9a30268cf70fb"
+      ],
+      "files": [
+        "codex-rs/app-server-protocol/schema/json/ServerNotification.json",
+        "codex-rs/app-server-protocol/schema/json/codex_app_server_protocol.schemas.json",
+        "codex-rs/app-server-protocol/schema/json/codex_app_server_protocol.v2.schemas.json",
+        "codex-rs/app-server-protocol/schema/json/v2/ErrorNotification.json",
+        "codex-rs/app-server-protocol/schema/json/v2/ReviewStartResponse.json",
+        "codex-rs/app-server-protocol/schema/json/v2/ThreadForkResponse.json",
+        "codex-rs/app-server-protocol/schema/json/v2/ThreadListResponse.json",
+        "codex-rs/app-server-protocol/schema/json/v2/ThreadMetadataUpdateResponse.json",
+        "codex-rs/app-server-protocol/schema/json/v2/ThreadReadResponse.json",
+        "codex-rs/app-server-protocol/schema/json/v2/ThreadResumeResponse.json",
+        "codex-rs/app-server-protocol/schema/json/v2/ThreadRevertResponse.json",
+        "codex-rs/app-server-protocol/schema/json/v2/ThreadStartResponse.json",
+        "codex-rs/app-server-protocol/schema/json/v2/ThreadStartedNotification.json",
+        "codex-rs/app-server-protocol/schema/json/v2/ThreadTurnsListResponse.json",
+        "codex-rs/app-server-protocol/schema/json/v2/ThreadUnarchiveResponse.json",
+        "codex-rs/app-server-protocol/schema/json/v2/TurnCompletedNotification.json",
+        "codex-rs/app-server-protocol/schema/json/v2/TurnStartResponse.json",
+        "codex-rs/app-server-protocol/schema/json/v2/TurnStartedNotification.json",
+        "codex-rs/app-server-protocol/schema/precomputed/app-server-exports-experimental.json.zst",
+        "codex-rs/app-server-protocol/schema/precomputed/app-server-exports-stable.json.zst",
+        "codex-rs/app-server-protocol/schema/typescript/v2/CodexErrorInfo.ts",
+        "codex-rs/app-server-protocol/src/protocol/v2/shared.rs",
+        "codex-rs/app-server/tests/suite/v2/thread_read.rs",
+        "codex-rs/cli/src/doctor.rs",
+        "codex-rs/codex-api/src/api_bridge.rs",
+        "codex-rs/codex-api/src/api_bridge_tests.rs",
+        "codex-rs/codex-api/src/error.rs",
+        "codex-rs/codex-api/src/sse/responses.rs",
+        "codex-rs/codex-api/src/sse/responses_error.rs",
+        "codex-rs/codex-api/src/sse/responses_error_tests.rs",
+        "codex-rs/core/tests/suite/retry_after.rs",
+        "codex-rs/ext/guardian-reviewer/src/retry.rs",
+        "codex-rs/ext/guardian-v2/src/async_scorer/metrics.rs",
+        "codex-rs/ext/guardian-v2/src/async_scorer/sampler/execution.rs",
+        "codex-rs/protocol/src/codex_error_info.rs",
+        "codex-rs/protocol/src/error.rs",
+        "codex-rs/protocol/src/protocol.rs",
+        "codex-rs/response-debug-context/src/lib.rs",
+        "sdk/python/src/openai_codex/generated/v2_all.py"
+      ],
+      "url": "https://github.com/openai/codex/commit/60adfa8513f77c27826f0c5b770e7a7d4eca538e",
+      "decision": "covered-and-test",
+      "rationale": "Gateway preserves model_not_found code/message and maps streaming failure to 404. Add real CLI fixture with retries enabled, asserting one request and original message.",
+      "review_basis": "selected protocol/runtime hunks"
+    },
+    {
+      "sha": "2130b56710d45edfdc91744e53e2440d27321a16",
+      "title": "Make the Realtime V2 background-agent steering test deterministic (#56453)",
+      "parents": [
+        "60adfa8513f77c27826f0c5b770e7a7d4eca538e"
+      ],
+      "files": [
+        "codex-rs/app-server/tests/suite/v2/realtime_conversation.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/2130b56710d45edfdc91744e53e2440d27321a16",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "d8acdf151577132d4ee1de47a4d1822ae5acb762",
+      "title": "Make sandbox mount cleanup tests tolerate file descriptor reuse (#56454)",
+      "parents": [
+        "2130b56710d45edfdc91744e53e2440d27321a16"
+      ],
+      "files": [
+        "codex-rs/linux-sandbox/src/fd_mount_tests.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/d8acdf151577132d4ee1de47a4d1822ae5acb762",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "f71c6afc30031011fe0b4d757b981fd0301b2536",
+      "title": "Add Guardian V3 feature configuration (#56459)",
+      "parents": [
+        "d8acdf151577132d4ee1de47a4d1822ae5acb762"
+      ],
+      "files": [
+        "codex-rs/config/src/schema.rs",
+        "codex-rs/core/config.schema.json",
+        "codex-rs/features/src/feature_configs.rs",
+        "codex-rs/features/src/lib.rs",
+        "codex-rs/features/src/tests.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/f71c6afc30031011fe0b4d757b981fd0301b2536",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "bca6cff1e140c1791975f0f6c47cb3add4f31710",
+      "title": "Add Guardian v3 local board helpers (#56460)",
+      "parents": [
+        "f71c6afc30031011fe0b4d757b981fd0301b2536"
+      ],
+      "files": [
+        "codex-rs/Cargo.lock",
+        "codex-rs/Cargo.toml",
+        "codex-rs/ext/guardian-v3/BUILD.bazel",
+        "codex-rs/ext/guardian-v3/Cargo.toml",
+        "codex-rs/ext/guardian-v3/src/lib.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/bca6cff1e140c1791975f0f6c47cb3add4f31710",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "b719a7fb7fe0c43a505f30a933b63d13e2a13e80",
+      "title": "Add silent append support to message boards (#56461)",
+      "parents": [
+        "bca6cff1e140c1791975f0f6c47cb3add4f31710"
+      ],
+      "files": [
+        "codex-rs/agent-message-board-client/src/client.rs",
+        "codex-rs/agent-message-board-client/tests/remote_board.rs",
+        "codex-rs/message-board/src/api.rs",
+        "codex-rs/message-board/src/in_memory.rs",
+        "codex-rs/message-board/src/in_memory/queries.rs",
+        "codex-rs/message-board/src/lib.rs",
+        "codex-rs/message-board/src/local.rs",
+        "codex-rs/message-board/src/local/queries.rs",
+        "codex-rs/message-board/src/tools.rs",
+        "codex-rs/message-board/src/tools/arguments.rs",
+        "codex-rs/message-board/src/tools/selection.rs",
+        "codex-rs/message-board/src/tools/spec.rs",
+        "codex-rs/message-board/tests/local_board.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/b719a7fb7fe0c43a505f30a933b63d13e2a13e80",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "90894a780d59b30f0c72d35fa08c964233697de7",
+      "title": "Prevent memory imports from racing with consolidation (#56462)",
+      "parents": [
+        "b719a7fb7fe0c43a505f30a933b63d13e2a13e80"
+      ],
+      "files": [
+        "codex-rs/app-server/tests/suite/v2/external_agent_memory_concurrency.rs",
+        "codex-rs/app-server/tests/suite/v2/mod.rs",
+        "codex-rs/external-agent-migration/src/memory_import.rs",
+        "codex-rs/memories/write/src/lib.rs",
+        "codex-rs/memories/write/src/phase2.rs",
+        "codex-rs/memories/write/src/runtime.rs",
+        "codex-rs/memories/write/src/workspace_lock.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/90894a780d59b30f0c72d35fa08c964233697de7",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "b559e6a3988489b636e1e79672eff330bf0679dc",
+      "title": "Add experimental thread memory summary reads (#56465)",
+      "parents": [
+        "90894a780d59b30f0c72d35fa08c964233697de7"
+      ],
+      "files": [
+        "codex-rs/app-server-protocol/schema/precomputed/app-server-exports-experimental.json.zst",
+        "codex-rs/app-server-protocol/src/protocol/common.rs",
+        "codex-rs/app-server-protocol/src/protocol/v2/memory.rs",
+        "codex-rs/app-server/README.md",
+        "codex-rs/app-server/src/message_processor.rs",
+        "codex-rs/app-server/src/request_processors.rs",
+        "codex-rs/app-server/src/request_processors/thread_memory.rs",
+        "codex-rs/app-server/src/request_processors/thread_processor.rs",
+        "codex-rs/app-server/tests/suite/v2/memory_read.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/b559e6a3988489b636e1e79672eff330bf0679dc",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "c5ef8cfcaab2ccd06a55d621053ca07da86dbcb2",
+      "title": "Preserve `SystemRoot` for Windows filesystem sandbox helpers (#56468)",
+      "parents": [
+        "b559e6a3988489b636e1e79672eff330bf0679dc"
+      ],
+      "files": [
+        "codex-rs/exec-server/src/fs_sandbox.rs",
+        "codex-rs/exec-server/tests/file_system_windows.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/c5ef8cfcaab2ccd06a55d621053ca07da86dbcb2",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    },
+    {
+      "sha": "b6e65bfc05994fda9900bc6dfaeac2caf654eafe",
+      "title": "Preserve parent tool declarations in prediction forks (#57287)",
+      "parents": [
+        "c5ef8cfcaab2ccd06a55d621053ca07da86dbcb2"
+      ],
+      "files": [
+        "codex-rs/app-server/tests/suite/v2/thread_fork.rs",
+        "codex-rs/app-server/tests/suite/v2/thread_sample.rs",
+        "codex-rs/core/config.schema.json",
+        "codex-rs/core/src/session/mod.rs",
+        "codex-rs/core/src/session/world_state.rs",
+        "codex-rs/core/tests/suite/scenarios_incremental_tools.rs",
+        "codex-rs/core/tests/suite/snapshots/all__suite__scenarios__incremental_tools__prediction_fork_inherited_tools.snap",
+        "codex-rs/core/tests/suite/snapshots/all__suite__scenarios__incremental_tools__prediction_fork_mcp_removal.snap",
+        "codex-rs/features/src/lib.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/b6e65bfc05994fda9900bc6dfaeac2caf654eafe",
+      "decision": "covered",
+      "rationale": "Prediction forks keep parent tool declarations; existing raw additional_tools and control history retention applies.",
+      "review_basis": "selected protocol/runtime hunks"
+    },
+    {
+      "sha": "9f7a233df849c5415cbde8eb7d4413e93da66a6c",
+      "title": "Add GPT-6.1 Terra to model catalogs (#57293)",
+      "parents": [
+        "b6e65bfc05994fda9900bc6dfaeac2caf654eafe"
+      ],
+      "files": [
+        "codex-rs/app-server/tests/suite/v2/thread_start.rs",
+        "codex-rs/core/tests/suite/gcp.rs",
+        "codex-rs/core/tests/suite/snapshots/all__suite__gcp__gcp_model_picker.snap",
+        "codex-rs/model-provider-info/src/lib.rs",
+        "codex-rs/model-provider/src/amazon_bedrock/catalog.rs",
+        "codex-rs/model-provider/src/amazon_bedrock/runtime_catalog.rs",
+        "codex-rs/model-provider/src/amazon_bedrock/runtime_catalog_tests.rs",
+        "codex-rs/model-provider/src/gcp/gcp_tests.rs",
+        "codex-rs/model-provider/src/gcp/mod.rs",
+        "codex-rs/model-provider/src/provider.rs",
+        "codex-rs/models-manager/models.json",
+        "codex-rs/tui/src/chatwidget/snapshots/codex_tui__chatwidget__tests__bedrock_mantle_models.snap",
+        "codex-rs/tui/src/chatwidget/snapshots/codex_tui__chatwidget__tests__bedrock_runtime_models.snap",
+        "codex-rs/tui/src/chatwidget/snapshots/codex_tui__chatwidget__tests__model_selection_popup.snap",
+        "codex-rs/tui/src/chatwidget/tests/bedrock_catalog_tests.rs"
+      ],
+      "url": "https://github.com/openai/codex/commit/9f7a233df849c5415cbde8eb7d4413e93da66a6c",
+      "decision": "covered-and-test",
+      "rationale": "Raw catalog preserves Terra 500k/872k windows, comp_hash, Responses Lite, code-mode, v2 agents, effort-update and ultra picker metadata. Public API limits and Codex picker are separate contracts. Add Terra to 0.165 CI matrix.",
+      "review_basis": "selected protocol/runtime hunks"
+    },
+    {
+      "sha": "360319d8dee62d87e2d59fc0c21805d79519cfed",
+      "title": "## New Features",
+      "parents": [
+        "9f7a233df849c5415cbde8eb7d4413e93da66a6c"
+      ],
+      "files": [
+        "codex-rs/Cargo.toml"
+      ],
+      "url": "https://github.com/openai/codex/commit/360319d8dee62d87e2d59fc0c21805d79519cfed",
+      "decision": "client-only",
+      "rationale": "Local UI/auth/memory/MCP/network proxy/build/test/release changes; no AxonHub protocol adaptation selected.",
+      "review_basis": "release metadata and file inventory"
+    }
+  ]
+}

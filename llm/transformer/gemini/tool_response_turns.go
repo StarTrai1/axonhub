@@ -18,14 +18,20 @@ func splitGeminiToolResponseMedia(contents []*Content) []*Content {
 			}
 		}
 		if len(responses) == 0 || len(rest) == 0 {
-			if result != nil { result = append(result, content) }
+			if result != nil {
+				result = append(result, content)
+			}
 			continue
 		}
-		if result == nil { result = append(make([]*Content, 0, len(contents)+1), contents[:index]...) }
+		if result == nil {
+			result = append(make([]*Content, 0, len(contents)+1), contents[:index]...)
+		}
 		calls, trailing := *content, *content
 		calls.Parts, trailing.Parts = responses, rest
 		result = append(result, &calls, &trailing)
 	}
-	if result == nil { return contents }
+	if result == nil {
+		return contents
+	}
 	return result
 }

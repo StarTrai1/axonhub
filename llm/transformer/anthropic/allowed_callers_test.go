@@ -51,12 +51,12 @@ func TestAllowedCallersOutbound(t *testing.T) {
 		},
 		Tools: []llm.Tool{
 			{
-				Type: llm.ToolTypeFunction,
+				Type:           llm.ToolTypeFunction,
 				AllowedCallers: []string{"direct"},
 				Function: llm.Function{
-					Name:           "get_weather",
-					Description:    "Get the weather",
-					Parameters:     json.RawMessage(`{"type":"object","properties":{}}`),
+					Name:        "get_weather",
+					Description: "Get the weather",
+					Parameters:  json.RawMessage(`{"type":"object","properties":{}}`),
 				},
 			},
 		},
@@ -112,11 +112,11 @@ func TestAllowedCallersAbsentStaysAbsent(t *testing.T) {
 				},
 				Tools: []llm.Tool{
 					{
-						Type: llm.ToolTypeFunction,
+						Type:           llm.ToolTypeFunction,
 						AllowedCallers: tt.value,
 						Function: llm.Function{
-							Name:           "get_weather",
-							Parameters:     json.RawMessage(`{"type":"object","properties":{}}`),
+							Name:       "get_weather",
+							Parameters: json.RawMessage(`{"type":"object","properties":{}}`),
 						},
 					},
 				},

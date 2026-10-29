@@ -40,11 +40,19 @@ func TestCodexCatalog_ConcurrentOriginatorsRemainIsolated(t *testing.T) {
 	svc := NewChannelServiceForTest(db)
 	defer svc.Stop()
 	defer close(release)
-	type result struct { originator string; catalog *CodexCatalog; err error }
+	type result struct {
+		originator string
+		catalog    *CodexCatalog
+		err        error
+	}
 	results := make(chan result, 2)
 	for _, originator := range []string{"codex_work_web", "chatgpt_cca"} {
 		go func() {
-			defer func() { if p := recover(); p != nil { t.Errorf("catalog worker panic: %v", p) } }()
+			defer func() {
+				if p := recover(); p != nil {
+					t.Errorf("catalog worker panic: %v", p)
+				}
+			}()
 			catalog, err := svc.FetchCodexCatalogForOriginator(ctx, source.ID, "0.165.0", originator)
 			results <- result{originator, catalog, err}
 		}()
@@ -56,7 +64,9 @@ func TestCodexCatalog_ConcurrentOriginatorsRemainIsolated(t *testing.T) {
 		}
 	}
 	// Send two permits without closing the cleanup-owned channel.
-	for range 2 { release <- struct{}{} }
+	for range 2 {
+		release <- struct{}{}
+	}
 	for range 2 {
 		got := <-results
 		require.NoError(t, got.err)

@@ -25,7 +25,10 @@ func TestCodex165EffortUpdatesAcrossProtocols(t *testing.T) {
 	require.NoError(t, err)
 	native, err := responses.NewOutboundTransformer("https://example.com", "synthetic")
 	require.NoError(t, err)
-	for _, tc := range []struct { name, model, field string; outbound transformer.Outbound }{
+	for _, tc := range []struct {
+		name, model, field string
+		outbound           transformer.Outbound
+	}{
 		{"chat", "gpt-6.1-terra", "reasoning_effort", chat},
 		{"claude", "claude-sonnet-4-6", "output_config.effort", claude},
 		{"gemini", "gemini-3-pro-preview", "generationConfig.thinkingConfig.thinkingLevel", google},
