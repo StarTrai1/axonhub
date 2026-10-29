@@ -67,7 +67,7 @@ func TestResponsesToolMediaToGemini(t *testing.T) {
 			require.NoError(t, err)
 			var result gemini.GenerateContentRequest
 			require.NoError(t, json.Unmarshal(wire.Body, &result))
-			last := result.Contents[len(result.Contents)-1]
+			last := result.Contents[1]
 			require.Equal(t, "user", last.Role)
 			require.Equal(t, "inspect", last.Parts[0].FunctionResponse.Name)
 			require.Equal(t, "read", last.Parts[1].FunctionResponse.Name)
@@ -84,9 +84,12 @@ func TestResponsesToolMediaToGemini(t *testing.T) {
 				require.Len(t, replayed.Messages[len(replayed.Messages)-1].Content.MultipleContent, 2)
 				require.Equal(t, "document", replayed.Messages[len(replayed.Messages)-1].Content.MultipleContent[1].Type)
 			} else {
-				require.Len(t, last.Parts, 4)
-				require.Equal(t, "image/png", last.Parts[2].InlineData.MIMEType)
-				require.Equal(t, "application/pdf", last.Parts[3].InlineData.MIMEType)
+				require.Len(t, last.Parts, 2)
+				require.Len(t, result.Contents, 3)
+				media := result.Contents[2]
+				require.Equal(t, "user", media.Role)
+				require.Equal(t, "image/png", media.Parts[0].InlineData.MIMEType)
+				require.Equal(t, "application/pdf", media.Parts[1].InlineData.MIMEType)
 			}
 		})
 	}
@@ -110,11 +113,11 @@ func TestAnthropicToolMediaKeepsRemoteFilesOutsideFunctionResponse(t *testing.T)
 	require.NoError(t, err)
 	var result gemini.GenerateContentRequest
 	require.NoError(t, json.Unmarshal(wire.Body, &result))
-	parts := result.Contents[len(result.Contents)-1].Parts
-	require.Len(t, parts, 3)
+	parts := result.Contents[1].Parts
+	require.Len(t, parts, 2)
 	require.Equal(t, "one", parts[0].FunctionResponse.ID)
 	require.Equal(t, "two", parts[1].FunctionResponse.ID)
 	require.Empty(t, parts[0].FunctionResponse.Parts)
 	require.Equal(t, "cGRm", parts[1].FunctionResponse.Parts[0].InlineData.Data)
-	require.Equal(t, "https://example.com/image.png", parts[2].FileData.FileURI)
+	require.Equal(t, "https://example.com/image.png", result.Contents[2].Parts[0].FileData.FileURI)
 }

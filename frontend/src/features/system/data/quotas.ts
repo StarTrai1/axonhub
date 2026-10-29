@@ -280,6 +280,7 @@ export type ProviderOpenCodeGoQuotaData = ProviderQuotaDataCommon & {
 
 export type KimiCodeUsageRow = {
   label: string;
+  usageRatio?: number;
   used: number;
   limit: number;
   resetAt?: string;

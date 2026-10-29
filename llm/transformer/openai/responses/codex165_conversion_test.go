@@ -2,6 +2,7 @@ package responses_test
 
 import (
 	"testing"
+	"net/http"
 
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
@@ -51,7 +52,7 @@ func TestCodex165EffortUpdatesAcrossProtocols(t *testing.T) {
 
 func TestWebSearchBlockedDomainsSurviveProtocolConversion(t *testing.T) {
 	inbound := anthropic.NewInboundTransformer()
-	raw := &httpclient.Request{Body: []byte(`{"model":"claude-sonnet-4-6","max_tokens":100,"messages":[{"role":"user","content":"Search"}],"tools":[{"type":"web_search_20250305","name":"web_search","blocked_domains":["example.com"]}]}`)}
+	raw := &httpclient.Request{Headers: http.Header{"Content-Type": []string{"application/json"}}, Body: []byte(`{"model":"claude-sonnet-4-6","max_tokens":100,"messages":[{"role":"user","content":"Search"}],"tools":[{"type":"web_search_20250305","name":"web_search","blocked_domains":["example.com"]}]}`)}
 	req, err := inbound.TransformRequest(t.Context(), raw)
 	require.NoError(t, err)
 	req.Model = "gpt-6.1-terra"

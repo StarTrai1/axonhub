@@ -1731,7 +1731,7 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
             return (
               <>
                 {rows.map((row, index) => {
-                  const percentage = row.limit > 0 ? Math.min(100, (row.used / row.limit) * 100) : 0;
+                  const percentage = Math.max(0, Math.min(100, (row.usageRatio ?? (row.limit > 0 ? row.used / row.limit : 0)) * 100));
                   return (
                     <div
                       key={`${row.label}-${index}`}
@@ -1740,9 +1740,11 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
                       <div className='flex items-center justify-between text-xs'>
                         <span className='text-muted-foreground font-medium'>
                           {row.label}{' '}
-                          <span className='font-normal opacity-70'>
-                            ({row.used.toLocaleString()}/{row.limit.toLocaleString()})
-                          </span>
+                          {row.usageRatio == null && (
+                            <span className='font-normal opacity-70'>
+                              ({row.used.toLocaleString()}/{row.limit.toLocaleString()})
+                            </span>
+                          )}
                         </span>
                         <span className='text-foreground font-medium'>
                           {t('quota.label.percent_used', { percent: Math.round(percentage) })}
@@ -1753,9 +1755,9 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
                         tooltip={
                           <div className='space-y-0.5'>
                             <div className='font-medium'>{row.label}</div>
-                            <div>
-                              {row.used.toLocaleString()}/{row.limit.toLocaleString()}
-                            </div>
+                            {row.usageRatio == null && (
+                              <div>{row.used.toLocaleString()}/{row.limit.toLocaleString()}</div>
+                            )}
                             <div>{t('quota.label.percent_used', { percent: Math.round(percentage) })}</div>
                             {(row.resetAt || row.resetAfterSeconds) && <div>{formatTimeToReset(row.resetAt ?? row.resetAfterSeconds)}</div>}
                           </div>

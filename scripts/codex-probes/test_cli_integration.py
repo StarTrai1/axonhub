@@ -32,7 +32,11 @@ class CLIIntegrationTest(unittest.IsolatedAsyncioTestCase):
     async def test_gateway_retry_failure_obeys_server_delay(self):
         await self.completed_turn(retry=True)
 
-    async def completed_turn(self, *, retry=False, partial=False):
+    @unittest.skipUnless(tuple(int(part) for part in (os.environ.get("PROBE_TEST_CODEX_VERSION") or "0.0.0").split(".")) >= (0, 165, 0), "requires terminal model errors")
+    async def test_model_not_found_preserves_message_without_retry(self):
+        await self.completed_turn(model_missing=True)
+
+    async def completed_turn(self, *, retry=False, partial=False, model_missing=False):
         requests = []
         arrivals = []
         errors = []
@@ -58,7 +62,10 @@ class CLIIntegrationTest(unittest.IsolatedAsyncioTestCase):
         payload = "".join(f"event: {event['type']}\ndata: {json.dumps({**event, 'sequence_number': index})}\n\n"
                           for index, event in enumerate(events)).encode()
         first_payload = payload
-        if retry:
+        if model_missing:
+            error_event = {"type": "response.failed", "response": {"id": "resp_missing", "status": "failed", "error": {"code": "model_not_found", "message": "The selected fixture model is unavailable."}}}
+            first_payload = f"event: response.failed\ndata: {json.dumps(error_event)}\n\n".encode()
+        elif retry:
             first_payload = Path(os.environ["AXONHUB_CODEX_RETRY_FIXTURE"]).read_bytes()
         elif partial:
             partial_events = json.loads(json.dumps(events))
@@ -107,8 +114,16 @@ class CLIIntegrationTest(unittest.IsolatedAsyncioTestCase):
                     from probe_common import config_text
                     def retry_config(*values):
                         return config_text(*values).replace("stream_max_retries = 0", "stream_max_retries = 1")
-                    with mock.patch("probe_common.config_text", side_effect=retry_config if retry else config_text):
+                    with mock.patch("probe_common.config_text", side_effect=retry_config if retry or model_missing else config_text):
                         outcome = await runner.run({"id": "completed", "prompt": "Reply OK."}, "low")
+                    if model_missing:
+                        self.assertNotEqual(outcome.status, "success")
+                        self.assertNotEqual(outcome.returncode, 0)
+                        self.assertIn("The selected fixture model is unavailable.", outcome.error)
+                        self.assertEqual(len(requests), 1, "terminal model errors must not retry")
+                        self.assertEqual(errors, [])
+                        self.assertEqual(runner.active_attempts, 0)
+                        return
                     self.assertEqual(outcome.status, "success", outcome.error)
                     self.assertEqual(outcome.returncode, 0)
                     self.assertTrue(outcome.thread_id)

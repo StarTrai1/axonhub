@@ -18,12 +18,14 @@ const kimiCodeDefaultBaseURL = "https://api.kimi.com/coding/v1"
 
 type kimiCodeUsageResponse struct {
 	Usage         map[string]any   `json:"usage"`
+	Usages        map[string]map[string]any `json:"usages"`
 	Limits        []map[string]any `json:"limits"`
 	BoosterWallet map[string]any   `json:"boosterWallet"`
 }
 
 type kimiCodeUsageRow struct {
 	Label             string  `json:"label"`
+	UsageRatio        *float64 `json:"usageRatio,omitempty"`
 	Used              int64   `json:"used"`
 	Limit             int64   `json:"limit"`
 	ResetAt           *string `json:"resetAt,omitempty"`
@@ -124,6 +126,7 @@ func parseKimiCodeUsageResponse(body []byte) (QuotaData, error) {
 			windows = append(windows, kimiCodeWindowLength(item, detail))
 		}
 	}
+	rows, windows = mergeKimiCodeUsageShares(rows, windows, response.Usages)
 	if len(rows) == 0 {
 		return QuotaData{}, fmt.Errorf("kimi code usage response contains no quota limits")
 	}
@@ -133,7 +136,9 @@ func parseKimiCodeUsageResponse(body []byte) (QuotaData, error) {
 	var nextResetAt *time.Time
 	for i, row := range rows {
 		ratio := 0.0
-		if row.Limit > 0 {
+		if row.UsageRatio != nil {
+			ratio = *row.UsageRatio
+		} else if row.Limit > 0 {
 			ratio = float64(row.Used) / float64(row.Limit)
 		}
 		rowStatus := kimiCodeStatusForUsageRatio(ratio)
@@ -226,6 +231,10 @@ func kimiCodeWindowLength(item, detail map[string]any) time.Duration {
 	unit, _ := firstKimiCodeString(window["timeUnit"], item["timeUnit"], detail["timeUnit"])
 
 	switch {
+	case strings.Contains(unit, "MONTH"):
+		return time.Duration(duration) * 30 * 24 * time.Hour
+	case strings.Contains(unit, "WEEK"):
+		return time.Duration(duration) * 7 * 24 * time.Hour
 	case strings.Contains(unit, "MINUTE"):
 		return time.Duration(duration) * time.Minute
 	case strings.Contains(unit, "HOUR"):
