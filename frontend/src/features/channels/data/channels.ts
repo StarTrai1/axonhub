@@ -141,6 +141,11 @@ const CREATE_CHANNEL_MUTATION = `
         }
         passThroughUserAgent
         passThroughBody
+        responseTimeout {
+          mode
+          streamFirstEventTimeoutSeconds
+          nonStreamResponseTimeoutSeconds
+        }
         retryableStatusCodes
         apiKeyStrategy
         apiKeyRoundRobinSwitchAfter
@@ -246,6 +251,11 @@ const DUPLICATE_CHANNEL_MUTATION = `
         }
         passThroughUserAgent
         passThroughBody
+        responseTimeout {
+          mode
+          streamFirstEventTimeoutSeconds
+          nonStreamResponseTimeoutSeconds
+        }
         retryableStatusCodes
         apiKeyStrategy
         apiKeyRoundRobinSwitchAfter
@@ -351,6 +361,11 @@ const BULK_CREATE_CHANNELS_MUTATION = `
         }
         passThroughUserAgent
         passThroughBody
+        responseTimeout {
+          mode
+          streamFirstEventTimeoutSeconds
+          nonStreamResponseTimeoutSeconds
+        }
         retryableStatusCodes
         apiKeyStrategy
         apiKeyRoundRobinSwitchAfter
@@ -455,6 +470,11 @@ const CHANNEL_FIELDS_FRAGMENT = `
         }
         passThroughUserAgent
         passThroughBody
+        responseTimeout {
+          mode
+          streamFirstEventTimeoutSeconds
+          nonStreamResponseTimeoutSeconds
+        }
         retryableStatusCodes
         apiKeyStrategy
         apiKeyRoundRobinSwitchAfter
@@ -717,6 +737,11 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
           }
           passThroughUserAgent
           passThroughBody
+          responseTimeout {
+            mode
+            streamFirstEventTimeoutSeconds
+            nonStreamResponseTimeoutSeconds
+          }
           retryableStatusCodes
           apiKeyStrategy
           apiKeyRoundRobinSwitchAfter
@@ -963,6 +988,11 @@ const BULK_UPDATE_CHANNEL_ORDERING_MUTATION = `
           }
           passThroughUserAgent
           passThroughBody
+          responseTimeout {
+            mode
+            streamFirstEventTimeoutSeconds
+            nonStreamResponseTimeoutSeconds
+          }
           retryableStatusCodes
           apiKeyStrategy
           apiKeyRoundRobinSwitchAfter
@@ -1246,6 +1276,11 @@ const CHANNEL_QUERY_FULL_NODE_SELECTION = `
             }
             passThroughUserAgent
             passThroughBody
+            responseTimeout {
+              mode
+              streamFirstEventTimeoutSeconds
+              nonStreamResponseTimeoutSeconds
+            }
             rateLimit {
               rpm
               tpm
