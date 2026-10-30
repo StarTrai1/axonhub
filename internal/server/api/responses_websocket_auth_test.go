@@ -44,7 +44,7 @@ func newResponsesWebSocketAuthFixture(t *testing.T) *responsesWebSocketAuthFixtu
 	client := enttest.NewEntClient(t, "sqlite3", "file:ws-auth-"+uuid.NewString()+"?mode=memory&cache=shared&_fk=1")
 	ctx := authz.WithTestBypass(ent.NewContext(t.Context(), client))
 	owner, err := client.User.Create().SetEmail("ws-auth@example.com").SetPassword("test-only").
-		SetFirstName("WS").SetLastName("Auth").Save(ctx)
+		SetFirstName("WS").SetLastName("Auth").SetIsOwner(true).Save(ctx)
 	require.NoError(t, err)
 	ctx = contexts.WithUser(ctx, owner)
 	proj, err := client.Project.Create().SetName("WebSocket auth test").SetStatus(project.StatusActive).Save(ctx)
