@@ -1,8 +1,8 @@
 package responses_test
 
 import (
-	"testing"
 	"net/http"
+	"testing"
 
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"

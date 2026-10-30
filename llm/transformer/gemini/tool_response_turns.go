@@ -7,17 +7,15 @@ package gemini
 func splitGeminiToolResponseMedia(contents []*Content) []*Content {
 	var result []*Content
 	for index, content := range contents {
-		var responses, rest []*Part
+		responseCount := 0
 		if content != nil && content.Role == "user" {
 			for _, part := range content.Parts {
 				if part != nil && part.FunctionResponse != nil {
-					responses = append(responses, part)
-				} else {
-					rest = append(rest, part)
+					responseCount++
 				}
 			}
 		}
-		if len(responses) == 0 || len(rest) == 0 {
+		if responseCount == 0 || responseCount == len(content.Parts) {
 			if result != nil {
 				result = append(result, content)
 			}
@@ -25,6 +23,15 @@ func splitGeminiToolResponseMedia(contents []*Content) []*Content {
 		}
 		if result == nil {
 			result = append(make([]*Content, 0, len(contents)+1), contents[:index]...)
+		}
+		responses := make([]*Part, 0, responseCount)
+		rest := make([]*Part, 0, len(content.Parts)-responseCount)
+		for _, part := range content.Parts {
+			if part != nil && part.FunctionResponse != nil {
+				responses = append(responses, part)
+			} else {
+				rest = append(rest, part)
+			}
 		}
 		calls, trailing := *content, *content
 		calls.Parts, trailing.Parts = responses, rest

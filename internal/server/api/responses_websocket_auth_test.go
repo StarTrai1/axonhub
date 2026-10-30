@@ -46,6 +46,7 @@ func newResponsesWebSocketAuthFixture(t *testing.T) *responsesWebSocketAuthFixtu
 	owner, err := client.User.Create().SetEmail("ws-auth@example.com").SetPassword("test-only").
 		SetFirstName("WS").SetLastName("Auth").Save(ctx)
 	require.NoError(t, err)
+	ctx = contexts.WithUser(ctx, owner)
 	proj, err := client.Project.Create().SetName("WebSocket auth test").SetStatus(project.StatusActive).Save(ctx)
 	require.NoError(t, err)
 	key, err := client.APIKey.Create().SetKey("ah-websocket-test-only").SetName("WebSocket auth test").

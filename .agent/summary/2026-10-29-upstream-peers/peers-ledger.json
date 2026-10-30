@@ -5518,7 +5518,7 @@
           "url": "https://github.com/yetone/magpie/commit/f6263439af6151c539a0e55a21cc8eb55c10dade",
           "decision": "covered",
           "rationale": "Speech endpoint already supported by OpenAI outbound and gateway audio route. No peer masking/spool retrieval system required.",
-          "evidence": "llm/transformer/openai/outbound.go; internal/server/api/openai_audio.go",
+          "evidence": "llm/transformer/openai/outbound.go; internal/server/api/openai_speech_test.go",
           "review_basis": "selected runtime patch and owning-source comparison"
         },
         {
@@ -5599,7 +5599,7 @@
           "url": "https://github.com/yetone/magpie/commit/2768f04f9ba7eae6c5d99c26cce888dad94ea208",
           "decision": "reject-lossy-recovery",
           "rationale": "Peer falls back to a local summary made from request/last reply when old-model compaction fails. AxonHub retains authenticated checkpoint/window recovery; do not substitute an incomplete summary and claim successful compaction.",
-          "evidence": "internal/server/api/checkpoint_summary.go; internal/server/orchestrator/remote_compaction_migration.go",
+          "evidence": "internal/server/orchestrator/checkpoint_summary.go; internal/server/orchestrator/remote_compaction_migration.go",
           "review_basis": "selected runtime patch and owning-source comparison"
         },
         {

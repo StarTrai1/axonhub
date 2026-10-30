@@ -17,19 +17,19 @@ import (
 const kimiCodeDefaultBaseURL = "https://api.kimi.com/coding/v1"
 
 type kimiCodeUsageResponse struct {
-	Usage         map[string]any   `json:"usage"`
+	Usage         map[string]any            `json:"usage"`
 	Usages        map[string]map[string]any `json:"usages"`
-	Limits        []map[string]any `json:"limits"`
-	BoosterWallet map[string]any   `json:"boosterWallet"`
+	Limits        []map[string]any          `json:"limits"`
+	BoosterWallet map[string]any            `json:"boosterWallet"`
 }
 
 type kimiCodeUsageRow struct {
-	Label             string  `json:"label"`
+	Label             string   `json:"label"`
 	UsageRatio        *float64 `json:"usageRatio,omitempty"`
-	Used              int64   `json:"used"`
-	Limit             int64   `json:"limit"`
-	ResetAt           *string `json:"resetAt,omitempty"`
-	ResetAfterSeconds *int64  `json:"resetAfterSeconds,omitempty"`
+	Used              int64    `json:"used"`
+	Limit             int64    `json:"limit"`
+	ResetAt           *string  `json:"resetAt,omitempty"`
+	ResetAfterSeconds *int64   `json:"resetAfterSeconds,omitempty"`
 }
 
 type kimiCodeBoosterWallet struct {
