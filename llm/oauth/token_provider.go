@@ -45,6 +45,7 @@ type TokenProvider struct {
 	sf          singleflight.Group
 	mu          sync.RWMutex
 	creds       *OAuthCredentials
+	rejectedRefresh *rejectedRefresh
 	userAgent   string
 	onRefreshed func(ctx context.Context, refreshed *OAuthCredentials) error
 
@@ -172,6 +173,7 @@ func (p *TokenProvider) Exchange(ctx context.Context, params ExchangeParams) (*O
 
 	p.mu.Lock()
 	p.creds = creds
+	p.rejectedRefresh = nil
 	p.mu.Unlock()
 
 	return creds, nil
@@ -433,7 +435,11 @@ func (p *TokenProvider) runAutoRefreshOnce(autoCtx context.Context, refreshBefor
 	}
 
 	if _, err := p.EnsureFresh(autoCtx, refreshBefore); err != nil {
-		slog.WarnContext(autoCtx, "failed to auto refresh token", slog.Any("error", err))
+		// The initial permanent refusal was logged when it arrived. Keep the
+		// scheduler alive for replacement credentials without logging it again.
+		if _, permanent := errors.AsType[*RefreshRejectedError](err); !permanent {
+			slog.WarnContext(autoCtx, "failed to auto refresh token", slog.Any("error", err))
+		}
 		refreshFailed = true
 	}
 
@@ -535,6 +541,9 @@ func (p *TokenProvider) refresh(ctx context.Context, creds *OAuthCredentials) (*
 	if creds.RefreshToken == "" {
 		return nil, errors.New("refresh_token is empty")
 	}
+	if err := p.refreshRejection(creds); err != nil {
+		return nil, err
+	}
 
 	if p.oauthUrls.TokenUrl == "" {
 		return nil, errors.New("token URL is empty")
@@ -552,6 +561,9 @@ func (p *TokenProvider) refresh(ctx context.Context, creds *OAuthCredentials) (*
 
 	resp, err := httpClient.Do(ctx, req)
 	if err != nil {
+		if rejected := p.rememberRefreshRejection(creds, err); rejected != nil {
+			return nil, rejected
+		}
 		return nil, wrapHttpError(err)
 	}
 
