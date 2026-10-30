@@ -1,6 +1,6 @@
 # Upstream and peer integration — 2026-10-30
 
-Base: `178757cc2326a481c7c13b15618f8aac70c5a526` (PR20).
+Base: `178757cc2326a481c7c13b15618f8aac70c5a526` (PR20). Integration PR: https://github.com/StarTrai1/axonhub/pull/21.
 
 Frozen scope: 1 upstream commit through `b941556253f8be592c25d046a01247706f86885a`, and 216 incremental peer records. cc-switch 27, magpie 161, new-api 18, sub2api 10. CLIProxyAPI, OmniProxy, codex2api and gpt-load have no new commits. Cutoffs are the previous SHA heads in the 2026-10-29 ledger; no repeated review or refreshed heads. PEERS.md / peers-ledger.json distinguish metadata screening from selected runtime patch inspection.
 
@@ -13,3 +13,5 @@ Frozen scope: 1 upstream commit through `b941556253f8be592c25d046a01247706f86885
 ## Validation and delivery
 
 Tests/build/lint/format/generation are GitHub CI only. OAuth tests cover explicit string/nested/top-level codes, temporary failures, repeated Get/background access, replacement credentials and authorization recovery using loopback HTTP. CI results and delivery are recorded after the exact SHA passes. Fast-forward that SHA to dev, create an annotated unstable tag, and stop monitoring when Run GoReleaser starts.
+
+The standard invalid_grant meaning is defined by [RFC 6749 section 5.2](https://www.rfc-editor.org/rfc/rfc6749.html#section-5.2). The implementation requires a structured recognized code; it does not infer permanent loss from a bare HTTP status. First CI LLM tests passed; generated-source-differences from Test run 41076131351 supplies formatting corrections.

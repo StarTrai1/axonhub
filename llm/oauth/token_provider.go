@@ -39,15 +39,15 @@ type TokenGetter interface {
 // TokenProvider manages OAuth2 credentials for a transformer instance.
 // Each transformer has its own provider, so we can keep the credentials in memory.
 type TokenProvider struct {
-	httpClient  *httpclient.HttpClient
-	oauthUrls   OAuthUrls
-	strategy    ExchangeStrategy
-	sf          singleflight.Group
-	mu          sync.RWMutex
-	creds       *OAuthCredentials
+	httpClient      *httpclient.HttpClient
+	oauthUrls       OAuthUrls
+	strategy        ExchangeStrategy
+	sf              singleflight.Group
+	mu              sync.RWMutex
+	creds           *OAuthCredentials
 	rejectedRefresh *rejectedRefresh
-	userAgent   string
-	onRefreshed func(ctx context.Context, refreshed *OAuthCredentials) error
+	userAgent       string
+	onRefreshed     func(ctx context.Context, refreshed *OAuthCredentials) error
 
 	autoMu     sync.Mutex
 	autoCancel context.CancelFunc

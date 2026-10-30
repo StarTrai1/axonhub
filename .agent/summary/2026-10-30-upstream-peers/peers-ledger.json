@@ -4082,7 +4082,7 @@
           "url": "https://github.com/QuantumNous/new-api/commit/4193734a2abf2764375f29c26be8f540e9b9d4db",
           "decision": "different-logger",
           "rationale": "Peer rotates Gin global writers. AxonHub uses its structured logger and custom recovery, not the replaced Gin writer design.",
-          "evidence": "internal/server/server.go; internal/server/middleware/recovery.go",
+          "evidence": "internal/server/server.go; internal/server/middleware/recover.go",
           "review_basis": "selected runtime patch and owning-source comparison"
         },
         {

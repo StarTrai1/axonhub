@@ -16,9 +16,9 @@ import (
 
 func TestTokenProvider_RefreshRejection(t *testing.T) {
 	for _, tt := range []struct {
-		name string
-		status int
-		body string
+		name      string
+		status    int
+		body      string
 		permanent bool
 	}{
 		{"invalid grant", 400, `{"error":"invalid_grant"}`, true},
@@ -44,7 +44,7 @@ func TestTokenProvider_RefreshRejection(t *testing.T) {
 			t.Cleanup(server.Close)
 			p := NewTokenProvider(TokenProviderParams{
 				Credentials: &OAuthCredentials{ClientID: "client", AccessToken: "old", RefreshToken: "refresh", ExpiresAt: time.Now().Add(-time.Hour)},
-				HTTPClient: httpclient.NewHttpClientWithClient(server.Client()), OAuthUrls: OAuthUrls{TokenUrl: server.URL},
+				HTTPClient:  httpclient.NewHttpClientWithClient(server.Client()), OAuthUrls: OAuthUrls{TokenUrl: server.URL},
 			})
 			for range 2 {
 				_, err := p.Get(t.Context())
@@ -54,12 +54,17 @@ func TestTokenProvider_RefreshRejection(t *testing.T) {
 				var httpErr *httpclient.Error
 				require.ErrorAs(t, err, &httpErr)
 				require.Equal(t, tt.status, httpErr.StatusCode)
+				if tt.permanent {
+					require.Contains(t, string(httpErr.Body), "sign in again")
+				}
 			}
 			failed, running := p.runAutoRefreshOnce(context.Background(), time.Minute)
 			require.True(t, failed)
 			require.True(t, running)
 			want := int32(3)
-			if tt.permanent { want = 1 }
+			if tt.permanent {
+				want = 1
+			}
 			require.Equal(t, want, calls.Load())
 		})
 	}
@@ -69,7 +74,11 @@ func TestTokenProvider_RefreshRejectionClearsAfterExchange(t *testing.T) {
 	var refreshCalls atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if err := r.ParseForm(); err != nil { t.Error(err); w.WriteHeader(400); return }
+		if err := r.ParseForm(); err != nil {
+			t.Error(err)
+			w.WriteHeader(400)
+			return
+		}
 		if r.Form.Get("grant_type") == "authorization_code" {
 			_, _ = w.Write([]byte(`{"access_token":"new","refresh_token":"replacement","expires_in":1}`))
 			return
@@ -85,7 +94,7 @@ func TestTokenProvider_RefreshRejectionClearsAfterExchange(t *testing.T) {
 	t.Cleanup(server.Close)
 	p := NewTokenProvider(TokenProviderParams{
 		Credentials: &OAuthCredentials{ClientID: "client", AccessToken: "old", RefreshToken: "old-refresh", ExpiresAt: time.Now().Add(-time.Hour)},
-		HTTPClient: httpclient.NewHttpClientWithClient(server.Client()), OAuthUrls: OAuthUrls{TokenUrl: server.URL},
+		HTTPClient:  httpclient.NewHttpClientWithClient(server.Client()), OAuthUrls: OAuthUrls{TokenUrl: server.URL},
 	})
 	_, err := p.Get(t.Context())
 	require.Error(t, err)

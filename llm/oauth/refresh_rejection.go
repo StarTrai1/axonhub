@@ -13,7 +13,7 @@ import (
 // RefreshRejectedError means the token endpoint explicitly rejected the refresh
 // grant. A new sign-in is required; transport and proxy failures do not qualify.
 type RefreshRejectedError struct {
-	Code string
+	Code  string
 	cause *httpclient.Error
 }
 
@@ -24,9 +24,9 @@ func (e *RefreshRejectedError) Error() string {
 func (e *RefreshRejectedError) Unwrap() error { return e.cause }
 
 type rejectedRefresh struct {
-	token [sha256.Size]byte
+	token    [sha256.Size]byte
 	clientID string
-	err *RefreshRejectedError
+	err      *RefreshRejectedError
 }
 
 func (p *TokenProvider) refreshRejection(creds *OAuthCredentials) error {
@@ -45,17 +45,21 @@ func (p *TokenProvider) rememberRefreshRejection(creds *OAuthCredentials, err er
 	}
 	var body struct {
 		Error json.RawMessage `json:"error"`
-		Code string `json:"code"`
+		Code  string          `json:"code"`
 	}
 	if json.Unmarshal(failure.Body, &body) != nil {
 		return nil
 	}
 	var code string
 	if json.Unmarshal(body.Error, &code) != nil || code == "" {
-		var detail struct { Code string `json:"code"` }
+		var detail struct {
+			Code string `json:"code"`
+		}
 		_ = json.Unmarshal(body.Error, &detail)
 		code = detail.Code
-		if code == "" { code = body.Code }
+		if code == "" {
+			code = body.Code
+		}
 	}
 	switch code {
 	case "invalid_grant", "refresh_token_expired", "refresh_token_reused", "refresh_token_invalidated":
@@ -65,6 +69,10 @@ func (p *TokenProvider) rememberRefreshRejection(creds *OAuthCredentials, err er
 	// Keep status classification without retaining an untrusted response body
 	// that may echo credentials. The refusal belongs only to this grant.
 	rejected := &RefreshRejectedError{Code: code, cause: &httpclient.Error{StatusCode: failure.StatusCode}}
+	rejected.cause.Status = http.StatusText(failure.StatusCode)
+	rejected.cause.Body, _ = json.Marshal(map[string]any{"error": map[string]string{
+		"code": code, "type": "authentication_error", "message": rejected.Error(),
+	}})
 	p.mu.Lock()
 	if p.creds == creds {
 		p.rejectedRefresh = &rejectedRefresh{token: sha256.Sum256([]byte(creds.RefreshToken)), clientID: creds.ClientID, err: rejected}
