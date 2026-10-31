@@ -21,8 +21,10 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
-const preservedEncryptedAgentMessage = `{"type":"agent_message","id":"am_private","author":"/root/worker","recipient":"/root","content":[{"type":"input_text","text":"visible delivery metadata"},{"type":"encrypted_content","encrypted_content":"opaque-agent-result"}],"internal_chat_message_metadata_passthrough":{"turn_id":"agent-turn"}}`
-const preservedPlainAgentMessage = `{"type":"agent_message","id":"am_public","author":"/root/worker","recipient":"/root","content":[{"type":"input_text","text":"visible agent result"}]}`
+const (
+	preservedEncryptedAgentMessage = `{"type":"agent_message","id":"am_private","author":"/root/worker","recipient":"/root","content":[{"type":"input_text","text":"visible delivery metadata"},{"type":"encrypted_content","encrypted_content":"opaque-agent-result"}],"internal_chat_message_metadata_passthrough":{"turn_id":"agent-turn"}}`
+	preservedPlainAgentMessage     = `{"type":"agent_message","id":"am_public","author":"/root/worker","recipient":"/root","content":[{"type":"input_text","text":"visible agent result"}]}`
+)
 
 func agentRecoveryRequest(t *testing.T, format llm.APIFormat) *httpclient.Request {
 	t.Helper()

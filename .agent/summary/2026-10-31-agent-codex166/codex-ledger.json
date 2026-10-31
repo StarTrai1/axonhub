@@ -2491,9 +2491,9 @@
         "codex-rs/core/tests/suite/snapshots/all__suite__scenarios__additional_context_legacy_messages.snap",
         "codex-rs/core/tests/suite/snapshots/all__suite__scenarios__additional_context_tool_outputs.snap"
       ],
-      "decision": "client-only",
-      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
-      "review_basis": "commit title and changed-file inventory"
+      "decision": "already-covered",
+      "rationale": "Named additional context without call_id is already preserved by Responses named-output conversion and distinguished from orphan call outputs by recovery completeness guards.",
+      "review_basis": "changed-file inventory, selected source hunks and existing gateway owning code"
     },
     {
       "sha": "f2df3e3b56351c87e893e223f3a408b0ed5e6ee8",
@@ -3993,9 +3993,9 @@
         "codex-rs/ext/web-search/src/schema.rs",
         "codex-rs/ext/web-search/src/tool.rs"
       ],
-      "decision": "client-only",
-      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
-      "review_basis": "commit title and changed-file inventory"
+      "decision": "already-covered",
+      "rationale": "Standalone search preserves the raw request envelope, including literature_search_query; no gateway field allowlist needs updating.",
+      "review_basis": "changed-file inventory, selected source hunks and existing gateway owning code"
     },
     {
       "sha": "0d6838318fae7f3aa374da6f1fd789af2de1a10f",
@@ -4099,9 +4099,9 @@
         "codex-rs/thread-store/src/local/rollout_migration/rollback_replay.rs",
         "codex-rs/thread-store/src/thread_metadata_sync.rs"
       ],
-      "decision": "client-only",
-      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
-      "review_basis": "commit title and changed-file inventory"
+      "decision": "already-covered",
+      "rationale": "Per-step dynamic tools use the existing additional_tools retention path; no new gateway wire conversion is required.",
+      "review_basis": "changed-file inventory, selected source hunks and existing gateway owning code"
     },
     {
       "sha": "33d306d457a4632b22bebf214e0c25d91f90f6e8",

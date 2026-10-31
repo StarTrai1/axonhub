@@ -11,3 +11,7 @@
 
 - CI1de8fb6ab: LLM module, frontend, packaged clients, concurrency, Build/Docker/Govulncheck passed. Root/Windows exposed unstable fabricated session seeding for body-only callers and independent cache keys being rewritten; corrected both. The in-band fixture hardcoded400 rather than its actual rejection status; now preserves the status. Formatter corrections recovered from Lint41177563169.
 - Added concurrent compare-and-swap create/update collision tests; per-frame identity also scopes multiplexed downstream WebSocket requests.
+
+- Diagnostic Windows snapshot1391144960bytes deleted and absence verified.
+
+- CI b883a75c: Test 41181820735 passed every required job, including the sole 0.166.0 / gpt-6.1-sol CLI entry, Windows, root/LLM/frontend, generation and concurrency. Build 41181820822, Docker 41181820839 and Govulncheck 41181820703 passed. Lint 41181820699 reported only gofumpt formatting; its formatter-corrections artifact was applied. Final exact-SHA verification remains in the separate delivery receipt.

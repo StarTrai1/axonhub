@@ -29,8 +29,10 @@ func invalidatedSessionFailure() error {
 func TestResponsesSessionScopeSeparatesRoutesAndStableLogicalClients(t *testing.T) {
 	ctx := shared.WithSessionScope(t.Context(), "owner-a")
 	channel := &biz.Channel{Channel: &ent.Channel{ID: 3, Type: entchannel.TypeCodex}}
-	request := &httpclient.Request{URL: "https://relay.example/v1/responses", APIFormat: string(llm.APIFormatOpenAIResponse),
-		Headers: map[string][]string{"Authorization": {"Bearer synthetic"}, "Session-Id": {"fabricated-one"}}, Body: []byte(`{"model":"gpt-6.1-sol"}`)}
+	request := &httpclient.Request{
+		URL: "https://relay.example/v1/responses", APIFormat: string(llm.APIFormatOpenAIResponse),
+		Headers: map[string][]string{"Authorization": {"Bearer synthetic"}, "Session-Id": {"fabricated-one"}}, Body: []byte(`{"model":"gpt-6.1-sol"}`),
+	}
 	client := &httpclient.Request{Body: []byte(`{"client_metadata":{"thread_id":"logical-thread"},"input":[]}`)}
 	first, ok := responsesSessionBindingScope(ctx, channel, request, client)
 	require.True(t, ok)
