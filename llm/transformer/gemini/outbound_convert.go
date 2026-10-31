@@ -527,7 +527,15 @@ func convertLLMToolResultToGeminiContent(msg *llm.Message, contents []*Content) 
 	// A JSON Schema $ref in tool output is data, not a reference to a Gemini
 	// functionResponse media part. Keep that output as opaque JSON text.
 	if responseData == nil || containsToolResultJSONRef(responseData) {
-		responseData = map[string]any{"result": text}
+		key := "result"
+		if lo.FromPtr(msg.ToolCallIsError) {
+			key = "error"
+		}
+		responseData = map[string]any{key: text}
+	} else if lo.FromPtr(msg.ToolCallIsError) {
+		// Preserve structured error details instead of presenting a failed
+		// Anthropic tool result as a successful function response.
+		responseData = map[string]any{"error": responseData}
 	}
 
 	toolCallID := lo.FromPtr(msg.ToolCallID)

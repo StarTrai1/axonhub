@@ -343,6 +343,24 @@ func (t *OutboundTransformer) TransformResponse(
 		return nil, fmt.Errorf("failed to unmarshal chat completion response: %w", err)
 	}
 
+	// Some compatible providers report a failed generation as a successful
+	// HTTP response with finish_reason "error". Surface it through the same
+	// error path as an explicit upstream error, including for stream chunks.
+	if oaiResp.Error == nil {
+		for _, choice := range oaiResp.Choices {
+			if choice.FinishReason != nil && *choice.FinishReason == "error" {
+				return nil, &llm.ResponseError{
+					StatusCode: http.StatusBadGateway,
+					Detail: llm.ErrorDetail{
+						Type:    "upstream_error",
+						Code:    "upstream_generation_failed",
+						Message: `Upstream generation ended with finish_reason "error"`,
+					},
+				}
+			}
+		}
+	}
+
 	// Convert to unified llm.Response
 	return oaiResp.ToLLMResponse(), nil
 }
