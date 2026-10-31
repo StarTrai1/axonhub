@@ -1,0 +1,70 @@
+{
+  "plan": {
+    "endpoint": "https://agentrouter.org/v1/responses",
+    "model": "gpt-6-astra",
+    "max_calls": 3,
+    "max_output_tokens_each": 128,
+    "retry_transient_errors_until_three_effective_cases": true,
+    "timeout_seconds_each": 45,
+    "history_included": "opaque checkpoint or reasoning only; original destination",
+    "tools_included": false,
+    "cases": [
+      {
+        "name": "checkpoint_with_id",
+        "body_bytes": 58303
+      },
+      {
+        "name": "checkpoint_without_id",
+        "body_bytes": 58241
+      },
+      {
+        "name": "reasoning_with_id",
+        "body_bytes": 2890
+      }
+    ]
+  },
+  "results": [
+    {
+      "case": "checkpoint_with_id",
+      "http_status": 400,
+      "response_status": null,
+      "error_code": null,
+      "error_param": "",
+      "resource_mismatch": false,
+      "ciphertext_rejection": true,
+      "content_blocked": false,
+      "session_binding_invalidated": false,
+      "usage": null,
+      "response_bytes": 290,
+      "response_sha256": "c9e0798b4550c84f7b43a0d12cbb4730a5a54227a4fc3292f30aa8eb2496f064"
+    },
+    {
+      "case": "checkpoint_without_id",
+      "http_status": 400,
+      "response_status": null,
+      "error_code": null,
+      "error_param": "",
+      "resource_mismatch": false,
+      "ciphertext_rejection": true,
+      "content_blocked": false,
+      "session_binding_invalidated": false,
+      "usage": null,
+      "response_bytes": 275,
+      "response_sha256": "45523399f94318abc46f67d8b0dc4cb89db2e83b515ad9102cfc8d14dc8b5a59"
+    },
+    {
+      "case": "reasoning_with_id",
+      "http_status": 409,
+      "response_status": null,
+      "error_code": "session_binding_invalidated",
+      "error_param": "",
+      "resource_mismatch": false,
+      "ciphertext_rejection": false,
+      "content_blocked": false,
+      "session_binding_invalidated": true,
+      "usage": null,
+      "response_bytes": 284,
+      "response_sha256": "e511ffbd952934ff88ca4a7c2b1900261746ff2e76475259ea822de0a59f648f"
+    }
+  ]
+}

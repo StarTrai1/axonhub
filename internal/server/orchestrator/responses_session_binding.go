@@ -185,7 +185,11 @@ func (m *responsesSessionBindingMiddleware) OnOutboundRawError(ctx context.Conte
 	}
 	state := m.outbound.state
 	state.responsesRejectedStatusRetryChannel = 0
-	if ctx.Err() != nil || m.attempt == nil || m.renewed[m.attempt.scope] || state.RawProviderRequest == nil {
+	if ctx.Err() != nil || m.attempt == nil || state.RawProviderRequest == nil {
+		return
+	}
+	if m.renewed[m.attempt.scope] {
+		m.recoverRejectedReasoning(ctx)
 		return
 	}
 	if _, safe := responsesResourceHistorySupportsRecoveryWithAgents(state.RawProviderRequest.Body, true); !safe {
@@ -196,13 +200,38 @@ func (m *responsesSessionBindingMiddleware) OnOutboundRawError(ctx context.Conte
 	if _, rewriteErr := applyResponsesSessionAlias(state.RawProviderRequest, "00000000-0000-4000-8000-000000000001"); rewriteErr != nil {
 		return
 	}
-	m.renewed[m.attempt.scope] = true
 	if _, saveErr := m.service.RenewResponsesSessionBinding(ctx, m.attempt.scope, m.attempt.alias); saveErr != nil {
 		log.Warn(ctx, "could not renew invalidated Responses session binding", log.Cause(saveErr))
 		return
 	}
+	m.renewed[m.attempt.scope] = true
 	state.responsesRejectedStatusRetryChannel = m.outbound.GetCurrentChannel().ID
 	log.Info(ctx, "upstream session binding invalidated; scheduling one scoped renewal", log.Int("channel_id", m.outbound.GetCurrentChannel().ID))
+}
+
+// Opaque reasoning can carry a provider binding independently of the transport
+// session and optional item ID. Only a second explicit session rejection after
+// renewal permits this fallback. Keep the checkpoint and every readable history
+// item; a checkpoint needs its own explicit rejection and authenticated recovery.
+func (m *responsesSessionBindingMiddleware) recoverRejectedReasoning(ctx context.Context) {
+	state := m.outbound.state
+	request := state.RawProviderRequest
+	channel := m.outbound.GetCurrentChannel()
+	scope, scoped := responsesReasoningScope(ctx, channel, request)
+	hasReasoning, safe := responsesReasoningHistorySupportsRecoveryWithAgents(request.Body, true, true)
+	if !scoped || !hasReasoning || !safe {
+		return
+	}
+	rule := responsesRejectedStatusRule{
+		itemType: "reasoning", index: -1, field: "encrypted_content", dropItem: true,
+		preserveCompaction: true, preserveAgentMessages: true,
+		reasoningScope: &scope, reasoningHashes: encryptedResponsesReasoningHashes(request.Body),
+	}
+	if !rememberResponsesRejectedStatusRule(state, channel.ID, rule) {
+		return
+	}
+	state.responsesRejectedStatusRetryChannel = channel.ID
+	log.Info(ctx, "renewed session rejected opaque reasoning; scheduling scoped history recovery", log.Int("channel_id", channel.ID))
 }
 
 func applyResponsesSessionAlias(request *httpclient.Request, alias string) (*httpclient.Request, error) {

@@ -1,0 +1,34 @@
+{
+  "plan": {
+    "endpoint": "https://agentrouter.org/v1/responses",
+    "model": "gpt-6-astra",
+    "max_calls": 1,
+    "max_output_tokens_each": 128,
+    "retry_transient_errors_until_three_effective_cases": true,
+    "timeout_seconds_each": 45,
+    "history_included": "opaque checkpoint or reasoning only; original destination",
+    "tools_included": false,
+    "cases": [
+      {
+        "name": "reasoning_without_id",
+        "body_bytes": 2829
+      }
+    ]
+  },
+  "results": [
+    {
+      "case": "reasoning_without_id",
+      "http_status": 409,
+      "response_status": null,
+      "error_code": "session_binding_invalidated",
+      "error_param": "",
+      "resource_mismatch": false,
+      "ciphertext_rejection": false,
+      "content_blocked": false,
+      "session_binding_invalidated": true,
+      "usage": null,
+      "response_bytes": 284,
+      "response_sha256": "6286462f2b2e09ccd29d07414a60f712068a2a4857d5c5fd0aeb5fe1e1a2c9ff"
+    }
+  ]
+}

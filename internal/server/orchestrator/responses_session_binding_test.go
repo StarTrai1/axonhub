@@ -152,12 +152,87 @@ func TestResponsesSessionBindingRecoveryHonorsBudgetAndStops(t *testing.T) {
 		t.Run(fmt.Sprint(budget), func(t *testing.T) {
 			service := bindingTestService(t)
 			executor := &responsesReasoningPipelineExecutor{failures: []error{invalidatedSessionFailure(), invalidatedSessionFailure(), invalidatedSessionFailure()}}
-			_, result, err := runRejectedReasoningPipeline(t, shared.WithSessionScope(t.Context(), "owner"), relayAffinityRequest(t), executor, "credential", true, budget, bindingTestMiddleware(service))
+			ctx := shared.WithSessionScope(t.Context(), t.Name())
+			state, result, err := runRejectedReasoningPipeline(t, ctx, relayAffinityRequest(t), executor, "credential", true, budget, bindingTestMiddleware(service))
 			require.Error(t, err)
 			require.Nil(t, result)
-			require.Len(t, executor.requests, min(budget+1, 2))
+			require.Len(t, executor.requests, min(budget+1, 3))
+			if len(executor.requests) == 3 {
+				require.Equal(t, executor.requests[1].Headers.Get("Session-Id"), executor.requests[2].Headers.Get("Session-Id"))
+				require.NotContains(t, string(executor.requests[2].Body), "preserve-native-reasoning")
+				scope, ok := responsesReasoningScope(ctx, state.CurrentCandidate.Channel, executor.requests[1])
+				require.True(t, ok)
+				_, remembered := rememberedResponsesReasoningRule(scope, executor.requests[1].Body)
+				require.False(t, remembered, "a rejected fallback cannot become a learned correction")
+			}
 		})
 	}
+}
+
+func TestResponsesSessionBindingRecoversReasoningAfterRenewal(t *testing.T) {
+	for _, checkpoint := range []bool{false, true} {
+		for _, inBand := range []bool{false, true} {
+			t.Run(fmt.Sprintf("checkpoint=%t/in-band=%t", checkpoint, inBand), func(t *testing.T) {
+				service := bindingTestService(t)
+				ctx := shared.WithSessionScope(t.Context(), t.Name())
+				request := relayAffinityRequest(t)
+				if checkpoint {
+					var err error
+					request.Body, err = sjson.SetRawBytes(request.Body, "input.8", []byte(`{"type":"compaction","id":"cmp_retained","encrypted_content":"checkpoint-must-survive"}`))
+					require.NoError(t, err)
+				}
+				original := append([]byte(nil), request.Body...)
+				executor := &agentRecoveryStreamExecutor{responsesReasoningPipelineExecutor: responsesReasoningPipelineExecutor{
+					failures: []error{invalidatedSessionFailure(), invalidatedSessionFailure()}, events: rejectedReasoningCompactionEvents(),
+				}, inBand: inBand}
+				state, result, err := runRejectedReasoningPipeline(t, ctx, request, executor, "staged-key", true, 2, bindingTestMiddleware(service))
+				require.NoError(t, err)
+				drainRejectedReasoningPipeline(t, result)
+				require.Len(t, executor.requests, 3)
+				first, renewed, recovered := executor.requests[0], executor.requests[1], executor.requests[2]
+				require.NotEqual(t, first.Headers.Get("Session-Id"), renewed.Headers.Get("Session-Id"))
+				require.Equal(t, renewed.Headers.Get("Session-Id"), recovered.Headers.Get("Session-Id"))
+				require.Equal(t, renewed.Headers.Get("X-Codex-Window-Id"), recovered.Headers.Get("X-Codex-Window-Id"))
+				require.Equal(t, gjson.GetBytes(first.Body, "input").Raw, gjson.GetBytes(renewed.Body, "input").Raw)
+				require.NotContains(t, string(recovered.Body), "preserve-native-reasoning")
+				for _, canary := range []string{"visible reasoning summary", "preserve the complete task", "prior explanation", "complete function result", "complete custom input", "complete custom result", "call_function", "call_custom"} {
+					require.Contains(t, string(recovered.Body), canary)
+				}
+				if checkpoint {
+					require.Equal(t, gjson.GetBytes(original, "input.8").Raw, gjson.GetBytes(recovered.Body, `input.#(type=="compaction")`).Raw)
+				}
+				require.Equal(t, original, request.Body)
+				scope, ok := responsesReasoningScope(ctx, state.CurrentCandidate.Channel, renewed)
+				require.True(t, ok)
+				t.Cleanup(func() { responsesReasoningRecoveries.Remove(scope) })
+				// A newly accepted target item is never covered by the old recovery.
+				nextRequest := *request
+				nextRequest.Body, err = sjson.SetRawBytes(request.Body, "input.-1", []byte(`{"type":"reasoning","id":"rs_fresh","encrypted_content":"fresh-target-reasoning","summary":[]}`))
+				require.NoError(t, err)
+				next := &responsesReasoningPipelineExecutor{events: rejectedReasoningCompactionEvents()}
+				_, result, err = runRejectedReasoningPipeline(t, ctx, &nextRequest, next, "staged-key", true, 2, bindingTestMiddleware(service))
+				require.NoError(t, err)
+				drainRejectedReasoningPipeline(t, result)
+				require.Len(t, next.requests, 1)
+				require.Equal(t, recovered.Headers.Get("Session-Id"), next.requests[0].Headers.Get("Session-Id"))
+				require.NotContains(t, string(next.requests[0].Body), "preserve-native-reasoning")
+				require.Contains(t, string(next.requests[0].Body), "fresh-target-reasoning")
+			})
+		}
+	}
+}
+
+func TestResponsesSessionBindingWithoutReasoningStopsAfterRenewal(t *testing.T) {
+	service := bindingTestService(t)
+	request := relayAffinityRequest(t)
+	var err error
+	request.Body, err = sjson.DeleteBytes(request.Body, "input.2")
+	require.NoError(t, err)
+	executor := &responsesReasoningPipelineExecutor{failures: []error{invalidatedSessionFailure(), invalidatedSessionFailure()}}
+	_, result, err := runRejectedReasoningPipeline(t, shared.WithSessionScope(t.Context(), t.Name()), request, executor, "key", true, 5, bindingTestMiddleware(service))
+	require.Error(t, err)
+	require.Nil(t, result)
+	require.Len(t, executor.requests, 2)
 }
 
 func TestResponsesSessionBindingErrorRecognition(t *testing.T) {

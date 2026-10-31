@@ -1,0 +1,20 @@
+{
+  "model": "jev-1.14.0",
+  "answers": {
+    "boundary": {
+      "type": "choice",
+      "choice": "staged_reasoning",
+      "confidence": 1.0,
+      "probabilities": {
+        "staged_reasoning": 1.0,
+        "full_reset": 0.0,
+        "keep_rotation": 0.0,
+        "insufficient_evidence": 0.0
+      }
+    }
+  },
+  "usage": {
+    "input_tokens": 942,
+    "output_tokens": 61
+  }
+}

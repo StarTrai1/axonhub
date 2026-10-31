@@ -1,0 +1,75 @@
+{
+  "successful_cases": [
+    {
+      "case": "fresh_metadata",
+      "http_status": 200,
+      "response_status": "completed",
+      "error_code": null,
+      "session_binding_invalidated": false,
+      "usage": {
+        "input_tokens": 11,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0
+        },
+        "output_tokens": 16,
+        "output_tokens_details": {
+          "reasoning_tokens": 9
+        },
+        "total_tokens": 27
+      },
+      "response_bytes": 5258,
+      "response_sha256": "93cfeeeff8a3599d4c7bd9e79ca4cd9da2f2aa96cbc231efe7fe879a1e9a7f9d"
+    },
+    {
+      "case": "retained_context_window",
+      "http_status": 200,
+      "response_status": "completed",
+      "error_code": null,
+      "session_binding_invalidated": false,
+      "usage": {
+        "input_tokens": 11,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0
+        },
+        "output_tokens": 16,
+        "output_tokens_details": {
+          "reasoning_tokens": 9
+        },
+        "total_tokens": 27
+      },
+      "response_bytes": 3966,
+      "response_sha256": "afb751ee8da4542ad9722530290582f52a1e6bb4948210653241b5dbacb336e6"
+    },
+    {
+      "case": "retained_turn_metadata",
+      "http_status": 200,
+      "response_status": "completed",
+      "error_code": null,
+      "session_binding_invalidated": false,
+      "usage": {
+        "input_tokens": 11,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0
+        },
+        "output_tokens": 5,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 16
+      },
+      "response_bytes": 3610,
+      "response_sha256": "7479a1ec89d3c444faa0fad5f81497ac7e08ece4044db88b4be5d3114591e9b4"
+    }
+  ],
+  "transient_errors": {
+    "429": 10,
+    "transport": 1
+  },
+  "successful_total_tokens": 70,
+  "unknown_usage_on_transport_errors": true,
+  "provider_model": "gpt-6-astra",
+  "endpoint": "https://agentrouter.org/v1/responses"
+}

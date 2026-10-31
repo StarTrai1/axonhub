@@ -133,3 +133,114 @@ func TestResponsesProtocolSessionLifecycle(t *testing.T) {
 		}
 	}
 }
+
+// The relay can bind ciphertext to an unavailable resource even after both the
+// transport session and optional item ID change. Exercise that real failure
+// shape instead of a fixture that always accepts the first renewed session.
+func TestResponsesProtocolSessionLifecycleOpaqueHistory(t *testing.T) {
+	for _, downstream := range []string{"http", "ws"} {
+		for _, checkpoint := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/checkpoint=%t", downstream, checkpoint), func(t *testing.T) {
+				var mu sync.Mutex
+				var bodies [][]byte
+				var sessions []string
+				upstream := responsesIntegrationServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					body, err := readRequestBody(r)
+					require.NoError(t, err)
+					mu.Lock()
+					defer mu.Unlock()
+					bodies = append(bodies, body)
+					sessions = append(sessions, r.Header.Get("Session-Id"))
+					if gjson.GetBytes(body, `input.#(encrypted_content=="binding-rejected-reasoning")`).Exists() {
+						w.WriteHeader(http.StatusConflict)
+						_, _ = fmt.Fprint(w, `{"error":{"code":"session_binding_invalidated","message":"session binding invalidated: restart with a new session"}}`)
+						return
+					}
+					if gjson.GetBytes(body, `input.#(type=="compaction")`).Exists() {
+						w.WriteHeader(http.StatusBadRequest)
+						_, _ = fmt.Fprint(w, `{"error":{"message":"The encrypted content for item cmp_binding could not be verified. Reason: Encrypted content could not be decrypted or parsed."}}`)
+						return
+					}
+					output := `[{"type":"message","id":"msg_reply","role":"assistant","content":[{"type":"output_text","text":"retained source detail"}]}]`
+					if gjson.GetBytes(body, `input.#(type=="compaction_trigger")`).Exists() {
+						output = `[{"type":"compaction","id":"cmp_binding","encrypted_content":"rejected-checkpoint"}]`
+					}
+					w.Header().Set("Content-Type", "text/event-stream")
+					_, _ = fmt.Fprintf(w, "data: {\"type\":\"response.completed\",\"response\":{\"id\":\"resp_staged_%d\",\"object\":\"response\",\"status\":\"completed\",\"model\":\"gpt-6.1-sol\",\"output\":%s,\"usage\":{\"input_tokens\":100,\"output_tokens\":2,\"total_tokens\":102}}}\n\n", len(bodies), output)
+				}))
+				client, handlers, project := newResponsesIntegrationFixture(t, upstream.URL, func(create *ent.ChannelCreate) {
+					create.SetType(channel.TypeCodex).SetSupportedModels([]string{"synthetic-model", "gpt-6.1-sol"}).SetSettings(&objects.ChannelSettings{PassThroughBody: lo.ToPtr(true)}).SetPolicies(objects.ChannelPolicies{RemoteCompaction: objects.RemoteCompactionPolicyNative})
+				})
+				ctx := authz.WithTestBypass(ent.NewContext(t.Context(), client))
+				require.NoError(t, handlers.SystemService.SetSecretKey(ctx, "synthetic-binding-secret"))
+				policy := handlers.SystemService.RetryPolicyOrDefault(ctx)
+				policy.Enabled, policy.MaxChannelRetries, policy.MaxSingleChannelRetries, policy.RetryDelayMs = true, 0, 3, 0
+				require.NoError(t, handlers.SystemService.SetRetryPolicy(ctx, policy))
+				gateway := responsesIntegrationGateway(t, client, handlers, project)
+				root := `{"model":"gpt-6.1-sol","stream":false,"prompt_cache_key":"staged-thread","client_metadata":{"session_id":"staged-session","thread_id":"staged-thread","x-codex-window-id":"staged-thread:1"},"input":[{"role":"user","content":"retained source detail"}]}`
+				seed := root
+				var err error
+				if checkpoint {
+					seed, err = sjson.SetRaw(seed, "input.-1", `{"type":"compaction_trigger"}`)
+					require.NoError(t, err)
+				}
+				status, response := responsesIntegrationPost(t, gateway, "/v1/responses", seed)
+				require.Equal(t, http.StatusOK, status, string(response))
+				full := root
+				if checkpoint {
+					full, err = sjson.SetRaw(full, "input.-1", `{"type":"compaction","id":"cmp_binding","encrypted_content":"rejected-checkpoint"}`)
+					require.NoError(t, err)
+				}
+				for _, item := range []string{`{"type":"reasoning","id":"rs_unavailable","encrypted_content":"binding-rejected-reasoning","summary":[{"type":"summary_text","text":"visible-summary-canary"}]}`, `{"type":"function_call","id":"fc_old","call_id":"call_keep","name":"inspect","arguments":"{\"n\":9007199254740993}"}`, `{"type":"function_call_output","call_id":"call_keep","output":"exact-tool-result"}`, `{"role":"user","content":"continue-canary"}`} {
+					full, err = sjson.SetRaw(full, "input.-1", item)
+					require.NoError(t, err)
+				}
+				submit := func(body string) []byte {
+					status, response := responsesIntegrationPost(t, gateway, "/v1/responses", body)
+					require.Equal(t, http.StatusOK, status, string(response))
+					return response
+				}
+				if downstream == "ws" {
+					conn := responsesIntegrationDial(t, gateway)
+					submit = func(body string) []byte {
+						frame, err := sjson.Delete(body, "stream")
+						require.NoError(t, err)
+						frame, err = sjson.Set(frame, "type", "response.create")
+						require.NoError(t, err)
+						event := responsesIntegrationTurn(t, conn, frame)
+						require.Equal(t, "response.completed", gjson.GetBytes(event, "type").String(), string(event))
+						return []byte(gjson.GetBytes(event, "response").Raw)
+					}
+				}
+				response = submit(full)
+				mu.Lock()
+				beforeDelta := len(bodies)
+				require.GreaterOrEqual(t, beforeDelta, 4)
+				require.NotEqual(t, sessions[1], sessions[2])
+				require.Equal(t, sessions[2], sessions[3])
+				require.Equal(t, gjson.GetBytes(bodies[1], "input").Raw, gjson.GetBytes(bodies[2], "input").Raw)
+				require.NotContains(t, string(bodies[3]), "binding-rejected-reasoning")
+				if checkpoint {
+					require.Contains(t, string(bodies[3]), "rejected-checkpoint", "session loss cannot discard the checkpoint")
+					require.NotContains(t, string(bodies[beforeDelta-1]), "rejected-checkpoint", "only the subsequent explicit rejection permits checkpoint recovery")
+				}
+				for _, canary := range []string{"retained source detail", "visible-summary-canary", "9007199254740993", "exact-tool-result", "call_keep", "continue-canary"} {
+					require.Contains(t, string(bodies[beforeDelta-1]), canary)
+				}
+				mu.Unlock()
+				delta, err := sjson.Set(root, "previous_response_id", gjson.GetBytes(response, "id").String())
+				require.NoError(t, err)
+				delta, err = sjson.SetRaw(delta, "input", `[{"role":"user","content":"delta-canary"}]`)
+				require.NoError(t, err)
+				submit(delta)
+				mu.Lock()
+				defer mu.Unlock()
+				require.Len(t, bodies, beforeDelta+1)
+				for _, canary := range []string{"retained source detail", "9007199254740993", "exact-tool-result", "delta-canary"} {
+					require.Contains(t, string(bodies[len(bodies)-1]), canary)
+				}
+				require.NotContains(t, string(bodies[len(bodies)-1]), "binding-rejected-reasoning")
+			})
+		}
+	}
+}

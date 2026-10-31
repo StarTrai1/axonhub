@@ -1,0 +1,582 @@
+{
+  "requests": [
+    {
+      "id": 72049,
+      "created_at_utc": "2026-10-31 08:36:46.4137302 +0000 UTC",
+      "model": "gpt-6-astra",
+      "client_previous_response_id_present": true,
+      "executions": [
+        {
+          "id": 207012,
+          "channel": 40,
+          "http_status": 409,
+          "session_sha256": "25121eb5e023db37daa47d9d9f1a45721f8763f7b46c9c7e3aead8da2de7a283",
+          "session_carriers_coherent": true,
+          "previous_response_id_present": false,
+          "input_items": 78,
+          "native_checkpoints": 1,
+          "context_window_sha256": "c440f7c26a4dbaf33ba072aeb75760a626b5971388dddb55a9d5ba58b2e44e91",
+          "history_initialization": "warm_fork",
+          "session_invalidation": true,
+          "response_body_saved": false
+        },
+        {
+          "id": 207013,
+          "channel": 40,
+          "http_status": 409,
+          "session_sha256": "344c45003472ea345a80b75c98b288cc903141207050cf3439338982e0dae50a",
+          "session_carriers_coherent": true,
+          "previous_response_id_present": false,
+          "input_items": 78,
+          "native_checkpoints": 1,
+          "context_window_sha256": "c440f7c26a4dbaf33ba072aeb75760a626b5971388dddb55a9d5ba58b2e44e91",
+          "history_initialization": "warm_fork",
+          "session_invalidation": true,
+          "response_body_saved": false
+        }
+      ]
+    },
+    {
+      "id": 72050,
+      "created_at_utc": "2026-10-31 08:36:52.5155072 +0000 UTC",
+      "model": "gpt-6-astra",
+      "client_previous_response_id_present": false,
+      "executions": [
+        {
+          "id": 207014,
+          "channel": 40,
+          "http_status": 409,
+          "session_sha256": "344c45003472ea345a80b75c98b288cc903141207050cf3439338982e0dae50a",
+          "session_carriers_coherent": true,
+          "previous_response_id_present": false,
+          "input_items": 78,
+          "native_checkpoints": 1,
+          "context_window_sha256": "c440f7c26a4dbaf33ba072aeb75760a626b5971388dddb55a9d5ba58b2e44e91",
+          "history_initialization": "warm_fork",
+          "session_invalidation": true,
+          "response_body_saved": false
+        },
+        {
+          "id": 207015,
+          "channel": 40,
+          "http_status": 409,
+          "session_sha256": "74734b24e291fa6c81a79d189848edd8b428e0e31e0db9abcf19552d2547be78",
+          "session_carriers_coherent": true,
+          "previous_response_id_present": false,
+          "input_items": 78,
+          "native_checkpoints": 1,
+          "context_window_sha256": "c440f7c26a4dbaf33ba072aeb75760a626b5971388dddb55a9d5ba58b2e44e91",
+          "history_initialization": "warm_fork",
+          "session_invalidation": true,
+          "response_body_saved": false
+        }
+      ]
+    },
+    {
+      "id": 72051,
+      "created_at_utc": "2026-10-31 08:36:56.3235306 +0000 UTC",
+      "model": "gpt-6-astra",
+      "client_previous_response_id_present": false,
+      "executions": [
+        {
+          "id": 207016,
+          "channel": 40,
+          "http_status": 409,
+          "session_sha256": "74734b24e291fa6c81a79d189848edd8b428e0e31e0db9abcf19552d2547be78",
+          "session_carriers_coherent": true,
+          "previous_response_id_present": false,
+          "input_items": 78,
+          "native_checkpoints": 1,
+          "context_window_sha256": "c440f7c26a4dbaf33ba072aeb75760a626b5971388dddb55a9d5ba58b2e44e91",
+          "history_initialization": "warm_fork",
+          "session_invalidation": true,
+          "response_body_saved": false
+        },
+        {
+          "id": 207017,
+          "channel": 40,
+          "http_status": 409,
+          "session_sha256": "91e210e03cb32c3067c8d28f189fd9e934e253f93e61ba6554978665fbfe0677",
+          "session_carriers_coherent": true,
+          "previous_response_id_present": false,
+          "input_items": 78,
+          "native_checkpoints": 1,
+          "context_window_sha256": "c440f7c26a4dbaf33ba072aeb75760a626b5971388dddb55a9d5ba58b2e44e91",
+          "history_initialization": "warm_fork",
+          "session_invalidation": true,
+          "response_body_saved": false
+        }
+      ]
+    },
+    {
+      "id": 72052,
+      "created_at_utc": "2026-10-31 08:36:59.801564 +0000 UTC",
+      "model": "gpt-6-astra",
+      "client_previous_response_id_present": false,
+      "executions": [
+        {
+          "id": 207018,
+          "channel": 40,
+          "http_status": 409,
+          "session_sha256": "91e210e03cb32c3067c8d28f189fd9e934e253f93e61ba6554978665fbfe0677",
+          "session_carriers_coherent": true,
+          "previous_response_id_present": false,
+          "input_items": 78,
+          "native_checkpoints": 1,
+          "context_window_sha256": "c440f7c26a4dbaf33ba072aeb75760a626b5971388dddb55a9d5ba58b2e44e91",
+          "history_initialization": "warm_fork",
+          "session_invalidation": true,
+          "response_body_saved": false
+        },
+        {
+          "id": 207019,
+          "channel": 40,
+          "http_status": 409,
+          "session_sha256": "1117f17556bad22787718e9d2d6e875d81989724ef609ed06f0686e4bbb01cd3",
+          "session_carriers_coherent": true,
+          "previous_response_id_present": false,
+          "input_items": 78,
+          "native_checkpoints": 1,
+          "context_window_sha256": "c440f7c26a4dbaf33ba072aeb75760a626b5971388dddb55a9d5ba58b2e44e91",
+          "history_initialization": "warm_fork",
+          "session_invalidation": true,
+          "response_body_saved": false
+        }
+      ]
+    },
+    {
+      "id": 72053,
+      "created_at_utc": "2026-10-31 08:37:04.5487916 +0000 UTC",
+      "model": "gpt-6-astra",
+      "client_previous_response_id_present": false,
+      "executions": [
+        {
+          "id": 207020,
+          "channel": 40,
+          "http_status": 409,
+          "session_sha256": "1117f17556bad22787718e9d2d6e875d81989724ef609ed06f0686e4bbb01cd3",
+          "session_carriers_coherent": true,
+          "previous_response_id_present": false,
+          "input_items": 78,
+          "native_checkpoints": 1,
+          "context_window_sha256": "c440f7c26a4dbaf33ba072aeb75760a626b5971388dddb55a9d5ba58b2e44e91",
+          "history_initialization": "warm_fork",
+          "session_invalidation": true,
+          "response_body_saved": false
+        },
+        {
+          "id": 207021,
+          "channel": 40,
+          "http_status": 409,
+          "session_sha256": "b24b4d0c546c7dbc4a2d3b6586a2436a989e8ac403e5c501f313e2037315adf1",
+          "session_carriers_coherent": true,
+          "previous_response_id_present": false,
+          "input_items": 78,
+          "native_checkpoints": 1,
+          "context_window_sha256": "c440f7c26a4dbaf33ba072aeb75760a626b5971388dddb55a9d5ba58b2e44e91",
+          "history_initialization": "warm_fork",
+          "session_invalidation": true,
+          "response_body_saved": false
+        }
+      ]
+    },
+    {
+      "id": 72054,
+      "created_at_utc": "2026-10-31 08:37:10.7375567 +0000 UTC",
+      "model": "gpt-6-astra",
+      "client_previous_response_id_present": false,
+      "executions": [
+        {
+          "id": 207022,
+          "channel": 40,
+          "http_status": 409,
+          "session_sha256": "b24b4d0c546c7dbc4a2d3b6586a2436a989e8ac403e5c501f313e2037315adf1",
+          "session_carriers_coherent": true,
+          "previous_response_id_present": false,
+          "input_items": 78,
+          "native_checkpoints": 1,
+          "context_window_sha256": "c440f7c26a4dbaf33ba072aeb75760a626b5971388dddb55a9d5ba58b2e44e91",
+          "history_initialization": "warm_fork",
+          "session_invalidation": true,
+          "response_body_saved": false
+        },
+        {
+          "id": 207023,
+          "channel": 40,
+          "http_status": 409,
+          "session_sha256": "1030681c53ac19ebfb8a6fd04236e65e72035a16d4a8f2a8c4c1990c1e4a7645",
+          "session_carriers_coherent": true,
+          "previous_response_id_present": false,
+          "input_items": 78,
+          "native_checkpoints": 1,
+          "context_window_sha256": "c440f7c26a4dbaf33ba072aeb75760a626b5971388dddb55a9d5ba58b2e44e91",
+          "history_initialization": "warm_fork",
+          "session_invalidation": true,
+          "response_body_saved": false
+        }
+      ]
+    },
+    {
+      "id": 72055,
+      "created_at_utc": "2026-10-31 08:37:13.4335728 +0000 UTC",
+      "model": "gpt-6-astra",
+      "client_previous_response_id_present": false,
+      "executions": [
+        {
+          "id": 207024,
+          "channel": 40,
+          "http_status": 409,
+          "session_sha256": "1030681c53ac19ebfb8a6fd04236e65e72035a16d4a8f2a8c4c1990c1e4a7645",
+          "session_carriers_coherent": true,
+          "previous_response_id_present": false,
+          "input_items": 78,
+          "native_checkpoints": 1,
+          "context_window_sha256": "c440f7c26a4dbaf33ba072aeb75760a626b5971388dddb55a9d5ba58b2e44e91",
+          "history_initialization": "warm_fork",
+          "session_invalidation": true,
+          "response_body_saved": false
+        },
+        {
+          "id": 207025,
+          "channel": 40,
+          "http_status": 409,
+          "session_sha256": "574e9320cee4173a572d67fd7f5d31bc6c0a3c813d7edf31c6c20bd2c0b0d522",
+          "session_carriers_coherent": true,
+          "previous_response_id_present": false,
+          "input_items": 78,
+          "native_checkpoints": 1,
+          "context_window_sha256": "c440f7c26a4dbaf33ba072aeb75760a626b5971388dddb55a9d5ba58b2e44e91",
+          "history_initialization": "warm_fork",
+          "session_invalidation": true,
+          "response_body_saved": false
+        }
+      ]
+    },
+    {
+      "id": 72056,
+      "created_at_utc": "2026-10-31 08:37:16.5397033 +0000 UTC",
+      "model": "gpt-6-astra",
+      "client_previous_response_id_present": false,
+      "executions": [
+        {
+          "id": 207026,
+          "channel": 40,
+          "http_status": 409,
+          "session_sha256": "574e9320cee4173a572d67fd7f5d31bc6c0a3c813d7edf31c6c20bd2c0b0d522",
+          "session_carriers_coherent": true,
+          "previous_response_id_present": false,
+          "input_items": 78,
+          "native_checkpoints": 1,
+          "context_window_sha256": "c440f7c26a4dbaf33ba072aeb75760a626b5971388dddb55a9d5ba58b2e44e91",
+          "history_initialization": "warm_fork",
+          "session_invalidation": true,
+          "response_body_saved": false
+        },
+        {
+          "id": 207027,
+          "channel": 40,
+          "http_status": 409,
+          "session_sha256": "a63672992292ac4eabe23809d29265f84a7356aa89bad471838d0dfe5b822fee",
+          "session_carriers_coherent": true,
+          "previous_response_id_present": false,
+          "input_items": 78,
+          "native_checkpoints": 1,
+          "context_window_sha256": "c440f7c26a4dbaf33ba072aeb75760a626b5971388dddb55a9d5ba58b2e44e91",
+          "history_initialization": "warm_fork",
+          "session_invalidation": true,
+          "response_body_saved": false
+        }
+      ]
+    },
+    {
+      "id": 72057,
+      "created_at_utc": "2026-10-31 08:37:19.920984 +0000 UTC",
+      "model": "gpt-6-astra",
+      "client_previous_response_id_present": false,
+      "executions": [
+        {
+          "id": 207028,
+          "channel": 40,
+          "http_status": 409,
+          "session_sha256": "a63672992292ac4eabe23809d29265f84a7356aa89bad471838d0dfe5b822fee",
+          "session_carriers_coherent": true,
+          "previous_response_id_present": false,
+          "input_items": 78,
+          "native_checkpoints": 1,
+          "context_window_sha256": "c440f7c26a4dbaf33ba072aeb75760a626b5971388dddb55a9d5ba58b2e44e91",
+          "history_initialization": "warm_fork",
+          "session_invalidation": true,
+          "response_body_saved": false
+        },
+        {
+          "id": 207029,
+          "channel": 40,
+          "http_status": 409,
+          "session_sha256": "af67524ee8255af2cc525a753b2f30c1883070e4d3fe1e5d6e25284984654607",
+          "session_carriers_coherent": true,
+          "previous_response_id_present": false,
+          "input_items": 78,
+          "native_checkpoints": 1,
+          "context_window_sha256": "c440f7c26a4dbaf33ba072aeb75760a626b5971388dddb55a9d5ba58b2e44e91",
+          "history_initialization": "warm_fork",
+          "session_invalidation": true,
+          "response_body_saved": false
+        }
+      ]
+    },
+    {
+      "id": 72058,
+      "created_at_utc": "2026-10-31 08:37:23.6977248 +0000 UTC",
+      "model": "gpt-6-astra",
+      "client_previous_response_id_present": false,
+      "executions": [
+        {
+          "id": 207030,
+          "channel": 40,
+          "http_status": 409,
+          "session_sha256": "af67524ee8255af2cc525a753b2f30c1883070e4d3fe1e5d6e25284984654607",
+          "session_carriers_coherent": true,
+          "previous_response_id_present": false,
+          "input_items": 78,
+          "native_checkpoints": 1,
+          "context_window_sha256": "c440f7c26a4dbaf33ba072aeb75760a626b5971388dddb55a9d5ba58b2e44e91",
+          "history_initialization": "warm_fork",
+          "session_invalidation": true,
+          "response_body_saved": false
+        },
+        {
+          "id": 207031,
+          "channel": 40,
+          "http_status": 409,
+          "session_sha256": "ca30320b05dbe19dc374a91c16a7d4d7142e116d2ffeb9db0ac86e89be728ffc",
+          "session_carriers_coherent": true,
+          "previous_response_id_present": false,
+          "input_items": 78,
+          "native_checkpoints": 1,
+          "context_window_sha256": "c440f7c26a4dbaf33ba072aeb75760a626b5971388dddb55a9d5ba58b2e44e91",
+          "history_initialization": "warm_fork",
+          "session_invalidation": true,
+          "response_body_saved": false
+        }
+      ]
+    },
+    {
+      "id": 72059,
+      "created_at_utc": "2026-10-31 08:37:28.6733955 +0000 UTC",
+      "model": "gpt-6-astra",
+      "client_previous_response_id_present": false,
+      "executions": [
+        {
+          "id": 207032,
+          "channel": 40,
+          "http_status": 409,
+          "session_sha256": "ca30320b05dbe19dc374a91c16a7d4d7142e116d2ffeb9db0ac86e89be728ffc",
+          "session_carriers_coherent": true,
+          "previous_response_id_present": false,
+          "input_items": 78,
+          "native_checkpoints": 1,
+          "context_window_sha256": "c440f7c26a4dbaf33ba072aeb75760a626b5971388dddb55a9d5ba58b2e44e91",
+          "history_initialization": "warm_fork",
+          "session_invalidation": true,
+          "response_body_saved": false
+        },
+        {
+          "id": 207033,
+          "channel": 40,
+          "http_status": 409,
+          "session_sha256": "2e81a00bc58586b024443b1667df1dcb4cfef1ef19e30a776fa259f49c92bcb2",
+          "session_carriers_coherent": true,
+          "previous_response_id_present": false,
+          "input_items": 78,
+          "native_checkpoints": 1,
+          "context_window_sha256": "c440f7c26a4dbaf33ba072aeb75760a626b5971388dddb55a9d5ba58b2e44e91",
+          "history_initialization": "warm_fork",
+          "session_invalidation": true,
+          "response_body_saved": false
+        }
+      ]
+    },
+    {
+      "id": 72060,
+      "created_at_utc": "2026-10-31 08:37:35.183915 +0000 UTC",
+      "model": "gpt-6-astra",
+      "client_previous_response_id_present": false,
+      "executions": [
+        {
+          "id": 207034,
+          "channel": 40,
+          "http_status": 409,
+          "session_sha256": "2e81a00bc58586b024443b1667df1dcb4cfef1ef19e30a776fa259f49c92bcb2",
+          "session_carriers_coherent": true,
+          "previous_response_id_present": false,
+          "input_items": 78,
+          "native_checkpoints": 1,
+          "context_window_sha256": "c440f7c26a4dbaf33ba072aeb75760a626b5971388dddb55a9d5ba58b2e44e91",
+          "history_initialization": "warm_fork",
+          "session_invalidation": true,
+          "response_body_saved": false
+        },
+        {
+          "id": 207035,
+          "channel": 40,
+          "http_status": 409,
+          "session_sha256": "8215108b753c575eb51bfb4043aa1c8405c86a7e22fd1b609df390c480fee0fd",
+          "session_carriers_coherent": true,
+          "previous_response_id_present": false,
+          "input_items": 78,
+          "native_checkpoints": 1,
+          "context_window_sha256": "c440f7c26a4dbaf33ba072aeb75760a626b5971388dddb55a9d5ba58b2e44e91",
+          "history_initialization": "warm_fork",
+          "session_invalidation": true,
+          "response_body_saved": false
+        }
+      ]
+    },
+    {
+      "id": 72061,
+      "created_at_utc": "2026-10-31 08:40:54.4089983 +0000 UTC",
+      "model": "gpt-6-astra",
+      "client_previous_response_id_present": true,
+      "executions": [
+        {
+          "id": 207036,
+          "channel": 40,
+          "http_status": 409,
+          "session_sha256": "d6c5885ee78320dd90fd908240e592434c88550333eb9ac583f572ed7caf972d",
+          "session_carriers_coherent": true,
+          "previous_response_id_present": false,
+          "input_items": 103,
+          "native_checkpoints": 1,
+          "context_window_sha256": "924243b93024bfbcece37bee27b14304ebf34355c3dff79304e3e40de73c1a19",
+          "history_initialization": "cold_resume",
+          "session_invalidation": true,
+          "response_body_saved": false
+        },
+        {
+          "id": 207037,
+          "channel": 40,
+          "http_status": 409,
+          "session_sha256": "69ade874010b78e62300a17fdf5405ef8dde77bb568669f11cc543a6b030efde",
+          "session_carriers_coherent": true,
+          "previous_response_id_present": false,
+          "input_items": 103,
+          "native_checkpoints": 1,
+          "context_window_sha256": "924243b93024bfbcece37bee27b14304ebf34355c3dff79304e3e40de73c1a19",
+          "history_initialization": "cold_resume",
+          "session_invalidation": true,
+          "response_body_saved": false
+        }
+      ]
+    },
+    {
+      "id": 72062,
+      "created_at_utc": "2026-10-31 08:41:00.7267338 +0000 UTC",
+      "model": "gpt-6-astra",
+      "client_previous_response_id_present": false,
+      "executions": [
+        {
+          "id": 207038,
+          "channel": 40,
+          "http_status": 409,
+          "session_sha256": "69ade874010b78e62300a17fdf5405ef8dde77bb568669f11cc543a6b030efde",
+          "session_carriers_coherent": true,
+          "previous_response_id_present": false,
+          "input_items": 103,
+          "native_checkpoints": 1,
+          "context_window_sha256": "924243b93024bfbcece37bee27b14304ebf34355c3dff79304e3e40de73c1a19",
+          "history_initialization": "cold_resume",
+          "session_invalidation": true,
+          "response_body_saved": false
+        },
+        {
+          "id": 207039,
+          "channel": 40,
+          "http_status": 409,
+          "session_sha256": "a56a0f1429ea301148d6f00bb5caec0be348a1ea4c10da66fa699cb7eefaccd9",
+          "session_carriers_coherent": true,
+          "previous_response_id_present": false,
+          "input_items": 103,
+          "native_checkpoints": 1,
+          "context_window_sha256": "924243b93024bfbcece37bee27b14304ebf34355c3dff79304e3e40de73c1a19",
+          "history_initialization": "cold_resume",
+          "session_invalidation": true,
+          "response_body_saved": false
+        }
+      ]
+    },
+    {
+      "id": 72063,
+      "created_at_utc": "2026-10-31 08:41:03.7328331 +0000 UTC",
+      "model": "gpt-6-astra",
+      "client_previous_response_id_present": false,
+      "executions": [
+        {
+          "id": 207040,
+          "channel": 40,
+          "http_status": 409,
+          "session_sha256": "a56a0f1429ea301148d6f00bb5caec0be348a1ea4c10da66fa699cb7eefaccd9",
+          "session_carriers_coherent": true,
+          "previous_response_id_present": false,
+          "input_items": 103,
+          "native_checkpoints": 1,
+          "context_window_sha256": "924243b93024bfbcece37bee27b14304ebf34355c3dff79304e3e40de73c1a19",
+          "history_initialization": "cold_resume",
+          "session_invalidation": true,
+          "response_body_saved": false
+        },
+        {
+          "id": 207041,
+          "channel": 40,
+          "http_status": 409,
+          "session_sha256": "0c9dbabfe96760315fc612994695b854566b74e7f2345d9203c9fe12f3f02e5a",
+          "session_carriers_coherent": true,
+          "previous_response_id_present": false,
+          "input_items": 103,
+          "native_checkpoints": 1,
+          "context_window_sha256": "924243b93024bfbcece37bee27b14304ebf34355c3dff79304e3e40de73c1a19",
+          "history_initialization": "cold_resume",
+          "session_invalidation": true,
+          "response_body_saved": false
+        }
+      ]
+    },
+    {
+      "id": 72064,
+      "created_at_utc": "2026-10-31 08:41:07.0413256 +0000 UTC",
+      "model": "gpt-6-astra",
+      "client_previous_response_id_present": false,
+      "executions": [
+        {
+          "id": 207042,
+          "channel": 40,
+          "http_status": 409,
+          "session_sha256": "0c9dbabfe96760315fc612994695b854566b74e7f2345d9203c9fe12f3f02e5a",
+          "session_carriers_coherent": true,
+          "previous_response_id_present": false,
+          "input_items": 103,
+          "native_checkpoints": 1,
+          "context_window_sha256": "924243b93024bfbcece37bee27b14304ebf34355c3dff79304e3e40de73c1a19",
+          "history_initialization": "cold_resume",
+          "session_invalidation": true,
+          "response_body_saved": false
+        },
+        {
+          "id": 207043,
+          "channel": 40,
+          "http_status": 409,
+          "session_sha256": "44b1bc7473564985df53dce6b9acd57a631e15e116e505224e03fd837c52a220",
+          "session_carriers_coherent": true,
+          "previous_response_id_present": false,
+          "input_items": 103,
+          "native_checkpoints": 1,
+          "context_window_sha256": "924243b93024bfbcece37bee27b14304ebf34355c3dff79304e3e40de73c1a19",
+          "history_initialization": "cold_resume",
+          "session_invalidation": true,
+          "response_body_saved": false
+        }
+      ]
+    }
+  ],
+  "request_count": 16,
+  "execution_count": 32
+}
