@@ -10,6 +10,8 @@ import (
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 
+	"github.com/looplj/axonhub/internal/ent"
+	entchannel "github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
@@ -22,6 +24,41 @@ const responsesSessionInvalidatedMessage = "session binding invalidated: the mod
 
 func invalidatedSessionFailure() error {
 	return &httpclient.Error{StatusCode: 409, Body: []byte(`{"error":{"message":"` + responsesSessionInvalidatedMessage + ` [trace_id=synthetic code=30013]"}}`)}
+}
+
+func TestResponsesSessionScopeSeparatesRoutesAndStableLogicalClients(t *testing.T) {
+	ctx := shared.WithSessionScope(t.Context(), "owner-a")
+	channel := &biz.Channel{Channel: &ent.Channel{ID: 3, Type: entchannel.TypeCodex}}
+	request := &httpclient.Request{URL: "https://relay.example/v1/responses", APIFormat: string(llm.APIFormatOpenAIResponse),
+		Headers: map[string][]string{"Authorization": {"Bearer synthetic"}, "Session-Id": {"fabricated-one"}}, Body: []byte(`{"model":"gpt-6.1-sol"}`)}
+	client := &httpclient.Request{Body: []byte(`{"client_metadata":{"thread_id":"logical-thread"},"input":[]}`)}
+	first, ok := responsesSessionBindingScope(ctx, channel, request, client)
+	require.True(t, ok)
+	request.Headers.Set("Session-Id", "fabricated-two")
+	second, ok := responsesSessionBindingScope(ctx, channel, request, client)
+	require.True(t, ok)
+	require.Equal(t, first, second)
+	for _, dimension := range []string{"channel", "endpoint", "credential", "model", "owner"} {
+		isolated := *request
+		isolated.Headers = request.Headers.Clone()
+		other := &biz.Channel{Channel: &ent.Channel{ID: channel.ID, Type: channel.Type}}
+		owner := ctx
+		switch dimension {
+		case "channel":
+			other.ID++
+		case "endpoint":
+			isolated.URL = "https://other.example/v1/responses"
+		case "credential":
+			isolated.Headers.Set("Authorization", "Bearer other")
+		case "model":
+			isolated.Body = []byte(`{"model":"gpt-6-astra"}`)
+		case "owner":
+			owner = shared.WithSessionScope(ctx, "owner-b")
+		}
+		key, ok := responsesSessionBindingScope(owner, other, &isolated, client)
+		require.True(t, ok)
+		require.NotEqual(t, first, key, dimension)
+	}
 }
 
 func bindingTestService(t *testing.T) *biz.SystemService {

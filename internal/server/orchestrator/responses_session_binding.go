@@ -76,6 +76,7 @@ type responsesBindingAttempt struct {
 
 type responsesSessionBindingMiddleware struct {
 	pipeline.DummyMiddleware
+
 	outbound *PersistentOutboundTransformer
 	service  *biz.SystemService
 	attempt  *responsesBindingAttempt
@@ -102,6 +103,15 @@ func responsesSessionBindingScope(ctx context.Context, channel *biz.Channel, req
 		return [sha256.Size]byte{}, false
 	}
 	identity := shared.ReadCodexRequestMetadata(original.Headers, original.Body)
+	if shared.IsResponsesWebSocket(ctx) {
+		frame := shared.ReadCodexRequestMetadata(nil, original.Body)
+		if frame.SessionID != "" {
+			identity.SessionID = frame.SessionID
+		}
+		if frame.ThreadID != "" {
+			identity.ThreadID = frame.ThreadID
+		}
+	}
 	// Fabricated provider session headers can be random for body-only clients.
 	// Only logical client identity may seed the stable transport namespace.
 	if identity.ThreadID == "" {

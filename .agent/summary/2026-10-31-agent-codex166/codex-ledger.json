@@ -14,7 +14,10 @@
       "files": [
         "codex-rs/exec-server/src/fs_sandbox.rs",
         "codex-rs/exec-server/tests/file_system_windows.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "7d592f6dd9988e349e3164feaa21d0fc14bbac8a",
@@ -27,7 +30,10 @@
         "codex-rs/guardian-context/src/composition.rs",
         "codex-rs/guardian-context/src/enforcement_tests.rs",
         "codex-rs/guardian-context/src/lib.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "de06fd0be4f465bc28c3111bdadaabda5dfdebcd",
@@ -42,7 +48,10 @@
         "codex-rs/core-plugins/src/remote.rs",
         "codex-rs/core-plugins/src/remote/remote_installed_plugin_sync.rs",
         "codex-rs/core-plugins/src/remote_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "e52045f98922e9a7e54247644cfa222a38c2bba5",
@@ -57,7 +66,10 @@
         "codex-rs/guardian-context/src/enforcement_tests.rs",
         "codex-rs/guardian-context/src/guardian_tool_descriptions.rs",
         "codex-rs/guardian-context/src/lib.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "2f1cc5979020a1a2b08a752b1ede68d981e63009",
@@ -75,7 +87,10 @@
         "codex-rs/message-board/src/tools/selection.rs",
         "codex-rs/message-board/src/tools/spec.rs",
         "codex-rs/message-board/tests/local_board.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "2839ed763bd3f404398e1f0c95bf4e2d172213c0",
@@ -84,7 +99,10 @@
       "files": [
         "codex-rs/message-board/src/local/queries.rs",
         "codex-rs/message-board/tests/local_board.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "1c0c45bfc372fb7d7d581508fdef5eef8235eab7",
@@ -96,7 +114,10 @@
         "codex-rs/guardian-context/src/enforcement_tests.rs",
         "codex-rs/guardian-context/src/profile.rs",
         "codex-rs/guardian-context/src/transcript.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "bca6f238cb9340cf02b990cbd7c0692674d7b3e8",
@@ -105,7 +126,10 @@
       "files": [
         "codex-rs/core/src/tools/parallel.rs",
         "codex-rs/core/src/tools/parallel_trace_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "810501d60d242b6195a9b92b01f37f5e95f5c97d",
@@ -116,7 +140,10 @@
         "codex-rs/core/src/session/startup_prewarm.rs",
         "codex-rs/core/src/session/turn.rs",
         "codex-rs/core/src/tasks/lifecycle.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "398500106707f0a3217c7cf83edc2bf226cc342f",
@@ -131,7 +158,10 @@
         "codex-rs/tui/src/app_server_session/startup_launch.rs",
         "codex-rs/tui/src/chatwidget/session_flow.rs",
         "codex-rs/tui/src/projectless.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "b82d542aefbbcc1f46e508cdeaa4b454877d180f",
@@ -151,7 +181,10 @@
         "codex-rs/ext/skills/src/tools/read.rs",
         "codex-rs/ext/skills/tests/skills_extension/merge_catalog_tests.rs",
         "codex-rs/ext/skills/tests/skills_extension/source_telemetry_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "adca78ddae79568279d0731dfdebef1df16f3cde",
@@ -160,7 +193,10 @@
       "files": [
         "codex-rs/codex-api/src/endpoint/models.rs",
         "codex-rs/model-provider/src/models_endpoint.rs"
-      ]
+      ],
+      "decision": "covered",
+      "rationale": "Explicit catalog size limit is a CLI policy. Gateway raw catalog and bounds remain valid.",
+      "review_basis": "selected relevant runtime/source hunks"
     },
     {
       "sha": "ea819e1f4d0759777106e5a6fb9984752b20f972",
@@ -186,7 +222,10 @@
         "codex-rs/ext/skills/tests/skills_extension.rs",
         "codex-rs/ext/skills/tests/skills_extension/discovery_v2_tests.rs",
         "codex-rs/ext/skills/tests/skills_extension/merge_catalog_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "0efc474605ac6983c96223be46c40880cc823996",
@@ -196,7 +235,10 @@
         "codex-rs/core/src/guardian/prompt.rs",
         "codex-rs/guardian-context/src/profile.rs",
         "codex-rs/guardian-context/src/transcript.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "7c568b331b9e0810ae7164f4bd680cec5f69f2fc",
@@ -214,7 +256,10 @@
         "codex-rs/utils/head-tail-buffer/Cargo.toml",
         "codex-rs/utils/head-tail-buffer/src/head_tail_buffer_tests.rs",
         "codex-rs/utils/head-tail-buffer/src/lib.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "f970f4be6783428af0d39527102917a5305c71d7",
@@ -227,7 +272,10 @@
         "codex-rs/tui/src/resume_picker/catalog_tests.rs",
         "codex-rs/tui/src/resume_picker_color_tests.rs",
         "codex-rs/tui/src/resume_picker_pagination_error_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "0d7f3ea03b9ef73a42136fb071eb16266966ea49",
@@ -236,7 +284,10 @@
       "files": [
         "codex-rs/state/src/sqlite.rs",
         "codex-rs/state/src/sqlite_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "c483edf1775f1fcc360190d0709fbabfc6a55cdd",
@@ -287,7 +338,10 @@
         "codex-rs/tui/src/hooks_rpc.rs",
         "codex-rs/tui/src/startup_hooks_review.rs",
         "sdk/python/src/openai_codex/generated/v2_all.py"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "15fbcac045c29f77783bb176c20f54102f97fe32",
@@ -309,7 +363,10 @@
         "codex-rs/network-proxy/src/mitm_hook.rs",
         "codex-rs/network-proxy/src/proxy.rs",
         "codex-rs/network-proxy/src/runtime.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "5deceaa92732d1e4a400b93854e369e33f7e4bee",
@@ -320,7 +377,10 @@
         "codex-rs/guardian-context/src/profile.rs",
         "codex-rs/guardian-context/src/transcript.rs",
         "codex-rs/guardian-context/src/transcript_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "4b1cf9a4c9be0f5c2871ce1837fb50b4ad08ad3a",
@@ -355,7 +415,10 @@
         "codex-rs/ext/guardian-v2/src/async_scorer/transcript.rs",
         "codex-rs/features/src/feature_configs.rs",
         "codex-rs/protocol/src/openai_models/guardian_v2.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "2d86506823c0709d161ff9cd58d15657f829e11e",
@@ -370,7 +433,10 @@
         "codex-rs/ext/guardian-v2/src/async_scorer/sampler/connection_pool_tests.rs",
         "codex-rs/ext/guardian-v2/src/async_scorer/sampler/execution.rs",
         "codex-rs/ext/guardian-v2/src/async_scorer/sampler_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "7848e3393c1cd19a575b386525017e33d950d84b",
@@ -387,7 +453,10 @@
         "codex-rs/guardian-context/src/retained_instructions.rs",
         "codex-rs/guardian-context/src/retained_instructions_tests.rs",
         "codex-rs/guardian-context/tests/cache_prefix.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "970111f6cb62cc02fe36a82ea7d71b37a2889c97",
@@ -417,7 +486,10 @@
         "codex-rs/model-provider/src/gcp/gcp_tests.rs",
         "codex-rs/model-provider/src/gcp/mod.rs",
         "codex-rs/model-provider/src/provider.rs"
-      ]
+      ],
+      "decision": "client-provider",
+      "rationale": "GCP project/location settings are client routing configuration.",
+      "review_basis": "selected relevant runtime/source hunks"
     },
     {
       "sha": "696fb1bcb310e4893bdb9c84805970974dfe1328",
@@ -434,7 +506,10 @@
         "third_party/v8/engine_repository.bzl",
         "third_party/v8/engine_rules.bzl",
         "third_party/v8/v8_defs.patch"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "108cf2975a99d3a5df5006c29d9d105ee85364c7",
@@ -453,7 +528,10 @@
         "third_party/v8/engine_repository.bzl",
         "third_party/v8/engine_rules.bzl",
         "third_party/v8/v8_defs.patch"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "2d3de3783460a57f1e089b383f8d5d4870a41779",
@@ -472,7 +550,10 @@
         "codex-rs/tui/src/app/tests.rs",
         "codex-rs/tui/src/app/tests/marketplace_upgrade_tests.rs",
         "codex-rs/tui/src/app/tests/snapshots/codex_tui__app__tests__marketplace_upgrade_tests__marketplace_upgrade_warning.snap"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "c21153bd920a514809e58d9bd10326267ab2ca36",
@@ -483,7 +564,10 @@
         "codex-rs/analytics/src/product_attribution.rs",
         "codex-rs/analytics/src/reducer.rs",
         "codex-rs/analytics/src/tests/suite/tools_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "f627672c4988fdb9adcdf026facd14e341550229",
@@ -496,7 +580,10 @@
         ".nvmrc",
         "package.json",
         "scripts/mcp_conformance/README.md"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "6e319d2ca7071c1b5d06d7f9cf82c26c25417913",
@@ -529,7 +616,10 @@
         "codex-rs/tui/src/onboarding/auth.rs",
         "codex-rs/tui/src/startup_orchestration.rs",
         "codex-rs/windows-sandbox-service/src/machine_policy.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client config loader/bootstrap changes; no gateway adaptation selected.",
+      "review_basis": "selected relevant runtime/source hunks"
     },
     {
       "sha": "2d4c131524206afa898a53f96413d779718fd978",
@@ -538,7 +628,10 @@
       "files": [
         "tools/argument-comment-lint/README.md",
         "tools/argument-comment-lint/argument-comment-lint"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "cf29971d93a6761906b9e8789f915902b5879e00",
@@ -574,7 +667,10 @@
         "codex-rs/runtime-agent-instance/src/lib.rs",
         "codex-rs/runtime-agent-instance/src/manager.rs",
         "codex-rs/runtime-agent-instance/src/manager_tests.rs"
-      ]
+      ],
+      "decision": "covered",
+      "rationale": "Runtime authentication preserves the gateway bearer contract.",
+      "review_basis": "selected relevant runtime/source hunks"
     },
     {
       "sha": "a797dd7c6f9b201818a18d23921eb3d1ef3c1314",
@@ -787,7 +883,10 @@
         "sdk/python/scripts/update_sdk_artifacts.py",
         "sdk/python/src/openai_codex/generated/v2_all.py",
         "sdk/python/tests/test_app_server_inputs.py"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "619531225b29dcf6437ec6571537f9da9da002bc",
@@ -806,7 +905,10 @@
         "codex-rs/network-proxy/src/mitm_tests.rs",
         "codex-rs/network-proxy/src/secret_substitution.rs",
         "codex-rs/network-proxy/src/secret_substitution_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "ec513795a6a727b32f906a2aa27f7fc92a996b6f",
@@ -826,7 +928,10 @@
         "codex-rs/exec/src/lib.rs",
         "codex-rs/tui/src/lib.rs",
         "codex-rs/tui/src/startup_orchestration.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "83a9600acbc902ab8b212ab2e5166d7d55a2519d",
@@ -837,7 +942,10 @@
         "codex-rs/core/src/guardian/tests.rs",
         "codex-rs/guardian-context/src/profile.rs",
         "codex-rs/guardian-context/src/transcript.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "3d1001e8652212529810500facf31f63c1527d24",
@@ -875,7 +983,10 @@
         "codex-rs/model-provider/src/provider.rs",
         "codex-rs/model-provider/src/shared_state_tests.rs",
         "codex-rs/thread-manager-sample/src/main.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "b8f6d25ce7d19d579811cbb47873f19071780ea9",
@@ -895,7 +1006,10 @@
         "codex-rs/model-provider/src/shared_state_tests.rs",
         "codex-rs/runtime-agent-instance/src/auth.rs",
         "codex-rs/runtime-agent-instance/src/manager_tests.rs"
-      ]
+      ],
+      "decision": "covered",
+      "rationale": "Async auth consolidation preserves outgoing authorization interface.",
+      "review_basis": "selected relevant runtime/source hunks"
     },
     {
       "sha": "457441bca9af64315df39caea360676c2e9fd5d1",
@@ -909,7 +1023,10 @@
         "codex-rs/network-proxy/src/main.rs",
         "codex-rs/network-proxy/src/main_tests.rs",
         "codex-rs/network-proxy/src/state.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "8ebd272491ebe7626dfe4ae18f584c423b7b33ee",
@@ -937,7 +1054,10 @@
         "codex-rs/core/tests/suite/context_annotations.rs",
         "codex-rs/protocol/src/protocol.rs",
         "sdk/python/src/openai_codex/generated/v2_all.py"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "090bea7b7119988be75831a791edb2f6c5d23abd",
@@ -952,7 +1072,10 @@
         "codex-rs/core/src/unified_exec/mod_tests.rs",
         "codex-rs/core/src/unified_exec/output.rs",
         "codex-rs/core/src/unified_exec/process_manager.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "af2e52c858cf7b16157e945725fd84bd6b90399a",
@@ -961,7 +1084,10 @@
       "files": [
         "codex-rs/linux-sandbox/src/bwrap.rs",
         "codex-rs/linux-sandbox/src/bwrap_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "77eb019ad039d21e5a346e77568739993a7f94cd",
@@ -977,7 +1103,10 @@
         "codex-rs/core/tests/suite/guardian_context_budget.rs",
         "codex-rs/core/tests/suite/rollout_budget.rs",
         "codex-rs/features/src/feature_configs.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "be7cd6fd9e44ab46205a30259fd613a9bd88bc38",
@@ -1005,7 +1134,10 @@
         "codex-rs/model-provider/src/auth.rs",
         "codex-rs/model-provider/src/gcp/gcp_tests.rs",
         "codex-rs/model-provider/src/provider.rs"
-      ]
+      ],
+      "decision": "client-provider",
+      "rationale": "GCP credential-file configuration is client authentication.",
+      "review_basis": "selected relevant runtime/source hunks"
     },
     {
       "sha": "245691b2dc661ef5f6af8720d4556ae473d638ac",
@@ -1015,7 +1147,10 @@
         "codex-rs/core/src/unified_exec/process.rs",
         "codex-rs/core/src/unified_exec/process_manager_tests.rs",
         "codex-rs/core/tests/suite/unified_exec_process_events.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "6654f7a7ab28b5163fc2c5f459bd90e4fa35f631",
@@ -1034,7 +1169,10 @@
         "codex-rs/exec-server/src/environment/discovery_v2.rs",
         "codex-rs/exec-server/src/environment/discovery_v2_tests.rs",
         "codex-rs/exec-server/src/lib.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "cfc11bfab31c6885ec8213ece435fc3347eda7a4",
@@ -1043,7 +1181,10 @@
       "files": [
         "codex-rs/rollout-trace/src/reducer/tool/terminal.rs",
         "codex-rs/rollout-trace/src/reducer/tool/terminal_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "b6a4378862f89683a8a19cbfd253f6f4f972c40a",
@@ -1060,7 +1201,10 @@
         "codex-rs/rollout-trace/src/reducer/tool/terminal_tests.rs",
         "codex-rs/rollout-trace/src/thread.rs",
         "codex-rs/rollout-trace/src/thread_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "7d1492ffabc9a8d734d729aa5d184823f143de8b",
@@ -1077,7 +1221,10 @@
         "codex-rs/rmcp-client/src/user_verification_cancellation_tests.rs",
         "codex-rs/rmcp-client/tests/mcp_2026_mrtr.rs",
         "codex-rs/rmcp-client/tests/mcp_2026_mrtr/native_verification_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "60e4d10ad973dc1b5ec859dbae0e56ae2d5ec2fd",
@@ -1088,7 +1235,10 @@
         "codex-rs/tui/src/chatwidget/snapshots/codex_tui__chatwidget__tests__manage_skills_summary.snap",
         "codex-rs/tui/src/chatwidget/tests.rs",
         "codex-rs/tui/src/chatwidget/tests/skills_summary_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "fe15bd38def0fddabf9b54ab0ccc86e47af4b77c",
@@ -1104,7 +1254,10 @@
         "codex-rs/core/tests/suite/hooks_cwd_tests.rs",
         "codex-rs/hooks/src/engine/mod_tests.rs",
         "codex-rs/hooks/src/events/pre_tool_use.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "36021e1ad500d328471aae26573d1fa0c872b335",
@@ -1113,7 +1266,10 @@
       "files": [
         "codex-rs/rollout-trace/src/reducer/conversation/normalize.rs",
         "codex-rs/rollout-trace/src/reducer/conversation_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "f371f9701fb0937d790db2c930ef5f7268498a0d",
@@ -1151,7 +1307,10 @@
         "codex-rs/direct-tool-timing/src/recorder/runtime.rs",
         "codex-rs/direct-tool-timing/src/recorder/runtime_tests.rs",
         "codex-rs/features/src/lib.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "536d1f5b682f4d187f1c2929007b0947fe743b21",
@@ -1160,7 +1319,10 @@
       "files": [
         "codex-rs/core/src/tools/code_mode/delegate_tests.rs",
         "codex-rs/core/src/tools/parallel.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "beb34ce8d09779e1e4ed69069fce1c989a6c332e",
@@ -1193,7 +1355,10 @@
         "codex-rs/hooks/src/events/post_tool_use.rs",
         "codex-rs/hooks/src/events/pre_tool_use.rs",
         "codex-rs/tools/src/tool_output.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "85f29b453a0ca77f718f09428e5f79e33d498836",
@@ -1202,7 +1367,10 @@
       "files": [
         "codex-rs/core/config.schema.json",
         "codex-rs/features/src/lib.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "e1c87d1c2d623a69007c8d0bedf497d379371e7c",
@@ -1211,7 +1379,10 @@
       "files": [
         "codex-rs/.cargo/audit.toml",
         "codex-rs/deny.toml"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "7c997fe2de60e6e4ac95cfc19edf6a5d430f09d6",
@@ -1224,7 +1395,10 @@
         "codex-rs/core/src/session/mod.rs",
         "codex-rs/core/src/tools/approvals.rs",
         "codex-rs/core/tests/suite/auto_review.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "57b4c60463675209efefdb0fbe91c62e5dc5a819",
@@ -1233,7 +1407,10 @@
       "files": [
         "codex-rs/tui/src/history_cell/snapshots/codex_tui__history_cell__tests__standalone_unix_update_available_history_cell_snapshot.snap",
         "codex-rs/tui/src/update_action.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "33b16a9306dbf8c99fc44addd3ed9ce8883a7590",
@@ -1252,7 +1429,10 @@
         "codex-rs/core/src/turn_timing.rs",
         "codex-rs/core/src/turn_timing/report.rs",
         "codex-rs/core/src/turn_timing_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "0bc73bbeb18ddadf69c2e4c0da4322949de73dc6",
@@ -1289,7 +1469,10 @@
         "codex-rs/utils/pty/src/process_group.rs",
         "codex-rs/utils/pty/src/win/job.rs",
         "codex-rs/utils/pty/src/windows_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "5e3496e0ad6a85d7f57cbe3b6d576db3b317766c",
@@ -1320,7 +1503,10 @@
         "codex-rs/core/tests/suite/snapshots/all__suite__scenarios__mcp_sharing__shared_mcp_keeps_tools_and_model_requested_input_per_chat.snap",
         "codex-rs/features/src/lib.rs",
         "codex-rs/rmcp-client/src/bin/test_stdio_server.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "dd5521406a801212f7742432bcacb06e91823b01",
@@ -1336,7 +1522,10 @@
         "codex-rs/code-mode/src/grpc_session/transport.rs",
         "patches/BUILD.bazel",
         "patches/tonic-zstd-level1.patch"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "9756b4937926e1202a4dcaafe8b0f7ba4e7dbb80",
@@ -1353,7 +1542,10 @@
         "codex-rs/tui/src/resume_picker/sources.rs",
         "codex-rs/tui/src/resume_picker/sources_tests.rs",
         "codex-rs/tui/src/resume_picker_pagination_error_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "13b1318f2e59452604d07a2e23dc9d821187722f",
@@ -1366,7 +1558,10 @@
         "codex-rs/app-server-client/src/remote.rs",
         "codex-rs/app-server-client/src/remote_websocket.rs",
         "codex-rs/app-server-client/tests/remote_compression.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "20f5dde71411ceab586d5898ba52cf68d56f9a02",
@@ -1378,7 +1573,10 @@
         "codex-rs/app-server-transport/src/transport/websocket.rs",
         "codex-rs/app-server-transport/src/websocket_compression.rs",
         "codex-rs/app-server-transport/src/websocket_compression_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "abf4bb91ec49fbf443ccec0069f9cab5dd1462d8",
@@ -1389,7 +1587,10 @@
         "codex-rs/tui/src/transcript_view/select_mode/motion.rs",
         "codex-rs/tui/src/transcript_view/select_mode_tests.rs",
         "codex-rs/tui/src/transcript_view/selection.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "285fc743050f739eff7c71f34d8dc9e0dd5c0bb2",
@@ -1403,7 +1604,10 @@
         "codex-rs/tui/src/transcript_view/select_mode.rs",
         "codex-rs/tui/src/transcript_view/select_mode/motion.rs",
         "codex-rs/tui/src/transcript_view/select_mode_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "9f622c2abb676fb5d6764eb92034f5282c7934e9",
@@ -1425,7 +1629,10 @@
         "codex-rs/tui/src/transcript_view/select_mode.rs",
         "codex-rs/tui/src/transcript_view/select_mode_tests.rs",
         "codex-rs/tui/src/transcript_view/snapshots/codex_tui__transcript_view__select_mode__tests__select_mode_renders_cursor_and_scannable_footer_hints.snap"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "964aeda6273f67f633a2f0f198158471ef095547",
@@ -1449,7 +1656,10 @@
         "codex-rs/tui/src/tui.rs",
         "codex-rs/tui/src/tui/alternate_screen.rs",
         "codex-rs/tui/src/tui/keyboard_modes.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "480ab2d0061e004bc594a9f3f1ac07994e853522",
@@ -1480,7 +1690,10 @@
         "codex-rs/state/src/sqlite_tests.rs",
         "codex-rs/thread-manager-sample/src/main.rs",
         "codex-rs/tui/src/debug_config.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "ca8b7a0737fde86940548a3d1d76b46ce382c6f8",
@@ -1501,7 +1714,10 @@
         "codex-rs/tui/src/app/startup.rs",
         "codex-rs/tui/src/app/startup_warnings.rs",
         "codex-rs/tui/src/app/startup_warnings_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "3047741b63abd7543ed78f0f8e0f703b0125ceea",
@@ -1513,7 +1729,10 @@
         "codex-rs/app-server/src/request_processors/thread_processor.rs",
         "codex-rs/app-server/tests/suite/v2/thread_fork.rs",
         "codex-rs/app-server/tests/suite/v2/thread_resume.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "7948c0753170216308ae346d27d9cee25c561c2b",
@@ -1522,7 +1741,10 @@
       "files": [
         "codex-rs/app-server-daemon/Cargo.toml",
         "codex-rs/app-server-daemon/src/remote_control_client.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "0b021a5fc981448a2555bd378518e85e3aae3016",
@@ -1535,7 +1757,10 @@
         "codex-rs/code-mode-runtime/src/cell_actor/types.rs",
         "codex-rs/code-mode-runtime/src/session_runtime/mod.rs",
         "codex-rs/code-mode-runtime/src/session_runtime/tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "4fc522f5e0d3187af8047c4d666d67da3a27ef9b",
@@ -1545,7 +1770,10 @@
         "codex-rs/cli/src/queue_cmd.rs",
         "codex-rs/cli/tests/queue.rs",
         "codex-rs/tui/src/session_queue_commands.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "eee977b504b5258f7d15f26e9aba29f5cfd54669",
@@ -1553,7 +1781,10 @@
       "previously_reviewed": false,
       "files": [
         "codex-rs/arg0/src/lib.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "e7d32ee040dd6f7d66c9429e192b755a0a3dccd7",
@@ -1561,7 +1792,10 @@
       "previously_reviewed": false,
       "files": [
         "codex-rs/exec-server/src/remote/auth_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "f427056ff67af16421ba5e8f1fc7b1f4aba05757",
@@ -1570,7 +1804,10 @@
       "files": [
         "codex-rs/core/src/tools/handlers/unified_exec/exec_command.rs",
         "codex-rs/core/src/tools/handlers/unified_exec_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "49d6fe5bd0c55ab2fa73ee35f80733ea4be3bc6f",
@@ -1578,7 +1815,10 @@
       "previously_reviewed": false,
       "files": [
         "codex-rs/core/tests/suite/subagent_notifications.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "3d8ca703aa3d86888d77f82319a7a740e00550fc",
@@ -1586,7 +1826,10 @@
       "previously_reviewed": false,
       "files": [
         "codex-rs/cli/src/doctor.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "333d7bde0fb3f7299e758dd75a7d4405e8b541ed",
@@ -1598,7 +1841,10 @@
         "codex-rs/memories/write/src/startup_tests.rs",
         "codex-rs/memories/write/src/workspace.rs",
         "codex-rs/memories/write/src/workspace_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "b88173048752cd971fd75a722afaeaad52c40e59",
@@ -1607,7 +1853,10 @@
       "files": [
         "codex-rs/guardian-context/src/profile.rs",
         "codex-rs/guardian-context/src/transcript.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "db7516f41bec71d26ddefc6af29e68cac9ba580c",
@@ -1619,7 +1868,10 @@
         "codex-rs/core/src/config/config_tests.rs",
         "codex-rs/core/src/config/mod.rs",
         "codex-rs/thread-manager-sample/src/main.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "7a9625f3eec687329bf75ea5ab2b3b718edb59ca",
@@ -1627,7 +1879,10 @@
       "previously_reviewed": false,
       "files": [
         "codex-rs/tui/src/startup_draft_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "cc6baf9c32c6149108fa8ec855d2b731e3ff14a7",
@@ -1635,7 +1890,10 @@
       "previously_reviewed": false,
       "files": [
         "codex-rs/core/src/unified_exec/mod_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "e84504b2c716ec16018a396b0a7b7026387ac9ac",
@@ -1643,7 +1901,10 @@
       "previously_reviewed": false,
       "files": [
         "codex-rs/ext/queue/tests/queue_service.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "12b2b58e6310e4f5d4041d62d2266ecc3f538d7d",
@@ -1652,7 +1913,10 @@
       "files": [
         "codex-rs/rollout/src/maintenance.rs",
         "codex-rs/rollout/src/maintenance_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "8f71a8657ec99683df4d1aea4806229398ef87ca",
@@ -1663,7 +1927,10 @@
         "codex-rs/app-server/tests/common/test_app_server.rs",
         "codex-rs/app-server/tests/suite/v2/account.rs",
         "codex-rs/login/src/auth/manager.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "3ad642e520f76ccec0cbb5964ce605629751ebff",
@@ -1677,7 +1944,10 @@
         "codex-rs/core-plugins/src/manager_tests.rs",
         "codex-rs/core/config.schema.json",
         "codex-rs/features/src/lib.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "f358635d8e9341c46def8a89372fc03f6bffec56",
@@ -1710,7 +1980,10 @@
         "codex-rs/tui/src/status/mod.rs",
         "codex-rs/tui/src/status/thread_usage.rs",
         "sdk/python/src/openai_codex/generated/v2_all.py"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "987b8dfc0fa33acd45a67944a20fdea361d52eb0",
@@ -1721,7 +1994,10 @@
         "codex-rs/app-server-daemon/src/backend/pid.rs",
         "codex-rs/app-server-daemon/src/lib.rs",
         "codex-rs/app-server-daemon/src/update_loop_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "438cfc55c8411e682db77444af509833c2045eb5",
@@ -1730,7 +2006,10 @@
       "files": [
         "codex-rs/.cargo/audit.toml",
         "codex-rs/deny.toml"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "766f5473f2e37d6043c46c93040276c5edf31554",
@@ -1748,7 +2027,10 @@
         "codex-rs/thread-store/src/local/rollout_lineage.rs",
         "codex-rs/thread-store/src/local/thread_history/realtime.rs",
         "codex-rs/thread-store/src/local/thread_history/search.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "eb3572f9d7ed2ed6892c86fdca037f7c6d1e9d49",
@@ -1760,7 +2042,10 @@
         "codex-rs/connectors/src/lib.rs",
         "codex-rs/core/src/connectors.rs",
         "codex-rs/core/tests/suite/request_plugin_install.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "a8bca62978f9fe1f44f261a77eaa6374a6860a2c",
@@ -1772,7 +2057,10 @@
         "codex-rs/core-plugins/src/remote/catalog_cache.rs",
         "codex-rs/core-plugins/src/remote/catalog_cache_tests.rs",
         "codex-rs/core-plugins/src/remote_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "81cbc26ee3c1beb903879bbaad1e3809aca18c4a",
@@ -1792,7 +2080,10 @@
         "codex-rs/tui/src/bottom_pane/skill_popup.rs",
         "codex-rs/tui/src/chatwidget/tests/snapshots/codex_tui__chatwidget__tests__questions_tests__named_question.snap",
         "codex-rs/tui/src/markdown.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "51849772f08626cf31bcdf295a0248c8282d2d60",
@@ -1805,7 +2096,10 @@
         "codex-rs/core/src/session/tests/guardian_tests.rs",
         "codex-rs/core/src/tools/handlers/mod.rs",
         "codex-rs/core/src/tools/handlers/request_permissions.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "bd72161881346b71fba5804c39a0b51625340e73",
@@ -1817,7 +2111,10 @@
         "codex-rs/core/src/tools/handlers/apply_patch.rs",
         "codex-rs/core/src/tools/runtimes/apply_patch.rs",
         "codex-rs/core/src/tools/runtimes/apply_patch_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "3cacafa0b7c668b5378f83a1b0988da77ee8e7a9",
@@ -1861,7 +2158,10 @@
         "codex-rs/ext/skills/tests/skills_extension.rs",
         "codex-rs/ext/skills/tests/skills_extension/catalog_delta_tests.rs",
         "codex-rs/features/src/lib.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "698599a411d668837c6c2f0d0a5d869e93072d9c",
@@ -1881,7 +2181,10 @@
         "codex-rs/prompts/src/permissions_instructions/path_warnings.rs",
         "codex-rs/prompts/src/permissions_instructions_tests.rs",
         "codex-rs/protocol/src/openai_models.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "c93a54e164f49b76431b3c2cb2a0166acde9dbca",
@@ -1896,7 +2199,10 @@
         "codex-rs/tui/src/chatwidget/status_surfaces.rs",
         "codex-rs/tui/src/chatwidget/tests/snapshots/codex_tui__chatwidget__tests__slash_commands__ultrafast_command_allowed.snap",
         "codex-rs/tui/src/chatwidget/tests/status_and_layout.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "654b2ec1f58b34af304404463549ab49c140a671",
@@ -1929,7 +2235,10 @@
         "codex-rs/tui/src/chatwidget/tests/slash_commands.rs",
         "codex-rs/tui/src/permission_discovery.rs",
         "codex-rs/tui/src/permission_discovery_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "fcb3ba75584f2d26abdbad2248f4172020f70051",
@@ -1937,7 +2246,10 @@
       "previously_reviewed": false,
       "files": [
         "codex-rs/tui/src/startup_orchestration.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "0818b918672db10145e93c95b9624e9512348748",
@@ -1964,7 +2276,10 @@
         "third_party/v8/push_registers_gnullvm.S",
         "third_party/v8/simdutf.BUILD.bazel",
         "third_party/v8/v8_defs.patch"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "51e3f94b2b0961bc8a006f5eee4b9a0fbc3bd369",
@@ -1978,7 +2293,10 @@
         "codex-rs/cli/tests/cloud_config.rs",
         "codex-rs/cli/tests/exec_server/auth_refresh_tests.rs",
         "codex-rs/cli/tests/sandbox_cloud_config.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "7077b1edb995e15fd86cff86f842dc9b1aa81b8b",
@@ -2008,7 +2326,10 @@
         "codex-rs/tui/src/transcript_view.rs",
         "codex-rs/tui/src/transcript_view/text.rs",
         "codex-rs/tui/src/transcript_view/text_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "e963cab11a8663b2d7e1746ea11d0b556cb5eee1",
@@ -2053,7 +2374,10 @@
         "codex-rs/core/src/tools/code_mode/wait_handler.rs",
         "codex-rs/core/src/tools/tool_dispatch_trace_tests.rs",
         "codex-rs/core/tests/code_mode_tracing.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "bae11269ebf784f5071ca32a9f75312e81b0864b",
@@ -2064,7 +2388,10 @@
         "codex-rs/cli/src/main.rs",
         "codex-rs/cli/src/queue_cmd.rs",
         "codex-rs/cli/tests/queue.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "369b2eaa624dad97d4c0d0628a6921f9f1088953",
@@ -2078,7 +2405,10 @@
         "codex-rs/guardian-context/src/node_repl.rs",
         "codex-rs/guardian-context/src/preparation/mod.rs",
         "codex-rs/guardian-context/src/registry_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "166aed98544d2aa7500642604199ea5bbca3aa0f",
@@ -2088,7 +2418,10 @@
         "codex-rs/app-server/tests/suite/v2/imagegen_extension.rs",
         "codex-rs/ext/image-generation/src/tests.rs",
         "codex-rs/ext/image-generation/src/tool.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "d416d8a0ffc146f0ef92140351709f7c57ee4914",
@@ -2102,7 +2435,10 @@
         "codex-rs/core/tests/suite/snapshots/all__suite__scenarios__world_state_prefix__extension_window_prefix_local.snap",
         "codex-rs/core/tests/suite/snapshots/all__suite__scenarios__world_state_prefix__extension_window_prefix_remote.snap",
         "codex-rs/ext/extension-api/src/contributors/world_state.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "6eb357445fc9be39ec41044ee14351ea8e192c2d",
@@ -2113,7 +2449,10 @@
         "codex-rs/Cargo.lock",
         "codex-rs/Cargo.toml",
         "codex-rs/deny.toml"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "716b4ec6dffc7b23b1c598400bccb622551bf787",
@@ -2129,7 +2468,10 @@
         "codex-rs/core/src/environment_selection.rs",
         "codex-rs/core/src/thread_manager.rs",
         "codex-rs/core/src/thread_spawn.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "6d8f311b00e823052622eac2b463919ad86a666d",
@@ -2148,7 +2490,10 @@
         "codex-rs/core/tests/suite/scenarios.rs",
         "codex-rs/core/tests/suite/snapshots/all__suite__scenarios__additional_context_legacy_messages.snap",
         "codex-rs/core/tests/suite/snapshots/all__suite__scenarios__additional_context_tool_outputs.snap"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "f2df3e3b56351c87e893e223f3a408b0ed5e6ee8",
@@ -2162,7 +2507,10 @@
         "codex-rs/rollout-trace/src/reducer/tool/agents.rs",
         "codex-rs/rollout-trace/src/thread.rs",
         "codex-rs/rollout-trace/src/writer.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "812d9a3e9a84ec83e9f6ddd01ffefb177463f26d",
@@ -2192,7 +2540,10 @@
         "codex-rs/tui/src/lib.rs",
         "codex-rs/tui/src/onboarding/directory_trust.rs",
         "codex-rs/tui/src/session_start.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "efab30992b28bb8fc5064dbac9c12090b8818e98",
@@ -2200,7 +2551,10 @@
       "previously_reviewed": false,
       "files": [
         "codex-rs/tui/src/status/helpers.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "a3eabbbbf94637f20b24e42d87a7f4536ef86f84",
@@ -2215,7 +2569,10 @@
         "codex-rs/tui/src/tui/alternate_screen.rs",
         "codex-rs/tui/src/tui/alternate_screen_tests.rs",
         "codex-rs/tui/src/tui/owned_screen_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "f9c4c3c9a9de1e3cc7e5249a8e1bc9e2e52a8442",
@@ -2225,7 +2582,10 @@
         "codex-rs/tui/src/app/startup.rs",
         "codex-rs/tui/src/chatwidget/questions.rs",
         "codex-rs/tui/src/chatwidget/tests/questions_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "136d891a948177a16c289c5968c40587d463726d",
@@ -2254,7 +2614,10 @@
         "codex-rs/tui/src/snapshots/codex_tui__debug_config__tests__debug_config_requirement_sources.snap",
         "codex-rs/windows-sandbox-service/src/machine_policy_tests.rs",
         "sdk/python/src/openai_codex/generated/v2_all.py"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "b46a3801e41414cc5a73040d2ecb282dfbc527ba",
@@ -2270,7 +2633,10 @@
         "codex-rs/core/tests/suite/snapshots/all__suite__scenarios__incremental_tools__prediction_fork_inherited_tools.snap",
         "codex-rs/core/tests/suite/snapshots/all__suite__scenarios__incremental_tools__prediction_fork_mcp_removal.snap",
         "codex-rs/features/src/lib.rs"
-      ]
+      ],
+      "decision": "already-covered",
+      "rationale": "Prediction fork tool declarations already covered by prior0.165 handling of additional_tools.",
+      "review_basis": "selected relevant runtime/source hunks"
     },
     {
       "sha": "16effdfc8cf1a4635fb7daa72f0c6e24bcb980c5",
@@ -2287,7 +2653,10 @@
         "codex-rs/plugin-host/tests/fixtures/plugin_process.rs",
         "codex-rs/plugin-host/tests/process.rs",
         "defs.bzl"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "a014908c50c39cb2d2244e568c7e12aab7021c9e",
@@ -2309,7 +2678,10 @@
         "codex-rs/tui/src/insert_history.rs",
         "codex-rs/tui/src/thread_transcript.rs",
         "codex-rs/tui/src/transcript_view/prompt_header.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "b52a272cff73ee81ead57f7417144c2161d75f35",
@@ -2333,7 +2705,10 @@
         "codex-rs/tui/src/terminal_hyperlinks/source.rs",
         "codex-rs/tui/src/thread_transcript.rs",
         "codex-rs/tui/src/transcript_view/markdown_copy_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "126a0ee92ed2c5e73cd8a8f7e37563e8527552d7",
@@ -2355,7 +2730,10 @@
         "codex-rs/tui/src/chatwidget/snapshots/codex_tui__chatwidget__tests__bedrock_runtime_models.snap",
         "codex-rs/tui/src/chatwidget/snapshots/codex_tui__chatwidget__tests__model_selection_popup.snap",
         "codex-rs/tui/src/chatwidget/tests/bedrock_catalog_tests.rs"
-      ]
+      ],
+      "decision": "already-covered",
+      "rationale": "Terra catalog support was reviewed in0.165 under a different commit SHA; retain raw catalog extensions.",
+      "review_basis": "selected relevant runtime/source hunks"
     },
     {
       "sha": "62f7f3418faffad238b74c5890ae075082deefb9",
@@ -2365,7 +2743,10 @@
         "codex-rs/core-plugins/src/manager.rs",
         "codex-rs/core-plugins/src/manager_errors.rs",
         "codex-rs/core/src/realtime_conversation.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "3e9264fb1860110e5a8d65a2b0bae0e273e14568",
@@ -2388,7 +2769,10 @@
         "codex-rs/guardian-context/src/section.rs",
         "codex-rs/guardian-context/src/transcript.rs",
         "codex-rs/guardian-context/src/verified_answers.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "fa4c0607d41d4e8c2bce1e536b0f7fcd32a06966",
@@ -2398,7 +2782,10 @@
         "codex-rs/app-server/src/request_processors/account_processor/workspace_routing.rs",
         "codex-rs/app-server/tests/suite/v2/workspace_routing.rs",
         "codex-rs/model-provider/src/provider.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "4aca387e3ea9ac32382d814735e80cb7c2b327b9",
@@ -2406,7 +2793,10 @@
       "previously_reviewed": false,
       "files": [
         ".github/workflows/blob-size-policy.yml"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "e977cb394d12aacdb4b24a70ddee5b0069062759",
@@ -2419,7 +2809,10 @@
         "codex-rs/rollout-trace/src/reducer/conversation_tests.rs",
         "codex-rs/rollout-trace/src/reducer/mod.rs",
         "codex-rs/rollout-trace/src/reducer/tool.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "1f281290e3e565c9d3287f1a226dbb00a4c01272",
@@ -2432,7 +2825,10 @@
         "codex-rs/guardian-context/src/preparation/mod.rs",
         "codex-rs/guardian-context/src/preparation/root.rs",
         "codex-rs/guardian-context/src/verified_answers.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "9526f8d0d076f950ccc108d03c53b2df22289b2d",
@@ -2444,7 +2840,10 @@
         "codex-rs/model-provider-info/src/gateway_oauth.rs",
         "codex-rs/model-provider-info/src/gateway_oauth_tests.rs",
         "codex-rs/model-provider/src/combined_auth.rs"
-      ]
+      ],
+      "decision": "covered",
+      "rationale": "Gateway OAuth bearer default and conflicting client header detection require no server auth weakening.",
+      "review_basis": "selected relevant runtime/source hunks"
     },
     {
       "sha": "95cafae96c517628ce9dd1ed0ddb976b33bba221",
@@ -2459,7 +2858,10 @@
         "codex-rs/core/tests/suite/scenarios_read_only_mcp.rs",
         "codex-rs/core/tests/suite/snapshots/all__suite__scenarios__read_only_mcp__read_only_mcp_requests.snap",
         "scripts/format.py"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "b01148de595719a05092dcbd5e0a252bb4349378",
@@ -2472,7 +2874,10 @@
         "codex-rs/tui/src/app/agents_overview_tests.rs",
         "codex-rs/tui/src/app/agents_overview_view.rs",
         "codex-rs/tui/src/app/snapshots/codex_tui__app__agents_overview__tests__command_center__live_center_keeps_status_order_across_progress_refreshes.snap"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "ce7adb6a31f2909a48afa538c2cdb7a6254a0e4b",
@@ -2489,7 +2894,10 @@
         "codex-rs/core/tests/suite/snapshots/all__suite__scenarios__astra_plugin_refresh_simplified_selection_hints_off.snap",
         "codex-rs/core/tests/suite/snapshots/all__suite__scenarios__astra_plugin_refresh_simplified_selection_hints_on.snap",
         "codex-rs/features/src/lib.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "c587d6e54cb1e4013bf0cf9ea769edde48a23a1e",
@@ -2504,7 +2912,10 @@
         "codex-rs/models-manager/src/model_info_tests.rs",
         "codex-rs/prompts/src/permissions_instructions_tests.rs",
         "codex-rs/protocol/src/openai_models.rs"
-      ]
+      ],
+      "decision": "covered-and-test",
+      "rationale": "Raw model_messages approvals.granular fields preserved.",
+      "review_basis": "selected relevant runtime/source hunks"
     },
     {
       "sha": "b7f7e7f7e85a1c63e520f27cac42b836f242d9f7",
@@ -2520,7 +2931,10 @@
         "codex-rs/tui/src/app/tests.rs",
         "codex-rs/tui/src/app/tests/backend_ownership_tests.rs",
         "codex-rs/tui/src/app/tests/terminal_size_telemetry_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "9510f36df2c9f0133d0fd4f271224aec14d86cd0",
@@ -2529,7 +2943,10 @@
       "files": [
         "codex-cli/bin/codex.js",
         "codex-cli/tests/exit-status.test.mjs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "3f74ff28fa09530bd5bcfcbfcbb86553636dde94",
@@ -2539,7 +2956,10 @@
         "codex-rs/mxc-sandbox/README.md",
         "codex-rs/mxc-sandbox/src/policy.rs",
         "codex-rs/mxc-sandbox/src/policy_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "f69b8d203d0499ff27899d2f30586f8c747b91ae",
@@ -2548,7 +2968,10 @@
       "files": [
         "codex-rs/cli/src/migrate_nfs_db.rs",
         "codex-rs/cli/tests/migrate_nfs_db.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "adfcac1a427ac70f6a1eabb85f836eb85341f995",
@@ -2557,7 +2980,10 @@
       "files": [
         "codex-rs/rollout/src/session_index.rs",
         "codex-rs/rollout/src/session_index_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "ff2346f33f851bd4e90c8e42ae60abcc7e7f293b",
@@ -2567,7 +2993,10 @@
         "codex-rs/app-server/tests/suite/v2/thread_unload.rs",
         "codex-rs/rollout/src/writer_lock.rs",
         "codex-rs/rollout/src/writer_lock_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "118aae2a5f4865dd247b6cec2cd5d9c197892778",
@@ -2591,7 +3020,10 @@
         "codex-rs/tui/src/chatwidget/user_messages.rs",
         "codex-rs/tui/src/history_cell/notices.rs",
         "codex-rs/tui/src/history_cell/tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "6c0db39b940a136b1e77145c8c7f01f3acfa80db",
@@ -2622,7 +3054,10 @@
         "codex-rs/tui/src/chatwidget/tests/composer_submission.rs",
         "codex-rs/tui/src/chatwidget/tests/status_and_layout.rs",
         "codex-rs/tui/src/chatwidget/user_messages.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "155dde7ff60b178ec4ba7154b2e48c6071eb5001",
@@ -2655,7 +3090,10 @@
         "codex-rs/tui/src/status/snapshots/codex_tui__status__tests__status_snapshot_shows_chatgpt_plan_without_email.snap",
         "codex-rs/tui/src/status/tests.rs",
         "sdk/python/src/openai_codex/generated/v2_all.py"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "2cab11ca40aad193382348a7bda46da2fc47596a",
@@ -2715,7 +3153,10 @@
         "codex-rs/voice-host/src/playback.rs",
         "codex-rs/websocket-auth/src/lib.rs",
         "scripts/codex_package/smoke_tests/test_codex_package.py"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "d30fe145fc4f0f55e115bb92723dc35ddc23c18f",
@@ -2729,7 +3170,10 @@
         "codex-rs/tui/src/tui.rs",
         "codex-rs/tui/src/tui_panic_tests.rs",
         "codex-rs/tui/tests/suite/focus_palette.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "d0f33fab36b9f324e68c40b5865abc0223daf3bc",
@@ -2743,7 +3187,10 @@
         "codex-rs/tui/src/markdown_render/math_tests.rs",
         "codex-rs/tui/src/markdown_render/snapshots/codex_tui__markdown_render__math__display_tests__integral_limits_and_parenthesized_matrices.snap",
         "codex-rs/tui/src/markdown_render/snapshots/codex_tui__markdown_render__math__display_tests__unicode_math_snapshot.snap"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "6fe77fc12346591b8037a8704640e40196b19044",
@@ -2770,7 +3217,10 @@
         "codex-rs/app-server/tests/suite/v2/mod.rs",
         "codex-rs/login/src/auth/external_bearer.rs",
         "codex-rs/model-provider-info/src/lib.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "124e4e5bfad4c84162d28d06a02ba28b2cd23c4a",
@@ -2782,7 +3232,10 @@
         "codex-rs/app-server-protocol/schema/typescript/v2/ThreadItem.ts",
         "codex-rs/app-server-protocol/src/export.rs",
         "codex-rs/app-server-protocol/src/protocol/v2/item.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "5c6ef3d1a6769a3ea78080792bd67a2c42affdcc",
@@ -2795,7 +3248,10 @@
         "codex-rs/core/tests/suite/guardian_root_handoff.rs",
         "codex-rs/guardian-context/src/lib.rs",
         "codex-rs/guardian-context/src/preparation/root.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "b6ad8ea1fcd5562a7d3003887930be7d84824307",
@@ -2803,7 +3259,10 @@
       "previously_reviewed": false,
       "files": [
         "codex-rs/app-server/tests/suite/v2/guardian_goal_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "ed1b92fa4585a381a6a319931b987cd48cc3739d",
@@ -2844,7 +3303,10 @@
         "codex-rs/guardian-context/src/transcript.rs",
         "codex-rs/guardian-context/tests/cache_prefix.rs",
         "codex-rs/protocol/src/openai_models/guardian.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "aeb6b22c8bda5f4d4b6ab80ebd3ccdb3f47fb3ab",
@@ -2855,7 +3317,10 @@
         "codex-rs/core/src/tools/handlers/unified_exec.rs",
         "codex-rs/core/src/tools/handlers/unified_exec/exec_command.rs",
         "codex-rs/core/src/tools/handlers/unified_exec/preparation.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "5557e0885379af99b800b73b847a2a7a352403e9",
@@ -2873,7 +3338,10 @@
         "codex-rs/core/src/unified_exec/process_manager.rs",
         "codex-rs/core/src/unified_exec/process_manager_tests.rs",
         "codex-rs/core/src/unified_exec/shell_snapshot.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "e1dd7ed1bac231398e39cc54e0980a84f4311367",
@@ -2887,7 +3355,10 @@
         "codex-rs/ext/guardian-v2/src/async_scorer/sampler/connection_pool.rs",
         "codex-rs/ext/guardian-v2/src/async_scorer/sampler_tests.rs",
         "codex-rs/model-provider-info/src/model_provider_info_tests.rs"
-      ]
+      ],
+      "decision": "covered",
+      "rationale": "Custom OpenAI base URLs keep Guardian client metadata; raw client_metadata retention applies.",
+      "review_basis": "selected relevant runtime/source hunks"
     },
     {
       "sha": "a5ef02e56147c4c3da493655fd5e2c64db13210f",
@@ -2896,7 +3367,10 @@
       "files": [
         "codex-rs/core/config.schema.json",
         "codex-rs/features/src/lib.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "eec8bde1e9a5fe0e6cbefa88ff587ad1a478c08a",
@@ -2917,7 +3391,10 @@
         "codex-rs/guardian-context/src/retained_instructions_tests.rs",
         "codex-rs/guardian-context/src/transcript.rs",
         "codex-rs/guardian-context/src/transcript_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "824b7666fb149033ad07fe0f5f3e261943295a27",
@@ -2930,7 +3407,10 @@
         "codex-rs/ext/guardian-v2/src/async_scorer/config.rs",
         "codex-rs/ext/guardian-v2/src/async_scorer/observation.rs",
         "codex-rs/features/src/lib.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "6a6e2fb1f0e9122464a75929c58356cb7af9e0cc",
@@ -2979,7 +3459,10 @@
         "codex-rs/tui/src/chatwidget/rate_limits.rs",
         "codex-rs/tui/src/chatwidget/tests/app_server.rs",
         "sdk/python/src/openai_codex/generated/v2_all.py"
-      ]
+      ],
+      "decision": "covered",
+      "rationale": "policy_capacity_unavailable maps to503 through existing capacity classification, preserves its code and Retry-After; excluded from session renewal.",
+      "review_basis": "selected relevant runtime/source hunks"
     },
     {
       "sha": "90de7b92b66b858e7ff79bf2a50d9a14ba2bd3ff",
@@ -2989,7 +3472,10 @@
         "codex-rs/core/src/tools/multi_agent_tool.rs",
         "codex-rs/ext/guardian-v2/src/async_scorer/observation.rs",
         "codex-rs/protocol/src/openai_models/guardian.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "50983c7a9324f402f631cd9abfcd91d11baed5a2",
@@ -3000,7 +3486,10 @@
         "codex-rs/core/src/guardian/review_session_tests.rs",
         "codex-rs/ext/guardian-reviewer/src/lib.rs",
         "codex-rs/ext/guardian-reviewer/src/metrics.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "2ebf42f269d8d267e2d55a699c741fbb00402e22",
@@ -3018,7 +3507,10 @@
         "codex-rs/features/src/lib.rs",
         "codex-rs/tools/src/code_mode.rs",
         "codex-rs/tools/src/code_mode_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "b89952d582beaae3af3ddd7b679286cbb094f8b9",
@@ -3026,7 +3518,10 @@
       "previously_reviewed": false,
       "files": [
         "codex-rs/core/tests/suite/guardian_root_handoff.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "6b3b67d71f51db1922813dfcf64c424d3f68e5d3",
@@ -3036,7 +3531,10 @@
         "codex-rs/core/tests/suite/scenarios_guardian_agent_messages_tests.rs",
         "codex-rs/core/tests/suite/snapshots/all__suite__scenarios__guardian_agent_messages__encrypted_native_history_custom_namespace.snap",
         "codex-rs/core/tests/suite/snapshots/all__suite__scenarios__guardian_agent_messages__encrypted_native_history_default_namespace.snap"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "e344f4b6fc2ae01acc9ec0e3e0d797ffe0c00b85",
@@ -3050,7 +3548,10 @@
         "codex-rs/ext/guardian-reviewer/src/lib.rs",
         "codex-rs/ext/guardian-reviewer/src/session.rs",
         "codex-rs/ext/guardian-reviewer/src/session_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "75667b341af201f6e20a228437ebfe82b828b53c",
@@ -3063,7 +3564,10 @@
         "codex-rs/ext/guardian-reviewer/Cargo.toml",
         "codex-rs/ext/guardian-reviewer/src/approval_request.rs",
         "codex-rs/ext/guardian-reviewer/src/lib.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "dddc3c0a79528c4de8d9a20d51dd3bd89b02a3e4",
@@ -3076,7 +3580,10 @@
         "codex-rs/state/src/lib.rs",
         "codex-rs/thread-store/src/local/rollout_migration.rs",
         "codex-rs/thread-store/src/local/rollout_migration_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "3b600d056650850c1d2cfca7a86c4079cc538e7a",
@@ -3086,7 +3593,10 @@
         "codex-rs/core/src/guardian/prompt.rs",
         "codex-rs/ext/guardian-reviewer/src/lib.rs",
         "codex-rs/ext/guardian-reviewer/src/prompt.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "6b56106ed9a31230e7708dce8dad9819cca00e45",
@@ -3098,7 +3608,10 @@
         "codex-rs/ext/guardian-reviewer/src/approval_request_json.rs",
         "codex-rs/ext/guardian-reviewer/src/approval_request_json_tests.rs",
         "codex-rs/ext/guardian-reviewer/src/lib.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "603a7baff0f6f37ee9a8a9375a272eaab03d3ece",
@@ -3123,7 +3636,10 @@
         "codex-rs/guardian-context/src/section.rs",
         "codex-rs/guardian-context/src/transcript_tests.rs",
         "codex-rs/guardian-context/tests/cache_prefix.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "2edc8dcb0c55dd66c866948437b5725241169615",
@@ -3167,7 +3683,10 @@
         "codex-rs/ext/skills/tests/skills_extension.rs",
         "codex-rs/ext/skills/tests/skills_extension/catalog_delta_tests.rs",
         "codex-rs/features/src/lib.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "b07a3473813f101aeac446a012930aefe57e38f9",
@@ -3179,7 +3698,10 @@
         "codex-rs/tui/src/markdown_render/math_tests.rs",
         "codex-rs/tui/src/markdown_render/snapshots/codex_tui__markdown_render__math__display_tests__unicode_math_snapshot.snap",
         "codex-rs/tui/src/markdown_render/snapshots/codex_tui__markdown_render__math__tests__unicode_math_inline_snapshot.snap"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "f40f3dfeb9059add2dff5974787fb1c3e632eb98",
@@ -3191,7 +3713,10 @@
         "codex-rs/tui/src/bottom_pane/chat_composer/vim_history_tests.rs",
         "codex-rs/tui/src/bottom_pane/mod.rs",
         "codex-rs/tui/src/bottom_pane/textarea.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "615a8c98d64a12226d70b2a2fe6bc5a1ce35c9ec",
@@ -3200,7 +3725,10 @@
       "files": [
         "scripts/install/install.sh",
         "scripts/install/test_install_sh.py"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "c8e73bf7198152ecc1158b148105d054add7a525",
@@ -3209,7 +3737,10 @@
       "files": [
         "codex-rs/tui/src/clipboard_copy.rs",
         "codex-rs/tui/src/clipboard_copy/routing_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "479f7046ebbb5039c587b72a33af4e3776eac281",
@@ -3223,7 +3754,10 @@
         "codex-rs/ext/guardian-reviewer/src/approval_request.rs",
         "codex-rs/ext/guardian-reviewer/src/approval_request_tests.rs",
         "codex-rs/ext/guardian-reviewer/src/lib.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "a43fffca74f99ed88d842b236a20fc9b5d42ec85",
@@ -3233,7 +3767,10 @@
         "codex-rs/core/src/guardian/runtime.rs",
         "codex-rs/core/src/guardian/tests.rs",
         "codex-rs/core/src/tools/approvals.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "2d1984b9f7a75f9ce40ce414f732288f370fb108",
@@ -3262,7 +3799,10 @@
         "codex-rs/plugin-host/src/framing.rs",
         "codex-rs/plugin-host/src/lib.rs",
         "codex-rs/plugin-host/src/protocol.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "73bdd06fed88a035aa269fd9c62453d9fbb99fcc",
@@ -3273,7 +3813,10 @@
         "codex-rs/core/src/guardian/prompt.rs",
         "codex-rs/ext/guardian-reviewer/src/lib.rs",
         "codex-rs/ext/guardian-reviewer/src/planned_action.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "5a361b5596762acd1bb0a143187a0ed28adb24d3",
@@ -3283,7 +3826,10 @@
         "codex-rs/app-server-daemon/src/backend/pid.rs",
         "codex-rs/app-server-daemon/src/backend/pid_tests.rs",
         "codex-rs/app-server-daemon/src/prepare_install_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "27ace641fe071106a036c298d76d7372ec1088cb",
@@ -3292,7 +3838,10 @@
       "files": [
         "codex-cli/bin/codex.js",
         "codex-cli/tests/exit-status.test.mjs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "d257beb16a02e8bc218619d8bbc5105064cb252c",
@@ -3329,7 +3878,10 @@
         "codex-rs/login/src/server.rs",
         "codex-rs/login/tests/suite/login_server_e2e.rs",
         "sdk/python/src/openai_codex/generated/v2_all.py"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "77f0cbfdd52e813dbbed661e5524e9cc3f160096",
@@ -3338,7 +3890,10 @@
       "files": [
         "codex-rs/mxc-sandbox/src/policy.rs",
         "codex-rs/mxc-sandbox/src/policy_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "4c54667b408ea7c5d262f1a4171ca414a8f5be88",
@@ -3352,7 +3907,10 @@
         "codex-rs/tui/src/chatwidget/status_surfaces.rs",
         "codex-rs/tui/src/chatwidget/tests/app_server.rs",
         "codex-rs/tui/src/chatwidget/tests/status_surface_previews.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "6574bcdba89a630257c659418e241a3d7a242f6b",
@@ -3371,7 +3929,10 @@
         "codex-rs/guardian-context/src/preparation/transcript_tests.rs",
         "codex-rs/guardian-context/src/transcript.rs",
         "codex-rs/guardian-context/src/transcript_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "19d730175f68d56aba23eae6c765b4e133299069",
@@ -3380,7 +3941,10 @@
       "files": [
         "codex-rs/ext/guardian-reviewer/src/pool.rs",
         "codex-rs/ext/guardian-reviewer/src/pool_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "4d3ed3f3b47d39f8fe0b60df74a20f528b6fc618",
@@ -3389,7 +3953,10 @@
       "files": [
         "codex-rs/app-server-daemon/src/backend/pid.rs",
         "codex-rs/app-server-daemon/src/backend/pid_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "e3149ddb11e24edea64999030f218447336667ed",
@@ -3404,7 +3971,10 @@
         "codex-rs/core/tests/suite/snapshots/all__suite__scenarios__admitted_prompt_id_reaches_responses.snap",
         "codex-rs/protocol/src/response_item_id.rs",
         "codex-rs/protocol/src/turn_input.rs"
-      ]
+      ],
+      "decision": "covered",
+      "rationale": "msg_input_ user IDs retained by native Responses item preservation; optional ID removal only after explicit rejection.",
+      "review_basis": "selected relevant runtime/source hunks"
     },
     {
       "sha": "aa854dabf54e1dd6c2bda80653944b4f2c0672d7",
@@ -3422,7 +3992,10 @@
         "codex-rs/ext/web-search/src/extension.rs",
         "codex-rs/ext/web-search/src/schema.rs",
         "codex-rs/ext/web-search/src/tool.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "0d6838318fae7f3aa374da6f1fd789af2de1a10f",
@@ -3465,7 +4038,10 @@
         "codex-rs/thread-store/src/local/rollout_migration/legacy_event.rs",
         "codex-rs/thread-store/src/local/rollout_migration_tests.rs",
         "sdk/python/src/openai_codex/generated/v2_all.py"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "f088e0c4ffdfab3a7d4480c14855a9db00450384",
@@ -3522,7 +4098,10 @@
         "codex-rs/thread-store/src/local/rollout_migration/rollback_plan.rs",
         "codex-rs/thread-store/src/local/rollout_migration/rollback_replay.rs",
         "codex-rs/thread-store/src/thread_metadata_sync.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "33d306d457a4632b22bebf214e0c25d91f90f6e8",
@@ -3537,7 +4116,10 @@
         "codex-rs/tui/src/style.rs",
         "codex-rs/tui/src/terminal_palette.rs",
         "codex-rs/tui/src/transcript_view_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "d93071fae87f73ba1d251ebb3808773f18f0b77a",
@@ -3547,7 +4129,10 @@
         "codex-rs/core/src/client.rs",
         "codex-rs/core/src/client_tests.rs",
         "codex-rs/rollout-trace/src/inference.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "HTTP response collection memory optimization keeps output delivery; no gateway wire change.",
+      "review_basis": "selected relevant runtime/source hunks"
     },
     {
       "sha": "fab1a5754558ec90f27efa9b3bc4a1159802bc03",
@@ -3565,7 +4150,10 @@
         "codex-rs/tui/src/bottom_pane/textarea/register.rs",
         "codex-rs/tui/src/bottom_pane/textarea/vim_commands.rs",
         "codex-rs/tui/src/bottom_pane/textarea/vim_commands_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "f00c70f5d0e1715bbbcba99b0cc6e629bf83a4f1",
@@ -3580,7 +4168,10 @@
         "codex-rs/core/tests/suite/mod.rs",
         "codex-rs/model-provider-info/src/lib.rs",
         "codex-rs/model-provider-info/src/model_provider_info_tests.rs"
-      ]
+      ],
+      "decision": "client-config",
+      "rationale": "Built-in OpenAI permits trusted ChatGPT catalog URL override; third-party catalog needs custom provider.",
+      "review_basis": "selected relevant runtime/source hunks"
     },
     {
       "sha": "02bc25c89fa08013356cc1bb4c4307d531fe57cc",
@@ -3592,7 +4183,10 @@
         "codex-rs/core/src/config/config_tests.rs",
         "codex-rs/memories/write/src/phase2.rs",
         "codex-rs/memories/write/src/startup_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "6562117a81a9457c9d67a4d15b884bf80e7805f7",
@@ -3618,7 +4212,10 @@
         "codex-rs/utils/pty/src/process.rs",
         "codex-rs/utils/pty/src/pty.rs",
         "sdk/python/src/openai_codex/generated/v2_all.py"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "d03a6e1a6a54dfdbf2fe05763ae54f528e63f70e",
@@ -3635,7 +4232,10 @@
         "codex-rs/core/tests/suite/mcp_tool_cache.rs",
         "codex-rs/core/tests/suite/scenarios.rs",
         "codex-rs/core/tests/suite/snapshots/all__suite__scenarios__unshared_apps_catalog_across_turns.snap"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "83747ccc71420e5442bd970ac39160fac90de362",
@@ -3643,7 +4243,10 @@
       "previously_reviewed": false,
       "files": [
         "codex-rs/apply-patch/src/invocation.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "e343a12d5cb69ad3fc988fa2feed83b1a9610cbe",
@@ -3654,7 +4257,10 @@
         "codex-rs/http-client/src/local_staging_routing.rs",
         "codex-rs/http-client/src/local_staging_routing_tests.rs",
         "codex-rs/http-client/src/route_aware_client_pool/execution.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "133c11db436b89fe93ddfed56e00a46319abc864",
@@ -3678,7 +4284,10 @@
         "codex-rs/prompts/src/permissions_instructions/approval_instructions_tests.rs",
         "codex-rs/prompts/src/permissions_instructions_tests.rs",
         "codex-rs/protocol/src/openai_models.rs"
-      ]
+      ],
+      "decision": "covered-and-test",
+      "rationale": "Raw approval request headings preserved.",
+      "review_basis": "selected relevant runtime/source hunks"
     },
     {
       "sha": "5078420b01eb8a4d2bc62e887d00068123fd52ec",
@@ -3689,7 +4298,10 @@
         "codex-rs/utils/output-truncation/src/lib.rs",
         "codex-rs/utils/output-truncation/src/truncate_tests.rs",
         "codex-rs/utils/string/src/truncate.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "cb66dbecf21a057177d1c117dc21badcb2d7150d",
@@ -3717,7 +4329,10 @@
         "codex-rs/core/tests/suite/image_rollout.rs",
         "codex-rs/core/tests/suite/scenarios.rs",
         "codex-rs/core/tests/suite/snapshots/all__suite__scenarios__unavailable_images_are_rechecked_without_rewriting_history.snap"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client attachment-store checks unavailable image file IDs before model/compaction requests. Gateway does not invent missing image content.",
+      "review_basis": "selected relevant runtime/source hunks"
     },
     {
       "sha": "37f199dab1d80dc25d899fa83557de892610bc4b",
@@ -3753,7 +4368,10 @@
         "codex-rs/core/tests/suite/snapshots/all__suite__scenarios__reserved_spawn__detached_spawn_full_history.snap",
         "codex-rs/core/tests/suite/tool_parallelism.rs",
         "codex-rs/ext/extension-api/src/message_lifecycle.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "a9ea49e78b89bf0d566cc4b3e6819a7ac5d34263",
@@ -3785,7 +4403,10 @@
         "codex-rs/exec-server/README.md",
         "codex-rs/utils/cli/src/config_override.rs",
         "codex-rs/utils/cli/src/lib.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "cf2c04b325e1929732727e7776243226fbbe19bc",
@@ -3815,7 +4436,10 @@
         "scripts/install/install.ps1",
         "scripts/install/install.sh",
         "scripts/install/test_install_sh.py"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "c8091aeeeea42169ac2c9342af1a6487f991dea9",
@@ -3824,7 +4448,10 @@
       "files": [
         "codex-rs/http-client/src/local_staging_routing.rs",
         "codex-rs/http-client/src/local_staging_routing_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "b538d2b340aee571fa1a81989cafb41f9d35b013",
@@ -3840,7 +4467,10 @@
         "codex-rs/codex-api/src/endpoint/responses_websocket_probe.rs",
         "codex-rs/codex-api/src/lib.rs",
         "codex-rs/codex-api/tests/responses_websocket_probe.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "WebSocket doctor diagnostics do not alter production gateway payload contract.",
+      "review_basis": "selected relevant runtime/source hunks"
     },
     {
       "sha": "28cade4f5a7a41fe628791128ccff444a0996b5c",
@@ -3863,7 +4493,10 @@
         "codex-rs/ext/skills/src/host_roots_tests.rs",
         "codex-rs/ext/skills/src/host_service.rs",
         "codex-rs/file-system/src/lib.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "e8e6a922c0008bc08bacc69dd2ce9b6c3c12944c",
@@ -3888,7 +4521,10 @@
         "codex-rs/prompts/src/permissions_instructions.rs",
         "codex-rs/prompts/src/permissions_instructions_tests.rs",
         "codex-rs/protocol/src/openai_models.rs"
-      ]
+      ],
+      "decision": "covered-and-test",
+      "rationale": "Raw saved-prefix notice headings preserved.",
+      "review_basis": "selected relevant runtime/source hunks"
     },
     {
       "sha": "939f5decb26456169c42bec12aac88dcdedc4b9a",
@@ -3900,7 +4536,10 @@
         "codex-rs/cli/tests/doctor_enterprise_network.rs",
         "codex-rs/cli/tests/snapshots/doctor_enterprise_network__network_only_config_failure_human_output.snap",
         "codex-rs/cli/tests/snapshots/doctor_enterprise_network__network_only_human_output.snap"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "9cce575134198f863fd4ef1bc4335b039f4e8e45",
@@ -3943,7 +4582,10 @@
         "codex-rs/runtime-agent-instance/src/manager.rs",
         "codex-rs/runtime-agent-instance/src/manager_tests.rs",
         "codex-rs/runtime-agent-instance/src/registration_tests.rs"
-      ]
+      ],
+      "decision": "covered",
+      "rationale": "Runtime auth sharing concerns client model/catalog credentials; gateway request authorization remains unchanged.",
+      "review_basis": "selected relevant runtime/source hunks"
     },
     {
       "sha": "c0e88f3c04219aaa032aaf4b20a8c3284cc81449",
@@ -3962,7 +4604,10 @@
         "codex-rs/tui/src/terminal_program_status.rs",
         "codex-rs/tui/src/tui/scrollback_tests.rs",
         "codex-rs/tui/src/tui/size_monitor_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "68b67f0ff4f8d53d2c582e059b2c3b589f21ac93",
@@ -3988,7 +4633,10 @@
         "codex-rs/rollout-trace/src/reducer/thread.rs",
         "codex-rs/rollout-trace/src/reducer/tool/terminal_tests.rs",
         "codex-rs/rollout-trace/src/thread.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "04e365c698b94651b6ea7e3b3af5c1dd697bd30c",
@@ -3998,7 +4646,10 @@
         "codex-rs/core/src/hook_runtime.rs",
         "codex-rs/core/src/session/turn.rs",
         "codex-rs/core/tests/suite/user_notification.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "4aa14ea373302831b9b0b998dc6596d0e087b182",
@@ -4008,7 +4659,10 @@
         "codex-rs/tui/src/lib.rs",
         "codex-rs/tui/src/lib_tests.rs",
         "codex-rs/tui/src/onboarding/auth.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "7ac6081623928adead75caa2882e307444edad82",
@@ -4038,7 +4692,10 @@
         "scripts/install/install.ps1",
         "scripts/install/install.sh",
         "scripts/install/test_install_sh.py"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "6ba3a84680236c621b93e0b8dc140687a37f41fc",
@@ -4050,7 +4707,10 @@
         "codex-rs/thread-store/src/local/mod.rs",
         "codex-rs/thread-store/src/local/unarchive_thread.rs",
         "codex-rs/thread-store/src/store.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "424916ee94204587dc4412539442a91b01727fe9",
@@ -4073,7 +4733,10 @@
         "codex-rs/app-server-protocol/src/protocol/v2/tests.rs",
         "codex-rs/app-server/src/request_processors/config_processor.rs",
         "sdk/python/src/openai_codex/generated/v2_all.py"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "d63fe536ee2bf4ea7d18d81e0e1be17543bf5b5b",
@@ -4097,7 +4760,10 @@
         "third_party/v8/README.md",
         "third_party/v8/native_windows.bzl",
         "third_party/v8/v8_crate.BUILD.bazel"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "727283cea5ba30e8cf8bbac6b68a03a4d91cf1b7",
@@ -4125,7 +4791,10 @@
         "codex-rs/core/src/config/otel.rs",
         "codex-rs/core/src/config/requirements.rs",
         "codex-rs/tui/src/debug_config.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "bea47c06dfac12ecce362090418e12a6faeedbf9",
@@ -4149,7 +4818,10 @@
         "codex-rs/core/src/otel_init.rs",
         "codex-rs/utils/redacted-string/src/lib.rs",
         "sdk/python/src/openai_codex/generated/v2_all.py"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "0736b26422266631c8df55c465fafc6a7fbf7dd3",
@@ -4159,7 +4831,10 @@
         "codex-rs/app-server/src/otel_reloader.rs",
         "codex-rs/app-server/tests/suite/v2/otel.rs",
         "codex-rs/otel/src/provider.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "154e8736a51224e12b2d990753622a2cd8118f54",
@@ -4195,7 +4870,10 @@
         "codex-rs/otel/tests/suite/otlp_http_loopback.rs",
         "codex-rs/windows-sandbox-rs/src/wfp_setup.rs",
         "sdk/python/src/openai_codex/generated/v2_all.py"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "26ad281fd1ca712e4f0c7920a6273cf18c961b8a",
@@ -4228,7 +4906,10 @@
         "sdk/python/scripts/update_sdk_artifacts.py",
         "sdk/python/src/openai_codex/generated/v2_all.py",
         "sdk/python/tests/test_client_rpc_methods.py"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "f021168bde5357009fceb0477835ad90bd54c17c",
@@ -4236,7 +4917,10 @@
       "previously_reviewed": false,
       "files": [
         "codex-rs/core/tests/suite/turn_phase_trace.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "d09a5cd8cfbbdaeb956c1de5ac1a9d733ef475bd",
@@ -4252,7 +4936,10 @@
         "codex-rs/ext/guardian-reviewer/src/lib.rs",
         "codex-rs/ext/guardian-reviewer/src/prompt.rs",
         "codex-rs/ext/guardian-reviewer/src/review_state.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "13b0217567d310bd1c295f12539422a2bc224480",
@@ -4273,7 +4960,10 @@
         "codex-rs/ext/guardian-reviewer/src/context_policy.rs",
         "codex-rs/ext/guardian-reviewer/src/instructions.rs",
         "codex-rs/ext/guardian-reviewer/src/lib.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "e6de6a2423f9a723c098db3d17ea6c71e93bfcf2",
@@ -4299,7 +4989,10 @@
         "codex-rs/ext/guardian-reviewer/src/prompt_tests.rs",
         "codex-rs/ext/guardian-reviewer/src/review_evidence.rs",
         "codex-rs/ext/guardian-reviewer/src/sender_evidence.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "e742db9f7ba98e63e502b310857d49d047888518",
@@ -4331,7 +5024,10 @@
         "codex-rs/http-client/src/lib.rs",
         "codex-rs/websocket-client/src/cookie_tests.rs",
         "codex-rs/websocket-client/src/lib.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Connection-owned parent routing cookies remain scoped to original ChatGPT origin/path; do not forward to third-party relay.",
+      "review_basis": "selected relevant runtime/source hunks"
     },
     {
       "sha": "5d5e5c507def46c4e53b30441cf8198c8663c9d2",
@@ -4347,7 +5043,10 @@
         "codex-rs/ext/guardian-reviewer/src/lib.rs",
         "codex-rs/ext/guardian-reviewer/src/review_action.rs",
         "codex-rs/ext/guardian-reviewer/src/review_action_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "6f8bf683cee83ed4d580a2e106b587d8451db936",
@@ -4355,7 +5054,10 @@
       "previously_reviewed": false,
       "files": [
         "codex-rs/app-server-protocol/BUILD.bazel"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "5fd36fc5502136160a28a6bebec3590b0df9179a",
@@ -4363,7 +5065,10 @@
       "previously_reviewed": false,
       "files": [
         "codex-rs/core/tests/suite/guardian_review.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "6c839b3694167f73a4f66bba098576fe4281b18f",
@@ -4373,7 +5078,10 @@
         "codex-rs/core/BUILD.bazel",
         "codex-rs/tui/BUILD.bazel",
         "defs.bzl"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "29e3c61b482bf7f3f03c1fa8954fda68408a3780",
@@ -4383,7 +5091,10 @@
         "codex-rs/exec/BUILD.bazel",
         "codex-rs/http-client/BUILD.bazel",
         "defs.bzl"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "ce2d47bdc4dd2513d5b3567090593b07b0fdfa0a",
@@ -4397,7 +5108,10 @@
         "codex-rs/ext/guardian-reviewer/src/elicitation.rs",
         "codex-rs/ext/guardian-reviewer/src/elicitation_tests.rs",
         "codex-rs/ext/guardian-reviewer/src/lib.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "fc916a22b57e9d7b17988f044a54794d2222ae2c",
@@ -4416,7 +5130,10 @@
         "codex-rs/ext/extension-api/src/lib.rs",
         "codex-rs/ext/extension-api/src/model_request.rs",
         "codex-rs/otel/src/events/session_telemetry.rs"
-      ]
+      ],
+      "decision": "covered-and-test",
+      "rationale": "response.metadata guardian assessment preserved verbatim by raw event roundtrip. No permission inference.",
+      "review_basis": "selected relevant runtime/source hunks"
     },
     {
       "sha": "7c11b8074dbdbab2a3afedf30df7c55f0c6907d8",
@@ -4432,7 +5149,10 @@
         "codex-rs/ext/guardian-reviewer/src/approval_request.rs",
         "codex-rs/ext/guardian-reviewer/src/approval_request_json.rs",
         "codex-rs/ext/guardian-reviewer/src/review_action_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "5c0e42161ee26af222eb3e9853f9c898706b375b",
@@ -4457,7 +5177,10 @@
         "codex-rs/models-manager/src/lib.rs",
         "codex-rs/models-manager/src/manager.rs",
         "codex-rs/models-manager/src/manager_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Guardian model selection uses catalog origin metadata, retained by raw catalog.",
+      "review_basis": "selected relevant runtime/source hunks"
     },
     {
       "sha": "1cc3cf8060c5f1dbd4e3a4d75e1a77b523e0c1ad",
@@ -4466,7 +5189,10 @@
       "files": [
         "codex-rs/tui/src/bottom_pane/chat_composer.rs",
         "codex-rs/tui/src/bottom_pane/chat_composer/paste_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "5fdb50af9518cf39c134e3df0bdfec2be8f09b42",
@@ -4481,7 +5207,10 @@
         "codex-rs/core/tests/suite/code_mode.rs",
         "codex-rs/core/tests/suite/code_mode_host_recovery_tests.rs",
         "codex-rs/rmcp-client/tests/streamable_http_remote.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "c8bd6c1da9782bb92cf300a8768f87232b2d5631",
@@ -4490,7 +5219,10 @@
       "files": [
         "codex-rs/mxc-sandbox/README.md",
         "codex-rs/mxc-sandbox/src/windows.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "575cc5351efff4380396c0d76f0e93886e4c1806",
@@ -4507,7 +5239,10 @@
         "codex-rs/core/src/codex_thread.rs",
         "codex-rs/core/src/lib.rs",
         "codex-rs/core/src/thread_manager.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "7f4d53e928d16ccbb47c00f0fdc39f6f16782437",
@@ -4519,7 +5254,10 @@
         "codex-rs/app-server/src/request_processors/thread_processor.rs",
         "codex-rs/app-server/src/thread_state.rs",
         "codex-rs/app-server/src/thread_status.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "84bef6ea8c747f01216df126bbb40fbc12a8adb1",
@@ -4532,7 +5270,10 @@
         "codex-rs/core/tests/suite/guardian_review.rs",
         "codex-rs/models-manager/src/manager.rs",
         "codex-rs/models-manager/src/manager_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "One client model catalog refresh for missing reviewer; gateway discovery contract unchanged.",
+      "review_basis": "selected relevant runtime/source hunks"
     },
     {
       "sha": "c6fce1caceaae6c4b2896e5c5ae456b5be3bf501",
@@ -4551,7 +5292,10 @@
         "codex-rs/guardian-context/src/composition.rs",
         "codex-rs/guardian-context/src/lib.rs",
         "codex-rs/guardian-context/src/preparation/mod.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "22aec5f2b01a6d4d9e43f8ffad40cfaf41583494",
@@ -4559,7 +5303,10 @@
       "previously_reviewed": false,
       "files": [
         ".github/scripts/contract_releases.py"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "c92700d2993707ee16eb63b35a1cdd7fcc563f69",
@@ -4568,7 +5315,10 @@
       "files": [
         "codex-rs/exec/src/lib.rs",
         "codex-rs/exec/tests/suite/completion_backfill_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "ef186f812ae447283776a2968fe1f8083e0d8ce7",
@@ -4583,7 +5333,10 @@
         "codex-rs/core/src/realtime_conversation.rs",
         "codex-rs/core/src/realtime_conversation/sideband.rs",
         "codex-rs/core/tests/suite/realtime_conversation.rs"
-      ]
+      ],
+      "decision": "out-of-scope",
+      "rationale": "Realtime sideband lifetime is not the Responses relay continuation path.",
+      "review_basis": "selected relevant runtime/source hunks"
     },
     {
       "sha": "f37aa4b1c202236f16099cbed191355f9165303b",
@@ -4592,7 +5345,10 @@
       "files": [
         "codex-rs/config/src/loader/mod.rs",
         "codex-rs/config/src/state.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "7f60546e85efb3146cb4eb4d27deeb43ff43025e",
@@ -4601,7 +5357,10 @@
       "files": [
         "codex-rs/core-plugins/src/loader.rs",
         "codex-rs/core-plugins/src/loader_tests.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "78a3185ecba7ca3422f14589aeac97059649f60f",
@@ -4617,7 +5376,10 @@
         "codex-rs/tui/src/bottom_pane/chat_composer.rs",
         "codex-rs/tui/src/bottom_pane/chat_composer/reconnect.rs",
         "codex-rs/tui/tests/suite/reconnect.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "e6c5a837995581da973a3e6e9cbb7fcd2d99f4ce",
@@ -4628,7 +5390,10 @@
         "codex-rs/app-server/src/request_processors/feedback_thread_index.rs",
         "codex-rs/app-server/tests/suite/v2/feedback.rs",
         "codex-rs/state/src/runtime/threads.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "2f47f9779282e6b273ad14bd29bec4561627083e",
@@ -4636,7 +5401,10 @@
       "previously_reviewed": false,
       "files": [
         ".github/actions/setup-ci/action.yml"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "ab190cdfdf3f9796a27232b4e206c106462cbf3b",
@@ -4651,7 +5419,10 @@
         "third_party/v8/BUILD.bazel",
         "third_party/v8/README.md",
         "third_party/v8/engine.BUILD.bazel"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "3da7de59b6411caa96b56856ac87370518ac1653",
@@ -4663,7 +5434,10 @@
         "codex-rs/core/src/guardian/review_session_setup.rs",
         "codex-rs/core/src/guardian/tests.rs",
         "codex-rs/ext/guardian-reviewer/src/outcome.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "55503b23d4cfcef7ad2dd0acf409143832ec01d2",
@@ -4671,7 +5445,10 @@
       "previously_reviewed": false,
       "files": [
         "codex-rs/core/src/context_manager/image_availability.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client image availability concurrency bound; no gateway adaptation.",
+      "review_basis": "selected relevant runtime/source hunks"
     },
     {
       "sha": "d359945843dbb73b89204b1f793f7737ba39f821",
@@ -4681,7 +5458,10 @@
         "codex-rs/app-server/tests/suite/v2/imagegen_extension.rs",
         "codex-rs/ext/image-generation/src/tests.rs",
         "codex-rs/ext/image-generation/src/tool.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "b91f2515f5719446dad5402036ac59f43a4c407a",
@@ -4714,7 +5494,10 @@
         "scripts/install/install.ps1",
         "scripts/install/install.sh",
         "scripts/install/test_install_sh.py"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "c62e9df39f3bc2e1eae124a79075e9bc5555fe1a",
@@ -4741,7 +5524,10 @@
         "codex-rs/external-agent-migration/src/sessions/export.rs",
         "codex-rs/protocol/src/protocol.rs",
         "codex-rs/state/src/runtime/threads.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Persisted context usage baseline tracks includes_reasoning; server reports actual usage unchanged.",
+      "review_basis": "selected relevant runtime/source hunks"
     },
     {
       "sha": "7ce5fa7bdc1e816cc1306f93dba7dc7bede3a3de",
@@ -4779,7 +5565,10 @@
         "codex-rs/tui/tests/suite/provider_defaults.rs",
         "sdk/python/src/openai_codex/generated/v2_all.py",
         "sdk/python/tests/test_contract_generation.py"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "d373d649673ca8a5bca71f54be0ae47dbd79b466",
@@ -4804,7 +5593,10 @@
         "codex-rs/core/src/code_mode_host_lifecycle_tests.rs",
         "codex-rs/core/src/code_mode_host_tests.rs",
         "codex-rs/core/src/thread_manager.rs"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     },
     {
       "sha": "6ff1e1ca3b30fc8b914720681fcf5fe62e95f856",
@@ -4812,7 +5604,10 @@
       "previously_reviewed": false,
       "files": [
         "codex-rs/Cargo.toml"
-      ]
+      ],
+      "decision": "client-only",
+      "rationale": "Client UI, local lifecycle, permissions/Guardian implementation, sandbox, tooling, SDK or tests; no gateway protocol adaptation selected from title and file inventory.",
+      "review_basis": "commit title and changed-file inventory"
     }
   ]
 }

@@ -1,14 +1,18 @@
 package biz
 
 import (
+	"context"
 	"crypto/sha256"
 	"path/filepath"
+	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/authz"
+	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
+	"github.com/looplj/axonhub/internal/ent/hook"
 	"github.com/looplj/axonhub/internal/ent/system"
 )
 
@@ -57,4 +61,42 @@ func TestResponsesSessionBindingSurvivesRestartAndLateRejections(t *testing.T) {
 	require.Error(t, err)
 	_, err = service.RenewResponsesSessionBinding(t.Context(), scope, second)
 	require.Error(t, err)
+}
+
+func TestResponsesSessionBindingConcurrentRejectionsConverge(t *testing.T) {
+	for _, operation := range []ent.Op{ent.OpCreate, ent.OpUpdate} {
+		t.Run(operation.String(), func(t *testing.T) {
+			service, client := newResponsesMetadataTestService(t)
+			other := NewSystemService(SystemServiceParams{Ent: client})
+			scope := sha256.Sum256([]byte(t.Name()))
+			expected := ""
+			if operation == ent.OpUpdate {
+				var err error
+				expected, err = service.RenewResponsesSessionBinding(t.Context(), scope, "")
+				require.NoError(t, err)
+			}
+			var injected atomic.Bool
+			var winner string
+			client.System.Use(func(next ent.Mutator) ent.Mutator {
+				return hook.SystemFunc(func(ctx context.Context, mutation *ent.SystemMutation) (ent.Value, error) {
+					if mutation.Op() == operation && injected.CompareAndSwap(false, true) {
+						var err error
+						winner, err = other.RenewResponsesSessionBinding(ctx, scope, expected)
+						if err != nil {
+							return nil, err
+						}
+					}
+					return next.Mutate(ctx, mutation)
+				})
+			})
+			alias, err := service.RenewResponsesSessionBinding(t.Context(), scope, expected)
+			require.NoError(t, err)
+			require.True(t, injected.Load())
+			require.NotEmpty(t, winner)
+			require.Equal(t, winner, alias)
+			restored, err := other.LoadResponsesSessionBinding(t.Context(), scope)
+			require.NoError(t, err)
+			require.Equal(t, winner, restored)
+		})
+	}
 }

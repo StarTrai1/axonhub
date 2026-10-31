@@ -8,3 +8,6 @@
 - Source inspection and git diff --check locally; tests/build/format/generation only in GitHub CI.
 
 - User requested latest CLI only, fixed gpt-6.1-sol: retain only0.166.0 and replace the single version on future upgrades.
+
+- CI1de8fb6ab: LLM module, frontend, packaged clients, concurrency, Build/Docker/Govulncheck passed. Root/Windows exposed unstable fabricated session seeding for body-only callers and independent cache keys being rewritten; corrected both. The in-band fixture hardcoded400 rather than its actual rejection status; now preserves the status. Formatter corrections recovered from Lint41177563169.
+- Added concurrent compare-and-swap create/update collision tests; per-frame identity also scopes multiplexed downstream WebSocket requests.

@@ -726,5 +726,31 @@
   ],
   "usage_rows": 0,
   "raw_error_bodies_saved": false,
-  "production_inference_performed": false
+  "production_inference_performed": false,
+  "representative_history_shapes": [
+    {
+      "request": 71693,
+      "unmatched_tool_calls": 0,
+      "orphan_outputs": [],
+      "checkpoint_count": 0,
+      "reasoning_items": 83,
+      "remaining_previous_response": false
+    },
+    {
+      "request": 71710,
+      "unmatched_tool_calls": 0,
+      "orphan_outputs": [],
+      "checkpoint_count": 0,
+      "reasoning_items": 83,
+      "remaining_previous_response": false
+    },
+    {
+      "request": 71722,
+      "unmatched_tool_calls": 0,
+      "orphan_outputs": [],
+      "checkpoint_count": 1,
+      "reasoning_items": 57,
+      "remaining_previous_response": false
+    }
+  ]
 }

@@ -36,7 +36,7 @@ func decodeResponsesSessionBinding(value string) (string, error) {
 	return binding.Session, nil
 }
 
-// Only opaque aliases and a hash of the authenticated route identity are stored.
+// LoadResponsesSessionBinding reads an opaque alias keyed by a hash of the authenticated route identity.
 // Bindings do not expire: reverting to an invalidated session after a restart or
 // cache eviction would undo recovery. Each affected scope owns just one row.
 func (service *SystemService) LoadResponsesSessionBinding(ctx context.Context, scope [sha256.Size]byte) (string, error) {

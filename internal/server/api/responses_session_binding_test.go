@@ -55,7 +55,7 @@ func TestResponsesProtocolSessionLifecycle(t *testing.T) {
 				policy.Enabled, policy.MaxChannelRetries, policy.MaxSingleChannelRetries, policy.RetryDelayMs = true, 0, 2, 0
 				require.NoError(t, handlers.SystemService.SetRetryPolicy(ctx, policy))
 				gateway := responsesIntegrationGateway(t, client, handlers, project)
-				metadata := map[string]string{"session_id":"local-session", "thread_id":"local-thread", "x-codex-window-id":"local-thread:4", "x-codex-turn-metadata":`{"session_id":"local-session","thread_id":"local-thread","window_id":"local-thread:4","request_kind":"turn"}`}
+				metadata := map[string]string{"session_id": "local-session", "thread_id": "local-thread", "x-codex-window-id": "local-thread:4", "x-codex-turn-metadata": `{"session_id":"local-session","thread_id":"local-thread","window_id":"local-thread:4","request_kind":"turn"}`}
 				root, err := sjson.Set(`{"model":"gpt-6-astra","stream":false,"prompt_cache_key":"local-thread","input":[{"role":"user","content":"retained-source-canary"}]}`, "client_metadata", metadata)
 				require.NoError(t, err)
 				seed := root
