@@ -6,3 +6,5 @@
 - Initial exact-error proposal replaced following user correction with scoped upstream session lifecycle.
 - TypeSafe/Jev first comparison favored coherent aliases; revised comparison confidence0.56 did not qualify as an autonomous routing decision. User's explicit preference for a general lifecycle governs the implementation; model output is not provider evidence or authorization.
 - Source inspection and git diff --check locally; tests/build/format/generation only in GitHub CI.
+
+- User requested latest CLI only, fixed gpt-6.1-sol: retain only0.166.0 and replace the single version on future upgrades.

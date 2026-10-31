@@ -26,47 +26,47 @@ import (
 // Error adapters classify an explicit loss of the server session. The lifecycle
 // below is independent of provider-specific numeric codes and message wording.
 var (
- responsesSessionInvalidatedPrefix = regexp.MustCompile(`(?i)^(?:the )?(?:session|conversation)(?: binding)? (?:has expired|has been invalidated|(?:is )?expired|(?:is )?invalidated)(?:[:.;]|$)`)
- responsesSessionRestartInstruction = regexp.MustCompile(`(?i)\b(?:restart|start|create|use|retry|begin)\b.{0,160}\b(?:new|fresh) (?:session|conversation)\b`)
+	responsesSessionInvalidatedPrefix  = regexp.MustCompile(`(?i)^(?:the )?(?:session|conversation)(?: binding)? (?:has expired|has been invalidated|(?:is )?expired|(?:is )?invalidated)(?:[:.;]|$)`)
+	responsesSessionRestartInstruction = regexp.MustCompile(`(?i)\b(?:restart|start|create|use|retry|begin)\b.{0,160}\b(?:new|fresh) (?:session|conversation)\b`)
 )
 
 func isResponsesSessionBindingInvalidation(err error) bool {
- var raw *httpclient.Error
- var response *llm.ResponseError
- var code, message, param string
- var status int
- switch {
- case errors.As(err, &raw):
-  status = raw.StatusCode
-  code, message, param = gjson.GetBytes(raw.Body, "error.code").String(), gjson.GetBytes(raw.Body, "error.message").String(), gjson.GetBytes(raw.Body, "error.param").String()
- case errors.As(err, &response):
-  status = response.StatusCode
-  code, message, param = response.Detail.Code, response.Detail.Message, response.Detail.Param
- default:
-  return false
- }
- if status != http.StatusBadRequest && status != http.StatusNotFound && status != http.StatusConflict && status != http.StatusGone {
-  return false
- }
- if param != "" && param != "session_id" && param != "conversation_id" {
-  return false
- }
- switch code {
- case "session_expired", "session_invalidated", "session_binding_invalidated", "session_not_found", "invalid_session_id", "conversation_expired", "conversation_invalidated", "conversation_not_found":
-  return true
- case "", "bad_request", "invalid_request_error":
- default:
-  // A numeric relay code is opaque. It supplies no recovery authority: the
-  // explicit session-loss and restart instruction must both be present.
-  for _, digit := range code {
-   if digit < '0' || digit > '9' {
-    return false
-   }
-  }
- }
- return (status == http.StatusConflict || status == http.StatusGone) && len(message) <= 1024 &&
-  responsesSessionInvalidatedPrefix.MatchString(message) && responsesSessionRestartInstruction.MatchString(message) &&
-  !strings.ContainsAny(message, "\r\n")
+	var raw *httpclient.Error
+	var response *llm.ResponseError
+	var code, message, param string
+	var status int
+	switch {
+	case errors.As(err, &raw):
+		status = raw.StatusCode
+		code, message, param = gjson.GetBytes(raw.Body, "error.code").String(), gjson.GetBytes(raw.Body, "error.message").String(), gjson.GetBytes(raw.Body, "error.param").String()
+	case errors.As(err, &response):
+		status = response.StatusCode
+		code, message, param = response.Detail.Code, response.Detail.Message, response.Detail.Param
+	default:
+		return false
+	}
+	if status != http.StatusBadRequest && status != http.StatusNotFound && status != http.StatusConflict && status != http.StatusGone {
+		return false
+	}
+	if param != "" && param != "session_id" && param != "conversation_id" {
+		return false
+	}
+	switch code {
+	case "session_expired", "session_invalidated", "session_binding_invalidated", "session_not_found", "invalid_session_id", "conversation_expired", "conversation_invalidated", "conversation_not_found":
+		return true
+	case "", "bad_request", "invalid_request_error":
+	default:
+		// A numeric relay code is opaque. It supplies no recovery authority: the
+		// explicit session-loss and restart instruction must both be present.
+		for _, digit := range code {
+			if digit < '0' || digit > '9' {
+				return false
+			}
+		}
+	}
+	return (status == http.StatusConflict || status == http.StatusGone) && len(message) <= 1024 &&
+		responsesSessionInvalidatedPrefix.MatchString(message) && responsesSessionRestartInstruction.MatchString(message) &&
+		!strings.ContainsAny(message, "\r\n")
 }
 
 type responsesBindingAttempt struct {
@@ -88,7 +88,7 @@ func recoverResponsesSessionBinding(outbound *PersistentOutboundTransformer, ser
 
 func (m *responsesSessionBindingMiddleware) Name() string { return "responses-session-binding" }
 
-func responsesSessionBindingScope(ctx context.Context, channel *biz.Channel, request *httpclient.Request) ([sha256.Size]byte, bool) {
+func responsesSessionBindingScope(ctx context.Context, channel *biz.Channel, request, original *httpclient.Request) ([sha256.Size]byte, bool) {
 	if channel == nil || (channel.Type != entchannel.TypeCodex && channel.Type != entchannel.TypeOpenaiResponses) || channel.Credentials.IsOAuth() || request == nil ||
 		request.APIFormat != string(llm.APIFormatOpenAIResponse) {
 		return [sha256.Size]byte{}, false
@@ -98,7 +98,21 @@ func responsesSessionBindingScope(ctx context.Context, channel *biz.Channel, req
 		return [sha256.Size]byte{}, false
 	}
 	owner, ok := shared.GetSessionScope(ctx)
-	identity := shared.ReadCodexRequestMetadata(request.Headers, request.Body)
+	if original == nil {
+		return [sha256.Size]byte{}, false
+	}
+	identity := shared.ReadCodexRequestMetadata(original.Headers, original.Body)
+	// Fabricated provider session headers can be random for body-only clients.
+	// Only logical client identity may seed the stable transport namespace.
+	if identity.ThreadID == "" {
+		identity.ThreadID = gjson.GetBytes(original.Body, "prompt_cache_key").String()
+	}
+	if identity.SessionID == "" {
+		identity.SessionID = identity.ThreadID
+	}
+	if identity.ThreadID == "" {
+		identity.ThreadID = identity.SessionID
+	}
 	if !ok || owner == "" || identity.SessionID == "" || identity.ThreadID == "" ||
 		request.Headers.Get("Authorization") == "" && (request.Auth == nil || request.Auth.APIKey == "") {
 		return [sha256.Size]byte{}, false
@@ -107,15 +121,21 @@ func responsesSessionBindingScope(ctx context.Context, channel *biz.Channel, req
 	if provider.model == "" {
 		return [sha256.Size]byte{}, false
 	}
-	encoded, err := json.Marshal([]any{"responses-session-binding-v1", owner, provider.channelID, provider.url, provider.model,
-		historyReaderCredential(request, false), identity.SessionID, identity.ThreadID})
+	encoded, err := json.Marshal([]any{
+		"responses-session-binding-v1", owner, provider.channelID, provider.url, provider.model,
+		historyReaderCredential(request, false), identity.SessionID, identity.ThreadID,
+	})
 	return sha256.Sum256(encoded), err == nil
 }
 
 func (m *responsesSessionBindingMiddleware) OnOutboundRawRequest(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error) {
 	m.attempt = nil
 	m.outbound.state.responsesBindingOriginalBody = nil
-	scope, eligible := responsesSessionBindingScope(ctx, m.outbound.GetCurrentChannel(), request)
+	original := m.outbound.state.RawRequest
+	if m.outbound.state.LlmRequest != nil && m.outbound.state.LlmRequest.RawRequest != nil {
+		original = m.outbound.state.LlmRequest.RawRequest
+	}
+	scope, eligible := responsesSessionBindingScope(ctx, m.outbound.GetCurrentChannel(), request, original)
 	if !eligible {
 		return request, nil
 	}
@@ -125,11 +145,11 @@ func (m *responsesSessionBindingMiddleware) OnOutboundRawRequest(ctx context.Con
 	}
 	m.attempt = &responsesBindingAttempt{scope: scope, alias: alias}
 	wireAlias := alias
- if wireAlias == "" {
-  // Namespace the transport session from its first request. An unchanged
-  // route/model/caller reuses this deterministic ID without a database write.
-  wireAlias = deriveCodexIdentityUUID("axonhub-upstream-session-v1:", fmt.Sprintf("%x", scope))
- }
+	if wireAlias == "" {
+		// Namespace the transport session from its first request. An unchanged
+		// route/model/caller reuses this deterministic ID without a database write.
+		wireAlias = deriveCodexIdentityUUID("axonhub-upstream-session-v1:", fmt.Sprintf("%x", scope))
+	}
 	// A server-only previous response cannot be replayed on a new binding.
 	// The normal continuation layer must authenticate and materialize it first.
 	if _, safe := responsesResourceHistorySupportsRecoveryWithAgents(request.Body, true); !safe {
@@ -222,7 +242,15 @@ func applyResponsesSessionAlias(request *httpclient.Request, alias string) (*htt
 	}
 	result.Headers.Set(codexWindowIDHeader, window)
 	result.Headers.Del(codexTurnStateHeader)
-	for path, value := range map[string]string{"prompt_cache_key": alias, "client_metadata.session_id": alias, "client_metadata.thread_id": alias, "client_metadata.x-codex-window-id": window} {
+	cacheKey := gjson.GetBytes(result.Body, "prompt_cache_key").String()
+	headerIdentity := shared.ReadCodexRequestMetadata(request.Headers, request.Body)
+	values := map[string]string{"client_metadata.session_id": alias, "client_metadata.thread_id": alias, "client_metadata.x-codex-window-id": window}
+	// An independent operator-selected cache key is not a session identity.
+	// Remap only keys that actually carry the original session or thread.
+	if cacheKey != "" && (cacheKey == identity.ThreadID || cacheKey == identity.SessionID || cacheKey == headerIdentity.ThreadID || cacheKey == headerIdentity.SessionID) {
+		values["prompt_cache_key"] = alias
+	}
+	for path, value := range values {
 		if gjson.GetBytes(result.Body, path).Exists() {
 			var err error
 			result.Body, err = sjson.SetBytes(result.Body, path, value)

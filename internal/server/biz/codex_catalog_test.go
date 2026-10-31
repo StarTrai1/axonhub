@@ -31,7 +31,7 @@ func TestCodexCatalog_EmptyArray(t *testing.T) {
 }
 
 func TestCodex166CatalogPreservesApprovalTemplates(t *testing.T) {
-	const raw = `{"models":[{"slug":"gpt-6.1-terra","approval_messages":{"granular":{"header":"Policy: {{ policy }}","rules_header":"Rules","footer":"Preserve"}},"future":{"keep":true}}]}`
+	const raw = `{"models":[{"slug":"gpt-6.1-terra","model_messages":{"approvals":{"granular":{"intro":"Policy: {{ policy }}","prompted_categories":"Prompt: {{ categories }}","rejected_categories":"Reject: {{ categories }}"},"request_permissions":"Permission requests"},"permissions":{"approved_command_prefix_saved":"Saved"}},"future":{"keep":true}}]}`
 	catalog, err := ParseCodexCatalog([]byte(raw))
 	require.NoError(t, err)
 	filtered, err := catalog.Intersect([]string{"gpt-6.1-terra"})

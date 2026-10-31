@@ -16,4 +16,4 @@ Current WebSocket-frame identity overrides stale prewarm handshake metadata befo
 
 ## Validation
 
-GitHub CI only: new HTTP/WS handler full-history/checkpoint/delta/model-switch regressions; durable restart and late-rejection handling; in-band and HTTP failure recovery; retry budgets and error boundaries; frame metadata precedence. Packaged CLI0.166.0 added alongside0.162.1–0.165.0. Guardian response metadata and approval catalog extensions tested for preservation. Final CI and release receipts are recorded separately after the exact commit passes.
+GitHub CI only: new HTTP/WS handler full-history/checkpoint/delta/model-switch regressions; durable restart and late-rejection handling; in-band and HTTP failure recovery; retry budgets and error boundaries; frame metadata precedence. Packaged CLI0.166.0 is the only real-client CI version, using gpt-6.1-sol. Future upgrades replace this entry rather than accumulate versions. Guardian response metadata and approval catalog extensions tested for preservation. Final CI and release receipts are recorded separately after the exact commit passes.

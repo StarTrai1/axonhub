@@ -12,9 +12,9 @@ import (
 )
 
 func TestResponsesFrameMetadataReplacesStaleHandshake(t *testing.T) {
-	request := &httpclient.Request{APIFormat: string(llm.APIFormatOpenAIResponse), Headers:http.Header{
-		"Session-Id":{"root"}, "Thread-Id":{"old-thread"}, "X-Codex-Window-Id":{"old-thread:0"}, "X-Codex-Turn-Metadata":{`{"request_kind":"prewarm"}`},
-	}, Body:[]byte(`{"client_metadata":{"session_id":"root","thread_id":"child","x-codex-window-id":"child:4","x-codex-turn-metadata":"{\"session_id\":\"root\",\"thread_id\":\"child\",\"window_id\":\"child:4\",\"request_kind\":\"turn\"}"},"input":[{"role":"user","content":"preserve"}]}`)}
+	request := &httpclient.Request{APIFormat: string(llm.APIFormatOpenAIResponse), Headers: http.Header{
+		"Session-Id": {"root"}, "Thread-Id": {"old-thread"}, "X-Codex-Window-Id": {"old-thread:0"}, "X-Codex-Turn-Metadata": {`{"request_kind":"prewarm"}`},
+	}, Body: []byte(`{"client_metadata":{"session_id":"root","thread_id":"child","x-codex-window-id":"child:4","x-codex-turn-metadata":"{\"session_id\":\"root\",\"thread_id\":\"child\",\"window_id\":\"child:4\",\"request_kind\":\"turn\"}"},"input":[{"role":"user","content":"preserve"}]}`)}
 	originalHeaders := request.Headers.Clone()
 	result, err := applyResponsesFrameMetadata().OnOutboundRawRequest(shared.WithResponsesWebSocket(t.Context()), request)
 	require.NoError(t, err)

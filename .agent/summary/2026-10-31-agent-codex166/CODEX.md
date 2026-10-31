@@ -2,7 +2,7 @@
 
 Official [changelog](https://learn.chatgpt.com/docs/changelog) and [source comparison](https://github.com/openai/codex/compare/rust-v0.165.0...rust-v0.166.0). Comparison is diverged, with265 target-side records; do not assume the release tags form a linear history. Source and inventory are recorded in codex-ledger.json.
 
--0.166.0 packaged CLI joins the hosted loopback matrix. No local installation or inference probe.
+-0.166.0/gpt-6.1-sol is the sole packaged CLI hosted loopback entry; older versions are removed per the user’s CI request. No local installation or inference probe.
 - Guardian assessments arrive in response.metadata with response_id and metadata.guardian item_id/requires_review. Existing raw metadata roundtrip is retained and extended with a regression; the gateway never grants client permissions from that metadata (fc916a22b5).
 - Granular approval templates and headings are catalog-owned extensions. Existing raw catalogs preserve them; add an explicit assertion (c587d6e54c,133c11db43,e8e6a922c0). No blanket replacement of catalogs.
 - Host user input IDs use msg_input_ (e3149ddb11). Existing native item preservation retains them; only explicit upstream rejection permits optional-ID recovery.

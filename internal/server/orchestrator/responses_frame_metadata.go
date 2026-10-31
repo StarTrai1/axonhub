@@ -23,8 +23,10 @@ func applyResponsesFrameMetadata() pipeline.Middleware {
 			return request, nil
 		}
 		identity := shared.ReadCodexRequestMetadata(nil, request.Body)
-		values := map[string]string{codexSessionIDHeader: identity.SessionID, codexThreadIDHeader: identity.ThreadID,
-			codexWindowIDHeader: identity.WindowID, codexTurnMetadataHeader: identity.RawTurnMetadata}
+		values := map[string]string{
+			codexSessionIDHeader: identity.SessionID, codexThreadIDHeader: identity.ThreadID,
+			codexWindowIDHeader: identity.WindowID, codexTurnMetadataHeader: identity.RawTurnMetadata,
+		}
 		for _, value := range values {
 			if !httpguts.ValidHeaderFieldValue(value) {
 				return nil, fmt.Errorf("invalid Responses frame identity header")

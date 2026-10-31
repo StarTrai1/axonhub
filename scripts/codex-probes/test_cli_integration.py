@@ -40,7 +40,7 @@ class CLIIntegrationTest(unittest.IsolatedAsyncioTestCase):
         requests = []
         arrivals = []
         errors = []
-        model = os.environ.get("PROBE_TEST_MODEL", "gpt-6-sol")
+        model = os.environ.get("PROBE_TEST_MODEL", "gpt-6.1-sol")
         message = {"id": "msg_fixture", "type": "message", "role": "assistant", "status": "completed",
                    "content": [{"type": "output_text", "text": "OK.", "annotations": []}]}
         response = {"id": "resp_fixture", "object": "response", "created_at": 1700000000,
@@ -162,7 +162,7 @@ class CLIIntegrationTest(unittest.IsolatedAsyncioTestCase):
         sealed = "axonhub-agent-v1.synthetic-client-transport-fixture"
         child_seen = asyncio.Event()
         requests, errors = [], []
-        model = os.environ.get("PROBE_TEST_MODEL", "gpt-6-sol")
+        model = os.environ.get("PROBE_TEST_MODEL", "gpt-6.1-sol")
 
         async def respond(reader, writer):
             try:
@@ -286,7 +286,7 @@ class CLIIntegrationTest(unittest.IsolatedAsyncioTestCase):
                 with OwnedState(Path(tmp) / "owned") as state:
                     args = args_for(state.root, os.environ["PROBE_TEST_CODEX"])
                     args.url = f"http://127.0.0.1:{server.sockets[0].getsockname()[1]}/v1"
-                    args.model = os.environ.get("PROBE_TEST_MODEL", "gpt-6-sol")
+                    args.model = os.environ.get("PROBE_TEST_MODEL", "gpt-6.1-sol")
                     args.timeout = 90
                     runner = Runner(args, state, "synthetic-test-key")
                     await runner.check_codex()

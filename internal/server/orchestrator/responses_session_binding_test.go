@@ -69,7 +69,7 @@ func TestResponsesSessionBindingRecoveryPreservesHistory(t *testing.T) {
 				require.NotEqual(t, first.Headers.Get("Session-Id"), alias)
 				require.Equal(t, alias, retry.Headers.Get("Thread-Id"))
 				require.Equal(t, alias, retry.Headers.Get("Conversation_id"))
-				require.Equal(t, alias, gjson.GetBytes(retry.Body, "prompt_cache_key").String())
+				require.Equal(t, gjson.GetBytes(originalBody, "prompt_cache_key").String(), gjson.GetBytes(retry.Body, "prompt_cache_key").String(), "independent cache keys remain stable")
 				require.Equal(t, alias+":4", retry.Headers.Get("X-Codex-Window-Id"))
 				require.Empty(t, retry.Headers.Get(codexTurnStateHeader))
 				for _, field := range []string{"input", "tools", "instructions", "reasoning", "model"} {
@@ -101,7 +101,7 @@ func TestResponsesSessionBindingRecoveryPreservesHistory(t *testing.T) {
 					require.NoError(t, err)
 					drainRejectedReasoningPipeline(t, result)
 					require.NotEqual(t, first.Headers.Get("Session-Id"), isolated.requests[0].Headers.Get("Session-Id"), isolation)
-     require.NotEqual(t, alias, isolated.requests[0].Headers.Get("Session-Id"), isolation)
+					require.NotEqual(t, alias, isolated.requests[0].Headers.Get("Session-Id"), isolation)
 				}
 			})
 		}
@@ -123,10 +123,10 @@ func TestResponsesSessionBindingRecoveryHonorsBudgetAndStops(t *testing.T) {
 
 func TestResponsesSessionBindingErrorRecognition(t *testing.T) {
 	for _, scenario := range []struct {
-		name string
-		status int
+		name                 string
+		status               int
 		code, message, param string
-		want bool
+		want                 bool
 	}{
 		{"observed", 409, "", responsesSessionInvalidatedMessage + " [trace_id=synthetic code=30013]", "", true},
 		{"structured", 409, "30013", responsesSessionInvalidatedMessage, "", true},
@@ -135,16 +135,16 @@ func TestResponsesSessionBindingErrorRecognition(t *testing.T) {
 		{"wrong code", 409, "policy_capacity_unavailable", responsesSessionInvalidatedMessage + " [trace_id=synthetic code=30013]", "", false},
 		{"unrelated conflict", 409, "30013", "request already running", "", false},
 		{"unrelated message", 409, "30013", "model unavailable; start a new session", "", false},
-  {"standard expiration", 410, "session_expired", "", "session_id", true},
-  {"different numeric code", 409, "99999", "session expired; retry with a fresh session", "", true},
-  {"authorization expiration", 401, "session_expired", "", "", false},
+		{"standard expiration", 410, "session_expired", "", "session_id", true},
+		{"different numeric code", 409, "99999", "session expired; retry with a fresh session", "", true},
+		{"authorization expiration", 401, "session_expired", "", "", false},
 		{"different param", 409, "30013", responsesSessionInvalidatedMessage, "input[0]", false},
 	} {
 		t.Run(scenario.name, func(t *testing.T) {
-			body, err := json.Marshal(map[string]any{"error":map[string]string{"code":scenario.code,"message":scenario.message,"param":scenario.param}})
+			body, err := json.Marshal(map[string]any{"error": map[string]string{"code": scenario.code, "message": scenario.message, "param": scenario.param}})
 			require.NoError(t, err)
-			require.Equal(t, scenario.want, isResponsesSessionBindingInvalidation(&httpclient.Error{StatusCode:scenario.status,Body:body}))
-			require.Equal(t, scenario.want, isResponsesSessionBindingInvalidation(&llm.ResponseError{StatusCode:scenario.status,Detail:llm.ErrorDetail{Code:scenario.code,Message:scenario.message,Param:scenario.param}}))
+			require.Equal(t, scenario.want, isResponsesSessionBindingInvalidation(&httpclient.Error{StatusCode: scenario.status, Body: body}))
+			require.Equal(t, scenario.want, isResponsesSessionBindingInvalidation(&llm.ResponseError{StatusCode: scenario.status, Detail: llm.ErrorDetail{Code: scenario.code, Message: scenario.message, Param: scenario.param}}))
 		})
 	}
 }

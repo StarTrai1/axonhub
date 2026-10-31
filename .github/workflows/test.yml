@@ -77,11 +77,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - {codex: '0.162.1', model: gpt-6-sol}
-          - {codex: '0.163.0', model: gpt-6.1-sol}
-          - {codex: '0.164.0', model: gpt-6.1-sol}
-          - {codex: '0.165.0', model: gpt-6.1-terra}
-          - {codex: '0.166.0', model: gpt-6.1-terra}
+          # Keep only the current stable CLI; replace this version on upgrades.
+          - {codex: '0.166.0', model: gpt-6.1-sol}
     env:
       PROBE_TEST_MODEL: ${{ matrix.model }}
       PROBE_TEST_CODEX_VERSION: ${{ matrix.codex }}

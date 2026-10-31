@@ -130,7 +130,7 @@ func (e *agentRecoveryStreamExecutor) DoStream(ctx context.Context, req *httpcli
 		if setErr != nil {
 			return nil, setErr
 		}
-		data, setErr = sjson.SetBytes(data, "status", 400)
+		data, setErr = sjson.SetBytes(data, "status", raw.StatusCode)
 		if setErr != nil {
 			return nil, setErr
 		}
