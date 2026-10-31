@@ -1,31 +1,43 @@
-# Continued session-binding failure: #72049–#72064
+# Responses continuation: session loss carried by opaque history
 
-Status: cause not yet isolated; no product patch or release claimed.
+PR: https://github.com/StarTrai1/axonhub/pull/23
+Base: c518d9b9cf1fc2e890bad1726871db72a4de0f0e (PR22).
 
-All 16 requests have two recorded executions on agent channel 40, gpt-6-astra. All 32 return HTTP 409 with the explicit session binding invalidated message. The first retry changes the alias; subsequent client retries reuse the persisted alias before renewing again. Session/thread/conversation/cache carriers are coherent in headers and body. previous_response_id is absent upstream. This establishes that the previous fix is active and recovery scheduling is working; adding retries or repeating the same fix is not justified.
+## Incident evidence
 
-Both logical threads include a native opaque compaction checkpoint (80 and 104 input items). history_initialization is warm_fork or cold_resume. context_window_id is retained when transport aliases change. These are correlated differences, not proven causes. No checkpoint, ciphertext, history, or permission metadata was modified.
+All 16 requests #72049–#72064 have two executions on agent channel40, gpt-6-astra. All32 return HTTP409 with session binding invalidated. The first retry changes the transport alias; the next client request reuses the persisted alias before renewing again. Session/thread/conversation/cache identities are coherent in headers and body, and previous_response_id is absent upstream. The earlier fix was running but could not resolve the history-carried binding.
 
-Nearby #72066–#72081 include successful calls to the same channel/model, with fresh metadata and no checkpoint. They also show distinct 429 capacity errors, which must not be relabeled session failures. Later resumed requests #72083/#72086–#72096 reproduce the 409 pattern. Provider source or a routing contract has not been found; the provider public repository contains only a roadmap link.
+Both threads contain a native opaque checkpoint (80 and104 input items); metadata reports warm_fork or cold_resume. Nearby fresh requests #72066–#72081 include successes on the same channel/model, plus distinct429 capacity errors. Later resumed #72083/#72086–#72096 reproduce409. These observations alone did not establish whether metadata, IDs or ciphertext caused the failure.
 
-The exact prior delivery c518d9b9 remains local and remote dev. Windows EXE mtime is 2026-10-31 08:15:33 UTC; running process start was 08:36:26.771 UTC. This is timing evidence, not an executable hash attestation. Observable alias behavior confirms the relevant implementation runs.
+## Authorized live differential diagnosis
 
-Read-only Windows database queries exported only relevant records to a temporary selected database. No production process, configuration or database was modified, no real provider inference was sent, and no local build/test/formatter ran. Private diagnostic payloads and credential-bearing data remain outside the repository.
+Three minimal metadata controls all returned HTTP200/completed: fresh metadata, retained context_window_id, and retained original turn metadata with fresh session/thread/window identities. Recorded usage totaled70 tokens. Ten429 responses and one transport failure were excluded per the user's explicit clarification and retried; the missing response cannot establish billing for that transport failure.
 
-YCE exit 0 and analysis/edit gate true. Result /tmp/yce-results/yce-search-20261031T084709-2396952-38aa66.xml was read through the terminal EOF sentinel (35421 bytes, SHA256 a102c86dfafed1cb79e5ca93d14490029cf6009fb3c3d5c8f22a1e096ad353da).
+The user separately authorized three opaque-state controls against the original destination, then one additional ID control. No original plaintext conversation or tools were sent, and output was capped at128 tokens per request:
 
-TypeSafe/Jev selected preparing a differential diagnostic at confidence 0.99. This does not establish the root cause or authorize live calls.
+| Input accompanying the synthetic OK prompt | Result |
+| --- | --- |
+| Original native checkpoint with ID | 400, encrypted-content verification rejection |
+| Same checkpoint without optional ID | 400, encrypted-content verification rejection |
+| One original encrypted reasoning item with ID | 409, session_binding_invalidated |
+| Same reasoning ciphertext without optional ID | 409, session_binding_invalidated |
 
-Prepared /tmp/axonhub-session-72049/probe.py: default prints a redacted plan without network access. Opt-in mode sends at most three requests directly to the original provider with gpt-6-astra, a synthetic OK prompt, fresh transport aliases and max_output_tokens=128 per request. Cases: fresh metadata, retained context_window_id only, retained turn metadata with fresh transport aliases. No native history, checkpoints or tools are sent; no automatic retries; stop on auth, rate limit, server or transport failure. Credentials are read in memory from the existing channel only after opt-in. These probes can isolate metadata routing but cannot by themselves validate checkpoint replay. Runtime response statuses and usage are saved with no content/credentials.
+The last two cases reproduce the session failure independently of transport IDs, turn metadata and checkpoint. Removing optional item IDs is insufficient. Checkpoint portability is a second, separately rejected condition. Provider internal routing/decryption implementation remains unobserved. Probe evidence contains only statuses, sizes, hashes and usage; credentials and opaque payloads are excluded.
 
-Pending: explicit opt-in for live probes (previous workflow did not authorize production inference), then a supported patch, GitHub CI-only validation, exact-SHA dev/tag and GoReleaser-start delivery if a code change is established.
+## Repair
 
-Temporary selected database (31887360 bytes) deleted after extracting sanitized evidence and a metadata-only private probe template; deletion verified. Probe credentials are loaded only at execution from the live read-only channel record.
+After one successfully persisted transport renewal is itself explicitly rejected, schedule at most one reasoning recovery for complete materialized history. Reuse existing summary recovery and success-confirmed item hashes scoped to owner, route, credential, model, thread and window. Preserve readable reasoning summaries, message content, tool arguments/results, call_id relationships, numeric precision and native checkpoints. No provider host or numeric diagnostic code is hardcoded.
 
-Live-probe authorization: user approved the prepared three minimal calls, then explicitly clarified that auth/rate-limit/server errors do not count and requested three successful probes. Continue pending cases after transient errors and keep already-successful results. Fresh metadata case returned HTTP200/completed with 11 input tokens and 16 output tokens; old-context case initially returned429, not a valid differential conclusion.
+The fallback does remove unusable encrypted reasoning from that outbound attempt; its hidden content cannot be recovered from ciphertext. Immutable original records remain intact. A native checkpoint remains byte-preserved until its own explicit rejection; then the existing authenticated retained-source migration applies. Missing or mismatched retained source fails closed rather than discarding compacted context. This can involve the existing paid summary generation path, not an added diagnostic call. All stages share the configured continuation retry budget. Failed fallbacks do not create learned corrections, and fresh target reasoning remains native.
 
-All three minimal metadata cases returned HTTP200/completed, recorded total usage70 tokens. Transport timeout billing cannot be established from a missing response. These results refute a standalone retained-context-window or turn-metadata cause. Next prepared (not executed) three cases: native checkpoint with id, same checkpoint without optional id, one encrypted reasoning item with id. Each uses fresh synthetic transport metadata and the same OK prompt/output128 cap. They send only opaque state previously sent to this destination, but checkpoint hydration token charges are unknown; they require separate opt-in because initial consent expressly excluded history/checkpoints.
+TypeSafe/Jev selected this bounded recovery boundary with confidence1.0. Its judgment is not provider evidence or execution authorization.
 
-User separately approved the three opaque-state cases. Observed checkpoint-with-ID400 and checkpoint-without-ID400, both ciphertext verification rejection; reasoning-with-ID409/session_binding_invalidated. No usage was returned for these three rejected requests. A single original reasoning item reproduces the session error with wholly new transport metadata; the checkpoint is not required for that409. A prepared follow-up removes only reasoning.id while retaining ciphertext and synthetic input, to isolate stored-item affinity from cryptographic portability. Not yet executed.
+## Validation and delivery
 
-Additional separately authorized reasoning-without-ID case returned409/session_binding_invalidated too. Thus optional item ID removal is not a remedy; the opaque reasoning can reproduce binding loss independently of header metadata. Jev engineering review selected staged reasoning recovery with confidence1.0. Implement one reasoning repair only after a successfully persisted transport renewal is itself rejected, guarded by complete history and exact destination/owner/window/ciphertext hashes. Existing compatibility retains readable summaries, message/tool content and checkpoint; existing explicit checkpoint error recovery remains responsible for its separate400. No provider code or host is hardcoded. Pending CI and release.
+GitHub CI only. Regressions cover HTTP and WebSocket continuation, in-band errors, repeated rejection after renewal, preserved native checkpoints followed by explicit decryption rejection, full and delta history, retry exhaustion, success-only remembered corrections, and newly generated reasoning outside the affected hashes. Packaged client coverage stays at Codex0.166.0 / gpt-6.1-sol. Exact-SHA workflow and delivery results belong in the final delivery receipt.
+
+YCE exit0, analysis/edit gate true; result /tmp/yce-results/yce-search-20261031T084709-2396952-38aa66.xml read through terminal EOF (35421bytes, SHA256 a102c86dfafed1cb79e5ca93d14490029cf6009fb3c3d5c8f22a1e096ad353da).
+
+Read-only Windows database access extracted selected diagnostic rows. The31887360-byte temporary selected database was deleted and absence verified. No production configuration, database or process was changed. The production executable has not been replaced by this task. Live synthetic controls establish the failure mechanism, not acceptance of the original long conversation after deployment. No local build/test/formatter ran.
+
+Read-only source availability check: both #72049 and #72061 have non-deleted owner-scoped window-v2 checkpoint aliases in systems. Presence is verified; this does not attest every encrypted manifest/block or source-splice contract. Runtime retains its authenticated validation and fail-closed behavior.

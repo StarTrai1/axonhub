@@ -235,6 +235,41 @@ func TestResponsesSessionBindingWithoutReasoningStopsAfterRenewal(t *testing.T) 
 	require.Len(t, executor.requests, 2)
 }
 
+func TestResponsesSessionBindingReasoningRecoveryRequiresCompleteHistory(t *testing.T) {
+	for _, scenario := range []struct {
+		name, path, value string
+	}{
+		{"previous response", "previous_response_id", `"resp_unresolved"`},
+		{"conversation", "conversation", `"conv_unresolved"`},
+		{"missing tool call", "input.5.call_id", `"call_missing"`},
+		{"opaque reference", "input.8", `{"type":"item_reference","id":"item_unresolved"}`},
+	} {
+		t.Run(scenario.name, func(t *testing.T) {
+			service := bindingTestService(t)
+			ctx := shared.WithSessionScope(t.Context(), t.Name())
+			request := relayAffinityRequest(t)
+			executor := &responsesReasoningPipelineExecutor{events: rejectedReasoningCompactionEvents()}
+			var binding *responsesSessionBindingMiddleware
+			state, result, err := runRejectedReasoningPipeline(t, ctx, request, executor, "key", true, 2,
+				func(_ *PersistenceState, outbound *PersistentOutboundTransformer) pipeline.Middleware {
+					binding = recoverResponsesSessionBinding(outbound, service).(*responsesSessionBindingMiddleware)
+					return &bindingTestDestination{Middleware: binding}
+				})
+			require.NoError(t, err)
+			drainRejectedReasoningPipeline(t, result)
+			require.NotNil(t, binding.attempt)
+			binding.renewed[binding.attempt.scope] = true
+			state.RawProviderRequest.Body, err = sjson.SetRawBytes(state.RawProviderRequest.Body, scenario.path, []byte(scenario.value))
+			require.NoError(t, err)
+			before := append([]byte(nil), state.RawProviderRequest.Body...)
+			binding.OnOutboundRawError(ctx, invalidatedSessionFailure())
+			require.Zero(t, state.responsesRejectedStatusRetryChannel)
+			require.Empty(t, state.responsesRejectedStatusRules)
+			require.Equal(t, before, state.RawProviderRequest.Body)
+		})
+	}
+}
+
 func TestResponsesSessionBindingErrorRecognition(t *testing.T) {
 	for _, scenario := range []struct {
 		name                 string
