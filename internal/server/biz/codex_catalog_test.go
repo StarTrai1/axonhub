@@ -30,6 +30,15 @@ func TestCodexCatalog_EmptyArray(t *testing.T) {
 	require.JSONEq(t, `{"models":[]}`, string(raw))
 }
 
+func TestCodex166CatalogPreservesApprovalTemplates(t *testing.T) {
+	const raw = `{"models":[{"slug":"gpt-6.1-terra","approval_messages":{"granular":{"header":"Policy: {{ policy }}","rules_header":"Rules","footer":"Preserve"}},"future":{"keep":true}}]}`
+	catalog, err := ParseCodexCatalog([]byte(raw))
+	require.NoError(t, err)
+	filtered, err := catalog.Intersect([]string{"gpt-6.1-terra"})
+	require.NoError(t, err)
+	require.JSONEq(t, raw, string(filtered))
+}
+
 func TestCodexCatalog_ErrorMapping(t *testing.T) {
 	for _, body := range []string{`not-json`, `{"data":[]}`, `{"models":null}`, `{"models":[{}]}`, `{"models":[{"slug":1}]}`} {
 		_, err := ParseCodexCatalog([]byte(body))

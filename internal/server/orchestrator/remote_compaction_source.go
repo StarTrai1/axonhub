@@ -172,7 +172,7 @@ func (m *nativeCompactionSourceMiddleware) snapshot() (*remoteCompactionSource, 
 		!isResponsesReasoningRecoveryFormat(raw.APIFormat) {
 		return nil, nil
 	}
-	body := raw.Body
+	body := responsesLogicalSessionBody(state, raw.Body)
 	if raw.APIFormat == string(llm.APIFormatOpenAIResponseCompact) {
 		envelope, input, err := decodeResponsesInput(body)
 		if err != nil {

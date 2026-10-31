@@ -1153,6 +1153,9 @@ func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
 	if p.state.CurrentCandidate == nil {
 		return false
 	}
+	if isResponsesSessionBindingInvalidation(err) {
+		return hasResponsesRejectedStatusCompatibilityRetry(p.state, p.state.CurrentCandidate.Channel.ID)
+	}
 	if _, preparationFailed := errors.AsType[*remoteCompactionPreparationError](err); preparationFailed {
 		// The bridge already used its own bounded opening-stream retry budget.
 		return false

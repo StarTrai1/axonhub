@@ -1,0 +1,730 @@
+{
+  "snapshot": {
+    "quick_check": "ok",
+    "bytes": 1391144960,
+    "max_request": 71750
+  },
+  "groups": [
+    {
+      "requests": "71693-71721",
+      "thread": "01a18bfb-8e1c-7833-a80e-edf19dcb1b43",
+      "original_channel_user_report": "小鸡毛",
+      "checkpoint_count": 0
+    },
+    {
+      "requests": "71722-71731",
+      "thread": "01a1799c-43ce-7771-96b6-476cf1ba8d14",
+      "original_channel_user_report": "agent",
+      "checkpoint_count": 1
+    }
+  ],
+  "requests": [
+    {
+      "id": 71693,
+      "time": "2026-10-31 04:45:09.1723874 +0000 UTC",
+      "channel": 40,
+      "status": "failed",
+      "items": 317,
+      "client": [
+        "codex_vscode/0.166.0 (Ubuntu 24.4.0; x86_64) xterm-256color (VS Code; 26.1021.22027)"
+      ]
+    },
+    {
+      "id": 71694,
+      "time": "2026-10-31 04:45:12.7521736 +0000 UTC",
+      "channel": 40,
+      "status": "failed",
+      "items": 317,
+      "client": [
+        "codex_vscode/0.166.0 (Ubuntu 24.4.0; x86_64) xterm-256color (VS Code; 26.1021.22027)"
+      ]
+    },
+    {
+      "id": 71695,
+      "time": "2026-10-31 04:45:16.516328 +0000 UTC",
+      "channel": 40,
+      "status": "failed",
+      "items": 317,
+      "client": [
+        "codex_vscode/0.166.0 (Ubuntu 24.4.0; x86_64) xterm-256color (VS Code; 26.1021.22027)"
+      ]
+    },
+    {
+      "id": 71696,
+      "time": "2026-10-31 04:45:18.8232124 +0000 UTC",
+      "channel": 40,
+      "status": "failed",
+      "items": 317,
+      "client": [
+        "codex_vscode/0.166.0 (Ubuntu 24.4.0; x86_64) xterm-256color (VS Code; 26.1021.22027)"
+      ]
+    },
+    {
+      "id": 71697,
+      "time": "2026-10-31 04:45:22.0295386 +0000 UTC",
+      "channel": 40,
+      "status": "failed",
+      "items": 317,
+      "client": [
+        "codex_vscode/0.166.0 (Ubuntu 24.4.0; x86_64) xterm-256color (VS Code; 26.1021.22027)"
+      ]
+    },
+    {
+      "id": 71698,
+      "time": "2026-10-31 04:45:26.4679453 +0000 UTC",
+      "channel": 40,
+      "status": "failed",
+      "items": 317,
+      "client": [
+        "codex_vscode/0.166.0 (Ubuntu 24.4.0; x86_64) xterm-256color (VS Code; 26.1021.22027)"
+      ]
+    },
+    {
+      "id": 71699,
+      "time": "2026-10-31 04:45:27.8093732 +0000 UTC",
+      "channel": 40,
+      "status": "failed",
+      "items": 317,
+      "client": [
+        "codex_vscode/0.166.0 (Ubuntu 24.4.0; x86_64) xterm-256color (VS Code; 26.1021.22027)"
+      ]
+    },
+    {
+      "id": 71700,
+      "time": "2026-10-31 04:45:29.3699696 +0000 UTC",
+      "channel": 40,
+      "status": "failed",
+      "items": 317,
+      "client": [
+        "codex_vscode/0.166.0 (Ubuntu 24.4.0; x86_64) xterm-256color (VS Code; 26.1021.22027)"
+      ]
+    },
+    {
+      "id": 71701,
+      "time": "2026-10-31 04:45:31.1538672 +0000 UTC",
+      "channel": 40,
+      "status": "failed",
+      "items": 317,
+      "client": [
+        "codex_vscode/0.166.0 (Ubuntu 24.4.0; x86_64) xterm-256color (VS Code; 26.1021.22027)"
+      ]
+    },
+    {
+      "id": 71702,
+      "time": "2026-10-31 04:45:33.3699953 +0000 UTC",
+      "channel": 40,
+      "status": "failed",
+      "items": 317,
+      "client": [
+        "codex_vscode/0.166.0 (Ubuntu 24.4.0; x86_64) xterm-256color (VS Code; 26.1021.22027)"
+      ]
+    },
+    {
+      "id": 71703,
+      "time": "2026-10-31 04:45:36.3051269 +0000 UTC",
+      "channel": 40,
+      "status": "failed",
+      "items": 317,
+      "client": [
+        "codex_vscode/0.166.0 (Ubuntu 24.4.0; x86_64) xterm-256color (VS Code; 26.1021.22027)"
+      ]
+    },
+    {
+      "id": 71704,
+      "time": "2026-10-31 04:45:40.8985157 +0000 UTC",
+      "channel": 40,
+      "status": "failed",
+      "items": 317,
+      "client": [
+        "codex_vscode/0.166.0 (Ubuntu 24.4.0; x86_64) xterm-256color (VS Code; 26.1021.22027)"
+      ]
+    },
+    {
+      "id": 71705,
+      "time": "2026-10-31 04:46:13.0831704 +0000 UTC",
+      "channel": 40,
+      "status": "failed",
+      "items": 318,
+      "client": [
+        "codex_vscode/0.166.0 (Ubuntu 24.4.0; x86_64) xterm-256color (VS Code; 26.1021.22027)"
+      ]
+    },
+    {
+      "id": 71706,
+      "time": "2026-10-31 04:46:16.5962633 +0000 UTC",
+      "channel": 40,
+      "status": "failed",
+      "items": 318,
+      "client": [
+        "codex_vscode/0.166.0 (Ubuntu 24.4.0; x86_64) xterm-256color (VS Code; 26.1021.22027)"
+      ]
+    },
+    {
+      "id": 71707,
+      "time": "2026-10-31 04:46:20.264236 +0000 UTC",
+      "channel": 40,
+      "status": "failed",
+      "items": 318,
+      "client": [
+        "codex_vscode/0.166.0 (Ubuntu 24.4.0; x86_64) xterm-256color (VS Code; 26.1021.22027)"
+      ]
+    },
+    {
+      "id": 71708,
+      "time": "2026-10-31 04:46:22.5553295 +0000 UTC",
+      "channel": 40,
+      "status": "failed",
+      "items": 318,
+      "client": [
+        "codex_vscode/0.166.0 (Ubuntu 24.4.0; x86_64) xterm-256color (VS Code; 26.1021.22027)"
+      ]
+    },
+    {
+      "id": 71709,
+      "time": "2026-10-31 04:46:25.806469 +0000 UTC",
+      "channel": 40,
+      "status": "failed",
+      "items": 318,
+      "client": [
+        "codex_vscode/0.166.0 (Ubuntu 24.4.0; x86_64) xterm-256color (VS Code; 26.1021.22027)"
+      ]
+    },
+    {
+      "id": 71710,
+      "time": "2026-10-31 04:47:50.0380444 +0000 UTC",
+      "channel": 40,
+      "status": "failed",
+      "items": 317,
+      "client": [
+        "codex_vscode/0.164.0-alpha.11.1 (Ubuntu 24.4.0; x86_64) xterm-256color (VS Code; 26.1021.22027)"
+      ]
+    },
+    {
+      "id": 71711,
+      "time": "2026-10-31 04:47:53.6314366 +0000 UTC",
+      "channel": 40,
+      "status": "failed",
+      "items": 317,
+      "client": [
+        "codex_vscode/0.164.0-alpha.11.1 (Ubuntu 24.4.0; x86_64) xterm-256color (VS Code; 26.1021.22027)"
+      ]
+    },
+    {
+      "id": 71712,
+      "time": "2026-10-31 04:47:57.3878043 +0000 UTC",
+      "channel": 40,
+      "status": "failed",
+      "items": 317,
+      "client": [
+        "codex_vscode/0.164.0-alpha.11.1 (Ubuntu 24.4.0; x86_64) xterm-256color (VS Code; 26.1021.22027)"
+      ]
+    },
+    {
+      "id": 71713,
+      "time": "2026-10-31 04:47:59.7199492 +0000 UTC",
+      "channel": 40,
+      "status": "failed",
+      "items": 317,
+      "client": [
+        "codex_vscode/0.164.0-alpha.11.1 (Ubuntu 24.4.0; x86_64) xterm-256color (VS Code; 26.1021.22027)"
+      ]
+    },
+    {
+      "id": 71714,
+      "time": "2026-10-31 04:48:02.8058337 +0000 UTC",
+      "channel": 40,
+      "status": "failed",
+      "items": 317,
+      "client": [
+        "codex_vscode/0.164.0-alpha.11.1 (Ubuntu 24.4.0; x86_64) xterm-256color (VS Code; 26.1021.22027)"
+      ]
+    },
+    {
+      "id": 71715,
+      "time": "2026-10-31 04:48:07.3397298 +0000 UTC",
+      "channel": 40,
+      "status": "failed",
+      "items": 317,
+      "client": [
+        "codex_vscode/0.164.0-alpha.11.1 (Ubuntu 24.4.0; x86_64) xterm-256color (VS Code; 26.1021.22027)"
+      ]
+    },
+    {
+      "id": 71716,
+      "time": "2026-10-31 04:48:08.7179012 +0000 UTC",
+      "channel": 40,
+      "status": "failed",
+      "items": 317,
+      "client": [
+        "codex_vscode/0.164.0-alpha.11.1 (Ubuntu 24.4.0; x86_64) xterm-256color (VS Code; 26.1021.22027)"
+      ]
+    },
+    {
+      "id": 71717,
+      "time": "2026-10-31 04:48:10.4532406 +0000 UTC",
+      "channel": 40,
+      "status": "failed",
+      "items": 317,
+      "client": [
+        "codex_vscode/0.164.0-alpha.11.1 (Ubuntu 24.4.0; x86_64) xterm-256color (VS Code; 26.1021.22027)"
+      ]
+    },
+    {
+      "id": 71718,
+      "time": "2026-10-31 04:48:12.2565806 +0000 UTC",
+      "channel": 40,
+      "status": "failed",
+      "items": 317,
+      "client": [
+        "codex_vscode/0.164.0-alpha.11.1 (Ubuntu 24.4.0; x86_64) xterm-256color (VS Code; 26.1021.22027)"
+      ]
+    },
+    {
+      "id": 71719,
+      "time": "2026-10-31 04:48:14.6651065 +0000 UTC",
+      "channel": 40,
+      "status": "failed",
+      "items": 317,
+      "client": [
+        "codex_vscode/0.164.0-alpha.11.1 (Ubuntu 24.4.0; x86_64) xterm-256color (VS Code; 26.1021.22027)"
+      ]
+    },
+    {
+      "id": 71720,
+      "time": "2026-10-31 04:48:17.8106926 +0000 UTC",
+      "channel": 40,
+      "status": "failed",
+      "items": 317,
+      "client": [
+        "codex_vscode/0.164.0-alpha.11.1 (Ubuntu 24.4.0; x86_64) xterm-256color (VS Code; 26.1021.22027)"
+      ]
+    },
+    {
+      "id": 71721,
+      "time": "2026-10-31 04:48:22.9655261 +0000 UTC",
+      "channel": 40,
+      "status": "failed",
+      "items": 317,
+      "client": [
+        "codex_vscode/0.164.0-alpha.11.1 (Ubuntu 24.4.0; x86_64) xterm-256color (VS Code; 26.1021.22027)"
+      ]
+    },
+    {
+      "id": 71722,
+      "time": "2026-10-31 04:53:46.5128948 +0000 UTC",
+      "channel": 40,
+      "status": "failed",
+      "items": 288,
+      "client": [
+        "codex_vscode/0.166.0 (Ubuntu 24.4.0; x86_64) xterm-256color (VS Code; 26.1021.22027)"
+      ]
+    },
+    {
+      "id": 71723,
+      "time": "2026-10-31 04:53:50.0054475 +0000 UTC",
+      "channel": 40,
+      "status": "failed",
+      "items": 288,
+      "client": [
+        "codex_vscode/0.166.0 (Ubuntu 24.4.0; x86_64) xterm-256color (VS Code; 26.1021.22027)"
+      ]
+    },
+    {
+      "id": 71724,
+      "time": "2026-10-31 04:53:53.4293733 +0000 UTC",
+      "channel": 40,
+      "status": "failed",
+      "items": 288,
+      "client": [
+        "codex_vscode/0.166.0 (Ubuntu 24.4.0; x86_64) xterm-256color (VS Code; 26.1021.22027)"
+      ]
+    },
+    {
+      "id": 71725,
+      "time": "2026-10-31 04:53:55.3691766 +0000 UTC",
+      "channel": 40,
+      "status": "failed",
+      "items": 288,
+      "client": [
+        "codex_vscode/0.166.0 (Ubuntu 24.4.0; x86_64) xterm-256color (VS Code; 26.1021.22027)"
+      ]
+    },
+    {
+      "id": 71726,
+      "time": "2026-10-31 04:53:58.1680375 +0000 UTC",
+      "channel": 40,
+      "status": "failed",
+      "items": 288,
+      "client": [
+        "codex_vscode/0.166.0 (Ubuntu 24.4.0; x86_64) xterm-256color (VS Code; 26.1021.22027)"
+      ]
+    },
+    {
+      "id": 71727,
+      "time": "2026-10-31 04:54:02.4721289 +0000 UTC",
+      "channel": 40,
+      "status": "failed",
+      "items": 288,
+      "client": [
+        "codex_vscode/0.166.0 (Ubuntu 24.4.0; x86_64) xterm-256color (VS Code; 26.1021.22027)"
+      ]
+    },
+    {
+      "id": 71728,
+      "time": "2026-10-31 04:54:03.6223481 +0000 UTC",
+      "channel": 40,
+      "status": "failed",
+      "items": 288,
+      "client": [
+        "codex_vscode/0.166.0 (Ubuntu 24.4.0; x86_64) xterm-256color (VS Code; 26.1021.22027)"
+      ]
+    },
+    {
+      "id": 71729,
+      "time": "2026-10-31 04:54:04.9555882 +0000 UTC",
+      "channel": 40,
+      "status": "failed",
+      "items": 288,
+      "client": [
+        "codex_vscode/0.166.0 (Ubuntu 24.4.0; x86_64) xterm-256color (VS Code; 26.1021.22027)"
+      ]
+    },
+    {
+      "id": 71730,
+      "time": "2026-10-31 04:54:06.4263599 +0000 UTC",
+      "channel": 40,
+      "status": "failed",
+      "items": 288,
+      "client": [
+        "codex_vscode/0.166.0 (Ubuntu 24.4.0; x86_64) xterm-256color (VS Code; 26.1021.22027)"
+      ]
+    },
+    {
+      "id": 71731,
+      "time": "2026-10-31 04:54:08.310879 +0000 UTC",
+      "channel": 40,
+      "status": "failed",
+      "items": 288,
+      "client": [
+        "codex_vscode/0.166.0 (Ubuntu 24.4.0; x86_64) xterm-256color (VS Code; 26.1021.22027)"
+      ]
+    }
+  ],
+  "executions": [
+    {
+      "id": 206462,
+      "request_id": 71693,
+      "status": 409,
+      "error_class": "session binding invalidated",
+      "provider_code": 30013,
+      "items": 315
+    },
+    {
+      "id": 206463,
+      "request_id": 71694,
+      "status": 409,
+      "error_class": "session binding invalidated",
+      "provider_code": 30013,
+      "items": 315
+    },
+    {
+      "id": 206464,
+      "request_id": 71695,
+      "status": 409,
+      "error_class": "session binding invalidated",
+      "provider_code": 30013,
+      "items": 315
+    },
+    {
+      "id": 206465,
+      "request_id": 71696,
+      "status": 409,
+      "error_class": "session binding invalidated",
+      "provider_code": 30013,
+      "items": 315
+    },
+    {
+      "id": 206466,
+      "request_id": 71697,
+      "status": 409,
+      "error_class": "session binding invalidated",
+      "provider_code": 30013,
+      "items": 315
+    },
+    {
+      "id": 206467,
+      "request_id": 71698,
+      "status": 409,
+      "error_class": "session binding invalidated",
+      "provider_code": 30013,
+      "items": 315
+    },
+    {
+      "id": 206468,
+      "request_id": 71699,
+      "status": 409,
+      "error_class": "session binding invalidated",
+      "provider_code": 30013,
+      "items": 315
+    },
+    {
+      "id": 206469,
+      "request_id": 71700,
+      "status": 409,
+      "error_class": "session binding invalidated",
+      "provider_code": 30013,
+      "items": 315
+    },
+    {
+      "id": 206470,
+      "request_id": 71701,
+      "status": 409,
+      "error_class": "session binding invalidated",
+      "provider_code": 30013,
+      "items": 315
+    },
+    {
+      "id": 206471,
+      "request_id": 71702,
+      "status": 409,
+      "error_class": "session binding invalidated",
+      "provider_code": 30013,
+      "items": 315
+    },
+    {
+      "id": 206472,
+      "request_id": 71703,
+      "status": 409,
+      "error_class": "session binding invalidated",
+      "provider_code": 30013,
+      "items": 315
+    },
+    {
+      "id": 206473,
+      "request_id": 71704,
+      "status": 409,
+      "error_class": "session binding invalidated",
+      "provider_code": 30013,
+      "items": 315
+    },
+    {
+      "id": 206474,
+      "request_id": 71705,
+      "status": 409,
+      "error_class": "session binding invalidated",
+      "provider_code": 30013,
+      "items": 316
+    },
+    {
+      "id": 206475,
+      "request_id": 71706,
+      "status": 409,
+      "error_class": "session binding invalidated",
+      "provider_code": 30013,
+      "items": 316
+    },
+    {
+      "id": 206476,
+      "request_id": 71707,
+      "status": 409,
+      "error_class": "session binding invalidated",
+      "provider_code": 30013,
+      "items": 316
+    },
+    {
+      "id": 206477,
+      "request_id": 71708,
+      "status": 409,
+      "error_class": "session binding invalidated",
+      "provider_code": 30013,
+      "items": 316
+    },
+    {
+      "id": 206478,
+      "request_id": 71709,
+      "status": 409,
+      "error_class": "session binding invalidated",
+      "provider_code": 30013,
+      "items": 316
+    },
+    {
+      "id": 206479,
+      "request_id": 71710,
+      "status": 409,
+      "error_class": "session binding invalidated",
+      "provider_code": 30013,
+      "items": 315
+    },
+    {
+      "id": 206480,
+      "request_id": 71711,
+      "status": 409,
+      "error_class": "session binding invalidated",
+      "provider_code": 30013,
+      "items": 315
+    },
+    {
+      "id": 206481,
+      "request_id": 71712,
+      "status": 409,
+      "error_class": "session binding invalidated",
+      "provider_code": 30013,
+      "items": 315
+    },
+    {
+      "id": 206482,
+      "request_id": 71713,
+      "status": 409,
+      "error_class": "session binding invalidated",
+      "provider_code": 30013,
+      "items": 315
+    },
+    {
+      "id": 206483,
+      "request_id": 71714,
+      "status": 409,
+      "error_class": "session binding invalidated",
+      "provider_code": 30013,
+      "items": 315
+    },
+    {
+      "id": 206484,
+      "request_id": 71715,
+      "status": 409,
+      "error_class": "session binding invalidated",
+      "provider_code": 30013,
+      "items": 315
+    },
+    {
+      "id": 206485,
+      "request_id": 71716,
+      "status": 409,
+      "error_class": "session binding invalidated",
+      "provider_code": 30013,
+      "items": 315
+    },
+    {
+      "id": 206486,
+      "request_id": 71717,
+      "status": 409,
+      "error_class": "session binding invalidated",
+      "provider_code": 30013,
+      "items": 315
+    },
+    {
+      "id": 206487,
+      "request_id": 71718,
+      "status": 409,
+      "error_class": "session binding invalidated",
+      "provider_code": 30013,
+      "items": 315
+    },
+    {
+      "id": 206488,
+      "request_id": 71719,
+      "status": 409,
+      "error_class": "session binding invalidated",
+      "provider_code": 30013,
+      "items": 315
+    },
+    {
+      "id": 206489,
+      "request_id": 71720,
+      "status": 409,
+      "error_class": "session binding invalidated",
+      "provider_code": 30013,
+      "items": 315
+    },
+    {
+      "id": 206490,
+      "request_id": 71721,
+      "status": 409,
+      "error_class": "session binding invalidated",
+      "provider_code": 30013,
+      "items": 315
+    },
+    {
+      "id": 206491,
+      "request_id": 71722,
+      "status": 409,
+      "error_class": "session binding invalidated",
+      "provider_code": 30013,
+      "items": 286
+    },
+    {
+      "id": 206492,
+      "request_id": 71723,
+      "status": 409,
+      "error_class": "session binding invalidated",
+      "provider_code": 30013,
+      "items": 286
+    },
+    {
+      "id": 206493,
+      "request_id": 71724,
+      "status": 409,
+      "error_class": "session binding invalidated",
+      "provider_code": 30013,
+      "items": 286
+    },
+    {
+      "id": 206494,
+      "request_id": 71725,
+      "status": 409,
+      "error_class": "session binding invalidated",
+      "provider_code": 30013,
+      "items": 286
+    },
+    {
+      "id": 206495,
+      "request_id": 71726,
+      "status": 409,
+      "error_class": "session binding invalidated",
+      "provider_code": 30013,
+      "items": 286
+    },
+    {
+      "id": 206496,
+      "request_id": 71727,
+      "status": 409,
+      "error_class": "session binding invalidated",
+      "provider_code": 30013,
+      "items": 286
+    },
+    {
+      "id": 206497,
+      "request_id": 71728,
+      "status": 409,
+      "error_class": "session binding invalidated",
+      "provider_code": 30013,
+      "items": 286
+    },
+    {
+      "id": 206498,
+      "request_id": 71729,
+      "status": 409,
+      "error_class": "session binding invalidated",
+      "provider_code": 30013,
+      "items": 286
+    },
+    {
+      "id": 206499,
+      "request_id": 71730,
+      "status": 409,
+      "error_class": "session binding invalidated",
+      "provider_code": 30013,
+      "items": 286
+    },
+    {
+      "id": 206500,
+      "request_id": 71731,
+      "status": 409,
+      "error_class": "session binding invalidated",
+      "provider_code": 30013,
+      "items": 286
+    }
+  ],
+  "usage_rows": 0,
+  "raw_error_bodies_saved": false,
+  "production_inference_performed": false
+}

@@ -355,6 +355,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		// Codex Responses metadata must travel with a pass-through body so compatible
 		// upstreams preserve the client's protocol behavior.
 		applyPassThroughRequestHeaders(outbound),
+		applyResponsesFrameMetadata(),
 		applyResponsesContinuationBody(outbound),
 		applyOverrideRequestBody(outbound),
 		applyStrictChatRoles(outbound),
@@ -381,6 +382,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		// Authenticate local agent tool arguments before checkpoint recovery checks
 		// complete history; sealed arguments would otherwise block cold and warm recovery.
 		recoverResponsesAgentMessages(outbound, processor.SystemService),
+		recoverResponsesSessionBinding(outbound, processor.SystemService),
 		recoverRejectedRemoteCompaction(outbound, processor.remoteCompactionAdapter, processor.PipelineFactory.Executor),
 		// A checkpoint must be expanded before complete-history checks can apply
 		// already confirmed ID/reasoning corrections to its retained messages.

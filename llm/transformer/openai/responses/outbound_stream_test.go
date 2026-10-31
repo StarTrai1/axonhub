@@ -165,7 +165,7 @@ func TestResponsesStream_PreservesResponseMetadata(t *testing.T) {
 	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
 	require.NoError(t, err)
 
-	metadata := []byte(`{"type":"response.metadata","headers":{"x-codex-turn-state":"ts-1"}}`)
+	metadata := []byte(`{"type":"response.metadata","response_id":"resp-1","metadata":{"guardian":{"item_id":"fc_action","requires_review":false},"future":{"preserve":true}},"headers":{"x-codex-turn-state":"ts-1"}}`)
 	created := []byte(`{"type":"response.created","response":{"id":"resp-1","object":"response","created_at":1700000000,"model":"gpt-5","status":"in_progress","output":[]}}`)
 	completed := []byte(`{"type":"response.completed","response":{"id":"resp-1","object":"response","created_at":1700000000,"model":"gpt-5","status":"completed","output":[]}}`)
 

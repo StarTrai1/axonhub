@@ -48,6 +48,7 @@ type PersistenceState struct {
 	responsesRejectedStatusRules        map[int][]responsesRejectedStatusRule
 	responsesRejectedStatusRetryChannel int
 	responsesCompactionSkipChannel      int
+	responsesBindingOriginalBody       []byte
 	compactionRecovery                  *compactionRecoveryEvidence
 	unifiedHistorySource                *remoteCompactionSource
 	ResponsesContinuation               *responsesContinuation

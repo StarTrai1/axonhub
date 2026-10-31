@@ -352,7 +352,7 @@ func verifyResponsesAttempt(p *PersistentOutboundTransformer) pipeline.Middlewar
 			c.firstOrigin = &origin
 		}
 		if c.complete && !gjson.GetBytes(request.Body, "previous_response_id").Exists() && responses.IsResponsesFormat(llm.APIFormat(request.APIFormat)) {
-			c.snapshotBody = request.Body
+			c.snapshotBody = responsesLogicalSessionBody(p.state, request.Body)
 			if c.retain {
 				input := gjson.GetBytes(request.Body, "input")
 				if c.lane != nil && !c.lane.Budget().Replace(c.retentionBytes, len(input.Raw)) {
