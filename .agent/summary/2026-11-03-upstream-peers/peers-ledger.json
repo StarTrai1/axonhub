@@ -637,10 +637,10 @@
             "frontend/pnpm-lock.yaml"
           ],
           "url": "https://github.com/looplj/axonhub/commit/8a9df52283d9d9c3909c839267ce890a2913231e",
-          "decision": "merge",
-          "rationale": "Upgrade streamdown while retaining explicit rehype-sanitize and existing frontend style. CI rebuild owns dependency lock refresh.",
-          "evidence": "frontend/package.json",
-          "review_basis": "manifest and merge inspection"
+          "decision": "merge-adapt",
+          "rationale": "Upgrade Streamdown and migrate the removed bundled plugins to separate code/math/Mermaid/CJK plugins after the existing browser regression failed. Retain raw-HTML sanitization before math rendering, code themes and frontend style. CI owns dependency lock refresh.",
+          "evidence": "frontend/src/components/ai-elements/markdown-plugins.ts; frontend/tests/interactions/peer-regressions.spec.ts; GitHub Test 41617125108 frontend browser failure",
+          "review_basis": "manifest and merge inspection; runtime compatibility correction from existing CI browser regression and official v2 plugin contracts"
         }
       ]
     },
