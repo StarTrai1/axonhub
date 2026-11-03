@@ -43,7 +43,7 @@ func TestGeminiProtobufConstraintsReachOtherProtocols(t *testing.T) {
 	const schema = `{"type":"OBJECT","properties":{"batch":{"type":"ARRAY","minItems":"2","items":{"type":"STRING","maxLength":"40"}}}}`
 	body := []byte(`{"contents":[{"role":"user","parts":[{"text":"inspect"}]}],"tools":[{"functionDeclarations":[{"name":"inspect","parameters":` + schema + `}]}],"generationConfig":{"responseMimeType":"application/json","responseSchema":` + schema + `}}`)
 	request, err := NewInboundTransformer().TransformRequest(t.Context(), &httpclient.Request{
-		Path: "/v1beta/models/gemini-3-pro-preview:generateContent",
+		Path:    "/v1beta/models/gemini-3-pro-preview:generateContent",
 		Headers: http.Header{"Content-Type": []string{"application/json"}}, Body: body,
 	})
 	require.NoError(t, err)
