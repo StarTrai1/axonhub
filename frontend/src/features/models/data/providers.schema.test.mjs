@@ -25,6 +25,10 @@ test('bundled providers.json matches providersDataSchema', () => {
   }
 
   assert.ok(Object.keys(result.data.providers).length > 0, 'bundled providers.json must contain at least one provider');
+  for (const [provider, data] of Object.entries(result.data.providers)) {
+    const modelIDs = data.models.map((model) => model.id);
+    assert.equal(new Set(modelIDs).size, modelIDs.length, `${provider} must not contain duplicate model IDs`);
+  }
 });
 
 test('GPT-6.1 Sol and Astra modes preserve official prices across both catalogs', () => {

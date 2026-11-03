@@ -10,7 +10,7 @@ The fork merges34 upstream commits through `8a9df522` and adapts one confirmed p
 - Model price import gains an exchange-rate factor; model catalog and dependency updates are merged while retaining frontend style and fork dependency exclusions/pins.
 - Gemini blocked finish reasons are already covered by the fork, including its malformed-tool error path. Keep the superset and upstream test additions.
 - Dashboard helper extraction was already implemented in the fork. Keep dashboard_queries.go and existing helpers; remove duplicate methods introduced by automatic merging. The dedicated generation-verification CI job already covers upstream's newly added generation check.
-- Keep existing GPT-6.1 Terra and GPT-6 Luna entries in both synchronized catalogs. Do not reintroduce removed direct framer-motion/lobehub UI dependencies; retain the sanitizer and newer Vite pin. GitHub CI generates the final lockfile.
+- Keep existing GPT-6.1 Terra and GPT-6 Luna entries in both synchronized catalogs, deduplicating the same IDs added at another position by upstream. Preserve the richer Fast long-context price tiers and add a unique-model-ID regression. Do not reintroduce removed direct framer-motion/lobehub UI dependencies; retain the sanitizer and newer Vite pin. GitHub CI generates the final lockfile.
 
 ## Peer adaptation
 
