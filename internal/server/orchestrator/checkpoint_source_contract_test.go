@@ -1,6 +1,7 @@
 package orchestrator
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -11,7 +12,9 @@ import (
 	"github.com/tidwall/sjson"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
+	"github.com/looplj/axonhub/llm/streams"
 )
 
 // Old installations kept additional_tools in the archive. New windows retain
@@ -75,7 +78,7 @@ func TestCheckpointSourceContractMigrationSurvivesRestart(t *testing.T) {
 				delete(before, "input")
 				delete(after, "input")
 				require.Equal(t, before, after, "history restoration must retain every current request option")
-				executor := &rejectedCompactionBridgeExecutor{}
+				executor := &checkpointSourceContractExecutor{}
 				if contract == "empty tools" {
 					executor.rejection = rejectedNativeCheckpointError()
 				}
@@ -109,6 +112,17 @@ func TestCheckpointSourceContractMigrationSurvivesRestart(t *testing.T) {
 			})
 		}
 	}
+}
+
+type checkpointSourceContractExecutor struct {
+	rejectedCompactionBridgeExecutor
+}
+
+func (e *checkpointSourceContractExecutor) DoStream(ctx context.Context, req *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
+	if gjson.GetBytes(req.Body, `input.#(id=="cmp_parent")`).Exists() {
+		return nil, &httpclient.Error{StatusCode: 400, Body: []byte(`{"error":{"message":"The encrypted content for item cmp_parent could not be verified. Reason: Encrypted content could not be decrypted or parsed."}}`)}
+	}
+	return e.rejectedCompactionBridgeExecutor.DoStream(ctx, req)
 }
 
 func TestCheckpointSourceContractKeepsHistoryGuards(t *testing.T) {

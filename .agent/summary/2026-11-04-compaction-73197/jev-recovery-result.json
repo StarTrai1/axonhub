@@ -1,0 +1,20 @@
+{
+  "model": "jev-1.14.0",
+  "answers": {
+    "recovery_contract": {
+      "type": "choice",
+      "choice": "canonical_first",
+      "confidence": 0.99,
+      "probabilities": {
+        "canonical_first": 0.99,
+        "preserve_eager": 0.0,
+        "ask_user": 0.0,
+        "insufficient_evidence": 0.01
+      }
+    }
+  },
+  "usage": {
+    "input_tokens": 1204,
+    "output_tokens": 60
+  }
+}

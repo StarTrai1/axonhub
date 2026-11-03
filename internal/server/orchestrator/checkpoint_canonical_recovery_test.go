@@ -68,8 +68,72 @@ func TestCheckpointCanonicalRecoveryKeepsAcceptedAncestor(t *testing.T) {
 	}
 }
 
+func TestCheckpointCanonicalRecoveryDoesNotInventMissingHistory(t *testing.T) {
+	ctx, _, state, adapter := unifiedHistoryFixture(t)
+	latest := &remoteCompactionReference{ID: "cmp_latest", EncryptedContent: "latest-cipher"}
+	current := []byte(`{"model":"gpt-6-astra","client_metadata":{"thread_id":"recovery-thread"},"input":[{"type":"compaction","id":"cmp_ancestor","encrypted_content":"native-ancestor"},{"role":"user","content":"new source detail"},{"type":"compaction_trigger"}]}`)
+	require.NoError(t, adapter.retainNativeCompactionSource(ctx, latest, state, &remoteCompactionSource{body: current}))
+	executor := &lazyCompactionExecutor{reject: true}
+	summary, err := adapter.summaryForCompaction(ctx, remoteCompactionCacheKey(latest), latest, "recovery-thread", "gpt-6-astra", state, executor)
+	require.ErrorContains(t, err, "no retained source")
+	require.Empty(t, summary)
+	require.Len(t, executor.bodies, 1, "try the canonical window, then stop when its rejected source is unavailable")
+	require.Empty(t, executor.summaries)
+	sealed, err := adapter.systemService.LoadLocalCompactionCheckpoint(ctx, state.APIKey.ProjectID, state.APIKey.ID, remoteCompactionCacheKey(latest))
+	require.NoError(t, err)
+	require.Empty(t, sealed)
+}
+
+func TestCheckpointCanonicalRecoveryPreservesOtherFailures(t *testing.T) {
+	for _, scenario := range []string{"unrelated error", "partial summary", "cycle"} {
+		t.Run(scenario, func(t *testing.T) {
+			ctx, _, state, adapter := unifiedHistoryFixture(t)
+			latest := &remoteCompactionReference{ID: "cmp_latest", EncryptedContent: "latest-cipher"}
+			current := []byte(`{"model":"gpt-6-astra","client_metadata":{"thread_id":"recovery-thread"},"input":[{"type":"compaction","id":"cmp_ancestor","encrypted_content":"native-ancestor"},{"role":"user","content":"complete current detail"},{"type":"compaction_trigger"}]}`)
+			if scenario == "cycle" {
+				current = []byte(strings.ReplaceAll(strings.ReplaceAll(string(current), "cmp_ancestor", latest.ID), "native-ancestor", latest.EncryptedContent))
+			}
+			require.NoError(t, adapter.retainNativeCompactionSource(ctx, latest, state, &remoteCompactionSource{body: current}))
+			executor := &canonicalCheckpointFailureExecutor{partial: scenario == "partial summary"}
+			summary, err := adapter.summaryForCompaction(ctx, remoteCompactionCacheKey(latest), latest, "recovery-thread", "gpt-6-astra", state, executor)
+			require.Error(t, err)
+			require.Empty(t, summary)
+			if scenario == "cycle" {
+				require.ErrorContains(t, err, "cyclic")
+				require.Zero(t, executor.calls)
+			} else {
+				require.Equal(t, 1, executor.calls)
+				if scenario == "partial summary" {
+					require.ErrorIs(t, err, llm.ErrStreamIncomplete)
+				} else {
+					require.ErrorContains(t, err, "Invalid tool schema")
+				}
+			}
+			sealed, err := adapter.systemService.LoadLocalCompactionCheckpoint(ctx, state.APIKey.ProjectID, state.APIKey.ID, remoteCompactionCacheKey(latest))
+			require.NoError(t, err)
+			require.Empty(t, sealed, "failed or partial generation must never become an authoritative checkpoint")
+		})
+	}
+}
+
+type canonicalCheckpointFailureExecutor struct {
+	rejectedCompactionBridgeExecutor
+
+	partial bool
+	calls   int
+}
+
+func (e *canonicalCheckpointFailureExecutor) DoStream(context.Context, *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
+	e.calls++
+	if e.partial {
+		return streams.SliceStream([]*httpclient.StreamEvent{{Type: "response.output_text.delta", Data: []byte(`{"type":"response.output_text.delta","delta":"incomplete summary"}`)}}), nil
+	}
+	return nil, &httpclient.Error{StatusCode: 400, Body: []byte(`{"error":{"type":"invalid_request_error","message":"Invalid tool schema"}}`)}
+}
+
 type canonicalCheckpointExecutor struct {
 	rejectedCompactionBridgeExecutor
+
 	maxBytes int
 }
 

@@ -60,8 +60,8 @@ func TestNativeCompactionMigrationReusesAncestorEvidence(t *testing.T) {
 				_, result, err := runRejectedReasoningPipeline(t, ctx, req, executor, "ancestor-evidence-key", true, 2, configure)
 				require.NoError(t, err)
 				drainRejectedReasoningPipeline(t, result)
-				require.Zero(t, executor.statusRejections)
-				require.Zero(t, executor.ancestorRejections)
+				require.Equal(t, 1, executor.statusRejections)
+				require.Equal(t, 1, executor.ancestorRejections)
 				require.Zero(t, executor.nativeCalls)
 				wantSummaries := 1
 				require.Len(t, executor.summaries, wantSummaries)
@@ -78,7 +78,7 @@ func TestNativeCompactionMigrationReusesAncestorEvidence(t *testing.T) {
 				require.NoError(t, err)
 				drainRejectedReasoningPipeline(t, result)
 				require.Len(t, executor.summaries, wantSummaries)
-				require.Zero(t, executor.ancestorRejections)
+				require.Equal(t, 1, executor.ancestorRejections)
 			})
 		}
 	}

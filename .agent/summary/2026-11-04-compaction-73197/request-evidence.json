@@ -1,0 +1,434 @@
+{
+  "baseline": "5d57cda871e0f7b7f160ae541283d8b52c3b25bc",
+  "production_exe_vcs_matches": true,
+  "read_only": true,
+  "requests": [
+    {
+      "id": 73006,
+      "created_at_utc": "2026-11-03 09:56:05.3206208 +0000 UTC",
+      "channel_id": 73,
+      "trace_id": 9715,
+      "status": "completed",
+      "input_count": 11,
+      "input_types": {
+        "message": 11
+      },
+      "error": null,
+      "executions": [
+        {
+          "id": 208140,
+          "channel_id": 73,
+          "status": "completed",
+          "status_code": null,
+          "error": null,
+          "request_raw_bytes": null
+        }
+      ]
+    },
+    {
+      "id": 73120,
+      "created_at_utc": "2026-11-03 10:54:53.0011208 +0000 UTC",
+      "channel_id": 73,
+      "trace_id": 9714,
+      "status": "completed",
+      "input_count": 3,
+      "input_types": {
+        "message": 3
+      },
+      "error": null,
+      "executions": [
+        {
+          "id": 208254,
+          "channel_id": 73,
+          "status": "failed",
+          "status_code": 502,
+          "error": "Upstream provider closed the connection before the response completed: failed to read response body: read tcp 172.16.102.5:51714->172.67.153.124:443: wsarecv: An existing connection was forcibly closed by the remote host.",
+          "request_raw_bytes": null
+        },
+        {
+          "id": 208255,
+          "channel_id": 73,
+          "status": "completed",
+          "status_code": null,
+          "error": null,
+          "request_raw_bytes": null
+        }
+      ]
+    },
+    {
+      "id": 73054,
+      "created_at_utc": "2026-11-03 10:19:09.7622105 +0000 UTC",
+      "channel_id": 9,
+      "trace_id": 9715,
+      "status": "completed",
+      "input_count": 2,
+      "input_types": {
+        "custom_tool_call_output": 1,
+        "compaction_trigger": 1
+      },
+      "error": null,
+      "executions": [
+        {
+          "id": 208188,
+          "channel_id": 9,
+          "status": "completed",
+          "status_code": null,
+          "error": null,
+          "request_raw_bytes": null
+        }
+      ]
+    },
+    {
+      "id": 73130,
+      "created_at_utc": "2026-11-03 11:09:05.0354378 +0000 UTC",
+      "channel_id": 9,
+      "trace_id": 9714,
+      "status": "completed",
+      "input_count": 2,
+      "input_types": {
+        "custom_tool_call_output": 1,
+        "compaction_trigger": 1
+      },
+      "error": null,
+      "executions": [
+        {
+          "id": 208265,
+          "channel_id": 9,
+          "status": "completed",
+          "status_code": null,
+          "error": null,
+          "request_raw_bytes": null
+        }
+      ]
+    },
+    {
+      "id": 73197,
+      "created_at_utc": "2026-11-03 16:09:18.6413992 +0000 UTC",
+      "channel_id": 9,
+      "trace_id": 9714,
+      "status": "failed",
+      "input_count": 108,
+      "input_types": {
+        "additional_tools": 1,
+        "message": 97,
+        "compaction": 1,
+        "custom_tool_call": 3,
+        "custom_tool_call_output": 3,
+        "reasoning": 3
+      },
+      "error": {
+        "message": "Retained compaction source could not be reconstructed: a completed predecessor is missing; restore the source history or use a compatible channel",
+        "type": "invalid_request_error",
+        "code": "compaction_history_unavailable",
+        "param": "input"
+      },
+      "executions": [
+        {
+          "id": 208362,
+          "channel_id": 9,
+          "status": "failed",
+          "status_code": 400,
+          "error": "The encrypted content for item cmp_siwc_635fe9bb5710c6ec71a496dd could not be verified. Reason: Encrypted content could not be decrypted or parsed.",
+          "request_raw_bytes": null
+        }
+      ]
+    },
+    {
+      "id": 73198,
+      "created_at_utc": "2026-11-03 16:10:17.5442309 +0000 UTC",
+      "channel_id": null,
+      "trace_id": 9714,
+      "status": "failed",
+      "input_count": 108,
+      "input_types": {
+        "additional_tools": 1,
+        "message": 97,
+        "compaction": 1,
+        "custom_tool_call": 3,
+        "custom_tool_call_output": 3,
+        "reasoning": 3
+      },
+      "error": {
+        "message": "Retained compaction source could not be reconstructed: a completed predecessor is missing; restore the source history or use a compatible channel",
+        "type": "invalid_request_error",
+        "code": "compaction_history_unavailable",
+        "param": "input"
+      },
+      "executions": []
+    },
+    {
+      "id": 73209,
+      "created_at_utc": "2026-11-03 16:12:25.3591401 +0000 UTC",
+      "channel_id": 39,
+      "trace_id": 9714,
+      "status": "failed",
+      "input_count": 108,
+      "input_types": {
+        "additional_tools": 1,
+        "message": 97,
+        "compaction": 1,
+        "custom_tool_call": 3,
+        "custom_tool_call_output": 3,
+        "reasoning": 3
+      },
+      "error": {
+        "message": "Retained compaction source could not be reconstructed: a completed predecessor is missing; restore the source history or use a compatible channel",
+        "type": "invalid_request_error",
+        "code": "compaction_history_unavailable",
+        "param": "input"
+      },
+      "executions": [
+        {
+          "id": 208373,
+          "channel_id": 39,
+          "status": "failed",
+          "status_code": 400,
+          "error": "The encrypted content for item cmp_siwc_635fe9bb5710c6ec71a496dd could not be verified. Reason: Encrypted content could not be decrypted or parsed.",
+          "request_raw_bytes": null
+        }
+      ]
+    },
+    {
+      "id": 73210,
+      "created_at_utc": "2026-11-03 16:14:11.8242114 +0000 UTC",
+      "channel_id": 39,
+      "trace_id": 9715,
+      "status": "failed",
+      "input_count": 186,
+      "input_types": {
+        "additional_tools": 1,
+        "message": 39,
+        "compaction": 1,
+        "custom_tool_call": 39,
+        "custom_tool_call_output": 39,
+        "reasoning": 35,
+        "function_call": 16,
+        "function_call_output": 16
+      },
+      "error": {
+        "message": "Your input exceeds the context window of this model. Please adjust your input and try again.",
+        "type": "invalid_request_error",
+        "code": "context_length_exceeded",
+        "param": "input"
+      },
+      "executions": [
+        {
+          "id": 208374,
+          "channel_id": 9,
+          "status": "failed",
+          "status_code": 400,
+          "error": "The encrypted content for item cmp_siwc_29c32b5da3347433cdf99d7c could not be verified. Reason: Encrypted content could not be decrypted or parsed.",
+          "request_raw_bytes": null
+        },
+        {
+          "id": 208375,
+          "channel_id": 39,
+          "status": "failed",
+          "status_code": 400,
+          "error": "The encrypted content for item cmp_siwc_29c32b5da3347433cdf99d7c could not be verified. Reason: Encrypted content could not be decrypted or parsed.",
+          "request_raw_bytes": null
+        }
+      ]
+    },
+    {
+      "id": 73211,
+      "created_at_utc": "2026-11-03 16:14:26.2632193 +0000 UTC",
+      "channel_id": null,
+      "trace_id": 9715,
+      "status": "failed",
+      "input_count": 856,
+      "input_types": {
+        "message": 254,
+        "custom_tool_call": 276,
+        "custom_tool_call_output": 276,
+        "function_call": 25,
+        "function_call_output": 25
+      },
+      "error": {
+        "message": "Your input exceeds the context window of this model. Please adjust your input and try again.",
+        "type": "invalid_request_error",
+        "code": "context_length_exceeded",
+        "param": "input"
+      },
+      "executions": [
+        {
+          "id": 208376,
+          "channel_id": 39,
+          "status": "failed",
+          "status_code": 400,
+          "error": "Your input exceeds the context window of this model. Please adjust your input and try again.",
+          "request_raw_bytes": 3693640
+        }
+      ]
+    },
+    {
+      "id": 73212,
+      "created_at_utc": "2026-11-03 16:16:11.5917469 +0000 UTC",
+      "channel_id": null,
+      "trace_id": 9715,
+      "status": "failed",
+      "input_count": 186,
+      "input_types": {
+        "additional_tools": 1,
+        "message": 39,
+        "compaction": 1,
+        "custom_tool_call": 39,
+        "custom_tool_call_output": 39,
+        "reasoning": 35,
+        "function_call": 16,
+        "function_call_output": 16
+      },
+      "error": {
+        "message": "Your input exceeds the context window of this model. Please adjust your input and try again.",
+        "type": "invalid_request_error",
+        "code": "context_too_large"
+      },
+      "executions": []
+    },
+    {
+      "id": 73213,
+      "created_at_utc": "2026-11-03 16:16:12.6630561 +0000 UTC",
+      "channel_id": null,
+      "trace_id": 9715,
+      "status": "failed",
+      "input_count": 856,
+      "input_types": {
+        "message": 254,
+        "custom_tool_call": 276,
+        "custom_tool_call_output": 276,
+        "function_call": 25,
+        "function_call_output": 25
+      },
+      "error": {
+        "message": "Your input exceeds the context window of this model. Please adjust your input and try again.",
+        "type": "invalid_request_error",
+        "code": "context_too_large"
+      },
+      "executions": [
+        {
+          "id": 208377,
+          "channel_id": 9,
+          "status": "failed",
+          "status_code": 400,
+          "error": "Your input exceeds the context window of this model. Please adjust your input and try again.",
+          "request_raw_bytes": 3693640
+        }
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "request": 73197,
+      "checkpoint_id": "cmp_siwc_635fe9bb5710c6ec71a496dd",
+      "items": 302,
+      "has_previous_response_id": false,
+      "ancestor_id": "cmp_02c31ff220df13e6016ae47c50784c8190850f35f48064bf5d",
+      "accepted_ancestor_executions": {
+        "39": [
+          208083
+        ],
+        "9": [
+          208245,
+          208246,
+          208248,
+          208250,
+          208252,
+          208253,
+          208256,
+          208258,
+          208259,
+          208260,
+          208261,
+          208262,
+          208263,
+          208264,
+          208265
+        ]
+      },
+      "aes_gcm_manifest_block_digests_verified": true
+    },
+    {
+      "request": 73210,
+      "checkpoint_id": "cmp_siwc_29c32b5da3347433cdf99d7c",
+      "items": 343,
+      "has_previous_response_id": false,
+      "ancestor_id": "cmp_08226da4e2265f1b016ae6477392f0819a99e44c6c7072f6a9",
+      "accepted_ancestor_executions": {
+        "9": [
+          208111,
+          208114,
+          208115,
+          208116,
+          208117,
+          208118,
+          208119,
+          208120,
+          208121,
+          208122,
+          208123,
+          208124,
+          208126,
+          208129,
+          208131,
+          208132,
+          208134,
+          208135,
+          208138,
+          208141,
+          208142,
+          208143,
+          208144,
+          208145,
+          208146,
+          208147,
+          208148,
+          208149,
+          208150,
+          208151,
+          208152,
+          208153,
+          208154,
+          208155,
+          208156,
+          208157,
+          208158,
+          208159,
+          208160,
+          208161,
+          208162,
+          208163,
+          208164,
+          208165,
+          208166,
+          208167,
+          208168,
+          208169,
+          208170,
+          208171,
+          208172,
+          208173,
+          208174,
+          208175,
+          208176,
+          208177,
+          208178,
+          208179,
+          208180,
+          208181,
+          208183,
+          208185,
+          208186,
+          208187,
+          208188
+        ]
+      },
+      "aes_gcm_manifest_block_digests_verified": true
+    }
+  ],
+  "missing_predecessor": {
+    "previous": "resp_02c31ff220df13e6016ad2e9aa6b9c81909b59a2ac506ed51f",
+    "checkpoint": "cmp_02c31ff220df13e6016ad2e9b979a4819082fa60ae7e841aca"
+  },
+  "missing_predecessor_completed_requests": 0,
+  "missing_predecessor_snapshot_aliases": 0
+}

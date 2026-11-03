@@ -11,6 +11,55 @@ import (
 
 const checkpointSummaryMaxBytes = 64 << 10
 
+// A rejected checkpoint does not reject every native ancestor in its source.
+// Keep that canonical window intact until the selected provider actually refuses
+// its ancestor. Only locally sealed checkpoints are opened without a provider.
+func (a *remoteCompactionAdapter) prepareCheckpointMigrationWindow(ctx context.Context, source *remoteCompactionSource, state *PersistenceState) (*remoteCompactionSource, error) {
+	body, err := recoverResponsesAgentMessageBody(ctx, source.body, state, a.systemService)
+	if err != nil {
+		return nil, err
+	}
+	ref, _, _, err := parseRemoteCompactionRequest(body)
+	if err != nil {
+		return nil, err
+	}
+	if isSealedLocalCompactionReference(ref) {
+		summary, err := a.openCompactionCheckpoint(ctx, ref, state, ref.EncryptedContent)
+		if err != nil {
+			return nil, err
+		}
+		body, err = replaceRemoteCompactionWithLocalSummary(body, summary)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return &remoteCompactionSource{body: body, headers: source.headers}, nil
+}
+
+// Expand exactly one explicitly rejected ancestor. This is source restoration,
+// not another summary generation, and never substitutes a partial archive.
+func (a *remoteCompactionAdapter) expandRejectedCheckpointWindow(ctx context.Context, source *remoteCompactionSource, ref *remoteCompactionReference, state *PersistenceState) (*remoteCompactionSource, error) {
+	retained, err := a.loadNativeCompactionSource(ctx, ref, state)
+	if err != nil {
+		return nil, err
+	}
+	if retained == nil {
+		return nil, checkpointSummaryError("compaction_history_unavailable", "The rejected native ancestor has no retained source; continue with a compatible resource")
+	}
+	retained, err = a.prepareCheckpointMigrationWindow(ctx, retained, state)
+	if err != nil {
+		return nil, err
+	}
+	body, complete, err := spliceUnifiedCompactionSource(source.body, retained.body, ref)
+	if err != nil {
+		return nil, err
+	}
+	if !complete {
+		return nil, checkpointSummaryError("compaction_source_invalid", "The retained checkpoint source does not match the current window")
+	}
+	return &remoteCompactionSource{body: body, headers: source.headers}, nil
+}
+
 // Legacy native checkpoints can be migrated from retained source records, but
 // only during this explicit conversion. Existing portable checkpoints stop the
 // traversal: their summary, rather than their pre-compaction archive, is used.

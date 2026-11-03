@@ -845,21 +845,9 @@ func (a *remoteCompactionAdapter) summaryForCompactionChain(
 				},
 			}
 		}
-		source, err = a.restoreCheckpointWindow(ctx, source, state)
+		source, err = a.prepareCheckpointMigrationWindow(ctx, source, state)
 		if err != nil {
 			return "", err
-		}
-		for _, candidate := range state.ChannelModelsCandidates {
-			if candidate == nil || !azureHistoryRecoveryRequested(state, candidate.Channel) {
-				continue
-			}
-			// Restore earlier checkpoints before generating a portable summary;
-			// sending their opaque state first would repeat the resource failure.
-			source, err = a.adaptStoredCompactionSource(ctx, source, state, executor, ancestors)
-			if err != nil {
-				return "", err
-			}
-			break
 		}
 	}
 
@@ -892,21 +880,34 @@ func (a *remoteCompactionAdapter) summaryForCompactionChain(
 		a.summaries.SetDefault(ownerKey, generated)
 		return generated, nil
 	}
-	value, err := waitForCompactionFlight(ctx, &a.summaryGenerator, ownerKey, generate)
-	if rejected, ok := errors.AsType[*compactionSourceRejectedError](err); ok && source != nil && ctx.Err() == nil {
-		previous, _, _, parseErr := parseRemoteCompactionRequest(source.body)
-		if parseErr != nil {
-			return "", parseErr
+	var value any
+	seen := map[string]bool{cacheKey: true}
+	for {
+		var previous *remoteCompactionReference
+		if source != nil {
+			previous, _, _, err = parseRemoteCompactionRequest(source.body)
+			if err != nil {
+				return "", err
+			}
+			if previous != nil {
+				key := remoteCompactionCacheKey(previous)
+				if seen[key] || len(seen) >= remoteCompactionMaxSourceDepth {
+					return "", checkpointSummaryError("compaction_source_invalid", "Checkpoint source is cyclic or exceeds the migration limit")
+				}
+				seen[key] = true
+			}
 		}
-		if previous == nil || remoteCompactionCacheKey(previous) != rejected.cacheKey {
-			return "", err
+		value, err = waitForCompactionFlight(ctx, &a.summaryGenerator, ownerKey, generate)
+		rejected, ok := errors.AsType[*compactionSourceRejectedError](err)
+		if !ok || source == nil || previous == nil || ctx.Err() != nil || remoteCompactionCacheKey(previous) != rejected.cacheKey {
+			break
 		}
-		// Never wait on a nested generation while holding the parent's flight.
-		source, err = a.restoreRejectedCompactionSource(ctx, source, previous, state, executor, ancestors)
+		// No intermediate summary, and no recursive expansion of an ancestor the
+		// provider has not rejected. Leave the parent's flight before restoration.
+		source, err = a.expandRejectedCheckpointWindow(ctx, source, previous, state)
 		if err != nil {
 			return "", err
 		}
-		value, err = waitForCompactionFlight(ctx, &a.summaryGenerator, ownerKey, generate)
 	}
 	if err != nil {
 		return "", err

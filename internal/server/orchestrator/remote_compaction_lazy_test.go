@@ -49,12 +49,24 @@ func TestRemoteCompactionLazyAncestorRecovery(t *testing.T) {
 				// Cold restart must reuse the sealed result, not generate again.
 				adapter = newRemoteCompactionAdapter(adapter.requestService, nil, adapter.systemService)
 			}
-			require.Len(t, executor.bodies, 1, "one generation must survive a cold adapter restart")
-			for _, detail := range []string{"first source detail", "retained detail", "new source detail"} {
-				require.Contains(t, string(executor.bodies[0]), detail)
+			wantAttempts := 1
+			if reject {
+				wantAttempts = 2
 			}
-			require.NotContains(t, string(executor.bodies[0]), "native-ancestor")
-			require.NotContains(t, string(executor.bodies[0]), "verified retained source summary")
+			require.Len(t, executor.bodies, wantAttempts)
+			require.Len(t, executor.summaries, 1, "one completed generation must survive a cold adapter restart")
+			last := executor.bodies[len(executor.bodies)-1]
+			for _, detail := range []string{"retained detail", "new source detail"} {
+				require.Contains(t, string(last), detail)
+			}
+			if reject {
+				require.Contains(t, string(last), "first source detail")
+				require.NotContains(t, string(last), "native-ancestor")
+			} else {
+				require.Contains(t, string(last), "native-ancestor")
+				require.NotContains(t, string(last), "first source detail")
+			}
+			require.NotContains(t, string(last), "verified retained source summary")
 		})
 	}
 }
@@ -68,7 +80,7 @@ type lazyCompactionExecutor struct {
 
 func (e *lazyCompactionExecutor) DoStream(ctx context.Context, req *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
 	e.bodies = append(e.bodies, append([]byte(nil), req.Body...))
-	if e.reject && gjson.GetBytes(req.Body, `input.#(type=="compaction")`).Exists() {
+	if e.reject && gjson.GetBytes(req.Body, `input.#(id=="cmp_ancestor")`).Exists() {
 		return nil, &httpclient.Error{StatusCode: http.StatusBadRequest, Body: []byte(`{"error":{"type":"invalid_request_error","message":"The encrypted content for item cmp_ancestor could not be verified. Reason: Encrypted content could not be decrypted or parsed."}}`)}
 	}
 	return e.rejectedCompactionBridgeExecutor.DoStream(ctx, req)
