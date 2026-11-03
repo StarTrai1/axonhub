@@ -99,7 +99,7 @@ func convertGeminiToLLMRequest(geminiReq *GenerateContentRequest) (*llm.Request,
 		if len(gc.ResponseJsonSchema) > 0 {
 			chatReq.ResponseFormat = geminiJSONSchemaResponseFormat(gc.ResponseJsonSchema)
 		} else if len(gc.ResponseSchema) > 0 {
-			chatReq.ResponseFormat = geminiJSONSchemaResponseFormat(gc.ResponseSchema)
+			chatReq.ResponseFormat = geminiJSONSchemaResponseFormat(normalizeGeminiSchema(gc.ResponseSchema))
 		} else if gc.ResponseMIMEType == "application/json" {
 			// If only ResponseMIMEType is set to JSON, use json_object
 			chatReq.ResponseFormat = &llm.ResponseFormat{
@@ -163,7 +163,7 @@ func convertGeminiToLLMRequest(geminiReq *GenerateContentRequest) (*llm.Request,
 
 					if fd.Parameters != nil {
 						// Old format
-						parameters = transform(fd.Parameters)
+						parameters = transform(normalizeGeminiSchema(fd.Parameters))
 					} else if fd.ParametersJsonSchema != nil {
 						// New format
 						parametersJsonSchema = transform(fd.ParametersJsonSchema)
