@@ -1,10 +1,15 @@
 import type { ComponentProps } from 'react';
+import { cjk } from '@streamdown/cjk';
+import { code, createCodePlugin } from '@streamdown/code';
+import { math } from '@streamdown/math';
+import { mermaid } from '@streamdown/mermaid';
+import 'katex/dist/katex.min.css';
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import { defaultRehypePlugins } from 'streamdown';
 import type { Streamdown } from 'streamdown';
 
-// Sanitize untrusted HTML before KaTeX generates trusted MathML and styled
-// spans. Sanitizing afterward strips formula markup and layout classes.
+// Streamdown 2 appends its math renderer after these rehype plugins, so
+// untrusted HTML is sanitized before KaTeX generates trusted MathML/spans.
 export const markdownRehypePlugins: ComponentProps<typeof Streamdown>['rehypePlugins'] = [
   defaultRehypePlugins.raw,
   [
@@ -17,6 +22,11 @@ export const markdownRehypePlugins: ComponentProps<typeof Streamdown>['rehypePlu
       },
     },
   ],
-  defaultRehypePlugins.katex,
   defaultRehypePlugins.harden,
 ];
+
+export const markdownPlugins = { code, math, mermaid, cjk };
+export const themedMarkdownPlugins = {
+  ...markdownPlugins,
+  code: createCodePlugin({ themes: ['one-light', 'one-dark-pro'] }),
+};

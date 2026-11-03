@@ -7,7 +7,7 @@ import { BrainIcon, ChevronDownIcon } from 'lucide-react';
 import { Streamdown } from 'streamdown';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { markdownRehypePlugins } from './markdown-plugins';
+import { markdownRehypePlugins, themedMarkdownPlugins } from './markdown-plugins';
 import { Shimmer } from './shimmer';
 
 type ReasoningContextValue = {
@@ -145,7 +145,7 @@ export const ReasoningContent = memo(({ className, children, ...props }: Reasoni
     )}
     {...props}
   >
-    <Streamdown rehypePlugins={markdownRehypePlugins} shikiTheme={['one-light', 'one-dark-pro']} {...props}>
+    <Streamdown rehypePlugins={markdownRehypePlugins} plugins={themedMarkdownPlugins} {...props}>
       {children}
     </Streamdown>
   </CollapsibleContent>
