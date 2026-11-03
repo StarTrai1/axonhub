@@ -2114,12 +2114,18 @@ func TestConvertLLMMessageToGeminiContent_ThoughtSignature(t *testing.T) {
 
 func TestConvertGeminiToLLMResponse_FinishReasons(t *testing.T) {
 	finishReasons := map[string]string{
-		"STOP":                    "stop",
-		"MAX_TOKENS":              "length",
-		"SAFETY":                  "content_filter",
-		"RECITATION":              "content_filter",
-		"MALFORMED_FUNCTION_CALL": "content_filter", // A refused tool call is not normal completion.
-		"UNKNOWN":                 "stop",
+		"STOP":                     "stop",
+		"MAX_TOKENS":               "length",
+		"SAFETY":                   "content_filter",
+		"RECITATION":               "content_filter",
+		"BLOCKLIST":                "content_filter",
+		"PROHIBITED_CONTENT":       "content_filter",
+		"SPII":                     "content_filter",
+		"IMAGE_SAFETY":             "content_filter",
+		"IMAGE_PROHIBITED_CONTENT": "content_filter",
+		"IMAGE_RECITATION":         "content_filter",
+		"MALFORMED_FUNCTION_CALL":  "content_filter", // A refused tool call is not normal completion.
+		"UNKNOWN":                  "stop",
 	}
 
 	for geminiReason, expectedLLMReason := range finishReasons {

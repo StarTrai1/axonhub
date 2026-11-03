@@ -784,7 +784,7 @@ func convertGeminiCandidateToLLMChoiceWithState(candidate *Candidate, isStream b
 			switch {
 			case part.Text != "":
 				if part.Thought {
-					reasoningContent = part.Text
+					reasoningContent += part.Text
 				} else {
 					textParts = append(textParts, part.Text)
 				}
