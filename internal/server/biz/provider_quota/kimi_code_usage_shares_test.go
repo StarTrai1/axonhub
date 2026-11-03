@@ -1,6 +1,7 @@
 package provider_quota
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -24,15 +25,17 @@ func TestKimiCodeMonthlySharesDriveReadinessWithoutInventingCounts(t *testing.T)
 }
 
 func TestKimiCodeMonthlyShareFallbackAndMalformedValues(t *testing.T) {
+	resetAt := time.Now().UTC().Add(24 * time.Hour).Truncate(time.Second)
 	for _, body := range []string{
-		`{"usages":{"limit_month_code":{"used_ratio":0.75,"reset_time":"2026-11-01T00:00:00Z"}}}`,
-		`{"usages":{"limit_month_total":{"used_ratio":"NaN"},"limit_month_code":{"used_ratio":"0.75","reset_time":"1793491200"}}}`,
+		fmt.Sprintf(`{"usages":{"limit_month_code":{"used_ratio":0.75,"reset_time":%q}}}`, resetAt.Format(time.RFC3339)),
+		fmt.Sprintf(`{"usages":{"limit_month_total":{"used_ratio":"NaN"},"limit_month_code":{"used_ratio":"0.75","reset_time":"%d"}}}`, resetAt.Unix()),
 	} {
 		quota, err := parseKimiCodeUsageResponse([]byte(body))
 		require.NoError(t, err)
 		require.Len(t, quota.Limits, 1)
 		require.InDelta(t, 0.75, quota.Limits[0].UsageRatio, 0.000001)
 		require.NotNil(t, quota.Limits[0].NextResetAt)
+		require.Equal(t, resetAt, quota.Limits[0].NextResetAt.UTC())
 	}
 	_, err := parseKimiCodeUsageResponse([]byte(`{"usages":{"limit_month_total":{"used_ratio":"Inf"}}}`))
 	require.Error(t, err)
