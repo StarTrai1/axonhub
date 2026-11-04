@@ -38,7 +38,8 @@ type EmbedContentRequest struct {
 
 // EmbedContentResponse is the response for single embedContent.
 type EmbedContentResponse struct {
-	Embedding *ContentEmbedding `json:"embedding,omitempty"`
+	Embedding     *ContentEmbedding       `json:"embedding,omitempty"`
+	UsageMetadata *EmbeddingUsageMetadata `json:"usageMetadata,omitempty"`
 }
 
 // BatchEmbedContentsRequest is the batchEmbedContents request body.
@@ -48,7 +49,35 @@ type BatchEmbedContentsRequest struct {
 
 // BatchEmbedContentsResponse is the response for batchEmbedContents.
 type BatchEmbedContentsResponse struct {
-	Embeddings []*ContentEmbedding `json:"embeddings,omitempty"`
+	Embeddings    []*ContentEmbedding     `json:"embeddings,omitempty"`
+	UsageMetadata *EmbeddingUsageMetadata `json:"usageMetadata,omitempty"`
+}
+
+// EmbeddingUsageMetadata uses promptTokenDetails (singular Token), unlike
+// generateContent's promptTokensDetails. Missing usage must remain unknown.
+type EmbeddingUsageMetadata struct {
+	PromptTokenCount   *int64                `json:"promptTokenCount,omitempty"`
+	PromptTokenDetails []*ModalityTokenCount `json:"promptTokenDetails,omitempty"`
+}
+
+func convertEmbeddingUsage(metadata *EmbeddingUsageMetadata) *llm.Usage {
+	if metadata == nil || metadata.PromptTokenCount == nil || *metadata.PromptTokenCount < 0 {
+		return nil
+	}
+
+	usage := &llm.Usage{
+		PromptTokens: *metadata.PromptTokenCount,
+		TotalTokens:  *metadata.PromptTokenCount,
+	}
+	for _, detail := range metadata.PromptTokenDetails {
+		if detail != nil && detail.TokenCount >= 0 {
+			usage.PromptModalityTokenDetails = append(usage.PromptModalityTokenDetails, llm.ModalityTokenCount{
+				Modality:   detail.Modality,
+				TokenCount: detail.TokenCount,
+			})
+		}
+	}
+	return usage
 }
 
 // transformEmbeddingRequest transforms unified llm.Request to Gemini embedding HTTP request.
@@ -223,6 +252,7 @@ func convertSingleEmbeddingResponse(resp *EmbedContentResponse) *llm.Response {
 	return &llm.Response{
 		RequestType: llm.RequestTypeEmbedding,
 		APIFormat:   llm.APIFormatGeminiEmbedding,
+		Usage:       convertEmbeddingUsage(resp.UsageMetadata),
 		Embedding: &llm.EmbeddingResponse{
 			Object: "list",
 			Data:   data,
@@ -244,6 +274,7 @@ func convertBatchEmbeddingResponse(resp *BatchEmbedContentsResponse) *llm.Respon
 	return &llm.Response{
 		RequestType: llm.RequestTypeEmbedding,
 		APIFormat:   llm.APIFormatGeminiEmbedding,
+		Usage:       convertEmbeddingUsage(resp.UsageMetadata),
 		Embedding: &llm.EmbeddingResponse{
 			Object: "list",
 			Data:   data,
