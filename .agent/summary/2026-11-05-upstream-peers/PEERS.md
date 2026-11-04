@@ -967,4 +967,3 @@ Each row describes one frozen new commit. Screening is not a claim that every ch
 - [ca58c03133](https://github.com/farion1231/cc-switch/commit/ca58c0313360eae7c851fbd7553c1614c7af03e7) perf(ui): lazy-load secondary pages and provider editors (#9181)
   Decision: **different-desktop-runtime**. Tauri UI scheduling, AppImage dependencies, session reader layout and renderer lazy loading have no Axon counterpart.
   Depth: title and file inventory. Evidence: peer changed-file inventory; no Axon equivalence claimed.
-
