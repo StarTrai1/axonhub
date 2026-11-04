@@ -39,4 +39,6 @@ The wire-level fixture covers both response shapes and ten usage cases each, inc
 
 All tests, builds, lint, formatting, dependency resolution and source generation run in GitHub Actions. The final SHA must pass Test, Build, Lint, Docker build (PR) and Govulncheck. Backend/database, LLM, Windows, concurrency and the existing packaged Codex 0.166.0/gpt-6.1-sol loopback matrix remain in force. CI artifact corrections are applied and revalidated if needed.
 
+CI also exposed a pre-existing session-binding test race: the test started a follow-up request before the background pass-through observer recorded successful reasoning recovery. Synchronize that fixture on the learned rule, as the existing reasoning/agent fixtures already do, before asserting old-ciphertext avoidance and fresh-item preservation. This changes only test synchronization, not the recovery runtime or retry policy.
+
 Exact final CI/ref results and the Run GoReleaser start receipt belong in ignored local DELIVERY.md/DELIVERY.json so no post-validation commit changes the released SHA. No production installation or live provider acceptance is inferred.

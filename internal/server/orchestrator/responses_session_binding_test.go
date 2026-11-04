@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
@@ -205,6 +206,13 @@ func TestResponsesSessionBindingRecoversReasoningAfterRenewal(t *testing.T) {
 				scope, ok := responsesReasoningScope(ctx, state.CurrentCandidate.Channel, renewed)
 				require.True(t, ok)
 				t.Cleanup(func() { responsesReasoningRecoveries.Remove(scope) })
+				// Pass-through delivers raw events while the compatibility observer
+				// drains in the background. Wait for its successful-terminal evidence
+				// before testing reuse of the learned recovery on the next request.
+				require.Eventually(t, func() bool {
+					_, learned := rememberedResponsesReasoningRule(scope, original)
+					return learned
+				}, time.Second, time.Millisecond)
 				// A newly accepted target item is never covered by the old recovery.
 				nextRequest := *request
 				nextRequest.Body, err = sjson.SetRawBytes(request.Body, "input.-1", []byte(`{"type":"reasoning","id":"rs_fresh","encrypted_content":"fresh-target-reasoning","summary":[]}`))
