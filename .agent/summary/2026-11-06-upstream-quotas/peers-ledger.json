@@ -3070,8 +3070,8 @@
             "internal/provider/ultra_test.go"
           ],
           "url": "https://github.com/yetone/magpie/commit/8d94e3a38f6b244839eb45ea42abed2a8c819a12",
-          "decision": "covered-explicit-terra-speed",
-          "rationale": "Keep caller/model-map selected Terra and explicit speed policy; no automatic latest model replacement.",
+          "decision": "retain-explicit-catalog-models",
+          "rationale": "Preserve exact fetched/configured model IDs. Do not equate a peer Terra ultra catalog preset with the independent fast/ultrafast service-speed setting, or claim that preset is fully covered without a matching upstream contract.",
           "evidence": "frontend/src/features/channels/components/channels-action-dialog.tsx",
           "review_basis": "selected production patch"
         },

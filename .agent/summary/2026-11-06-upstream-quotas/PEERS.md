@@ -302,7 +302,7 @@ The cutoff is the previous committed ledger. Every new record received one title
 - [8daab00a2e](https://github.com/yetone/magpie/commit/8daab00a2e85b2896109a34ce7d6961b942b5106) gateway: a completion call Antigravity's model wrote into its text goes out of the history, the answer it repeated staying (#5091)
   retain-native-history — Do not delete Antigravity completion-like text from history heuristically; native content and call structure remain intact. Review: title and file inventory.
 - [8d94e3a38f](https://github.com/yetone/magpie/commit/8d94e3a38f6b244839eb45ea42abed2a8c819a12) codex: Ultra on GPT-6.1 Terra wherever it is served (#4909)
-  covered-explicit-terra-speed — Keep caller/model-map selected Terra and explicit speed policy; no automatic latest model replacement. Review: selected production patch.
+  retain-explicit-catalog-models — Preserve exact fetched/configured model IDs. Do not equate a peer Terra ultra catalog preset with the independent fast/ultrafast service-speed setting, or claim that preset is fully covered without a matching upstream contract. Review: selected production patch.
 - [0d14aa4d08](https://github.com/yetone/magpie/commit/0d14aa4d082f79daa9f0639f3c22039abcc9728c) gateway: a model the vendor lists after the codex picks were saved still reaches the desktop catalog (#5062)
   different-desktop-catalog — Peer local agent picker/catalog refresh behavior differs from Axon channel model discovery; preserve exact IDs and explicit model selections. Review: title and file inventory.
 - [e7948e2484](https://github.com/yetone/magpie/commit/e7948e2484468caa8ed4a0485408220edd009e24) agent: a routing group with a Claude member tells Pi its cache keeps five minutes (#5037)
@@ -397,4 +397,3 @@ The cutoff is the previous committed ledger. Every new record received one title
   desktop-specific — Desktop provider switching, process/session/UI or application installation paths differ from Axon server channels; preserve existing Axon UI. Review: title and file inventory.
 - [4e13413ff2](https://github.com/farion1231/cc-switch/commit/4e13413ff236860b445e6c7f3f7590e999de0eea) docs(manual): add the Japanese FAQ for Copilot replies showing twice
   peer-maintenance — Peer tests, documentation, release or repository maintenance; no Axon runtime change to port. Review: title and file inventory.
-
