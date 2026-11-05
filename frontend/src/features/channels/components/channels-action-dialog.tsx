@@ -1080,6 +1080,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               webSearch: currentRow.policies?.webSearch ?? 'native',
               imageGeneration: currentRow.policies?.imageGeneration ?? 'native',
               codexSpeed: currentRow.policies?.codexSpeed ?? 'auto',
+              codexMemory: currentRow.policies?.codexMemory ?? 'normal',
               supportsWebSearch: currentRow.policies?.supportsWebSearch ?? true,
               codexIdentity: currentRow.policies?.codexIdentity ?? 'off',
             },
@@ -1118,6 +1119,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                 webSearch: duplicateFromRow.policies?.webSearch ?? 'native',
               imageGeneration: duplicateFromRow.policies?.imageGeneration ?? 'native',
               codexSpeed: duplicateFromRow.policies?.codexSpeed ?? 'auto',
+              codexMemory: duplicateFromRow.policies?.codexMemory ?? 'normal',
                 supportsWebSearch: duplicateFromRow.policies?.supportsWebSearch ?? true,
                 codexIdentity: duplicateFromRow.policies?.codexIdentity ?? 'off',
               },
@@ -1153,6 +1155,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                 webSearch: 'native',
                 imageGeneration: 'native',
                 codexSpeed: 'auto',
+                codexMemory: 'normal',
                 supportsWebSearch: true,
                 codexIdentity: 'off',
               },
@@ -1776,6 +1779,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         webSearch: webSearchPolicy,
         imageGeneration: dataWithModels.policies?.imageGeneration ?? 'native',
         codexSpeed: dataWithModels.policies?.codexSpeed ?? 'auto',
+        codexMemory: dataWithModels.policies?.codexMemory ?? 'normal',
         supportsWebSearch: webSearchPolicy === 'native',
         codexIdentity: codexIdentityPolicy,
       };
@@ -2603,10 +2607,12 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                           onSearchOnlyChange={(enabled) => {
                             setCodexSearchOnly(enabled);
                             if (enabled) form.setValue('policies.webSearch', 'native');
+                            if (enabled && form.getValues('policies.codexMemory') === 'only') form.setValue('policies.codexMemory', 'normal');
                           }}
                           onImageOnlyChange={(enabled) => {
                             setCodexImageOnly(enabled);
                             if (enabled) form.setValue('policies.imageGeneration', 'native');
+                            if (enabled && form.getValues('policies.codexMemory') === 'only') form.setValue('policies.codexMemory', 'normal');
                           }}
                           onSearchModelChange={setCodexSearchModel}
                           onImageModelChange={(model) => {
@@ -3524,8 +3530,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                               )}
                             />
 
-                            {isCodexType && (
-                              <div className='flex min-w-0 flex-wrap items-center gap-x-6 gap-y-3' data-testid='codex-policy-settings'>
+                            <div className='flex min-w-0 flex-wrap items-center gap-x-6 gap-y-3' data-testid='codex-policy-settings'>
+                              {isCodexType && (
+                                <>
                                 <FormField
                                   control={form.control}
                                   name='policies.remoteCompaction'
@@ -3629,8 +3636,38 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                     )}
                                   />
                                 )}
-                              </div>
-                            )}
+                                </>
+                              )}
+                              <FormField
+                                control={form.control}
+                                name='policies.codexMemory'
+                                render={({ field }) => (
+                                  <FormItem className='flex min-w-0 flex-wrap items-center space-y-0 gap-x-2 gap-y-1.5' data-testid='codex-memory-policy-setting'>
+                                    <PolicyFieldHeader
+                                      label={t('channels.dialogs.fields.codexMemoryPolicy.label')}
+                                      description={t('channels.dialogs.fields.codexMemoryPolicy.description')}
+                                      testId='codex-memory-policy-tip'
+                                    />
+                                    <FormControl>
+                                      <CompactPolicyMenu
+                                        value={field.value ?? 'normal'}
+                                        onValueChange={(value) => {
+                                          field.onChange(value);
+                                          if (value === 'only') {
+                                            setCodexSearchOnly(false);
+                                            setCodexImageOnly(false);
+                                          }
+                                        }}
+                                        options={[{ value: 'normal' }, { value: 'exclude' }, { value: 'only' }]}
+                                        translationPrefix='channels.dialogs.fields.codexMemoryPolicy.options'
+                                        testId='codex-memory-policy'
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                            </div>
 
                             {/* Auto sync model pattern */}
                             {form.watch('autoSyncSupportedModels') && (

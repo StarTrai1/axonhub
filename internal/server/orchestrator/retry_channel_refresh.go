@@ -10,6 +10,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // errChannelUnavailableForRetry tells the pipeline to stop retrying the current
@@ -87,6 +88,9 @@ func (p *PersistentOutboundTransformer) refreshChannelBeforeRetry(ctx context.Co
 	}
 
 	if entity.Status != channel.StatusEnabled {
+		return errChannelUnavailableForRetry
+	}
+	if !entity.Policies.AllowsCodexMemoryTask(p.state.memoryTask != shared.CodexMemoryNone) {
 		return errChannelUnavailableForRetry
 	}
 	if !(&biz.Channel{Channel: entity}).AllowsCodexToolRequest(p.state.LlmRequest) {

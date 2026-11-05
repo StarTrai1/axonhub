@@ -13,6 +13,7 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/looplj/axonhub/llm/streams"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 const errorMatchBodyLimit = 8 * 1024
@@ -137,6 +138,11 @@ func (m *performanceRecording) OnOutboundRawError(ctx context.Context, err error
 	perf := m.outbound.state.Perf
 	if errors.Is(err, context.Canceled) {
 		perf.MarkCanceled()
+	} else if m.outbound.state.memoryTask != shared.CodexMemoryNone && isContentPolicyRefusal(err) {
+		// The request still fails and retains the provider error. A policy refusal
+		// is not evidence of a broken channel or an unusable credential.
+		perf.MarkSuccess()
+		perf.ResponseStatusCode = ExtractStatusCodeFromError(err)
 	} else {
 		errorCode := ExtractErrorCode(err)
 		perf.MarkFailedWithMessage(errorCode, extractErrorMessageForMatching(err))

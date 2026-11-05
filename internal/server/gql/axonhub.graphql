@@ -280,6 +280,12 @@ enum CodexSpeedPolicy {
   ultrafast
 }
 
+enum CodexMemoryPolicy {
+  normal
+  exclude
+  only
+}
+
 enum RemoteCompactionPolicy {
   auto
   native
@@ -334,6 +340,7 @@ type ChannelPolicies {
   webSearch: WebSearchPolicy
   imageGeneration: ImageGenerationPolicy
   codexSpeed: CodexSpeedPolicy
+  codexMemory: CodexMemoryPolicy
   supportsWebSearch: Boolean
   codexIdentity: CodexIdentityPolicy
   apiKeyAutoDisableMode: APIKeyAutoDisableMode
@@ -348,6 +355,7 @@ input ChannelPoliciesInput {
   webSearch: WebSearchPolicy
   imageGeneration: ImageGenerationPolicy
   codexSpeed: CodexSpeedPolicy
+  codexMemory: CodexMemoryPolicy
   supportsWebSearch: Boolean
   codexIdentity: CodexIdentityPolicy
   apiKeyAutoDisableMode: APIKeyAutoDisableMode

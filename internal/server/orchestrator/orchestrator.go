@@ -213,6 +213,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 	startedAt := time.Now()
 	lifecycleOwner, executionCtx := newStreamLifecycle(ctx)
 	ctx = executionCtx
+	ctx = codexMemoryRoutingContext(ctx, request, processor.responsesSessions)
 	memoryLease, admissionErr := codexBackgroundMemory.begin(ctx, request, lifecycleOwner.cancel)
 	if admissionErr != nil {
 		lifecycleOwner.Close()
@@ -268,6 +269,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 	state := &PersistenceState{
 		RequestStartedAt:      startedAt,
 		codexMemory:           memoryLease,
+		memoryTask:            shared.GetCodexMemoryTask(ctx),
 		ResponsesContinuation: continuation,
 		APIKey:                apiKey,
 		RequestService:        processor.RequestService,

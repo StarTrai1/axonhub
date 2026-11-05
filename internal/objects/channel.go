@@ -798,6 +798,7 @@ type ChannelPolicies struct {
 	WebSearch                WebSearchPolicy       `json:"webSearch,omitempty"`
 	ImageGeneration          ImageGenerationPolicy `json:"imageGeneration,omitempty"`
 	CodexSpeed               CodexSpeedPolicy      `json:"codexSpeed,omitempty"`
+	CodexMemory              CodexMemoryPolicy     `json:"codexMemory,omitempty"`
 	// SupportsWebSearch is the legacy two-state field. Keep it for stored-data
 	// compatibility; WebSearch takes precedence when explicitly configured.
 	SupportsWebSearch *bool `json:"supportsWebSearch,omitempty"`

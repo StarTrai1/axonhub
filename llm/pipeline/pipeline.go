@@ -38,6 +38,12 @@ type ChannelRetryable interface {
 	PrepareForRetry(ctx context.Context) error
 }
 
+// RetryAdmission can stop all automatic recovery without replacing the original
+// error. It is checked before same-channel, cross-channel and history retries.
+type RetryAdmission interface {
+	AllowRetry(error) bool
+}
+
 // ResponsesContinuationRestorer may replace an unavailable connection-local
 // continuation with authenticated full input once, before client-visible output.
 // Implementations must retain the selected destination/model and current policy.
@@ -397,6 +403,9 @@ func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*R
 		}
 
 		lastErr = err
+		if admission, ok := p.Outbound.(RetryAdmission); ok && !admission.AllowRetry(lastErr) {
+			return nil, lastErr
+		}
 		if shared.IsResponsesRecoveryError(lastErr) {
 			if restorer, ok := p.Outbound.(ResponsesContinuationRestorer); ok && !continuationRestored && ctx.Err() == nil {
 				continuationRestored = true

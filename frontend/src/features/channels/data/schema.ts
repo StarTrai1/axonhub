@@ -224,6 +224,7 @@ export const channelPoliciesSchema = z
     webSearch: webSearchPolicySchema.nullish(),
     imageGeneration: z.enum(['native', 'other_channels']).nullish(),
     codexSpeed: z.enum(['auto', 'standard', 'fast', 'ultrafast']).nullish(),
+    codexMemory: z.enum(['normal', 'exclude', 'only']).nullish(),
     supportsWebSearch: z
       .boolean()
       .nullish()
@@ -239,6 +240,7 @@ export const channelPoliciesSchema = z
     webSearch: value.webSearch ?? 'native',
     imageGeneration: value.imageGeneration ?? 'native',
     codexSpeed: value.codexSpeed ?? 'auto',
+    codexMemory: value.codexMemory ?? 'normal',
     codexIdentity: value.codexIdentity ?? 'off',
   }));
 export type ChannelPolicies = z.infer<typeof channelPoliciesSchema>;

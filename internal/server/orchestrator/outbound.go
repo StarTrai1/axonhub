@@ -758,6 +758,9 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 	}
 
 	candidate := p.state.ChannelModelsCandidates[p.state.CurrentCandidateIndex]
+	if !candidate.Channel.Policies.AllowsCodexMemoryTask(p.state.memoryTask != shared.CodexMemoryNone) {
+		return nil, fmt.Errorf("%w: channel does not allow this request under its memory policy", biz.ErrInvalidModel)
+	}
 	if !candidate.Channel.AllowsCodexToolRequest(llmRequest) {
 		return nil, fmt.Errorf("%w: channel is reserved for its selected standalone tools", biz.ErrInvalidModel)
 	}
@@ -767,6 +770,7 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 	entry := candidate.Models[p.state.CurrentModelIndex]
 
 	p.state.CurrentCandidate = candidate
+	p.state.memoryAttempts++
 	p.state.StreamCompleted = false
 	p.state.OutboundStreamTerminal = streamTerminalNone
 	p.state.CleanEOFCompletionEvidence = false
@@ -1150,6 +1154,9 @@ func (p *PersistentOutboundTransformer) NextAlternativeChannel(ctx context.Conte
 // It implements the pipeline.ChannelRetryable interface, it just check the error is retryable, the
 // pipeline will ensure the maxSameChannelRetries is not exceeded.
 func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
+	if !p.AllowRetry(err) {
+		return false
+	}
 	if p.state.CurrentCandidate == nil {
 		return false
 	}

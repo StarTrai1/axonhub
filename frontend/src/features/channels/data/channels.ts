@@ -94,6 +94,7 @@ const CREATE_CHANNEL_MUTATION = `
         webSearch
         imageGeneration
         codexSpeed
+        codexMemory
         supportsWebSearch
         codexIdentity
         apiKeyAutoDisableMode
@@ -209,6 +210,7 @@ const DUPLICATE_CHANNEL_MUTATION = `
         webSearch
         imageGeneration
         codexSpeed
+        codexMemory
         supportsWebSearch
         codexIdentity
         apiKeyAutoDisableMode
@@ -324,6 +326,7 @@ const BULK_CREATE_CHANNELS_MUTATION = `
         webSearch
         imageGeneration
         codexSpeed
+        codexMemory
         supportsWebSearch
         codexIdentity
         apiKeyAutoDisableMode
@@ -438,6 +441,7 @@ const CHANNEL_FIELDS_FRAGMENT = `
         webSearch
         imageGeneration
         codexSpeed
+        codexMemory
         supportsWebSearch
         codexIdentity
         apiKeyAutoDisableMode
@@ -705,6 +709,7 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
           webSearch
           imageGeneration
           codexSpeed
+        codexMemory
           supportsWebSearch
           codexIdentity
           apiKeyAutoDisableMode
@@ -1205,6 +1210,7 @@ const CHANNEL_QUERY_FULL_NODE_SELECTION = `
             webSearch
             imageGeneration
             codexSpeed
+        codexMemory
             supportsWebSearch
             codexIdentity
             apiKeyAutoDisableMode

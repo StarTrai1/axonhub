@@ -9,12 +9,15 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // PersistenceState holds shared state with channel management and retry capabilities.
 // TODO: move the dependencies out of the state to make it a real state.
 type PersistenceState struct {
 	codexMemory *codexMemoryLease
+	memoryTask shared.CodexMemoryTask
+	memoryAttempts int
 	APIKey      *ent.APIKey
 
 	RequestService      *biz.RequestService

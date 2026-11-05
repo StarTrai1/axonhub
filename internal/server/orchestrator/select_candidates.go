@@ -65,6 +65,7 @@ func selectCandidates(inbound *PersistentInboundTransformer, quotaProvider Provi
 		gate := NewQuotaRoutingGate(quotaProvider, systemService.QuotaRoutingSettingsOrDefault(ctx))
 		selector = WithRemoteCompactionSelector(selector)
 		selector = WithWebSearchSelector(selector)
+		selector = WithCodexMemorySelector(selector)
 
 		if len(inbound.state.LoadBalancers) > 0 {
 			selector = WithRoutingPolicyLoadBalancedSelector(

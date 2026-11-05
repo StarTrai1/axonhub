@@ -143,6 +143,9 @@ models:
   CodexSpeedPolicy:
     model:
       - github.com/looplj/axonhub/internal/objects.CodexSpeedPolicy
+  CodexMemoryPolicy:
+    model:
+      - github.com/looplj/axonhub/internal/objects.CodexMemoryPolicy
   WebSearchPolicy:
     model:
       - github.com/looplj/axonhub/internal/objects.WebSearchPolicy

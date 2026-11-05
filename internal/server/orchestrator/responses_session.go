@@ -48,6 +48,8 @@ type responsesSessionKey struct {
 }
 
 type responsesSessionRecord struct {
+	memoryTask shared.CodexMemoryTask
+	memoryThread string
 	input     []json.RawMessage
 	output    []json.RawMessage
 	sessionID string
@@ -155,12 +157,14 @@ func decodeResponsesSessionRecord(requestBody, responseBody []byte) *responsesSe
 
 	input := responseSessionInputItems(requestPayload["input"])
 	output := response.Output
-	windowID := shared.ReadCodexRequestMetadata(nil, requestBody).WindowID
-	size := rawResponseSessionValuesSize(input) + rawResponseSessionValuesSize(output) + len(windowID)
+	identity := shared.ReadCodexRequestMetadata(nil, requestBody)
+	windowID := identity.WindowID
+	memoryTask, _ := shared.ReadCodexMemoryTask(nil, requestBody)
+	size := rawResponseSessionValuesSize(input) + rawResponseSessionValuesSize(output) + len(windowID) + len(identity.ThreadID)
 	if size > responsesSessionMaxReplay {
 		return nil
 	}
-	return &responsesSessionRecord{input: input, output: output, windowID: windowID, size: size, complete: true}
+	return &responsesSessionRecord{input: input, output: output, windowID: windowID, size: size, complete: true, memoryTask: memoryTask, memoryThread: identity.ThreadID}
 }
 
 func (s *responsesSessionStore) record(ctx context.Context, requestBody, responseBody []byte) {
@@ -182,6 +186,13 @@ func (s *responsesSessionStore) recordSnapshot(ctx context.Context, requestBody,
 	}
 	if attempt := shared.GetResponsesAttempt(ctx); attempt != nil {
 		record.origin = attempt.Origin()
+	}
+	if task := shared.GetCodexMemoryTask(ctx); task != shared.CodexMemoryNone {
+		record.memoryTask = task
+	}
+	if record.memoryThread == "" {
+		record.memoryThread = shared.ReadCodexRequestMetadata(nil, requestBody).ThreadID
+		record.size += len(record.memoryThread)
 	}
 	var response struct {
 		ID string `json:"id"`
@@ -245,6 +256,8 @@ func (s *responsesSessionStore) lookup(ctx context.Context, responseID string) *
 	}
 
 	return &responsesSessionRecord{
+		memoryTask: record.memoryTask,
+		memoryThread: record.memoryThread,
 		input:     cloneResponseSessionValues(record.input),
 		output:    cloneResponseSessionValues(record.output),
 		sessionID: record.sessionID,

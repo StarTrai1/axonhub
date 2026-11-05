@@ -1117,5 +1117,13 @@
   "channels.dialogs.fields.codexSpeedPolicy.options.fast.description": "Use the matching -fast model or priority tier.",
   "channels.dialogs.fields.codexSpeedPolicy.options.ultrafast.label": "Ultrafast",
   "channels.dialogs.fields.codexSpeedPolicy.options.ultrafast.description": "Use the matching -ultrafast model or ultrafast tier.",
-  "channels.dialogs.buttons.backToChannel": "Back to channel"
+  "channels.dialogs.buttons.backToChannel": "Back to channel",
+  "channels.dialogs.fields.codexMemoryPolicy.label": "Long-term memory policy",
+  "channels.dialogs.fields.codexMemoryPolicy.description": "Route Codex memory extraction and consolidation by task metadata, not model or reasoning effort. Normal channels can serve both; exclude memory on conversation channels and select memory only on dedicated channels. Existing model mappings and access limits still apply.",
+  "channels.dialogs.fields.codexMemoryPolicy.options.normal.label": "Normal routing",
+  "channels.dialogs.fields.codexMemoryPolicy.options.normal.description": "Allow ordinary conversations and memory tasks under existing routing rules.",
+  "channels.dialogs.fields.codexMemoryPolicy.options.exclude.label": "Exclude memory",
+  "channels.dialogs.fields.codexMemoryPolicy.options.exclude.description": "Serve ordinary conversations; send memory tasks to other eligible channels.",
+  "channels.dialogs.fields.codexMemoryPolicy.options.only.label": "Memory only",
+  "channels.dialogs.fields.codexMemoryPolicy.options.only.description": "Serve memory extraction and consolidation only; exclude ordinary conversations and standalone tools."
 }
