@@ -15,6 +15,9 @@ import (
 // providers without aliases receive the native service_tier parameter.
 func (t *OutboundTransformer) resolveSpeed(model string, serviceTier *string) (string, *string) {
 	base, aliasTier, alias := SpeedModel(model)
+	if !alias && t.speedModels[model] {
+		base, aliasTier, alias = relaySpeedModel(model)
+	}
 	if t.preserveSpeedModel && alias && t.defaultServiceTier == "" && (serviceTier == nil || strings.TrimSpace(*serviceTier) == "") {
 		return model, serviceTier
 	}
@@ -53,9 +56,21 @@ func (t *OutboundTransformer) resolveSpeed(model string, serviceTier *string) (s
 	return model, lo.ToPtr(tier)
 }
 
+// relaySpeedModel is only used for model names explicitly configured on a
+// relay channel. It must not infer aliases for unlisted or official models.
+func relaySpeedModel(model string) (base, tier string, ok bool) {
+	if base, ok := strings.CutSuffix(model, "-ultrafast"); ok && base != "" {
+		return base, "ultrafast", true
+	}
+	if base, ok := strings.CutSuffix(model, "-fast"); ok && base != "" {
+		return base, "priority", true
+	}
+	return "", "", false
+}
+
 // normalizeFastModelRequest runs after body pass-through and overrides. These
-// aliases are gateway conveniences; the upstream receives the base model and
-// service tier. Patch only those fields so native Responses extensions survive.
+// fields resolve to an exact configured relay alias or a native service tier.
+// Patch only those fields so native Responses extensions survive.
 func (t *OutboundTransformer) normalizeFastModelRequest(request *httpclient.Request) *httpclient.Request {
 	if t == nil || request == nil {
 		return request

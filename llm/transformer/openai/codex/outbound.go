@@ -131,7 +131,7 @@ func NewOutboundTransformer(params Params) (*OutboundTransformer, error) {
 	speedModels := make(map[string]bool)
 	if !official {
 		for _, model := range params.SupportedModels {
-			if _, _, ok := SpeedModel(model); ok {
+			if _, _, ok := relaySpeedModel(model); ok {
 				speedModels[model] = true
 			}
 		}
