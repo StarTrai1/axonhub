@@ -12,7 +12,7 @@ import (
 )
 
 func TestChannelDedicatedWorkloadsCompose(t *testing.T) {
-	for flags := 0; flags < 8; flags++ {
+	for flags := range 8 {
 		ch := &Channel{Channel: &ent.Channel{Type: channel.TypeCodex, Settings: &objects.ChannelSettings{CodexSearchOnly: flags&1 != 0, CodexImageOnly: flags&2 != 0}}}
 		if flags&4 != 0 {
 			ch.Policies.CodexMemory = objects.CodexMemoryOnly

@@ -24,7 +24,7 @@ func (s *WebSearchSelector) Select(ctx context.Context, req *llm.Request) ([]*Ch
 	if err != nil {
 		return nil, err
 	}
-	candidates = filterSearchOnlyCandidates(candidates, req)
+	candidates = filterSearchOnlyCandidates(candidates, req, ctx)
 
 	if len(candidates) == 0 || req == nil || req.APIFormat != llm.APIFormatOpenAISearch {
 		return candidates, nil

@@ -47,8 +47,8 @@ func (s *DefaultSelector) selectImageOnlyCandidates(ctx context.Context, req *ll
 	return candidates
 }
 
-func filterSearchOnlyCandidates(candidates []*ChannelModelsCandidate, req *llm.Request, contexts ...context.Context) []*ChannelModelsCandidate {
-	memory := len(contexts) > 0 && shared.GetCodexMemoryTask(contexts[0]) != shared.CodexMemoryNone
+func filterSearchOnlyCandidates(candidates []*ChannelModelsCandidate, req *llm.Request, ctx context.Context) []*ChannelModelsCandidate {
+	memory := shared.GetCodexMemoryTask(ctx) != shared.CodexMemoryNone
 	for i, candidate := range candidates {
 		if candidate != nil && !candidate.Channel.AllowsWorkload(req, memory) {
 			filtered := make([]*ChannelModelsCandidate, 0, len(candidates)-1)

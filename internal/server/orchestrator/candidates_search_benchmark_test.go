@@ -20,7 +20,7 @@ func BenchmarkSearchOnlyGenerationFilter(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for b.Loop() {
-		searchCandidateBenchmarkSink = filterSearchOnlyCandidates(candidates, req)
+		searchCandidateBenchmarkSink = filterSearchOnlyCandidates(candidates, req, b.Context())
 	}
 }
 
