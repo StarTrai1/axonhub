@@ -17,6 +17,10 @@ type ImageRequest struct {
 	Mask          []byte          `json:"-"`
 	MaskReference *ImageReference `json:"mask,omitempty"`
 
+	// Markup is a separate transparent annotation overlay for native image edits.
+	Markup          []byte          `json:"-"`
+	MarkupReference *ImageReference `json:"markup,omitempty"`
+
 	// N is the number of images to generate.
 	N *int64 `json:"n,omitempty"`
 

@@ -338,6 +338,7 @@ func (s *outboundStream) transformStreamChunk(event *httpclient.StreamEvent) (*l
 		}
 
 		if streamEvent.Delta != nil && streamEvent.Delta.StopReason != nil {
+			// Determine finish reason (shared with the non-streaming path).
 			finishReason := convertToLlmFinishReason(streamEvent.Delta.StopReason)
 
 			// CRITICAL: Always include Delta field (even if empty) when finish_reason is present.

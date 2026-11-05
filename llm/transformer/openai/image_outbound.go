@@ -46,7 +46,7 @@ func (t *OutboundTransformer) buildImageGenerationAPIRequest(ctx context.Context
 		rawReq, err = t.buildImageVariationRequest(chatReq, apiKey)
 		fmtType = llm.APIFormatOpenAIImageVariation
 	case llm.APIFormatOpenAIImageEdit:
-		if t.config.ImageEditJSON || len(chatReq.Image.ImageReferences) > len(chatReq.Image.Images) || (chatReq.Image.MaskReference != nil && len(chatReq.Image.Mask) == 0) {
+		if t.config.ImageEditJSON || len(chatReq.Image.ImageReferences) > len(chatReq.Image.Images) || (chatReq.Image.MaskReference != nil && len(chatReq.Image.Mask) == 0) || (chatReq.Image.MarkupReference != nil && len(chatReq.Image.Markup) == 0) {
 			rawReq, err = t.buildImageEditJSONRequest(chatReq, apiKey)
 		} else {
 			rawReq, err = t.buildImageEditRequest(chatReq, apiKey)
@@ -265,6 +265,16 @@ func (t *OutboundTransformer) buildImageEditRequest(chatReq *llm.Request, apiKey
 		}
 
 		jsonBody["mask"] = maskFile
+	}
+	if len(chatReq.Image.Markup) > 0 {
+		file := newImageFormFile("markup", chatReq.Image.Markup)
+		h := make(textproto.MIMEHeader)
+		h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="markup"; filename="%s"`, file.Filename))
+		h.Set("Content-Type", file.ContentType)
+		part, err := writer.CreatePart(h)
+		if err != nil { return nil, fmt.Errorf("create markup file: %w", err) }
+		if _, err := part.Write(file.Data); err != nil { return nil, fmt.Errorf("write markup file: %w", err) }
+		jsonBody["markup"] = file
 	}
 
 	// Add prompt

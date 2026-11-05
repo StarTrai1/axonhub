@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"slices"
+	"time"
 
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
@@ -90,10 +91,10 @@ func (p *PersistentOutboundTransformer) refreshChannelBeforeRetry(ctx context.Co
 	if entity.Status != channel.StatusEnabled {
 		return errChannelUnavailableForRetry
 	}
-	if !entity.Policies.AllowsCodexMemoryTask(p.state.memoryTask != shared.CodexMemoryNone) {
+	if quotaReserveBlocks(ctx, &biz.Channel{Channel: entity}, p.state.LlmRequest, p.state.memoryTask != shared.CodexMemoryNone, p.state.quotaReserveProvider, time.Now()) {
 		return errChannelUnavailableForRetry
 	}
-	if !(&biz.Channel{Channel: entity}).AllowsCodexToolRequest(p.state.LlmRequest) {
+	if !(&biz.Channel{Channel: entity}).AllowsWorkload(p.state.LlmRequest, p.state.memoryTask != shared.CodexMemoryNone) {
 		return errChannelUnavailableForRetry
 	}
 	if isStandaloneSearch(p.state.LlmRequest) && !(&biz.Channel{Channel: entity}).AllowsStandaloneSearch() {

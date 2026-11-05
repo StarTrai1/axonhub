@@ -715,8 +715,8 @@ func (p *PersistentOutboundTransformer) refreshCandidateAPIFormat(
 	}
 
 	entry := candidate.Models[modelIndex]
-	endpoints := applyForcedAPIFormats(ctx, candidate.Channel, []biz.ChannelModelEntry{entry}, requestModel, candidate.Channel.ResolveEndpoints())
-	candidate.APIFormat = SelectAPIFormat(endpoints, req)
+	endpoints, forced := applyForcedAPIFormats(ctx, candidate.Channel, []biz.ChannelModelEntry{entry}, requestModel, candidate.Channel.ResolveEndpoints())
+	candidate.APIFormat = selectEndpointAPIFormat(endpoints, req, forced)
 }
 
 // APIFormat returns the API format of the transformer.
@@ -758,10 +758,10 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 	}
 
 	candidate := p.state.ChannelModelsCandidates[p.state.CurrentCandidateIndex]
-	if !candidate.Channel.Policies.AllowsCodexMemoryTask(p.state.memoryTask != shared.CodexMemoryNone) {
-		return nil, fmt.Errorf("%w: channel does not allow this request under its memory policy", biz.ErrInvalidModel)
+	if quotaReserveBlocks(ctx, candidate.Channel, llmRequest, p.state.memoryTask != shared.CodexMemoryNone, p.state.quotaReserveProvider, time.Now()) {
+		return nil, NewQuotaExhaustedError(llmRequest.Model)
 	}
-	if !candidate.Channel.AllowsCodexToolRequest(llmRequest) {
+	if !candidate.Channel.AllowsWorkload(llmRequest, p.state.memoryTask != shared.CodexMemoryNone) {
 		return nil, fmt.Errorf("%w: channel is reserved for its selected standalone tools", biz.ErrInvalidModel)
 	}
 	if isStandaloneSearch(llmRequest) && !candidate.Channel.AllowsStandaloneSearch() {
@@ -1070,6 +1070,9 @@ func (p *PersistentOutboundTransformer) NextChannel(ctx context.Context) error {
 	p.resetPassThroughStreamState()
 
 	p.state.CurrentCandidateIndex++
+	for p.state.CurrentCandidateIndex < len(p.state.ChannelModelsCandidates) && p.state.memoryRejectedChannels[p.state.ChannelModelsCandidates[p.state.CurrentCandidateIndex].Channel.ID] {
+		p.state.CurrentCandidateIndex++
+	}
 
 	p.state.CurrentModelIndex = 0
 	if p.state.CurrentCandidateIndex >= len(p.state.ChannelModelsCandidates) {
@@ -1155,6 +1158,9 @@ func (p *PersistentOutboundTransformer) NextAlternativeChannel(ctx context.Conte
 // pipeline will ensure the maxSameChannelRetries is not exceeded.
 func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
 	if !p.AllowRetry(err) {
+		return false
+	}
+	if p.state.memoryTask != shared.CodexMemoryNone && isContentPolicyRefusal(err) {
 		return false
 	}
 	if p.state.CurrentCandidate == nil {

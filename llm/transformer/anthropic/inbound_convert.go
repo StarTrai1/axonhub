@@ -784,6 +784,9 @@ func convertToAnthropicResponse(chatResp *llm.Response) *Message {
 			case "tool_calls":
 				stopReason := "tool_use"
 				resp.StopReason = &stopReason
+			case "content_filter":
+				stopReason := "refusal"
+				resp.StopReason = &stopReason
 			default:
 				resp.StopReason = choice.FinishReason
 			}

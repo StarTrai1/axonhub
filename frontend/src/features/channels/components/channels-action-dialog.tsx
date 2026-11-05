@@ -152,6 +152,8 @@ const OPENAI_RESPONSES_WEBSOCKET: ApiFormatOption = 'openai/responses-ws';
 const OPENAI_RESPONSES_WEBSOCKET_BASE_URL = 'wss://api.openai.com/v1#';
 const HTTP2_CONNECTION_SHARD_OPTIONS = [1, 2, 4, 8] as const;
 
+import { ChannelQuotaReserveFields, type QuotaReserve } from './channel-quota-reserve';
+
 const ROUTING_TIER_OPTIONS: ReadonlyArray<{
   value: RoutingTier;
 }> = [{ value: 'preferred' }, { value: 'standard' }, { value: 'fallback' }];
@@ -725,6 +727,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const [codexSearchOnly, setCodexSearchOnly] = useState(() => initialRow?.settings?.codexSearchOnly ?? false);
   const [codexImageOnly, setCodexImageOnly] = useState(() => initialRow?.settings?.codexImageOnly ?? false);
   const [codexImageModel, setCodexImageModel] = useState(() => initialRow?.settings?.codexImageModel ?? '');
+  const [quotaReserve, setQuotaReserve] = useState<QuotaReserve | null>(() => initialRow?.settings?.quotaReserve ?? null);
   const [quotaRoutingMode, setQuotaRoutingMode] = useState<ChannelQuotaRoutingMode>(() => recallQuotaRoutingMode(initialRow?.settings));
   const [retryableStatusCodesText, setRetryableStatusCodesText] = useState(() =>
     formatRetryableStatusCodes(initialRow?.settings?.retryableStatusCodes)
@@ -1675,6 +1678,11 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         values.credentials.apiKeys = [...new Set(values.credentials.apiKeys.map((key) => key.trim()).filter((key) => key.length > 0))];
       }
 
+      if (quotaReserve && [quotaReserve.fiveHourPercent, quotaReserve.sevenDayPercent].some((percent) => percent != null && (!Number.isInteger(percent) || percent < 1 || percent > 100))) {
+        toast.error(t('channels.dialogs.fields.quotaReserve.validation'));
+        return;
+      }
+
       const retryableStatusCodes = parseRetryableStatusCodesInput(retryableStatusCodesText);
       if (retryableStatusCodes === null) {
         toast.error(t('channels.dialogs.retryableStatusCodes.validation'));
@@ -1855,6 +1863,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           // field when the patch omits it and carries the null clear through.
           providerQuota: settingsForSubmit?.providerQuota,
           ...quotaRoutingModeSettingsPatch(quotaRoutingMode),
+          quotaReserve: quotaReserve,
           codexSearchOnly: isCodexType ? codexSearchOnly : false,
           codexImageOnly: isCodexType ? codexImageOnly : false,
           codexPreserveSpeedModel: false,
@@ -1927,6 +1936,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
           responseTimeout,
           ...quotaRoutingModeSettingsPatch(quotaRoutingMode),
+          quotaReserve: quotaReserve,
           codexSearchOnly: isCodexType ? codexSearchOnly : false,
           codexImageOnly: isCodexType ? codexImageOnly : false,
           codexPreserveSpeedModel: false,
@@ -2366,6 +2376,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             const initialShards = initialRow?.settings?.http2ConnectionShards ?? 0;
             setHTTP2ConnectionShards(initialShards >= 1 && initialShards <= 8 ? initialShards : 1);
             setQuotaRoutingMode(recallQuotaRoutingMode(initialRow?.settings));
+            setQuotaReserve(initialRow?.settings?.quotaReserve ?? null);
             setCodexSearchOnly(initialRow?.settings?.codexSearchOnly ?? false);
             setCodexImageOnly(initialRow?.settings?.codexImageOnly ?? false);
             setCodexImageModel(initialRow?.settings?.codexImageModel ?? '');
@@ -2607,12 +2618,10 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                           onSearchOnlyChange={(enabled) => {
                             setCodexSearchOnly(enabled);
                             if (enabled) form.setValue('policies.webSearch', 'native');
-                            if (enabled && form.getValues('policies.codexMemory') === 'only') form.setValue('policies.codexMemory', 'normal');
                           }}
                           onImageOnlyChange={(enabled) => {
                             setCodexImageOnly(enabled);
                             if (enabled) form.setValue('policies.imageGeneration', 'native');
-                            if (enabled && form.getValues('policies.codexMemory') === 'only') form.setValue('policies.codexMemory', 'normal');
                           }}
                           onSearchModelChange={setCodexSearchModel}
                           onImageModelChange={(model) => {
@@ -3369,6 +3378,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                         </div>
                       </FormItem>
 
+                      {(isCodexType || selectedProvider === 'claudecode') && <ChannelQuotaReserveFields value={quotaReserve} onChange={setQuotaReserve} />}
+
                       <FormField
                         control={form.control}
                         name='policies.stream'
@@ -3653,10 +3664,6 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                         value={field.value ?? 'normal'}
                                         onValueChange={(value) => {
                                           field.onChange(value);
-                                          if (value === 'only') {
-                                            setCodexSearchOnly(false);
-                                            setCodexImageOnly(false);
-                                          }
                                         }}
                                         options={[{ value: 'normal' }, { value: 'exclude' }, { value: 'only' }]}
                                         translationPrefix='channels.dialogs.fields.codexMemoryPolicy.options'

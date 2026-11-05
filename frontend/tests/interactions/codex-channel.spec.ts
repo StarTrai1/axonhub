@@ -34,8 +34,8 @@ for (const width of [1280, 768, 390]) {
     await memory.click();
     await expect(page.getByRole('menuitemradio')).toHaveCount(3);
     await page.getByTestId('codex-memory-policy-only').click();
-    await expect(search).toHaveAttribute('aria-checked', 'false');
-    await expect(image).toHaveAttribute('aria-checked', 'false');
+    await expect(search).toHaveAttribute('aria-checked', 'true');
+    await expect(image).toHaveAttribute('aria-checked', 'true');
     await page.getByTestId('channel-submit-button').click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await page.getByTestId('reopen-codex').click();
@@ -65,7 +65,7 @@ for (const width of [1280, 768, 390]) {
     await expect(page.locator('html')).toHaveClass(/dark/);
     await page.screenshot({ animations: 'disabled', path: testInfo.outputPath('codex-memory-zh-dark.png') });
     await search.click();
-    await expect(memory).toContainText('正常参与');
+    await expect(memory).toContainText('仅处理记忆');
   });
 }
 
@@ -229,5 +229,66 @@ for (const width of [1280, 768, 390]) {
     await page.getByTestId('image-generation-policy-other_channels').click();
     await expect(imageToggle).toHaveAttribute('aria-checked', 'false');
     await expect(toggle).toHaveAttribute('aria-checked', 'true');
+  });
+}
+
+for (const width of [1280, 768, 390]) {
+  test(`Quota reserve saves independently of dedicated workloads at ${width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 1100 });
+    let saved: Record<string, unknown> = {
+      id: 'channel-preview', createdAt: '2026-10-17T00:00:00Z', updatedAt: '2026-10-17T00:00:00Z',
+      name: 'Codex fixture', type: 'codex', status: 'enabled', baseURL: 'https://chatgpt.com/backend-api/codex#',
+      credentials: { apiKey: JSON.stringify({ access_token: 'synthetic', refresh_token: 'synthetic' }) },
+      policies: { codexMemory: 'normal', webSearch: 'auto' }, supportedModels: ['gpt-6.1-sol'], defaultTestModel: 'gpt-6.1-sol', settings: {},
+    };
+    await page.route('**/fixture/channel', (route) => route.fulfill({ json: saved }));
+    await page.route('**/admin/graphql', async (route) => {
+      const body = route.request().postDataJSON();
+      if (body.operationName === 'UpdateChannel') {
+        saved = { ...saved, ...body.variables.input };
+        await route.fulfill({ json: { data: { updateChannel: saved } } });
+      } else {
+        await route.fulfill({ json: { data: { queryChannels: { edges: [{ node: saved, cursor: 'fixture' }], totalCount: 1, pageInfo: {} }, allChannelTags: [], channelDisabledAPIKeys: [], proxyPresets: [] } } });
+      }
+    });
+    await page.goto('/tests/interactions/codex-channel.html');
+    const section = page.getByTestId('channel-quota-reserve');
+    const enabled = page.getByTestId('quota-reserve-enabled');
+    await enabled.click();
+    await page.getByTestId('quota-reserve-fiveHourPercent').fill('90');
+    await page.getByTestId('quota-reserve-sevenDayPercent').fill('85');
+    await page.getByTestId('quota-reserve-action').click();
+    await page.getByRole('option', { name: 'Keep selected tools', exact: true }).click();
+    await page.getByTestId('quota-reserve-allowImage').click();
+    await section.locator('label[for="quota-reserve-enabled"]').hover();
+    await page.waitForTimeout(800);
+    await expect(page.getByRole('tooltip')).toHaveCount(0);
+    await page.getByTestId('quota-reserve-tip').hover();
+    await expect(page.getByRole('tooltip')).toBeVisible();
+    await page.mouse.move(0, 0);
+    await page.getByTestId('channel-submit-button').click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    expect((saved.settings as Record<string, unknown>).quotaReserve).toEqual({ fiveHourPercent: 90, sevenDayPercent: 85, allowSearch: true, allowImage: false, allowMemory: true });
+    expect((saved.policies as Record<string, unknown>).codexMemory).toBe('normal');
+    await page.getByTestId('reopen-codex').click();
+    await enabled.scrollIntoViewIfNeeded();
+    await expect(enabled).toHaveAttribute('aria-checked', 'true');
+    await expect(page.getByTestId('quota-reserve-sevenDayPercent')).toHaveValue('85');
+    await expect(page.getByTestId('quota-reserve-allowImage')).not.toBeChecked();
+    await page.getByTestId('zh-locale').evaluate((element) => (element as HTMLButtonElement).click());
+    expect(await section.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
+    await section.scrollIntoViewIfNeeded();
+    await page.screenshot({ animations: 'disabled', path: testInfo.outputPath('codex-quota-reserve-zh-light.png') });
+    await page.getByTestId('dark-theme').evaluate((element) => (element as HTMLButtonElement).click());
+    await page.screenshot({ animations: 'disabled', path: testInfo.outputPath('codex-quota-reserve-zh-dark.png') });
+    await page.getByTestId('quota-reserve-sevenDayPercent').fill('');
+    await page.getByTestId('channel-submit-button').click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    expect((saved.settings as Record<string, unknown>).quotaReserve).toMatchObject({ sevenDayPercent: null });
+    await page.getByTestId('reopen-codex').click();
+    await enabled.click();
+    await page.getByTestId('channel-submit-button').click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    expect((saved.settings as Record<string, unknown>).quotaReserve).toBeNull();
   });
 }

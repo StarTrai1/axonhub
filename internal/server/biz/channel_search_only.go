@@ -6,6 +6,18 @@ import (
 	"github.com/looplj/axonhub/llm"
 )
 
+// AllowsWorkload combines independently selected dedicated workloads. Enabling
+// any dedicated scope excludes foreground chat, without clearing other scopes.
+func (ch *Channel) AllowsWorkload(req *llm.Request, memory bool) bool {
+	if ch == nil || ch.Channel == nil { return false }
+	policy := ch.Policies.EffectiveCodexMemoryPolicy()
+	if memory {
+		return policy != objects.CodexMemoryExclude && (!ch.IsCodexToolOnly() || policy == objects.CodexMemoryOnly)
+	}
+	if policy == objects.CodexMemoryOnly && !ch.IsCodexToolOnly() { return false }
+	return ch.AllowsCodexToolRequest(req)
+}
+
 // IsCodexSearchOnly is an opt-in routing restriction, independent of the
 // channel's advertised generation models or its Responses transport.
 func (ch *Channel) IsCodexSearchOnly() bool {

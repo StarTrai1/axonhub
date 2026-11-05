@@ -674,6 +674,9 @@ func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateCh
 			return nil, err
 		}
 
+		if err := input.Settings.QuotaReserve.Validate(); err != nil {
+			return nil, err
+		}
 		if err := ValidateMaxSingleChannelRetries(input.Settings); err != nil {
 			return nil, err
 		}
@@ -1005,6 +1008,9 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 			input.Settings = sanitizedSettings
 		}
 
+		if err := input.Settings.QuotaReserve.Validate(); err != nil {
+			return nil, err
+		}
 		if err := ValidateMaxSingleChannelRetries(input.Settings); err != nil {
 			return nil, err
 		}

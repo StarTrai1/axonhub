@@ -53,7 +53,7 @@ func (s *CodexMemorySelector) Select(ctx context.Context, req *llm.Request) ([]*
 	memory := shared.GetCodexMemoryTask(ctx) != shared.CodexMemoryNone
 	var selected []*ChannelModelsCandidate
 	for _, candidate := range candidates {
-		if candidate != nil && candidate.Channel != nil && candidate.Channel.Policies.AllowsCodexMemoryTask(memory) {
+		if candidate != nil && candidate.Channel != nil && candidate.Channel.AllowsWorkload(req, memory) {
 			selected = append(selected, candidate)
 		}
 	}
@@ -69,7 +69,12 @@ func (p *PersistentOutboundTransformer) AllowRetry(err error) bool {
 	if isContentPolicyRefusal(err) {
 		log.Info(context.Background(), "Codex memory request refused by upstream content policy",
 			log.String("memory_task", string(p.state.memoryTask)))
-		return false
+		ch := p.GetCurrentChannel()
+		if !isRetryableErrorForChannel(err, ch) { return false }
+		if ch != nil {
+			if p.state.memoryRejectedChannels == nil { p.state.memoryRejectedChannels = make(map[int]bool) }
+			p.state.memoryRejectedChannels[ch.ID] = true
+		}
 	}
 	return p.state.memoryAttempts < codexMemoryMaxAttempts
 }

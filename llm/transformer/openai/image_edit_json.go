@@ -86,6 +86,9 @@ func (t *OutboundTransformer) buildImageEditJSONRequest(req *llm.Request, apiKey
 	if img.MaskReference == nil && len(img.Mask) > 0 {
 		img.MaskReference = &llm.ImageReference{ImageURL: encodeImageBytesToDataURL(img.Mask)}
 	}
+	if img.MarkupReference == nil && len(img.Markup) > 0 {
+		img.MarkupReference = &llm.ImageReference{ImageURL: encodeImageBytesToDataURL(img.Markup)}
+	}
 	if img.PartialImages != nil || img.ResponseFormat != "" || img.Style != "" {
 		return nil, fmt.Errorf("%w: partial_images, response_format and style are unsupported for JSON image edits", transformer.ErrInvalidRequest)
 	}

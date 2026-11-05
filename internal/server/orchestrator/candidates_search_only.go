@@ -6,6 +6,7 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 func isStandaloneSearch(req *llm.Request) bool {
@@ -46,13 +47,14 @@ func (s *DefaultSelector) selectImageOnlyCandidates(ctx context.Context, req *ll
 	return candidates
 }
 
-func filterSearchOnlyCandidates(candidates []*ChannelModelsCandidate, req *llm.Request) []*ChannelModelsCandidate {
+func filterSearchOnlyCandidates(candidates []*ChannelModelsCandidate, req *llm.Request, contexts ...context.Context) []*ChannelModelsCandidate {
+	memory := len(contexts) > 0 && shared.GetCodexMemoryTask(contexts[0]) != shared.CodexMemoryNone
 	for i, candidate := range candidates {
-		if candidate != nil && !candidate.Channel.AllowsCodexToolRequest(req) {
+		if candidate != nil && !candidate.Channel.AllowsWorkload(req, memory) {
 			filtered := make([]*ChannelModelsCandidate, 0, len(candidates)-1)
 			filtered = append(filtered, candidates[:i]...)
 			for _, remaining := range candidates[i+1:] {
-				if remaining == nil || remaining.Channel.AllowsCodexToolRequest(req) {
+				if remaining == nil || remaining.Channel.AllowsWorkload(req, memory) {
 					filtered = append(filtered, remaining)
 				}
 			}
@@ -79,7 +81,7 @@ func (s *DefaultSelector) selectSearchOnlyCandidates(ctx context.Context, req *l
 			continue
 		}
 		entry := biz.ChannelModelEntry{RequestModel: req.Model, ActualModel: model, Source: "search_only"}
-		endpoints := applyForcedAPIFormatsForRequest(ctx, ch, []biz.ChannelModelEntry{entry}, req.Model, req.RequestType, ch.ResolveEndpoints())
+		endpoints, _ := applyForcedAPIFormatsForRequest(ctx, ch, []biz.ChannelModelEntry{entry}, req.Model, req.RequestType, ch.ResolveEndpoints())
 		format := SelectAPIFormat(endpoints, req)
 		if format != llm.APIFormatOpenAISearch.String() {
 			continue

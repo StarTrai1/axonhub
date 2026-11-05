@@ -122,7 +122,7 @@ func (s *DefaultSelector) Select(ctx context.Context, req *llm.Request) ([]*Chan
 		}
 	}
 	if len(searchOnly) == 0 && !isStandaloneSearch(req) {
-		return filterSearchOnlyCandidates(candidates, req), nil
+		return filterSearchOnlyCandidates(candidates, req, ctx), nil
 	}
 	// Dedicated search channels are injected before project/key profile filters.
 	// They do not create generation associations for the requested model.
@@ -130,7 +130,7 @@ func (s *DefaultSelector) Select(ctx context.Context, req *llm.Request) ([]*Chan
 	// Dedicated search selection owns the explicit model even when this channel
 	// also appears through a matching generation model association.
 	if isStandaloneSearch(req) || isStandaloneImage(req) {
-		candidates = filterSearchOnlyCandidates(candidates, nil)
+		candidates = filterSearchOnlyCandidates(candidates, nil, ctx)
 	}
 	for _, candidate := range candidates {
 		seen[candidate.Channel.ID] = true
@@ -140,7 +140,7 @@ func (s *DefaultSelector) Select(ctx context.Context, req *llm.Request) ([]*Chan
 			candidates = append(candidates, candidate)
 		}
 	}
-	return filterSearchOnlyCandidates(candidates, req), nil
+	return filterSearchOnlyCandidates(candidates, req, ctx), nil
 }
 
 func (s *DefaultSelector) selectModelOrChannelCandidates(ctx context.Context, req *llm.Request) ([]*ChannelModelsCandidate, error) {
@@ -175,8 +175,8 @@ func (s *DefaultSelector) selectChannelCadidates(ctx context.Context, req *llm.R
 			continue
 		}
 
-		endpoints := applyForcedAPIFormatsForRequest(ctx, ch, []biz.ChannelModelEntry{entry}, req.Model, req.RequestType, ch.ResolveEndpoints())
-		apiFormat := SelectAPIFormat(endpoints, req)
+		endpoints, forced := applyForcedAPIFormatsForRequest(ctx, ch, []biz.ChannelModelEntry{entry}, req.Model, req.RequestType, ch.ResolveEndpoints())
+		apiFormat := selectEndpointAPIFormat(endpoints, req, forced)
 		if requiresExplicitEndpoint(req.RequestType) && apiFormat == "" {
 			continue
 		}
@@ -1230,8 +1230,8 @@ func (s *SpecifiedChannelSelector) Select(ctx context.Context, req *llm.Request)
 		return nil, fmt.Errorf("model %s not supported in channel %s", req.Model, channel.Name)
 	}
 
-	endpoints := applyForcedAPIFormatsForRequest(ctx, channel, []biz.ChannelModelEntry{entry}, req.Model, req.RequestType, channel.ResolveEndpoints())
-	apiFormat := SelectAPIFormat(endpoints, req)
+	endpoints, forced := applyForcedAPIFormatsForRequest(ctx, channel, []biz.ChannelModelEntry{entry}, req.Model, req.RequestType, channel.ResolveEndpoints())
+	apiFormat := selectEndpointAPIFormat(endpoints, req, forced)
 	if requiresExplicitEndpoint(req.RequestType) && apiFormat == "" {
 		return []*ChannelModelsCandidate{}, nil
 	}

@@ -52,6 +52,10 @@ func (g *QuotaRoutingGate) Filter(
 	decisions := make([]quotaRoutingDecision, 0, len(candidates))
 	phaseOne := make([]*ChannelModelsCandidate, 0, len(candidates))
 	for _, candidate := range candidates {
+		if g.reserveBlocks(ctx, candidate, req) {
+			decisions = append(decisions, quotaRoutingDecision{candidate: candidate, reason: "quota_reserve_threshold"})
+			continue
+		}
 		decision := g.evaluate(ctx, candidate, limitType, stickyID)
 		decisions = append(decisions, decision)
 		if decision.keepPhaseOne {

@@ -132,6 +132,7 @@ const CREATE_CHANNEL_MUTATION = `
         codexPreserveSpeedModel
         codexSearchModel
         quotaRoutingMode
+        quotaReserve { fiveHourPercent sevenDayPercent allowSearch allowImage allowMemory }
         proxy {
           type
           url
@@ -248,6 +249,7 @@ const DUPLICATE_CHANNEL_MUTATION = `
         codexPreserveSpeedModel
         codexSearchModel
         quotaRoutingMode
+        quotaReserve { fiveHourPercent sevenDayPercent allowSearch allowImage allowMemory }
         proxy {
           type
           url
@@ -364,6 +366,7 @@ const BULK_CREATE_CHANNELS_MUTATION = `
         codexPreserveSpeedModel
         codexSearchModel
         quotaRoutingMode
+        quotaReserve { fiveHourPercent sevenDayPercent allowSearch allowImage allowMemory }
         proxy {
           type
           url
@@ -479,6 +482,7 @@ const CHANNEL_FIELDS_FRAGMENT = `
         codexPreserveSpeedModel
         codexSearchModel
         quotaRoutingMode
+        quotaReserve { fiveHourPercent sevenDayPercent allowSearch allowImage allowMemory }
         proxy {
           type
           url
@@ -759,6 +763,7 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
           codexPreserveSpeedModel
         codexSearchModel
           quotaRoutingMode
+          quotaReserve { fiveHourPercent sevenDayPercent allowSearch allowImage allowMemory }
           transformOptions {
             forceArrayInstructions
             forceArrayInputs
@@ -1013,6 +1018,7 @@ const BULK_UPDATE_CHANNEL_ORDERING_MUTATION = `
           codexPreserveSpeedModel
         codexSearchModel
           quotaRoutingMode
+          quotaReserve { fiveHourPercent sevenDayPercent allowSearch allowImage allowMemory }
           transformOptions {
             forceArrayInstructions
             forceArrayInputs
@@ -1272,6 +1278,7 @@ const CHANNEL_QUERY_FULL_NODE_SELECTION = `
             codexPreserveSpeedModel
         codexSearchModel
             quotaRoutingMode
+            quotaReserve { fiveHourPercent sevenDayPercent allowSearch allowImage allowMemory }
             bodyOverrideOperations {
               op
               path
@@ -1409,6 +1416,7 @@ const CHANNEL_QUERY_ROUTING_STATUS_SELECTION = `
              codexPreserveSpeedModel
         codexSearchModel
              quotaRoutingMode
+             quotaReserve { fiveHourPercent sevenDayPercent allowSearch allowImage allowMemory }
            }
            providerQuotaStatus {
              status
@@ -1434,6 +1442,7 @@ const CHANNEL_QUERY_PROXY_SELECTION = `
             codexPreserveSpeedModel
         codexSearchModel
             quotaRoutingMode
+            quotaReserve { fiveHourPercent sevenDayPercent allowSearch allowImage allowMemory }
             proxy {
               type
               url
@@ -1456,6 +1465,7 @@ const CHANNEL_QUERY_HEALTH_SELECTION = `
             codexPreserveSpeedModel
         codexSearchModel
             quotaRoutingMode
+            quotaReserve { fiveHourPercent sevenDayPercent allowSearch allowImage allowMemory }
           }
           credentials {
             apiKey

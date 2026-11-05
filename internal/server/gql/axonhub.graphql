@@ -224,6 +224,7 @@ type ChannelSettings {
   apiKeyRoundRobinSwitchAfter: Int
   providerQuota: ChannelProviderQuotaSettings @goField(forceResolver: true)
   quotaRoutingMode: ChannelQuotaRoutingMode
+  quotaReserve: ChannelQuotaReserve
 }
 
 enum ChannelQuotaRoutingMode {
@@ -398,6 +399,7 @@ input ChannelSettingsInput {
   apiKeyRoundRobinSwitchAfter: Int
   providerQuota: ChannelProviderQuotaSettingsInput
   quotaRoutingMode: ChannelQuotaRoutingMode
+  quotaReserve: ChannelQuotaReserveInput
 }
 
 # A partial patch of channel settings. Absent fields keep their stored
@@ -432,6 +434,7 @@ input UpdateChannelSettingsInput {
   apiKeyRoundRobinSwitchAfter: Int
   providerQuota: ChannelProviderQuotaSettingsInput
   quotaRoutingMode: ChannelQuotaRoutingMode
+  quotaReserve: ChannelQuotaReserveInput
 }
 
 input ChannelRateLimitInput {
@@ -1268,4 +1271,20 @@ extend type Query {
   Returns quota usage for profiles that have quota enabled for an API key.
   """
   apiKeyQuotaUsages(apiKeyId: ID!): [APIKeyProfileQuotaUsage!]!
+}
+
+type ChannelQuotaReserve {
+  fiveHourPercent: Int
+  sevenDayPercent: Int
+  allowSearch: Boolean!
+  allowImage: Boolean!
+  allowMemory: Boolean!
+}
+
+input ChannelQuotaReserveInput {
+  fiveHourPercent: Int
+  sevenDayPercent: Int
+  allowSearch: Boolean
+  allowImage: Boolean
+  allowMemory: Boolean
 }

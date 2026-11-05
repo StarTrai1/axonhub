@@ -439,6 +439,13 @@ export const channelSettingsSchema = z.object({
     .nullable()
     .optional(),
   apiKeyRoundRobinSwitchAfter: z.number().int().min(0).max(2147483647).optional().nullable(),
+  quotaReserve: z.object({
+    fiveHourPercent: z.number().int().min(1).max(100).nullable().optional(),
+    sevenDayPercent: z.number().int().min(1).max(100).nullable().optional(),
+    allowSearch: z.boolean().default(false),
+    allowImage: z.boolean().default(false),
+    allowMemory: z.boolean().default(false),
+  }).nullable().optional(),
   quotaRoutingMode: z.enum(['INHERIT', 'IGNORE_QUOTA', 'REMOVE_ON_EXHAUSTED', 'BACKPRESSURE']).optional(),
 });
 

@@ -17,6 +17,8 @@ import (
 type PersistenceState struct {
 	codexMemory    *codexMemoryLease
 	memoryTask     shared.CodexMemoryTask
+	memoryRejectedChannels map[int]bool
+	quotaReserveProvider ProviderQuotaStatusProvider
 	memoryAttempts int
 	APIKey         *ent.APIKey
 

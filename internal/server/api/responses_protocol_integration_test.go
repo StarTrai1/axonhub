@@ -27,6 +27,7 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/orchestrator"
 	"github.com/looplj/axonhub/llm"
+"github.com/looplj/axonhub/llm/transformer/shared"
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
@@ -140,7 +141,11 @@ func newResponsesHistoryIntegrationFixture(t *testing.T, upstreamURL string, con
 		selectionRequest.RequestType = llm.RequestTypeSearch
 		selectionRequest.APIFormat = llm.APIFormatOpenAISearch
 	}
-	candidates, err := selector.Select(ctx, selectionRequest)
+	selectionCtx := ctx
+    if created.Policies.EffectiveCodexMemoryPolicy() == objects.CodexMemoryOnly {
+        selectionCtx = shared.WithCodexMemoryTask(ctx, shared.CodexMemoryExtract)
+    }
+    candidates, err := selector.Select(selectionCtx, selectionRequest)
 	require.NoError(t, err)
 	require.NotEmpty(t, candidates)
 	protection := biz.NewPromptProtectionRuleService(biz.PromptProtectionRuleServiceParams{CacheConfig: cacheConfig, Ent: client})
