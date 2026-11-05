@@ -198,6 +198,7 @@ type ChannelSettings {
   codexImageOnly: Boolean
   codexPreserveSpeedModel: Boolean
   codexSearchModel: String
+  codexImageModel: String
   extraModelPrefix: String
   modelMappings: [ModelMapping!]
   autoTrimedModelPrefixes: [String!]
@@ -267,6 +268,18 @@ enum WebSearchPolicy {
   mcp_only
 }
 
+enum ImageGenerationPolicy {
+  native
+  other_channels
+}
+
+enum CodexSpeedPolicy {
+  auto
+  standard
+  fast
+  ultrafast
+}
+
 enum RemoteCompactionPolicy {
   auto
   native
@@ -319,6 +332,8 @@ type ChannelPolicies {
   remoteCompaction: RemoteCompactionPolicy
   supportsRemoteCompaction: Boolean
   webSearch: WebSearchPolicy
+  imageGeneration: ImageGenerationPolicy
+  codexSpeed: CodexSpeedPolicy
   supportsWebSearch: Boolean
   codexIdentity: CodexIdentityPolicy
   apiKeyAutoDisableMode: APIKeyAutoDisableMode
@@ -331,6 +346,8 @@ input ChannelPoliciesInput {
   remoteCompaction: RemoteCompactionPolicy
   supportsRemoteCompaction: Boolean
   webSearch: WebSearchPolicy
+  imageGeneration: ImageGenerationPolicy
+  codexSpeed: CodexSpeedPolicy
   supportsWebSearch: Boolean
   codexIdentity: CodexIdentityPolicy
   apiKeyAutoDisableMode: APIKeyAutoDisableMode
@@ -347,6 +364,7 @@ input ChannelSettingsInput {
   codexImageOnly: Boolean
   codexPreserveSpeedModel: Boolean
   codexSearchModel: String
+  codexImageModel: String
   extraModelPrefix: String
   modelMappings: [ModelMappingInput!]
   autoTrimedModelPrefixes: [String!]
@@ -382,6 +400,7 @@ input UpdateChannelSettingsInput {
   codexImageOnly: Boolean
   codexPreserveSpeedModel: Boolean
   codexSearchModel: String
+  codexImageModel: String
   httpProtocol: String
   http2ConnectionShards: Int
   maxSingleChannelRetries: Int

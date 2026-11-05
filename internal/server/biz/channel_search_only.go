@@ -21,6 +21,9 @@ func (ch *Channel) IsCodexToolOnly() bool {
 // AllowsCodexToolRequest is shared by selection and final dispatch, so affinity
 // and continuation candidates cannot bypass a tool-only channel's restriction.
 func (ch *Channel) AllowsCodexToolRequest(req *llm.Request) bool {
+	if req != nil && req.RequestType == llm.RequestTypeImage && !ch.AllowsStandaloneImage() {
+		return false
+	}
 	if !ch.IsCodexToolOnly() {
 		return true
 	}
@@ -32,6 +35,10 @@ func (ch *Channel) AllowsCodexToolRequest(req *llm.Request) bool {
 	}
 	return ch.Settings.CodexImageOnly && req.RequestType == llm.RequestTypeImage &&
 		(req.APIFormat == llm.APIFormatOpenAIImageGeneration || req.APIFormat == llm.APIFormatOpenAIImageEdit)
+}
+
+func (ch *Channel) AllowsStandaloneImage() bool {
+	return ch == nil || ch.Channel == nil || ch.Policies.EffectiveImageGenerationPolicy() != objects.ImageGenerationOtherChannels
 }
 
 // AllowsStandaloneSearch keeps explicit opt-out authoritative even for old or

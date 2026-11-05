@@ -18,7 +18,7 @@ func TestModelCatalogPreservesAvailableFastAliases(t *testing.T) {
 		{"slug":"gpt-6-astra","visibility":"list","priority":3}
 	]}`))
 	require.NoError(t, err)
-	require.Equal(t, []string{"future-model", "gpt-6.1-sol", "gpt-6-astra", "gpt-6-astra-fast", "gpt-6.1-sol-fast", "gpt-image-2"}, models)
+	require.Equal(t, []string{"future-model", "gpt-6.1-sol", "gpt-6-astra", "gpt-6-astra-fast", "gpt-6.1-sol-fast", "gpt-image-2", "gpt-image-2.5-sunburst", "gpt-image-2.5-flare", "gpt-image-2.6-sunburst", "gpt-image-2.6-flare"}, models)
 	require.NotContains(t, models, "gpt-6-luna-fast")
 }
 
@@ -52,7 +52,7 @@ func TestCodexModelsIncludeImageModel(t *testing.T) {
 			models, err := ParseModelCatalog(body)
 			// Then one image model is included without reordering other models.
 			require.NoError(t, err)
-			require.Equal(t, tt.want, models)
+			require.Equal(t, append(tt.want, "gpt-image-2.5-sunburst", "gpt-image-2.5-flare", "gpt-image-2.6-sunburst", "gpt-image-2.6-flare"), models)
 		})
 	}
 
@@ -63,7 +63,8 @@ func TestCodexModelsIncludeImageModel(t *testing.T) {
 		require.Contains(t, models, "gpt-reserve")
 		require.Contains(t, models, "gpt-6.1-sol")
 		require.Contains(t, models, "gpt-6.1-sol-fast")
-		require.Equal(t, "gpt-image-2", models[len(models)-1])
+		require.Contains(t, models, "gpt-image-2.6-sunburst")
+		require.Contains(t, models, "gpt-image-2.6-flare")
 		count := 0
 		for _, model := range models {
 			if model == "gpt-image-2" {

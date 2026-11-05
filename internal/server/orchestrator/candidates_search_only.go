@@ -12,6 +12,30 @@ func isStandaloneSearch(req *llm.Request) bool {
 	return req != nil && req.RequestType == llm.RequestTypeSearch && req.APIFormat == llm.APIFormatOpenAISearch
 }
 
+func isStandaloneImage(req *llm.Request) bool {
+	return req != nil && req.RequestType == llm.RequestTypeImage &&
+		(req.APIFormat == llm.APIFormatOpenAIImageGeneration || req.APIFormat == llm.APIFormatOpenAIImageEdit)
+}
+
+func (s *DefaultSelector) selectImageOnlyCandidates(ctx context.Context, req *llm.Request) []*ChannelModelsCandidate {
+	if !isStandaloneImage(req) { return nil }
+	var candidates []*ChannelModelsCandidate
+	for _, ch := range s.ChannelService.GetEnabledChannels() {
+		if !ch.IsCodexToolOnly() || !ch.Settings.CodexImageOnly || !ch.AllowsStandaloneImage() { continue }
+		model := ch.Settings.CodexImageModel
+		if model == "" {
+			model = req.Model
+			if !ch.IsModelSupported(model) { continue }
+		}
+		if model == "" { continue }
+		entry := biz.ChannelModelEntry{RequestModel: req.Model, ActualModel: model, Source: "image_only"}
+		endpoints := FilterEndpointsByAPIFormats(ch.ResolveEndpoints(), []string{req.APIFormat.String()})
+		if len(endpoints) == 0 { continue }
+		candidates = append(candidates, &ChannelModelsCandidate{Channel: ch, Models: []biz.ChannelModelEntry{entry}, APIFormat: req.APIFormat.String()})
+	}
+	return candidates
+}
+
 func filterSearchOnlyCandidates(candidates []*ChannelModelsCandidate, req *llm.Request) []*ChannelModelsCandidate {
 	for i, candidate := range candidates {
 		if candidate != nil && !candidate.Channel.AllowsCodexToolRequest(req) {

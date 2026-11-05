@@ -222,6 +222,8 @@ export const channelPoliciesSchema = z
     remoteCompaction: remoteCompactionPolicySchema.nullish(),
     supportsRemoteCompaction: z.boolean().optional().default(false),
     webSearch: webSearchPolicySchema.nullish(),
+    imageGeneration: z.enum(['native', 'other_channels']).nullish(),
+    codexSpeed: z.enum(['auto', 'standard', 'fast', 'ultrafast']).nullish(),
     supportsWebSearch: z
       .boolean()
       .nullish()
@@ -235,6 +237,8 @@ export const channelPoliciesSchema = z
     routingTier: value.routingTier ?? 'standard',
     remoteCompaction: value.remoteCompaction ?? (value.supportsRemoteCompaction ? 'native' : 'auto'),
     webSearch: value.webSearch ?? 'native',
+    imageGeneration: value.imageGeneration ?? 'native',
+    codexSpeed: value.codexSpeed ?? 'auto',
     codexIdentity: value.codexIdentity ?? 'off',
   }));
 export type ChannelPolicies = z.infer<typeof channelPoliciesSchema>;
@@ -420,6 +424,7 @@ export const channelSettingsSchema = z.object({
   providerQuota: channelProviderQuotaSettingsSchema.optional().nullable(),
   codexSearchOnly: z.boolean().optional(),
   codexImageOnly: z.boolean().optional(),
+  codexImageModel: z.string().optional(),
   codexPreserveSpeedModel: z.boolean().optional(),
   codexSearchModel: z.string().optional(),
   // The backend stores an empty strategy for "unset" and returns it verbatim, and

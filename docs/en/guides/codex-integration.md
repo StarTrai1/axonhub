@@ -291,19 +291,16 @@ Azure history compatibility is now automatic for an explicit resource-mismatch r
 
 ### Dedicated search and image channels
 
-The channel editor's Web search tool and Image generation tool switches independently declare supported standalone tools. Either switch reserves the channel: ordinary Responses (including WebSocket), Chat and continuation requests cannot use it. Enable both to accept search plus native image generation/editing. Existing search-only settings and explicit/follow-request search models retain their behavior. Project/key channel restrictions still apply; image routing uses the existing model configuration without silently changing model versions.
+Web search tool and Image generation tool reserve a channel for standalone tool calls from other conversations. Either switch excludes ordinary Responses, Chat and continuation requests; both allow search plus images. Disabling a switch does not deny native capability. The separate Web search policy and Image generation policy select native handling or other eligible channels.
 
-Add GPT Image 2.6 models explicitly adds `gpt-image-2.6-sunburst` and `gpt-image-2.6-flare` as manual models. Confirm support for those exact IDs first. The official Codex conversation catalog does not enumerate standalone image models; AxonHub's legacy supplement is `gpt-image-2`. Relay discovery uses the relay's list. Being able to forward a model does not establish that the upstream lists it or that an account can use it.
+Select a search or image model next to the tool switch. Image choices include supported models and models fetched in the current editor; saving preserves the selected model. Follow request model keeps the caller's model. Explicit tool model routing remains inside project/API-key channel boundaries.
 
-Codex 0.166's standalone `image_gen` extension is installed by the client, checks provider configuration, and sends the fixed `gpt-image-2` model. A gateway setting cannot install this extension. To use 2.6 through that fixed name, explicitly configure an existing model mapping from `gpt-image-2` to `gpt-image-2.6-sunburst` after confirming upstream support; this changes the actual model for requests in the mapping's scope. Explicit 2.6 IDs remain intact. Independent `complexity` and `quality` values survive JSON generation, JSON edits and multipart edits.
+The official Codex conversation catalog omits standalone image models. Fetching supplements the current official image family: `gpt-image-2`, `gpt-image-2.5-sunburst`, `gpt-image-2.5-flare`, `gpt-image-2.6-sunburst`, and `gpt-image-2.6-flare`. This is catalog supplementation, not an entitlement probe. Third-party catalogs retain their actual model list. Codex 0.166's standalone image extension sends the fixed `gpt-image-2` name; the image-model selector explicitly configures the actual channel model. Complexity and quality are forwarded independently.
 
-### Selecting Fast / Ultrafast with compatible login
+### Speed mode with compatible login
 
-When the client's speed controls are unavailable, select an enabled speed model such as `gpt-6.1-sol-fast` or `gpt-6.1-sol-ultrafast` in its model picker. For visible known aliases, AxonHub reuses the base model's native instructions and tool metadata from the selected catalog source. Explicit upstream alias entries take precedence. Missing base metadata is never fabricated.
+The Speed mode menu follows the existing compact policy controls: Follow request, Standard, Fast, or Ultrafast. Follow request is the default. Explicit request tiers or speed model aliases take precedence over a channel default.
 
-Configure the inference channel for the relay's actual protocol:
+If the relay's configured models contain the matching `-fast` or `-ultrafast` alias, use that exact model. When both exist, each speed selects its corresponding alias. Without a matching alias, or on official Codex, send the base model and native tier: `default`, `priority`, or `ultrafast`. The provider determines availability and actual speed.
 
-- **Preserve speed model names off (default):** known `-fast` aliases become the base model with `service_tier: priority`; `gpt-6-astra-ultrafast` and `gpt-6.1-sol-ultrafast` use `service_tier: ultrafast`. Explicit client tiers take precedence.
-- **Preserve speed model names on:** forward the relay's exact alias without injecting a tier. Official Codex always uses base models and service tiers.
-
-This avoids changing compatible login identity and does not promise to enable native desktop speed controls. Those still depend on client features and upstream catalog fields such as `service_tiers`. Actual speed and billing depend on the provider. The [official Ultrafast API tier](https://developers.openai.com/api/docs/guides/ultrafast-mode) is distinct from arbitrary vendor model suffixes.
+Enabled known aliases can also appear in the Codex picker, retaining base-model native instructions and tool metadata from the selected catalog source. Explicit upstream entries take precedence and caller visibility remains enforced.

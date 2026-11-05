@@ -14,6 +14,7 @@ func TestChannelSettingsPatchGraphQLPreservesForkFields(t *testing.T) {
 		"codexSearchOnly": false, "codexSearchModel": "", "httpProtocol": "http1",
 		"http2ConnectionShards": 0, "maxSingleChannelRetries": 0,
 		"codexImageOnly": false, "codexPreserveSpeedModel": false,
+		"codexImageModel": "gpt-image-2.6-sunburst",
 	})
 	require.NoError(t, err)
 	merged := patch.Apply(&objects.ChannelSettings{
@@ -23,6 +24,7 @@ func TestChannelSettingsPatchGraphQLPreservesForkFields(t *testing.T) {
 	})
 	require.False(t, merged.CodexSearchOnly)
 	require.False(t, merged.CodexImageOnly)
+	require.Equal(t, "gpt-image-2.6-sunburst", merged.CodexImageModel)
 	require.False(t, merged.CodexPreserveSpeedModel)
 	require.Empty(t, merged.CodexSearchModel)
 	require.Equal(t, "http1", merged.HTTPProtocol)

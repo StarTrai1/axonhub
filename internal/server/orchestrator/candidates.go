@@ -114,6 +114,7 @@ func NewDefaultSelector(channelService *biz.ChannelService, modelService *biz.Mo
 
 func (s *DefaultSelector) Select(ctx context.Context, req *llm.Request) ([]*ChannelModelsCandidate, error) {
 	searchOnly := s.selectSearchOnlyCandidates(ctx, req)
+	searchOnly = append(searchOnly, s.selectImageOnlyCandidates(ctx, req)...)
 	candidates, err := s.selectModelOrChannelCandidates(ctx, req)
 	if err != nil {
 		if len(searchOnly) == 0 || !errors.Is(err, biz.ErrInvalidModel) {
@@ -128,7 +129,7 @@ func (s *DefaultSelector) Select(ctx context.Context, req *llm.Request) ([]*Chan
 	seen := make(map[int]bool, len(candidates))
 	// Dedicated search selection owns the explicit model even when this channel
 	// also appears through a matching generation model association.
-	if isStandaloneSearch(req) {
+	if isStandaloneSearch(req) || isStandaloneImage(req) {
 		candidates = filterSearchOnlyCandidates(candidates, nil)
 	}
 	for _, candidate := range candidates {

@@ -14,9 +14,11 @@ for (const width of [1280, 768, 390]) {
     await page.route('**/admin/graphql', async (route) => {
       const body = route.request().postDataJSON();
       if (body.operationName === 'UpdateChannel') {
-        settings.push({ enabled: body.variables.input.settings.codexSearchOnly, model: body.variables.input.settings.codexSearchModel, image: body.variables.input.settings.codexImageOnly, preserveSpeed: body.variables.input.settings.codexPreserveSpeedModel, policy: body.variables.input.policies.webSearch });
+        settings.push({ enabled: body.variables.input.settings.codexSearchOnly, model: body.variables.input.settings.codexSearchModel, image: body.variables.input.settings.codexImageOnly, imageModel: body.variables.input.settings.codexImageModel, speed: body.variables.input.policies.codexSpeed, imagePolicy: body.variables.input.policies.imageGeneration, policy: body.variables.input.policies.webSearch });
         saved = { ...saved, ...body.variables.input };
         await route.fulfill({ json: { data: { updateChannel: saved } } });
+      } else if (body.operationName === 'FetchModels') {
+        await route.fulfill({ json: { data: { fetchModels: { models: [{ id: 'gpt-image-2.6-sunburst' }, { id: 'gpt-image-2.5-flare' }], error: null } } } });
       } else {
         await route.fulfill({ json: { data: {
           queryChannels: { edges: [{ node: saved, cursor: 'fixture' }], totalCount: 1, pageInfo: { hasNextPage: false, hasPreviousPage: false, startCursor: 'fixture', endCursor: 'fixture' } },
@@ -50,21 +52,39 @@ for (const width of [1280, 768, 390]) {
     await page.getByRole('option', { name: 'gpt-6.1-sol', exact: true }).click();
     await expect(modelSelect).toContainText('gpt-6.1-sol');
     const imageToggle = page.getByTestId('codex-image-only-toggle');
-    const preserveSpeed = page.getByTestId('codex-preserve-speed-model-toggle');
     await imageToggle.click();
-    await preserveSpeed.click();
-    await page.getByTestId('codex-image-models-add').click();
-    await expect(imageToggle).toHaveAttribute('aria-checked', 'true');
-    await expect(toggle).toHaveAttribute('aria-checked', 'true');
-    for (const id of ['codex-image-only-setting', 'codex-speed-model-setting']) {
-      const row = page.getByTestId(id);
+    await page.getByTestId('channel-fetch-models').click();
+    const imageModel = page.getByTestId('codex-image-model-select');
+    await imageModel.scrollIntoViewIfNeeded();
+    await imageModel.click();
+    await page.getByRole('option', { name: 'gpt-image-2.6-sunburst', exact: true }).click();
+    await expect(imageModel).toContainText('gpt-image-2.6-sunburst');
+    for (const tool of ['search', 'image']) {
+      await page.getByTestId(`codex-${tool}-only-label`).hover();
+      await page.waitForTimeout(800);
+      await expect(page.getByRole('tooltip')).toHaveCount(0);
+      await page.getByTestId(`codex-${tool}-only-tip`).hover();
+      await expect(page.getByRole('tooltip')).toBeVisible();
+      await page.mouse.move(0, 0);
+      await expect(page.getByRole('tooltip')).toHaveCount(0);
+      const row = page.getByTestId(`codex-${tool}-only-setting`);
       expect(await row.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
     }
+    await expect(page.getByTestId('codex-tool-settings').locator('p')).toHaveCount(0);
     await page.screenshot({ path: testInfo.outputPath('codex-search-model.png') });
     const policies = page.getByTestId('codex-policy-settings');
     await policies.scrollIntoViewIfNeeded();
     const searchPolicy = page.getByTestId('web-search-policy');
     const compactPolicy = page.getByTestId('remote-compaction-policy');
+    const speed = page.getByTestId('codex-speed-policy');
+    const imagePolicy = page.getByTestId('image-generation-policy');
+    await speed.click();
+    await page.getByTestId('codex-speed-policy-fast').click();
+    await expect(speed).toContainText('Fast');
+    await speed.click();
+    await page.getByTestId('codex-speed-policy-ultrafast').click();
+    await expect(speed).toContainText('Ultrafast');
+    await expect(imagePolicy).toContainText('Native images');
     await expect(searchPolicy).toContainText('Native search');
     await searchPolicy.click();
     await expect(page.getByRole('menuitemradio')).toHaveCount(3);
@@ -75,10 +95,10 @@ for (const width of [1280, 768, 390]) {
     await page.keyboard.press('Escape');
     const rows = policies.locator(':scope > div');
     const sizes = await rows.evaluateAll((elements) => elements.map((element) => ({ width: element.getBoundingClientRect().width, height: element.getBoundingClientRect().height, overflow: element.scrollWidth > element.clientWidth + 1 })));
-    expect(sizes).toHaveLength(3);
+    expect(sizes).toHaveLength(5);
     expect(sizes.some((size) => size.overflow)).toBe(false);
     expect(sizes.every((size) => size.height < 100)).toBe(true);
-    expect(await policies.evaluate((element) => element.getBoundingClientRect().height)).toBeLessThan(250);
+    expect(await policies.evaluate((element) => element.getBoundingClientRect().height)).toBeLessThan(360);
     expect((await searchPolicy.boundingBox())!.width).toBeLessThan(200);
     expect((await compactPolicy.boundingBox())!.width).toBeLessThan(200);
     await page.screenshot({ path: testInfo.outputPath('codex-channel.png') });
@@ -90,9 +110,8 @@ for (const width of [1280, 768, 390]) {
     await page.getByTestId('codex-image-only-setting').scrollIntoViewIfNeeded();
     await page.screenshot({ path: testInfo.outputPath('codex-tools-dark.png') });
     await page.getByTestId('channel-submit-button').click();
-    await expect.poll(() => settings).toEqual([{ enabled: true, model: 'gpt-6.1-sol', image: true, preserveSpeed: true, policy: 'native' }]);
+    await expect.poll(() => settings).toEqual([{ enabled: true, model: 'gpt-6.1-sol', image: true, imageModel: 'gpt-image-2.6-sunburst', speed: 'ultrafast', imagePolicy: 'native', policy: 'native' }]);
     expect(saved.supportedModels).toContain('gpt-image-2.6-sunburst');
-    expect(saved.supportedModels).toContain('gpt-image-2.6-flare');
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await page.getByTestId('reopen-codex').click();
     await expect(toggle).toHaveAttribute('aria-checked', 'true');
@@ -104,11 +123,11 @@ for (const width of [1280, 768, 390]) {
     await page.getByTestId('web-search-policy-other_channels').click();
     await expect(toggle).toHaveAttribute('aria-checked', 'false');
     await expect(imageToggle).toHaveAttribute('aria-checked', 'true');
-    await expect(preserveSpeed).toHaveAttribute('aria-checked', 'true');
+    await expect(imageModel).toContainText('gpt-image-2.6-sunburst');
+    await expect(speed).toContainText('Ultrafast');
     await page.getByTestId('channel-submit-button').click();
-    await expect.poll(() => settings).toEqual([{ enabled: true, model: 'gpt-6.1-sol', image: true, preserveSpeed: true, policy: 'native' }, { enabled: false, model: '', image: true, preserveSpeed: true, policy: 'other_channels' }]);
+    await expect.poll(() => settings).toEqual([{ enabled: true, model: 'gpt-6.1-sol', image: true, imageModel: 'gpt-image-2.6-sunburst', speed: 'ultrafast', imagePolicy: 'native', policy: 'native' }, { enabled: false, model: '', image: true, imageModel: 'gpt-image-2.6-sunburst', speed: 'ultrafast', imagePolicy: 'native', policy: 'other_channels' }]);
     expect(saved.supportedModels).toContain('gpt-image-2.6-sunburst');
-    expect(saved.supportedModels).toContain('gpt-image-2.6-flare');
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await page.getByTestId('reopen-codex').click();
     await searchPolicy.scrollIntoViewIfNeeded();
@@ -117,5 +136,16 @@ for (const width of [1280, 768, 390]) {
     await page.getByTestId('zh-locale').evaluate((element) => (element as HTMLButtonElement).click());
     await expect(searchPolicy).toContainText('使用其他渠道');
     await page.screenshot({ path: testInfo.outputPath('codex-channel-zh-dark.png') });
+    await toggle.click();
+    await page.getByTestId('codex-tool-settings').scrollIntoViewIfNeeded();
+    await page.screenshot({ path: testInfo.outputPath('codex-tools-zh-dark.png') });
+    await page.getByTestId('light-theme').evaluate((element) => (element as HTMLButtonElement).click());
+    await page.screenshot({ path: testInfo.outputPath('codex-tools-zh-light.png') });
+    await policies.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: testInfo.outputPath('codex-policies-zh-light.png') });
+    await imagePolicy.click();
+    await page.getByTestId('image-generation-policy-other_channels').click();
+    await expect(imageToggle).toHaveAttribute('aria-checked', 'false');
+    await expect(toggle).toHaveAttribute('aria-checked', 'true');
   });
 }

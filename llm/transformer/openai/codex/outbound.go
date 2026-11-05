@@ -53,6 +53,8 @@ type OutboundTransformer struct {
 	// the DoStream path; only compatible relays get the JSON passthrough path.
 	official           bool
 	preserveSpeedModel bool
+	defaultServiceTier string
+	speedModels map[string]bool
 
 	// reuse existing Responses outbound for payload building.
 	responsesOutbound *responses.OutboundTransformer
@@ -76,6 +78,8 @@ var responsesBlockedPassThroughFields = []string{
 
 type Params struct {
 	PreserveSpeedModel bool
+	DefaultServiceTier string
+	SupportedModels []string
 	TokenProvider      oauth.TokenGetter
 	BaseURL            string
 	Transport          string
@@ -124,6 +128,12 @@ func NewOutboundTransformer(params Params) (*OutboundTransformer, error) {
 		alphaSearchPath = "/alpha/search"
 	}
 	official := isOfficialCodexBaseURL(baseURL)
+	speedModels := make(map[string]bool)
+	if !official {
+		for _, model := range params.SupportedModels {
+			if _, _, ok := SpeedModel(model); ok { speedModels[model] = true }
+		}
+	}
 
 	// The underlying responses outbound requires baseURL/apiKey. We only need its request body logic.
 	// Use a dummy config and then override URL/auth.
@@ -144,6 +154,8 @@ func NewOutboundTransformer(params Params) (*OutboundTransformer, error) {
 		alphaSearchPath:    alphaSearchPath,
 		official:           official,
 		preserveSpeedModel: params.PreserveSpeedModel && !official,
+		defaultServiceTier: params.DefaultServiceTier,
+		speedModels: speedModels,
 		responsesOutbound:  ro,
 	}, nil
 }
@@ -327,9 +339,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		reqCopy.TransformerMetadata = map[string]any{}
 	}
 
-	if !t.preserveSpeedModel {
-		reqCopy.Model, reqCopy.ServiceTier = resolveFastModel(reqCopy.Model, reqCopy.ServiceTier)
-	}
+	reqCopy.Model, reqCopy.ServiceTier = t.resolveSpeed(reqCopy.Model, reqCopy.ServiceTier)
 
 	// Ask for encrypted reasoning content so downstream can surface reasoning blocks.
 	if _, ok := reqCopy.TransformerMetadata["include"]; !ok {

@@ -137,6 +137,12 @@ models:
   CapabilityPolicy:
     model:
       - github.com/looplj/axonhub/internal/objects.CapabilityPolicy
+  ImageGenerationPolicy:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ImageGenerationPolicy
+  CodexSpeedPolicy:
+    model:
+      - github.com/looplj/axonhub/internal/objects.CodexSpeedPolicy
   WebSearchPolicy:
     model:
       - github.com/looplj/axonhub/internal/objects.WebSearchPolicy

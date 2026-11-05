@@ -78,11 +78,11 @@ func TestCodexRoutes_ImageGenerationUsesNativeUpstream(t *testing.T) {
 
 func TestCodexRoutes_ImageOnlyUsesExactImage26Model(t *testing.T) {
 	h, requests := setupCodexImageRoute(t, llm.APIFormatOpenAIImageGeneration, `{"created":1700000000,"data":[{"b64_json":"synthetic-generated"}]}`)
-	h.source.Update().SetSettings(&objects.ChannelSettings{CodexImageOnly: true}).SetSupportedModels([]string{"gpt-image-2.6-sunburst"}).SaveX(h.ctx)
+	h.source.Update().SetSettings(&objects.ChannelSettings{CodexImageOnly: true, CodexImageModel: "gpt-image-2.6-sunburst"}).SetSupportedModels([]string{"gpt-image-2.6-sunburst"}).SaveX(h.ctx)
 	built, err := h.channels.GetChannel(h.ctx, h.source.ID)
 	require.NoError(t, err)
 	h.channels.SetEnabledChannelsForTest([]*biz.Channel{built})
-	req := httptest.NewRequest(http.MethodPost, "/codex/images/generations", strings.NewReader(`{"model":"gpt-image-2.6-sunburst","prompt":"synthetic","complexity":"medium","quality":"max"}`))
+	req := httptest.NewRequest(http.MethodPost, "/codex/images/generations", strings.NewReader(`{"model":"gpt-image-2","prompt":"synthetic","complexity":"medium","quality":"max"}`))
 	req.Header.Set("Authorization", "Bearer "+h.key.Key)
 	req.Header.Set("Content-Type", "application/json")
 	result := httptest.NewRecorder()

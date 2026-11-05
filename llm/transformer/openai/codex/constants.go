@@ -46,7 +46,13 @@ func DefaultModels() []string {
 	for _, pair := range fastModelPairs {
 		models = append(models, pair.alias)
 	}
-	return append(models, "codex-auto-review", "gpt-image-2")
+	return append(append(models, "codex-auto-review"), ImageModels()...)
+}
+
+// ImageModels supplements the official conversation catalog, which does not
+// enumerate the standalone Images API. It is not an account entitlement probe.
+func ImageModels() []string {
+	return []string{"gpt-image-2", "gpt-image-2.5-sunburst", "gpt-image-2.5-flare", "gpt-image-2.6-sunburst", "gpt-image-2.6-flare"}
 }
 
 func fastModelBase(model string) (string, bool) {

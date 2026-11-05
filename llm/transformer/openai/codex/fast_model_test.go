@@ -102,7 +102,7 @@ func TestCodexUltrafastAndRelayModelNames(t *testing.T) {
 				outbound.transport = responses.TransportWebSocket
 				raw := &httpclient.Request{Body: []byte(fmt.Sprintf(`{"model":%q,"service_tier":"default","previous_response_id":"resp_keep","input":[{"type":"compaction","encrypted_content":"ciphertext"}]}`, alias))}
 				got := outbound.FinalizeTransportRequest(raw)
-				require.Equal(t, wantModel, gjson.GetBytes(got.Body, "model").String())
+				require.Equal(t, model, gjson.GetBytes(got.Body, "model").String())
 				require.Equal(t, "default", gjson.GetBytes(got.Body, "service_tier").String())
 				require.Equal(t, "resp_keep", gjson.GetBytes(got.Body, "previous_response_id").String())
 				require.Equal(t, "ciphertext", gjson.GetBytes(got.Body, "input.0.encrypted_content").String())

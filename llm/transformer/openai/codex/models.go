@@ -132,8 +132,10 @@ func parseModelCatalog(body []byte, supplementImageModel, requireListVisibility 
 			models = append(models, pair.alias)
 		}
 	}
-	if supplementImageModel && !imageModelIncluded {
-		models = append(models, "gpt-image-2")
+	if supplementImageModel {
+		for _, model := range ImageModels() {
+			if !visible[model] { models = append(models, model) }
+		}
 	}
 	return models, nil
 }

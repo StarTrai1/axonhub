@@ -62,7 +62,7 @@ func TestModelFetcher_CodexCatalog(t *testing.T) {
 			if tt.fallback {
 				require.Len(t, result.Models, len(codex.DefaultModels()))
 			} else {
-				require.Equal(t, []ModelIdentify{{ID: "first-astra"}, {ID: "new-sol"}, {ID: "gpt-image-2"}}, result.Models)
+				require.Equal(t, []ModelIdentify{{ID: "first-astra"}, {ID: "new-sol"}, {ID: "gpt-image-2"}, {ID: "gpt-image-2.5-sunburst"}, {ID: "gpt-image-2.5-flare"}, {ID: "gpt-image-2.6-sunburst"}, {ID: "gpt-image-2.6-flare"}}, result.Models)
 			}
 		})
 	}
@@ -294,7 +294,7 @@ func TestModelFetcher_CodexStoredCredentialReplacement(t *testing.T) {
 				require.False(t, result.Fallback)
 				want := []ModelIdentify{{ID: "new-model"}}
 				if mode != "replace-api-key" {
-					want = append(want, ModelIdentify{ID: "gpt-image-2"})
+					for _, id := range codex.ImageModels() { want = append(want, ModelIdentify{ID: id}) }
 				}
 				require.Equal(t, want, result.Models)
 			}
@@ -327,5 +327,5 @@ func TestModelFetcher_CodexRelayModels(t *testing.T) {
 func TestModelFetcher_CodexSol61CatalogAliases(t *testing.T) {
 	models, err := parseCodexModels([]byte(`{"models":[{"slug":"gpt-6.1-sol","visibility":"list"},{"slug":"gpt-6-luna","visibility":"hide"}]}`))
 	require.NoError(t, err)
-	require.Equal(t, []ModelIdentify{{ID: "gpt-6.1-sol"}, {ID: "gpt-6.1-sol-fast"}, {ID: "gpt-image-2"}}, models)
+	require.Equal(t, []ModelIdentify{{ID: "gpt-6.1-sol"}, {ID: "gpt-6.1-sol-fast"}, {ID: "gpt-image-2"}, {ID: "gpt-image-2.5-sunburst"}, {ID: "gpt-image-2.5-flare"}, {ID: "gpt-image-2.6-sunburst"}, {ID: "gpt-image-2.6-flare"}}, models)
 }

@@ -161,6 +161,9 @@ func applyForcedAPIFormatsForRequest(
 	requestType llm.RequestType,
 	endpoints []objects.ChannelEndpoint,
 ) []objects.ChannelEndpoint {
+	if ch.IsCodexToolOnly() && ch.Settings.CodexImageOnly && requestType == llm.RequestTypeImage {
+		return FilterEndpointsByAPIFormats(endpoints, []string{llm.APIFormatOpenAIImageGeneration.String(), llm.APIFormatOpenAIImageEdit.String()})
+	}
 	if ch.IsCodexSearchOnly() && requestType == llm.RequestTypeSearch {
 		return FilterEndpointsByAPIFormats(endpoints, []string{llm.APIFormatOpenAISearch.String()})
 	}

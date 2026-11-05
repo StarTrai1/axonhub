@@ -92,6 +92,8 @@ const CREATE_CHANNEL_MUTATION = `
         remoteCompaction
         supportsRemoteCompaction
         webSearch
+        imageGeneration
+        codexSpeed
         supportsWebSearch
         codexIdentity
         apiKeyAutoDisableMode
@@ -125,6 +127,7 @@ const CREATE_CHANNEL_MUTATION = `
         http2ConnectionShards
         codexSearchOnly
         codexImageOnly
+        codexImageModel
         codexPreserveSpeedModel
         codexSearchModel
         quotaRoutingMode
@@ -204,6 +207,8 @@ const DUPLICATE_CHANNEL_MUTATION = `
         remoteCompaction
         supportsRemoteCompaction
         webSearch
+        imageGeneration
+        codexSpeed
         supportsWebSearch
         codexIdentity
         apiKeyAutoDisableMode
@@ -237,6 +242,7 @@ const DUPLICATE_CHANNEL_MUTATION = `
         http2ConnectionShards
         codexSearchOnly
         codexImageOnly
+        codexImageModel
         codexPreserveSpeedModel
         codexSearchModel
         quotaRoutingMode
@@ -316,6 +322,8 @@ const BULK_CREATE_CHANNELS_MUTATION = `
         remoteCompaction
         supportsRemoteCompaction
         webSearch
+        imageGeneration
+        codexSpeed
         supportsWebSearch
         codexIdentity
         apiKeyAutoDisableMode
@@ -349,6 +357,7 @@ const BULK_CREATE_CHANNELS_MUTATION = `
         http2ConnectionShards
         codexSearchOnly
         codexImageOnly
+        codexImageModel
         codexPreserveSpeedModel
         codexSearchModel
         quotaRoutingMode
@@ -427,6 +436,8 @@ const CHANNEL_FIELDS_FRAGMENT = `
         remoteCompaction
         supportsRemoteCompaction
         webSearch
+        imageGeneration
+        codexSpeed
         supportsWebSearch
         codexIdentity
         apiKeyAutoDisableMode
@@ -460,6 +471,7 @@ const CHANNEL_FIELDS_FRAGMENT = `
         http2ConnectionShards
         codexSearchOnly
         codexImageOnly
+        codexImageModel
         codexPreserveSpeedModel
         codexSearchModel
         quotaRoutingMode
@@ -691,6 +703,8 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
           remoteCompaction
           supportsRemoteCompaction
           webSearch
+          imageGeneration
+          codexSpeed
           supportsWebSearch
           codexIdentity
           apiKeyAutoDisableMode
@@ -736,6 +750,7 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
           http2ConnectionShards
           codexSearchOnly
           codexImageOnly
+          codexImageModel
           codexPreserveSpeedModel
         codexSearchModel
           quotaRoutingMode
@@ -989,6 +1004,7 @@ const BULK_UPDATE_CHANNEL_ORDERING_MUTATION = `
           http2ConnectionShards
           codexSearchOnly
           codexImageOnly
+          codexImageModel
           codexPreserveSpeedModel
         codexSearchModel
           quotaRoutingMode
@@ -1187,6 +1203,8 @@ const CHANNEL_QUERY_FULL_NODE_SELECTION = `
             remoteCompaction
             supportsRemoteCompaction
             webSearch
+            imageGeneration
+            codexSpeed
             supportsWebSearch
             codexIdentity
             apiKeyAutoDisableMode
@@ -1244,6 +1262,7 @@ const CHANNEL_QUERY_FULL_NODE_SELECTION = `
             http2ConnectionShards
             codexSearchOnly
             codexImageOnly
+            codexImageModel
             codexPreserveSpeedModel
         codexSearchModel
             quotaRoutingMode
@@ -1380,6 +1399,7 @@ const CHANNEL_QUERY_ROUTING_STATUS_SELECTION = `
            settings {
              codexSearchOnly
              codexImageOnly
+             codexImageModel
              codexPreserveSpeedModel
         codexSearchModel
              quotaRoutingMode
@@ -1404,6 +1424,7 @@ const CHANNEL_QUERY_PROXY_SELECTION = `
           settings {
             codexSearchOnly
             codexImageOnly
+            codexImageModel
             codexPreserveSpeedModel
         codexSearchModel
             quotaRoutingMode
@@ -1425,6 +1446,7 @@ const CHANNEL_QUERY_HEALTH_SELECTION = `
           settings {
             codexSearchOnly
             codexImageOnly
+            codexImageModel
             codexPreserveSpeedModel
         codexSearchModel
             quotaRoutingMode

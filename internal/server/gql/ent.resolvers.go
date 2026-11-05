@@ -87,6 +87,8 @@ func (r *channelResolver) Policies(ctx context.Context, obj *ent.Channel) (*obje
 	if obj.Policies.WebSearch == "" {
 		obj.Policies.WebSearch = obj.Policies.EffectiveWebSearchPolicy()
 	}
+	obj.Policies.ImageGeneration = obj.Policies.EffectiveImageGenerationPolicy()
+	obj.Policies.CodexSpeed = obj.Policies.EffectiveCodexSpeedPolicy()
 	if obj.Policies.CodexIdentity == "" {
 		obj.Policies.CodexIdentity = obj.Policies.EffectiveCodexIdentityPolicy()
 	}

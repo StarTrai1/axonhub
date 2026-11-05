@@ -89,6 +89,9 @@ func (p *PersistentOutboundTransformer) refreshChannelBeforeRetry(ctx context.Co
 	if entity.Status != channel.StatusEnabled {
 		return errChannelUnavailableForRetry
 	}
+	if !(&biz.Channel{Channel: entity}).AllowsCodexToolRequest(p.state.LlmRequest) {
+		return errChannelUnavailableForRetry
+	}
 	if isStandaloneSearch(p.state.LlmRequest) && !(&biz.Channel{Channel: entity}).AllowsStandaloneSearch() {
 		return errChannelUnavailableForRetry
 	}

@@ -122,7 +122,7 @@ import {
 } from '../data/schema';
 import { xaiDecodeSSO, xaiOAuthExchange, xaiOAuthStart } from '../data/xai';
 import { ProxyConfig, useOAuthFlow } from '../hooks/use-oauth-flow';
-import { codexSearchModelOptions } from '../utils/codex-search';
+import { CodexToolSettings } from './codex-tool-settings';
 import { mergeChannelSettingsForUpdate } from '../utils/merge';
 import { isValidModelPattern, matchesModelPattern } from '../utils/pattern';
 import { ProxyType } from './channels-proxy-dialog';
@@ -724,7 +724,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const [codexSearchModel, setCodexSearchModel] = useState(() => initialRow?.settings?.codexSearchModel ?? '');
   const [codexSearchOnly, setCodexSearchOnly] = useState(() => initialRow?.settings?.codexSearchOnly ?? false);
   const [codexImageOnly, setCodexImageOnly] = useState(() => initialRow?.settings?.codexImageOnly ?? false);
-  const [codexPreserveSpeedModel, setCodexPreserveSpeedModel] = useState(() => initialRow?.settings?.codexPreserveSpeedModel ?? false);
+  const [codexImageModel, setCodexImageModel] = useState(() => initialRow?.settings?.codexImageModel ?? '');
   const [quotaRoutingMode, setQuotaRoutingMode] = useState<ChannelQuotaRoutingMode>(() => recallQuotaRoutingMode(initialRow?.settings));
   const [retryableStatusCodesText, setRetryableStatusCodesText] = useState(() =>
     formatRetryableStatusCodes(initialRow?.settings?.retryableStatusCodes)
@@ -1078,6 +1078,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                 currentRow.policies?.remoteCompaction ?? (currentRow.policies?.supportsRemoteCompaction ? 'native' : 'auto'),
               supportsRemoteCompaction: currentRow.policies?.supportsRemoteCompaction ?? false,
               webSearch: currentRow.policies?.webSearch ?? 'native',
+              imageGeneration: currentRow.policies?.imageGeneration ?? 'native',
+              codexSpeed: currentRow.policies?.codexSpeed ?? 'auto',
               supportsWebSearch: currentRow.policies?.supportsWebSearch ?? true,
               codexIdentity: currentRow.policies?.codexIdentity ?? 'off',
             },
@@ -1114,6 +1116,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                   duplicateFromRow.policies?.remoteCompaction ?? (duplicateFromRow.policies?.supportsRemoteCompaction ? 'native' : 'auto'),
                 supportsRemoteCompaction: duplicateFromRow.policies?.supportsRemoteCompaction ?? false,
                 webSearch: duplicateFromRow.policies?.webSearch ?? 'native',
+              imageGeneration: duplicateFromRow.policies?.imageGeneration ?? 'native',
+              codexSpeed: duplicateFromRow.policies?.codexSpeed ?? 'auto',
                 supportsWebSearch: duplicateFromRow.policies?.supportsWebSearch ?? true,
                 codexIdentity: duplicateFromRow.policies?.codexIdentity ?? 'off',
               },
@@ -1147,6 +1151,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                 remoteCompaction: 'auto',
                 supportsRemoteCompaction: false,
                 webSearch: 'native',
+                imageGeneration: 'native',
+                codexSpeed: 'auto',
                 supportsWebSearch: true,
                 codexIdentity: 'off',
               },
@@ -1768,6 +1774,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         remoteCompaction: remoteCompactionPolicy,
         supportsRemoteCompaction: remoteCompactionPolicy === 'native',
         webSearch: webSearchPolicy,
+        imageGeneration: dataWithModels.policies?.imageGeneration ?? 'native',
+        codexSpeed: dataWithModels.policies?.codexSpeed ?? 'auto',
         supportsWebSearch: webSearchPolicy === 'native',
         codexIdentity: codexIdentityPolicy,
       };
@@ -1845,7 +1853,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           ...quotaRoutingModeSettingsPatch(quotaRoutingMode),
           codexSearchOnly: isCodexType ? codexSearchOnly : false,
           codexImageOnly: isCodexType ? codexImageOnly : false,
-          codexPreserveSpeedModel: isCodexType ? codexPreserveSpeedModel : false,
+          codexPreserveSpeedModel: false,
+          codexImageModel: isCodexType ? codexImageModel : '',
           codexSearchModel: isCodexType ? codexSearchModel : '',
           ...(shouldUpdateModelProtocols
             ? { modelProtocols: getModelProtocolsForApiFormat(selectedApiFormat, supportedModels, existingModelProtocols) }
@@ -1916,7 +1925,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           ...quotaRoutingModeSettingsPatch(quotaRoutingMode),
           codexSearchOnly: isCodexType ? codexSearchOnly : false,
           codexImageOnly: isCodexType ? codexImageOnly : false,
-          codexPreserveSpeedModel: isCodexType ? codexPreserveSpeedModel : false,
+          codexPreserveSpeedModel: false,
+          codexImageModel: isCodexType ? codexImageModel : '',
           codexSearchModel: isCodexType ? codexSearchModel : '',
           apiKeyStrategy,
           apiKeyRoundRobinSwitchAfter:
@@ -2354,7 +2364,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             setQuotaRoutingMode(recallQuotaRoutingMode(initialRow?.settings));
             setCodexSearchOnly(initialRow?.settings?.codexSearchOnly ?? false);
             setCodexImageOnly(initialRow?.settings?.codexImageOnly ?? false);
-            setCodexPreserveSpeedModel(initialRow?.settings?.codexPreserveSpeedModel ?? false);
+            setCodexImageModel(initialRow?.settings?.codexImageModel ?? '');
             setCodexSearchModel(initialRow?.settings?.codexSearchModel ?? '');
             setRetryableStatusCodesText(formatRetryableStatusCodes(initialRow?.settings?.retryableStatusCodes));
             setRetryableErrorPatternsText(formatRetryableErrorPatterns(initialRow?.settings?.retryableErrorPatterns));
@@ -2584,102 +2594,29 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                       )}
 
                       {isCodexType && (
-                        <div className='flex min-w-0 flex-wrap items-center gap-x-6 gap-y-2' data-testid='codex-search-only-setting'>
-                          <div className='flex min-h-8 items-center gap-2'>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <label
-                                  htmlFor='codex-search-only'
-                                  className='inline-flex cursor-pointer items-center gap-1.5 text-sm font-medium'
-                                >
-                                  {t('channels.dialogs.fields.codexSearchOnly.label')}
-                                  <Info className='text-muted-foreground size-3.5' />
-                                </label>
-                              </TooltipTrigger>
-                              <TooltipContent className='max-w-72 text-wrap'>
-                                {t('channels.dialogs.fields.codexSearchOnly.description')}
-                              </TooltipContent>
-                            </Tooltip>
-                            <Switch
-                              id='codex-search-only'
-                              checked={codexSearchOnly}
-                              onCheckedChange={(enabled) => {
-                                setCodexSearchOnly(enabled);
-                                if (enabled) form.setValue('policies.webSearch', 'native');
-                              }}
-                              data-testid='codex-search-only-toggle'
-                            />
-                          </div>
-                          {codexSearchOnly && (
-                            <div className='flex min-w-0 flex-wrap items-center space-y-0 gap-x-2 gap-y-1.5'>
-                              <label htmlFor='codex-search-model' className='text-sm font-medium'>
-                                {t('channels.dialogs.fields.codexSearchModel.label')}
-                              </label>
-                              <Select
-                                value={codexSearchModel || 'request'}
-                                onValueChange={(value) => setCodexSearchModel(value === 'request' ? '' : value)}
-                              >
-                                <SelectTrigger
-                                  id='codex-search-model'
-                                  className='h-8 w-auto max-w-full gap-2'
-                                  data-testid='codex-search-model-select'
-                                >
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value='request'>{t('channels.dialogs.fields.codexSearchModel.followRequest')}</SelectItem>
-                                  {codexSearchModelOptions(supportedModels, codexSearchModel).map((model) => (
-                                    <SelectItem key={model} value={model}>
-                                      {model}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                      {isCodexType && (
-                        <div className='space-y-2' data-testid='codex-image-only-setting'>
-                          <div className='flex min-w-0 flex-wrap items-center gap-x-6 gap-y-2'>
-                            <div className='flex min-h-8 items-center gap-2'>
-                              <label htmlFor='codex-image-only' className='text-sm font-medium'>
-                                {t('channels.dialogs.fields.codexImageOnly.label')}
-                              </label>
-                              <Switch id='codex-image-only' checked={codexImageOnly} onCheckedChange={setCodexImageOnly} data-testid='codex-image-only-toggle' />
-                            </div>
-                            {codexImageOnly && (
-                              <Button type='button' variant='outline' size='sm' data-testid='codex-image-models-add' onClick={() => {
-                                const models = ['gpt-image-2.6-sunburst', 'gpt-image-2.6-flare'];
-                                setSupportedModels((prev) => [...new Set([...prev, ...models])]);
-                                setManualModels((prev) => [...new Set([...prev, ...models.filter((model) => !supportedModels.includes(model))])]);
-                              }}>
-                                {t('channels.dialogs.fields.codexImageOnly.addModels')}
-                              </Button>
-                            )}
-                          </div>
-                          <p className='text-muted-foreground text-xs leading-relaxed'>
-                            {t('channels.dialogs.fields.codexImageOnly.description')}
-                          </p>
-                          {(codexSearchOnly || codexImageOnly) && (
-                            <p className='text-muted-foreground text-xs leading-relaxed' data-testid='codex-tool-only-description'>
-                              {t('channels.dialogs.fields.codexImageOnly.toolOnly')}
-                            </p>
-                          )}
-                        </div>
-                      )}
-                      {isCodexType && (
-                        <div className='space-y-2' data-testid='codex-speed-model-setting'>
-                          <div className='flex min-h-8 items-center gap-2'>
-                            <label htmlFor='codex-preserve-speed-model' className='text-sm font-medium'>
-                              {t('channels.dialogs.fields.codexPreserveSpeedModel.label')}
-                            </label>
-                            <Switch id='codex-preserve-speed-model' checked={codexPreserveSpeedModel} onCheckedChange={setCodexPreserveSpeedModel} data-testid='codex-preserve-speed-model-toggle' />
-                          </div>
-                          <p className='text-muted-foreground text-xs leading-relaxed'>
-                            {t('channels.dialogs.fields.codexPreserveSpeedModel.description')}
-                          </p>
-                        </div>
+                        <CodexToolSettings
+                          searchOnly={codexSearchOnly}
+                          imageOnly={codexImageOnly}
+                          searchModel={codexSearchModel}
+                          imageModel={codexImageModel}
+                          models={[...supportedModels, ...fetchedModels]}
+                          onSearchOnlyChange={(enabled) => {
+                            setCodexSearchOnly(enabled);
+                            if (enabled) form.setValue('policies.webSearch', 'native');
+                          }}
+                          onImageOnlyChange={(enabled) => {
+                            setCodexImageOnly(enabled);
+                            if (enabled) form.setValue('policies.imageGeneration', 'native');
+                          }}
+                          onSearchModelChange={setCodexSearchModel}
+                          onImageModelChange={(model) => {
+                            setCodexImageModel(model);
+                            if (model && !supportedModels.includes(model)) {
+                              setSupportedModels((prev) => [...new Set([...prev, model])]);
+                              setManualModels((prev) => [...new Set([...prev, model])]);
+                            }
+                          }}
+                        />
                       )}
                       {selectedProvider === 'claudecode' && (
                         <FormItem className='space-y-2'>
@@ -3638,6 +3575,35 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                     </FormItem>
                                   )}
                                 />
+                                <FormField
+                                  control={form.control}
+                                  name='policies.imageGeneration'
+                                  render={({ field }) => (
+                                    <FormItem className='flex min-w-0 flex-wrap items-center space-y-0 gap-x-2 gap-y-1.5'>
+                                      <PolicyFieldHeader label={t('channels.dialogs.fields.imageGenerationPolicy.label')} description={t('channels.dialogs.fields.imageGenerationPolicy.description')} testId='image-generation-policy-tip' />
+                                      <FormControl>
+                                        <CompactPolicyMenu value={field.value ?? 'native'} onValueChange={(value) => {
+                                          field.onChange(value);
+                                          if (value === 'other_channels') setCodexImageOnly(false);
+                                        }} options={[{ value: 'native' }, { value: 'other_channels' }]} translationPrefix='channels.dialogs.fields.imageGenerationPolicy.options' testId='image-generation-policy' />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                                <FormField
+                                  control={form.control}
+                                  name='policies.codexSpeed'
+                                  render={({ field }) => (
+                                    <FormItem className='flex min-w-0 flex-wrap items-center space-y-0 gap-x-2 gap-y-1.5'>
+                                      <PolicyFieldHeader label={t('channels.dialogs.fields.codexSpeedPolicy.label')} description={t('channels.dialogs.fields.codexSpeedPolicy.description')} testId='codex-speed-policy-tip' />
+                                      <FormControl>
+                                        <CompactPolicyMenu value={field.value ?? 'auto'} onValueChange={field.onChange} options={[{ value: 'auto' }, { value: 'standard' }, { value: 'fast' }, { value: 'ultrafast' }]} translationPrefix='channels.dialogs.fields.codexSpeedPolicy.options' testId='codex-speed-policy' />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
                                 {authMode !== 'third-party' && (
                                   <FormField
                                     control={form.control}
@@ -3712,6 +3678,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                               <div className='flex items-center gap-2'>
                                 <Button
                                   type='button'
+                                  data-testid='channel-fetch-models'
                                   onClick={handleFetchModels}
                                   size='sm'
                                   variant='outline'

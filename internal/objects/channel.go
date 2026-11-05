@@ -164,6 +164,8 @@ type ChannelSettings struct {
 	CodexPreserveSpeedModel bool `json:"codexPreserveSpeedModel,omitempty"`
 	// CodexSearchModel pins search-only requests; empty preserves the request model.
 	CodexSearchModel string `json:"codexSearchModel,omitempty"`
+	// CodexImageModel pins standalone image requests on a dedicated tool channel.
+	CodexImageModel string `json:"codexImageModel,omitempty"`
 
 	// ExtraModelPrefix sets the channel accept the model with the extra prefix.
 	// e.g. a channel
@@ -794,6 +796,8 @@ type ChannelPolicies struct {
 	// stored-data compatibility; RemoteCompaction takes precedence when set.
 	SupportsRemoteCompaction bool            `json:"supportsRemoteCompaction,omitempty"`
 	WebSearch                WebSearchPolicy `json:"webSearch,omitempty"`
+	ImageGeneration ImageGenerationPolicy `json:"imageGeneration,omitempty"`
+	CodexSpeed CodexSpeedPolicy `json:"codexSpeed,omitempty"`
 	// SupportsWebSearch is the legacy two-state field. Keep it for stored-data
 	// compatibility; WebSearch takes precedence when explicitly configured.
 	SupportsWebSearch *bool `json:"supportsWebSearch,omitempty"`

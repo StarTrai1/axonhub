@@ -31,6 +31,7 @@ function Fixture() {
   return <>
     <button data-testid="zh-locale" onClick={() => i18n.changeLanguage("zh-CN")}>中文</button>
     <button data-testid="dark-theme" onClick={() => setTheme("dark")}>Dark theme</button>
+    <button data-testid="light-theme" onClick={() => setTheme("light")}>Light theme</button>
     <button data-testid='reopen-codex' onClick={async () => {
       const response = await fetch('/fixture/channel');
       setCurrentRow(channelSchema.parse(await response.json()));
