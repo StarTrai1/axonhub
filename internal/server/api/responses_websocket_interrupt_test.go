@@ -154,7 +154,7 @@ func TestResponsesWebSocketInterruptOwnershipAndValidation(t *testing.T) {
 	control := lane.begin("gpt-6-luna")
 	d.registerResponseID("owned", lane)
 	interrupt := []byte(`{"type":"response.interrupt","response_id":"owned","mode":"discard_partial_items"}`)
-	require.NotNil(t, d.routeInterrupt(interrupt), "HTTP upstream cannot claim a graceful interrupt")
+	require.NotNil(t, d.routeInterrupt(interrupt), "a lane without an interrupt handler cannot acknowledge cancellation")
 	control.Activate()
 	require.Nil(t, d.routeInterrupt(interrupt))
 	require.JSONEq(t, string(interrupt), string(<-control.Events()))

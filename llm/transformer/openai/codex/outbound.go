@@ -741,6 +741,9 @@ func decodeSSEChunks(ctx context.Context, body []byte) ([]*httpclient.StreamEven
 }
 
 func (e *codexExecutor) DoStream(ctx context.Context, request *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
+	if e.transformer != nil && e.transformer.transport != responses.TransportWebSocket {
+		return responses.DoHTTPStream(ctx, e.executor(ctx), e.requestForTransport(request))
+	}
 	return e.executor(ctx).DoStream(ctx, e.requestForTransport(request))
 }
 

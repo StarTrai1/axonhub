@@ -2,6 +2,7 @@ package shared
 
 import (
 	"context"
+	"sync"
 	"sync/atomic"
 )
 
@@ -25,6 +26,33 @@ type ResponsesWebSocketSteering struct {
 	events    chan []byte
 	ready     atomic.Bool
 	terminals ResponsesWebSocketTerminals
+	interruptMu sync.Mutex
+	httpInterrupt *responsesHTTPInterrupt
+}
+
+type responsesHTTPInterrupt struct { cancel func(string) bool }
+
+// RegisterHTTPInterrupt installs an attempt-scoped interrupt handler. It does
+// not advertise response.steer, which still requires a native WebSocket.
+func (s *ResponsesWebSocketSteering) RegisterHTTPInterrupt(cancel func(string) bool) func() {
+	handler := &responsesHTTPInterrupt{cancel: cancel}
+	s.interruptMu.Lock()
+	s.httpInterrupt = handler
+	s.interruptMu.Unlock()
+	return func() {
+		s.interruptMu.Lock()
+		if s.httpInterrupt == handler { s.httpInterrupt = nil }
+		s.interruptMu.Unlock()
+	}
+}
+
+// InterruptHTTP cancels only the response owned by the current HTTP attempt.
+func (s *ResponsesWebSocketSteering) InterruptHTTP(responseID string) bool {
+	if s == nil { return false }
+	s.interruptMu.Lock()
+	handler := s.httpInterrupt
+	s.interruptMu.Unlock()
+	return handler != nil && handler.cancel(responseID)
 }
 
 // responsesAPIContextKey marks requests using the OpenAI Responses API.

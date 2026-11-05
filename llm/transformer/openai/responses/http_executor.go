@@ -23,7 +23,7 @@ func (e *httpTransportExecutor) Do(ctx context.Context, request *httpclient.Requ
 }
 
 func (e *httpTransportExecutor) DoStream(ctx context.Context, request *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
-	return e.inner.DoStream(ctx, e.finalize(request))
+	return DoHTTPStream(ctx, e.inner, e.finalize(request))
 }
 
 // PrepareHTTPTransportRequest removes WebSocket-v2-only request metadata before

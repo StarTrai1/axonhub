@@ -70,6 +70,11 @@ func (d *responsesWebSocketDispatcher) queueInterrupt(responseID string, message
 	if lane.steer.IsTerminalResponse(responseID) {
 		return true, nil
 	}
+	if lane.steer.InterruptHTTP(responseID) {
+		if d.pendingInterrupts == nil { d.pendingInterrupts = make(map[string]struct{}) }
+		d.pendingInterrupts[responseID] = struct{}{}
+		return false, nil
+	}
 	if !lane.steer.Ready() {
 		if lane.steer.IsTerminalResponse(responseID) {
 			return true, nil
