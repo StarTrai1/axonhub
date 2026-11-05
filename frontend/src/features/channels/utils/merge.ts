@@ -136,6 +136,8 @@ apiKeyStrategy: pick('apiKeyStrategy', existing?.apiKeyStrategy ?? null),
     apiKeyRoundRobinSwitchAfter: pick('apiKeyRoundRobinSwitchAfter', existing?.apiKeyRoundRobinSwitchAfter ?? null),
     providerQuota: pick('providerQuota', existing?.providerQuota ?? null),
     codexSearchOnly: pick('codexSearchOnly', existing?.codexSearchOnly ?? false),
+    codexImageOnly: pick('codexImageOnly', existing?.codexImageOnly ?? false),
+    codexPreserveSpeedModel: pick('codexPreserveSpeedModel', existing?.codexPreserveSpeedModel ?? false),
     codexSearchModel: pick('codexSearchModel', existing?.codexSearchModel ?? ''),
     quotaRoutingMode: pick('quotaRoutingMode', existing?.quotaRoutingMode ?? undefined),
   };

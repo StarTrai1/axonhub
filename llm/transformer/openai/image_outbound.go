@@ -117,6 +117,9 @@ func (t *OutboundTransformer) buildImageGenerateRequest(chatReq *llm.Request, ap
 		reqBody["size"] = img.Size
 	}
 
+	if img.Complexity != "" {
+		reqBody["complexity"] = img.Complexity
+	}
 	if img.Quality != "" {
 		reqBody["quality"] = img.Quality
 	}
@@ -289,6 +292,12 @@ func (t *OutboundTransformer) buildImageEditRequest(chatReq *llm.Request, apiKey
 			jsonBody["size"] = img.Size
 		}
 
+		if img.Complexity != "" {
+			if err := writer.WriteField("complexity", img.Complexity); err != nil {
+				return nil, fmt.Errorf("failed to write complexity field: %w", err)
+			}
+			jsonBody["complexity"] = img.Complexity
+		}
 		if img.Quality != "" {
 			if err := writer.WriteField("quality", img.Quality); err != nil {
 				return nil, fmt.Errorf("failed to write quality field: %w", err)

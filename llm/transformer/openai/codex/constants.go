@@ -50,13 +50,26 @@ func DefaultModels() []string {
 }
 
 func fastModelBase(model string) (string, bool) {
+	base, _, ok := SpeedModel(model)
+	return base, ok
+}
+
+// SpeedModel resolves the gateway's explicit speed aliases. Unknown provider
+// model names are never stripped merely because they end in a speed suffix.
+func SpeedModel(model string) (base, tier string, ok bool) {
 	for _, pair := range fastModelPairs {
 		if pair.alias == model {
-			return pair.model, true
+			return pair.model, "priority", true
 		}
 	}
-
-	return "", false
+	switch model {
+	case "gpt-6-astra-ultrafast":
+		return "gpt-6-astra", "ultrafast", true
+	case "gpt-6.1-sol-ultrafast":
+		return "gpt-6.1-sol", "ultrafast", true
+	default:
+		return "", "", false
+	}
 }
 
 const (

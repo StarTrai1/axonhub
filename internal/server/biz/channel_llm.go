@@ -379,6 +379,7 @@ func (svc *ChannelService) buildCodexOutboundWithRefresh(
 			if existing, ok := ch.Outbound.(*codex.OutboundTransformer); ok {
 				if tokens := existing.TokenProvider(); tokens != nil {
 					return codex.NewOutboundTransformer(codex.Params{
+		PreserveSpeedModel: c.Settings != nil && c.Settings.CodexPreserveSpeedModel,
 						TokenProvider:   tokens,
 						BaseURL:         baseURL,
 						Transport:       transport,
@@ -424,6 +425,7 @@ func (svc *ChannelService) buildCodexOutboundWithRefresh(
 		}
 
 		return codex.NewOutboundTransformer(codex.Params{
+		PreserveSpeedModel: c.Settings != nil && c.Settings.CodexPreserveSpeedModel,
 			TokenProvider:   p,
 			BaseURL:         baseURL,
 			Transport:       transport,
@@ -436,6 +438,7 @@ func (svc *ChannelService) buildCodexOutboundWithRefresh(
 	tokens := oauth.NewAPIKeyTokenProvider(apiKeyProvider.Get)
 
 	return codex.NewOutboundTransformer(codex.Params{
+		PreserveSpeedModel: c.Settings != nil && c.Settings.CodexPreserveSpeedModel,
 		TokenProvider:   tokens,
 		BaseURL:         baseURL,
 		Transport:       transport,

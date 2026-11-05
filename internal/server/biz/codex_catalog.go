@@ -71,6 +71,43 @@ func (c *CodexCatalog) Intersect(ids []string) ([]byte, error) {
 			models = append(models, c.models[i])
 		}
 	}
+	// An enabled speed alias can reuse its base model's native instructions and
+	// tool metadata. The model picker remains usable when the client hides its
+	// speed controls. Never replace a real upstream entry or expose a hidden ID.
+	bySlug := make(map[string]json.RawMessage, len(c.slugs))
+	for i, slug := range c.slugs {
+		bySlug[slug] = c.models[i]
+	}
+	for _, id := range ids {
+		if _, exists := bySlug[id]; exists {
+			continue
+		}
+		base, tier, ok := codex.SpeedModel(id)
+		if !ok || bySlug[base] == nil {
+			continue
+		}
+		var alias map[string]json.RawMessage
+		if err := json.Unmarshal(bySlug[base], &alias); err != nil {
+			return nil, fmt.Errorf("decode speed model metadata: %w", err)
+		}
+		alias["slug"], _ = json.Marshal(id)
+		label := "Fast"
+		if tier == "ultrafast" {
+			label = "Ultrafast"
+		}
+		alias["display_name"], _ = json.Marshal(base + " · " + label)
+		// The alias itself chooses the speed. Avoid inheriting a conflicting
+		// default or offering a second speed selection on top of that alias.
+		alias["default_service_tier"] = json.RawMessage("null")
+		alias["service_tiers"] = json.RawMessage("[]")
+		alias["additional_speed_tiers"] = json.RawMessage("[]")
+		raw, err := json.Marshal(alias)
+		if err != nil {
+			return nil, fmt.Errorf("encode speed model metadata: %w", err)
+		}
+		models = append(models, raw)
+		bySlug[id] = raw
+	}
 	fields := make(map[string]json.RawMessage, len(c.fields))
 	maps.Copy(fields, c.fields)
 	raw, err := json.Marshal(models)
@@ -266,6 +303,7 @@ func (svc *ChannelService) codexCatalogOutbound(ctx context.Context, entity *ent
 
 func (svc *ChannelService) newCodexCatalogOutbound(entity *ent.Channel, provider *oauth.TokenProvider) (*codex.OutboundTransformer, error) {
 	outbound, err := codex.NewOutboundTransformer(codex.Params{
+		PreserveSpeedModel: entity.Settings != nil && entity.Settings.CodexPreserveSpeedModel,
 		TokenProvider: provider,
 		BaseURL:       entity.BaseURL,
 		Transport:     primaryEndpointTransport(entity, llm.APIFormatOpenAIResponse.String()),

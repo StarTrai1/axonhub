@@ -1093,9 +1093,15 @@
   "channels.templates.dialogs.edit.title": "编辑模板",
   "channels.templates.dialogs.edit.description": "更新模板配置。在你重新应用模板之前，改动不会影响任何渠道。",
   "channels.templates.validation.duplicateName": "已存在名为 \"{{name}}\" 的模板，请更换名称。",
-  "channels.dialogs.fields.codexSearchOnly.label": "仅搜索",
-  "channels.dialogs.fields.codexSearchOnly.description": "此渠道仅用于联网搜索，不承接对话或生成请求。",
+  "channels.dialogs.fields.codexSearchOnly.label": "联网搜索工具",
+  "channels.dialogs.fields.codexSearchOnly.description": "声明此渠道支持独立联网搜索，并将渠道专用于已开启的工具。",
   "channels.dialogs.fields.codexSearchModel.label": "搜索模型",
   "channels.dialogs.fields.codexSearchModel.followRequest": "跟随请求模型",
-  "channels.dialogs.fields.codexSearchModel.description": "可指定 GPT-5.6 及以上模型；未指定时沿用当前对话的请求模型。"
+  "channels.dialogs.fields.codexSearchModel.description": "可指定 GPT-5.6 及以上模型；未指定时沿用当前对话的请求模型。",
+  "channels.dialogs.fields.codexImageOnly.label": "图像生成工具",
+  "channels.dialogs.fields.codexImageOnly.addModels": "添加 GPT Image 2.6 型号",
+  "channels.dialogs.fields.codexImageOnly.description": "声明此渠道支持原生生图和编辑。请仅添加上游支持的准确型号；此选项不会为 Codex 安装 image_gen 扩展。",
+  "channels.dialogs.fields.codexImageOnly.toolOnly": "普通 Responses 和 Chat 对话不会选择此渠道，仅承接已开启的独立工具请求。",
+  "channels.dialogs.fields.codexPreserveSpeedModel.label": "保留加速模型名",
+  "channels.dialogs.fields.codexPreserveSpeedModel.description": "中转站按 -fast 或 -ultrafast 名称路由时开启。关闭时，已知别名转为基础模型和服务档位；官方 Codex 始终使用服务档位。"
 }

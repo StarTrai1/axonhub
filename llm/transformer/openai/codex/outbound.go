@@ -52,6 +52,7 @@ type OutboundTransformer struct {
 	// backend (chatgpt.com). Official endpoints always stream SSE, so they keep
 	// the DoStream path; only compatible relays get the JSON passthrough path.
 	official bool
+	preserveSpeedModel bool
 
 	// reuse existing Responses outbound for payload building.
 	responsesOutbound *responses.OutboundTransformer
@@ -74,6 +75,7 @@ var responsesBlockedPassThroughFields = []string{
 }
 
 type Params struct {
+	PreserveSpeedModel bool
 	TokenProvider   oauth.TokenGetter
 	BaseURL         string
 	Transport       string
@@ -90,7 +92,7 @@ func isOfficialCodexBaseURL(baseURL string) bool {
 }
 
 func resolveFastModel(model string, serviceTier *string) (string, *string) {
-	baseModel, isFast := fastModelBase(model)
+	baseModel, tier, isFast := SpeedModel(model)
 	if !isFast {
 		return model, serviceTier
 	}
@@ -99,7 +101,7 @@ func resolveFastModel(model string, serviceTier *string) (string, *string) {
 		return baseModel, serviceTier
 	}
 
-	return baseModel, lo.ToPtr(codexFastServiceTier)
+	return baseModel, lo.ToPtr(tier)
 }
 
 // isOfficialCodex reports whether the transformer targets the official Codex backend.
@@ -141,6 +143,7 @@ func NewOutboundTransformer(params Params) (*OutboundTransformer, error) {
 		baseURL:           strings.TrimSuffix(baseURL, "##"),
 		alphaSearchPath:   alphaSearchPath,
 		official:          official,
+		preserveSpeedModel: params.PreserveSpeedModel && !official,
 		responsesOutbound: ro,
 	}, nil
 }
@@ -324,7 +327,9 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		reqCopy.TransformerMetadata = map[string]any{}
 	}
 
-	reqCopy.Model, reqCopy.ServiceTier = resolveFastModel(reqCopy.Model, reqCopy.ServiceTier)
+	if !t.preserveSpeedModel {
+		reqCopy.Model, reqCopy.ServiceTier = resolveFastModel(reqCopy.Model, reqCopy.ServiceTier)
+	}
 
 	// Ask for encrypted reasoning content so downstream can surface reasoning blocks.
 	if _, ok := reqCopy.TransformerMetadata["include"]; !ok {

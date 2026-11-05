@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
 
@@ -72,5 +73,34 @@ func TestCodexFastAliasPreservesRelayHeadersAndUnknownModels(t *testing.T) {
 		wire := outbound.FinalizeTransportRequest(request)
 		require.Equal(t, model, gjson.GetBytes(wire.Body, "model").String())
 		require.False(t, gjson.GetBytes(wire.Body, "service_tier").Exists())
+	}
+}
+
+func TestCodexUltrafastAndRelayModelNames(t *testing.T) {
+	for _, model := range []string{"gpt-6-astra", "gpt-6.1-sol"} {
+		for _, speed := range []string{"fast", "ultrafast"} {
+			alias := model + "-" + speed
+			for _, preserve := range []bool{false, true} {
+				outbound := newTestCodexOutbound(t)
+				outbound.official = false
+				outbound.preserveSpeedModel = preserve
+				request := &llm.Request{Model: alias, Messages: []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("synthetic")}}}}
+				wire, err := outbound.TransformRequest(t.Context(), request)
+				require.NoError(t, err)
+				wire = outbound.FinalizeTransportRequest(wire)
+				wantModel, wantTier := model, "priority"
+				if speed == "ultrafast" { wantTier = "ultrafast" }
+				if preserve { wantModel, wantTier = alias, "" }
+				require.Equal(t, wantModel, gjson.GetBytes(wire.Body, "model").String())
+				require.Equal(t, wantTier, gjson.GetBytes(wire.Body, "service_tier").String())
+				// Finalization also handles native body pass-through without changing history.
+				raw := &httpclient.Request{Body: []byte(fmt.Sprintf(`{"model":%q,"service_tier":"default","previous_response_id":"resp_keep","input":[{"type":"compaction","encrypted_content":"ciphertext"}]}`, alias))}
+				got := outbound.FinalizeTransportRequest(raw)
+				require.Equal(t, wantModel, gjson.GetBytes(got.Body, "model").String())
+				require.Equal(t, "default", gjson.GetBytes(got.Body, "service_tier").String())
+				require.Equal(t, "resp_keep", gjson.GetBytes(got.Body, "previous_response_id").String())
+				require.Equal(t, "ciphertext", gjson.GetBytes(got.Body, "input.0.encrypted_content").String())
+			}
+		}
 	}
 }

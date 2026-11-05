@@ -723,6 +723,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   });
   const [codexSearchModel, setCodexSearchModel] = useState(() => initialRow?.settings?.codexSearchModel ?? '');
   const [codexSearchOnly, setCodexSearchOnly] = useState(() => initialRow?.settings?.codexSearchOnly ?? false);
+  const [codexImageOnly, setCodexImageOnly] = useState(() => initialRow?.settings?.codexImageOnly ?? false);
+  const [codexPreserveSpeedModel, setCodexPreserveSpeedModel] = useState(() => initialRow?.settings?.codexPreserveSpeedModel ?? false);
   const [quotaRoutingMode, setQuotaRoutingMode] = useState<ChannelQuotaRoutingMode>(() => recallQuotaRoutingMode(initialRow?.settings));
   const [retryableStatusCodesText, setRetryableStatusCodesText] = useState(() =>
     formatRetryableStatusCodes(initialRow?.settings?.retryableStatusCodes)
@@ -1842,6 +1844,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           providerQuota: settingsForSubmit?.providerQuota,
           ...quotaRoutingModeSettingsPatch(quotaRoutingMode),
           codexSearchOnly: isCodexType ? codexSearchOnly : false,
+          codexImageOnly: isCodexType ? codexImageOnly : false,
+          codexPreserveSpeedModel: isCodexType ? codexPreserveSpeedModel : false,
           codexSearchModel: isCodexType ? codexSearchModel : '',
           ...(shouldUpdateModelProtocols
             ? { modelProtocols: getModelProtocolsForApiFormat(selectedApiFormat, supportedModels, existingModelProtocols) }
@@ -1911,6 +1915,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           responseTimeout,
           ...quotaRoutingModeSettingsPatch(quotaRoutingMode),
           codexSearchOnly: isCodexType ? codexSearchOnly : false,
+          codexImageOnly: isCodexType ? codexImageOnly : false,
+          codexPreserveSpeedModel: isCodexType ? codexPreserveSpeedModel : false,
           codexSearchModel: isCodexType ? codexSearchModel : '',
           apiKeyStrategy,
           apiKeyRoundRobinSwitchAfter:
@@ -2347,6 +2353,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             setHTTP2ConnectionShards(initialShards >= 1 && initialShards <= 8 ? initialShards : 1);
             setQuotaRoutingMode(recallQuotaRoutingMode(initialRow?.settings));
             setCodexSearchOnly(initialRow?.settings?.codexSearchOnly ?? false);
+            setCodexImageOnly(initialRow?.settings?.codexImageOnly ?? false);
+            setCodexPreserveSpeedModel(initialRow?.settings?.codexPreserveSpeedModel ?? false);
             setCodexSearchModel(initialRow?.settings?.codexSearchModel ?? '');
             setRetryableStatusCodesText(formatRetryableStatusCodes(initialRow?.settings?.retryableStatusCodes));
             setRetryableErrorPatternsText(formatRetryableErrorPatterns(initialRow?.settings?.retryableErrorPatterns));
@@ -2629,6 +2637,48 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                               </Select>
                             </div>
                           )}
+                        </div>
+                      )}
+                      {isCodexType && (
+                        <div className='space-y-2' data-testid='codex-image-only-setting'>
+                          <div className='flex min-w-0 flex-wrap items-center gap-x-6 gap-y-2'>
+                            <div className='flex min-h-8 items-center gap-2'>
+                              <label htmlFor='codex-image-only' className='text-sm font-medium'>
+                                {t('channels.dialogs.fields.codexImageOnly.label')}
+                              </label>
+                              <Switch id='codex-image-only' checked={codexImageOnly} onCheckedChange={setCodexImageOnly} data-testid='codex-image-only-toggle' />
+                            </div>
+                            {codexImageOnly && (
+                              <Button type='button' variant='outline' size='sm' data-testid='codex-image-models-add' onClick={() => {
+                                const models = ['gpt-image-2.6-sunburst', 'gpt-image-2.6-flare'];
+                                setSupportedModels((prev) => [...new Set([...prev, ...models])]);
+                                setManualModels((prev) => [...new Set([...prev, ...models.filter((model) => !supportedModels.includes(model))])]);
+                              }}>
+                                {t('channels.dialogs.fields.codexImageOnly.addModels')}
+                              </Button>
+                            )}
+                          </div>
+                          <p className='text-muted-foreground text-xs leading-relaxed'>
+                            {t('channels.dialogs.fields.codexImageOnly.description')}
+                          </p>
+                          {(codexSearchOnly || codexImageOnly) && (
+                            <p className='text-muted-foreground text-xs leading-relaxed' data-testid='codex-tool-only-description'>
+                              {t('channels.dialogs.fields.codexImageOnly.toolOnly')}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                      {isCodexType && (
+                        <div className='space-y-2' data-testid='codex-speed-model-setting'>
+                          <div className='flex min-h-8 items-center gap-2'>
+                            <label htmlFor='codex-preserve-speed-model' className='text-sm font-medium'>
+                              {t('channels.dialogs.fields.codexPreserveSpeedModel.label')}
+                            </label>
+                            <Switch id='codex-preserve-speed-model' checked={codexPreserveSpeedModel} onCheckedChange={setCodexPreserveSpeedModel} data-testid='codex-preserve-speed-model-toggle' />
+                          </div>
+                          <p className='text-muted-foreground text-xs leading-relaxed'>
+                            {t('channels.dialogs.fields.codexPreserveSpeedModel.description')}
+                          </p>
                         </div>
                       )}
                       {selectedProvider === 'claudecode' && (

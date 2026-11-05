@@ -288,3 +288,22 @@ against local synthetic upstreams; it makes no paid provider calls.
 The bundled model catalog uses Standard prices of $1 input, $0.05 cached input, $1.25 cache write (30 minutes), and $5 output per million tokens. Requests exceeding 272,000 input tokens use twice the input/cache prices and 1.5 times the output price for the whole request. Fast costs twice Standard. A 12-hour cache write is $2.50 per million tokens before long-context or tier adjustments; configure matching channel prices when using that retention. See the [official model page](https://developers.openai.com/api/docs/models/gpt-6.1-terra).
 
 Azure history compatibility is now automatic for an explicit resource-mismatch rejection from a third-party Codex channel. The channel-wide switch has been removed and old saved values are ignored. The initial attempt retains native history; a rejected request can retry once with readable retained history. Native checkpoints may require a retained-history summary request. This correction does not become a policy that strips IDs and encrypted reasoning from later requests, and it does not change `prompt_cache_key` or relax retry budgets. Missing retained history returns an error instead of silently dropping context.
+
+### Dedicated search and image channels
+
+The channel editor's Web search tool and Image generation tool switches independently declare supported standalone tools. Either switch reserves the channel: ordinary Responses (including WebSocket), Chat and continuation requests cannot use it. Enable both to accept search plus native image generation/editing. Existing search-only settings and explicit/follow-request search models retain their behavior. Project/key channel restrictions still apply; image routing uses the existing model configuration without silently changing model versions.
+
+Add GPT Image 2.6 models explicitly adds `gpt-image-2.6-sunburst` and `gpt-image-2.6-flare` as manual models. Confirm support for those exact IDs first. The official Codex conversation catalog does not enumerate standalone image models; AxonHub's legacy supplement is `gpt-image-2`. Relay discovery uses the relay's list. Being able to forward a model does not establish that the upstream lists it or that an account can use it.
+
+Codex 0.166's standalone `image_gen` extension is installed by the client, checks provider configuration, and sends the fixed `gpt-image-2` model. A gateway setting cannot install this extension. To use 2.6 through that fixed name, explicitly configure an existing model mapping from `gpt-image-2` to `gpt-image-2.6-sunburst` after confirming upstream support; this changes the actual model for requests in the mapping's scope. Explicit 2.6 IDs remain intact. Independent `complexity` and `quality` values survive JSON generation, JSON edits and multipart edits.
+
+### Selecting Fast / Ultrafast with compatible login
+
+When the client's speed controls are unavailable, select an enabled speed model such as `gpt-6.1-sol-fast` or `gpt-6.1-sol-ultrafast` in its model picker. For visible known aliases, AxonHub reuses the base model's native instructions and tool metadata from the selected catalog source. Explicit upstream alias entries take precedence. Missing base metadata is never fabricated.
+
+Configure the inference channel for the relay's actual protocol:
+
+- **Preserve speed model names off (default):** known `-fast` aliases become the base model with `service_tier: priority`; `gpt-6-astra-ultrafast` and `gpt-6.1-sol-ultrafast` use `service_tier: ultrafast`. Explicit client tiers take precedence.
+- **Preserve speed model names on:** forward the relay's exact alias without injecting a tier. Official Codex always uses base models and service tiers.
+
+This avoids changing compatible login identity and does not promise to enable native desktop speed controls. Those still depend on client features and upstream catalog fields such as `service_tiers`. Actual speed and billing depend on the provider. The [official Ultrafast API tier](https://developers.openai.com/api/docs/guides/ultrafast-mode) is distinct from arbitrary vendor model suffixes.

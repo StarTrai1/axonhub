@@ -27,6 +27,8 @@ import (
 // (mergeChannelSettingsForUpdate) and makes those semantics available to
 // direct GraphQL callers.
 type UpdateChannelSettingsInput struct {
+	CodexImageOnly *bool `json:"codexImageOnly"`
+	CodexPreserveSpeedModel *bool `json:"codexPreserveSpeedModel"`
 	CodexSearchOnly             *bool                                 `json:"codexSearchOnly"`
 	CodexSearchModel            *string                               `json:"codexSearchModel"`
 	HTTPProtocol                *string                               `json:"httpProtocol"`
@@ -67,6 +69,12 @@ func (i *UpdateChannelSettingsInput) Apply(base *objects.ChannelSettings) object
 		return merged
 	}
 
+	if i.CodexImageOnly != nil {
+		merged.CodexImageOnly = *i.CodexImageOnly
+	}
+	if i.CodexPreserveSpeedModel != nil {
+		merged.CodexPreserveSpeedModel = *i.CodexPreserveSpeedModel
+	}
 	if i.CodexSearchOnly != nil {
 		merged.CodexSearchOnly = *i.CodexSearchOnly
 	}

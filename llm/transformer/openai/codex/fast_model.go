@@ -13,10 +13,10 @@ import (
 // aliases are gateway conveniences; the upstream receives the base model and
 // service tier. Patch only those fields so native Responses extensions survive.
 func (t *OutboundTransformer) normalizeFastModelRequest(request *httpclient.Request) *httpclient.Request {
-	if t == nil || request == nil {
+	if t == nil || request == nil || t.preserveSpeedModel {
 		return request
 	}
-	baseModel, ok := fastModelBase(gjson.GetBytes(request.Body, "model").String())
+	baseModel, aliasTier, ok := SpeedModel(gjson.GetBytes(request.Body, "model").String())
 	if !ok || !gjson.ValidBytes(request.Body) {
 		return request
 	}
@@ -27,7 +27,7 @@ func (t *OutboundTransformer) normalizeFastModelRequest(request *httpclient.Requ
 	}
 	tier := strings.TrimSpace(gjson.GetBytes(body, "service_tier").String())
 	if tier == "" {
-		tier = codexFastServiceTier
+		tier = aliasTier
 		body, err = sjson.SetBytes(body, "service_tier", tier)
 		if err != nil {
 			return request

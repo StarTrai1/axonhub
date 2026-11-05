@@ -13,15 +13,12 @@ func isStandaloneSearch(req *llm.Request) bool {
 }
 
 func filterSearchOnlyCandidates(candidates []*ChannelModelsCandidate, req *llm.Request) []*ChannelModelsCandidate {
-	if isStandaloneSearch(req) {
-		return candidates
-	}
 	for i, candidate := range candidates {
-		if candidate != nil && candidate.Channel.IsCodexSearchOnly() {
+		if candidate != nil && !candidate.Channel.AllowsCodexToolRequest(req) {
 			filtered := make([]*ChannelModelsCandidate, 0, len(candidates)-1)
 			filtered = append(filtered, candidates[:i]...)
 			for _, remaining := range candidates[i+1:] {
-				if remaining == nil || !remaining.Channel.IsCodexSearchOnly() {
+				if remaining == nil || remaining.Channel.AllowsCodexToolRequest(req) {
 					filtered = append(filtered, remaining)
 				}
 			}

@@ -156,6 +156,12 @@ type ChannelSettings struct {
 	// CodexSearchOnly reserves a Codex channel for the standalone search API.
 	// The zero value preserves existing routing for stored channel settings.
 	CodexSearchOnly bool `json:"codexSearchOnly,omitempty"`
+	// CodexImageOnly declares standalone image generation/edit support and reserves
+	// the channel for the selected tools, together with CodexSearchOnly.
+	CodexImageOnly bool `json:"codexImageOnly,omitempty"`
+	// CodexPreserveSpeedModel forwards relay speed aliases without converting them
+	// to a base model and service_tier. Official Codex always uses service tiers.
+	CodexPreserveSpeedModel bool `json:"codexPreserveSpeedModel,omitempty"`
 	// CodexSearchModel pins search-only requests; empty preserves the request model.
 	CodexSearchModel string `json:"codexSearchModel,omitempty"`
 

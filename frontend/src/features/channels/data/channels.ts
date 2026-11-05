@@ -124,6 +124,8 @@ const CREATE_CHANNEL_MUTATION = `
         httpProtocol
         http2ConnectionShards
         codexSearchOnly
+        codexImageOnly
+        codexPreserveSpeedModel
         codexSearchModel
         quotaRoutingMode
         proxy {
@@ -234,6 +236,8 @@ const DUPLICATE_CHANNEL_MUTATION = `
         httpProtocol
         http2ConnectionShards
         codexSearchOnly
+        codexImageOnly
+        codexPreserveSpeedModel
         codexSearchModel
         quotaRoutingMode
         proxy {
@@ -344,6 +348,8 @@ const BULK_CREATE_CHANNELS_MUTATION = `
         httpProtocol
         http2ConnectionShards
         codexSearchOnly
+        codexImageOnly
+        codexPreserveSpeedModel
         codexSearchModel
         quotaRoutingMode
         proxy {
@@ -453,6 +459,8 @@ const CHANNEL_FIELDS_FRAGMENT = `
         httpProtocol
         http2ConnectionShards
         codexSearchOnly
+        codexImageOnly
+        codexPreserveSpeedModel
         codexSearchModel
         quotaRoutingMode
         proxy {
@@ -727,6 +735,8 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
           httpProtocol
           http2ConnectionShards
           codexSearchOnly
+          codexImageOnly
+          codexPreserveSpeedModel
         codexSearchModel
           quotaRoutingMode
           transformOptions {
@@ -978,6 +988,8 @@ const BULK_UPDATE_CHANNEL_ORDERING_MUTATION = `
           httpProtocol
           http2ConnectionShards
           codexSearchOnly
+          codexImageOnly
+          codexPreserveSpeedModel
         codexSearchModel
           quotaRoutingMode
           transformOptions {
@@ -1231,6 +1243,8 @@ const CHANNEL_QUERY_FULL_NODE_SELECTION = `
             httpProtocol
             http2ConnectionShards
             codexSearchOnly
+            codexImageOnly
+            codexPreserveSpeedModel
         codexSearchModel
             quotaRoutingMode
             bodyOverrideOperations {
@@ -1365,6 +1379,8 @@ const CHANNEL_QUERY_LIST_NODE_BASE_SELECTION = `
 const CHANNEL_QUERY_ROUTING_STATUS_SELECTION = `
            settings {
              codexSearchOnly
+             codexImageOnly
+             codexPreserveSpeedModel
         codexSearchModel
              quotaRoutingMode
            }
@@ -1387,6 +1403,8 @@ const CHANNEL_QUERY_TAGS_SELECTION = `
 const CHANNEL_QUERY_PROXY_SELECTION = `
           settings {
             codexSearchOnly
+            codexImageOnly
+            codexPreserveSpeedModel
         codexSearchModel
             quotaRoutingMode
             proxy {
@@ -1406,6 +1424,8 @@ const CHANNEL_QUERY_ORDERING_WEIGHT_SELECTION = `
 const CHANNEL_QUERY_HEALTH_SELECTION = `
           settings {
             codexSearchOnly
+            codexImageOnly
+            codexPreserveSpeedModel
         codexSearchModel
             quotaRoutingMode
           }

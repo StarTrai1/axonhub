@@ -14,7 +14,7 @@ for (const width of [1280, 768, 390]) {
     await page.route('**/admin/graphql', async (route) => {
       const body = route.request().postDataJSON();
       if (body.operationName === 'UpdateChannel') {
-        settings.push({ enabled: body.variables.input.settings.codexSearchOnly, model: body.variables.input.settings.codexSearchModel, policy: body.variables.input.policies.webSearch });
+        settings.push({ enabled: body.variables.input.settings.codexSearchOnly, model: body.variables.input.settings.codexSearchModel, image: body.variables.input.settings.codexImageOnly, preserveSpeed: body.variables.input.settings.codexPreserveSpeedModel, policy: body.variables.input.policies.webSearch });
         saved = { ...saved, ...body.variables.input };
         await route.fulfill({ json: { data: { updateChannel: saved } } });
       } else {
@@ -49,6 +49,17 @@ for (const width of [1280, 768, 390]) {
     await expect(page.getByRole('option', { name: 'gpt-5.5', exact: true })).toHaveCount(0);
     await page.getByRole('option', { name: 'gpt-6.1-sol', exact: true }).click();
     await expect(modelSelect).toContainText('gpt-6.1-sol');
+    const imageToggle = page.getByTestId('codex-image-only-toggle');
+    const preserveSpeed = page.getByTestId('codex-preserve-speed-model-toggle');
+    await imageToggle.click();
+    await preserveSpeed.click();
+    await page.getByTestId('codex-image-models-add').click();
+    await expect(imageToggle).toHaveAttribute('aria-checked', 'true');
+    await expect(toggle).toHaveAttribute('aria-checked', 'true');
+    for (const id of ['codex-image-only-setting', 'codex-speed-model-setting']) {
+      const row = page.getByTestId(id);
+      expect(await row.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
+    }
     await page.screenshot({ path: testInfo.outputPath('codex-search-model.png') });
     const policies = page.getByTestId('codex-policy-settings');
     await policies.scrollIntoViewIfNeeded();
@@ -77,7 +88,9 @@ for (const width of [1280, 768, 390]) {
     await expect(page.getByRole('dialog')).toHaveCSS('background-color', 'oklch(0.22 0.002 106)');
     await page.screenshot({ path: testInfo.outputPath('codex-channel-dark.png') });
     await page.getByTestId('channel-submit-button').click();
-    await expect.poll(() => settings).toEqual([{ enabled: true, model: 'gpt-6.1-sol', policy: 'native' }]);
+    await expect.poll(() => settings).toEqual([{ enabled: true, model: 'gpt-6.1-sol', image: true, preserveSpeed: true, policy: 'native' }]);
+    expect(saved.supportedModels).toContain('gpt-image-2.6-sunburst');
+    expect(saved.supportedModels).toContain('gpt-image-2.6-flare');
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await page.getByTestId('reopen-codex').click();
     await expect(toggle).toHaveAttribute('aria-checked', 'true');
@@ -88,8 +101,12 @@ for (const width of [1280, 768, 390]) {
     await searchPolicy.click();
     await page.getByTestId('web-search-policy-other_channels').click();
     await expect(toggle).toHaveAttribute('aria-checked', 'false');
+    await expect(imageToggle).toHaveAttribute('aria-checked', 'true');
+    await expect(preserveSpeed).toHaveAttribute('aria-checked', 'true');
     await page.getByTestId('channel-submit-button').click();
-    await expect.poll(() => settings).toEqual([{ enabled: true, model: 'gpt-6.1-sol', policy: 'native' }, { enabled: false, model: '', policy: 'other_channels' }]);
+    await expect.poll(() => settings).toEqual([{ enabled: true, model: 'gpt-6.1-sol', image: true, preserveSpeed: true, policy: 'native' }, { enabled: false, model: '', image: true, preserveSpeed: true, policy: 'other_channels' }]);
+    expect(saved.supportedModels).toContain('gpt-image-2.6-sunburst');
+    expect(saved.supportedModels).toContain('gpt-image-2.6-flare');
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await page.getByTestId('reopen-codex').click();
     await searchPolicy.scrollIntoViewIfNeeded();

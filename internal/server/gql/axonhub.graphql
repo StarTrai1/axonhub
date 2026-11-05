@@ -195,6 +195,8 @@ input ChannelProviderQuotaSettingsInput {
 
 type ChannelSettings {
   codexSearchOnly: Boolean
+  codexImageOnly: Boolean
+  codexPreserveSpeedModel: Boolean
   codexSearchModel: String
   extraModelPrefix: String
   modelMappings: [ModelMapping!]
@@ -342,6 +344,8 @@ input ModelMappingInput {
 
 input ChannelSettingsInput {
   codexSearchOnly: Boolean
+  codexImageOnly: Boolean
+  codexPreserveSpeedModel: Boolean
   codexSearchModel: String
   extraModelPrefix: String
   modelMappings: [ModelMappingInput!]
@@ -375,6 +379,8 @@ input ChannelSettingsInput {
 # instead of updateChannel's settings input when only some settings change.
 input UpdateChannelSettingsInput {
   codexSearchOnly: Boolean
+  codexImageOnly: Boolean
+  codexPreserveSpeedModel: Boolean
   codexSearchModel: String
   httpProtocol: String
   http2ConnectionShards: Int

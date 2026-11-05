@@ -76,6 +76,24 @@ func TestCodexRoutes_ImageGenerationUsesNativeUpstream(t *testing.T) {
 	require.Equal(t, "synthetic-generated", gjson.GetBytes(result.Body.Bytes(), "data.0.b64_json").String())
 }
 
+func TestCodexRoutes_ImageOnlyUsesExactImage26Model(t *testing.T) {
+	h, requests := setupCodexImageRoute(t, llm.APIFormatOpenAIImageGeneration, `{"created":1700000000,"data":[{"b64_json":"synthetic-generated"}]}`)
+	h.source.Update().SetSettings(&objects.ChannelSettings{CodexImageOnly: true}).SetSupportedModels([]string{"gpt-image-2.6-sunburst"}).SaveX(h.ctx)
+	built, err := h.channels.GetChannel(h.ctx, h.source.ID)
+	require.NoError(t, err)
+	h.channels.SetEnabledChannelsForTest([]*biz.Channel{built})
+	req := httptest.NewRequest(http.MethodPost, "/codex/images/generations", strings.NewReader(`{"model":"gpt-image-2.6-sunburst","prompt":"synthetic","complexity":"medium","quality":"max"}`))
+	req.Header.Set("Authorization", "Bearer "+h.key.Key)
+	req.Header.Set("Content-Type", "application/json")
+	result := httptest.NewRecorder()
+	h.router.ServeHTTP(result, req)
+	require.Equal(t, http.StatusOK, result.Code, result.Body.String())
+	observed := <-requests
+	require.Equal(t, "/v1/images/generations", observed.path)
+	require.Equal(t, "gpt-image-2.6-sunburst", gjson.GetBytes(observed.body, "model").String())
+	require.Equal(t, "medium", gjson.GetBytes(observed.body, "complexity").String())
+}
+
 func TestCodexRoutes_ImageEditUsesNativeUpstream(t *testing.T) {
 	h, requests := setupCodexImageRoute(t, llm.APIFormatOpenAIImageEdit, `{"created":1700000001,"data":[{"b64_json":"synthetic-edited"}]}`)
 	req := httptest.NewRequest(http.MethodPost, "/codex/images/edits", strings.NewReader(`{"model":"gpt-image-2","image":"data:image/png;base64,c3ludGhldGljLWltYWdl","prompt":"synthetic edit"}`))

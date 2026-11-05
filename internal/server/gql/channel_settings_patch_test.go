@@ -13,13 +13,17 @@ func TestChannelSettingsPatchGraphQLPreservesForkFields(t *testing.T) {
 	patch, err := (&executionContext{}).unmarshalInputUpdateChannelSettingsInput(t.Context(), map[string]any{
 		"codexSearchOnly": false, "codexSearchModel": "", "httpProtocol": "http1",
 		"http2ConnectionShards": 0, "maxSingleChannelRetries": 0,
+		"codexImageOnly": false, "codexPreserveSpeedModel": false,
 	})
 	require.NoError(t, err)
 	merged := patch.Apply(&objects.ChannelSettings{
 		CodexSearchOnly: true, CodexSearchModel: "search",
+		CodexImageOnly: true, CodexPreserveSpeedModel: true,
 		HTTPProtocol: "auto", HTTP2ConnectionShards: 3, MaxSingleChannelRetries: lo.ToPtr(5), ExtraModelPrefix: "keep",
 	})
 	require.False(t, merged.CodexSearchOnly)
+	require.False(t, merged.CodexImageOnly)
+	require.False(t, merged.CodexPreserveSpeedModel)
 	require.Empty(t, merged.CodexSearchModel)
 	require.Equal(t, "http1", merged.HTTPProtocol)
 	require.Zero(t, merged.HTTP2ConnectionShards)

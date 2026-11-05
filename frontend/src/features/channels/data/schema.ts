@@ -419,6 +419,8 @@ export const channelSettingsSchema = z.object({
   modelProtocols: z.array(modelProtocolSchema).optional().nullable(),
   providerQuota: channelProviderQuotaSettingsSchema.optional().nullable(),
   codexSearchOnly: z.boolean().optional(),
+  codexImageOnly: z.boolean().optional(),
+  codexPreserveSpeedModel: z.boolean().optional(),
   codexSearchModel: z.string().optional(),
   // The backend stores an empty strategy for "unset" and returns it verbatim, and
   // an API client may store any string. Normalize every unrecognized value to the
