@@ -12,6 +12,7 @@ import (
 	"github.com/samber/lo"
 	"go.uber.org/fx"
 	"golang.org/x/sync/errgroup"
+	"golang.org/x/sync/singleflight"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
@@ -361,8 +362,9 @@ type ProviderQuotaService struct {
 	// Registry
 	checkers map[string]provider_quota.QuotaChecker
 
-	mu         sync.Mutex
-	quotaCache sync.Map
+	mu            sync.Mutex
+	quotaCache    sync.Map
+	reserveChecks singleflight.Group
 }
 
 func NewProviderQuotaService(params ProviderQuotaServiceParams) *ProviderQuotaService {

@@ -1,11 +1,29 @@
 package orchestrator
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 
 	"github.com/looplj/axonhub/llm"
 )
+
+func newQuotaReserveUnavailableError(modelName string) error {
+	return &llm.ResponseError{
+		StatusCode: http.StatusServiceUnavailable,
+		Detail: llm.ErrorDetail{
+			Message: fmt.Sprintf("current provider usage could not be verified for configured quota reserve on model %s", modelName),
+			Type:    "quota_routing_error",
+			Code:    "quota_reserve_unavailable",
+		},
+	}
+}
+
+func isQuotaReserveError(err error) bool {
+	response, ok := errors.AsType[*llm.ResponseError](err)
+	return ok && response.Detail.Type == "quota_routing_error" &&
+		(response.Detail.Code == "quota_reserve_reached" || response.Detail.Code == "quota_reserve_unavailable")
+}
 
 func NewQuotaReserveError(modelName string) error {
 	return &llm.ResponseError{

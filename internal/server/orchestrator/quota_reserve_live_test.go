@@ -1,6 +1,8 @@
 package orchestrator
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -17,6 +19,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/internal/server/biz/provider_quota"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 )
@@ -75,4 +78,85 @@ func TestQuotaReserveRefreshesBelowThresholdSnapshotBeforeRetry(t *testing.T) {
 	require.ErrorIs(t, p.refreshChannelBeforeRetry(ctx), errChannelUnavailableForRetry,
 		"a protected ordinary retry must not use the stale below-threshold snapshot")
 	require.EqualValues(t, 1, checks.Load(), "admission must query usage, without listing reset credits or sending inference")
+	p.state.ChannelModelsCandidates = []*ChannelModelsCandidate{p.state.CurrentCandidate}
+	_, err = p.TransformRequest(ctx, p.state.LlmRequest)
+	var quotaErr *llm.ResponseError
+	require.ErrorAs(t, err, &quotaErr)
+	require.Equal(t, "quota_reserve_reached", quotaErr.Detail.Code)
+	require.False(t, p.CanRetry(err), "quota admission must skip same-channel retries")
+	require.EqualValues(t, 2, checks.Load(), "final dispatch also verifies fresh usage")
+}
+
+type liveQuotaProvider struct {
+	mockQuotaStatusProvider
+	status *biz.QuotaChannelStatus
+	err    error
+	calls  int
+}
+
+func (p *liveQuotaProvider) CheckQuotaReserve(context.Context, int) (*biz.QuotaChannelStatus, error) {
+	p.calls++
+	return p.status, p.err
+}
+
+func TestQuotaReserveLiveAdmission(t *testing.T) {
+	ch := quotaRoutingCandidate(1, objects.QuotaRoutingModeIgnoreQuota).Channel
+	ch.Type = channel.TypeCodex
+	ch.Settings.QuotaReserve = &objects.ChannelQuotaReserve{FiveHourPercent: lo.ToPtr(95), SevenDayPercent: lo.ToPtr(98)}
+	req := &llm.Request{Model: "test-model"}
+	for _, tc := range []struct {
+		name       string
+		five, week float64
+		missing    bool
+		reset      bool
+		err        error
+		code       string
+	}{
+		{name: "below both", five: .94, week: .97},
+		{name: "five-hour limit", five: .95, week: .1, code: "quota_reserve_reached"},
+		{name: "seven-day limit", five: .1, week: .98, code: "quota_reserve_reached"},
+		{name: "missing configured window", five: .1, missing: true, code: "quota_reserve_unavailable"},
+		{name: "expired usage needs a fresh window", reset: true, code: "quota_reserve_unavailable"},
+		{name: "usage endpoint failed", err: errors.New("synthetic failure"), code: "quota_reserve_unavailable"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			reset := time.Now().Add(time.Hour)
+			if tc.reset {
+				reset = time.Now().Add(-time.Second)
+			}
+			status := &biz.QuotaChannelStatus{Limits: []provider_quota.QuotaLimitStatus{
+				{Type: provider_quota.QuotaLimitTypeToken, Window: provider_quota.QuotaWindow5h, Status: "available", UsageRatio: tc.five, NextResetAt: &reset},
+			}}
+			if !tc.missing {
+				status.Limits = append(status.Limits, provider_quota.QuotaLimitStatus{Type: provider_quota.QuotaLimitTypeToken, Window: provider_quota.QuotaWindow7d, Status: "available", UsageRatio: tc.week, NextResetAt: &reset})
+			}
+			provider := &liveQuotaProvider{status: status, err: tc.err}
+			err := checkQuotaReserveForDispatch(t.Context(), ch, req, false, provider)
+			if tc.code == "" {
+				require.NoError(t, err)
+			} else {
+				var responseErr *llm.ResponseError
+				require.ErrorAs(t, err, &responseErr)
+				require.Equal(t, tc.code, responseErr.Detail.Code)
+			}
+			require.Equal(t, 1, provider.calls)
+		})
+	}
+	require.Error(t, checkQuotaReserveForDispatch(t.Context(), ch, req, false, nil))
+	ch.Settings.QuotaReserve.AllowSearch = true
+	ch.Settings.QuotaReserve.AllowImage = true
+	ch.Settings.QuotaReserve.AllowMemory = true
+	provider := &liveQuotaProvider{err: errors.New("unavailable")}
+	for _, toolReq := range []*llm.Request{
+		{RequestType: llm.RequestTypeSearch, APIFormat: llm.APIFormatOpenAISearch},
+		{RequestType: llm.RequestTypeImage, APIFormat: llm.APIFormatOpenAIImageGeneration},
+	} {
+		require.NoError(t, checkQuotaReserveForDispatch(t.Context(), ch, toolReq, false, provider))
+	}
+	require.NoError(t, checkQuotaReserveForDispatch(t.Context(), ch, req, true, provider))
+	require.Zero(t, provider.calls, "retained tools must not run ordinary admission probes")
+	require.Error(t, checkQuotaReserveForDispatch(t.Context(), ch, req, false, provider), "ordinary chat remains protected")
+	ch.Settings.QuotaReserve = nil
+	require.NoError(t, checkQuotaReserveForDispatch(t.Context(), ch, req, false, provider))
+	require.Equal(t, 1, provider.calls, "disabled reserves do not add upstream calls")
 }

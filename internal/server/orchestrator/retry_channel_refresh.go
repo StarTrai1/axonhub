@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"slices"
-	"time"
 
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
@@ -91,7 +90,7 @@ func (p *PersistentOutboundTransformer) refreshChannelBeforeRetry(ctx context.Co
 	if entity.Status != channel.StatusEnabled {
 		return errChannelUnavailableForRetry
 	}
-	if quotaReserveBlocks(ctx, &biz.Channel{Channel: entity}, p.state.LlmRequest, p.state.memoryTask != shared.CodexMemoryNone, p.state.quotaReserveProvider, time.Now()) {
+	if err := checkQuotaReserveForDispatch(ctx, &biz.Channel{Channel: entity}, p.state.LlmRequest, p.state.memoryTask != shared.CodexMemoryNone, p.state.quotaReserveProvider); err != nil {
 		return errChannelUnavailableForRetry
 	}
 	if !(&biz.Channel{Channel: entity}).AllowsWorkload(p.state.LlmRequest, p.state.memoryTask != shared.CodexMemoryNone) {

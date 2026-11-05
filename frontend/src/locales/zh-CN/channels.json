@@ -1127,7 +1127,7 @@
   "channels.dialogs.fields.codexMemoryPolicy.options.only.label": "仅处理记忆",
   "channels.dialogs.fields.codexMemoryPolicy.options.only.description": "处理记忆提取和整合，可同时启用搜索与生图工具；不承接普通对话。",
   "channels.dialogs.fields.quotaReserve.label": "额度保留",
-  "channels.dialogs.fields.quotaReserve.description": "任一窗口达到阈值后执行下方策略，留空则不限制该窗口。保留工具仍遵循渠道权限与配额路由。窗口重置后恢复；依据最新采集用量，进行中的请求可能使实际用量超出阈值。",
+  "channels.dialogs.fields.quotaReserve.description": "受限请求发送前核验用量，任一窗口达到阈值后执行下方策略；留空则不限制该窗口。无法核验时暂停该渠道的受限请求，并按重试设置尝试其他渠道。窗口重置后恢复。保留工具仍遵循渠道权限与配额路由，可继续消耗余量；进行中的请求可能超出阈值。",
   "channels.dialogs.fields.quotaReserve.fiveHourPercent": "5 小时用量上限",
   "channels.dialogs.fields.quotaReserve.sevenDayPercent": "7 天用量上限",
   "channels.dialogs.fields.quotaReserve.unlimited": "不限制",

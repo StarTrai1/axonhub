@@ -33,6 +33,10 @@ type mockQuotaRoutingSettingsProvider struct {
 	settings biz.QuotaRoutingSettings
 }
 
+func (m *mockQuotaStatusProvider) CheckQuotaReserve(ctx context.Context, channelID int) (*biz.QuotaChannelStatus, error) {
+	return m.GetQuotaStatus(ctx, channelID), nil
+}
+
 func (m *mockQuotaRoutingSettingsProvider) QuotaRoutingSettingsOrDefault(context.Context) biz.QuotaRoutingSettings {
 	return m.settings
 }

@@ -758,8 +758,9 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 	}
 
 	candidate := p.state.ChannelModelsCandidates[p.state.CurrentCandidateIndex]
-	if quotaReserveBlocks(ctx, candidate.Channel, llmRequest, p.state.memoryTask != shared.CodexMemoryNone, p.state.quotaReserveProvider, time.Now()) {
-		return nil, NewQuotaReserveError(llmRequest.Model)
+	p.state.CurrentCandidate = candidate
+	if err := checkQuotaReserveForDispatch(ctx, candidate.Channel, llmRequest, p.state.memoryTask != shared.CodexMemoryNone, p.state.quotaReserveProvider); err != nil {
+		return nil, err
 	}
 	if !candidate.Channel.AllowsWorkload(llmRequest, p.state.memoryTask != shared.CodexMemoryNone) {
 		return nil, fmt.Errorf("%w: channel is reserved for its selected standalone tools", biz.ErrInvalidModel)
@@ -769,7 +770,6 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 	}
 	entry := candidate.Models[p.state.CurrentModelIndex]
 
-	p.state.CurrentCandidate = candidate
 	p.state.memoryAttempts++
 	p.state.StreamCompleted = false
 	p.state.OutboundStreamTerminal = streamTerminalNone
@@ -1157,6 +1157,9 @@ func (p *PersistentOutboundTransformer) NextAlternativeChannel(ctx context.Conte
 // It implements the pipeline.ChannelRetryable interface, it just check the error is retryable, the
 // pipeline will ensure the maxSameChannelRetries is not exceeded.
 func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
+	if isQuotaReserveError(err) {
+		return false
+	}
 	if p.state.memoryTask != shared.CodexMemoryNone && isContentPolicyRefusal(err) {
 		return false
 	}

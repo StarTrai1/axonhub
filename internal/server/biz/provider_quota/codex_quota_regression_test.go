@@ -58,6 +58,13 @@ func TestCodexQuotaChecker_ExhaustionPreservesIndependentWindowUsage(t *testing.
 	}
 }
 
+func TestCodexQuotaChecker_MissingUsageDoesNotAuthorizeReserve(t *testing.T) {
+	quota, err := NewCodexQuotaChecker(nil).parseResponse([]byte(`{"rate_limit":{"allowed":true,"primary_window":{"limit_window_seconds":18000}}}`))
+	require.NoError(t, err)
+	require.Len(t, quota.Limits, 1)
+	require.Equal(t, "unknown", quota.Limits[0].Status)
+}
+
 func TestCodexQuotaChecker_ExhaustedWindowWithoutUsageReportsZeroRemaining(t *testing.T) {
 	t.Parallel()
 

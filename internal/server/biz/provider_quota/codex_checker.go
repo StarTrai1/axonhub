@@ -397,8 +397,9 @@ func buildCodexQuotaLimit(name string, window *CodeUsageWindow, rateLimitExhaust
 	}
 
 	usageRatio := 0.0
-	status := "available"
+	status := "unknown"
 	if window.UsedPercent != nil {
+		status = "available"
 		usageRatio = min(*window.UsedPercent/100, 1)
 		if usageRatio >= 1 {
 			status = "exhausted"

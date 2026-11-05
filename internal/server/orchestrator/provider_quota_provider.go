@@ -10,3 +10,9 @@ import (
 type ProviderQuotaStatusProvider interface {
 	GetQuotaStatus(ctx context.Context, channelID int) *biz.QuotaChannelStatus
 }
+
+// ProviderQuotaReserveChecker verifies explicit reserves at dispatch. A cached
+// status provider alone cannot authorize protected requests.
+type ProviderQuotaReserveChecker interface {
+	CheckQuotaReserve(ctx context.Context, channelID int) (*biz.QuotaChannelStatus, error)
+}

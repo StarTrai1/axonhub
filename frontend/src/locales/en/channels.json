@@ -1127,7 +1127,7 @@
   "channels.dialogs.fields.codexMemoryPolicy.options.only.label": "Memory only",
   "channels.dialogs.fields.codexMemoryPolicy.options.only.description": "Serve memory extraction and consolidation alongside any enabled search and image tools; exclude ordinary conversations.",
   "channels.dialogs.fields.quotaReserve.label": "Quota reserve",
-  "channels.dialogs.fields.quotaReserve.description": "Apply the action below when either provider-reported window reaches its threshold; blank leaves that window unlimited. Retained tools still follow channel permissions and quota routing. Resets restore routing. In-flight requests may exceed the latest collected usage.",
+  "channels.dialogs.fields.quotaReserve.description": "Verify usage before sending protected requests. Either window reaching its threshold applies the action below; blank leaves it unlimited. If usage cannot be verified, pause protected requests on this channel and try alternatives according to retry settings. Resets restore routing. Retained tools follow channel permissions and quota routing and can spend the remainder; in-flight requests may exceed the threshold.",
   "channels.dialogs.fields.quotaReserve.fiveHourPercent": "5-hour usage limit",
   "channels.dialogs.fields.quotaReserve.sevenDayPercent": "7-day usage limit",
   "channels.dialogs.fields.quotaReserve.unlimited": "Unlimited",
