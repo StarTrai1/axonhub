@@ -89,6 +89,7 @@ func TestQuotaReserveRefreshesBelowThresholdSnapshotBeforeRetry(t *testing.T) {
 
 type liveQuotaProvider struct {
 	mockQuotaStatusProvider
+
 	status *biz.QuotaChannelStatus
 	err    error
 	calls  int

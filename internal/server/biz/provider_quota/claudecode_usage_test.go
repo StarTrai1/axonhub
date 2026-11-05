@@ -20,7 +20,7 @@ func TestClaudeCodeQuotaUsageReadOnly(t *testing.T) {
 		return codexQuotaTestResponse(`{"five_hour":{"utilization":95,"resets_at":"2030-01-01T00:00:00Z"},"seven_day":{"utilization":10},"seven_day_opus":{"utilization":100},"extra_usage":{"is_enabled":true},"metadata":"ignored"}`), nil
 	}))
 	data, err := NewClaudeCodeQuotaChecker(client).CheckUsage(context.Background(), &ent.Channel{
-		BaseURL: "https://relay.example/v1",
+		BaseURL:     "https://relay.example/v1",
 		Credentials: objects.ChannelCredentials{OAuth: &objects.OAuthCredentials{AccessToken: "synthetic"}},
 	})
 	require.NoError(t, err)

@@ -19,7 +19,7 @@ import (
 )
 
 type reserveUsageChecker struct {
-	check func(context.Context, *ent.Channel) (provider_quota.QuotaData, error)
+	check  func(context.Context, *ent.Channel) (provider_quota.QuotaData, error)
 	resets atomic.Int32
 }
 
@@ -40,6 +40,7 @@ func (c *reserveUsageChecker) Reset(context.Context, *ent.Channel, string) error
 
 func TestQuotaReserveUsageIgnoresPollingScheduleAndMutex(t *testing.T) {
 	svc, _, ctx, client := setupProviderQuotaCollectionService(t)
+	defer client.Close()
 	ch := createProviderQuotaCollectionChannel(t, ctx, client, "reserve", channel.TypeCodex)
 	_, err := client.Channel.UpdateOne(ch).SetCredentials(objects.ChannelCredentials{OAuth: &objects.OAuthCredentials{AccessToken: "synthetic"}}).Save(ctx)
 	require.NoError(t, err)
@@ -70,6 +71,7 @@ func TestQuotaReserveUsageIgnoresPollingScheduleAndMutex(t *testing.T) {
 
 func TestQuotaReserveUsageSingleflightCancellation(t *testing.T) {
 	svc, _, ctx, client := setupProviderQuotaCollectionService(t)
+	defer client.Close()
 	ch := createProviderQuotaCollectionChannel(t, ctx, client, "reserve-flight", channel.TypeCodex)
 	_, err := client.Channel.UpdateOne(ch).SetCredentials(objects.ChannelCredentials{OAuth: &objects.OAuthCredentials{AccessToken: "synthetic"}}).Save(ctx)
 	require.NoError(t, err)
@@ -91,6 +93,7 @@ func TestQuotaReserveUsageSingleflightCancellation(t *testing.T) {
 	go func() {
 		defer func() {
 			if recover() != nil {
+				t.Error("quota admission caller panicked")
 				done <- errors.New("admission caller panicked")
 			}
 		}()
@@ -119,6 +122,7 @@ func TestQuotaReserveUsageFailsClosedWithoutUsableCollection(t *testing.T) {
 	for _, reason := range []string{"disabled collection", "disabled channel", "missing credentials", "provider error"} {
 		t.Run(reason, func(t *testing.T) {
 			svc, system, ctx, client := setupProviderQuotaCollectionService(t)
+			defer client.Close()
 			ch := createProviderQuotaCollectionChannel(t, ctx, client, "reserve-error", channel.TypeCodex)
 			credentials := objects.ChannelCredentials{OAuth: &objects.OAuthCredentials{AccessToken: "synthetic"}}
 			if reason == "missing credentials" {

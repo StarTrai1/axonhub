@@ -68,7 +68,7 @@ func parseClaudeCodeUsage(body []byte) (QuotaData, error) {
 	}
 	data := QuotaData{ProviderType: "claudecode", Status: "unknown"}
 	for _, entry := range []struct {
-		value *usageWindow
+		value  *usageWindow
 		window string
 	}{{windows.FiveHour, QuotaWindow5h}, {windows.SevenDay, QuotaWindow7d}} {
 		window := entry.value

@@ -38,7 +38,10 @@ func (svc *ProviderQuotaService) CheckQuotaReserve(ctx context.Context, channelI
 		if checked.Err != nil {
 			return nil, checked.Err
 		}
-		status := checked.Val.(*QuotaChannelStatus)
+		status, ok := checked.Val.(*QuotaChannelStatus)
+		if !ok || status == nil {
+			return nil, errors.New("quota reserve usage response is unavailable")
+		}
 		copy := *status
 		copy.Limits = cloneLimits(status.Limits)
 		return &copy, nil
