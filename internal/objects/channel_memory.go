@@ -8,9 +8,9 @@ import (
 type CodexMemoryPolicy string
 
 const (
-	CodexMemoryNormal CodexMemoryPolicy = "normal"
+	CodexMemoryNormal  CodexMemoryPolicy = "normal"
 	CodexMemoryExclude CodexMemoryPolicy = "exclude"
-	CodexMemoryOnly CodexMemoryPolicy = "only"
+	CodexMemoryOnly    CodexMemoryPolicy = "only"
 )
 
 func (p ChannelPolicies) EffectiveCodexMemoryPolicy() CodexMemoryPolicy {

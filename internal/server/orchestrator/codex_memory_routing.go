@@ -19,7 +19,7 @@ const codexMemoryMaxAttempts = 3
 func codexMemoryRoutingContext(ctx context.Context, request *httpclient.Request, store *responsesSessionStore) context.Context {
 	task := shared.CodexMemoryNone
 	key, authenticated := contexts.GetAPIKey(ctx)
-	if shared.IsResponsesAPI(ctx) && request != nil && authenticated && key.ID > 0 && key.ProjectID > 0 {
+	if shared.IsResponsesAPI(ctx) && request != nil && authenticated && key != nil && key.ID > 0 && key.ProjectID > 0 {
 		var known bool
 		task, known = shared.ReadCodexMemoryTask(request.Headers, request.Body)
 		if !known && store != nil {
@@ -86,12 +86,10 @@ func isContentPolicyRefusal(err error) bool {
 			return false
 		}
 	}
-	var responseErr *llm.ResponseError
-	if errors.As(err, &responseErr) && (codeIsRefusal(responseErr.Detail.Code) || codeIsRefusal(responseErr.Detail.Type)) {
+	if responseErr, ok := errors.AsType[*llm.ResponseError](err); ok && (codeIsRefusal(responseErr.Detail.Code) || codeIsRefusal(responseErr.Detail.Type)) {
 		return true
 	}
-	var httpErr *httpclient.Error
-	if errors.As(err, &httpErr) {
+	if httpErr, ok := errors.AsType[*httpclient.Error](err); ok {
 		for _, path := range []string{"error.code", "error.type", "error.innererror.code", "response.error.code"} {
 			if codeIsRefusal(gjson.GetBytes(httpErr.Body, path).String()) {
 				return true

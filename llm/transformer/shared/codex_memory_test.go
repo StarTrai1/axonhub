@@ -11,7 +11,7 @@ import (
 func TestReadCodexMemoryTask(t *testing.T) {
 	for _, tc := range []struct {
 		name, turn, subagent string
-		want CodexMemoryTask
+		want                 CodexMemoryTask
 	}{
 		{"extract takes precedence", `{"request_kind":"memory","thread_source":"memory_consolidation"}`, "", CodexMemoryExtract},
 		{"consolidation", `{"request_kind":"turn","thread_source":"memory_consolidation"}`, "", CodexMemoryConsolidate},

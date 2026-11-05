@@ -1,6 +1,70 @@
 import { test, expect } from '@playwright/test';
 
 for (const width of [1280, 768, 390]) {
+  test(`Memory policy persists and matches channel controls at ${width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 1100 });
+    let saved: Record<string, unknown>;
+    await page.route('**/fixture/channel', (route) => route.fulfill({ json: saved }));
+    await page.route('**/admin/graphql', async (route) => {
+      const body = route.request().postDataJSON();
+      if (body.operationName === 'UpdateChannel') {
+        saved = {
+          id: 'channel-preview', createdAt: '2026-10-17T00:00:00Z', updatedAt: '2026-10-17T00:00:00Z',
+          status: 'enabled', ...body.variables.input,
+        };
+        await route.fulfill({ json: { data: { updateChannel: saved } } });
+      } else {
+        await route.fulfill({ json: { data: { allChannelTags: [], channelDisabledAPIKeys: [], proxyPresets: [] } } });
+      }
+    });
+    await page.goto('/tests/interactions/codex-channel.html');
+    const memory = page.getByTestId('codex-memory-policy');
+    const memoryRow = page.getByTestId('codex-memory-policy-setting');
+    const search = page.getByTestId('codex-search-only-toggle');
+    const image = page.getByTestId('codex-image-only-toggle');
+    await search.click();
+    await image.click();
+    await memory.scrollIntoViewIfNeeded();
+    await expect(memory).toContainText('Normal routing');
+    await memory.click();
+    await expect(page.getByRole('menuitemradio')).toHaveCount(3);
+    await page.getByTestId('codex-memory-policy-only').click();
+    await expect(search).toHaveAttribute('aria-checked', 'false');
+    await expect(image).toHaveAttribute('aria-checked', 'false');
+    await page.getByTestId('channel-submit-button').click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await page.getByTestId('reopen-codex').click();
+    await memory.scrollIntoViewIfNeeded();
+    await expect(memory).toContainText('Memory only');
+    await memory.click();
+    await page.getByTestId('codex-memory-policy-exclude').click();
+    await page.getByTestId('channel-submit-button').click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await page.getByTestId('reopen-codex').click();
+    await memory.scrollIntoViewIfNeeded();
+    await expect(memory).toContainText('Exclude memory');
+    await page.getByTestId('zh-locale').evaluate((element) => (element as HTMLButtonElement).click());
+    await expect(memory).toContainText('不处理记忆');
+    await memoryRow.locator('label').hover();
+    await page.waitForTimeout(800);
+    await expect(page.getByRole('tooltip')).toHaveCount(0);
+    await page.getByTestId('codex-memory-policy-tip').hover();
+    await expect(page.getByRole('tooltip')).toContainText('按 Codex 任务标记');
+    await page.mouse.move(0, 0);
+    expect(await memoryRow.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
+    await memory.click();
+    await page.screenshot({ animations: 'disabled', path: testInfo.outputPath('codex-memory-menu-zh-light.png') });
+    await page.getByTestId('codex-memory-policy-only').click();
+    await expect(memory).toContainText('仅处理记忆');
+    await page.getByTestId('dark-theme').evaluate((element) => (element as HTMLButtonElement).click());
+    await expect(page.locator('html')).toHaveClass(/dark/);
+    await page.screenshot({ animations: 'disabled', path: testInfo.outputPath('codex-memory-zh-dark.png') });
+    await search.click();
+    await expect(memory).toContainText('正常参与');
+  });
+}
+
+for (const width of [1280, 768, 390]) {
   test(`Codex authorization aligns and search-only saves at ${width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 1100 });
     let saved = {
@@ -160,42 +224,5 @@ for (const width of [1280, 768, 390]) {
     await page.getByTestId('image-generation-policy-other_channels').click();
     await expect(imageToggle).toHaveAttribute('aria-checked', 'false');
     await expect(toggle).toHaveAttribute('aria-checked', 'true');
-    const memory = page.getByTestId('codex-memory-policy');
-    const memoryRow = page.getByTestId('codex-memory-policy-setting');
-    await memory.scrollIntoViewIfNeeded();
-    await expect(memory).toContainText('正常参与');
-    await memoryRow.locator('label').hover();
-    await page.waitForTimeout(800);
-    await expect(page.getByRole('tooltip')).toHaveCount(0);
-    await page.getByTestId('codex-memory-policy-tip').hover();
-    await expect(page.getByRole('tooltip')).toBeVisible();
-    await expect(page.getByRole('tooltip')).toContainText('按 Codex 任务标记');
-    await page.mouse.move(0, 0);
-    await memory.click();
-    await expect(page.getByRole('menuitemradio')).toHaveCount(3);
-    await page.screenshot({ animations: 'disabled', path: testInfo.outputPath('codex-memory-menu-zh-light.png') });
-    await page.getByTestId('codex-memory-policy-only').click();
-    await expect(memory).toContainText('仅处理记忆');
-    await expect(toggle).toHaveAttribute('aria-checked', 'false');
-    await expect(imageToggle).toHaveAttribute('aria-checked', 'false');
-    expect(await memoryRow.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
-    await page.getByTestId('channel-submit-button').click();
-    await expect(page.getByRole('dialog')).toHaveCount(0);
-    await page.getByTestId('reopen-codex').click();
-    await memory.scrollIntoViewIfNeeded();
-    await expect(memory).toContainText('仅处理记忆');
-    await page.getByTestId('dark-theme').evaluate((element) => (element as HTMLButtonElement).click());
-    await page.screenshot({ animations: 'disabled', path: testInfo.outputPath('codex-memory-zh-dark.png') });
-    await memory.click();
-    await page.getByTestId('codex-memory-policy-exclude').click();
-    await page.getByTestId('channel-submit-button').click();
-    await expect(page.getByRole('dialog')).toHaveCount(0);
-    await page.getByTestId('reopen-codex').click();
-    await memory.scrollIntoViewIfNeeded();
-    await expect(memory).toContainText('不处理记忆');
-    await memory.click();
-    await page.getByTestId('codex-memory-policy-only').click();
-    await toggle.click();
-    await expect(memory).toContainText('正常参与');
   });
 }

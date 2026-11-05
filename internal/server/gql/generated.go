@@ -520,6 +520,7 @@ type ComplexityRoot struct {
 		APIKeyAutoDisableMode    func(childComplexity int) int
 		APIKeyAutoDisableRules   func(childComplexity int) int
 		CodexIdentity            func(childComplexity int) int
+		CodexMemory              func(childComplexity int) int
 		CodexSpeed               func(childComplexity int) int
 		ImageGeneration          func(childComplexity int) int
 		RemoteCompaction         func(childComplexity int) int
@@ -4323,6 +4324,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelPolicies.CodexIdentity(childComplexity), true
+	case "ChannelPolicies.codexMemory":
+		if e.complexity.ChannelPolicies.CodexMemory == nil {
+			break
+		}
+
+		return e.complexity.ChannelPolicies.CodexMemory(childComplexity), true
 	case "ChannelPolicies.codexSpeed":
 		if e.complexity.ChannelPolicies.CodexSpeed == nil {
 			break
@@ -21530,6 +21537,8 @@ func (ec *executionContext) fieldContext_Channel_policies(_ context.Context, fie
 				return ec.fieldContext_ChannelPolicies_imageGeneration(ctx, field)
 			case "codexSpeed":
 				return ec.fieldContext_ChannelPolicies_codexSpeed(ctx, field)
+			case "codexMemory":
+				return ec.fieldContext_ChannelPolicies_codexMemory(ctx, field)
 			case "supportsWebSearch":
 				return ec.fieldContext_ChannelPolicies_supportsWebSearch(ctx, field)
 			case "codexIdentity":
@@ -25182,6 +25191,35 @@ func (ec *executionContext) fieldContext_ChannelPolicies_codexSpeed(_ context.Co
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type CodexSpeedPolicy does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelPolicies_codexMemory(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelPolicies) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelPolicies_codexMemory,
+		func(ctx context.Context) (any, error) {
+			return obj.CodexMemory, nil
+		},
+		nil,
+		ec.marshalOCodexMemoryPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐCodexMemoryPolicy,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelPolicies_codexMemory(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelPolicies",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type CodexMemoryPolicy does not have child fields")
 		},
 	}
 	return fc, nil
@@ -71439,7 +71477,7 @@ func (ec *executionContext) unmarshalInputChannelPoliciesInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"routingTier", "stream", "remoteCompaction", "supportsRemoteCompaction", "webSearch", "imageGeneration", "codexSpeed", "supportsWebSearch", "codexIdentity", "apiKeyAutoDisableMode", "apiKeyAutoDisableRules"}
+	fieldsInOrder := [...]string{"routingTier", "stream", "remoteCompaction", "supportsRemoteCompaction", "webSearch", "imageGeneration", "codexSpeed", "codexMemory", "supportsWebSearch", "codexIdentity", "apiKeyAutoDisableMode", "apiKeyAutoDisableRules"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -71495,6 +71533,13 @@ func (ec *executionContext) unmarshalInputChannelPoliciesInput(ctx context.Conte
 				return it, err
 			}
 			it.CodexSpeed = data
+		case "codexMemory":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("codexMemory"))
+			data, err := ec.unmarshalOCodexMemoryPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐCodexMemoryPolicy(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CodexMemory = data
 		case "supportsWebSearch":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("supportsWebSearch"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -98897,6 +98942,8 @@ func (ec *executionContext) _ChannelPolicies(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._ChannelPolicies_imageGeneration(ctx, field, obj)
 		case "codexSpeed":
 			out.Values[i] = ec._ChannelPolicies_codexSpeed(ctx, field, obj)
+		case "codexMemory":
+			out.Values[i] = ec._ChannelPolicies_codexMemory(ctx, field, obj)
 		case "supportsWebSearch":
 			out.Values[i] = ec._ChannelPolicies_supportsWebSearch(ctx, field, obj)
 		case "codexIdentity":
@@ -124650,6 +124697,16 @@ func (ec *executionContext) marshalOCodexIdentityPolicy2githubᚗcomᚋloopljᚋ
 	_ = ctx
 	res := graphql.MarshalString(string(v))
 	return res
+}
+
+func (ec *executionContext) unmarshalOCodexMemoryPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐCodexMemoryPolicy(ctx context.Context, v any) (objects.CodexMemoryPolicy, error) {
+	var res objects.CodexMemoryPolicy
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOCodexMemoryPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐCodexMemoryPolicy(ctx context.Context, sel ast.SelectionSet, v objects.CodexMemoryPolicy) graphql.Marshaler {
+	return v
 }
 
 func (ec *executionContext) unmarshalOCodexSpeedPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐCodexSpeedPolicy(ctx context.Context, v any) (objects.CodexSpeedPolicy, error) {

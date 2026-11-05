@@ -11,8 +11,8 @@ import (
 type CodexMemoryTask string
 
 const (
-	CodexMemoryNone CodexMemoryTask = ""
-	CodexMemoryExtract CodexMemoryTask = "extract"
+	CodexMemoryNone        CodexMemoryTask = ""
+	CodexMemoryExtract     CodexMemoryTask = "extract"
 	CodexMemoryConsolidate CodexMemoryTask = "consolidate"
 )
 

@@ -48,16 +48,16 @@ type responsesSessionKey struct {
 }
 
 type responsesSessionRecord struct {
-	memoryTask shared.CodexMemoryTask
+	memoryTask   shared.CodexMemoryTask
 	memoryThread string
-	input     []json.RawMessage
-	output    []json.RawMessage
-	sessionID string
-	windowID  string
-	updatedAt time.Time
-	size      int
-	complete  bool
-	origin    shared.ResponsesOrigin
+	input        []json.RawMessage
+	output       []json.RawMessage
+	sessionID    string
+	windowID     string
+	updatedAt    time.Time
+	size         int
+	complete     bool
+	origin       shared.ResponsesOrigin
 }
 
 func newResponsesSessionStore(loaders ...responsesSessionLoadFunc) *responsesSessionStore {
@@ -256,16 +256,16 @@ func (s *responsesSessionStore) lookup(ctx context.Context, responseID string) *
 	}
 
 	return &responsesSessionRecord{
-		memoryTask: record.memoryTask,
+		memoryTask:   record.memoryTask,
 		memoryThread: record.memoryThread,
-		input:     cloneResponseSessionValues(record.input),
-		output:    cloneResponseSessionValues(record.output),
-		sessionID: record.sessionID,
-		windowID:  record.windowID,
-		updatedAt: record.updatedAt,
-		size:      record.size,
-		complete:  record.complete,
-		origin:    record.origin,
+		input:        cloneResponseSessionValues(record.input),
+		output:       cloneResponseSessionValues(record.output),
+		sessionID:    record.sessionID,
+		windowID:     record.windowID,
+		updatedAt:    record.updatedAt,
+		size:         record.size,
+		complete:     record.complete,
+		origin:       record.origin,
 	}
 }
 
