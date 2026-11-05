@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/compone
 import { AutoComplete } from '@/components/auto-complete';
 import { AutoCompleteSelect } from '@/components/auto-complete-select';
 import { Response } from '@/components/ai-elements/response';
+import { JsonViewer } from '@/components/json-tree-view';
 import { FilePreview } from '@/components/ui/file-preview';
 import { ModelPriceEditor } from '@/components/model-price-editor';
 import { PriceScheduleEditor } from '@/components/price-schedule-editor';
@@ -136,7 +137,8 @@ if (fixtureCase === 'playground') {
   });
   useProjectStore.getState().setSelectedProjectId('first-project');
 }
-const fixture = fixtureCase === 'server-select' ? <ServerSelectFixture /> : fixtureCase === 'rendering' ? <RenderingFixture /> : fixtureCase === 'composition' ? <CompositionFixture /> : fixtureCase === 'uploads' ? <UploadFixture /> : fixtureCase === 'playground' ? <PlaygroundFixture /> : <PriceFixture />;
+const gifResponse = { output_format: 'gif', data: [{ b64_json: 'R0lGODlhAQABAIAAAAAAAP///yH5BAAKAAAALAAAAAABAAEAAAIBRAAh+QQACgAAACwAAAAAAQABAAACAkwAOw==', mime_type: 'image/png' }] };
+const fixture = fixtureCase === 'gif' ? <section data-testid='gif-response'><JsonViewer data={gifResponse} expandDepth='all' /></section> : fixtureCase === 'server-select' ? <ServerSelectFixture /> : fixtureCase === 'rendering' ? <RenderingFixture /> : fixtureCase === 'composition' ? <CompositionFixture /> : fixtureCase === 'uploads' ? <UploadFixture /> : fixtureCase === 'playground' ? <PlaygroundFixture /> : <PriceFixture />;
 createRoot(document.getElementById('root')!).render(
   <StrictMode><QueryClientProvider client={queryClient}>{fixture}</QueryClientProvider></StrictMode>
 );

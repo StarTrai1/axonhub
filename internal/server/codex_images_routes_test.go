@@ -1,12 +1,20 @@
 package server
 
 import (
+	"bytes"
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
+	"image"
+	"image/color"
+	"image/gif"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
@@ -19,6 +27,49 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer/openai"
 )
+
+func TestCodexRoutes_NativeGIFPreservesAnimation(t *testing.T) {
+	palette := color.Palette{color.Black, color.White}
+	first := image.NewPaletted(image.Rect(0, 0, 16, 16), palette)
+	second := image.NewPaletted(image.Rect(0, 0, 16, 16), palette)
+	second.SetColorIndex(1, 1, 1)
+	var animation bytes.Buffer
+	require.NoError(t, gif.EncodeAll(&animation, &gif.GIF{Image: []*image.Paletted{first, second}, Delay: []int{12, 12}, LoopCount: 0}))
+	encoded := base64.StdEncoding.EncodeToString(animation.Bytes())
+	response, err := json.Marshal(map[string]any{"created": 1700000000, "output_format": "gif", "data": []map[string]string{{"b64_json": encoded}}})
+	require.NoError(t, err)
+	for _, route := range []string{"/v1/images/generations", "/codex/images/generations"} {
+		for _, passThrough := range []bool{false, true} {
+			t.Run(route+"/passthrough="+fmt.Sprint(passThrough), func(t *testing.T) {
+				h, requests := setupCodexImageRoute(t, llm.APIFormatOpenAIImageGeneration, string(response))
+				h.source.Update().SetSettings(&objects.ChannelSettings{CodexImageOnly: true, CodexImageModel: "gpt-image-2.6-sunburst", PassThroughBody: lo.ToPtr(passThrough)}).SetSupportedModels([]string{"gpt-image-2.6-sunburst"}).SaveX(h.ctx)
+				built, err := h.channels.GetChannel(h.ctx, h.source.ID)
+				require.NoError(t, err)
+				h.channels.SetEnabledChannelsForTest([]*biz.Channel{built})
+				req := httptest.NewRequest(http.MethodPost, route, strings.NewReader(`{"model":"gpt-image-2","prompt":"loop","output_format":"gif","frame_count":2,"frame_duration_ms":120,"size":"16x16"}`))
+				req.Header.Set("Authorization", "Bearer "+h.key.Key)
+				req.Header.Set("Content-Type", "application/json")
+				result := httptest.NewRecorder()
+				h.router.ServeHTTP(result, req)
+				require.Equal(t, http.StatusOK, result.Code, result.Body.String())
+				observed := <-requests
+				require.Equal(t, "/v1/images/generations", observed.path)
+				require.Equal(t, "gpt-image-2.6-sunburst", gjson.GetBytes(observed.body, "model").String())
+				require.Equal(t, "gif", gjson.GetBytes(observed.body, "output_format").String())
+				require.EqualValues(t, 2, gjson.GetBytes(observed.body, "frame_count").Int())
+				require.EqualValues(t, 120, gjson.GetBytes(observed.body, "frame_duration_ms").Int())
+				require.Equal(t, "gif", gjson.GetBytes(result.Body.Bytes(), "output_format").String())
+				raw, err := base64.StdEncoding.DecodeString(gjson.GetBytes(result.Body.Bytes(), "data.0.b64_json").String())
+				require.NoError(t, err)
+				require.Equal(t, animation.Bytes(), raw)
+				decoded, err := gif.DecodeAll(bytes.NewReader(raw))
+				require.NoError(t, err)
+				require.Len(t, decoded.Image, 2)
+				require.Equal(t, []int{12, 12}, decoded.Delay)
+			})
+		}
+	}
+}
 
 type codexImageRequest struct {
 	path string

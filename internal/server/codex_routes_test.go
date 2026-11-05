@@ -80,6 +80,7 @@ func newCodexRouteHarness(t *testing.T) *codexRouteHarness {
 	registerCodexRoutes(&Server{Engine: router, Config: Config{LLMRequestTimeout: timeout}}, Handlers{CodexCompatibility: compatibility, OpenAI: openAI}, Services{AuthService: auth, SystemService: system, RequestService: requests})
 	legacy := router.Group("/v1", middleware.WithAPIKeyConfig(auth, nil), middleware.WithTimeout(timeout))
 	legacy.POST("/responses", openAI.CreateResponse)
+	legacy.POST("/images/generations", openAI.CreateImage)
 	legacy.GET("/models", openAI.ListModels)
 	router.GET("/v1/responses", middleware.WithAPIKeyConfig(auth, nil), openAI.CreateResponseWebSocket(timeout))
 	h.router = router

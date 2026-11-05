@@ -112,6 +112,12 @@ func (t *OutboundTransformer) buildImageGenerateRequest(chatReq *llm.Request, ap
 	if img.OutputFormat != "" {
 		reqBody["output_format"] = img.OutputFormat
 	}
+	if img.FrameCount != nil {
+		reqBody["frame_count"] = *img.FrameCount
+	}
+	if img.FrameDurationMS != nil {
+		reqBody["frame_duration_ms"] = *img.FrameDurationMS
+	}
 
 	if img.Size != "" {
 		reqBody["size"] = img.Size

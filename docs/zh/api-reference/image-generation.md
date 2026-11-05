@@ -8,6 +8,27 @@ AxonHub 通过 OpenAI 兼容的 `/v1/images/generations` 和 `/v1/images/edits` 
 
 Codex 默认使用原生 Images 端点，复用渠道 Base URL、认证、代理和显式 Images 端点覆盖配置。现有 URL 标记与路径前缀规则仍然生效；Codex 默认 Base URL 为 `https://chatgpt.com/backend-api/codex#`。Responses 端点不代表相同 Base URL 下存在 Images API，Fenno 和其他非 Codex 渠道也不例外。已有原生图像提供商端点继续可用，用户也可以为其他渠道显式配置 Images 端点。Images 端点不会继承自定义 Responses 的 Base URL 或路径。Images 请求不再转换为 Responses `image_generation` 工具调用。原生 `/v1/responses` 请求及其图像工具保留各自的行为。
 
+## 原生 GIF 动图
+
+使用现有 `POST /v1/images/generations`（兼容入口为 `/codex/images/generations`），无需单独的 GIF 接口或渠道开关。选择支持 GIF 的上游模型，例如 `gpt-image-2.6-sunburst`，设置 `output_format: "gif"`。图像专用渠道的模型选择、项目和 API Key 范围仍然生效。
+
+```json
+{
+  "model": "gpt-image-2.6-sunburst",
+  "prompt": "机器人眨眼微笑，再回到起始姿势，无缝循环",
+  "output_format": "gif",
+  "size": "auto",
+  "frame_count": 9,
+  "frame_duration_ms": 200
+}
+```
+
+`frame_count` 和 `frame_duration_ms` 可省略，沿用上游默认值；网关不会改写帧数或帧时长。每个 `data[].b64_json` 是完整 GIF 文件，直接 base64 解码后保存为 `.gif`，不需要合成静态帧。请求详情沿用现有图像预览，并识别 GIF 格式。
+
+GIF 仅支持生成，不支持编辑、流式、部分图像或自定义压缩。`/images/edits` 的 GIF 请求会在调用上游前返回明确的 400 错误。不要通过删除 `output_format` 重试，因为这会改变所需输出。模型目录列出 2.6 不代表当前账号或中转站已开放 GIF。
+
+2026-11-05 核对时，[官方指南](https://developers.openai.com/api/docs/guides/image-generation#generate-animated-gif-output)与 [API 参考](https://developers.openai.com/api/reference/resources/images/methods/generate)的帧数和时长上限不一致。示例采用共同支持的默认值；帧数至少为 2、时长至少为 20 ms，具体上限和总像素预算交给上游校验。
+
 ## API 使用
 
 要生成图像，请向 `/v1/images/generations` 端点发送请求。
@@ -109,7 +130,9 @@ JSON 响应会保留上游返回的 `created`、`data[].b64_json`、`data[].url`
 | `style` | string | 生成图像的风格（仅 DALL-E 3）：`"vivid"` 或 `"natural"`。 | - |
 | `user` | string | 代表最终用户的唯一标识符。 | - |
 | `background` | string | 背景样式：`"opaque"` 或 `"transparent"`。 | - |
-| `output_format` | string | 图像格式：`"png"`、`"webp"` 或 `"jpeg"`。 | `"png"` |
+| `output_format` | string | 图像格式：`"png"`、`"webp"`、`"jpeg"`；支持的生成模型还可使用 `"gif"`。 | `"png"` |
+| `frame_count` | integer | GIF 帧数；省略时沿用上游默认值。 | - |
+| `frame_duration_ms` | integer | GIF 每帧时长（毫秒）；原样转发给上游。 | - |
 | `output_compression` | number | 压缩级别 (0-100%)。 | 100 |
 | `moderation` | string | 内容审核级别：`"low"` 或 `"auto"`。 | - |
 | `stream` | boolean | 仅支持省略或 `false`；`true` 会被拒绝。 | `false` |
@@ -170,7 +193,7 @@ with open("image.png", "rb") as image_file, open("mask.png", "rb") as mask_file:
 | `response_format` | string | 格式：`"url"` 或 `"b64_json"`。对于 OpenAI 兼容渠道，未指定时 AxonHub 不发送该字段，由上游模型决定默认格式；特定提供商渠道可能使用自己的默认值。发送到 JSON 上游的图像编辑会拒绝非空值，包括 Codex 编辑以及使用远程图像引用的编辑。 | - |
 | `user` | string | 最终用户的唯一标识符。 | - |
 | `background` | string | 背景样式：`"opaque"` 或 `"transparent"`。 | - |
-| `output_format` | string | 图像格式：`"png"`、`"webp"` 或 `"jpeg"`。 | `"png"` |
+| `output_format` | string | 图像格式：`"png"`、`"webp"`、`"jpeg"`；支持的生成模型还可使用 `"gif"`。 | `"png"` |
 | `output_compression` | number | 压缩级别 (0-100%)。 | 100 |
 | `input_fidelity` | string | 输入保真度级别。 | - |
 | `stream` | boolean | 仅支持省略或 `false`；`true` 会被拒绝，multipart 表单同样适用。 | `false` |

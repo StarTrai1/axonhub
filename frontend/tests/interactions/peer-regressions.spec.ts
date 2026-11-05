@@ -18,6 +18,17 @@ test.beforeEach(async ({ page }) => {
   await page.route('**/admin/graphql', (route) => route.abort());
 });
 
+test('native GIF responses retain their MIME type in the existing image preview', async ({ page }) => {
+  await page.goto('/tests/interactions/peer-regressions.html?case=gif');
+  const preview = page.getByTestId('gif-response').getByRole('img');
+  await expect(preview).toHaveAttribute('src', /^data:image\/gif;base64,R0lGODlh/);
+  await expect.poll(() => preview.evaluate((element) => (element as HTMLImageElement).naturalWidth)).toBe(1);
+  await expect(page.getByTestId('gif-response').getByRole('link')).toHaveAttribute('href', /^data:image\/gif;base64,/);
+  await page.getByTestId('gif-response').getByRole('button', { name: 'raw', exact: true }).click();
+  await expect(preview).toHaveCount(0);
+  await expect(page.getByTestId('gif-response')).toContainText('R0lGODlh');
+});
+
 for (const kind of ['free', 'strict']) {
   test(`autocomplete ${kind} leaves IME keys to composition`, async ({ page }) => {
     await page.goto('/tests/interactions/peer-regressions.html?case=composition');

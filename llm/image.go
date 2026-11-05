@@ -36,8 +36,11 @@ type ImageRequest struct {
 	// Background is the background type (opaque or transparent) for GPT Image models.
 	Background string `json:"background,omitempty"`
 
-	// OutputFormat is the output image format (png, webp, jpeg) for GPT Image models.
+	// OutputFormat is the requested image format, including native GIF generations.
 	OutputFormat string `json:"output_format,omitempty"`
+	// Animation controls are optional; omitted values retain the upstream defaults.
+	FrameCount      *int64 `json:"frame_count,omitempty"`
+	FrameDurationMS *int64 `json:"frame_duration_ms,omitempty"`
 
 	// OutputCompression is the compression level (0-100) for GPT Image models.
 	OutputCompression *int64 `json:"output_compression,omitempty"`

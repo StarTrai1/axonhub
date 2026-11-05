@@ -67,6 +67,8 @@ type ImageGenerationRequest struct {
 	User              string          `json:"user,omitempty"`
 	Background        string          `json:"background,omitempty"`
 	OutputFormat      string          `json:"output_format,omitempty"`
+	FrameCount        *int64          `json:"frame_count,omitempty"`
+	FrameDurationMS   *int64          `json:"frame_duration_ms,omitempty"`
 	OutputCompression *int64          `json:"output_compression,omitempty"`
 	Moderation        string          `json:"moderation,omitempty"`
 	PartialImages     *int64          `json:"partial_images,omitempty"`
@@ -235,6 +237,9 @@ func (t *ImageInboundTransformer) transformGenerationRequest(httpReq *httpclient
 	if genReq.Stream {
 		return nil, fmt.Errorf("%w: image generation does not support streaming", transformer.ErrInvalidRequest)
 	}
+	if err := validateImageAnimation(genReq.OutputFormat, genReq.FrameCount, genReq.FrameDurationMS, genReq.OutputCompression, genReq.PartialImages); err != nil {
+		return nil, err
+	}
 
 	model := genReq.Model
 	if model == "" {
@@ -262,6 +267,8 @@ func (t *ImageInboundTransformer) transformGenerationRequest(httpReq *httpclient
 		User:              genReq.User,
 		Background:        genReq.Background,
 		OutputFormat:      genReq.OutputFormat,
+		FrameCount:        genReq.FrameCount,
+		FrameDurationMS:   genReq.FrameDurationMS,
 		OutputCompression: genReq.OutputCompression,
 		Moderation:        genReq.Moderation,
 		PartialImages:     genReq.PartialImages,
@@ -305,6 +312,9 @@ func (t *ImageInboundTransformer) transformEditRequest(httpReq *httpclient.Reque
 
 	if strings.EqualFold(strings.TrimSpace(formData.Fields["stream"]), "true") {
 		return nil, fmt.Errorf("%w: image edit does not support streaming", transformer.ErrInvalidRequest)
+	}
+	if strings.EqualFold(strings.TrimSpace(formData.Fields["output_format"]), "gif") {
+		return nil, fmt.Errorf("%w: GIF output requires images/generations; images/edits does not support GIF output", transformer.ErrInvalidRequest)
 	}
 
 	prompt := strings.TrimSpace(formData.Fields["prompt"])
@@ -417,6 +427,9 @@ func (t *ImageInboundTransformer) transformEditJSONRequest(httpReq *httpclient.R
 
 	if editReq.Stream {
 		return nil, fmt.Errorf("%w: image edit does not support streaming", transformer.ErrInvalidRequest)
+	}
+	if strings.EqualFold(strings.TrimSpace(editReq.OutputFormat), "gif") {
+		return nil, fmt.Errorf("%w: GIF output requires images/generations; images/edits does not support GIF output", transformer.ErrInvalidRequest)
 	}
 
 	prompt := strings.TrimSpace(editReq.Prompt)

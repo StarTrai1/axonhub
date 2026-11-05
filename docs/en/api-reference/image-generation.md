@@ -8,6 +8,27 @@ AxonHub supports non-streaming image generation and editing via the OpenAI-compa
 
 Codex uses native Images endpoints by default, reusing the channel's Base URL, authentication, proxy, and explicit Images endpoint overrides. Existing URL markers and path-prefix rules still apply; the default Codex Base URL is `https://chatgpt.com/backend-api/codex#`. Responses endpoints do not imply an Images API at the same Base URL, including on Fenno and other non-Codex channels. Existing native image provider endpoints remain available, and users can explicitly configure Images endpoints on other channels. Images endpoints do not inherit custom Responses Base URLs or paths. Images requests are no longer converted to Responses `image_generation` tool calls. Native `/v1/responses` requests and their image tools retain their own behavior.
 
+## Native animated GIF output
+
+Use the existing `POST /v1/images/generations` endpoint (or `/codex/images/generations` for Codex compatibility). No separate GIF route or channel switch is needed. Select a GIF-capable upstream model such as `gpt-image-2.6-sunburst` and set `output_format: "gif"`. Dedicated image-model selection and project/API-key channel scope still apply.
+
+```json
+{
+  "model": "gpt-image-2.6-sunburst",
+  "prompt": "A robot blinks and smiles, then returns to its starting pose in a seamless loop",
+  "output_format": "gif",
+  "size": "auto",
+  "frame_count": 9,
+  "frame_duration_ms": 200
+}
+```
+
+Omit the frame fields to retain upstream defaults. The gateway forwards explicit counts and delays unchanged. Each `data[].b64_json` contains the complete GIF: base64-decode it and save the bytes as `.gif`, without assembling still frames. Request details use the existing image preview with GIF MIME detection.
+
+GIF output supports generation only, without streaming, partial images, or custom compression. GIF requests to `/images/edits` receive a clear 400 error before dispatch. Do not retry by removing `output_format`, which changes the requested result. A listed 2.6 model does not establish GIF access for an account or relay.
+
+As checked on 2026-11-05, the [official guide](https://developers.openai.com/api/docs/guides/image-generation#generate-animated-gif-output) and [API reference](https://developers.openai.com/api/reference/resources/images/methods/generate) disagree on upper frame-count and delay limits. The example uses their shared defaults. The gateway enforces a minimum of 2 frames and 20 ms, leaving upper limits and total pixel budgets to the selected upstream.
+
 ## API Usage
 
 To generate images, send a request to the `/v1/images/generations` endpoint.
@@ -109,7 +130,9 @@ The JSON response preserves upstream `created`, `data[].b64_json`, `data[].url`,
 | `style` | string | The style of the generated images (DALL-E 3 only): `"vivid"` or `"natural"`. | - |
 | `user` | string | A unique identifier representing your end-user. | - |
 | `background` | string | Background style: `"opaque"` or `"transparent"`. | - |
-| `output_format` | string | Image format: `"png"`, `"webp"`, or `"jpeg"`. | `"png"` |
+| `output_format` | string | Image format: `"png"`, `"webp"`, `"jpeg"`, or `"gif"` for supported generation models. | `"png"` |
+| `frame_count` | integer | GIF frame count; omitted values retain upstream defaults. | - |
+| `frame_duration_ms` | integer | GIF delay per frame in milliseconds, forwarded unchanged. | - |
 | `output_compression` | number | Compression level (0-100%). | 100 |
 | `moderation` | string | Content moderation level: `"low"` or `"auto"`. | - |
 | `stream` | boolean | Only omitted or `false` is supported; `true` is rejected. | `false` |
@@ -171,7 +194,7 @@ with open("image.png", "rb") as image_file, open("mask.png", "rb") as mask_file:
 | `response_format` | string | The format: `"url"` or `"b64_json"`. For OpenAI-compatible channels, if omitted, AxonHub leaves the field out and the upstream model determines the default; provider-specific channels may apply their own defaults. Image edits sent to a JSON upstream reject a non-empty value, including Codex edits and edits with remote image references. | - |
 | `user` | string | A unique identifier for your end-user. | - |
 | `background` | string | Background style: `"opaque"` or `"transparent"`. | - |
-| `output_format` | string | Image format: `"png"`, `"webp"`, or `"jpeg"`. | `"png"` |
+| `output_format` | string | Image format: `"png"`, `"webp"`, `"jpeg"`, or `"gif"` for supported generation models. | `"png"` |
 | `output_compression` | number | Compression level (0-100%). | 100 |
 | `input_fidelity` | string | Input fidelity level. | - |
 | `stream` | boolean | Only omitted or `false` is supported; `true` is rejected, including in multipart forms. | `false` |

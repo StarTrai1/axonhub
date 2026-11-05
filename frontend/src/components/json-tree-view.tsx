@@ -253,7 +253,8 @@ function detectImageSource(name: string, value: string, parentData?: any): strin
 
   const siblingMediaType = getSiblingString(parentData, ['media_type', 'mediaType', 'mime_type', 'mimeType']);
   const normalizedName = name.toLowerCase();
-  const mediaType = siblingMediaType || (normalizedName === 'b64_json' ? 'image/png' : undefined);
+  const gifSignature = /^(R0lGODdh|R0lGODlh)/.test(trimmed);
+  const mediaType = gifSignature ? 'image/gif' : siblingMediaType || (normalizedName === 'b64_json' ? 'image/png' : undefined);
   if (!mediaType || !imageMimePattern.test(mediaType) || !isLikelyImageFieldName(name)) {
     return null;
   }
