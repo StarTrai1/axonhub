@@ -18,7 +18,9 @@ import (
 func httpInterruptFixture(t *testing.T, ctx context.Context, raw ...string) (*httpInterruptStream, *shared.ResponsesWebSocketSteering) {
 	t.Helper()
 	events := make([]*httpclient.StreamEvent, 0, len(raw))
-	for _, body := range raw { events = append(events, &httpclient.StreamEvent{Type: gjson.Get(body, "type").String(), Data: []byte(body)}) }
+	for _, body := range raw {
+		events = append(events, &httpclient.StreamEvent{Type: gjson.Get(body, "type").String(), Data: []byte(body)})
+	}
 	control := shared.NewResponsesWebSocketSteering(1)
 	_, cancel := context.WithCancel(ctx)
 	s := &httpInterruptStream{ctx: ctx, cancel: cancel, source: streams.SliceStream(events), control: control, completed: make(map[int]json.RawMessage), partial: make(map[int]string)}
@@ -35,12 +37,17 @@ func TestHTTPInterruptBeforeCompletionDiscardsUnconsumedOutput(t *testing.T) {
 		`{"type":"response.completed","response":{"id":"resp_one","status":"completed","output":[{"id":"fc_partial","type":"function_call","arguments":"{\"late\":true}"}]}}`,
 	)
 	require.False(t, control.InterruptHTTP("foreign"))
-	for range 3 { require.True(t, s.Next()); require.NotNil(t, s.Current()) }
+	for range 3 {
+		require.True(t, s.Next())
+		require.NotNil(t, s.Current())
+	}
 	require.False(t, control.Ready(), "HTTP interrupt support must not advertise response.steer")
 	require.True(t, control.InterruptHTTP("resp_one"))
 	require.True(t, control.InterruptHTTP("resp_one"), "repeated pending cancellation is idempotent")
 	var events [][]byte
-	for s.Next() { events = append(events, s.Current().Data) }
+	for s.Next() {
+		events = append(events, s.Current().Data)
+	}
 	require.NoError(t, s.Err())
 	require.Len(t, events, 3)
 	require.Equal(t, "response.interrupt.accepted", gjson.GetBytes(events[0], "type").String())
@@ -50,7 +57,9 @@ func TestHTTPInterruptBeforeCompletionDiscardsUnconsumedOutput(t *testing.T) {
 	require.Equal(t, "opaque", gjson.GetBytes(events[2], "response.output.0.encrypted_content").String())
 	require.NotContains(t, string(events[2]), "fc_partial")
 	require.False(t, gjson.GetBytes(events[2], "response.usage").Exists())
-	for i, event := range events { require.Equal(t, int64(7+i), gjson.GetBytes(event, "sequence_number").Int()) }
+	for i, event := range events {
+		require.Equal(t, int64(7+i), gjson.GetBytes(event, "sequence_number").Int())
+	}
 	require.True(t, control.IsTerminalResponse("resp_one"))
 }
 
@@ -60,7 +69,10 @@ func TestHTTPInterruptCompletionAndParentCancellationWin(t *testing.T) {
 			`{"type":"response.created","response":{"id":"resp_one","output":[]}}`,
 			`{"type":"response.completed","response":{"id":"resp_one","status":"completed","output":[],"usage":{"total_tokens":7}}}`,
 		)
-		for range 2 { require.True(t, s.Next()); require.NotNil(t, s.Current()) }
+		for range 2 {
+			require.True(t, s.Next())
+			require.NotNil(t, s.Current())
+		}
 		require.False(t, control.InterruptHTTP("resp_one"))
 		require.True(t, control.IsTerminalResponse("resp_one"))
 		require.Equal(t, int64(7), gjson.GetBytes(s.Current().Data, "response.usage.total_tokens").Int())
@@ -89,16 +101,20 @@ func TestHTTPInterruptPreservesFailuresAndRejectsUnsafeSnapshots(t *testing.T) {
 	for _, body := range []string{
 		`{"type":"response.output_item.done","output_index":4096,"item":{"type":"message"}}`,
 		`{"type":"response.output_item.done","output_index":0,"item":{"type":"message","status":"in_progress"}}`,
-		`{"type":"response.output_item.done","output_index":0,"item":{"type":"reasoning","encrypted_content":"`+strings.Repeat("x", 16<<20)+`"}}`,
+		`{"type":"response.output_item.done","output_index":0,"item":{"type":"reasoning","encrypted_content":"` + strings.Repeat("x", 16<<20) + `"}}`,
 	} {
 		s, control := httpInterruptFixture(t, t.Context(), `{"type":"response.created","response":{"id":"resp_one","output":[]}}`, body)
-		for range 2 { require.True(t, s.Next()); require.NotNil(t, s.Current()) }
+		for range 2 {
+			require.True(t, s.Next())
+			require.NotNil(t, s.Current())
+		}
 		require.False(t, control.InterruptHTTP("resp_one"), "never fabricate an incomplete history after the retention limit")
 	}
 }
 
-type httpInterruptErrorStream struct { err error }
-func (*httpInterruptErrorStream) Next() bool { return false }
+type httpInterruptErrorStream struct{ err error }
+
+func (*httpInterruptErrorStream) Next() bool                       { return false }
 func (*httpInterruptErrorStream) Current() *httpclient.StreamEvent { return nil }
-func (s *httpInterruptErrorStream) Err() error { return s.err }
-func (*httpInterruptErrorStream) Close() error { return nil }
+func (s *httpInterruptErrorStream) Err() error                     { return s.err }
+func (*httpInterruptErrorStream) Close() error                     { return nil }

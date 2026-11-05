@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/auth"
@@ -27,6 +28,26 @@ type imageOutbound struct {
 	transformer.Outbound
 
 	tokens oauth.TokenGetter
+}
+
+// The Codex Images endpoint uses a FastAPI-style string detail for capability
+// errors. Preserve it instead of reducing a useful rejection to "Bad Request".
+func (t *imageOutbound) TransformError(ctx context.Context, rawErr *httpclient.Error) *llm.ResponseError {
+	result := t.Outbound.TransformError(ctx, rawErr)
+	if rawErr == nil || gjson.GetBytes(rawErr.Body, "error.message").String() != "" {
+		return result
+	}
+	detail := gjson.GetBytes(rawErr.Body, "detail")
+	if detail.Type != gjson.String || strings.TrimSpace(detail.String()) == "" {
+		return result
+	}
+	result.Detail.Message = detail.String()
+	result.Cause = rawErr
+	if detail.String() == "GIF output is not enabled for this request." {
+		result.Detail.Code = "image_output_format_not_enabled"
+		result.Detail.Param = "output_format"
+	}
+	return result
 }
 
 func (t *imageOutbound) AllowPassThroughBody(_ context.Context, req *llm.Request, _ *httpclient.Request) bool {

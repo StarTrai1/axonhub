@@ -71,7 +71,9 @@ func (d *responsesWebSocketDispatcher) queueInterrupt(responseID string, message
 		return true, nil
 	}
 	if lane.steer.InterruptHTTP(responseID) {
-		if d.pendingInterrupts == nil { d.pendingInterrupts = make(map[string]struct{}) }
+		if d.pendingInterrupts == nil {
+			d.pendingInterrupts = make(map[string]struct{})
+		}
 		d.pendingInterrupts[responseID] = struct{}{}
 		return false, nil
 	}

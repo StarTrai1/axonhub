@@ -344,6 +344,12 @@ func ExtractErrorMessage(err error) string {
 		return message2.String()
 	}
 
+	// Codex Images capability errors use a string detail instead of error.message.
+	detail := gjson.GetBytes(httpErr.Body, "detail")
+	if detail.Type == gjson.String && strings.TrimSpace(detail.String()) != "" {
+		return detail.String()
+	}
+
 	return httpErr.Error()
 }
 

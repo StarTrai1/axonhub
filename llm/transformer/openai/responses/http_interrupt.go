@@ -15,7 +15,7 @@ import (
 )
 
 // DoHTTPStream supports downstream Responses interrupts over an HTTP upstream.
-	// Only the transport context is cancelled; the pipeline still receives a
+// Only the transport context is cancelled; the pipeline still receives an
 // incomplete result with the completed items, and can persist it for replay.
 // No generation is resubmitted and no response.steer capability is advertised.
 func DoHTTPStream(ctx context.Context, executor pipeline.Executor, request *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
@@ -38,26 +38,26 @@ func DoHTTPStream(ctx context.Context, executor pipeline.Executor, request *http
 }
 
 type httpInterruptStream struct {
-	source     streams.Stream[*httpclient.StreamEvent]
-	ctx        context.Context
-	cancel     context.CancelFunc
-	control    *shared.ResponsesWebSocketSteering
-	unregister func()
-	closeOnce  sync.Once
-	closeErr   error
-	mu         sync.Mutex
-	response   map[string]json.RawMessage
-	responseID string
-	completed  map[int]json.RawMessage
-	partial    map[int]string
-	bytes      int
-	unsafe     bool
-	sequence   int64
+	source      streams.Stream[*httpclient.StreamEvent]
+	ctx         context.Context
+	cancel      context.CancelFunc
+	control     *shared.ResponsesWebSocketSteering
+	unregister  func()
+	closeOnce   sync.Once
+	closeErr    error
+	mu          sync.Mutex
+	response    map[string]json.RawMessage
+	responseID  string
+	completed   map[int]json.RawMessage
+	partial     map[int]string
+	bytes       int
+	unsafe      bool
+	sequence    int64
 	interrupted bool
-	terminal   bool
-	closed     bool
-	queue      []*httpclient.StreamEvent
-	current    *httpclient.StreamEvent
+	terminal    bool
+	closed      bool
+	queue       []*httpclient.StreamEvent
+	current     *httpclient.StreamEvent
 }
 
 func (s *httpInterruptStream) interrupt(id string) bool {
@@ -89,20 +89,30 @@ func (s *httpInterruptStream) Next() bool {
 	hasNext := s.source.Next()
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.closed || s.ctx.Err() != nil { return false }
-	if s.interrupted { return s.nextInterrupted() }
-	if !hasNext { return false }
+	if s.closed || s.ctx.Err() != nil {
+		return false
+	}
+	if s.interrupted {
+		return s.nextInterrupted()
+	}
+	if !hasNext {
+		return false
+	}
 	s.current = s.source.Current()
 	s.observe(s.current)
 	return true
 }
 
 func (s *httpInterruptStream) observe(event *httpclient.StreamEvent) {
-	if event == nil { return }
+	if event == nil {
+		return
+	}
 	raw := gjson.ParseBytes(event.Data)
 	s.sequence = max(s.sequence, raw.Get("sequence_number").Int())
 	typ := raw.Get("type").String()
-	if typ == "" { typ = event.Type }
+	if typ == "" {
+		typ = event.Type
+	}
 	switch typ {
 	case "response.created", "response.in_progress":
 		response := raw.Get("response")
@@ -112,7 +122,9 @@ func (s *httpInterruptStream) observe(event *httpclient.StreamEvent) {
 			return
 		}
 		s.responseID = id
-		if json.Unmarshal([]byte(response.Raw), &s.response) != nil { s.unsafe = true }
+		if json.Unmarshal([]byte(response.Raw), &s.response) != nil {
+			s.unsafe = true
+		}
 	case "response.output_item.added", "response.output_item.done":
 		index := raw.Get("output_index")
 		item := raw.Get("item")
@@ -130,7 +142,10 @@ func (s *httpInterruptStream) observe(event *httpclient.StreamEvent) {
 			return
 		}
 		s.bytes += len(item.Raw) - len(s.completed[i])
-		if s.bytes > 16<<20 { s.unsafe = true; return }
+		if s.bytes > 16<<20 {
+			s.unsafe = true
+			return
+		}
 		s.completed[i] = json.RawMessage(item.Raw)
 		delete(s.partial, i)
 	case "response.completed", "response.incomplete", "response.failed", "response.cancelled", "error":
@@ -147,16 +162,22 @@ func (s *httpInterruptStream) nextInterrupted() bool {
 		s.terminal = true
 		s.enqueue(map[string]any{"type": "response.interrupt.accepted", "response_id": s.responseID})
 		indices := make([]int, 0, len(s.partial))
-		for i := range s.partial { indices = append(indices, i) }
+		for i := range s.partial {
+			indices = append(indices, i)
+		}
 		slices.Sort(indices)
 		for _, i := range indices {
 			s.enqueue(map[string]any{"type": "response.output_item.interrupted", "response_id": s.responseID, "output_index": i, "item_id": s.partial[i]})
 		}
 		indices = indices[:0]
-		for i := range s.completed { indices = append(indices, i) }
+		for i := range s.completed {
+			indices = append(indices, i)
+		}
 		slices.Sort(indices)
 		output := make([]json.RawMessage, 0, len(indices))
-		for _, i := range indices { output = append(output, s.completed[i]) }
+		for _, i := range indices {
+			output = append(output, s.completed[i])
+		}
 		outputJSON, _ := json.Marshal(output)
 		s.response["output"] = outputJSON
 		s.response["status"] = json.RawMessage(`"incomplete"`)
@@ -165,7 +186,9 @@ func (s *httpInterruptStream) nextInterrupted() bool {
 		s.enqueue(map[string]any{"type": "response.incomplete", "response": s.response})
 		s.control.RememberTerminalResponse(s.responseID)
 	}
-	if len(s.queue) == 0 { return false }
+	if len(s.queue) == 0 {
+		return false
+	}
 	s.current = s.queue[0]
 	s.queue = s.queue[1:]
 	return true
@@ -187,8 +210,12 @@ func (s *httpInterruptStream) Current() *httpclient.StreamEvent {
 func (s *httpInterruptStream) Err() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if err := s.ctx.Err(); err != nil { return err }
-	if s.interrupted { return nil }
+	if err := s.ctx.Err(); err != nil {
+		return err
+	}
+	if s.interrupted {
+		return nil
+	}
 	return s.source.Err()
 }
 

@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -37,8 +38,10 @@ func TestResponsesProtocolHTTPInterruptIsolationAndContinuation(t *testing.T) {
 						require.NoError(t, err)
 						w.(http.Flusher).Flush()
 					}
-					if gjson.GetBytes(body, "client_metadata.thread_id").String() == "other-thread" {
+					if strings.Contains(input, `"other"`) {
 						write(`{"type":"response.created","response":{"id":"resp_other","model":"synthetic-model","status":"in_progress","output":[]}}`)
+						write(`{"type":"response.output_item.added","output_index":0,"item":{"type":"message","id":"msg_other","role":"assistant","status":"in_progress","content":[]}}`)
+						write(`{"type":"response.output_text.delta","item_id":"msg_other","output_index":0,"content_index":0,"delta":"Other lane active."}`)
 						select {
 						case <-releaseOther:
 						case <-r.Context().Done():
@@ -49,8 +52,10 @@ func TestResponsesProtocolHTTPInterruptIsolationAndContinuation(t *testing.T) {
 						return
 					}
 					require.Equal(t, cache, gjson.GetBytes(body, "prompt_cache_key").Exists())
-					if cache { require.Equal(t, "original-cache", gjson.GetBytes(body, "prompt_cache_key").String()) }
-					if gjson.GetBytes(body, "input.#(content==\"continue\")").Exists() {
+					if cache {
+						require.Equal(t, "original-cache", gjson.GetBytes(body, "prompt_cache_key").String())
+					}
+					if strings.Contains(input, `"continue"`) {
 						require.False(t, gjson.GetBytes(body, "previous_response_id").Exists(), "cancelled HTTP state must be restored locally")
 						require.Contains(t, input, "opaque-kept-ciphertext")
 						require.Contains(t, input, "Completed result.")
@@ -64,7 +69,9 @@ func TestResponsesProtocolHTTPInterruptIsolationAndContinuation(t *testing.T) {
 						`{"type":"response.output_item.done","output_index":0,"item":{"type":"reasoning","id":"rs_kept","encrypted_content":"opaque-kept-ciphertext","summary":[]}}`,
 						`{"type":"response.output_item.done","output_index":1,"item":{"type":"message","id":"msg_kept","role":"assistant","status":"completed","phase":"partial_answer","content":[{"type":"output_text","text":"Completed result."}]}}`,
 						`{"type":"response.output_item.added","output_index":2,"item":{"type":"reasoning","id":"rs_partial","summary":[]}}`,
-					} { write(event) }
+					} {
+						write(event)
+					}
 					<-r.Context().Done()
 					close(cancelled)
 				}))
@@ -73,7 +80,9 @@ func TestResponsesProtocolHTTPInterruptIsolationAndContinuation(t *testing.T) {
 				conn := responsesIntegrationDial(t, gateway)
 				require.NoError(t, conn.SetReadDeadline(time.Now().Add(10*time.Second)))
 				cacheField := ""
-				if cache { cacheField = `,"prompt_cache_key":"original-cache"` }
+				if cache {
+					cacheField = `,"prompt_cache_key":"original-cache"`
+				}
 				require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create","stream_id":"stop","model":"synthetic-model","input":[{"role":"user","content":"first"}],"client_metadata":{"thread_id":"stop-thread"}`+cacheField+`}`)))
 				require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create","stream_id":"other","model":"synthetic-model","input":[{"role":"user","content":"other"}],"client_metadata":{"thread_id":"other-thread"}}`)))
 				ready, otherReady := false, false

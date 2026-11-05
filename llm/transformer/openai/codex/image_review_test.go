@@ -71,3 +71,41 @@ func TestCodexNativeResponsesImageToolPreserved(t *testing.T) {
 	require.JSONEq(t, gjson.GetBytes(body, "tool_choice").Raw, gjson.GetBytes(encoded.Body, "tool_choice").Raw)
 	require.Equal(t, "https://relay.example/v1/responses", encoded.URL)
 }
+
+func TestCodexImageGIFCapabilityRejectionPreservesDetail(t *testing.T) {
+	var calls atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("X-Request-ID", "synthetic-gif-rejection")
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"detail":"GIF output is not enabled for this request."}`))
+	}))
+	defer server.Close()
+	out, err := NewImageOutboundTransformer(ImageParams{BaseURL: server.URL, TokenProvider: oauth.NewStaticTokenProvider(&oauth.OAuthCredentials{AccessToken: "synthetic"})})
+	require.NoError(t, err)
+	in := openai.NewImageGenerationInboundTransformer()
+	pipe := pipeline.NewFactory(httpclient.NewHttpClient()).Pipeline(in, out)
+	_, err = pipe.Process(t.Context(), &httpclient.Request{Method: http.MethodPost, Headers: http.Header{"Content-Type": {"application/json"}}, Body: []byte(`{"model":"gpt-image-2.6-sunburst","prompt":"a bouncing ball","output_format":"gif","n":1}`)})
+	require.Error(t, err)
+	response := in.TransformError(t.Context(), err)
+	require.Equal(t, http.StatusBadRequest, response.StatusCode)
+	require.Equal(t, "GIF output is not enabled for this request.", gjson.GetBytes(response.Body, "error.message").String())
+	require.Equal(t, "image_output_format_not_enabled", gjson.GetBytes(response.Body, "error.code").String())
+	require.Equal(t, "output_format", gjson.GetBytes(response.Body, "error.param").String())
+	require.Equal(t, "synthetic-gif-rejection", response.Headers.Get("X-Request-ID"))
+	require.Equal(t, int32(1), calls.Load())
+}
+
+func TestCodexImageErrorsKeepStandardEnvelopeAndIgnoreStructuredDetail(t *testing.T) {
+	out, err := NewImageOutboundTransformer(ImageParams{TokenProvider: failingTokenGetter{}})
+	require.NoError(t, err)
+	for _, tc := range []struct{ body, message string }{
+		{`{"error":{"message":"original error","code":"original"},"detail":"other"}`, "original error"},
+		{`{"detail":[{"input":"private request"}]}`, "Bad Request"},
+		{`{"detail":""}`, "Bad Request"},
+	} {
+		err := out.TransformError(t.Context(), &httpclient.Error{StatusCode: http.StatusBadRequest, Body: []byte(tc.body)})
+		require.Equal(t, tc.message, err.Detail.Message)
+	}
+}
