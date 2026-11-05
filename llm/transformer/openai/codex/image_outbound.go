@@ -34,7 +34,7 @@ type imageOutbound struct {
 // errors. Preserve it instead of reducing a useful rejection to "Bad Request".
 func (t *imageOutbound) TransformError(ctx context.Context, rawErr *httpclient.Error) *llm.ResponseError {
 	result := t.Outbound.TransformError(ctx, rawErr)
-	if rawErr == nil || gjson.GetBytes(rawErr.Body, "error.message").String() != "" {
+	if rawErr == nil || gjson.GetBytes(rawErr.Body, "error.message").String() != "" || gjson.GetBytes(rawErr.Body, "errors.message").String() != "" {
 		return result
 	}
 	detail := gjson.GetBytes(rawErr.Body, "detail")

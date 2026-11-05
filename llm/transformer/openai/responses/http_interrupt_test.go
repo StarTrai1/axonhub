@@ -99,6 +99,7 @@ func TestHTTPInterruptPreservesFailuresAndRejectsUnsafeSnapshots(t *testing.T) {
 		require.False(t, control.InterruptHTTP("unknown"))
 	})
 	for _, body := range []string{
+		`{"type":"response.output_item.added","output_index":0,"item":{"type":"message"}}`,
 		`{"type":"response.output_item.done","output_index":4096,"item":{"type":"message"}}`,
 		`{"type":"response.output_item.done","output_index":0,"item":{"type":"message","status":"in_progress"}}`,
 		`{"type":"response.output_item.done","output_index":0,"item":{"type":"reasoning","encrypted_content":"` + strings.Repeat("x", 16<<20) + `"}}`,
@@ -110,6 +111,18 @@ func TestHTTPInterruptPreservesFailuresAndRejectsUnsafeSnapshots(t *testing.T) {
 		}
 		require.False(t, control.InterruptHTTP("resp_one"), "never fabricate an incomplete history after the retention limit")
 	}
+	t.Run("conflicting completed item", func(t *testing.T) {
+		s, control := httpInterruptFixture(t, t.Context(),
+			`{"type":"response.created","response":{"id":"resp_one","output":[]}}`,
+			`{"type":"response.output_item.done","output_index":0,"item":{"type":"reasoning","id":"rs_first","encrypted_content":"first"}}`,
+			`{"type":"response.output_item.done","output_index":0,"item":{"type":"reasoning","id":"rs_second","encrypted_content":"second"}}`,
+		)
+		for range 3 {
+			require.True(t, s.Next())
+			require.NotNil(t, s.Current())
+		}
+		require.False(t, control.InterruptHTTP("resp_one"))
+	})
 }
 
 type httpInterruptErrorStream struct{ err error }

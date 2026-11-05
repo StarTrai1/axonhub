@@ -1,9 +1,11 @@
 package responses
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"slices"
+	"strings"
 	"sync"
 
 	"github.com/tidwall/gjson"
@@ -115,6 +117,9 @@ func (s *httpInterruptStream) observe(event *httpclient.StreamEvent) {
 	}
 	switch typ {
 	case "response.created", "response.in_progress":
+		if s.unsafe {
+			return
+		}
 		response := raw.Get("response")
 		id := response.Get("id").String()
 		if id == "" || len(response.Raw) > 1<<20 || (s.responseID != "" && id != s.responseID) {
@@ -126,6 +131,9 @@ func (s *httpInterruptStream) observe(event *httpclient.StreamEvent) {
 			s.unsafe = true
 		}
 	case "response.output_item.added", "response.output_item.done":
+		if s.unsafe {
+			return
+		}
 		index := raw.Get("output_index")
 		item := raw.Get("item")
 		if !index.Exists() || index.Int() < 0 || index.Int() >= 4096 || !item.IsObject() {
@@ -134,14 +142,28 @@ func (s *httpInterruptStream) observe(event *httpclient.StreamEvent) {
 		}
 		i := int(index.Int())
 		if typ == "response.output_item.added" {
-			s.partial[i] = item.Get("id").String()
+			id := item.Get("id").String()
+			if id == "" || s.completed[i] != nil {
+				s.unsafe = true
+				return
+			}
+			s.bytes += len(id) - len(s.partial[i])
+			if s.bytes > 16<<20 {
+				s.unsafe = true
+				return
+			}
+			s.partial[i] = strings.Clone(id)
 			return
 		}
 		if status := item.Get("status").String(); status != "" && status != "completed" {
 			s.unsafe = true
 			return
 		}
-		s.bytes += len(item.Raw) - len(s.completed[i])
+		if previous := s.completed[i]; previous != nil && !bytes.Equal(previous, []byte(item.Raw)) {
+			s.unsafe = true
+			return
+		}
+		s.bytes += len(item.Raw) - len(s.completed[i]) - len(s.partial[i])
 		if s.bytes > 16<<20 {
 			s.unsafe = true
 			return

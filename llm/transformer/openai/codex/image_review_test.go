@@ -102,6 +102,7 @@ func TestCodexImageErrorsKeepStandardEnvelopeAndIgnoreStructuredDetail(t *testin
 	require.NoError(t, err)
 	for _, tc := range []struct{ body, message string }{
 		{`{"error":{"message":"original error","code":"original"},"detail":"other"}`, "original error"},
+		{`{"errors":{"message":"original error"},"detail":"other"}`, "original error"},
 		{`{"detail":[{"input":"private request"}]}`, "Bad Request"},
 		{`{"detail":""}`, "Bad Request"},
 	} {
