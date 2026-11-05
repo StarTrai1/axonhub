@@ -9,12 +9,16 @@ import (
 // AllowsWorkload combines independently selected dedicated workloads. Enabling
 // any dedicated scope excludes foreground chat, without clearing other scopes.
 func (ch *Channel) AllowsWorkload(req *llm.Request, memory bool) bool {
-	if ch == nil || ch.Channel == nil { return false }
+	if ch == nil || ch.Channel == nil {
+		return false
+	}
 	policy := ch.Policies.EffectiveCodexMemoryPolicy()
 	if memory {
 		return policy != objects.CodexMemoryExclude && (!ch.IsCodexToolOnly() || policy == objects.CodexMemoryOnly)
 	}
-	if policy == objects.CodexMemoryOnly && !ch.IsCodexToolOnly() { return false }
+	if policy == objects.CodexMemoryOnly && !ch.IsCodexToolOnly() {
+		return false
+	}
 	return ch.AllowsCodexToolRequest(req)
 }
 

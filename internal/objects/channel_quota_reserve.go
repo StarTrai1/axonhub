@@ -7,13 +7,15 @@ import "fmt"
 type ChannelQuotaReserve struct {
 	FiveHourPercent *int `json:"fiveHourPercent,omitempty"`
 	SevenDayPercent *int `json:"sevenDayPercent,omitempty"`
-	AllowSearch bool `json:"allowSearch,omitempty"`
-	AllowImage bool `json:"allowImage,omitempty"`
-	AllowMemory bool `json:"allowMemory,omitempty"`
+	AllowSearch     bool `json:"allowSearch,omitempty"`
+	AllowImage      bool `json:"allowImage,omitempty"`
+	AllowMemory     bool `json:"allowMemory,omitempty"`
 }
 
 func (r *ChannelQuotaReserve) Validate() error {
-	if r == nil { return nil }
+	if r == nil {
+		return nil
+	}
 	for _, percent := range []*int{r.FiveHourPercent, r.SevenDayPercent} {
 		if percent != nil && (*percent < 1 || *percent > 100) {
 			return fmt.Errorf("quota reserve thresholds must be between 1 and 100 percent")

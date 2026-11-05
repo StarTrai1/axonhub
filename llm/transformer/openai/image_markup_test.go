@@ -11,8 +11,10 @@ import (
 	"net/http"
 	"net/textproto"
 	"testing"
+
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
+
 	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer"
@@ -65,11 +67,17 @@ func TestImageMarkupMultipartAndJSONPreserveOverlay(t *testing.T) {
 		found := false
 		for {
 			part, err := reader.NextPart()
-			if err == io.EOF { break }
+			if err == io.EOF {
+				break
+			}
 			require.NoError(t, err)
 			data, err := io.ReadAll(part)
 			require.NoError(t, err)
-			if part.FormName() == "markup" { found = true; require.Equal(t, png, data); require.Equal(t, "image/png", part.Header.Get("Content-Type")) }
+			if part.FormName() == "markup" {
+				found = true
+				require.Equal(t, png, data)
+				require.Equal(t, "image/png", part.Header.Get("Content-Type"))
+			}
 		}
 		require.True(t, found)
 	}
@@ -77,7 +85,7 @@ func TestImageMarkupMultipartAndJSONPreserveOverlay(t *testing.T) {
 
 func TestImageMarkupRejectsAmbiguousEdits(t *testing.T) {
 	for _, overlay := range []string{`{}`, `"legacy"`, `{"file_id":"overlay","image_url":"https://example.invalid/a.png"}`} {
-		body := `{"prompt":"edit","images":[{"file_id":"original"}],"markup":`+overlay+`}`
+		body := `{"prompt":"edit","images":[{"file_id":"original"}],"markup":` + overlay + `}`
 		_, err := openai.NewImageEditInboundTransformer().TransformRequest(t.Context(), &httpclient.Request{Headers: http.Header{"Content-Type": {"application/json"}}, Body: []byte(body)})
 		require.ErrorIs(t, err, transformer.ErrInvalidRequest)
 	}

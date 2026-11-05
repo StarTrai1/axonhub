@@ -1086,6 +1086,13 @@ func (r *traceResolver) UsageMetadata(ctx context.Context, obj *ent.Trace) (*biz
 	return r.traceService.UsageMetadata(ctx, obj.ID)
 }
 
+// QuotaReserve is the resolver for the quotaReserve field.
+func (r *updateChannelSettingsInputResolver) QuotaReserve(ctx context.Context, obj *biz.UpdateChannelSettingsInput, data *objects.ChannelQuotaReserve) error {
+	obj.QuotaReserve = data
+	obj.QuotaReserveSet = true
+	return nil
+}
+
 // ChannelSettings returns ChannelSettingsResolver implementation.
 func (r *Resolver) ChannelSettings() ChannelSettingsResolver { return &channelSettingsResolver{r} }
 
@@ -1095,6 +1102,12 @@ func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 // Segment returns SegmentResolver implementation.
 func (r *Resolver) Segment() SegmentResolver { return &segmentResolver{r} }
 
+// UpdateChannelSettingsInput returns UpdateChannelSettingsInputResolver implementation.
+func (r *Resolver) UpdateChannelSettingsInput() UpdateChannelSettingsInputResolver {
+	return &updateChannelSettingsInputResolver{r}
+}
+
 type channelSettingsResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
 type segmentResolver struct{ *Resolver }
+type updateChannelSettingsInputResolver struct{ *Resolver }

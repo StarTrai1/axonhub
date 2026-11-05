@@ -15,12 +15,12 @@ import (
 // PersistenceState holds shared state with channel management and retry capabilities.
 // TODO: move the dependencies out of the state to make it a real state.
 type PersistenceState struct {
-	codexMemory    *codexMemoryLease
-	memoryTask     shared.CodexMemoryTask
+	codexMemory            *codexMemoryLease
+	memoryTask             shared.CodexMemoryTask
 	memoryRejectedChannels map[int]bool
-	quotaReserveProvider ProviderQuotaStatusProvider
-	memoryAttempts int
-	APIKey         *ent.APIKey
+	quotaReserveProvider   ProviderQuotaStatusProvider
+	memoryAttempts         int
+	APIKey                 *ent.APIKey
 
 	RequestService      *biz.RequestService
 	UsageLogService     *biz.UsageLogService

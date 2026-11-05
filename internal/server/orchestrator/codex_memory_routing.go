@@ -70,9 +70,13 @@ func (p *PersistentOutboundTransformer) AllowRetry(err error) bool {
 		log.Info(context.Background(), "Codex memory request refused by upstream content policy",
 			log.String("memory_task", string(p.state.memoryTask)))
 		ch := p.GetCurrentChannel()
-		if !isRetryableErrorForChannel(err, ch) { return false }
+		if !isRetryableErrorForChannel(err, ch) {
+			return false
+		}
 		if ch != nil {
-			if p.state.memoryRejectedChannels == nil { p.state.memoryRejectedChannels = make(map[int]bool) }
+			if p.state.memoryRejectedChannels == nil {
+				p.state.memoryRejectedChannels = make(map[int]bool)
+			}
 			p.state.memoryRejectedChannels[ch.ID] = true
 		}
 	}

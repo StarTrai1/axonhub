@@ -262,3 +262,15 @@ func TestChannelService_SettingsPatchSupportsForkFields(t *testing.T) {
 	_, err = svc.UpdateChannelSettings(ctx, created.ID, &UpdateChannelSettingsInput{MaxSingleChannelRetries: lo.ToPtr(-1)})
 	require.Error(t, err)
 }
+
+func TestQuotaReservePatchPreservesAndClears(t *testing.T) {
+	base := &objects.ChannelSettings{QuotaReserve: &objects.ChannelQuotaReserve{FiveHourPercent: lo.ToPtr(90), AllowSearch: true}}
+	untouched := (&UpdateChannelSettingsInput{}).Apply(base)
+	require.Equal(t, base.QuotaReserve, untouched.QuotaReserve)
+	cleared := (&UpdateChannelSettingsInput{QuotaReserveSet: true}).Apply(base)
+	require.Nil(t, cleared.QuotaReserve)
+	replacement := &objects.ChannelQuotaReserve{SevenDayPercent: lo.ToPtr(85), AllowMemory: true}
+	updated := (&UpdateChannelSettingsInput{QuotaReserve: replacement}).Apply(base)
+	require.Equal(t, replacement, updated.QuotaReserve)
+	require.Equal(t, 90, *base.QuotaReserve.FiveHourPercent)
+}

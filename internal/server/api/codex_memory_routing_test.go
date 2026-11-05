@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 
@@ -14,8 +15,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
-"github.com/looplj/axonhub/internal/ent/channel"
-"sync"
+	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/objects"
 )
 
@@ -119,45 +119,61 @@ func TestCodexMemoryRoutingRefusalAndTransientBudget(t *testing.T) {
 // All upstreams reject unchanged synthetic input. Configured failover must use
 // distinct eligible channels, never the excluded one, with a shared attempt cap.
 func TestCodexMemoryConfiguredRefusalFailover(t *testing.T) {
-    for _, configured := range []bool{false, true} {
-        for _, enabled := range []bool{false, true} {
-            t.Run(fmt.Sprintf("configured=%t/enabled=%t", configured, enabled), func(t *testing.T) {
-                var mu sync.Mutex
-                calls := map[string]int{}
-                upstream := responsesIntegrationServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-                    body, err := readRequestBody(r)
-                    if err != nil { t.Error(err); return }
-                    if !strings.Contains(string(body), "unchanged-memory-canary") { t.Error("input changed") }
-                    mu.Lock(); calls[r.Header.Get("Authorization")]++; mu.Unlock()
-                    w.Header().Set("Content-Type", "application/json")
-                    w.WriteHeader(http.StatusBadRequest)
-                    _, _ = fmt.Fprint(w, `{"error":{"code":"content_blocked","message":"content-blocked (synthetic)"}}`)
-                }))
-                settings := &objects.ChannelSettings{MaxSingleChannelRetries: lo.ToPtr(10)}
-                if configured { settings.RetryableStatusCodes = []int{400} }
-                client, handlers, project := newResponsesIntegrationFixture(t, upstream.URL, func(c *ent.ChannelCreate) { c.SetSettings(settings) })
-                ctx := authz.WithTestBypass(ent.NewContext(t.Context(), client))
-                for i, memory := range []objects.CodexMemoryPolicy{objects.CodexMemoryOnly, objects.CodexMemoryNormal, objects.CodexMemoryOnly, objects.CodexMemoryExclude} {
-                    key := fmt.Sprintf("synthetic-%d", i)
-                    if memory == objects.CodexMemoryExclude { key = "excluded" }
-                    _, err := client.Channel.Create().SetType(channel.TypeOpenaiResponses).SetName(key).SetStatus(channel.StatusEnabled).SetBaseURL(upstream.URL).SetCredentials(objects.ChannelCredentials{APIKey: key}).SetSupportedModels([]string{"synthetic-model"}).SetDefaultTestModel("synthetic-model").SetSettings(settings).SetPolicies(objects.ChannelPolicies{CodexMemory: memory}).Save(ctx)
-                    require.NoError(t, err)
-                }
-                require.NoError(t, handlers.ChannelService.ReloadEnabledChannelsCache(ctx))
-                policy := handlers.SystemService.RetryPolicyOrDefault(ctx)
-                policy.Enabled, policy.MaxChannelRetries, policy.MaxSingleChannelRetries, policy.RetryDelayMs = enabled, 10, 10, 0
-                require.NoError(t, handlers.SystemService.SetRetryPolicy(ctx, policy))
-                gateway := responsesIntegrationGateway(t, client, handlers, project)
-                status, body := responsesIntegrationPost(t, gateway, "/v1/responses", codexMemoryIntegrationBody(t, "memory", "unchanged-memory-canary", false))
-                require.Equal(t, 400, status, string(body))
-                require.Contains(t, string(body), "content-blocked")
-                mu.Lock(); defer mu.Unlock()
-                want := 1
-                if configured && enabled { want = 3 }
-                require.Len(t, calls, want)
-                require.Zero(t, calls["Bearer excluded"])
-                for _, count := range calls { require.Equal(t, 1, count) }
-            })
-        }
-    }
+	for _, configured := range []bool{false, true} {
+		for _, enabled := range []bool{false, true} {
+			t.Run(fmt.Sprintf("configured=%t/enabled=%t", configured, enabled), func(t *testing.T) {
+				var mu sync.Mutex
+				calls := map[string]int{}
+				upstream := responsesIntegrationServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					body, err := readRequestBody(r)
+					if err != nil {
+						t.Error(err)
+						return
+					}
+					if !strings.Contains(string(body), "unchanged-memory-canary") {
+						t.Error("input changed")
+					}
+					mu.Lock()
+					calls[r.Header.Get("Authorization")]++
+					mu.Unlock()
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(http.StatusBadRequest)
+					_, _ = fmt.Fprint(w, `{"error":{"code":"content_blocked","message":"content-blocked (synthetic)"}}`)
+				}))
+				settings := &objects.ChannelSettings{MaxSingleChannelRetries: lo.ToPtr(10)}
+				if configured {
+					settings.RetryableStatusCodes = []int{400}
+				}
+				client, handlers, project := newResponsesIntegrationFixture(t, upstream.URL, func(c *ent.ChannelCreate) { c.SetSettings(settings) })
+				ctx := authz.WithTestBypass(ent.NewContext(t.Context(), client))
+				for i, memory := range []objects.CodexMemoryPolicy{objects.CodexMemoryOnly, objects.CodexMemoryNormal, objects.CodexMemoryOnly, objects.CodexMemoryExclude} {
+					key := fmt.Sprintf("synthetic-%d", i)
+					if memory == objects.CodexMemoryExclude {
+						key = "excluded"
+					}
+					_, err := client.Channel.Create().SetType(channel.TypeOpenaiResponses).SetName(key).SetStatus(channel.StatusEnabled).SetBaseURL(upstream.URL).SetCredentials(objects.ChannelCredentials{APIKey: key}).SetSupportedModels([]string{"synthetic-model"}).SetDefaultTestModel("synthetic-model").SetSettings(settings).SetPolicies(objects.ChannelPolicies{CodexMemory: memory}).Save(ctx)
+					require.NoError(t, err)
+				}
+				require.NoError(t, handlers.ChannelService.ReloadEnabledChannelsCache(ctx))
+				policy := handlers.SystemService.RetryPolicyOrDefault(ctx)
+				policy.Enabled, policy.MaxChannelRetries, policy.MaxSingleChannelRetries, policy.RetryDelayMs = enabled, 10, 10, 0
+				require.NoError(t, handlers.SystemService.SetRetryPolicy(ctx, policy))
+				gateway := responsesIntegrationGateway(t, client, handlers, project)
+				status, body := responsesIntegrationPost(t, gateway, "/v1/responses", codexMemoryIntegrationBody(t, "memory", "unchanged-memory-canary", false))
+				require.Equal(t, 400, status, string(body))
+				require.Contains(t, string(body), "content-blocked")
+				mu.Lock()
+				defer mu.Unlock()
+				want := 1
+				if configured && enabled {
+					want = 3
+				}
+				require.Len(t, calls, want)
+				require.Zero(t, calls["Bearer excluded"])
+				for _, count := range calls {
+					require.Equal(t, 1, count)
+				}
+			})
+		}
+	}
 }

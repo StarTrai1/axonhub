@@ -272,8 +272,12 @@ func (t *OutboundTransformer) buildImageEditRequest(chatReq *llm.Request, apiKey
 		h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="markup"; filename="%s"`, file.Filename))
 		h.Set("Content-Type", file.ContentType)
 		part, err := writer.CreatePart(h)
-		if err != nil { return nil, fmt.Errorf("create markup file: %w", err) }
-		if _, err := part.Write(file.Data); err != nil { return nil, fmt.Errorf("write markup file: %w", err) }
+		if err != nil {
+			return nil, fmt.Errorf("create markup file: %w", err)
+		}
+		if _, err := part.Write(file.Data); err != nil {
+			return nil, fmt.Errorf("write markup file: %w", err)
+		}
 		jsonBody["markup"] = file
 	}
 

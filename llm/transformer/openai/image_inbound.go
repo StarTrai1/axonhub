@@ -345,15 +345,15 @@ func (t *ImageInboundTransformer) transformEditRequest(httpReq *httpclient.Reque
 	}
 
 	if formData.Markup != nil && (formData.Mask != nil || formData.Fields["prompt_rewriter"] != "") {
-        return nil, fmt.Errorf("%w: markup cannot be combined with mask or prompt_rewriter", transformer.ErrInvalidRequest)
-    }
-    var markup []byte
-    var markupReference *llm.ImageReference
-    if formData.Markup != nil {
-        markup = formData.Markup.Data
-        markupReference = &llm.ImageReference{ImageURL: multipartFileToDataURL(*formData.Markup)}
-    }
-    var mask []byte
+		return nil, fmt.Errorf("%w: markup cannot be combined with mask or prompt_rewriter", transformer.ErrInvalidRequest)
+	}
+	var markup []byte
+	var markupReference *llm.ImageReference
+	if formData.Markup != nil {
+		markup = formData.Markup.Data
+		markupReference = &llm.ImageReference{ImageURL: multipartFileToDataURL(*formData.Markup)}
+	}
+	var mask []byte
 	var maskReference *llm.ImageReference
 	if formData.Mask != nil {
 		mask = formData.Mask.Data
@@ -368,8 +368,8 @@ func (t *ImageInboundTransformer) transformEditRequest(httpReq *httpclient.Reque
 		ImageReferences:   references,
 		Mask:              mask,
 		MaskReference:     maskReference,
-        Markup: markup,
-        MarkupReference: markupReference,
+		Markup:            markup,
+		MarkupReference:   markupReference,
 		Moderation:        strings.TrimSpace(formData.Fields["moderation"]),
 		N:                 parseOptionalInt64(formData.Fields["n"]),
 		Size:              strings.TrimSpace(formData.Fields["size"]),
@@ -408,8 +408,8 @@ type ImageEditJSONRequest struct {
 	Image             json.RawMessage `json:"image,omitempty"`
 	Images            json.RawMessage `json:"images,omitempty"`
 	Mask              json.RawMessage `json:"mask,omitempty"`
-    Markup json.RawMessage `json:"markup,omitempty"`
-    PromptRewriter json.RawMessage `json:"prompt_rewriter,omitempty"`
+	Markup            json.RawMessage `json:"markup,omitempty"`
+	PromptRewriter    json.RawMessage `json:"prompt_rewriter,omitempty"`
 	N                 *int64          `json:"n,omitempty"`
 	Size              string          `json:"size,omitempty"`
 	Quality           string          `json:"quality,omitempty"`
@@ -484,19 +484,21 @@ func (t *ImageInboundTransformer) transformEditJSONRequest(httpReq *httpclient.R
 		maskReference = &ref
 	}
 
-    var markup []byte
-    var markupReference *llm.ImageReference
-    if len(editReq.Markup) > 0 && string(editReq.Markup) != "null" {
-        if maskReference != nil || (len(editReq.PromptRewriter) > 0 && string(editReq.PromptRewriter) != "null") {
-            return nil, fmt.Errorf("%w: markup cannot be combined with mask or prompt_rewriter", transformer.ErrInvalidRequest)
-        }
-        if bytes.TrimSpace(editReq.Markup)[0] != '{' {
-            return nil, fmt.Errorf("%w: markup requires an image_url or file_id object", transformer.ErrInvalidRequest)
-        }
-        ref, data, err := parseEditImageReference(editReq.Markup)
-        if err != nil { return nil, fmt.Errorf("markup: %w", err) }
-        markup, markupReference = data, &ref
-    }
+	var markup []byte
+	var markupReference *llm.ImageReference
+	if len(editReq.Markup) > 0 && string(editReq.Markup) != "null" {
+		if maskReference != nil || (len(editReq.PromptRewriter) > 0 && string(editReq.PromptRewriter) != "null") {
+			return nil, fmt.Errorf("%w: markup cannot be combined with mask or prompt_rewriter", transformer.ErrInvalidRequest)
+		}
+		if bytes.TrimSpace(editReq.Markup)[0] != '{' {
+			return nil, fmt.Errorf("%w: markup requires an image_url or file_id object", transformer.ErrInvalidRequest)
+		}
+		ref, data, err := parseEditImageReference(editReq.Markup)
+		if err != nil {
+			return nil, fmt.Errorf("markup: %w", err)
+		}
+		markup, markupReference = data, &ref
+	}
 
 	imageReq := &llm.ImageRequest{
 		Prompt:            prompt,
@@ -504,8 +506,8 @@ func (t *ImageInboundTransformer) transformEditJSONRequest(httpReq *httpclient.R
 		ImageReferences:   references,
 		Mask:              mask,
 		MaskReference:     maskReference,
-        Markup: markup,
-        MarkupReference: markupReference,
+		Markup:            markup,
+		MarkupReference:   markupReference,
 		Moderation:        editReq.Moderation,
 		Style:             strings.TrimSpace(editReq.Style),
 		N:                 editReq.N,
@@ -597,7 +599,7 @@ type multipartFile struct {
 type imageFormData struct {
 	Images []multipartFile
 	Mask   *multipartFile
-    Markup *multipartFile
+	Markup *multipartFile
 	Fields map[string]string
 }
 
@@ -692,9 +694,11 @@ func parseMultipartRequest(httpReq *httpclient.Request) (*imageFormData, error) 
 			formData.Images = append(formData.Images, file)
 		case "mask":
 			formData.Mask = &file
-        case "markup":
-            if formData.Markup != nil { return nil, fmt.Errorf("%w: duplicate markup", transformer.ErrInvalidRequest) }
-            formData.Markup = &file
+		case "markup":
+			if formData.Markup != nil {
+				return nil, fmt.Errorf("%w: duplicate markup", transformer.ErrInvalidRequest)
+			}
+			formData.Markup = &file
 		default:
 		}
 	}
@@ -732,7 +736,9 @@ func buildMultipartJSONBody(fields map[string]string, images []multipartFile, ma
 		body["mask"] = multipartFileToDataURL(*mask)
 	}
 
-	if len(markup) > 0 && markup[0] != nil { body["markup"] = multipartFileToDataURL(*markup[0]) }
+	if len(markup) > 0 && markup[0] != nil {
+		body["markup"] = multipartFileToDataURL(*markup[0])
+	}
 	return json.Marshal(body)
 }
 

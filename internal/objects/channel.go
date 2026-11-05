@@ -298,8 +298,8 @@ type ChannelSettings struct {
 	// operators holding channel write permission.
 	ProviderQuota *ChannelProviderQuotaSettings `json:"providerQuota,omitempty"`
 
-	QuotaRoutingMode QuotaRoutingMode `json:"quotaRoutingMode,omitempty"`
-	QuotaReserve *ChannelQuotaReserve `json:"quotaReserve,omitempty"`
+	QuotaRoutingMode QuotaRoutingMode     `json:"quotaRoutingMode,omitempty"`
+	QuotaReserve     *ChannelQuotaReserve `json:"quotaReserve,omitempty"`
 }
 
 // API key selection strategies for channels with multiple enabled keys.

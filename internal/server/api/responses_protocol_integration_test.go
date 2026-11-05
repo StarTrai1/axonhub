@@ -27,8 +27,8 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/orchestrator"
 	"github.com/looplj/axonhub/llm"
-"github.com/looplj/axonhub/llm/transformer/shared"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 func TestResponsesProtocolIntegrationHTTPUsesProductionHandlerAndUpstream(t *testing.T) {
@@ -142,10 +142,10 @@ func newResponsesHistoryIntegrationFixture(t *testing.T, upstreamURL string, con
 		selectionRequest.APIFormat = llm.APIFormatOpenAISearch
 	}
 	selectionCtx := ctx
-    if created.Policies.EffectiveCodexMemoryPolicy() == objects.CodexMemoryOnly {
-        selectionCtx = shared.WithCodexMemoryTask(ctx, shared.CodexMemoryExtract)
-    }
-    candidates, err := selector.Select(selectionCtx, selectionRequest)
+	if created.Policies.EffectiveCodexMemoryPolicy() == objects.CodexMemoryOnly {
+		selectionCtx = shared.WithCodexMemoryTask(ctx, shared.CodexMemoryExtract)
+	}
+	candidates, err := selector.Select(selectionCtx, selectionRequest)
 	require.NoError(t, err)
 	require.NotEmpty(t, candidates)
 	protection := biz.NewPromptProtectionRuleService(biz.PromptProtectionRuleServiceParams{CacheConfig: cacheConfig, Ent: client})

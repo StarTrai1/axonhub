@@ -4,8 +4,10 @@ import (
 	"math"
 	"testing"
 	"time"
+
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
+
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/objects"
@@ -21,12 +23,12 @@ func TestQuotaReserveWindowEvidence(t *testing.T) {
 	candidate.Channel.Type = channel.TypeCodex
 	candidate.Channel.Settings.QuotaReserve = &objects.ChannelQuotaReserve{FiveHourPercent: lo.ToPtr(90), SevenDayPercent: lo.ToPtr(80)}
 	for _, tc := range []struct {
-		name string
-		window string
-		ratio float64
-		reset time.Time
+		name          string
+		window        string
+		ratio         float64
+		reset         time.Time
 		status, group string
-		blocked bool
+		blocked       bool
 	}{
 		{"below", provider_quota.QuotaWindow5h, .8999, now.Add(time.Hour), "available", "", false},
 		{"at 5h", provider_quota.QuotaWindow5h, .90, now.Add(time.Hour), "warning", "", true},
@@ -62,7 +64,9 @@ func TestQuotaReserveToolsDoNotGrantCapabilitiesOrBypassHardQuota(t *testing.T) 
 		require.Empty(t, gate.Filter(t.Context(), []*ChannelModelsCandidate{candidate}, chat, 1))
 	}
 	candidate.Channel.Settings.QuotaRoutingMode = objects.QuotaRoutingModeRemoveOnExhausted
-	for _, req := range []*llm.Request{search, image} { require.Len(t, gate.Filter(t.Context(), []*ChannelModelsCandidate{candidate}, req, 0), 1) }
+	for _, req := range []*llm.Request{search, image} {
+		require.Len(t, gate.Filter(t.Context(), []*ChannelModelsCandidate{candidate}, req, 0), 1)
+	}
 	memoryCtx := shared.WithCodexMemoryTask(t.Context(), shared.CodexMemoryExtract)
 	require.Len(t, gate.Filter(memoryCtx, []*ChannelModelsCandidate{candidate}, chat, 0), 1)
 	candidate.Channel.Policies.CodexMemory = objects.CodexMemoryExclude
@@ -70,7 +74,9 @@ func TestQuotaReserveToolsDoNotGrantCapabilitiesOrBypassHardQuota(t *testing.T) 
 	candidate.Channel.Policies.ImageGeneration = objects.ImageGenerationOtherChannels
 	require.False(t, candidate.Channel.AllowsWorkload(image, false), "quota exception never grants excluded images")
 	reserve.AllowSearch, reserve.AllowImage, reserve.AllowMemory = false, false, false
-	for _, req := range []*llm.Request{chat, search, image} { require.Empty(t, gate.Filter(t.Context(), []*ChannelModelsCandidate{candidate}, req, 0)) }
+	for _, req := range []*llm.Request{chat, search, image} {
+		require.Empty(t, gate.Filter(t.Context(), []*ChannelModelsCandidate{candidate}, req, 0))
+	}
 	reserve.AllowMemory = true
 	status.Status = providerquotastatus.StatusExhausted
 	status.Limits[0].Status, status.Limits[0].UsageRatio = "exhausted", 1
@@ -93,5 +99,5 @@ func TestQuotaReserveFinalDispatchAndRetryRefresh(t *testing.T) {
 	require.ErrorIs(t, p.refreshChannelBeforeRetry(ctx), errChannelUnavailableForRetry)
 	_, err = p.TransformRequest(ctx, p.state.LlmRequest)
 	var exhausted *QuotaExhaustedError
-    require.ErrorAs(t, err, &exhausted, "final dispatch cannot bypass a threshold reached after selection")
+	require.ErrorAs(t, err, &exhausted, "final dispatch cannot bypass a threshold reached after selection")
 }

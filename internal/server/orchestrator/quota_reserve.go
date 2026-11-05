@@ -16,14 +16,20 @@ func quotaReserveBlocks(ctx context.Context, ch *biz.Channel, req *llm.Request, 
 	if ch == nil || ch.Channel == nil || ch.Settings == nil || ch.Settings.QuotaReserve == nil || provider == nil {
 		return false
 	}
-	if ch.Type != channel.TypeCodex && ch.Type != channel.TypeClaudecode { return false }
+	if ch.Type != channel.TypeCodex && ch.Type != channel.TypeClaudecode {
+		return false
+	}
 	r := ch.Settings.QuotaReserve
-	if r.FiveHourPercent == nil && r.SevenDayPercent == nil { return false }
+	if r.FiveHourPercent == nil && r.SevenDayPercent == nil {
+		return false
+	}
 	if memory && r.AllowMemory || isStandaloneSearch(req) && r.AllowSearch || isStandaloneImage(req) && r.AllowImage {
 		return false
 	}
 	status := provider.GetQuotaStatus(ctx, ch.ID)
-	if status == nil { return false }
+	if status == nil {
+		return false
+	}
 	for _, limit := range status.Limits {
 		// Named model-specific reserves and image buckets do not represent the
 		// account's ordinary 5h/7d allowance. Never infer them from display names.
@@ -31,12 +37,18 @@ func quotaReserveBlocks(ctx context.Context, ch *biz.Channel, req *llm.Request, 
 			math.IsNaN(limit.UsageRatio) || math.IsInf(limit.UsageRatio, 0) || limit.UsageRatio < 0 {
 			continue
 		}
-		if limit.NextResetAt != nil && !limit.NextResetAt.After(now) { continue }
-		if limit.PeriodStart != nil && limit.PeriodStart.After(now) { continue }
+		if limit.NextResetAt != nil && !limit.NextResetAt.After(now) {
+			continue
+		}
+		if limit.PeriodStart != nil && limit.PeriodStart.After(now) {
+			continue
+		}
 		var percent *int
 		switch limit.Window {
-		case provider_quota.QuotaWindow5h: percent = r.FiveHourPercent
-		case provider_quota.QuotaWindow7d: percent = r.SevenDayPercent
+		case provider_quota.QuotaWindow5h:
+			percent = r.FiveHourPercent
+		case provider_quota.QuotaWindow7d:
+			percent = r.SevenDayPercent
 		}
 		if percent != nil && *percent >= 1 && *percent <= 100 && limit.UsageRatio >= float64(*percent)/100 {
 			return true

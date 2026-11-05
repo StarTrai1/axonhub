@@ -731,6 +731,9 @@ models:
   UpdateChannelSettingsInput:
     model:
       - github.com/looplj/axonhub/internal/server/biz.UpdateChannelSettingsInput
+    fields:
+      quotaReserve:
+        resolver: true
   SystemGeneralSettings:
     model:
       - github.com/looplj/axonhub/internal/server/biz.SystemGeneralSettings

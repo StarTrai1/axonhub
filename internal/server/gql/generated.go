@@ -97,6 +97,7 @@ type ResolverRoot interface {
 	UserInfo() UserInfoResolver
 	UserProject() UserProjectResolver
 	UserRole() UserRoleResolver
+	UpdateChannelSettingsInput() UpdateChannelSettingsInputResolver
 }
 
 type DirectiveRoot struct {
@@ -565,6 +566,14 @@ type ComplexityRoot struct {
 		Ollama      func(childComplexity int) int
 	}
 
+	ChannelQuotaReserve struct {
+		AllowImage      func(childComplexity int) int
+		AllowMemory     func(childComplexity int) int
+		AllowSearch     func(childComplexity int) int
+		FiveHourPercent func(childComplexity int) int
+		SevenDayPercent func(childComplexity int) int
+	}
+
 	ChannelRateLimit struct {
 		MaxConcurrent  func(childComplexity int) int
 		QueueSize      func(childComplexity int) int
@@ -608,6 +617,7 @@ type ComplexityRoot struct {
 		PassThroughUserAgent        func(childComplexity int) int
 		ProviderQuota               func(childComplexity int) int
 		Proxy                       func(childComplexity int) int
+		QuotaReserve                func(childComplexity int) int
 		QuotaRoutingMode            func(childComplexity int) int
 		RateLimit                   func(childComplexity int) int
 		ResponseTimeout             func(childComplexity int) int
@@ -2673,6 +2683,10 @@ type UserRoleResolver interface {
 	RoleID(ctx context.Context, obj *ent.UserRole) (*objects.GUID, error)
 }
 
+type UpdateChannelSettingsInputResolver interface {
+	QuotaReserve(ctx context.Context, obj *biz.UpdateChannelSettingsInput, data *objects.ChannelQuotaReserve) error
+}
+
 type executableSchema struct {
 	schema     *ast.Schema
 	resolvers  ResolverRoot
@@ -4498,6 +4512,37 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ChannelProviderQuotaSettings.Ollama(childComplexity), true
 
+	case "ChannelQuotaReserve.allowImage":
+		if e.complexity.ChannelQuotaReserve.AllowImage == nil {
+			break
+		}
+
+		return e.complexity.ChannelQuotaReserve.AllowImage(childComplexity), true
+	case "ChannelQuotaReserve.allowMemory":
+		if e.complexity.ChannelQuotaReserve.AllowMemory == nil {
+			break
+		}
+
+		return e.complexity.ChannelQuotaReserve.AllowMemory(childComplexity), true
+	case "ChannelQuotaReserve.allowSearch":
+		if e.complexity.ChannelQuotaReserve.AllowSearch == nil {
+			break
+		}
+
+		return e.complexity.ChannelQuotaReserve.AllowSearch(childComplexity), true
+	case "ChannelQuotaReserve.fiveHourPercent":
+		if e.complexity.ChannelQuotaReserve.FiveHourPercent == nil {
+			break
+		}
+
+		return e.complexity.ChannelQuotaReserve.FiveHourPercent(childComplexity), true
+	case "ChannelQuotaReserve.sevenDayPercent":
+		if e.complexity.ChannelQuotaReserve.SevenDayPercent == nil {
+			break
+		}
+
+		return e.complexity.ChannelQuotaReserve.SevenDayPercent(childComplexity), true
+
 	case "ChannelRateLimit.maxConcurrent":
 		if e.complexity.ChannelRateLimit.MaxConcurrent == nil {
 			break
@@ -4699,6 +4744,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelSettings.Proxy(childComplexity), true
+	case "ChannelSettings.quotaReserve":
+		if e.complexity.ChannelSettings.QuotaReserve == nil {
+			break
+		}
+
+		return e.complexity.ChannelSettings.QuotaReserve(childComplexity), true
 	case "ChannelSettings.quotaRoutingMode":
 		if e.complexity.ChannelSettings.QuotaRoutingMode == nil {
 			break
@@ -12332,6 +12383,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputChannelPoliciesInput,
 		ec.unmarshalInputChannelProbeWhereInput,
 		ec.unmarshalInputChannelProviderQuotaSettingsInput,
+		ec.unmarshalInputChannelQuotaReserveInput,
 		ec.unmarshalInputChannelRateLimitInput,
 		ec.unmarshalInputChannelRegexAssociationInput,
 		ec.unmarshalInputChannelResponseTimeoutInput,
@@ -21636,6 +21688,8 @@ func (ec *executionContext) fieldContext_Channel_settings(_ context.Context, fie
 				return ec.fieldContext_ChannelSettings_providerQuota(ctx, field)
 			case "quotaRoutingMode":
 				return ec.fieldContext_ChannelSettings_quotaRoutingMode(ctx, field)
+			case "quotaReserve":
+				return ec.fieldContext_ChannelSettings_quotaReserve(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ChannelSettings", field.Name)
 		},
@@ -25994,6 +26048,151 @@ func (ec *executionContext) fieldContext_ChannelProviderQuotaSettings_ollama(_ c
 	return fc, nil
 }
 
+func (ec *executionContext) _ChannelQuotaReserve_fiveHourPercent(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelQuotaReserve) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelQuotaReserve_fiveHourPercent,
+		func(ctx context.Context) (any, error) {
+			return obj.FiveHourPercent, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelQuotaReserve_fiveHourPercent(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelQuotaReserve",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelQuotaReserve_sevenDayPercent(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelQuotaReserve) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelQuotaReserve_sevenDayPercent,
+		func(ctx context.Context) (any, error) {
+			return obj.SevenDayPercent, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelQuotaReserve_sevenDayPercent(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelQuotaReserve",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelQuotaReserve_allowSearch(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelQuotaReserve) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelQuotaReserve_allowSearch,
+		func(ctx context.Context) (any, error) {
+			return obj.AllowSearch, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelQuotaReserve_allowSearch(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelQuotaReserve",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelQuotaReserve_allowImage(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelQuotaReserve) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelQuotaReserve_allowImage,
+		func(ctx context.Context) (any, error) {
+			return obj.AllowImage, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelQuotaReserve_allowImage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelQuotaReserve",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelQuotaReserve_allowMemory(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelQuotaReserve) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelQuotaReserve_allowMemory,
+		func(ctx context.Context) (any, error) {
+			return obj.AllowMemory, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelQuotaReserve_allowMemory(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelQuotaReserve",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ChannelRateLimit_rpm(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelRateLimit) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -27228,6 +27427,47 @@ func (ec *executionContext) fieldContext_ChannelSettings_quotaRoutingMode(_ cont
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type ChannelQuotaRoutingMode does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelSettings_quotaReserve(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelSettings_quotaReserve,
+		func(ctx context.Context) (any, error) {
+			return obj.QuotaReserve, nil
+		},
+		nil,
+		ec.marshalOChannelQuotaReserve2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelQuotaReserve,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelSettings_quotaReserve(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "fiveHourPercent":
+				return ec.fieldContext_ChannelQuotaReserve_fiveHourPercent(ctx, field)
+			case "sevenDayPercent":
+				return ec.fieldContext_ChannelQuotaReserve_sevenDayPercent(ctx, field)
+			case "allowSearch":
+				return ec.fieldContext_ChannelQuotaReserve_allowSearch(ctx, field)
+			case "allowImage":
+				return ec.fieldContext_ChannelQuotaReserve_allowImage(ctx, field)
+			case "allowMemory":
+				return ec.fieldContext_ChannelQuotaReserve_allowMemory(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ChannelQuotaReserve", field.Name)
 		},
 	}
 	return fc, nil
@@ -72103,6 +72343,61 @@ func (ec *executionContext) unmarshalInputChannelProviderQuotaSettingsInput(ctx 
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputChannelQuotaReserveInput(ctx context.Context, obj any) (objects.ChannelQuotaReserve, error) {
+	var it objects.ChannelQuotaReserve
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"fiveHourPercent", "sevenDayPercent", "allowSearch", "allowImage", "allowMemory"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "fiveHourPercent":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("fiveHourPercent"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FiveHourPercent = data
+		case "sevenDayPercent":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sevenDayPercent"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SevenDayPercent = data
+		case "allowSearch":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("allowSearch"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AllowSearch = data
+		case "allowImage":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("allowImage"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AllowImage = data
+		case "allowMemory":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("allowMemory"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AllowMemory = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputChannelRateLimitInput(ctx context.Context, obj any) (objects.ChannelRateLimit, error) {
 	var it objects.ChannelRateLimit
 	asMap := map[string]any{}
@@ -72240,7 +72535,7 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"codexSearchOnly", "codexImageOnly", "codexPreserveSpeedModel", "codexSearchModel", "codexImageModel", "extraModelPrefix", "modelMappings", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "lowercaseModelId", "proxy", "httpProtocol", "http2ConnectionShards", "transformOptions", "headerOverrideOperations", "bodyOverrideOperations", "passThroughUserAgent", "passThroughBody", "rateLimit", "retryableStatusCodes", "retryableErrorPatterns", "maxSingleChannelRetries", "responseTimeout", "modelProtocols", "apiKeyStrategy", "apiKeyRoundRobinSwitchAfter", "providerQuota", "quotaRoutingMode"}
+	fieldsInOrder := [...]string{"codexSearchOnly", "codexImageOnly", "codexPreserveSpeedModel", "codexSearchModel", "codexImageModel", "extraModelPrefix", "modelMappings", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "lowercaseModelId", "proxy", "httpProtocol", "http2ConnectionShards", "transformOptions", "headerOverrideOperations", "bodyOverrideOperations", "passThroughUserAgent", "passThroughBody", "rateLimit", "retryableStatusCodes", "retryableErrorPatterns", "maxSingleChannelRetries", "responseTimeout", "modelProtocols", "apiKeyStrategy", "apiKeyRoundRobinSwitchAfter", "providerQuota", "quotaRoutingMode", "quotaReserve"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -72450,6 +72745,13 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 				return it, err
 			}
 			it.QuotaRoutingMode = data
+		case "quotaReserve":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("quotaReserve"))
+			data, err := ec.unmarshalOChannelQuotaReserveInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelQuotaReserve(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.QuotaReserve = data
 		}
 	}
 
@@ -89122,7 +89424,7 @@ func (ec *executionContext) unmarshalInputUpdateChannelSettingsInput(ctx context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"codexSearchOnly", "codexImageOnly", "codexPreserveSpeedModel", "codexSearchModel", "codexImageModel", "httpProtocol", "http2ConnectionShards", "maxSingleChannelRetries", "extraModelPrefix", "modelMappings", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "lowercaseModelId", "proxy", "transformOptions", "headerOverrideOperations", "bodyOverrideOperations", "passThroughUserAgent", "passThroughBody", "rateLimit", "retryableStatusCodes", "retryableErrorPatterns", "modelProtocols", "apiKeyStrategy", "apiKeyRoundRobinSwitchAfter", "providerQuota", "quotaRoutingMode"}
+	fieldsInOrder := [...]string{"codexSearchOnly", "codexImageOnly", "codexPreserveSpeedModel", "codexSearchModel", "codexImageModel", "httpProtocol", "http2ConnectionShards", "maxSingleChannelRetries", "extraModelPrefix", "modelMappings", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "lowercaseModelId", "proxy", "transformOptions", "headerOverrideOperations", "bodyOverrideOperations", "passThroughUserAgent", "passThroughBody", "rateLimit", "retryableStatusCodes", "retryableErrorPatterns", "modelProtocols", "apiKeyStrategy", "apiKeyRoundRobinSwitchAfter", "providerQuota", "quotaRoutingMode", "quotaReserve"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -89325,6 +89627,15 @@ func (ec *executionContext) unmarshalInputUpdateChannelSettingsInput(ctx context
 				return it, err
 			}
 			it.QuotaRoutingMode = data
+		case "quotaReserve":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("quotaReserve"))
+			data, err := ec.unmarshalOChannelQuotaReserveInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelQuotaReserve(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			if err = ec.resolvers.UpdateChannelSettingsInput().QuotaReserve(ctx, &it, data); err != nil {
+				return it, err
+			}
 		}
 	}
 
@@ -99346,6 +99657,59 @@ func (ec *executionContext) _ChannelProviderQuotaSettings(ctx context.Context, s
 	return out
 }
 
+var channelQuotaReserveImplementors = []string{"ChannelQuotaReserve"}
+
+func (ec *executionContext) _ChannelQuotaReserve(ctx context.Context, sel ast.SelectionSet, obj *objects.ChannelQuotaReserve) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, channelQuotaReserveImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ChannelQuotaReserve")
+		case "fiveHourPercent":
+			out.Values[i] = ec._ChannelQuotaReserve_fiveHourPercent(ctx, field, obj)
+		case "sevenDayPercent":
+			out.Values[i] = ec._ChannelQuotaReserve_sevenDayPercent(ctx, field, obj)
+		case "allowSearch":
+			out.Values[i] = ec._ChannelQuotaReserve_allowSearch(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "allowImage":
+			out.Values[i] = ec._ChannelQuotaReserve_allowImage(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "allowMemory":
+			out.Values[i] = ec._ChannelQuotaReserve_allowMemory(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var channelRateLimitImplementors = []string{"ChannelRateLimit"}
 
 func (ec *executionContext) _ChannelRateLimit(ctx context.Context, sel ast.SelectionSet, obj *objects.ChannelRateLimit) graphql.Marshaler {
@@ -99642,6 +100006,8 @@ func (ec *executionContext) _ChannelSettings(ctx context.Context, sel ast.Select
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "quotaRoutingMode":
 			out.Values[i] = ec._ChannelSettings_quotaRoutingMode(ctx, field, obj)
+		case "quotaReserve":
+			out.Values[i] = ec._ChannelSettings_quotaReserve(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -124338,6 +124704,21 @@ func (ec *executionContext) unmarshalOChannelProviderQuotaSettingsInput2ᚖgithu
 		return nil, nil
 	}
 	res, err := ec.unmarshalInputChannelProviderQuotaSettingsInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOChannelQuotaReserve2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelQuotaReserve(ctx context.Context, sel ast.SelectionSet, v *objects.ChannelQuotaReserve) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._ChannelQuotaReserve(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOChannelQuotaReserveInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelQuotaReserve(ctx context.Context, v any) (*objects.ChannelQuotaReserve, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputChannelQuotaReserveInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
