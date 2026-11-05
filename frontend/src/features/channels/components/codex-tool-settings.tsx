@@ -44,10 +44,10 @@ export function CodexToolSettings(props: Props) {
             <Switch id={`codex-${field.id}-only`} checked={field.enabled} onCheckedChange={field.onToggle} data-testid={`codex-${field.id}-only-toggle`} />
           </div>
           {field.enabled && (
-            <div className='flex min-w-0 max-w-full flex-wrap items-center gap-x-2 gap-y-1.5'>
+            <div className='flex min-w-0 max-w-full flex-wrap items-center gap-x-2 gap-y-1.5 sm:flex-nowrap'>
               <label htmlFor={`codex-${field.id}-model`} className='shrink-0 text-sm font-medium'>{t(`channels.dialogs.fields.${field.modelLabel}.label`)}</label>
               <Select value={field.model || 'request'} onValueChange={(value) => field.onModel(value === 'request' ? '' : value)}>
-                <SelectTrigger id={`codex-${field.id}-model`} className='h-8 w-auto min-w-0 max-w-full gap-2' data-testid={`codex-${field.id}-model-select`}>
+                <SelectTrigger id={`codex-${field.id}-model`} className='h-8 w-auto min-w-0 max-w-full gap-2 [&_[data-slot=select-value]]:min-w-0 [&_[data-slot=select-value]]:truncate' data-testid={`codex-${field.id}-model-select`}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

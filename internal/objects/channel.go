@@ -794,10 +794,10 @@ type ChannelPolicies struct {
 	RemoteCompaction RemoteCompactionPolicy `json:"remoteCompaction,omitempty"`
 	// SupportsRemoteCompaction is the legacy two-state field. Keep it for
 	// stored-data compatibility; RemoteCompaction takes precedence when set.
-	SupportsRemoteCompaction bool            `json:"supportsRemoteCompaction,omitempty"`
-	WebSearch                WebSearchPolicy `json:"webSearch,omitempty"`
-	ImageGeneration ImageGenerationPolicy `json:"imageGeneration,omitempty"`
-	CodexSpeed CodexSpeedPolicy `json:"codexSpeed,omitempty"`
+	SupportsRemoteCompaction bool                  `json:"supportsRemoteCompaction,omitempty"`
+	WebSearch                WebSearchPolicy       `json:"webSearch,omitempty"`
+	ImageGeneration          ImageGenerationPolicy `json:"imageGeneration,omitempty"`
+	CodexSpeed               CodexSpeedPolicy      `json:"codexSpeed,omitempty"`
 	// SupportsWebSearch is the legacy two-state field. Keep it for stored-data
 	// compatibility; WebSearch takes precedence when explicitly configured.
 	SupportsWebSearch *bool `json:"supportsWebSearch,omitempty"`

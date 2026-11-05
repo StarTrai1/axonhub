@@ -379,8 +379,8 @@ func (svc *ChannelService) buildCodexOutboundWithRefresh(
 			if existing, ok := ch.Outbound.(*codex.OutboundTransformer); ok {
 				if tokens := existing.TokenProvider(); tokens != nil {
 					return codex.NewOutboundTransformer(codex.Params{
-		DefaultServiceTier: c.Policies.CodexDefaultServiceTier(),
-		SupportedModels: c.SupportedModels,
+						DefaultServiceTier: c.Policies.CodexDefaultServiceTier(),
+						SupportedModels:    c.SupportedModels,
 						PreserveSpeedModel: c.Settings != nil && c.Settings.CodexPreserveSpeedModel,
 						TokenProvider:      tokens,
 						BaseURL:            baseURL,
@@ -427,8 +427,8 @@ func (svc *ChannelService) buildCodexOutboundWithRefresh(
 		}
 
 		return codex.NewOutboundTransformer(codex.Params{
-		DefaultServiceTier: c.Policies.CodexDefaultServiceTier(),
-		SupportedModels: c.SupportedModels,
+			DefaultServiceTier: c.Policies.CodexDefaultServiceTier(),
+			SupportedModels:    c.SupportedModels,
 			PreserveSpeedModel: c.Settings != nil && c.Settings.CodexPreserveSpeedModel,
 			TokenProvider:      p,
 			BaseURL:            baseURL,
@@ -443,7 +443,7 @@ func (svc *ChannelService) buildCodexOutboundWithRefresh(
 
 	return codex.NewOutboundTransformer(codex.Params{
 		DefaultServiceTier: c.Policies.CodexDefaultServiceTier(),
-		SupportedModels: c.SupportedModels,
+		SupportedModels:    c.SupportedModels,
 		PreserveSpeedModel: c.Settings != nil && c.Settings.CodexPreserveSpeedModel,
 		TokenProvider:      tokens,
 		BaseURL:            baseURL,

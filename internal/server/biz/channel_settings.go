@@ -27,7 +27,7 @@ import (
 // (mergeChannelSettingsForUpdate) and makes those semantics available to
 // direct GraphQL callers.
 type UpdateChannelSettingsInput struct {
-	CodexImageModel *string `json:"codexImageModel"`
+	CodexImageModel             *string                               `json:"codexImageModel"`
 	CodexImageOnly              *bool                                 `json:"codexImageOnly"`
 	CodexPreserveSpeedModel     *bool                                 `json:"codexPreserveSpeedModel"`
 	CodexSearchOnly             *bool                                 `json:"codexSearchOnly"`

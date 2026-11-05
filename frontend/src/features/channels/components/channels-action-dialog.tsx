@@ -2418,7 +2418,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           <div className='flex min-h-0 flex-1 overflow-hidden md:gap-4'>
             {/* Main Form Section */}
             <div
-              className={`flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden py-1 transition-all duration-300 ${showFetchedModelsPanel || showSupportedModelsPanel || showApiKeysPanel ? 'pr-2' : 'pr-0'}`}
+              className={`min-h-0 min-w-0 flex-1 flex-col overflow-hidden py-1 transition-all duration-300 ${showFetchedModelsPanel || showSupportedModelsPanel || showApiKeysPanel ? 'hidden xl:flex xl:pr-2' : 'flex'}`}
             >
               <Form {...form}>
                 <form id='channel-form' onSubmit={form.handleSubmit(onSubmit)} className='flex min-h-0 flex-1 flex-col space-y-6 p-0.5'>
@@ -4074,12 +4074,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
             {/* Expandable Side Panel */}
             <div
-              className='border-border flex min-h-0 flex-col overflow-hidden border-l pt-1.5 pl-4 transition-all duration-300 ease-out'
-              style={{
-                width: showFetchedModelsPanel || showSupportedModelsPanel || showApiKeysPanel ? '400px' : '0px',
-                opacity: showFetchedModelsPanel || showSupportedModelsPanel || showApiKeysPanel ? 1 : 0,
-                paddingLeft: showFetchedModelsPanel || showSupportedModelsPanel || showApiKeysPanel ? '16px' : '0px',
-              }}
+              className={`border-border min-h-0 min-w-0 flex-col overflow-hidden pt-1.5 xl:border-l xl:pl-4 ${showFetchedModelsPanel || showSupportedModelsPanel || showApiKeysPanel ? 'flex w-full xl:w-[360px] xl:shrink-0' : 'hidden'}`}
+              data-testid='channel-side-panel'
             >
               {/* Fetched Models Panel Content */}
               <div
@@ -4087,7 +4083,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               >
                 <div className='mb-3 flex items-center justify-between'>
                   <h3 className='text-sm font-semibold'>{t('channels.dialogs.fields.supportedModels.fetchedModelsLabel')}</h3>
-                  <Button type='button' variant='ghost' size='sm' className='h-6 w-6 p-0' onClick={closeFetchedModelsPanel}>
+                  <Button type='button' variant='ghost' size='sm' className='h-6 w-6 p-0' onClick={closeFetchedModelsPanel} aria-label={t('channels.dialogs.buttons.backToChannel')} data-testid='close-fetched-models'>
                     <ChevronLeft className='h-4 w-4' />
                   </Button>
                 </div>

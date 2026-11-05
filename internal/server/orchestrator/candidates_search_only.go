@@ -18,19 +18,29 @@ func isStandaloneImage(req *llm.Request) bool {
 }
 
 func (s *DefaultSelector) selectImageOnlyCandidates(ctx context.Context, req *llm.Request) []*ChannelModelsCandidate {
-	if !isStandaloneImage(req) { return nil }
+	if !isStandaloneImage(req) {
+		return nil
+	}
 	var candidates []*ChannelModelsCandidate
 	for _, ch := range s.ChannelService.GetEnabledChannels() {
-		if !ch.IsCodexToolOnly() || !ch.Settings.CodexImageOnly || !ch.AllowsStandaloneImage() { continue }
+		if !ch.IsCodexToolOnly() || !ch.Settings.CodexImageOnly || !ch.AllowsStandaloneImage() {
+			continue
+		}
 		model := ch.Settings.CodexImageModel
 		if model == "" {
 			model = req.Model
-			if !ch.IsModelSupported(model) { continue }
+			if !ch.IsModelSupported(model) {
+				continue
+			}
 		}
-		if model == "" { continue }
+		if model == "" {
+			continue
+		}
 		entry := biz.ChannelModelEntry{RequestModel: req.Model, ActualModel: model, Source: "image_only"}
 		endpoints := FilterEndpointsByAPIFormats(ch.ResolveEndpoints(), []string{req.APIFormat.String()})
-		if len(endpoints) == 0 { continue }
+		if len(endpoints) == 0 {
+			continue
+		}
 		candidates = append(candidates, &ChannelModelsCandidate{Channel: ch, Models: []biz.ChannelModelEntry{entry}, APIFormat: req.APIFormat.String()})
 	}
 	return candidates

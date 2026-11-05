@@ -35,7 +35,7 @@ func TestImagePolicyDelegatesWithExplicitModelAndProfileBoundary(t *testing.T) {
 		require.Equal(t, "image-tool", got[0].Channel.Name)
 		require.Equal(t, "gpt-image-2.6-sunburst", got[0].Models[0].ActualModel)
 		require.Equal(t, "gpt-image-2", req.Model)
-		denied, err := WithSelectedChannelsSelector(selector, []int{got[0].Channel.ID+100}).Select(ctx, req)
+		denied, err := WithSelectedChannelsSelector(selector, []int{got[0].Channel.ID + 100}).Select(ctx, req)
 		require.NoError(t, err)
 		require.Empty(t, denied)
 	}

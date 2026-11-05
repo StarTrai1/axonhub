@@ -1116,5 +1116,6 @@
   "channels.dialogs.fields.codexSpeedPolicy.options.fast.label": "Fast",
   "channels.dialogs.fields.codexSpeedPolicy.options.fast.description": "Use the matching -fast model or priority tier.",
   "channels.dialogs.fields.codexSpeedPolicy.options.ultrafast.label": "Ultrafast",
-  "channels.dialogs.fields.codexSpeedPolicy.options.ultrafast.description": "Use the matching -ultrafast model or ultrafast tier."
+  "channels.dialogs.fields.codexSpeedPolicy.options.ultrafast.description": "Use the matching -ultrafast model or ultrafast tier.",
+  "channels.dialogs.buttons.backToChannel": "Back to channel"
 }

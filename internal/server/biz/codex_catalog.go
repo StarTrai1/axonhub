@@ -304,7 +304,7 @@ func (svc *ChannelService) codexCatalogOutbound(ctx context.Context, entity *ent
 func (svc *ChannelService) newCodexCatalogOutbound(entity *ent.Channel, provider *oauth.TokenProvider) (*codex.OutboundTransformer, error) {
 	outbound, err := codex.NewOutboundTransformer(codex.Params{
 		DefaultServiceTier: entity.Policies.CodexDefaultServiceTier(),
-		SupportedModels: entity.SupportedModels,
+		SupportedModels:    entity.SupportedModels,
 		PreserveSpeedModel: entity.Settings != nil && entity.Settings.CodexPreserveSpeedModel,
 		TokenProvider:      provider,
 		BaseURL:            entity.BaseURL,

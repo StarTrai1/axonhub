@@ -294,7 +294,9 @@ func TestModelFetcher_CodexStoredCredentialReplacement(t *testing.T) {
 				require.False(t, result.Fallback)
 				want := []ModelIdentify{{ID: "new-model"}}
 				if mode != "replace-api-key" {
-					for _, id := range codex.ImageModels() { want = append(want, ModelIdentify{ID: id}) }
+					for _, id := range codex.ImageModels() {
+						want = append(want, ModelIdentify{ID: id})
+					}
 				}
 				require.Equal(t, want, result.Models)
 			}

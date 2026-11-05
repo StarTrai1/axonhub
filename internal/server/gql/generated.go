@@ -520,6 +520,8 @@ type ComplexityRoot struct {
 		APIKeyAutoDisableMode    func(childComplexity int) int
 		APIKeyAutoDisableRules   func(childComplexity int) int
 		CodexIdentity            func(childComplexity int) int
+		CodexSpeed               func(childComplexity int) int
+		ImageGeneration          func(childComplexity int) int
 		RemoteCompaction         func(childComplexity int) int
 		RoutingTier              func(childComplexity int) int
 		Stream                   func(childComplexity int) int
@@ -586,6 +588,7 @@ type ComplexityRoot struct {
 		APIKeyStrategy              func(childComplexity int) int
 		AutoTrimedModelPrefixes     func(childComplexity int) int
 		BodyOverrideOperations      func(childComplexity int) int
+		CodexImageModel             func(childComplexity int) int
 		CodexImageOnly              func(childComplexity int) int
 		CodexPreserveSpeedModel     func(childComplexity int) int
 		CodexSearchModel            func(childComplexity int) int
@@ -4320,6 +4323,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelPolicies.CodexIdentity(childComplexity), true
+	case "ChannelPolicies.codexSpeed":
+		if e.complexity.ChannelPolicies.CodexSpeed == nil {
+			break
+		}
+
+		return e.complexity.ChannelPolicies.CodexSpeed(childComplexity), true
+	case "ChannelPolicies.imageGeneration":
+		if e.complexity.ChannelPolicies.ImageGeneration == nil {
+			break
+		}
+
+		return e.complexity.ChannelPolicies.ImageGeneration(childComplexity), true
 	case "ChannelPolicies.remoteCompaction":
 		if e.complexity.ChannelPolicies.RemoteCompaction == nil {
 			break
@@ -4563,6 +4578,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelSettings.BodyOverrideOperations(childComplexity), true
+	case "ChannelSettings.codexImageModel":
+		if e.complexity.ChannelSettings.CodexImageModel == nil {
+			break
+		}
+
+		return e.complexity.ChannelSettings.CodexImageModel(childComplexity), true
 	case "ChannelSettings.codexImageOnly":
 		if e.complexity.ChannelSettings.CodexImageOnly == nil {
 			break
@@ -21505,6 +21526,10 @@ func (ec *executionContext) fieldContext_Channel_policies(_ context.Context, fie
 				return ec.fieldContext_ChannelPolicies_supportsRemoteCompaction(ctx, field)
 			case "webSearch":
 				return ec.fieldContext_ChannelPolicies_webSearch(ctx, field)
+			case "imageGeneration":
+				return ec.fieldContext_ChannelPolicies_imageGeneration(ctx, field)
+			case "codexSpeed":
+				return ec.fieldContext_ChannelPolicies_codexSpeed(ctx, field)
 			case "supportsWebSearch":
 				return ec.fieldContext_ChannelPolicies_supportsWebSearch(ctx, field)
 			case "codexIdentity":
@@ -21552,6 +21577,8 @@ func (ec *executionContext) fieldContext_Channel_settings(_ context.Context, fie
 				return ec.fieldContext_ChannelSettings_codexPreserveSpeedModel(ctx, field)
 			case "codexSearchModel":
 				return ec.fieldContext_ChannelSettings_codexSearchModel(ctx, field)
+			case "codexImageModel":
+				return ec.fieldContext_ChannelSettings_codexImageModel(ctx, field)
 			case "extraModelPrefix":
 				return ec.fieldContext_ChannelSettings_extraModelPrefix(ctx, field)
 			case "modelMappings":
@@ -25102,6 +25129,64 @@ func (ec *executionContext) fieldContext_ChannelPolicies_webSearch(_ context.Con
 	return fc, nil
 }
 
+func (ec *executionContext) _ChannelPolicies_imageGeneration(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelPolicies) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelPolicies_imageGeneration,
+		func(ctx context.Context) (any, error) {
+			return obj.ImageGeneration, nil
+		},
+		nil,
+		ec.marshalOImageGenerationPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐImageGenerationPolicy,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelPolicies_imageGeneration(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelPolicies",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ImageGenerationPolicy does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelPolicies_codexSpeed(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelPolicies) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelPolicies_codexSpeed,
+		func(ctx context.Context) (any, error) {
+			return obj.CodexSpeed, nil
+		},
+		nil,
+		ec.marshalOCodexSpeedPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐCodexSpeedPolicy,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelPolicies_codexSpeed(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelPolicies",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type CodexSpeedPolicy does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ChannelPolicies_supportsWebSearch(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelPolicies) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -26265,6 +26350,35 @@ func (ec *executionContext) _ChannelSettings_codexSearchModel(ctx context.Contex
 }
 
 func (ec *executionContext) fieldContext_ChannelSettings_codexSearchModel(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelSettings_codexImageModel(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelSettings_codexImageModel,
+		func(ctx context.Context) (any, error) {
+			return obj.CodexImageModel, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelSettings_codexImageModel(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ChannelSettings",
 		Field:      field,
@@ -71325,7 +71439,7 @@ func (ec *executionContext) unmarshalInputChannelPoliciesInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"routingTier", "stream", "remoteCompaction", "supportsRemoteCompaction", "webSearch", "supportsWebSearch", "codexIdentity", "apiKeyAutoDisableMode", "apiKeyAutoDisableRules"}
+	fieldsInOrder := [...]string{"routingTier", "stream", "remoteCompaction", "supportsRemoteCompaction", "webSearch", "imageGeneration", "codexSpeed", "supportsWebSearch", "codexIdentity", "apiKeyAutoDisableMode", "apiKeyAutoDisableRules"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -71367,6 +71481,20 @@ func (ec *executionContext) unmarshalInputChannelPoliciesInput(ctx context.Conte
 				return it, err
 			}
 			it.WebSearch = data
+		case "imageGeneration":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("imageGeneration"))
+			data, err := ec.unmarshalOImageGenerationPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐImageGenerationPolicy(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ImageGeneration = data
+		case "codexSpeed":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("codexSpeed"))
+			data, err := ec.unmarshalOCodexSpeedPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐCodexSpeedPolicy(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CodexSpeed = data
 		case "supportsWebSearch":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("supportsWebSearch"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -72067,7 +72195,7 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"codexSearchOnly", "codexImageOnly", "codexPreserveSpeedModel", "codexSearchModel", "extraModelPrefix", "modelMappings", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "lowercaseModelId", "proxy", "httpProtocol", "http2ConnectionShards", "transformOptions", "headerOverrideOperations", "bodyOverrideOperations", "passThroughUserAgent", "passThroughBody", "rateLimit", "retryableStatusCodes", "retryableErrorPatterns", "maxSingleChannelRetries", "responseTimeout", "modelProtocols", "apiKeyStrategy", "apiKeyRoundRobinSwitchAfter", "providerQuota", "quotaRoutingMode"}
+	fieldsInOrder := [...]string{"codexSearchOnly", "codexImageOnly", "codexPreserveSpeedModel", "codexSearchModel", "codexImageModel", "extraModelPrefix", "modelMappings", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "lowercaseModelId", "proxy", "httpProtocol", "http2ConnectionShards", "transformOptions", "headerOverrideOperations", "bodyOverrideOperations", "passThroughUserAgent", "passThroughBody", "rateLimit", "retryableStatusCodes", "retryableErrorPatterns", "maxSingleChannelRetries", "responseTimeout", "modelProtocols", "apiKeyStrategy", "apiKeyRoundRobinSwitchAfter", "providerQuota", "quotaRoutingMode"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -72102,6 +72230,13 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 				return it, err
 			}
 			it.CodexSearchModel = data
+		case "codexImageModel":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("codexImageModel"))
+			data, err := ec.unmarshalOString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CodexImageModel = data
 		case "extraModelPrefix":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("extraModelPrefix"))
 			data, err := ec.unmarshalOString2string(ctx, v)
@@ -88942,7 +89077,7 @@ func (ec *executionContext) unmarshalInputUpdateChannelSettingsInput(ctx context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"codexSearchOnly", "codexImageOnly", "codexPreserveSpeedModel", "codexSearchModel", "httpProtocol", "http2ConnectionShards", "maxSingleChannelRetries", "extraModelPrefix", "modelMappings", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "lowercaseModelId", "proxy", "transformOptions", "headerOverrideOperations", "bodyOverrideOperations", "passThroughUserAgent", "passThroughBody", "rateLimit", "retryableStatusCodes", "retryableErrorPatterns", "modelProtocols", "apiKeyStrategy", "apiKeyRoundRobinSwitchAfter", "providerQuota", "quotaRoutingMode"}
+	fieldsInOrder := [...]string{"codexSearchOnly", "codexImageOnly", "codexPreserveSpeedModel", "codexSearchModel", "codexImageModel", "httpProtocol", "http2ConnectionShards", "maxSingleChannelRetries", "extraModelPrefix", "modelMappings", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "lowercaseModelId", "proxy", "transformOptions", "headerOverrideOperations", "bodyOverrideOperations", "passThroughUserAgent", "passThroughBody", "rateLimit", "retryableStatusCodes", "retryableErrorPatterns", "modelProtocols", "apiKeyStrategy", "apiKeyRoundRobinSwitchAfter", "providerQuota", "quotaRoutingMode"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -88977,6 +89112,13 @@ func (ec *executionContext) unmarshalInputUpdateChannelSettingsInput(ctx context
 				return it, err
 			}
 			it.CodexSearchModel = data
+		case "codexImageModel":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("codexImageModel"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CodexImageModel = data
 		case "httpProtocol":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("httpProtocol"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -98751,6 +98893,10 @@ func (ec *executionContext) _ChannelPolicies(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._ChannelPolicies_supportsRemoteCompaction(ctx, field, obj)
 		case "webSearch":
 			out.Values[i] = ec._ChannelPolicies_webSearch(ctx, field, obj)
+		case "imageGeneration":
+			out.Values[i] = ec._ChannelPolicies_imageGeneration(ctx, field, obj)
+		case "codexSpeed":
+			out.Values[i] = ec._ChannelPolicies_codexSpeed(ctx, field, obj)
 		case "supportsWebSearch":
 			out.Values[i] = ec._ChannelPolicies_supportsWebSearch(ctx, field, obj)
 		case "codexIdentity":
@@ -99300,6 +99446,8 @@ func (ec *executionContext) _ChannelSettings(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._ChannelSettings_codexPreserveSpeedModel(ctx, field, obj)
 		case "codexSearchModel":
 			out.Values[i] = ec._ChannelSettings_codexSearchModel(ctx, field, obj)
+		case "codexImageModel":
+			out.Values[i] = ec._ChannelSettings_codexImageModel(ctx, field, obj)
 		case "extraModelPrefix":
 			out.Values[i] = ec._ChannelSettings_extraModelPrefix(ctx, field, obj)
 		case "modelMappings":
@@ -124504,6 +124652,16 @@ func (ec *executionContext) marshalOCodexIdentityPolicy2githubᚗcomᚋloopljᚋ
 	return res
 }
 
+func (ec *executionContext) unmarshalOCodexSpeedPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐCodexSpeedPolicy(ctx context.Context, v any) (objects.CodexSpeedPolicy, error) {
+	var res objects.CodexSpeedPolicy
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOCodexSpeedPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐCodexSpeedPolicy(ctx context.Context, sel ast.SelectionSet, v objects.CodexSpeedPolicy) graphql.Marshaler {
+	return v
+}
+
 func (ec *executionContext) marshalOCommandCodeQuotaSettings2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐCommandCodeQuotaSettings(ctx context.Context, sel ast.SelectionSet, v *objects.CommandCodeQuotaSettings) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -125371,6 +125529,16 @@ func (ec *executionContext) marshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinte
 	if v == nil {
 		return graphql.Null
 	}
+	return v
+}
+
+func (ec *executionContext) unmarshalOImageGenerationPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐImageGenerationPolicy(ctx context.Context, v any) (objects.ImageGenerationPolicy, error) {
+	var res objects.ImageGenerationPolicy
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOImageGenerationPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐImageGenerationPolicy(ctx context.Context, sel ast.SelectionSet, v objects.ImageGenerationPolicy) graphql.Marshaler {
 	return v
 }
 

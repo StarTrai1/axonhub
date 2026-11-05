@@ -11,7 +11,7 @@ import (
 )
 
 func TestSpeedPolicyChoosesBothRelayAliases(t *testing.T) {
-	for _, tc := range []struct { name, requested, tier, configured, wantModel, wantTier string }{
+	for _, tc := range []struct{ name, requested, tier, configured, wantModel, wantTier string }{
 		{"fast default", "gpt-6.1-sol", "", "priority", "gpt-6.1-sol-fast", ""},
 		{"ultrafast default", "gpt-6.1-sol", "", "ultrafast", "gpt-6.1-sol-ultrafast", ""},
 		{"explicit tier", "gpt-6.1-sol", "ultrafast", "priority", "gpt-6.1-sol-ultrafast", ""},
@@ -23,8 +23,12 @@ func TestSpeedPolicyChoosesBothRelayAliases(t *testing.T) {
 			out := &OutboundTransformer{defaultServiceTier: tc.configured, speedModels: map[string]bool{"gpt-6.1-sol-fast": true, "gpt-6.1-sol-ultrafast": true}}
 			model, tier := out.resolveSpeed(tc.requested, lo.ToPtr(tc.tier))
 			require.Equal(t, tc.wantModel, model)
-			if tier == nil { require.Empty(t, tc.wantTier) } else { require.Equal(t, tc.wantTier, *tier) }
-			body := []byte(`{"model":"`+tc.requested+`","service_tier":"`+tc.tier+`","input":[{"type":"compaction","encrypted_content":"keep"}],"prompt_cache_key":"session-keep"}`)
+			if tier == nil {
+				require.Empty(t, tc.wantTier)
+			} else {
+				require.Equal(t, tc.wantTier, *tier)
+			}
+			body := []byte(`{"model":"` + tc.requested + `","service_tier":"` + tc.tier + `","input":[{"type":"compaction","encrypted_content":"keep"}],"prompt_cache_key":"session-keep"}`)
 			wire := out.normalizeFastModelRequest(&httpclient.Request{Body: body})
 			require.Equal(t, tc.wantModel, gjson.GetBytes(wire.Body, "model").String())
 			require.Equal(t, tc.wantTier, gjson.GetBytes(wire.Body, "service_tier").String())

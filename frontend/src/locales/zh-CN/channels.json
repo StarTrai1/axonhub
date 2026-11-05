@@ -1116,5 +1116,6 @@
   "channels.dialogs.fields.codexSpeedPolicy.options.fast.label": "Fast",
   "channels.dialogs.fields.codexSpeedPolicy.options.fast.description": "使用对应的 -fast 型号或 priority 服务档位。",
   "channels.dialogs.fields.codexSpeedPolicy.options.ultrafast.label": "Ultrafast",
-  "channels.dialogs.fields.codexSpeedPolicy.options.ultrafast.description": "使用对应的 -ultrafast 型号或 ultrafast 服务档位。"
+  "channels.dialogs.fields.codexSpeedPolicy.options.ultrafast.description": "使用对应的 -ultrafast 型号或 ultrafast 服务档位。",
+  "channels.dialogs.buttons.backToChannel": "返回渠道设置"
 }

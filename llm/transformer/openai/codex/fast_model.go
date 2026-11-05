@@ -15,21 +15,41 @@ import (
 // providers without aliases receive the native service_tier parameter.
 func (t *OutboundTransformer) resolveSpeed(model string, serviceTier *string) (string, *string) {
 	base, aliasTier, alias := SpeedModel(model)
-	if t.preserveSpeedModel && alias && t.defaultServiceTier == "" && (serviceTier == nil || strings.TrimSpace(*serviceTier) == "") { return model, serviceTier }
+	if t.preserveSpeedModel && alias && t.defaultServiceTier == "" && (serviceTier == nil || strings.TrimSpace(*serviceTier) == "") {
+		return model, serviceTier
+	}
 	tier := ""
-	if serviceTier != nil { tier = strings.TrimSpace(*serviceTier) }
+	if serviceTier != nil {
+		tier = strings.TrimSpace(*serviceTier)
+	}
 	if alias && tier == "" {
-		if t.speedModels[model] { return model, nil }
+		if t.speedModels[model] {
+			return model, nil
+		}
 		tier = aliasTier
 	}
-	if alias { model = base }
-	if tier == "" { tier = t.defaultServiceTier }
-	if tier == "" { return model, serviceTier }
-	if tier == "fast" { tier = "priority" }
+	if alias {
+		model = base
+	}
+	if tier == "" {
+		tier = t.defaultServiceTier
+	}
+	if tier == "" {
+		return model, serviceTier
+	}
+	if tier == "fast" {
+		tier = "priority"
+	}
 	suffix := ""
-	if tier == "priority" { suffix = "-fast" }
-	if tier == "ultrafast" { suffix = "-ultrafast" }
-	if suffix != "" && t.speedModels[model+suffix] { return model+suffix, nil }
+	if tier == "priority" {
+		suffix = "-fast"
+	}
+	if tier == "ultrafast" {
+		suffix = "-ultrafast"
+	}
+	if suffix != "" && t.speedModels[model+suffix] {
+		return model + suffix, nil
+	}
 	return model, lo.ToPtr(tier)
 }
 
@@ -44,19 +64,31 @@ func (t *OutboundTransformer) normalizeFastModelRequest(request *httpclient.Requ
 		return request
 	}
 	model := gjson.GetBytes(request.Body, "model").String()
-	if model == "" { return request }
+	if model == "" {
+		return request
+	}
 	oldTier := gjson.GetBytes(request.Body, "service_tier").String()
 	baseModel, resolvedTier := t.resolveSpeed(model, lo.ToPtr(oldTier))
 	tier := ""
-	if resolvedTier != nil { tier = *resolvedTier }
-	if baseModel == model && tier == oldTier { return request }
+	if resolvedTier != nil {
+		tier = *resolvedTier
+	}
+	if baseModel == model && tier == oldTier {
+		return request
+	}
 
 	body, err := sjson.SetBytes(request.Body, "model", baseModel)
 	if err != nil {
 		return request
 	}
-	if tier == "" { body, err = sjson.DeleteBytes(body, "service_tier") } else { body, err = sjson.SetBytes(body, "service_tier", tier) }
-	if err != nil { return request }
+	if tier == "" {
+		body, err = sjson.DeleteBytes(body, "service_tier")
+	} else {
+		body, err = sjson.SetBytes(body, "service_tier", tier)
+	}
+	if err != nil {
+		return request
+	}
 
 	cloned := *request
 	cloned.Body = body

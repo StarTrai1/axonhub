@@ -134,7 +134,9 @@ func parseModelCatalog(body []byte, supplementImageModel, requireListVisibility 
 	}
 	if supplementImageModel {
 		for _, model := range ImageModels() {
-			if !visible[model] { models = append(models, model) }
+			if !visible[model] {
+				models = append(models, model)
+			}
 		}
 	}
 	return models, nil

@@ -54,6 +54,9 @@ for (const width of [1280, 768, 390]) {
     const imageToggle = page.getByTestId('codex-image-only-toggle');
     await imageToggle.click();
     await page.getByTestId('channel-fetch-models').click();
+    await expect(page.getByTestId('channel-side-panel')).toBeVisible();
+    expect((await page.getByTestId('channel-side-panel').boundingBox())!.width).toBeGreaterThan(280);
+    await page.getByTestId('close-fetched-models').click();
     const imageModel = page.getByTestId('codex-image-model-select');
     await imageModel.scrollIntoViewIfNeeded();
     await imageModel.click();

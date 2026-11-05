@@ -54,7 +54,7 @@ type OutboundTransformer struct {
 	official           bool
 	preserveSpeedModel bool
 	defaultServiceTier string
-	speedModels map[string]bool
+	speedModels        map[string]bool
 
 	// reuse existing Responses outbound for payload building.
 	responsesOutbound *responses.OutboundTransformer
@@ -79,7 +79,7 @@ var responsesBlockedPassThroughFields = []string{
 type Params struct {
 	PreserveSpeedModel bool
 	DefaultServiceTier string
-	SupportedModels []string
+	SupportedModels    []string
 	TokenProvider      oauth.TokenGetter
 	BaseURL            string
 	Transport          string
@@ -131,7 +131,9 @@ func NewOutboundTransformer(params Params) (*OutboundTransformer, error) {
 	speedModels := make(map[string]bool)
 	if !official {
 		for _, model := range params.SupportedModels {
-			if _, _, ok := SpeedModel(model); ok { speedModels[model] = true }
+			if _, _, ok := SpeedModel(model); ok {
+				speedModels[model] = true
+			}
 		}
 	}
 
@@ -155,7 +157,7 @@ func NewOutboundTransformer(params Params) (*OutboundTransformer, error) {
 		official:           official,
 		preserveSpeedModel: params.PreserveSpeedModel && !official,
 		defaultServiceTier: params.DefaultServiceTier,
-		speedModels: speedModels,
+		speedModels:        speedModels,
 		responsesOutbound:  ro,
 	}, nil
 }
