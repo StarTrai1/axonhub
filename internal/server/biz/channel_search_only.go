@@ -14,7 +14,7 @@ func (ch *Channel) AllowsWorkload(req *llm.Request, memory bool) bool {
 	}
 	policy := ch.Policies.EffectiveCodexMemoryPolicy()
 	if memory {
-		return policy != objects.CodexMemoryExclude && (!ch.IsCodexToolOnly() || policy == objects.CodexMemoryOnly)
+		return policy != objects.CodexMemoryExclude
 	}
 	if policy == objects.CodexMemoryOnly && !ch.IsCodexToolOnly() {
 		return false

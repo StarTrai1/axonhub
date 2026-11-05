@@ -1121,7 +1121,7 @@
   "channels.dialogs.fields.codexMemoryPolicy.label": "长期记忆策略",
   "channels.dialogs.fields.codexMemoryPolicy.description": "按 Codex 任务标记识别记忆提取与整合，不依赖模型名或思考程度。“仅处理记忆”可与搜索、生图工具专用选项并用；任一专用选项开启后不处理普通对话。仍遵循模型映射和权限范围。",
   "channels.dialogs.fields.codexMemoryPolicy.options.normal.label": "正常参与",
-  "channels.dialogs.fields.codexMemoryPolicy.options.normal.description": "沿用现有路由；开启工具专用后，如需同时处理记忆，请选择“仅处理记忆”。",
+  "channels.dialogs.fields.codexMemoryPolicy.options.normal.description": "按现有路由处理记忆任务；工具专用选项仍限制普通对话。",
   "channels.dialogs.fields.codexMemoryPolicy.options.exclude.label": "不处理记忆",
   "channels.dialogs.fields.codexMemoryPolicy.options.exclude.description": "不承接记忆任务，其余请求按已有工具和路由设置处理。",
   "channels.dialogs.fields.codexMemoryPolicy.options.only.label": "仅处理记忆",

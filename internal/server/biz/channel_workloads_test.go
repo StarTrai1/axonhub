@@ -20,7 +20,7 @@ func TestChannelDedicatedWorkloadsCompose(t *testing.T) {
 		require.Equal(t, flags == 0, ch.AllowsWorkload(&llm.Request{RequestType: llm.RequestTypeChat}, false), "flags=%d", flags)
 		require.Equal(t, flags == 0 || flags&1 != 0, ch.AllowsWorkload(&llm.Request{RequestType: llm.RequestTypeSearch, APIFormat: llm.APIFormatOpenAISearch}, false), "flags=%d", flags)
 		require.Equal(t, flags == 0 || flags&2 != 0, ch.AllowsWorkload(&llm.Request{RequestType: llm.RequestTypeImage, APIFormat: llm.APIFormatOpenAIImageGeneration}, false), "flags=%d", flags)
-		require.Equal(t, flags == 0 || flags&4 != 0, ch.AllowsWorkload(&llm.Request{RequestType: llm.RequestTypeChat}, true), "flags=%d", flags)
+		require.True(t, ch.AllowsWorkload(&llm.Request{RequestType: llm.RequestTypeChat}, true), "normal and memory-only policies remain eligible, flags=%d", flags)
 		ch.Policies.CodexMemory = objects.CodexMemoryExclude
 		require.False(t, ch.AllowsWorkload(&llm.Request{}, true))
 	}

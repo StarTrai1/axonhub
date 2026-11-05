@@ -1121,7 +1121,7 @@
   "channels.dialogs.fields.codexMemoryPolicy.label": "Long-term memory policy",
   "channels.dialogs.fields.codexMemoryPolicy.description": "Identify Codex memory extraction and consolidation from task metadata, independent of model and reasoning effort. Memory only can be combined with dedicated search and images. Any dedicated scope excludes ordinary conversation. Model mappings and access limits still apply.",
   "channels.dialogs.fields.codexMemoryPolicy.options.normal.label": "Normal routing",
-  "channels.dialogs.fields.codexMemoryPolicy.options.normal.description": "Follow normal routing. When dedicated tools are enabled, also select Memory only to accept memory tasks.",
+  "channels.dialogs.fields.codexMemoryPolicy.options.normal.description": "Accept memory tasks under existing routing. Dedicated tool options still exclude ordinary conversation.",
   "channels.dialogs.fields.codexMemoryPolicy.options.exclude.label": "Exclude memory",
   "channels.dialogs.fields.codexMemoryPolicy.options.exclude.description": "Exclude memory tasks; other requests follow existing tool and routing settings.",
   "channels.dialogs.fields.codexMemoryPolicy.options.only.label": "Memory only",

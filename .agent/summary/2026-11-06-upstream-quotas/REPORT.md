@@ -4,7 +4,7 @@ Base: `f78b4b185cb9afa9a3eb86b2cacdecf7d0b0653b` (PR31). Upstream unstable is me
 
 ## User-visible behavior
 
-Memory-only, standalone search and standalone image flags compose instead of clearing each other. Selecting any dedicated workload excludes ordinary conversation; selecting several admits their union. Memory exclude remains authoritative. Ordinary inline tool-bearing chat is still conversation, not a standalone tool request.
+Memory-only, standalone search and standalone image flags compose instead of clearing each other. Selecting any dedicated workload excludes ordinary conversation; selected standalone tools remain available alongside memory. Normal and memory-only policies both admit memory tasks even when standalone tool flags are set; memory exclude remains authoritative. Ordinary inline tool-bearing chat is still conversation, not a standalone tool request.
 
 Previously, memory content-policy rejection unconditionally stopped retries. Now the existing retry enablement and channel retryable HTTP status/error-pattern settings apply before any content is committed. Eligible normal and memory-only channels participate subject to project/key profiles, model mappings and selected workloads. A refused physical channel is skipped for the remainder of that request, and memory has a shared three-attempt maximum. This does not synthesize successful memory, edit its input, or retry after committed output.
 
