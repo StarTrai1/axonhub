@@ -1,6 +1,22 @@
 package orchestrator
 
-import "fmt"
+import (
+	"fmt"
+	"net/http"
+
+	"github.com/looplj/axonhub/llm"
+)
+
+func NewQuotaReserveError(modelName string) error {
+	return &llm.ResponseError{
+		StatusCode: http.StatusServiceUnavailable,
+		Detail: llm.ErrorDetail{
+			Message: fmt.Sprintf("no channel available under configured quota reserve thresholds for model %s", modelName),
+			Type:    "quota_routing_error",
+			Code:    "quota_reserve_reached",
+		},
+	}
+}
 
 // QuotaExhaustedError is returned when all channels are quota exhausted for a model.
 type QuotaExhaustedError struct {

@@ -19,7 +19,7 @@ The UI uses existing Label, Switch, Input, Select, Checkbox and icon-only Toolti
 - Preserve the fork's existing change filters, source-generation checks, Windows/SQLite/Responses transport coverage and CI concurrency groups. The newly upstream `changes.yml` is redundant and omitted.
 - Keep SWC and fork-only frontend packages/security overrides. Update matching dependency versions; generate the lockfile in CI rather than resurrecting unused react-plugin dependencies.
 - Preserve module replacement directives and fork transport tests. Reconcile Go module graph and formatting through CI artifacts.
-- Merge Copilot `reasoning_text`, missing non-stream content-filter handling and updated Anthropic catalog. Avoid a duplicate stream content-filter switch case; retain existing stream refusal behavior.
+- Merge Copilot `reasoning_text` and the updated Anthropic catalog. Existing non-stream/stream content-filter mappings already cover the upstream refusal behavior; remove duplicate merged switch cases and retain that behavior.
 - Merge endpoint family preference while retaining explicit per-model protocol precedence and dedicated search/image routing.
 
 ## Frozen peer review

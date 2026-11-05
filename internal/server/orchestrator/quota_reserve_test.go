@@ -98,6 +98,7 @@ func TestQuotaReserveFinalDispatchAndRetryRefresh(t *testing.T) {
 	p.state.LlmRequest = &llm.Request{Model: "synthetic-model"}
 	require.ErrorIs(t, p.refreshChannelBeforeRetry(ctx), errChannelUnavailableForRetry)
 	_, err = p.TransformRequest(ctx, p.state.LlmRequest)
-	var exhausted *QuotaExhaustedError
+	var exhausted *llm.ResponseError
 	require.ErrorAs(t, err, &exhausted, "final dispatch cannot bypass a threshold reached after selection")
+	require.Equal(t, "quota_reserve_reached", exhausted.Detail.Code)
 }

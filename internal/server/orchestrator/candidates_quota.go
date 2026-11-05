@@ -13,9 +13,10 @@ import (
 
 // QuotaRoutingGate applies the quota routing policy for one request.
 type QuotaRoutingGate struct {
-	provider     ProviderQuotaStatusProvider
-	defaultMode  objects.QuotaRoutingMode
-	droppedCount int
+	provider            ProviderQuotaStatusProvider
+	defaultMode         objects.QuotaRoutingMode
+	droppedCount        int
+	reserveDroppedCount int
 }
 
 func NewQuotaRoutingGate(provider ProviderQuotaStatusProvider, settings biz.QuotaRoutingSettings) *QuotaRoutingGate {
@@ -43,6 +44,7 @@ func (g *QuotaRoutingGate) Filter(
 ) []*ChannelModelsCandidate {
 	if g != nil {
 		g.droppedCount = 0
+		g.reserveDroppedCount = 0
 	}
 	if g == nil || g.provider == nil || len(candidates) == 0 {
 		return candidates
@@ -53,7 +55,10 @@ func (g *QuotaRoutingGate) Filter(
 	phaseOne := make([]*ChannelModelsCandidate, 0, len(candidates))
 	for _, candidate := range candidates {
 		if g.reserveBlocks(ctx, candidate, req) {
-			decisions = append(decisions, quotaRoutingDecision{candidate: candidate, reason: "quota_reserve_threshold"})
+			decision := quotaRoutingDecision{candidate: candidate, reason: "quota_reserve_threshold"}
+			decisions = append(decisions, decision)
+			g.reserveDroppedCount++
+			g.logDecision(ctx, candidate, decision, false)
 			continue
 		}
 		decision := g.evaluate(ctx, candidate, limitType, stickyID)

@@ -248,7 +248,7 @@ for (const width of [1280, 768, 390]) {
         saved = { ...saved, ...body.variables.input };
         await route.fulfill({ json: { data: { updateChannel: saved } } });
       } else {
-        await route.fulfill({ json: { data: { queryChannels: { edges: [{ node: saved, cursor: 'fixture' }], totalCount: 1, pageInfo: {} }, allChannelTags: [], channelDisabledAPIKeys: [], proxyPresets: [] } } });
+        await route.fulfill({ json: { data: { queryChannels: { edges: [{ node: saved, cursor: 'fixture' }], totalCount: 1, pageInfo: { hasNextPage: false, hasPreviousPage: false, startCursor: 'fixture', endCursor: 'fixture' } }, allChannelTags: [], channelDisabledAPIKeys: [], proxyPresets: [] } } });
       }
     });
     await page.goto('/tests/interactions/codex-channel.html');

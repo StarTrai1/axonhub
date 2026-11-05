@@ -141,6 +141,7 @@ apiKeyStrategy: pick('apiKeyStrategy', existing?.apiKeyStrategy ?? null),
     codexPreserveSpeedModel: pick('codexPreserveSpeedModel', existing?.codexPreserveSpeedModel ?? false),
     codexSearchModel: pick('codexSearchModel', existing?.codexSearchModel ?? ''),
     quotaRoutingMode: pick('quotaRoutingMode', existing?.quotaRoutingMode ?? undefined),
+    quotaReserve: pick('quotaReserve', existing?.quotaReserve ?? null),
   };
 }
 

@@ -112,6 +112,9 @@ func selectCandidates(inbound *PersistentInboundTransformer, quotaProvider Provi
 
 		if len(candidates) == 0 {
 			if gate.DroppedCount() > 0 {
+				if gate.reserveDroppedCount > 0 {
+					return nil, NewQuotaReserveError(llmRequest.Model)
+				}
 				return nil, NewQuotaExhaustedError(llmRequest.Model)
 			}
 			return nil, fmt.Errorf("%w: %s", biz.ErrInvalidModel, llmRequest.Model)
