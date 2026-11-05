@@ -83,6 +83,9 @@ func TestQuotaReserveToolsDoNotGrantCapabilitiesOrBypassHardQuota(t *testing.T) 
 	require.Empty(t, gate.Filter(memoryCtx, []*ChannelModelsCandidate{candidate}, chat, 0))
 	status.Limits[0].NextResetAt = lo.ToPtr(time.Now().Add(-time.Second))
 	status.Status = providerquotastatus.StatusAvailable
+	// A reserve's reset must not override an independently exhausted quota.
+	require.Empty(t, gate.Filter(t.Context(), []*ChannelModelsCandidate{candidate}, chat, 0))
+	status.Limits[0].Status, status.Limits[0].UsageRatio = "warning", .9
 	require.Len(t, gate.Filter(t.Context(), []*ChannelModelsCandidate{candidate}, chat, 0), 1, "reset automatically reopens ordinary routing")
 }
 
@@ -97,6 +100,7 @@ func TestQuotaReserveFinalDispatchAndRetryRefresh(t *testing.T) {
 	p.state.quotaReserveProvider = &mockQuotaStatusProvider{statuses: map[int]*biz.QuotaChannelStatus{entity.ID: quotaStickyOnlyStatus()}}
 	p.state.LlmRequest = &llm.Request{Model: "synthetic-model"}
 	require.ErrorIs(t, p.refreshChannelBeforeRetry(ctx), errChannelUnavailableForRetry)
+	p.state.ChannelModelsCandidates = []*ChannelModelsCandidate{p.state.CurrentCandidate}
 	_, err = p.TransformRequest(ctx, p.state.LlmRequest)
 	var exhausted *llm.ResponseError
 	require.ErrorAs(t, err, &exhausted, "final dispatch cannot bypass a threshold reached after selection")
