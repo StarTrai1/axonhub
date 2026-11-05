@@ -3,18 +3,23 @@ import { test, expect } from '@playwright/test';
 for (const width of [1280, 768, 390]) {
   test(`Memory policy persists and matches channel controls at ${width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 1100 });
-    let saved: Record<string, unknown>;
+    let saved: Record<string, unknown> = {
+      id: 'channel-preview', createdAt: '2026-10-17T00:00:00Z', updatedAt: '2026-10-17T00:00:00Z',
+      name: 'Codex fixture', type: 'codex', status: 'enabled', baseURL: 'https://chatgpt.com/backend-api/codex#',
+      credentials: { apiKey: JSON.stringify({ access_token: 'synthetic', refresh_token: 'synthetic' }) },
+      policies: { webSearch: 'auto' }, supportedModels: ['gpt-6-sol', 'gpt-5.5'], defaultTestModel: 'gpt-6-sol', settings: { codexSearchOnly: false },
+    };
     await page.route('**/fixture/channel', (route) => route.fulfill({ json: saved }));
     await page.route('**/admin/graphql', async (route) => {
       const body = route.request().postDataJSON();
       if (body.operationName === 'UpdateChannel') {
-        saved = {
-          id: 'channel-preview', createdAt: '2026-10-17T00:00:00Z', updatedAt: '2026-10-17T00:00:00Z',
-          status: 'enabled', ...body.variables.input,
-        };
+        saved = { ...saved, ...body.variables.input };
         await route.fulfill({ json: { data: { updateChannel: saved } } });
       } else {
-        await route.fulfill({ json: { data: { allChannelTags: [], channelDisabledAPIKeys: [], proxyPresets: [] } } });
+        await route.fulfill({ json: { data: {
+          queryChannels: { edges: [{ node: saved, cursor: 'fixture' }], totalCount: 1, pageInfo: { hasNextPage: false, hasPreviousPage: false, startCursor: 'fixture', endCursor: 'fixture' } },
+          allChannelTags: [], channelDisabledAPIKeys: [], proxyPresets: [],
+        } } });
       }
     });
     await page.goto('/tests/interactions/codex-channel.html');
