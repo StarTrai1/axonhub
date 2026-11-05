@@ -586,6 +586,8 @@ type ComplexityRoot struct {
 		APIKeyStrategy              func(childComplexity int) int
 		AutoTrimedModelPrefixes     func(childComplexity int) int
 		BodyOverrideOperations      func(childComplexity int) int
+		CodexImageOnly              func(childComplexity int) int
+		CodexPreserveSpeedModel     func(childComplexity int) int
 		CodexSearchModel            func(childComplexity int) int
 		CodexSearchOnly             func(childComplexity int) int
 		ExtraModelPrefix            func(childComplexity int) int
@@ -4561,6 +4563,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelSettings.BodyOverrideOperations(childComplexity), true
+	case "ChannelSettings.codexImageOnly":
+		if e.complexity.ChannelSettings.CodexImageOnly == nil {
+			break
+		}
+
+		return e.complexity.ChannelSettings.CodexImageOnly(childComplexity), true
+	case "ChannelSettings.codexPreserveSpeedModel":
+		if e.complexity.ChannelSettings.CodexPreserveSpeedModel == nil {
+			break
+		}
+
+		return e.complexity.ChannelSettings.CodexPreserveSpeedModel(childComplexity), true
 	case "ChannelSettings.codexSearchModel":
 		if e.complexity.ChannelSettings.CodexSearchModel == nil {
 			break
@@ -21532,6 +21546,10 @@ func (ec *executionContext) fieldContext_Channel_settings(_ context.Context, fie
 			switch field.Name {
 			case "codexSearchOnly":
 				return ec.fieldContext_ChannelSettings_codexSearchOnly(ctx, field)
+			case "codexImageOnly":
+				return ec.fieldContext_ChannelSettings_codexImageOnly(ctx, field)
+			case "codexPreserveSpeedModel":
+				return ec.fieldContext_ChannelSettings_codexPreserveSpeedModel(ctx, field)
 			case "codexSearchModel":
 				return ec.fieldContext_ChannelSettings_codexSearchModel(ctx, field)
 			case "extraModelPrefix":
@@ -26160,6 +26178,64 @@ func (ec *executionContext) _ChannelSettings_codexSearchOnly(ctx context.Context
 }
 
 func (ec *executionContext) fieldContext_ChannelSettings_codexSearchOnly(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelSettings_codexImageOnly(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelSettings_codexImageOnly,
+		func(ctx context.Context) (any, error) {
+			return obj.CodexImageOnly, nil
+		},
+		nil,
+		ec.marshalOBoolean2bool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelSettings_codexImageOnly(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelSettings_codexPreserveSpeedModel(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelSettings_codexPreserveSpeedModel,
+		func(ctx context.Context) (any, error) {
+			return obj.CodexPreserveSpeedModel, nil
+		},
+		nil,
+		ec.marshalOBoolean2bool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelSettings_codexPreserveSpeedModel(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ChannelSettings",
 		Field:      field,
@@ -71991,7 +72067,7 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"codexSearchOnly", "codexSearchModel", "extraModelPrefix", "modelMappings", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "lowercaseModelId", "proxy", "httpProtocol", "http2ConnectionShards", "transformOptions", "headerOverrideOperations", "bodyOverrideOperations", "passThroughUserAgent", "passThroughBody", "rateLimit", "retryableStatusCodes", "retryableErrorPatterns", "maxSingleChannelRetries", "responseTimeout", "modelProtocols", "apiKeyStrategy", "apiKeyRoundRobinSwitchAfter", "providerQuota", "quotaRoutingMode"}
+	fieldsInOrder := [...]string{"codexSearchOnly", "codexImageOnly", "codexPreserveSpeedModel", "codexSearchModel", "extraModelPrefix", "modelMappings", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "lowercaseModelId", "proxy", "httpProtocol", "http2ConnectionShards", "transformOptions", "headerOverrideOperations", "bodyOverrideOperations", "passThroughUserAgent", "passThroughBody", "rateLimit", "retryableStatusCodes", "retryableErrorPatterns", "maxSingleChannelRetries", "responseTimeout", "modelProtocols", "apiKeyStrategy", "apiKeyRoundRobinSwitchAfter", "providerQuota", "quotaRoutingMode"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -72005,6 +72081,20 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 				return it, err
 			}
 			it.CodexSearchOnly = data
+		case "codexImageOnly":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("codexImageOnly"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CodexImageOnly = data
+		case "codexPreserveSpeedModel":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("codexPreserveSpeedModel"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CodexPreserveSpeedModel = data
 		case "codexSearchModel":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("codexSearchModel"))
 			data, err := ec.unmarshalOString2string(ctx, v)
@@ -88852,7 +88942,7 @@ func (ec *executionContext) unmarshalInputUpdateChannelSettingsInput(ctx context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"codexSearchOnly", "codexSearchModel", "httpProtocol", "http2ConnectionShards", "maxSingleChannelRetries", "extraModelPrefix", "modelMappings", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "lowercaseModelId", "proxy", "transformOptions", "headerOverrideOperations", "bodyOverrideOperations", "passThroughUserAgent", "passThroughBody", "rateLimit", "retryableStatusCodes", "retryableErrorPatterns", "modelProtocols", "apiKeyStrategy", "apiKeyRoundRobinSwitchAfter", "providerQuota", "quotaRoutingMode"}
+	fieldsInOrder := [...]string{"codexSearchOnly", "codexImageOnly", "codexPreserveSpeedModel", "codexSearchModel", "httpProtocol", "http2ConnectionShards", "maxSingleChannelRetries", "extraModelPrefix", "modelMappings", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "lowercaseModelId", "proxy", "transformOptions", "headerOverrideOperations", "bodyOverrideOperations", "passThroughUserAgent", "passThroughBody", "rateLimit", "retryableStatusCodes", "retryableErrorPatterns", "modelProtocols", "apiKeyStrategy", "apiKeyRoundRobinSwitchAfter", "providerQuota", "quotaRoutingMode"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -88866,6 +88956,20 @@ func (ec *executionContext) unmarshalInputUpdateChannelSettingsInput(ctx context
 				return it, err
 			}
 			it.CodexSearchOnly = data
+		case "codexImageOnly":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("codexImageOnly"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CodexImageOnly = data
+		case "codexPreserveSpeedModel":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("codexPreserveSpeedModel"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CodexPreserveSpeedModel = data
 		case "codexSearchModel":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("codexSearchModel"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -99190,6 +99294,10 @@ func (ec *executionContext) _ChannelSettings(ctx context.Context, sel ast.Select
 			out.Values[i] = graphql.MarshalString("ChannelSettings")
 		case "codexSearchOnly":
 			out.Values[i] = ec._ChannelSettings_codexSearchOnly(ctx, field, obj)
+		case "codexImageOnly":
+			out.Values[i] = ec._ChannelSettings_codexImageOnly(ctx, field, obj)
+		case "codexPreserveSpeedModel":
+			out.Values[i] = ec._ChannelSettings_codexPreserveSpeedModel(ctx, field, obj)
 		case "codexSearchModel":
 			out.Values[i] = ec._ChannelSettings_codexSearchModel(ctx, field, obj)
 		case "extraModelPrefix":

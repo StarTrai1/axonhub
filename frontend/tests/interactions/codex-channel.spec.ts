@@ -87,6 +87,8 @@ for (const width of [1280, 768, 390]) {
     await expect(page.locator('html')).toHaveClass(/claude/);
     await expect(page.getByRole('dialog')).toHaveCSS('background-color', 'oklch(0.22 0.002 106)');
     await page.screenshot({ path: testInfo.outputPath('codex-channel-dark.png') });
+    await page.getByTestId('codex-image-only-setting').scrollIntoViewIfNeeded();
+    await page.screenshot({ path: testInfo.outputPath('codex-tools-dark.png') });
     await page.getByTestId('channel-submit-button').click();
     await expect.poll(() => settings).toEqual([{ enabled: true, model: 'gpt-6.1-sol', image: true, preserveSpeed: true, policy: 'native' }]);
     expect(saved.supportedModels).toContain('gpt-image-2.6-sunburst');

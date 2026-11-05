@@ -18,6 +18,8 @@ import (
 func TestUpdateChannelSettingsInput_Apply(t *testing.T) {
 	base := &objects.ChannelSettings{
 		CodexSearchOnly:         true,
+		CodexImageOnly:          true,
+		CodexPreserveSpeedModel: true,
 		CodexSearchModel:        "search-model",
 		HTTPProtocol:            "auto",
 		HTTP2ConnectionShards:   2,
@@ -58,6 +60,8 @@ func TestUpdateChannelSettingsInput_Apply(t *testing.T) {
 		require.Equal(t, base.RateLimit, merged.RateLimit)
 		require.Equal(t, []int{429}, merged.RetryableStatusCodes)
 		require.Equal(t, base.CodexSearchOnly, merged.CodexSearchOnly)
+		require.Equal(t, base.CodexImageOnly, merged.CodexImageOnly)
+		require.Equal(t, base.CodexPreserveSpeedModel, merged.CodexPreserveSpeedModel)
 		require.Equal(t, base.CodexSearchModel, merged.CodexSearchModel)
 		require.Equal(t, base.HTTPProtocol, merged.HTTPProtocol)
 		require.Equal(t, base.HTTP2ConnectionShards, merged.HTTP2ConnectionShards)

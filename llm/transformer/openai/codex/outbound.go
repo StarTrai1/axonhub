@@ -51,7 +51,7 @@ type OutboundTransformer struct {
 	// official reports whether the configured upstream is the official Codex
 	// backend (chatgpt.com). Official endpoints always stream SSE, so they keep
 	// the DoStream path; only compatible relays get the JSON passthrough path.
-	official bool
+	official           bool
 	preserveSpeedModel bool
 
 	// reuse existing Responses outbound for payload building.
@@ -76,11 +76,11 @@ var responsesBlockedPassThroughFields = []string{
 
 type Params struct {
 	PreserveSpeedModel bool
-	TokenProvider   oauth.TokenGetter
-	BaseURL         string
-	Transport       string
-	AlphaSearchPath string
-	EndpointPath    string
+	TokenProvider      oauth.TokenGetter
+	BaseURL            string
+	Transport          string
+	AlphaSearchPath    string
+	EndpointPath       string
 }
 
 // isOfficialCodexBaseURL reports whether baseURL points at the official Codex
@@ -138,13 +138,13 @@ func NewOutboundTransformer(params Params) (*OutboundTransformer, error) {
 	}
 
 	return &OutboundTransformer{
-		tokens:            params.TokenProvider,
-		transport:         params.Transport,
-		baseURL:           strings.TrimSuffix(baseURL, "##"),
-		alphaSearchPath:   alphaSearchPath,
-		official:          official,
+		tokens:             params.TokenProvider,
+		transport:          params.Transport,
+		baseURL:            strings.TrimSuffix(baseURL, "##"),
+		alphaSearchPath:    alphaSearchPath,
+		official:           official,
 		preserveSpeedModel: params.PreserveSpeedModel && !official,
-		responsesOutbound: ro,
+		responsesOutbound:  ro,
 	}, nil
 }
 

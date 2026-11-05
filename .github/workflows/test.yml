@@ -340,6 +340,15 @@ jobs:
         working-directory: frontend
         run: pnpm exec playwright test --config playwright.interactions.config.ts
 
+      - name: Preserve Codex channel previews
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: codex-channel-previews
+          path: frontend/test-results/**/codex-*.png
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Verify mocked Claude Code settings lifecycle
         working-directory: frontend
         run: pnpm exec playwright test --config playwright.mocked.config.ts

@@ -7,6 +7,7 @@ import (
 	"mime"
 	"mime/multipart"
 	"net/http"
+	"net/textproto"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -34,7 +35,10 @@ func TestImage26ExactModelAndComplexityRoundTrip(t *testing.T) {
 					for name, value := range map[string]string{"model": model, "prompt": "synthetic", "complexity": "medium", "quality": "max"} {
 						require.NoError(t, writer.WriteField(name, value))
 					}
-					part, err := writer.CreateFormFile("image", "test.png")
+					part, err := writer.CreatePart(textproto.MIMEHeader{
+						"Content-Disposition": {`form-data; name="image"; filename="test.png"`},
+						"Content-Type":        {"image/png"},
+					})
 					require.NoError(t, err)
 					_, err = part.Write([]byte("synthetic-image"))
 					require.NoError(t, err)
@@ -60,7 +64,9 @@ func TestImage26ExactModelAndComplexityRoundTrip(t *testing.T) {
 					fields := map[string]string{}
 					for {
 						part, err := reader.NextPart()
-						if err == io.EOF { break }
+						if err == io.EOF {
+							break
+						}
 						require.NoError(t, err)
 						value, err := io.ReadAll(part)
 						require.NoError(t, err)

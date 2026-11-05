@@ -24,7 +24,7 @@ type ImageRequest struct {
 	Size string `json:"size,omitempty"`
 
 	// Quality is the quality of the generated images.
-	Quality string `json:"quality,omitempty"`
+	Quality    string `json:"quality,omitempty"`
 	Complexity string `json:"complexity,omitempty"`
 
 	// ResponseFormat is the format of the response (url or b64_json).

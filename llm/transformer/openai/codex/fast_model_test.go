@@ -89,11 +89,17 @@ func TestCodexUltrafastAndRelayModelNames(t *testing.T) {
 				require.NoError(t, err)
 				wire = outbound.FinalizeTransportRequest(wire)
 				wantModel, wantTier := model, "priority"
-				if speed == "ultrafast" { wantTier = "ultrafast" }
-				if preserve { wantModel, wantTier = alias, "" }
+				if speed == "ultrafast" {
+					wantTier = "ultrafast"
+				}
+				if preserve {
+					wantModel, wantTier = alias, ""
+				}
 				require.Equal(t, wantModel, gjson.GetBytes(wire.Body, "model").String())
 				require.Equal(t, wantTier, gjson.GetBytes(wire.Body, "service_tier").String())
-				// Finalization also handles native body pass-through without changing history.
+				// WebSocket finalization keeps native continuation; the existing HTTP
+				// contract deliberately strips previous_response_id.
+				outbound.transport = responses.TransportWebSocket
 				raw := &httpclient.Request{Body: []byte(fmt.Sprintf(`{"model":%q,"service_tier":"default","previous_response_id":"resp_keep","input":[{"type":"compaction","encrypted_content":"ciphertext"}]}`, alias))}
 				got := outbound.FinalizeTransportRequest(raw)
 				require.Equal(t, wantModel, gjson.GetBytes(got.Body, "model").String())

@@ -23,9 +23,9 @@ func TestCodexToolOnlyRoutingMatrix(t *testing.T) {
 		selector := NewDefaultSelector(newTestChannelServiceForChannels(client), newTestModelService(client), newTestSystemService(client))
 		restricted := settings.CodexSearchOnly || settings.CodexImageOnly
 		for _, tc := range []struct {
-			format llm.APIFormat
-			kind llm.RequestType
-			model string
+			format  llm.APIFormat
+			kind    llm.RequestType
+			model   string
 			allowed bool
 		}{
 			{llm.APIFormatOpenAIResponse, llm.RequestTypeChat, "gpt-6.1-sol", !restricted},

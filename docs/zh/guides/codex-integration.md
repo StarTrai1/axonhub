@@ -190,7 +190,7 @@ Codex 0.162.0 默认启用已有的 `instant_interrupt` 客户端功能。在 Re
 
 [公开 API 模型](https://developers.openai.com/api/docs/models/gpt-6.1-sol)支持 `low`、`medium`、`high`、`xhigh`、`max`，API 默认值为 `medium`。Codex 0.159.2 使用自身预设（默认 `low`，另有客户端 `ultra` 选项）；网关不会用 API 默认值覆盖客户端的明确选择。迁移请求中不支持的 `none/minimal` 映射为 `low`，包括保持原顺序的 `configuration_update` 项；启用推理时移除不支持的采样和 logprob 参数。工具调用应使用 Responses 出口，该模型的 Chat Completions 出口仅支持无工具请求。
 
-内置目录记录官方标准输入/缓存读取/缓存写入/输出价格，分别为每百万 token $2/$0.10/$2.50/$10，并包含 >272K 上下文价格和 Fast 模式元数据。实际计费仍以既有渠道价格配置为准。[Astra Ultrafast](https://developers.openai.com/api/docs/guides/ultrafast-mode) 使用 `service_tier: ultrafast`；目录已补充元数据，HTTP、WebSocket、转换和响应使用量路径保留该档位。不将 Sol 6.1 Ultrafast 标为已开放。
+内置目录记录官方标准输入/缓存读取/缓存写入/输出价格，分别为每百万 token $2/$0.10/$2.50/$10，并包含 >272K 上下文价格和 Fast 模式元数据。实际计费仍以既有渠道价格配置为准。[Astra Ultrafast](https://developers.openai.com/api/docs/guides/ultrafast-mode) 使用 `service_tier: ultrafast`；目录已补充元数据，HTTP、WebSocket、转换和响应使用量路径保留该档位。当前官方 API 指南也已支持 GPT-6.1 Sol Ultrafast；原生客户端按钮仍以账号目录提供的能力为准。
 
 首个有效输出前发生 TLS `bad record MAC` 时，按上游传输失败分类并复用既有有界重试。如果已根据明确拒绝修复加密 reasoning，后续重试保留该修复和可见历史。TLS 验证不变。缺少加密错误码或精确 item 拒绝的通用 HTTP400 不会触发删除历史。上游连接或容量仍不可用时，重试仍可能失败。
 
