@@ -1278,7 +1278,7 @@ func (a *remoteCompactionAdapter) generateCompactionWithCandidate(
 	compatibility := applyResponsesRejectedStatusCompatibility(outbound)
 	azureHistory := applyAzureResponsesHistoryCompatibility(outbound)
 	requestMiddlewares := []pipeline.Middleware{
-		applyPassThroughRequestBody(outbound, a.systemService),
+		applyPassThroughRequestBody(outbound, a.systemService, nil),
 		applyOverrideRequestBody(outbound),
 		applyUserAgentPassThrough(outbound, a.systemService),
 		applyOverrideRequestHeaders(outbound),

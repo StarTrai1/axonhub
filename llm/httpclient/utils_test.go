@@ -32,7 +32,7 @@ func TestMergeInboundRequestSkipsSelectedHeadersWithoutMutatingSource(t *testing
 func TestMergeInboundRequestKeepsProxyIdentityLocal(t *testing.T) {
 	for _, key := range []string{"Forwarded", "Via", "True-Client-IP", "X-Client-IP", "X-Original-Forwarded-For", "X-Forwarded-User", "Tailscale-User-Login"} {
 		source := &Request{Headers: http.Header{http.CanonicalHeaderKey(key): {"private-client"}, "X-Client-Request-Id": {"trace"}}}
-		merged := MergeInboundRequest(&Request{}, source)
+		merged := MergeInboundRequest(&Request{Headers: make(http.Header)}, source)
 		require.Empty(t, merged.Headers.Get(key), key)
 		require.Equal(t, "trace", merged.Headers.Get("X-Client-Request-Id"))
 		require.Equal(t, "private-client", source.Headers.Get(key))

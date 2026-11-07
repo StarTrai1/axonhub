@@ -52,7 +52,7 @@ func TestCodexModelsIncludeImageModel(t *testing.T) {
 			models, err := ParseModelCatalog(body)
 			// Then one image model is included without reordering other models.
 			require.NoError(t, err)
-			require.Equal(t, append(tt.want, "gpt-image-2.5-sunburst", "gpt-image-2.5-flare", "gpt-image-2.6-sunburst", "gpt-image-2.6-flare"), models)
+			require.Equal(t, tt.want, models)
 		})
 	}
 

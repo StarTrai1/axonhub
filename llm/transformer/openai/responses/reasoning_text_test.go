@@ -9,9 +9,9 @@ import (
 
 func TestReasoningContentFallbackAcrossConversions(t *testing.T) {
 	for _, tc := range []struct {
-		name string
+		name    string
 		summary []ReasoningSummary
-		want string
+		want    string
 	}{
 		{name: "content only", want: "first second"},
 		{name: "empty summary", summary: []ReasoningSummary{{Type: "summary_text"}}, want: "first second"},

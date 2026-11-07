@@ -35,9 +35,6 @@ func preserveRequestPayload(dst, src *llm.Request) {
 		dst.AlphaSearch.Body = src.AlphaSearch.Body
 	}
 	if src.Decisions != nil {
-		if dst.Decisions == nil {
-			dst.Decisions = &llm.DecisionsRequest{}
-		}
-		dst.Decisions.Body = src.Decisions.Body
+		dst.Decisions = src.Decisions
 	}
 }

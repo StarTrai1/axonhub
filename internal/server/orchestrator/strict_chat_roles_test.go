@@ -29,7 +29,7 @@ func TestStrictChatRolesAfterPassThrough(t *testing.T) {
 				LlmRequest: &llm.Request{Model: "actual-model", APIFormat: llm.APIFormatOpenAIChatCompletion, RawRequest: raw},
 			}}
 			wire := &httpclient.Request{URL: "https://relay.example/v1/chat/completions", APIFormat: string(llm.APIFormatOpenAIChatCompletion), Body: []byte(`{"messages":[]}`)}
-			wire, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(t.Context(), wire)
+			wire, err := applyPassThroughRequestBody(outbound, nil, nil).OnOutboundRawRequest(t.Context(), wire)
 			require.NoError(t, err)
 			require.True(t, outbound.state.PassThroughApplied)
 			wire, err = applyStrictChatRoles(outbound).OnOutboundRawRequest(t.Context(), wire)
@@ -43,7 +43,7 @@ func TestStrictChatRolesAfterPassThrough(t *testing.T) {
 			// A later attempt on an ordinary OpenAI channel starts with the original role.
 			outbound.state.CurrentCandidate.Channel.Type = channel.TypeOpenai
 			wire = &httpclient.Request{URL: "https://api.openai.com/v1/chat/completions", APIFormat: string(llm.APIFormatOpenAIChatCompletion)}
-			wire, err = applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(t.Context(), wire)
+			wire, err = applyPassThroughRequestBody(outbound, nil, nil).OnOutboundRawRequest(t.Context(), wire)
 			require.NoError(t, err)
 			wire, err = applyStrictChatRoles(outbound).OnOutboundRawRequest(t.Context(), wire)
 			require.NoError(t, err)

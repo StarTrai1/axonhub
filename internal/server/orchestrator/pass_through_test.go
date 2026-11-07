@@ -1212,7 +1212,7 @@ func TestApplyPassThroughRequestBody_DetachesCodexResponsesRepairWithoutPassThro
 	outbound.state.LlmRequest.APIFormat = llm.APIFormatOpenAIChatCompletion
 	request := outbound.state.RawProviderRequest
 
-	processed, err := applyPassThroughRequestBody(outbound, nil).
+	processed, err := applyPassThroughRequestBody(outbound, nil, nil).
 		OnOutboundRawRequest(context.Background(), request)
 
 	require.NoError(t, err)

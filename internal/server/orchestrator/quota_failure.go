@@ -20,7 +20,7 @@ func persistQuotaAdmissionFailure(ctx context.Context, state *PersistenceState, 
 		return nil
 	}
 	return state.RequestService.UpdateRequestFinalized(ctx, state.Request.ID, request.StatusFailed, "", map[string]any{
-		"error": response.Detail,
+		"error":       response.Detail,
 		"status_code": response.StatusCode,
 	}, requestLatencyMetrics(state, nil))
 }

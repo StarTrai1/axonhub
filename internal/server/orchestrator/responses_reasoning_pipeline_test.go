@@ -282,7 +282,7 @@ func runRejectedReasoningPipeline(
 	middlewares := []pipeline.Middleware{
 		applyPassThroughResponse(outbound, nil),
 		applyPassThroughStream(outbound, nil),
-		applyPassThroughRequestBody(outbound, nil),
+		applyPassThroughRequestBody(outbound, nil, nil),
 		applyPassThroughRequestHeaders(outbound),
 	}
 	var beforeCapture []pipeline.Middleware

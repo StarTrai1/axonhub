@@ -154,6 +154,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.LiveStreamRegistry,
 				params.ChannelLimiterManager,
 				params.ProviderQuotaStatusProvider,
+				orchestratorPlugins(params.PluginManager),
 			),
 		},
 		CompactHandlers: &ChatCompletionHandlers{
@@ -205,6 +206,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.LiveStreamRegistry,
 				params.ChannelLimiterManager,
 				params.ProviderQuotaStatusProvider,
+				orchestratorPlugins(params.PluginManager),
 			),
 		},
 		ModerationHandlers: &ChatCompletionHandlers{

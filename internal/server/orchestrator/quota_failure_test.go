@@ -13,7 +13,7 @@ import (
 func TestQuotaAdmissionFailurePersistsWithoutExecution(t *testing.T) {
 	ctx, client := setupTest(t)
 	svc := createTestRequestService(t, client)
-	record, err := client.Request.Create().SetModelID("gpt-6.1-terra").SetStatus(request.StatusProcessing).Save(ctx)
+	record, err := client.Request.Create().SetModelID("gpt-6.1-terra").SetRequestBody([]byte(`{}`)).SetStatus(request.StatusProcessing).Save(ctx)
 	require.NoError(t, err)
 	state := &PersistenceState{Request: record, RequestService: svc}
 	require.NoError(t, persistQuotaAdmissionFailure(ctx, state, newQuotaReserveUnavailableError("gpt-6.1-terra")))

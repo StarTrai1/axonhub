@@ -119,6 +119,7 @@ func AllAPIFormats() []APIFormat {
 		APIFormatOpenAITranslation,
 		APIFormatOpenAIModeration,
 		APIFormatOpenAIAlphaSearch,
+		APIFormatOpenAISearch,
 		APIFormatGeminiContents,
 		APIFormatAnthropicMessage,
 		APIFormatAiSDKText,
