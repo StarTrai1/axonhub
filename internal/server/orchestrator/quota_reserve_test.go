@@ -55,9 +55,9 @@ func TestQuotaReserveMeasuredUsageDoesNotDependOnInferredWindowStart(t *testing.
 	weeklyReset := time.Unix(1794499138, 0)
 	reserve := &objects.ChannelQuotaReserve{FiveHourPercent: lo.ToPtr(95), SevenDayPercent: lo.ToPtr(98)}
 	for _, tc := range []struct {
-		name string
+		name       string
 		five, week float64
-		blocked bool
+		blocked    bool
 	}{
 		{name: "observed idle window", five: 0, week: .38},
 		{name: "five-hour threshold still enforced", five: .95, week: .38, blocked: true},
