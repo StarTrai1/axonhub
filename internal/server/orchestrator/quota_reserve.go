@@ -55,9 +55,9 @@ func evaluateQuotaReserve(r *objects.ChannelQuotaReserve, status *biz.QuotaChann
 		if limit.NextResetAt != nil && !limit.NextResetAt.After(now) {
 			continue
 		}
-		if limit.PeriodStart != nil && limit.PeriodStart.After(now) {
-			continue
-		}
+		// PeriodStart is derived from reset time minus duration for display.
+		// A fresh idle Codex window can start just after our local clock because
+		// the provider clock is ahead. It must not invalidate measured usage.
 		var percent *int
 		switch limit.Window {
 		case provider_quota.QuotaWindow5h:

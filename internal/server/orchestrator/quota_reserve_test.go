@@ -47,6 +47,35 @@ func TestQuotaReserveWindowEvidence(t *testing.T) {
 	require.False(t, quotaReserveBlocks(t.Context(), candidate.Channel, &llm.Request{}, false, &mockQuotaStatusProvider{}, now))
 }
 
+func TestQuotaReserveMeasuredUsageDoesNotDependOnInferredWindowStart(t *testing.T) {
+	// Read-only production observation: HTTP 200, allowed=true, 0% / 38%.
+	// The provider's idle 5h reset implies a start 0.505s after local receipt.
+	now := time.Unix(1794078724, 495434500)
+	reset := time.Unix(1794096725, 0)
+	weeklyReset := time.Unix(1794499138, 0)
+	reserve := &objects.ChannelQuotaReserve{FiveHourPercent: lo.ToPtr(95), SevenDayPercent: lo.ToPtr(98)}
+	for _, tc := range []struct {
+		name string
+		five, week float64
+		blocked bool
+	}{
+		{name: "observed idle window", five: 0, week: .38},
+		{name: "five-hour threshold still enforced", five: .95, week: .38, blocked: true},
+		{name: "weekly threshold still enforced", five: 0, week: .98, blocked: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			limits := []provider_quota.QuotaLimitStatus{
+				provider_quota.NewTokenLimitStatus("available", tc.five, &reset).WithWindow(provider_quota.QuotaWindow5h, 5*time.Hour),
+				provider_quota.NewTokenLimitStatus("available", tc.week, &weeklyReset).WithWindow(provider_quota.QuotaWindow7d, 7*24*time.Hour),
+			}
+			require.True(t, limits[0].PeriodStart.After(now), "retain provider timing for display")
+			blocked, known := evaluateQuotaReserve(reserve, &biz.QuotaChannelStatus{Limits: limits}, now)
+			require.True(t, known, "measured current usage must not be discarded because of inferred window start")
+			require.Equal(t, tc.blocked, blocked)
+		})
+	}
+}
+
 func TestQuotaReserveToolsDoNotGrantCapabilitiesOrBypassHardQuota(t *testing.T) {
 	candidate := quotaRoutingCandidate(1, objects.QuotaRoutingModeRemoveOnExhausted)
 	candidate.Channel.Type = channel.TypeCodex
