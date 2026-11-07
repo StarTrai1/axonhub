@@ -673,7 +673,7 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
                     <span>{t('common.messages.errorMessage')}</span>
                     <Badge variant='outline' className='font-mono'>{request.responseBody.error.code}</Badge>
                   </div>
-                  <p className='break-words leading-relaxed'>{request.responseBody.error.message}</p>
+                  <p className='text-foreground break-words leading-relaxed'>{request.responseBody.error.message}</p>
                 </div>
               )}
               {request.responseHeaders && (

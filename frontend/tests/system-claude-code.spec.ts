@@ -52,6 +52,9 @@ test('Claude Code safeguards can edit, save, reload, validate, and reset', async
       case 'CheckForUpdate':
         await route.fulfill({ json: { data: { checkForUpdate: { hasUpdate: false } } } });
         break;
+      case 'PluginUIEntries':
+        await route.fulfill({ json: { data: { pluginUIEntries: { pages: [], slots: [] } } } });
+        break;
       default:
         await route.fulfill({ json: { data: {
           onboardingInfo: { onboarded: true, systemModelSetting: { onboarded: true }, autoDisableChannel: { onboarded: true } },

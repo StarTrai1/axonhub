@@ -160,10 +160,10 @@ func TestQuotaReserveUsageFailsClosedWithoutUsableCollection(t *testing.T) {
 
 func TestQuotaReserveReadRetryIsBoundedAndPreservesDenials(t *testing.T) {
 	for _, tc := range []struct {
-		name string
+		name   string
 		status int
-		after string
-		calls int
+		after  string
+		calls  int
 	}{
 		{name: "temporary read failure", status: 503, calls: 2},
 		{name: "invalid credentials", status: 401, calls: 1},
