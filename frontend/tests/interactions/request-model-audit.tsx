@@ -4,9 +4,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryHistory, createRootRoute, createRouter, RouterProvider } from '@tanstack/react-router';
 import { flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import '@/index.css';
-import '@/lib/i18n';
+import i18n from '@/lib/i18n';
+import { ThemeProvider } from '@/context/theme-context';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { useRequestsColumns } from '@/features/requests/components/requests-columns';
+import { RequestDetailContent } from '@/features/requests/components/request-detail-content';
 import type { Request } from '@/features/requests/data/schema';
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
@@ -39,11 +41,16 @@ function RequestModelAuditFixture() {
 }
 
 const router = createRouter({
-  routeTree: createRootRoute({ component: RequestModelAuditFixture }),
+  routeTree: createRootRoute({ component: () => new URLSearchParams(location.search).has('quota')
+    ? <RequestDetailContent requestId='80853' /> : <RequestModelAuditFixture /> }),
   history: createMemoryHistory({ initialEntries: ['/'] }),
 });
+const params = new URLSearchParams(location.search);
+if (params.has('quota')) await i18n.changeLanguage('zh-CN');
 createRoot(document.getElementById('root')!).render(
   <StrictMode><QueryClientProvider client={queryClient}><TooltipProvider>
-    <RouterProvider router={router} />
+    <ThemeProvider defaultTheme={params.get('theme') === 'dark' ? 'dark' : 'light'} defaultColorScheme='claude'>
+      <RouterProvider router={router} />
+    </ThemeProvider>
   </TooltipProvider></QueryClientProvider></StrictMode>
 );

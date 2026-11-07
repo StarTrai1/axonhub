@@ -25,7 +25,7 @@ func TestChannelTestingRejectsPluginsBeforeDependencies(t *testing.T) {
 	for _, callCtx := range []context.Context{ctx, authz.WithScopeDecision(ctx, scopes.ScopeWriteChannels)} {
 		for name, call := range map[string]func(*testing.T) error{
 			"channel": func(t *testing.T) error {
-				result, err := tester.TestChannel(callCtx, channelID, nil, nil)
+				result, err := tester.TestChannel(callCtx, channelID, nil, nil, nil)
 				require.Nil(t, result)
 				return err
 			},

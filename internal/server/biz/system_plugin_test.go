@@ -38,8 +38,8 @@ func TestSystemSettingsReadsAreHostReads(t *testing.T) {
 	require.NoError(t, err)
 	system, userPrompt, err := service.ChannelTestPrompts(plugin)
 	require.NoError(t, err)
-	require.NotEmpty(t, system)
-	require.NotEmpty(t, userPrompt)
+	require.Equal(t, defaultChannelTestSystemPrompt, system)
+	require.Equal(t, defaultChannelTestUserPrompt, userPrompt)
 
 	// Reads without any principal, as background jobs do.
 	brand, err = service.BrandName(ent.NewContext(context.Background(), db))

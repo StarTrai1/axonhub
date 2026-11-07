@@ -30,6 +30,46 @@ func (f reserveQuotaTransport) RoundTrip(req *http.Request) (*http.Response, err
 	return f(req)
 }
 
+func TestQuotaReserveTransientUsageFailureRecoversBeforeMemoryDispatch(t *testing.T) {
+	ctx, client := setupTest(t)
+	token, err := jwt.NewWithClaims(jwt.SigningMethodNone, jwt.MapClaims{
+		"https://api.openai.com/auth": map[string]any{"chatgpt_account_id": "reserve-test"},
+	}).SignedString(jwt.UnsafeAllowNoneSignatureType)
+	require.NoError(t, err)
+	entity := createRetryGuardChannel(t, ctx, client, "reserve-memory", objects.ChannelCredentials{
+		OAuth: &objects.OAuthCredentials{AccessToken: token},
+	})
+	settings := &objects.ChannelSettings{CodexSearchOnly: true, CodexImageOnly: true,
+		QuotaReserve: &objects.ChannelQuotaReserve{FiveHourPercent: lo.ToPtr(95), SevenDayPercent: lo.ToPtr(98)},
+	}
+	entity, err = client.Channel.UpdateOneID(entity.ID).SetType(channel.TypeCodex).
+		SetPolicies(objects.ChannelPolicies{CodexMemory: objects.CodexMemoryNormal}).SetSettings(settings).Save(ctx)
+	require.NoError(t, err)
+	for _, percent := range []int{0, 95} {
+		t.Run(fmt.Sprint(percent), func(t *testing.T) {
+			var checks atomic.Int32
+			hc := httpclient.NewHttpClientWithClient(&http.Client{Transport: reserveQuotaTransport(func(req *http.Request) (*http.Response, error) {
+				require.Equal(t, http.MethodGet, req.Method)
+				require.Equal(t, "/backend-api/wham/usage", req.URL.Path, "admission must never send an inference")
+				if checks.Add(1) == 1 {
+					return &http.Response{StatusCode: 503, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"error":"temporary"}`))}, nil
+				}
+				return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(fmt.Sprintf(`{"rate_limit":{"allowed":true,"primary_window":{"used_percent":%d,"limit_window_seconds":18000,"reset_after_seconds":18000},"secondary_window":{"used_percent":38,"limit_window_seconds":604800,"reset_after_seconds":604800}}}`, percent)))}, nil
+			})})
+			quota := biz.NewProviderQuotaService(biz.ProviderQuotaServiceParams{Ent: client, SystemService: newTestSystemService(client), HttpClient: hc})
+			err := checkQuotaReserveForDispatch(ctx, &biz.Channel{Channel: entity}, &llm.Request{Model: "gpt-6.1-terra"}, true, quota)
+			if percent == 0 {
+				require.NoError(t, err, "normal memory must recover after a transient read failure when fresh usage is below its limits")
+			} else {
+				var responseErr *llm.ResponseError
+				require.ErrorAs(t, err, &responseErr)
+				require.Equal(t, "quota_reserve_reached", responseErr.Detail.Code, "recovery must still enforce the newly observed threshold")
+			}
+			require.EqualValues(t, 2, checks.Load())
+		})
+	}
+}
+
 func TestQuotaReserveRefreshesBelowThresholdSnapshotBeforeRetry(t *testing.T) {
 	ctx, client := setupTest(t)
 	token, err := jwt.NewWithClaims(jwt.SigningMethodNone, jwt.MapClaims{
