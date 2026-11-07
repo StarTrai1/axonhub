@@ -72,8 +72,10 @@ func (svc *ChannelService) onTokenRefreshed(ch *ent.Channel) func(ctx context.Co
 	return func(ctx context.Context, refreshed *oauth.OAuthCredentials) error {
 		mu.Lock()
 		defer mu.Unlock()
-		ctx = authz.WithSystemBypass(ctx, "channel-refresh-cache")
-		saved, err := svc.refreshOAuthToken(ctx, &snapshot, refreshed)
+		// Persist under the host identity while retaining the last saved OAuth snapshot.
+		saved, err := authz.RunAsHost(ctx, svc.entFromContext(ctx), "channel-refresh-credentials", func(hostCtx context.Context) (*ent.Channel, error) {
+			return svc.refreshOAuthToken(hostCtx, &snapshot, refreshed)
+		})
 		if saved != nil {
 			snapshot = *saved
 		}

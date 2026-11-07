@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"slices"
 	"sort"
 	"strings"
 
@@ -106,14 +107,14 @@ func parseModelCatalog(body []byte, supplementImageModel, requireListVisibility 
 		return response.Models[i].Priority < response.Models[j].Priority
 	})
 	models := make([]string, 0, len(response.Models))
-	imageModelIncluded := false
+	imageModelsIncluded := make(map[string]bool, len(ImageModels()))
 	for _, model := range response.Models {
 		if (!requireListVisibility || model.Visibility == "list") && strings.TrimSpace(model.Slug) != "" {
-			if model.Slug == "gpt-image-2" {
-				if imageModelIncluded {
+			if isCodexImageModel(model.Slug) {
+				if imageModelsIncluded[model.Slug] {
 					continue
 				}
-				imageModelIncluded = true
+				imageModelsIncluded[model.Slug] = true
 			}
 			models = append(models, model.Slug)
 		}
@@ -140,4 +141,8 @@ func parseModelCatalog(body []byte, supplementImageModel, requireListVisibility 
 		}
 	}
 	return models, nil
+}
+
+func isCodexImageModel(model string) bool {
+	return slices.Contains(ImageModels(), model)
 }

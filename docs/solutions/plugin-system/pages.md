@@ -2,6 +2,8 @@
 
 [插件系统](README.md)的 UI 扩展点。v1 只有独立页面：侧栏入口加一个整页 iframe。dashboard 面板等插槽见 [slots.md](slots.md)，未排期，排期时复用本篇的 iframe 宿主、桥接和插件 GraphQL。manifest 的 `ui.pages` 字段见 [manifest.md](manifest.md)。数值限制见 [运行限制](README.md#运行限制)。任务见 [任务表](README.md#9-任务管理)，本篇对应 T-04 至 T-07。
 
+> 页面使用独立 Plugin Principal，context 中的用户为收窄视图（权限与插件授权取交集、无 Owner、无角色），详见 [permission.md](permission.md)。
+
 ## 1. 背景
 
 ### 现状
@@ -16,7 +18,7 @@
 
 ## 2. 目标
 
-1. manifest 的 `ui.pages` 每个条目在侧栏的「插件」分组里有一个入口。打开 `/plugins/$pluginId/pages/$page` 时，主区域渲染该页面的 iframe。iframe 是 `sandbox="allow-scripts"`，不能读 cookie 和 localStorage。
+1. manifest 的 `ui.pages` 每个条目在侧栏的「插件」分组里有一个入口。打开 `/plugins/$pluginId/pages/$page` 时，主区域渲染该页面的 iframe。iframe 是 `sandbox="allow-scripts allow-forms"`，不能读 cookie 和 localStorage；表单可以用 `submit` 事件处理，但不能真正提交。
 2. 页面经桥接执行 GraphQL query 和 mutation。执行权限是插件的 `granted_permissions` 与当前用户权限的交集。
 3. 页面能读写本插件的 KV，读写不到其他插件的 KV。写入要求当前用户有 `write_plugins`。
 4. 插件被禁用、页面 key 不存在、或用户未登录时，不渲染 iframe。页面 10 秒内不握手或脚本报错时，显示错误和重试。
@@ -24,7 +26,7 @@
 ### 非目标
 
 - 插槽：dashboard 面板、渠道编辑对话框、系统设置。见 [slots.md](slots.md)。
-- 页面直接访问网络。
+- 浏览器直连外部 URL。页面用 `axonhub.fetch` 请宿主代发，目标必须匹配已授权的路径或正则，见 [出站请求](plugin.js.md#出站请求)。CSP 的 `connect-src` 保持 `'none'`。
 - 按 mutation 细分插件权限。授予 `write_channels` 就是授予渠道的全部写能力，见 [妥协 1](#10-风险与妥协)。
 - 把用户 token 交给 iframe；向页面传入请求体。
 - 用插件页面替换 dashboard、渠道、请求这些内置页面。
@@ -44,8 +46,8 @@
 |------|------|
 | 页面提交 SQL | 放弃。绕过 Ent privacy，能读到凭证列，还要写三种方言 |
 | iframe 直连 `/admin/graphql` | 放弃。iframe 要拿到用户 token，插件获得用户的全部权限 |
-| 宿主代理 GraphQL，放入降权后的 `*ent.User` | 采用。现有 privacy 规则不用改 |
-| 在 context 里加 scope 上限，逐个改 `HasSystemScope` 和 `OwnerRule` | 放弃。调用点超过 80 处，漏一处就越权 |
+| 宿主代理 GraphQL，使用 Plugin 主体和收窄用户视图 | 采用。公共 privacy 与业务授权检查识别委托上限；直接读 Owner 标记的代码默认拿不到 Owner 权限 |
+| 在 context 里只放一个独立 scope 上限 | 不采用。身份、安装和授权快照必须保持一致 |
 | 合成 API Key principal | 放弃。`WithPrincipal` 不允许同一请求混用 User 和 APIKey |
 | 页面写入：开放 mutation，权限上限包含 `write_*` | 采用。敏感权限在授权时高亮，风险记为妥协 |
 | 页面写入：插件动作 `onAction`，后端只能调宿主 API | 放弃。写的范围更小，但每种写操作都要先加宿主 API，且页面依赖 JS 执行运行时 |
@@ -53,9 +55,7 @@
 | KV 写入：能打开页面的用户都能写 | 放弃。页面隐藏按钮挡不住直接调用端点 |
 | KV 写入：新增用户 scope `write_plugins` | 采用。scope 定义见 [README](README.md#plugin) |
 
-降权能生效，是因为规则只读 context 里的用户对象，不会按用户 ID 再加载一遍来做判断。例外是 `me`：它会重新从数据库加载，所以页面查 `me` 得到的是真实信息。这只是用户读自己，接受。
-
-自助 mutation 不经过 scope 判断，降权挡不住，所以插件端点单独拒绝它们，见 [插件 GraphQL](#7-插件-graphql)。这不是危险操作黑名单：被拒绝的是权限上限管不到的 mutation，不是按危险程度挑出来的。
+Plugin 主体记录真实用户 ID 用于身份和归属；context 中的用户是收窄视图，系统与项目授权分别取交集。Owner、本人身份不再自动放行插件；私有模板由 Ent privacy 拒绝。`me` 只暴露基础资料，不返回权限或关联资源。自助操作由业务入口的 `RequireDirectUser` 拒绝插件，私有资源由 Ent 本人资源规则限制；GraphQL 不维护 mutation 黑名单。详见 [权限方案](permission.md#6-私有数据自助接口与-bypass)。
 
 ## 5. 路由与侧栏
 
@@ -67,7 +67,7 @@
 3. 匹配到：渲染 PluginFrame，entry 用该 page 的 entry，占满认证布局的主区域
 ```
 
-`sidebar.ts` 的 `useSidebarData` 在权限过滤之后追加一组「插件」。项来自 `pluginUIEntries.pages`，`title` 为字符串时直接显示，为对象时按当前语言 → `en` → `key` 回退，统一遵循 [title](manifest.md#title)。这一组不进 `nav-items.ts` 的静态定义，也不进 `route-permission.ts`：能看到项的条件是「已登录且该插件启用并声明了页面」。页面内部的数据由 [插件 GraphQL](#7-插件-graphql) 限制。
+侧栏的「插件」分组在 `nav-items.ts` 里静态定义，位于「项目」和「设置」之间，静态项只有「插件管理」（`/plugins`，需要 `read_plugins`）。`sidebar.ts` 的 `useSidebarData` 在权限过滤之后把页面项追加到这一组；用户看不到或隐藏了「插件管理」时，按原位置重建只含页面项的分组。项来自 `pluginUIEntries.pages`，`title` 为字符串时直接显示，为对象时按当前语言 → `en` → `key` 回退，统一遵循 [title](manifest.md#title)。页面项不进 `nav-items.ts`，也不进 `route-permission.ts`：能看到项的条件是「已登录且该插件启用并声明了页面」。页面内部的数据由 [插件 GraphQL](#7-插件-graphql) 限制。
 
 `PluginUIPage.title` 使用现有 `JSONRawMessage!` scalar 保留字符串或对象形式；前端声明为 `string | Record<string, string>`，用统一的标题解析函数处理，不在 GraphQL 中按某个用户语言提前转成字符串。
 
@@ -81,19 +81,23 @@
          + "." + HMAC-SHA256(SystemKeySecretKey, "plugin-ui|" + payload)
    entry 必须是该插件 manifest 里某个 page 的 entry，并绑定到 token；资源读取范围见下文
 2. iframe src=/admin/plugin-ui/<token>/<entry>
-   sandbox="allow-scripts"，不加 allow-same-origin
+   sandbox="allow-scripts allow-forms"，不加 allow-same-origin
    referrerpolicy="no-referrer"
+   allow-forms 只为让 submit 事件触发（没有它浏览器在派发 submit 前就拦截表单），
+   真正的表单提交由 CSP form-action 'none' 拦截
 3. 资源响应头：
-   Content-Security-Policy: sandbox allow-scripts; default-src 'none';
+   Content-Security-Policy: sandbox allow-scripts allow-forms; default-src 'none';
      script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';
-     img-src 'self' data:; font-src 'self'; connect-src 'none'; frame-ancestors 'self'
+     img-src 'self' data:; font-src 'self'; connect-src 'none'; form-action 'none';
+     frame-ancestors 'self'
    X-Content-Type-Options: nosniff
    Referrer-Policy: no-referrer
    Access-Control-Allow-Origin: *
    不设置 Access-Control-Allow-Credentials；只对 token 保护的 UI 资源路由启用，见下文 CORS 契约
 4. 页面加载 /admin/plugin-ui/<token>/_axonhub/bridge.js，axonhub.ready() 发 hello
 5. 宿主只接受 event.source === iframe.contentWindow 的消息
-   回 init{theme, colorScheme, locale, projectId, page, panel: null, slot: null, config, canWriteKV}
+   回 init{theme, colorScheme, tokens, locale, projectId, page, panel: null, slot: null, config, canWriteKV}
+   tokens 是宿主已计算的样式变量，规则见 [UI Bridge](ui-bridge.md#1-sdk-契约)
    config 去掉 secret；canWriteKV 是当前用户是否有 write_plugins
 6. axonhub.graphql(query, variables)
    → PluginFrame 用自己渲染时的 pluginID POST /admin/plugins/:pluginId/graphql
@@ -182,7 +186,7 @@ UI token 的资源读取范围：
 - **响应**：该路由固定返回 `Access-Control-Allow-Origin: *`，不反射请求 Origin，也不使用 `Access-Control-Allow-Origin: null`。不返回 `Access-Control-Allow-Credentials` 或 Set-Cookie；不开放 Authorization 等自定义请求头。固定通配符不需要增加 `Vary: Origin`，保留其他已有 Vary 值。成功、条件响应（若返回 304）及错误响应均保留相同 CORS 头，错误响应不能包含受保护的资源内容。
 - **鉴权**：URL token 是资源访问凭据；CORS 不替代签名、有效期、启用状态、包版本和路径范围校验。所有读取（含 HEAD、条件请求）均先鉴权，不能因有 Cookie、用户 JWT 或 `Origin: null` 而放行无效 token。持有有效 token 的调用方可匿名读取其范围内的静态资源，因此包内 UI 文件不得包含密钥。
 - **加载方式**：示例使用 `crossorigin="anonymous"`，Vite 产物的模块脚本和 modulepreload 也使用匿名模式；禁止 `crossorigin="use-credentials"`。不向模块请求附加 Cookie、HTTP 身份认证或用户 Bearer token，不需要 SDK 在 JS 中拼接认证头。
-- **隔离保持**：iframe 和响应 CSP 仍为 `sandbox allow-scripts`，不增加 `allow-same-origin`，不放宽 `connect-src 'none'`。这套静态资源 CORS 不能挂到整个 `/admin`，也不能应用到主 GraphQL 或插件 GraphQL 端点；数据访问继续由父页面 Bridge 代理。CORS 不改变 SDK 的 source/session 校验。
+- **隔离保持**：iframe 和响应 CSP 仍为 `sandbox allow-scripts allow-forms`，不增加 `allow-same-origin`，不放宽 `connect-src 'none'` 和 `form-action 'none'`。页面要访问已登记的外部 URL 时，调用 `axonhub.fetch`，由宿主代发；浏览器不直接连接该 URL，因此不需要放宽 `connect-src`。这套静态资源 CORS 不能挂到整个 `/admin`，也不能应用到主 GraphQL 或插件 GraphQL 端点；数据访问继续由父页面 Bridge 代理。CORS 不改变 SDK 的 source/session 校验。
 - **响应类型**：JS 模块及其依赖返回 `Content-Type: text/javascript`，CSS 返回 `text/css`，字体返回 `font/woff2`，保留 `nosniff`。缺失的 JS 返回真实 404，不能用 HTML 入口兜底，否则模块会因 MIME 不匹配失败。
 
 `navigate` 只允许站内路径。`toast` 走宿主的通知。主题变化用 `onTheme` 再推一次。
@@ -208,34 +212,35 @@ UI token 的资源读取范围：
 
 ## 7. 插件 GraphQL
 
-`POST /admin/plugins/:pluginId/graphql` 放在新的 JWT 组：`WithJWTAuth` 只接受用户 JWT，不接受 service account，加 `WithProjectID`、限流和 10 秒超时。
+`POST /admin/plugins/:pluginId/graphql` 放在新的 JWT 组：`WithJWTAuth` 只接受用户 JWT，不接受 service account，加 `WithProjectID` 和 10 秒超时。
 
 ```text
 a. 插件存在、已启用、声明了 ui.pages；否则 404
-b. kvWritable = 降权前的用户是 Owner，或有系统级 write_plugins。写入 context
+b. kvWritable = 委托用户是 Owner，或有系统级 write_plugins。写入 context
 c. ceiling = granted_permissions 去掉 webhook，即插件被授予的 read_* 与 write_channels
-d. DowngradeUser(user, ceiling) 后 contexts.WithUser；pluginID 和步骤 a 解析到的 installationID（plugins.id）写入 context，本次操作固定使用
-e. 接受 Query 和 Mutation，拒绝 Subscription。根字段在自助 mutation 名单里时返回 FORBIDDEN
+d. authz.DelegatePlugin 派生 Plugin 主体，复制授权快照并隔离请求容器；pluginID 和步骤 a 解析到的 installationID（plugins.id）绑定本次操作
+e. 接受 Query 和 Mutation，拒绝 Subscription。个人账号操作在业务入口检查直接用户身份，Owner 操作检查直接 Owner，私有资源通过 Ent privacy 检查；拒绝时返回 FORBIDDEN。
 f. FixedComplexityLimit(1000)。响应上限 2 MiB
 ```
 
-`DowngradeUser`：
+`DelegatePlugin` 要求已认证且身份一致的直接 User，拒绝继承 privacy Allow 或系统 bypass。context 中的用户替换为 `scopes.DelegatedUserView` 生成的收窄视图，并固定在委托快照中；每次资源授权检查 Plugin 的授权上限和用户在系统或对应项目的权限。Owner-only 操作不对 Plugin 开放。主体替换属于非法宿主调用，先审计再 panic；通用 system bypass 对 Plugin 默认拒绝（审计并返回错误或拒绝所有 Ent 操作）；普通权限不足仍返回授权错误。
 
-- 系统有效 scope = Owner 则全部，否则 `Scopes` 并上系统角色 scopes。副本 `Scopes = 有效 ∩ ceiling`，`IsOwner=false`，`Edges.Roles=nil`。
-- 每个 `UserProject`：系统 Owner 或项目 Owner 则全部，否则成员 scopes 并上该项目角色 scopes。副本同样取交集，`IsOwner=false`。
-- 其余字段保留。
+页面 KV 由固定宿主操作校验安装 ID、用户身份和写资格，不向插件返回特权 context。插件获授 `write_channels` 且用户本人也拥有该权限时，凭证明文读取遵循相应显式权限；资源查询仍通过 Ent privacy。
 
-`IsOwner=false` 让只认 `OwnerRule` 的 mutation（备份恢复、用户和角色管理、系统设置等）在插件端点一律被拒。插件被授予 `write_channels`、用户本人也有时，页面能执行渠道相关的全部 mutation，也能读到 `credentials` 明文，见 [妥协 1](#10-风险与妥协)。
+个人资料、密码和 OIDC 解绑通过业务入口的直接用户检查保护；私人模板通过 Ent 本人资源规则保护。测试枚举 schema 的全部 Mutation 根字段并与快照比较：新增 mutation 时确认其 scope、直接用户或资源归属检查后更新快照。限制不依赖字段名、别名或 fragment。多个 mutation 的拒绝发生在字段执行时；数据库事务内的写入会随错误回滚，已发生的外部副作用不能靠此机制撤销。
 
-自助 mutation：`updateMe`、`updateMyPassword`、`unlinkOIDCIdentity`、`createChannelOverrideTemplate`、`updateChannelOverrideTemplate`、`deleteChannelOverrideTemplate`。名单放在 `graphql.go`。测试枚举 schema 的全部 Mutation 根字段并与快照比较：新增 mutation 会让测试失败，作者确认它按 scope 授权后更新快照，否则加进名单。
-
-`graphql.go` 抽出 `newSchemaFromDeps`。`GraphqlHandler` 增加 `PluginGraphql`，复用同一 schema，只注册 POST，`AroundOperations` 拒绝 Subscription 和自助 mutation，复用 ErrorPresenter，不启用 APQ。
+`graphql.go` 抽出 `newSchemaFromDeps`。`GraphqlHandler` 增加 `PluginGraphql`，复用同一 schema，只注册 POST，`AroundOperations` 仅拒绝 Subscription，复用 ErrorPresenter，不启用 APQ。
 
 ### KV 字段
 
 `plugin.graphql` 增加：
 
 ```graphql
+type PluginKVPage {
+  entries: [PluginKVEntry!]!
+  nextCursor: String
+}
+
 type PluginKVEntry {
   namespace: String!
   key: String!
@@ -246,7 +251,7 @@ type PluginKVEntry {
 
 extend type Query {
   pluginKV(namespace: String, key: String!): PluginKVEntry
-  pluginKVList(namespace: String, prefix: String): [PluginKVEntry!]!
+  pluginKVList(namespace: String, prefix: String, first: Int = 100, after: String): PluginKVPage!
 }
 
 extend type Mutation {
@@ -255,6 +260,7 @@ extend type Mutation {
 }
 ```
 
+- `pluginKVList` 按 key 升序分页：`first` 默认 100，范围 1–100；首请求省略 `after`，后续传上页的 `nextCursor`。返回 `entries` 和 `nextCursor`，游标为空表示没有下一页。游标是上一页最后一个 key，查询使用排他边界；翻页时保持 namespace 和 prefix 不变。分页不提供跨请求快照，并发新增在游标之前的键需重新从首页读取。
 - 字段没有插件 ID 参数。resolver 从 context 取 installationID，只有插件端点会写入；在 `/admin/graphql` 上调用返回 FORBIDDEN。不能按 manifest ID 重新查找安装，避免在途操作写入同名重装插件的 KV。
 - 读：能打开页面的用户都可以。写：要求 context 里的 `kvWritable`，否则 FORBIDDEN。
 - 直接调用 [`kv.go`](README.md#pluginstorage)，和 `ctx.kv` 是同一份数据、同一套校验（key、value 大小、TTL、list 条数）。namespace 省略时为 `default`。
@@ -263,8 +269,8 @@ extend type Mutation {
 
 ### 后端
 - `internal/server/plugin/ui.go`、`uisdk/bridge.js`：见上文。
-- `internal/server/plugin/downgrade.go`：`DowngradeUser`。
-- `internal/server/plugin/graphql.go`：插件端点、自助 mutation 名单、kvWritable、pluginID 与 installationID 写入 context。
+- `internal/authz/plugin.go`、`internal/authz/identity/`：受控委托、安装身份和授权快照。
+- `internal/server/plugin/graphql.go`：插件端点、业务主体鉴权、kvWritable、pluginID 与 installationID 写入 context。
 - `internal/server/gql/graphql.go`：抽出 `newSchemaFromDeps`，增加 `PluginGraphql`。
 - `internal/server/gql/plugin.graphql` 与 resolver：KV 字段。执行 `make generate` 后手写 `pluginKV`、`pluginKVList`、`setPluginKV`、`deletePluginKV`。
 - `internal/server/routes.go`：两个路由组。
@@ -272,7 +278,7 @@ extend type Mutation {
 ### 前端
 - `features/plugins/components/plugin-frame.tsx`：握手、主题、GraphQL 转发、navigate、toast、错误与重试。
 - `routes/_authenticated/plugins/$pluginId/pages/$page.tsx`
-- `sidebar.ts`：追加插件分组。
+- `sidebar.ts`：把页面项追加到「插件」分组。
 - `locales/en/plugins.json`、`locales/zh-CN/plugins.json`：分组名、404、页面出错文案。key 与管理页共用这两个文件。
 
 ## 9. 验收
@@ -302,15 +308,15 @@ extend type Mutation {
 
 | 风险 | 触发条件 | 影响 | 对策 |
 |------|----------|------|------|
-| 降权被绕过 | 新 resolver 按用户 ID 重新加载用户再做权限判断 | 页面得到用户的完整权限 | 降权矩阵覆盖全部 Query 根字段。新增 resolver 时检查这一点。`me` 除外 |
-| 新增自助 mutation 未进名单 | 新 mutation 只认用户本人，不查 scope | 页面能以用户身份修改其个人数据 | Mutation 根字段快照测试，新增时必须分类 |
+| 降权被绕过 | 新 resolver 按用户 ID 从数据库重新加载用户再做权限判断 | 页面得到用户的完整权限 | 替换 context 用户无效（`GetUser` 固定返回收窄视图）；重新加载的查询仍受 Plugin privacy 约束；Owner 判断走 `scopes.IsDirectOwner`。降权矩阵覆盖全部 Query 根字段，`me` 除外 |
+| 新增自助操作缺少主体检查 | 新业务入口只认用户 ID | 页面能以用户身份修改其个人数据 | 业务入口统一调用 `RequireDirectUser`，保留跨入口授权回归测试 |
 | 页面滥用写权限 | 插件被授予 `write_channels`，有该权限的用户打开页面 | 页面在用户不知情时改渠道，包括改渠道地址把凭证送到外部，或读出凭证明文 | 授权对话框高亮并写明影响；妥协 1 |
 
 ```text
 1. 妥协：页面的写权限按 scope 整类授予，不细分到 mutation
    - 原因：scope 只有 read / write 两档，按 mutation 细分要为插件单独设计一套权限
    - 影响：授予 write_channels 后，页面能执行全部渠道 mutation，并能读取凭证明文。
-     iframe 不能联网，但改渠道地址后，凭证会随下一次请求发到该地址
+     页面不能自己联网。已经授权的出站规则上，页面可以通过 `axonhub.fetch` 把读到的数据发给对应路径，授权对话框列出这些 URL。
    - 升级触发：出现需要写权限、但不应接触凭证的插件，或要开放给不可信第三方
    - 后续方向：增加插件专用的细分权限（例如只允许启停渠道），或改为插件动作 onAction
 

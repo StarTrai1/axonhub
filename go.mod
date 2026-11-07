@@ -10,6 +10,7 @@ require (
 	entgo.io/ent v0.14.6
 	github.com/99designs/gqlgen v0.17.86
 	github.com/Masterminds/semver/v3 v3.5.0
+	github.com/MoeForge/moejs v0.1.0-alpha.11
 	github.com/alicebob/miniredis/v2 v2.40.0
 	github.com/andreazorzetto/yh v0.4.0
 	github.com/aptible/supercronic v0.2.51
@@ -24,6 +25,7 @@ require (
 	github.com/dlclark/regexp2/v2 v2.12.0
 	github.com/eko/gocache/lib/v4 v4.4.0
 	github.com/eko/gocache/store/go_cache/v4 v4.2.10
+	github.com/evanphx/json-patch/v5 v5.9.11
 	github.com/expr-lang/expr v1.17.8
 	github.com/gin-contrib/cors v1.7.10
 	github.com/gin-contrib/sse v1.1.1
@@ -31,6 +33,7 @@ require (
 	github.com/gin-gonic/gin v1.12.0
 	github.com/go-sql-driver/mysql v1.10.1
 	github.com/go-viper/mapstructure/v2 v2.5.0
+	github.com/gobwas/glob v1.1.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/go-cmp v0.7.0
 	github.com/google/jsonschema-go v0.4.3

@@ -75,6 +75,20 @@ const STATUS_LABELS = {
   unknown: 'quota.status.unknown',
 } as const;
 
+// Codex reset credits expire (typically 30 days after they are granted). Show
+// the redeem action shortly before the earliest credit lapses even while the
+// channel still has quota left, otherwise the credit is wasted.
+const RESET_CREDIT_EXPIRING_SOON_MS = 72 * 60 * 60 * 1000;
+
+function isResetCreditExpiringSoon(expiresAt?: string, now = Date.now()): boolean {
+  if (!expiresAt) return false;
+  const expiresAtMs = new Date(expiresAt).getTime();
+  if (Number.isNaN(expiresAtMs)) return false;
+  // A credit that already lapsed is stale cached quota data, not a redemption
+  // reminder: only a credit that is still valid can be "expiring soon".
+  return expiresAtMs > now && expiresAtMs - now <= RESET_CREDIT_EXPIRING_SOON_MS;
+}
+
 // Effective routing mode for a channel: its own mode wins unless it defers
 // via INHERIT to the global default. Null when the global default is
 // unavailable (e.g. the viewer lacks read_settings scope) — the mode badge is
@@ -551,6 +565,15 @@ function PeriodQuotaEstimate({ limits, currency }: { limits: ProviderQuotaLimit[
   );
 }
 
+// Cached quota data can outlive the reset credit it describes: a credit that
+// lapsed after the last quota poll is no longer redeemable. Excluding those
+// keeps the "expires at" row from advertising a date in the past.
+function isResetCreditUnexpired(reset: { expiresAt?: string }, now = Date.now()): boolean {
+  if (!reset.expiresAt) return false;
+  const expiresAtMs = new Date(reset.expiresAt).getTime();
+  return !Number.isNaN(expiresAtMs) && expiresAtMs > now;
+}
+
 function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; effectiveMode: QuotaRoutingMode | null }) {
   const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
@@ -694,6 +717,23 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
     if (!value) return '';
     const date = new Date(value);
     return Number.isNaN(date.getTime()) ? value : format(date, 'yyyy-MM-dd HH:mm');
+  };
+
+  // Compact remaining time for an expiring reset credit, e.g. "2d 3h". The
+  // quota unit labels keep the hint localized without a second formatter key.
+  const formatResetCreditRemaining = (expiresAt?: string) => {
+    if (!expiresAt) return '';
+    const diffMs = new Date(expiresAt).getTime() - Date.now();
+    if (Number.isNaN(diffMs)) return '';
+    // Callers only pass credits that are still valid, but one less than a
+    // minute from expiry must not read as "0m".
+    const totalMinutes = Math.max(1, Math.floor(diffMs / 60000));
+    const days = Math.floor(totalMinutes / (24 * 60));
+    const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
+    const minutes = totalMinutes % 60;
+    if (days > 0) return `${days}${t('quota.label.d')} ${hours}${t('quota.label.h')}`;
+    if (hours > 0) return `${hours}${t('quota.label.h')} ${minutes}${t('quota.label.m')}`;
+    return `${minutes}${t('quota.label.m')}`;
   };
   return (
     <div className='min-w-0 space-y-3 border-b py-3 first:pt-1 last:border-0 last:pb-1'>
@@ -959,7 +999,7 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
           {(() => {
             const qd = channel.quotaStatus.quotaData;
             if (!qd) return null;
-            const availableResets = [...(qd._resets?.resets ?? [])].sort((a, b) => {
+            const availableResets = [...(qd._resets?.resets ?? [])].filter((reset) => !reset.expiresAt || isResetCreditUnexpired(reset)).sort((a, b) => {
               const aExpiry = a.expiresAt ? new Date(a.expiresAt).getTime() : Number.POSITIVE_INFINITY;
               const bExpiry = b.expiresAt ? new Date(b.expiresAt).getTime() : Number.POSITIVE_INFINITY;
               return aExpiry - bExpiry;

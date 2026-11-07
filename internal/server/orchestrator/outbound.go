@@ -12,6 +12,7 @@ import (
 	"github.com/samber/lo"
 	"github.com/tidwall/gjson"
 
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/log"
@@ -137,7 +138,7 @@ func (ts *OutboundPersistentStream) consumeTailEvent(event *httpclient.StreamEve
 	if ts.terminalState == streamTerminalNone && ts.terminalTracker.Observe(event) {
 		ts.terminalState = classifyAcceptedTerminalEvent(event)
 		ts.state.OutboundStreamTerminal = ts.terminalState
-		ts.outcome.observeTerminal(ts.terminalState)
+		ts.outcome.observeTerminalEvent(ts.terminalState, event)
 	}
 	return nil
 }
@@ -204,7 +205,7 @@ func (ts *OutboundPersistentStream) Current() *httpclient.StreamEvent {
 				if ts.terminalState != streamTerminalCompleted {
 					ts.terminalError = streamTerminalErrorMessage(event, ts.terminalState)
 				}
-				ts.outcome.observeTerminal(ts.terminalState)
+				ts.outcome.observeTerminalEvent(ts.terminalState, event)
 				ts.markPerformanceTerminal(ts.terminalState, ts.terminalError)
 				if isNonChoiceTerminalEvent(event) {
 					ts.sourceEnd = llm.SourceEndSemantic
@@ -771,6 +772,7 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 	entry := candidate.Models[p.state.CurrentModelIndex]
 
 	p.state.memoryAttempts++
+	p.state.OutboundAttempt++
 	p.state.StreamCompleted = false
 	p.state.OutboundStreamTerminal = streamTerminalNone
 	p.state.CleanEOFCompletionEvidence = false
@@ -797,6 +799,14 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 		outboundFormat = llm.APIFormat(candidate.APIFormat)
 	}
 
+	if candidate.Channel != nil {
+		ctx = contexts.WithAttemptChannel(ctx, contexts.AttemptChannel{
+			ID:   candidate.Channel.ID,
+			Name: candidate.Channel.Name,
+			Type: string(candidate.Channel.Type),
+		})
+	}
+
 	// Apply channel transform options to create a new request
 	llmRequest = applyTransformOptions(llmRequest, candidate.Channel.Settings)
 	llmRequest = applyReasoningEffortMapping(llmRequest, candidate.Channel.Settings)
@@ -805,6 +815,9 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 	for _, middleware := range p.outboundLlmRequestMiddlewares {
 		transformedRequest, err := middleware.OnOutboundLlmRequest(ctx, llmRequest, outboundFormat)
 		if err != nil {
+			if isPluginOverloaded(err) {
+				p.state.PluginOverloaded = true
+			}
 			return nil, fmt.Errorf("failed to apply %s middleware: %w", middleware.Name(), err)
 		}
 		llmRequest = transformedRequest
@@ -840,8 +853,12 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 		return nil, err
 	}
 
+	// Resolve the emitted protocol once for raw middleware, plugin matching,
+	// pass-through, and persistence. Transformers may omit the request field.
 	if httpRequest.APIFormat != "" {
 		outboundFormat = llm.APIFormat(httpRequest.APIFormat)
+	} else {
+		httpRequest.APIFormat = string(outboundFormat)
 	}
 	if hasAdditionalTools && !isResponsesFormat(outboundFormat) && outboundFormat != llm.APIFormatOpenAIResponseCompact {
 		return nil, fmt.Errorf(
@@ -1019,6 +1036,9 @@ func (p *PersistentOutboundTransformer) GetRequestedModel() string {
 // HasMoreChannels returns true if there are more candidates available for retry.
 // It implements the pipeline.Retryable interface.
 func (p *PersistentOutboundTransformer) HasMoreChannels() bool {
+	if p.state.PluginOverloaded {
+		return false
+	}
 	return p.state.CurrentCandidateIndex+1 < len(p.state.ChannelModelsCandidates)
 }
 
@@ -1065,6 +1085,10 @@ func (p *PersistentOutboundTransformer) NextChannel(ctx context.Context) error {
 		lifecycleOwner.waitForAccounting()
 	}
 
+	// Remember the channel being left before the index moves. The event is
+	// published only after the switch succeeds.
+	leftChannel, leftModel, attempt := p.channelBeingLeft()
+
 	// Cancel any in-flight pass-through stream goroutine from the previous attempt
 	// so it exits promptly and releases its upstream HTTP connection.
 	p.resetPassThroughStreamState()
@@ -1103,6 +1127,8 @@ func (p *PersistentOutboundTransformer) NextChannel(ctx context.Context) error {
 			log.String("api_format", candidate.APIFormat),
 		)
 	}
+
+	p.publishRequestFailover(ctx, leftChannel, leftModel, attempt, candidate.Channel)
 
 	return nil
 }
@@ -1207,9 +1233,10 @@ func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
 		return false
 	}
 
-	// Local admission rejection: the same channel cannot make progress until the
-	// local queue/RPM state changes, so bounce immediately to the next channel.
-	if isChannelQueueError(err) || isLocalRPMExhaustedError(err) {
+	// Retrying the same channel cannot resolve local capacity rejection.
+	// Plugin overload also disables failover through state.PluginOverloaded;
+	// queue/RPM rejections can still move to the next channel.
+	if isLocalAdmissionError(err) {
 		return false
 	}
 

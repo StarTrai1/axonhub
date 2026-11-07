@@ -54,11 +54,11 @@ func TestModelFetcher_CodexCatalog(t *testing.T) {
 			require.Nil(t, result.Error)
 			imageModelCount := 0
 			for _, model := range result.Models {
-				if model.ID == "gpt-image-2" {
+				if strings.HasPrefix(model.ID, "gpt-image-") {
 					imageModelCount++
 				}
 			}
-			require.Equal(t, 1, imageModelCount)
+			require.Equal(t, 5, imageModelCount)
 			if tt.fallback {
 				require.Len(t, result.Models, len(codex.DefaultModels()))
 			} else {

@@ -3,9 +3,11 @@ package orchestrator
 import (
 	"context"
 	"time"
+	"sync"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/internal/server/events"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
@@ -158,4 +160,17 @@ type PersistenceState struct {
 	// DisableStreamForcing preserves a non-streaming protocol adapter request even
 	// when the selected channel normally requires streaming responses.
 	DisableStreamForcing bool
+	// PluginOverloaded is set when an onAttempt hook cannot borrow a runtime.
+	// HasMoreChannels returns false while it is set, so the pipeline does not switch channels.
+	PluginOverloaded bool
+
+	// EventBus publishes plugin events for this request. Nil skips publication.
+	// It is copied from the orchestrator; it is not stored on context.Context.
+	EventBus *events.Bus
+
+	// OutboundAttempt is the 1-based count of outbound attempts started for this
+	// request, including same-channel retries. Zero means no attempt has started.
+	OutboundAttempt int
+
+	requestFailedEvent sync.Once
 }

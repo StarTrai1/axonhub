@@ -15,6 +15,7 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/xcontext"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/internal/server/events"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/looplj/axonhub/llm/pipeline/cc"
@@ -39,6 +40,7 @@ func NewChatCompletionOrchestrator(
 	liveStreamRegistry *biz.LiveStreamRegistry,
 	channelLimiterManager *ChannelLimiterManager,
 	quotaProvider ProviderQuotaStatusProvider,
+	plugins PluginIntegration,
 ) *ChatCompletionOrchestrator {
 	responsesStore := newResponsesSessionStore(requestService.LoadCompletedResponsesSession)
 	responsesStore.known = requestService.HasCompletedResponsesOrigin
@@ -103,8 +105,10 @@ func NewChatCompletionOrchestrator(
 		modelCircuitBreaker:        modelCircuitBreaker,
 		codexTurnStateTracker:      newCodexTurnStateTracker(),
 		quotaProvider:              quotaProvider,
+		Plugins:                    plugins,
 		proxy:                      nil,
 		responsesSessions:          responsesStore,
+		EventBus:                   channelService.EventBus,
 	}
 	orchestrator.remoteCompactionAdapter = newRemoteCompactionAdapter(requestService, usageLogService, systemService)
 	if orchestrator.remoteCompactionAdapter.unifiedHistoryEnabled() {
@@ -165,11 +169,18 @@ type ChatCompletionOrchestrator struct {
 	// Codex channel is configured for local compaction.
 	remoteCompactionAdapter *remoteCompactionAdapter
 
+	// Plugins carries request hooks. A zero value adds no middleware.
+	Plugins PluginIntegration
+
 	// proxy is the proxy configuration for testing
 	// If set, it will override the channel's default proxy configuration
 	proxy *httpclient.ProxyConfig
 
 	responsesSessions *responsesSessionStore
+
+	// EventBus publishes plugin events. Nil skips publication. FX threads the
+	// process bus through ChannelService, and the constructor copies it here.
+	EventBus *events.Bus
 }
 
 func (processor *ChatCompletionOrchestrator) WithChannelSelector(selector CandidateSelector) *ChatCompletionOrchestrator {
@@ -189,6 +200,15 @@ func (processor *ChatCompletionOrchestrator) WithAllowedChannels(allowedChannelI
 func (processor *ChatCompletionOrchestrator) WithProxy(proxy *httpclient.ProxyConfig) *ChatCompletionOrchestrator {
 	c := *processor
 	c.proxy = proxy
+
+	return &c
+}
+
+// WithEventBus returns a copy that publishes plugin events to bus.
+// A nil bus skips publication. The bus is passed on the orchestrator, not on context.
+func (processor *ChatCompletionOrchestrator) WithEventBus(bus *events.Bus) *ChatCompletionOrchestrator {
+	c := *processor
+	c.EventBus = bus
 
 	return &c
 }
@@ -290,6 +310,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		ModelMapper:           processor.ModelMapper,
 		Proxy:                 processor.proxy,
 		CurrentCandidateIndex: 0,
+		EventBus: processor.EventBus,
 		ManualSwitchControl:   pipeline.NewManualSwitchControl(),
 	}
 	if continuation != nil {
@@ -326,6 +347,12 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 	// Add global middlewares
 	middlewares = append(middlewares, processor.Middlewares...)
 	middlewares = append(middlewares, newBillingSystemMessageMiddleware(state))
+	hooks, err := processor.Plugins.RequestHooks(ctx)
+	if err != nil {
+		lifecycleOwner.Close()
+		return ChatCompletionResult{}, err
+	}
+	middlewares = append(middlewares, hooks.requestStage()...)
 
 	inbound, outbound := NewPersistentTransformers(state, processor.Inbound, middlewares...)
 	agentTransport := portableResponsesAgentTransport(outbound, processor.SystemService)
@@ -351,7 +378,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 	// Add outbound middlewares (executed after outbound.TransformRequest)
 	middlewares = append(middlewares,
 		// applyPassThroughBody runs first so that override operations can still modify the pass-through body.
-		applyPassThroughRequestBody(outbound, processor.SystemService),
+		applyPassThroughRequestBody(outbound, processor.SystemService, processor.Plugins.Hooks),
 		// Responses HTTP/WS adaptation reuses the effective body before continuation and overrides.
 		applyResponsesTransportRequestBody(outbound, processor.SystemService),
 		// Codex Responses metadata must travel with a pass-through body so compatible
@@ -359,6 +386,9 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		applyPassThroughRequestHeaders(outbound),
 		applyResponsesFrameMetadata(),
 		applyResponsesContinuationBody(outbound),
+	)
+	middlewares = append(middlewares, hooks.attemptStage(outbound)...)
+	middlewares = append(middlewares,
 		applyOverrideRequestBody(outbound),
 		applyStrictChatRoles(outbound),
 		applyXAIHostedToolChoice(outbound),
@@ -457,9 +487,9 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 			log.Warn(persistCtx, "Failed to record compaction preparation failure", log.Cause(persistErr))
 		}
 
-		// Update the last request execution status based on error if it exists
-		// This ensures that when retry fails completely, the last execution is properly marked
-		if requestExec := outbound.GetRequestExecution(); requestExec != nil {
+		// Finish the failed execution, unless plugin admission stopped this attempt
+		// before persistence ran: this attempt has no execution record.
+		if requestExec := outbound.GetRequestExecution(); requestExec != nil && !isPluginOverloaded(err) {
 			if updateErr := persistRequestExecutionFailure(
 				persistCtx,
 				processor.RequestService,
@@ -486,6 +516,8 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 				log.Warn(persistCtx, "Failed to update request status from error", log.Cause(updateErr))
 			}
 		}
+
+		publishRequestFailed(persistCtx, state, err)
 
 		return ChatCompletionResult{}, err
 	}
@@ -549,6 +581,9 @@ func maybeEvaluateChannelAPIKeyRulesOnFailure(
 	outbound *PersistentOutboundTransformer,
 	rawErr error,
 ) {
+	if isLocalAdmissionError(rawErr) {
+		return
+	}
 	if outbound == nil || outbound.state == nil || outbound.state.ChannelService == nil {
 		return
 	}
