@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/looplj/axonhub/internal/authz"
-	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/server/biz/provider_quota"
@@ -27,8 +26,8 @@ func (svc *ProviderQuotaService) CheckQuotaReserve(ctx context.Context, channelI
 		defer cancel()
 		// This internal check only receives channels already admitted by the
 		// routing plan. Inference keys need not have channel-admin read scopes.
-		return authz.RunWithSystemBypass(ent.NewContext(checkCtx, svc.db), "quota-reserve-admission", func(bypassCtx context.Context) (*QuotaChannelStatus, error) {
-			return svc.checkQuotaReserve(bypassCtx, channelID)
+		return authz.RunAsHost(checkCtx, svc.db, "quota-reserve-admission", func(hostCtx context.Context) (*QuotaChannelStatus, error) {
+			return svc.checkQuotaReserve(hostCtx, channelID)
 		})
 	})
 	select {

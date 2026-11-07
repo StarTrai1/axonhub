@@ -667,6 +667,15 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
             </TabsContent>
 
             <TabsContent value='response' className='space-y-6 p-6'>
+              {request.status === 'failed' && request.responseBody?.error?.type === 'quota_routing_error' && (
+                <div className='border-destructive/30 bg-destructive/10 text-destructive space-y-2 rounded-lg border p-4 text-sm' role='alert' data-testid='request-quota-error'>
+                  <div className='flex flex-wrap items-center gap-2 font-medium'>
+                    <span>{t('common.messages.errorMessage')}</span>
+                    <Badge variant='outline' className='font-mono'>{request.responseBody.error.code}</Badge>
+                  </div>
+                  <p className='break-words leading-relaxed'>{request.responseBody.error.message}</p>
+                </div>
+              )}
               {request.responseHeaders && (
                 <div className='space-y-4'>
                   <div className='flex items-center justify-between'>

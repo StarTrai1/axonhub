@@ -930,21 +930,18 @@ func convertOutputToMessage(output []Item, transformerMetadata map[string]any) l
 				},
 			})
 		case "reasoning":
-			var itemReasoning strings.Builder
-			for _, summary := range outputItem.Summary {
-				reasoningContent.WriteString(summary.Text)
-				itemReasoning.WriteString(summary.Text)
-			}
+			itemReasoning := reasoningItemText(outputItem)
+			reasoningContent.WriteString(itemReasoning)
 
 			itemSignature := ""
 			if outputItem.EncryptedContent != nil && *outputItem.EncryptedContent != "" {
 				reasoningSignature = shared.EncodeOpenAIEncryptedContent(outputItem.EncryptedContent)
 				itemSignature = lo.FromPtr(reasoningSignature)
 			}
-			if itemReasoning.Len() > 0 || itemSignature != "" {
+			if itemReasoning != "" || itemSignature != "" {
 				reasoningItems = append(reasoningItems, llm.ReasoningItem{
 					ID:        outputItem.ID,
-					Content:   itemReasoning.String(),
+					Content:   itemReasoning,
 					Signature: itemSignature,
 				})
 			}

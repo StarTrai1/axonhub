@@ -29,6 +29,16 @@ func TestMergeInboundRequestSkipsSelectedHeadersWithoutMutatingSource(t *testing
 	require.Len(t, source.Headers, 2)
 }
 
+func TestMergeInboundRequestKeepsProxyIdentityLocal(t *testing.T) {
+	for _, key := range []string{"Forwarded", "Via", "True-Client-IP", "X-Client-IP", "X-Original-Forwarded-For", "X-Forwarded-User", "Tailscale-User-Login"} {
+		source := &Request{Headers: http.Header{http.CanonicalHeaderKey(key): {"private-client"}, "X-Client-Request-Id": {"trace"}}}
+		merged := MergeInboundRequest(&Request{}, source)
+		require.Empty(t, merged.Headers.Get(key), key)
+		require.Equal(t, "trace", merged.Headers.Get("X-Client-Request-Id"))
+		require.Equal(t, "private-client", source.Headers.Get(key))
+	}
+}
+
 func TestReadHTTPRequest_NoContentEncoding(t *testing.T) {
 	body := []byte(`{"model":"gpt-4","messages":[{"role":"user","content":"hello"}]}`)
 	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", bytes.NewReader(body))

@@ -14,8 +14,8 @@ import (
 	"github.com/looplj/axonhub/internal/metrics"
 	"github.com/looplj/axonhub/internal/pkg/xcontext"
 	"github.com/looplj/axonhub/internal/server/biz"
-	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/internal/server/events"
+	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/looplj/axonhub/llm/pipeline/cc"
@@ -310,7 +310,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		ModelMapper:           processor.ModelMapper,
 		Proxy:                 processor.proxy,
 		CurrentCandidateIndex: 0,
-		EventBus: processor.EventBus,
+		EventBus:              processor.EventBus,
 		ManualSwitchControl:   pipeline.NewManualSwitchControl(),
 	}
 	if continuation != nil {
@@ -507,12 +507,16 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 
 		// Update the main request status based on error
 		if request := outbound.GetRequest(); request != nil {
-			if updateErr := processor.RequestService.UpdateRequestFailureWithMetrics(
+			updateErr := processor.RequestService.UpdateRequestFailureWithMetrics(
 				persistCtx,
 				request.ID,
 				err,
 				requestLatencyMetrics(state, nil),
-			); updateErr != nil {
+			)
+			if updateErr == nil {
+				updateErr = persistQuotaAdmissionFailure(persistCtx, state, err)
+			}
+			if updateErr != nil {
 				log.Warn(persistCtx, "Failed to update request status from error", log.Cause(updateErr))
 			}
 		}

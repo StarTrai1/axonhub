@@ -219,6 +219,11 @@ var blockedHeaders = map[string]bool{
 	"X-Forwarded-Host":   true,
 	"X-Forwarded-Port":   true,
 	"X-Forwarded-Server": true,
+	"Forwarded": true,
+	"Via": true,
+	"True-Client-Ip": true,
+	"X-Client-Ip": true,
+	"X-Original-Forwarded-For": true,
 
 	// Browser-only / hop-by-hop-ish headers that should not be forwarded to upstream.
 	"Accept-Language": true,
@@ -256,6 +261,8 @@ var blockedHeaders = map[string]bool{
 // blockedHeaderPrefixes lists header prefixes that should not be forwarded to upstream.
 // For example, Cloudflare adds Cf-* and Cdn-* headers that can cause upstream providers to reject requests.
 var blockedHeaderPrefixes = []string{
+	"X-Forwarded-",
+	"Tailscale-",
 	"Cf-",
 	"Cdn-",
 }

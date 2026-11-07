@@ -1006,6 +1006,11 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
             });
             const availableResetCount =
               qd._resets?.availableCount ?? qd.rate_limit_reset_credits?.available_count ?? availableResets.length;
+            const nextExpiringReset = availableResets.filter((reset) => isResetCreditUnexpired(reset)).sort((a, b) => new Date(a.expiresAt!).getTime() - new Date(b.expiresAt!).getTime())[0];
+            const expiringSoonReset = nextExpiringReset && isResetCreditExpiringSoon(nextExpiringReset.expiresAt) ? nextExpiringReset : undefined;
+            const resetCreditExpiryHint = expiringSoonReset
+              ? t('quota.codex.resetCreditExpiringSoon', { time: formatResetCreditRemaining(expiringSoonReset.expiresAt) })
+              : undefined;
             const hasResetInfo = qd._resets?.supported === true && !qd._resets.error;
             const canAttemptReset = qd._resets?.supported === true && availableResets.length > 0;
             const hasSelectedReset = availableResets.some((reset) => reset.id === selectedResetID);
@@ -1110,7 +1115,7 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
                           variant='outline'
                           className='h-7 text-xs'
                           disabled={isResetting || !canAttemptReset}
-                          title={!canAttemptReset ? t('quota.codex.noResetCredits') : undefined}
+                          title={!canAttemptReset ? t('quota.codex.noResetCredits') : resetCreditExpiryHint}
                         >
                           {isResetting ? <Loader2 className='mr-1.5 h-3.5 w-3.5 animate-spin' /> : <Zap className='mr-1.5 h-3.5 w-3.5' />}
                           {t('quota.codex.resetNow')}

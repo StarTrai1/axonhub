@@ -536,14 +536,11 @@ func convertReasoningWithFollowing(items []Item, startIdx int) (*llm.Message, in
 	// and opaque encrypted content.
 	for i := startIdx; i < len(items) && items[i].Type == "reasoning"; i++ {
 		reasoningItem := &items[i]
-		var reasoningText strings.Builder
-		for _, summary := range reasoningItem.Summary {
-			reasoningText.WriteString(summary.Text)
-		}
+		reasoningText := reasoningItemText(*reasoningItem)
 
 		msg.ReasoningItems = append(msg.ReasoningItems, llm.ReasoningItem{
 			ID:        reasoningItem.ID,
-			Content:   reasoningText.String(),
+			Content:   reasoningText,
 			Signature: lo.FromPtr(reasoningItem.EncryptedContent),
 		})
 		consumed++
@@ -1555,7 +1552,7 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 			switch *choice.FinishReason {
 			case "stop":
 				resp.Status = lo.ToPtr("completed")
-			case "length", "pause_turn", "content_filter":
+			case "length", "pause_turn":
 				resp.Status = lo.ToPtr("incomplete")
 				resp.IncompleteDetails = &ResponseIncompleteDetails{Reason: "max_output_tokens"}
 			case "content_filter":

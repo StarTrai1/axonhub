@@ -38,6 +38,7 @@ func AllRequestTypes() []RequestType {
 		RequestTypeVideo,
 		RequestTypeCompact,
 		RequestTypeCompletion,
+		RequestTypeSearch,
 		RequestTypeSpeech,
 		RequestTypeTranscription,
 		RequestTypeTranslation,

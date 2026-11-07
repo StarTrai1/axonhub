@@ -381,7 +381,7 @@ test('Codex expiry window and countdown cannot surface a lapsed credit', () => {
   );
 });
 
-test('Codex reset button also appears when the earliest reset credit is expiring soon', () => {
+test('Codex reset button retains the earliest expiring credit hint', () => {
   const codexBlock = isolateCodexBlock(read('components/quota-badges.tsx'));
 
   assert.match(
@@ -391,20 +391,15 @@ test('Codex reset button also appears when the earliest reset credit is expiring
   );
   assert.match(
     codexBlock,
-    /\(status === 'exhausted' \|\| status === 'warning' \|\| Boolean\(expiringSoonReset\)\) &&/,
-    'the reset action must render for exhausted, warning, and expiring-credit channels'
-  );
-  assert.match(
-    codexBlock,
     /t\('quota\.codex\.resetCreditExpiringSoon', \{ time: formatResetCreditRemaining\(expiringSoonReset\.expiresAt\) \}\)/,
     'the hint must explain the expiry in the user locale'
   );
 });
 
-test('Codex reset button keeps its warning, exhausted, and disabled behavior', () => {
+test('Codex reset button is available regardless of usage, while credit availability governs redemption', () => {
   const codexBlock = isolateCodexBlock(read('components/quota-badges.tsx'));
 
-  assert.match(codexBlock, /status === 'exhausted' \|\| status === 'warning'/, 'the original status triggers must stay');
+  assert.doesNotMatch(codexBlock, /status === 'exhausted' \|\| status === 'warning'/, 'manual redemption must also work before quota pressure');
   assert.match(codexBlock, /disabled=\{isResetting \|\| !canAttemptReset\}/, 'availability still governs the disabled state');
   assert.match(codexBlock, /title=\{!canAttemptReset \? t\('quota\.codex\.noResetCredits'\) : resetCreditExpiryHint\}/);
 });
