@@ -4,6 +4,7 @@ import React, { useCallback } from 'react';
 import { Activity, Loader2, MessageSquareText, RefreshCw, RotateCcw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -121,33 +122,6 @@ export function ChannelsSystemSettingsDialog() {
           <DialogDescription>{t('channels.dialogs.systemSettings.description')}</DialogDescription>
         </DialogHeader>
 
-        <Card>
-          <CardHeader className='pb-0'>
-            <CardTitle className='flex items-center gap-2 text-sm'>
-              <Settings2 className='text-muted-foreground h-4 w-4' />
-              {t('channels.dialogs.systemSettings.interaction.label')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className='pt-4'>
-            <div className='flex items-center justify-between gap-4'>
-              <div className='space-y-1'>
-                <label htmlFor='skip-channel-status-confirmation' className='text-sm font-medium'>
-                  {t('channels.dialogs.systemSettings.interaction.skipStatusConfirmation')}
-                </label>
-                <p id='skip-channel-status-confirmation-description' className='text-muted-foreground text-sm'>
-                  {t('channels.dialogs.systemSettings.interaction.description')}
-                </p>
-              </div>
-              <Switch
-                id='skip-channel-status-confirmation'
-                data-testid='skip-channel-status-confirmation'
-                aria-describedby='skip-channel-status-confirmation-description'
-                checked={skipStatusConfirmation}
-                onCheckedChange={setSkipStatusConfirmation}
-              />
-            </div>
-          </CardContent>
-        </Card>
 
         {isLoading ? (
           <div className='flex flex-1 items-center justify-center'>
@@ -156,6 +130,27 @@ export function ChannelsSystemSettingsDialog() {
         ) : (
           <SettingsDialogBody items={sections} active={activeSection} onSelect={setActiveSection}>
             {activeSection === 'health' && (
+              <div className='space-y-6'>
+                <SettingsSection title={t('channels.dialogs.systemSettings.interaction.label')}>
+                  <div className='flex items-start justify-between gap-4 p-4'>
+                    <div className='space-y-1'>
+                      <label htmlFor='skip-channel-status-confirmation' className='text-sm font-medium'>
+                        {t('channels.dialogs.systemSettings.interaction.skipStatusConfirmation')}
+                      </label>
+                      <p id='skip-channel-status-confirmation-description' className='text-muted-foreground text-xs leading-relaxed'>
+                        {t('channels.dialogs.systemSettings.interaction.description')}
+                      </p>
+                    </div>
+                    <Switch
+                      id='skip-channel-status-confirmation'
+                      data-testid='skip-channel-status-confirmation'
+                      className='mt-0.5 shrink-0'
+                      aria-describedby='skip-channel-status-confirmation-description'
+                      checked={skipStatusConfirmation}
+                      onCheckedChange={setSkipStatusConfirmation}
+                    />
+                  </div>
+                </SettingsSection>
               <SettingsSection title={t('channels.dialogs.systemSettings.channelProbe.label')}>
                 <SettingsSwitchRow
                   id='probe-enabled'
@@ -197,6 +192,7 @@ export function ChannelsSystemSettingsDialog() {
                   )}
                 </SettingsSwitchRow>
               </SettingsSection>
+              </div>
             )}
 
             {activeSection === 'autoSync' && (

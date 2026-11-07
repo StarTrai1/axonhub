@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"errors"
 	"math"
 	"time"
 
@@ -87,6 +88,10 @@ func checkQuotaReserveForDispatch(ctx context.Context, ch *biz.Channel, req *llm
 		return ctx.Err()
 	}
 	if err != nil {
+		if safe, ok := errors.AsType[*biz.QuotaReserveCheckError](err); ok {
+			log.Warn(ctx, "Quota reserve usage could not be verified", log.Int("channel_id", ch.ID), log.String("reason", safe.Error()))
+			return newQuotaReserveUnavailableError(req.Model, safe.Error())
+		}
 		log.Warn(ctx, "Quota reserve usage could not be verified", log.Int("channel_id", ch.ID))
 		return newQuotaReserveUnavailableError(req.Model)
 	}
@@ -96,7 +101,7 @@ func checkQuotaReserveForDispatch(ctx context.Context, ch *biz.Channel, req *llm
 		return NewQuotaReserveError(req.Model)
 	}
 	if !known {
-		return newQuotaReserveUnavailableError(req.Model)
+		return newQuotaReserveUnavailableError(req.Model, "usage response did not contain current measurements for every configured window")
 	}
 	return nil
 }

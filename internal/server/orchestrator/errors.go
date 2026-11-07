@@ -8,11 +8,15 @@ import (
 	"github.com/looplj/axonhub/llm"
 )
 
-func newQuotaReserveUnavailableError(modelName string) error {
+func newQuotaReserveUnavailableError(modelName string, details ...string) error {
+	message := fmt.Sprintf("current provider usage could not be verified for configured quota reserve on model %s", modelName)
+	if len(details) > 0 && details[0] != "" {
+		message += ": " + details[0]
+	}
 	return &llm.ResponseError{
 		StatusCode: http.StatusServiceUnavailable,
 		Detail: llm.ErrorDetail{
-			Message: fmt.Sprintf("current provider usage could not be verified for configured quota reserve on model %s", modelName),
+			Message: message,
 			Type:    "quota_routing_error",
 			Code:    "quota_reserve_unavailable",
 		},

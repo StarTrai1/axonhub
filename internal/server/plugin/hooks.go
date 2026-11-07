@@ -436,6 +436,7 @@ func hookRequestJSON(request *llm.Request) ([]byte, error) {
 	}
 	clone := *request
 	clone.RawRequest = nil
+	clone.Decisions = nil
 	clone.RequestType = ""
 	clone.APIFormat = ""
 	clone.TransformOptions = llm.TransformOptions{}

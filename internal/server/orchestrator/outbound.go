@@ -1183,6 +1183,10 @@ func (p *PersistentOutboundTransformer) NextAlternativeChannel(ctx context.Conte
 // It implements the pipeline.ChannelRetryable interface, it just check the error is retryable, the
 // pipeline will ensure the maxSameChannelRetries is not exceeded.
 func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
+	// Local admission failures cannot be repaired by retrying upstream.
+	if isLocalAdmissionError(err) {
+		return false
+	}
 	if isQuotaReserveError(err) {
 		return false
 	}
@@ -1230,13 +1234,6 @@ func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
 	}
 
 	if errors.Is(err, errSkipCandidateByCircuitBreaker) {
-		return false
-	}
-
-	// Retrying the same channel cannot resolve local capacity rejection.
-	// Plugin overload also disables failover through state.PluginOverloaded;
-	// queue/RPM rejections can still move to the next channel.
-	if isLocalAdmissionError(err) {
 		return false
 	}
 

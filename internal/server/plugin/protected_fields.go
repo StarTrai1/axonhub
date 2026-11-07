@@ -60,6 +60,7 @@ var attemptProtocolControls = map[llm.APIFormat]protocolControls{
 	llm.APIFormatOpenAITranslation:     chatControls,
 	llm.APIFormatOpenAIModeration:      modelControls,
 	llm.APIFormatOpenAIAlphaSearch:     modelControls,
+	llm.APIFormatOpenAISearch:          modelControls,
 	llm.APIFormatOpenAIDecisions:       chatControls,
 	llm.APIFormatJinaRerank:            modelControls,
 	llm.APIFormatJinaEmbedding:         modelControls,

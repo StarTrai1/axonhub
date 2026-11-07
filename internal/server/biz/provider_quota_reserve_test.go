@@ -3,6 +3,8 @@ package biz
 import (
 	"context"
 	"errors"
+	"fmt"
+	"net/http"
 	"strconv"
 	"sync/atomic"
 	"testing"
@@ -16,6 +18,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz/provider_quota"
+	"github.com/looplj/axonhub/llm/httpclient"
 )
 
 type reserveUsageChecker struct {
@@ -151,6 +154,39 @@ func TestQuotaReserveUsageFailsClosedWithoutUsableCollection(t *testing.T) {
 			} else {
 				require.Zero(t, calls)
 			}
+		})
+	}
+}
+
+func TestQuotaReserveReadRetryIsBoundedAndPreservesDenials(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		status int
+		after string
+		calls int
+	}{
+		{name: "temporary read failure", status: 503, calls: 2},
+		{name: "invalid credentials", status: 401, calls: 1},
+		{name: "forbidden", status: 403, calls: 1},
+		{name: "unsupported endpoint", status: 501, calls: 1},
+		{name: "rate limit outlives budget", status: 429, after: "60", calls: 1},
+		{name: "retry after outlives budget", status: 503, after: "60", calls: 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, _, ctx, client := setupProviderQuotaCollectionService(t)
+			defer client.Close()
+			ch := createProviderQuotaCollectionChannel(t, ctx, client, "reserve-read", channel.TypeCodex)
+			_, err := client.Channel.UpdateOne(ch).SetCredentials(objects.ChannelCredentials{OAuth: &objects.OAuthCredentials{AccessToken: "synthetic"}}).Save(ctx)
+			require.NoError(t, err)
+			var calls int
+			svc.checkers["codex"] = &reserveUsageChecker{check: func(context.Context, *ent.Channel) (provider_quota.QuotaData, error) {
+				calls++
+				return provider_quota.QuotaData{}, &httpclient.Error{StatusCode: tc.status, URL: "https://private.example/secret", Body: []byte("private-body"), Headers: http.Header{"Retry-After": {tc.after}}}
+			}}
+			status, err := svc.CheckQuotaReserve(ctx, ch.ID)
+			require.Nil(t, status)
+			require.EqualError(t, err, fmt.Sprintf("usage endpoint returned HTTP %d", tc.status))
+			require.Equal(t, tc.calls, calls)
 		})
 	}
 }

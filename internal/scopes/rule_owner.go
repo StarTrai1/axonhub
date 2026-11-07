@@ -2,8 +2,8 @@ package scopes
 
 import (
 	"context"
-	"github.com/looplj/axonhub/internal/authz/identity"
 
+	"github.com/looplj/axonhub/internal/authz/identity"
 	"github.com/looplj/axonhub/internal/ent/privacy"
 )
 

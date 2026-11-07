@@ -3,6 +3,10 @@ package biz
 import (
 	"context"
 	"errors"
+	"fmt"
+	"io"
+	"net"
+	"net/http"
 	"strconv"
 	"time"
 
@@ -10,7 +14,51 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/server/biz/provider_quota"
+	"github.com/looplj/axonhub/llm/httpclient"
 )
+
+// QuotaReserveCheckError contains only a local classification, never provider
+// response bodies, URLs or credential values. It can safely reach request details.
+type QuotaReserveCheckError struct{ message string }
+
+func (e *QuotaReserveCheckError) Error() string { return e.message }
+
+func quotaReserveCheckFailure(err error) error {
+	message := "provider usage query failed"
+	if upstream, ok := errors.AsType[*httpclient.Error](err); ok {
+		message = fmt.Sprintf("usage endpoint returned HTTP %d", upstream.StatusCode)
+	} else if errors.Is(err, context.DeadlineExceeded) {
+		message = "provider usage query timed out"
+	} else if _, ok := errors.AsType[net.Error](err); ok || errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
+		message = "provider usage connection failed"
+	}
+	return &QuotaReserveCheckError{message: message}
+}
+
+func quotaReserveReadRetryDelay(err error) (time.Duration, bool) {
+	if err == nil || errors.Is(err, context.Canceled) {
+		return 0, false
+	}
+	if upstream, ok := errors.AsType[*httpclient.Error](err); ok {
+		if !httpclient.IsHTTPStatusCodeRetryable(upstream.StatusCode) || upstream.StatusCode == http.StatusNotImplemented {
+			return 0, false
+		}
+		if upstream.StatusCode == http.StatusTooManyRequests || upstream.Headers.Get("Retry-After") != "" {
+			// Use the existing bounded Retry-After parser for both 429 and 503.
+			advice := &httpclient.Error{StatusCode: http.StatusTooManyRequests, Headers: upstream.Headers}
+			delay, _ := httpclient.ParseRetryAfter(advice)
+			return delay, true
+		}
+		return 200 * time.Millisecond, true
+	}
+	if network, ok := errors.AsType[net.Error](err); ok && (network.Timeout() || network.Temporary()) {
+		return 200 * time.Millisecond, true
+	}
+	if _, ok := errors.AsType[*net.OpError](err); ok || errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
+		return 200 * time.Millisecond, true
+	}
+	return 0, false
+}
 
 // CheckQuotaReserve reads current usage for admission, independently of the
 // dashboard's periodic cache and collection mutex. Only overlapping checks
@@ -61,18 +109,33 @@ func (svc *ProviderQuotaService) checkQuotaReserve(ctx context.Context, channelI
 	if !ok || !hasCredentialsForProvider(ch) {
 		return nil, errors.New("quota reserve usage credentials are unavailable")
 	}
-	var data provider_quota.QuotaData
-	if reader, ok := checker.(*provider_quota.ClaudeCodeQuotaChecker); ok {
-		// Its periodic checker sends a 1-token message to collect headers;
-		// admission must use the read-only account usage endpoint instead.
-		data, err = reader.CheckUsage(ctx, ch)
-	} else {
-		data, err = checker.CheckQuota(ctx, ch)
+	readUsage := func() (provider_quota.QuotaData, error) {
+		if reader, ok := checker.(*provider_quota.ClaudeCodeQuotaChecker); ok {
+			// Its periodic checker sends a 1-token message to collect headers;
+			// admission must use the read-only account usage endpoint instead.
+			return reader.CheckUsage(ctx, ch)
+		}
+		return checker.CheckQuota(ctx, ch)
+	}
+	data, err := readUsage()
+	// Recover one transient read failure inside the same five-second budget.
+	// This retries only usage GETs, never inference or reset operations, and
+	// never authorizes a request from a stale dashboard sample.
+	if delay, retry := quotaReserveReadRetryDelay(err); retry && ctx.Err() == nil {
+		deadline, bounded := ctx.Deadline()
+		if bounded && time.Until(deadline) > delay {
+			timer := time.NewTimer(delay)
+			select {
+			case <-ctx.Done():
+				timer.Stop()
+				return nil, quotaReserveCheckFailure(ctx.Err())
+			case <-timer.C:
+				data, err = readUsage()
+			}
+		}
 	}
 	if err != nil {
-		// Provider errors may contain response bodies or credentials. Admission
-		// reports a stable error without propagating those details to callers.
-		return nil, errors.New("quota reserve provider usage check failed")
+		return nil, quotaReserveCheckFailure(err)
 	}
 	data = provider_quota.NormalizeQuotaData(data)
 	return &QuotaChannelStatus{

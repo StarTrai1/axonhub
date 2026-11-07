@@ -39,7 +39,8 @@ func TestQuotaReserveTransientUsageFailureRecoversBeforeMemoryDispatch(t *testin
 	entity := createRetryGuardChannel(t, ctx, client, "reserve-memory", objects.ChannelCredentials{
 		OAuth: &objects.OAuthCredentials{AccessToken: token},
 	})
-	settings := &objects.ChannelSettings{CodexSearchOnly: true, CodexImageOnly: true,
+	settings := &objects.ChannelSettings{
+		CodexSearchOnly: true, CodexImageOnly: true,
 		QuotaReserve: &objects.ChannelQuotaReserve{FiveHourPercent: lo.ToPtr(95), SevenDayPercent: lo.ToPtr(98)},
 	}
 	entity, err = client.Channel.UpdateOneID(entity.ID).SetType(channel.TypeCodex).
@@ -52,9 +53,9 @@ func TestQuotaReserveTransientUsageFailureRecoversBeforeMemoryDispatch(t *testin
 				require.Equal(t, http.MethodGet, req.Method)
 				require.Equal(t, "/backend-api/wham/usage", req.URL.Path, "admission must never send an inference")
 				if checks.Add(1) == 1 {
-					return &http.Response{StatusCode: 503, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"error":"temporary"}`))}, nil
+					return &http.Response{StatusCode: http.StatusServiceUnavailable, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"error":"temporary"}`))}, nil
 				}
-				return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(fmt.Sprintf(`{"rate_limit":{"allowed":true,"primary_window":{"used_percent":%d,"limit_window_seconds":18000,"reset_after_seconds":18000},"secondary_window":{"used_percent":38,"limit_window_seconds":604800,"reset_after_seconds":604800}}}`, percent)))}, nil
+				return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(fmt.Sprintf(`{"rate_limit":{"allowed":true,"primary_window":{"used_percent":%d,"limit_window_seconds":18000,"reset_after_seconds":18000},"secondary_window":{"used_percent":38,"limit_window_seconds":604800,"reset_after_seconds":604800}}}`, percent)))}, nil
 			})})
 			quota := biz.NewProviderQuotaService(biz.ProviderQuotaServiceParams{Ent: client, SystemService: newTestSystemService(client), HttpClient: hc})
 			err := checkQuotaReserveForDispatch(ctx, &biz.Channel{Channel: entity}, &llm.Request{Model: "gpt-6.1-terra"}, true, quota)
