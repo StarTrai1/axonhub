@@ -99,9 +99,11 @@ func (m *rateLimitTracking) OnOutboundRawError(ctx context.Context, err error) {
 	if currentChannel == nil {
 		return
 	}
+	usageCooldown, usageExhausted := codexUsageLimitResetCooldown(err, time.Now())
 	if currentChannel.Type == channel.TypeCodex &&
 		len(currentChannel.Credentials.GetAllCredentialRefs()) == 1 {
-		if cooldown, ok := codexUsageLimitResetCooldown(err, time.Now()); ok {
+		if usageExhausted {
+			cooldown := usageCooldown
 			if headerCooldown, explicit := codexQuotaResetCooldown(err); explicit {
 				cooldown = max(cooldown, headerCooldown)
 			}
@@ -139,6 +141,12 @@ func (m *rateLimitTracking) OnOutboundRawError(ctx context.Context, err error) {
 	}
 	if !ok {
 		if httpclient.HasRetryAfterHeader(err) || ExtractStatusCodeFromError(err) != http.StatusTooManyRequests {
+			return
+		}
+		// A recognized credential quota error is not a channel concurrency
+		// signal. Keep sibling credentials available; the single-credential
+		// Codex case was handled above. Explicit retry advice still wins.
+		if usageExhausted {
 			return
 		}
 		cooldown = noHeaderless429Cooldown

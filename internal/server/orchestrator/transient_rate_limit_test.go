@@ -171,10 +171,14 @@ func TestGoogleRetryInfoReachesRetryPolicyAndChannelCooldown(t *testing.T) {
 			before := time.Now()
 			middleware.OnOutboundRawError(t.Context(), failure)
 			until, ok := tracker.GetCooldownUntil(candidate.Channel.ID)
-			require.Equal(t, testCase.want > 0, ok)
-			if ok {
-				require.WithinDuration(t, before.Add(testCase.want), until, time.Second)
+			// Malformed provider advice leaves a headerless 429: only the
+			// channel cooldown uses the new short fallback, not the retry delay.
+			wantCooldown := testCase.want
+			if wantCooldown == 0 {
+				wantCooldown = 20 * time.Second
 			}
+			require.True(t, ok)
+			require.WithinDuration(t, before.Add(wantCooldown), until, time.Second)
 		})
 	}
 }
