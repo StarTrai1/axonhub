@@ -1255,7 +1255,7 @@ func (a *remoteCompactionAdapter) generateCompactionWithCandidate(
 		UsageLogService:              a.usageLogService,
 		SystemService:                a.systemService,
 		ChannelService:               parentState.ChannelService,
-		Settings:          parentState.Settings,
+		Settings:                     parentState.Settings,
 		Proxy:                        parentState.Proxy,
 		OriginalModel:                bridgeRequest.Model,
 		RawRequest:                   rawRequest,

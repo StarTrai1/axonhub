@@ -86,8 +86,10 @@ type RetryPolicyProvider interface {
 }
 
 // Save the requested model ID in the context, to let model aware strategy use it, e.g. circuit breaker.
-type modelContextKey struct{}
-type streamContextKey struct{}
+type (
+	modelContextKey  struct{}
+	streamContextKey struct{}
+)
 
 // contextWithRequestedModel adds the requested model ID to the context.
 func contextWithRequestedModel(ctx context.Context, modelID string) context.Context {

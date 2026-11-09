@@ -206,7 +206,7 @@ func TestLoadBalancedSelector_TraceStickySelection(t *testing.T) {
 		selector := WithTraceStickyLoadBalancedSelector(
 			&staticChannelSelector{candidates: candidates},
 			NewLoadBalancer(policy, nil),
-			policy,
+			policy.policy,
 			&fakePreviousChannelProvider{traceChannelIDs: map[int]int{trace.ID: 2}},
 		)
 
@@ -230,7 +230,7 @@ func TestLoadBalancedSelector_TraceStickySelection(t *testing.T) {
 		selector := WithTraceStickyLoadBalancedSelector(
 			&staticChannelSelector{candidates: candidates},
 			NewLoadBalancer(policy, nil),
-			policy,
+			policy.policy,
 			&fakePreviousChannelProvider{traceChannelIDs: map[int]int{trace.ID: 2}},
 		)
 
@@ -259,7 +259,7 @@ func TestLoadBalancedSelector_RoutingTiers(t *testing.T) {
 	selector := WithLoadBalancedSelector(
 		&staticChannelSelector{candidates: []*ChannelModelsCandidate{fallback, standard, preferredLowWeight, preferredHighWeight}},
 		NewLoadBalancer(policy, tracker),
-		policy,
+		policy.policy,
 	)
 
 	result, err := selector.Select(context.Background(), &llm.Request{Model: "gpt-4"})

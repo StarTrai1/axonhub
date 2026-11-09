@@ -370,6 +370,14 @@ func (s *anthropicInboundStream) emitBufferedReasoningItem(itemID string) error 
 		return nil
 	}
 
+	// An unsigned whitespace-only summary is not a thinking block. Signed
+	// items are opaque provider state and must remain available for replay.
+	if lo.FromPtr(signature) == "" && strings.TrimSpace(strings.Join(content, "")) == "" {
+		delete(s.pendingReasoningContent, itemID)
+		delete(s.pendingReasoningSignatures, itemID)
+		return nil
+	}
+
 	wasFlushing := s.flushingReasoningItems
 	s.flushingReasoningItems = true
 	err := s.closeThinkingBlock()
@@ -669,7 +677,8 @@ func (s *anthropicInboundStream) Next() bool {
 			if itemID != "" {
 				s.rememberReasoningItem(itemID)
 				s.pendingReasoningContent[itemID] = append(s.pendingReasoningContent[itemID], *choice.Delta.ReasoningContent)
-			} else {
+			} else if s.hasThinkingContentStarted || strings.TrimSpace(*choice.Delta.ReasoningContent) != "" ||
+				lo.FromPtr(choice.Delta.ReasoningSignature) != "" || lo.FromPtr(s.pendingSignature) != "" {
 
 				// If the text content has started before the thinking content, we need to stop it
 				if s.hasTextContentStarted {

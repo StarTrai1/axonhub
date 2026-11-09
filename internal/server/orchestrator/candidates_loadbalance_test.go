@@ -126,7 +126,6 @@ func TestDefaultChannelSelector_Select_WithTraceContext(t *testing.T) {
 	// Verify the trace channel is indeed channel 2 (medium weight)
 	require.Equal(t, "Medium Weight Channel", result[0].Channel.Name, "First channel should be the medium weight channel from trace")
 	require.Equal(t, 50, result[0].Channel.OrderingWeight, "First channel should have medium weight (50)")
-
 }
 
 // TestDefaultChannelSelector_Select_WithChannelFailures tests error-aware load balancing.
@@ -144,12 +143,12 @@ func TestDefaultChannelSelector_Select_WithChannelFailures(t *testing.T) {
 	// Record failures for the high weight channel to test error awareness
 	for range 3 {
 		perf := &biz.PerformanceRecord{
-			ChannelID:        channels[0].ID,
-			StartTime:        time.Now().Add(-time.Minute),
-			EndTime:          time.Now(),
-			Success:          false,
-			RequestCompleted: true,
-			ResponseStatusCode:  500,
+			ChannelID:          channels[0].ID,
+			StartTime:          time.Now().Add(-time.Minute),
+			EndTime:            time.Now(),
+			Success:            false,
+			RequestCompleted:   true,
+			ResponseStatusCode: 500,
 		}
 		channelService.RecordPerformance(ctx, perf)
 	}

@@ -224,7 +224,7 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawRequest(
 		RawProviderRequest:      request,
 		APIKey:                  state.APIKey,
 		ChannelService:          state.ChannelService,
-		Settings:     state.Settings,
+		Settings:                state.Settings,
 		Proxy:                   state.Proxy,
 		ChannelModelsCandidates: []*ChannelModelsCandidate{&candidate},
 	}

@@ -275,6 +275,7 @@ func collapseSkipped(packed, skipped []string) []string {
 	slices.Sort(out)
 	return out
 }
+
 func checkPackManifest(contents *packageContents) error {
 	raw, ok := contents.sources["manifest.json"]
 	if !ok {

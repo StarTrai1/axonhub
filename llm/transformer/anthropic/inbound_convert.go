@@ -642,7 +642,7 @@ func convertToAnthropicResponse(chatResp *llm.Response) *Message {
 			var contentBlocks []MessageContentBlock
 
 			// Handle reasoning content (thinking) first if present
-			if (message.ReasoningContent != nil && *message.ReasoningContent != "") || (message.ReasoningSignature != nil && *message.ReasoningSignature != "") {
+			if (message.ReasoningContent != nil && strings.TrimSpace(*message.ReasoningContent) != "") || (message.ReasoningSignature != nil && *message.ReasoningSignature != "") {
 				thinkingContent := message.ReasoningContent
 				if thinkingContent == nil {
 					thinkingContent = lo.ToPtr("")
