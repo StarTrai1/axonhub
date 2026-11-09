@@ -13,7 +13,7 @@ import (
 func TestResponseWhitespaceThinking(t *testing.T) {
 	for _, tc := range []struct {
 		name, text, signature string
-		wantThinking bool
+		wantThinking          bool
 	}{
 		{"blank", " \n\t", "", false},
 		{"text", " think ", "", true},
@@ -27,7 +27,9 @@ func TestResponseWhitespaceThinking(t *testing.T) {
 			}}}})
 			var thinking []MessageContentBlock
 			for _, block := range response.Content {
-				if block.Type == "thinking" { thinking = append(thinking, block) }
+				if block.Type == "thinking" {
+					thinking = append(thinking, block)
+				}
 			}
 			if !tc.wantThinking {
 				require.Empty(t, thinking)
@@ -35,7 +37,9 @@ func TestResponseWhitespaceThinking(t *testing.T) {
 			}
 			require.Len(t, thinking, 1)
 			require.Equal(t, tc.text, lo.FromPtr(thinking[0].Thinking))
-			if tc.signature != "" { require.Equal(t, tc.signature, lo.FromPtr(thinking[0].Signature)) }
+			if tc.signature != "" {
+				require.Equal(t, tc.signature, lo.FromPtr(thinking[0].Signature))
+			}
 		})
 	}
 }
@@ -43,10 +47,10 @@ func TestResponseWhitespaceThinking(t *testing.T) {
 func TestStreamWhitespaceDoesNotOpenThinking(t *testing.T) {
 	for _, itemID := range []string{"", "rs_reasoning"} {
 		for _, tc := range []struct {
-			name string
-			deltas []string
+			name       string
+			deltas     []string
 			wantBlocks int
-			wantText string
+			wantText   string
 		}{
 			{"only whitespace", []string{" ", "\t\n"}, 0, ""},
 			{"spaces within thinking", []string{"think", " ", "more", "\n"}, 1, "think more\n"},
@@ -55,7 +59,9 @@ func TestStreamWhitespaceDoesNotOpenThinking(t *testing.T) {
 				var chunks []*llm.Response
 				for _, delta := range tc.deltas {
 					opt := withReasoningContent(delta)
-					if itemID != "" { opt = withReasoningContentForItem(delta, itemID) }
+					if itemID != "" {
+						opt = withReasoningContentForItem(delta, itemID)
+					}
 					chunks = append(chunks, buildChunk("response", "model", opt))
 				}
 				chunks = append(chunks, buildChunk("response", "model", withTextContent("answer")), buildChunk("response", "model", withFinishReason("stop")))
@@ -63,8 +69,12 @@ func TestStreamWhitespaceDoesNotOpenThinking(t *testing.T) {
 				blocks := 0
 				var thinking strings.Builder
 				for _, event := range events {
-					if event.ContentBlock != nil && event.ContentBlock.Type == "thinking" { blocks++ }
-					if event.Delta != nil && lo.FromPtr(event.Delta.Type) == "thinking_delta" { thinking.WriteString(lo.FromPtr(event.Delta.Thinking)) }
+					if event.ContentBlock != nil && event.ContentBlock.Type == "thinking" {
+						blocks++
+					}
+					if event.Delta != nil && lo.FromPtr(event.Delta.Type) == "thinking_delta" {
+						thinking.WriteString(lo.FromPtr(event.Delta.Thinking))
+					}
 				}
 				require.Equal(t, tc.wantBlocks, blocks)
 				require.Equal(t, tc.wantText, thinking.String())
