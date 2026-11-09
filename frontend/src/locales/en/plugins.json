@@ -35,6 +35,9 @@
   "plugins.config.saved": "Plugin configuration saved",
   "plugins.config.empty": "This plugin has no configuration fields",
   "plugins.config.secretPlaceholder": "Unchanged",
+  "plugins.config.addItem": "Add item",
+  "plugins.config.removeItem": "Remove item",
+  "plugins.config.itemPlaceholder": "Item {{index}}",
   "plugins.config.required": "Required",
   "plugins.config.requiredMissing": "Fill in the required configuration before enabling: {{fields}}",
   "plugins.grant.installTitle": "Grant permissions",
@@ -96,5 +99,9 @@
   "plugins.hooks.request": "Request types",
   "plugins.hooks.attempt": "Upstream API formats",
   "plugins.hooks.enabled": "Enabled",
-  "plugins.hooks.disabled": "Disabled"
+  "plugins.hooks.disabled": "Disabled",
+  "plugins.actions.more": "More plugin actions",
+  "plugins.actions.error": "Plugin action could not load",
+  "plugins.actions.loadError": "Could not load plugin actions. Click to retry.",
+  "plugins.grant.addedActions": "New actions"
 }

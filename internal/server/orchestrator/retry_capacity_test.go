@@ -137,7 +137,7 @@ func TestModelCapacityCompactionBackoffCanBeCanceled(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	outbound := newCodexResponsesPassThroughOutbound()
-	outbound.state.RetryPolicyProvider = &mockRetryPolicyProvider{policy: &biz.RetryPolicy{Enabled: true, MaxSingleChannelRetries: 10}}
+	outbound.state.Settings = &RequestSettings{RetryPolicy: biz.RetryPolicy{Enabled: true, MaxSingleChannelRetries: 10}}
 	executor := &localCompactionRetryExecutor{failure: &httpclient.Error{StatusCode: 500, Body: []byte(`{"error":{"message":"model capacity exhausted"}}`)}}
 	var timer *time.Timer
 	executor.onRequest = func() { timer = time.AfterFunc(10*time.Millisecond, cancel) }

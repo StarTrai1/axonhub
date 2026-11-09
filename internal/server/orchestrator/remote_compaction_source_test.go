@@ -154,11 +154,11 @@ func TestResponsesRejectedNativeSourceBeforePassThrough(t *testing.T) {
 	event := &httpclient.StreamEvent{Data: json.RawMessage(`{"type":"response.completed","response":{"status":"completed","output":[{"type":"compaction","id":"cmp_durable","encrypted_content":"native-ciphertext"}]}}`)}
 	archived, err := retainNativeCompactionSources(outbound, adapter).OnOutboundRawStream(ctx, streams.SliceStream([]*httpclient.StreamEvent{event}))
 	require.NoError(t, err)
-	fanned, err := captureRawProviderStream(outbound, nil).OnOutboundRawStream(ctx, archived)
+	fanned, err := captureRawProviderStream(outbound).OnOutboundRawStream(ctx, archived)
 	require.NoError(t, err)
 	require.NotNil(t, state.RawStreamCh)
 	t.Cleanup(func() { _ = fanned.Close() })
-	rawStream, err := applyPassThroughStream(outbound, nil).OnInboundRawStream(ctx, fanned)
+	rawStream, err := applyPassThroughStream(outbound).OnInboundRawStream(ctx, fanned)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = rawStream.Close() })
 	count := 0

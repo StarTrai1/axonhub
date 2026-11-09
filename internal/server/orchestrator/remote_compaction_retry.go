@@ -23,8 +23,8 @@ func (a *remoteCompactionAdapter) startLocalCompactionStream(
 	state := outbound.state
 	maxRetries := 0
 	var retryDelay time.Duration
-	if state.RetryPolicyProvider != nil {
-		policy := state.RetryPolicyProvider.RetryPolicyOrDefault(ctx)
+	if state.Settings != nil {
+		policy := &state.settings().RetryPolicy
 		if policy.Enabled {
 			maxRetries = policy.MaxSingleChannelRetries
 			retryDelay = time.Duration(policy.RetryDelayMs) * time.Millisecond

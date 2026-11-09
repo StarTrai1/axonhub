@@ -102,7 +102,7 @@ func TestResponsesCapacityRetryPreservesHistoryAndAffinity(t *testing.T) {
 func TestResponsesCapacityRetriesLocalCompactionWithoutChangingHistory(t *testing.T) {
 	outbound := newCodexResponsesPassThroughOutbound()
 	outbound.wrapped = new(responses.OutboundTransformer)
-	outbound.state.RetryPolicyProvider = &mockRetryPolicyProvider{policy: &biz.RetryPolicy{Enabled: true, MaxSingleChannelRetries: 4}}
+	outbound.state.Settings = &RequestSettings{RetryPolicy: biz.RetryPolicy{Enabled: true, MaxSingleChannelRetries: 4}}
 	request := relayAffinityRequest(t)
 	outbound.state.RawRequest = request
 	executor := &responsesReasoningPipelineExecutor{failures: []error{relayAffinityOverload()}, events: rejectedReasoningCompactionEvents()}

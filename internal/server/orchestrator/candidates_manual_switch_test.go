@@ -23,7 +23,7 @@ func TestLoadBalancedSelector_ManualSwitchRetainsDistinctChannel(t *testing.T) {
 	selector := WithLoadBalancedSelector(
 		&staticChannelSelector{candidates: candidates},
 		&LoadBalancer{},
-		policy,
+		policy.policy,
 	).WithManualSwitchCandidate()
 
 	result, err := selector.Select(context.Background(), &llm.Request{Model: "model"})

@@ -142,10 +142,10 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawError(ctx context.C
 // physical channel. Manual jumps make this bound conservative, never larger.
 func (m *responsesCompactionRecoveryMiddleware) canFailoverNativeCompaction(ctx context.Context) bool {
 	state := m.outbound.state
-	if state.RetryPolicyProvider == nil {
+	if state.Settings == nil {
 		return false
 	}
-	policy := state.RetryPolicyProvider.RetryPolicyOrDefault(ctx)
+	policy := &state.settings().RetryPolicy
 	if !policy.Enabled {
 		return false
 	}
@@ -224,7 +224,7 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawRequest(
 		RawProviderRequest:      request,
 		APIKey:                  state.APIKey,
 		ChannelService:          state.ChannelService,
-		RetryPolicyProvider:     state.RetryPolicyProvider,
+		Settings:     state.Settings,
 		Proxy:                   state.Proxy,
 		ChannelModelsCandidates: []*ChannelModelsCandidate{&candidate},
 	}

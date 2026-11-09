@@ -77,8 +77,16 @@ func (m *rateLimitTracking) OnOutboundLlmStream(ctx context.Context, stream stre
 	}, nil
 }
 
+// noHeaderless429Cooldown is the fallback cooldown applied when an upstream
+// 429 carries no Retry-After header (e.g. AMD's process_concurrency_limit
+// errors). Without it the channel is never cooled down and every subsequent
+// request slams the same hot channel. Kept short on purpose: concurrency
+// windows are seconds-scale, and a cooled-down channel is only deprioritized
+// (-10000 score), never fully excluded, so it can still serve as fallback.
+const noHeaderless429Cooldown = 20 * time.Second
+
 // OnOutboundRawError handles raw HTTP errors, specifically capturing 429 Too Many Requests.
-// When a 429 is received, explicit provider retry advice sets a channel cooldown.
+// Explicit provider retry advice takes precedence; headerless 429s get a short fallback.
 func (m *rateLimitTracking) OnOutboundRawError(ctx context.Context, err error) {
 	if isLocalAdmissionError(err) {
 		return
@@ -130,7 +138,10 @@ func (m *rateLimitTracking) OnOutboundRawError(ctx context.Context, err error) {
 		cooldown, ok = httpclient.ParseGoogleRetryInfo(err)
 	}
 	if !ok {
-		return
+		if httpclient.HasRetryAfterHeader(err) || ExtractStatusCodeFromError(err) != http.StatusTooManyRequests {
+			return
+		}
+		cooldown = noHeaderless429Cooldown
 	}
 
 	// Set cooldown for this channel

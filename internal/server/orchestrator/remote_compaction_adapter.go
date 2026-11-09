@@ -1255,7 +1255,7 @@ func (a *remoteCompactionAdapter) generateCompactionWithCandidate(
 		UsageLogService:              a.usageLogService,
 		SystemService:                a.systemService,
 		ChannelService:               parentState.ChannelService,
-		RetryPolicyProvider:          parentState.RetryPolicyProvider,
+		Settings:          parentState.Settings,
 		Proxy:                        parentState.Proxy,
 		OriginalModel:                bridgeRequest.Model,
 		RawRequest:                   rawRequest,
@@ -1278,9 +1278,9 @@ func (a *remoteCompactionAdapter) generateCompactionWithCandidate(
 	compatibility := applyResponsesRejectedStatusCompatibility(outbound)
 	azureHistory := applyAzureResponsesHistoryCompatibility(outbound)
 	requestMiddlewares := []pipeline.Middleware{
-		applyPassThroughRequestBody(outbound, a.systemService, nil),
+		applyPassThroughRequestBody(outbound, nil),
 		applyOverrideRequestBody(outbound),
-		applyUserAgentPassThrough(outbound, a.systemService),
+		applyUserAgentPassThrough(outbound),
 		applyOverrideRequestHeaders(outbound),
 		applyCodexIdentityPolicy(outbound),
 		recoverResponsesAgentMessages(outbound, a.systemService),

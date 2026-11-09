@@ -148,7 +148,7 @@ func (s *DefaultSelector) selectModelOrChannelCandidates(ctx context.Context, re
 	if err != nil {
 		if ent.IsNotFound(err) {
 			// Check if fallback to legacy channel selection is allowed
-			settings := s.SystemService.ModelSettingsOrDefault(ctx)
+			settings := s.modelSettings(ctx)
 			if settings.FallbackToChannelsOnModelNotFound {
 				return s.selectChannelCadidates(ctx, req)
 			}
@@ -160,6 +160,16 @@ func (s *DefaultSelector) selectModelOrChannelCandidates(ctx context.Context, re
 	}
 
 	return candidates, nil
+}
+
+// modelSettings prefers the snapshot of the request being served, since the
+// selector is shared across requests.
+func (s *DefaultSelector) modelSettings(ctx context.Context) *biz.SystemModelSettings {
+	if settings := requestSettingsFromContext(ctx); settings != nil {
+		return &settings.ModelSettings
+	}
+
+	return s.SystemService.ModelSettingsOrDefault(ctx)
 }
 
 // selectChannelCadidates performs the original channel selection logic.
@@ -206,7 +216,7 @@ func (s *DefaultSelector) selectModelCandidates(ctx context.Context, req *llm.Re
 		return nil, fmt.Errorf("failed to query AxonHub Model: %w", err)
 	}
 
-	systemSettings := s.SystemService.ModelSettingsOrDefault(ctx)
+	systemSettings := s.modelSettings(ctx)
 	developerAssociationCount, modelAssociationCount, developerInheritanceDisabled := effectiveAssociationSourceCounts(systemSettings, model)
 	associations := biz.EffectiveModelAssociations(systemSettings, model)
 	if log.DebugEnabled(ctx) {
@@ -739,7 +749,7 @@ type LoadBalancedSelector struct {
 	wrapped                     CandidateSelector
 	loadBalancer                *LoadBalancer
 	loadBalancers               map[string]*LoadBalancer
-	policy                      RetryPolicyProvider
+	retryPolicy                 *biz.RetryPolicy
 	previousChannelProvider     PreviousChannelProvider
 	retainManualSwitchCandidate bool
 	apiKey                      *ent.APIKey
@@ -756,12 +766,12 @@ func (s *LoadBalancedSelector) WithManualSwitchCandidate() *LoadBalancedSelector
 }
 
 // WithLoadBalancedSelector creates a selector that applies load balancing to sort candidates.
-// The policy is used to determine the retry policy for early stopping.
-func WithLoadBalancedSelector(wrapped CandidateSelector, loadBalancer *LoadBalancer, policy RetryPolicyProvider) *LoadBalancedSelector {
+// The retry policy determines the trace sticky mode and how many candidates to keep.
+func WithLoadBalancedSelector(wrapped CandidateSelector, loadBalancer *LoadBalancer, retryPolicy *biz.RetryPolicy) *LoadBalancedSelector {
 	return &LoadBalancedSelector{
 		wrapped:      wrapped,
 		loadBalancer: loadBalancer,
-		policy:       policy,
+		retryPolicy:  retryPolicy,
 	}
 }
 
@@ -771,13 +781,13 @@ func WithLoadBalancedSelector(wrapped CandidateSelector, loadBalancer *LoadBalan
 func WithTraceStickyLoadBalancedSelector(
 	wrapped CandidateSelector,
 	loadBalancer *LoadBalancer,
-	policy RetryPolicyProvider,
+	retryPolicy *biz.RetryPolicy,
 	previousChannelProvider PreviousChannelProvider,
 ) *LoadBalancedSelector {
 	return &LoadBalancedSelector{
 		wrapped:                 wrapped,
 		loadBalancer:            loadBalancer,
-		policy:                  policy,
+		retryPolicy:             retryPolicy,
 		previousChannelProvider: previousChannelProvider,
 	}
 }
@@ -787,7 +797,7 @@ func WithTraceStickyLoadBalancedSelector(
 func WithRoutingPolicyLoadBalancedSelector(
 	wrapped CandidateSelector,
 	loadBalancers map[string]*LoadBalancer,
-	policy RetryPolicyProvider,
+	retryPolicy *biz.RetryPolicy,
 	previousChannelProvider PreviousChannelProvider,
 	apiKey *ent.APIKey,
 	effectiveRoutingPolicy *EffectiveRoutingPolicy,
@@ -796,7 +806,7 @@ func WithRoutingPolicyLoadBalancedSelector(
 	return &LoadBalancedSelector{
 		wrapped:                 wrapped,
 		loadBalancers:           loadBalancers,
-		policy:                  policy,
+		retryPolicy:             retryPolicy,
 		previousChannelProvider: previousChannelProvider,
 		apiKey:                  apiKey,
 		effectiveRoutingPolicy:  effectiveRoutingPolicy,
@@ -810,8 +820,7 @@ func (s *LoadBalancedSelector) Select(ctx context.Context, req *llm.Request) ([]
 		return nil, err
 	}
 
-	// Get retry policy to determine the required number of candidates
-	retryPolicy := s.policy.RetryPolicyOrDefault(ctx)
+	retryPolicy := s.retryPolicy
 	loadBalancer := s.loadBalancer
 	traceStickyMode := retryPolicy.TraceStickyMode
 	if s.effectiveRoutingPolicy != nil {

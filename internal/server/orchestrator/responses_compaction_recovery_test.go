@@ -88,7 +88,7 @@ func TestResponsesRejectedCompactionManualCandidatePreservesRecovery(t *testing.
 	state, result, err := runRejectedReasoningPipeline(t, ctx, req, executor, "manual-candidate-key", true, 1,
 		func(state *PersistenceState, outbound *PersistentOutboundTransformer) pipeline.Middleware {
 			state.APIKey = apiKey
-			state.RetryPolicyProvider = &mockRetryPolicyProvider{policy: &biz.RetryPolicy{Enabled: true, MaxSingleChannelRetries: 1}}
+			state.Settings = &RequestSettings{RetryPolicy: biz.RetryPolicy{Enabled: true, MaxSingleChannelRetries: 1}}
 			state.ChannelModelsCandidates = append(state.ChannelModelsCandidates, &ChannelModelsCandidate{
 				Channel: &biz.Channel{Channel: &ent.Channel{ID: 98002}},
 			})

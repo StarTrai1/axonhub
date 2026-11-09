@@ -70,7 +70,7 @@ func TestResponsesRejectedLocalCompactionPersistsRetriesAndProviderErrors(t *tes
 			}
 			state := &PersistenceState{
 				APIKey: apiKey, ChannelModelsCandidates: []*ChannelModelsCandidate{candidate},
-				RetryPolicyProvider: &mockRetryPolicyProvider{policy: &biz.RetryPolicy{Enabled: true, MaxSingleChannelRetries: 1}},
+				Settings: &RequestSettings{RetryPolicy: biz.RetryPolicy{Enabled: true, MaxSingleChannelRetries: 1}},
 			}
 			executor := &localCompactionRetryExecutor{
 				failures: []error{bridgeTransientError()},

@@ -34,7 +34,7 @@ func TestResponsesRejectedMetadataLocalCompactionRetry(t *testing.T) {
 		t.Run(scenario.name, func(t *testing.T) {
 			outbound := newCodexResponsesPassThroughOutbound()
 			outbound.state.CurrentCandidate.Channel.ID = 91000 + index
-			outbound.state.RetryPolicyProvider = &mockRetryPolicyProvider{policy: &biz.RetryPolicy{
+			outbound.state.Settings = &RequestSettings{RetryPolicy: biz.RetryPolicy{
 				Enabled: scenario.enabled, MaxSingleChannelRetries: scenario.maxRetries,
 			}}
 			providerRequest := &httpclient.Request{
@@ -136,7 +136,7 @@ func TestResponsesRejectedLocalCompactionRetriesTransientOpeningFailures(t *test
 		t.Run(scenario.name, func(t *testing.T) {
 			outbound := newCodexResponsesPassThroughOutbound()
 			outbound.wrapped = new(responses.OutboundTransformer)
-			outbound.state.RetryPolicyProvider = &mockRetryPolicyProvider{policy: &biz.RetryPolicy{
+			outbound.state.Settings = &RequestSettings{RetryPolicy: biz.RetryPolicy{
 				Enabled: !scenario.disabled, MaxSingleChannelRetries: scenario.retries,
 			}}
 			providerRequest := outbound.state.RawProviderRequest
@@ -172,7 +172,7 @@ func TestResponsesRejectedLocalCompactionRetriesTransientOpeningFailures(t *test
 func TestResponsesRejectedLocalCompactionTransientAndCompatibilityShareBudget(t *testing.T) {
 	outbound := newCodexResponsesPassThroughOutbound()
 	outbound.state.CurrentCandidate.Channel.ID = 94050
-	outbound.state.RetryPolicyProvider = &mockRetryPolicyProvider{policy: &biz.RetryPolicy{
+	outbound.state.Settings = &RequestSettings{RetryPolicy: biz.RetryPolicy{
 		Enabled: true, MaxSingleChannelRetries: 2,
 	}}
 	providerRequest := outbound.state.RawProviderRequest
@@ -191,7 +191,7 @@ func TestResponsesRejectedLocalCompactionRetryWaitCanBeCanceled(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	outbound := newCodexResponsesPassThroughOutbound()
-	outbound.state.RetryPolicyProvider = &mockRetryPolicyProvider{policy: &biz.RetryPolicy{
+	outbound.state.Settings = &RequestSettings{RetryPolicy: biz.RetryPolicy{
 		Enabled: true, MaxSingleChannelRetries: 2, RetryDelayMs: 300000,
 	}}
 	executor := &localCompactionRetryExecutor{failure: bridgeTransientError()}
@@ -211,7 +211,7 @@ func TestResponsesRejectedLocalCompactionRetryWaitCanBeCanceled(t *testing.T) {
 
 func TestResponsesRejectedLocalCompactionDoesNotRetryPartialStream(t *testing.T) {
 	outbound := newCodexResponsesPassThroughOutbound()
-	outbound.state.RetryPolicyProvider = &mockRetryPolicyProvider{policy: &biz.RetryPolicy{Enabled: true, MaxSingleChannelRetries: 2}}
+	outbound.state.Settings = &RequestSettings{RetryPolicy: biz.RetryPolicy{Enabled: true, MaxSingleChannelRetries: 2}}
 	executor := &localCompactionRetryExecutor{stream: &mockStream{
 		events: []*httpclient.StreamEvent{{Type: "response.output_text.delta", Data: []byte(`{"type":"response.output_text.delta","delta":"partial summary"}`)}},
 		err:    io.ErrUnexpectedEOF,
@@ -237,7 +237,7 @@ func bridgeOverloadError() *httpclient.Error {
 func TestResponsesRejectedReasoningLocalCompactionRemembersSuccessfulRecovery(t *testing.T) {
 	ctx, outbound, middleware, scope := responsesReasoningRecoveryFixture(t)
 	original := *outbound.state.RawProviderRequest
-	outbound.state.RetryPolicyProvider = &mockRetryPolicyProvider{policy: &biz.RetryPolicy{
+	outbound.state.Settings = &RequestSettings{RetryPolicy: biz.RetryPolicy{
 		Enabled: true, MaxSingleChannelRetries: 1,
 	}}
 	executor := &localCompactionRetryExecutor{
@@ -277,7 +277,7 @@ func TestResponsesRejectedReasoningLocalCompactionSharesRetryBudget(test *testin
 		test.Run(scenario.name, func(test *testing.T) {
 			outbound := newCodexResponsesPassThroughOutbound()
 			outbound.state.CurrentCandidate.Channel.ID = 94000 + index
-			outbound.state.RetryPolicyProvider = &mockRetryPolicyProvider{policy: &biz.RetryPolicy{
+			outbound.state.Settings = &RequestSettings{RetryPolicy: biz.RetryPolicy{
 				Enabled: scenario.enabled, MaxSingleChannelRetries: scenario.maxRetries,
 			}}
 			providerRequest := outbound.state.RawProviderRequest

@@ -117,14 +117,14 @@ ui/**              html、js、css、svg、png、woff2
 
 打包器是独立模块 `github.com/looplj/axonhub/cmd/pack-plugin`，只依赖 moejs。它复制了服务端的 zip 读取和静态 import 编译，不执行插件。安装时的检查仍会再看 manifest、AxonHub 版本范围和命名导出，打包通过的 zip 仍可能被安装拒绝。
 
-已发布的打包器：
+安装 `unstable` 分支上的打包器：
 
 ```bash
-go install github.com/looplj/axonhub/cmd/pack-plugin@latest
+go install github.com/looplj/axonhub/cmd/pack-plugin@unstable
 pack-plugin <plugin-directory> -o <outside>.axplugin
 ```
 
-`@latest` 解析子目录标签 `cmd/pack-plugin/vX.Y.Z`，不看 AxonHub 根模块的 `vX.Y.Z`。要和某次 AxonHub 发布用同一套检查时，安装同号的 `cmd/pack-plugin/vX.Y.Z`。
+`@unstable` 选择该分支的当前提交，Go 把它记成 `v0.0.0-<时间>-<提交>`。打包器发布子目录标签 `cmd/pack-plugin/vX.Y.Z` 之后，`@latest` 选择这些标签里的最新一个。AxonHub 根模块的 `vX.Y.Z` 不会成为这个模块的版本；要和某次 AxonHub 发布用同一套检查时，安装同号的 `cmd/pack-plugin/vX.Y.Z`。
 
 在本仓库里：
 
@@ -132,7 +132,7 @@ pack-plugin <plugin-directory> -o <outside>.axplugin
 go run -C cmd/pack-plugin . ../../plugins/examples/<name>
 ```
 
-默认产物是插件目录旁边的 `<目录名>.axplugin`。输出必须写在插件目录外面，写进目录里会失败。`*.axplugin` 已被 Git 忽略。根目录的 `README.md`、`.DS_Store` 和 `.git` 不会进包。除此之外，既不是 `manifest.json`、也不在 `ui/` 下、又不能从 `plugin.js` 的静态相对 import 到达的文件，打包会失败。测试、`package.json`、`.github`、`.gitignore` 放在插件目录里会失败。Git 仓库根就是插件时，先把 `manifest.json`、`plugin.js`、它静态 import 到的文件和 `ui/` 复制到一个只含这些文件的目录，再对该目录打包。
+默认产物是插件目录旁边的 `<目录名>.axplugin`。输出必须写在插件目录外面，写进目录里会失败。`*.axplugin` 已被 Git 忽略。包里只有 `manifest.json`、`ui/` 下的文件、根目录 `plugin.js`，以及 `plugin.js` 通过静态相对 import 到达的文件。其他文件，例如 `README.md`、`.git`、`.github`、`.claude`、`node_modules`、测试文件和 `package.json`，都不会进包，命令会列出这些被跳过的路径。整个目录都没有文件进包时只列一行，例如 `.git/`。只通过动态 `import()` 加载的文件不会被收集，上传前请检查跳过列表。符号链接只有在会进包的位置才会让打包失败：`manifest.json`、`plugin.js`、`ui/` 下的任意路径，或被 import 的文件。
 
 本地试用时，把这个 zip 上传到 `/plugins`。发布到官方索引是后面的另一步。
 
@@ -156,12 +156,13 @@ go run -C cmd/pack-plugin . ../../plugins/examples/<name>
 | `hooks.attempt` | 否 | 对象：enabled 必填；true 时 apiFormats 必须非空且导出 onAttempt；false 保留配置但不执行 |
 | `configSchema` | 否 | JSON Schema 对象，见下文 |
 | `ui.pages` | 否 | 侧栏页面，见下文 |
+| `ui.actions` | 否 | 全局工具栏操作，点击打开插件弹窗 |
 
 已开放的权限：`read_channels`、`read_requests`、`read_dashboard`、`read_api_keys`、`read_projects`、`read_settings`、`write_channels`、`webhook`。出站 URL 写在 `network`。`read_plugins` 和 `write_plugins` 是用户 scope，不是插件权限。KV 不占用权限。
 
 一条 `network` 规则要么是精确的 `https` URL，要么是 `{ "regex": "^https://api\\.example\\.com/v1/items/[0-9]+$" }`。精确 URL 必须带 path，不能有 userinfo、query 或 fragment，并且只匹配这条 path。正则对去掉 query 和 fragment 后的 URL 做全匹配，最长 256 个字符。实际请求仍可以带 query。宿主不跟随重定向；301、302、303、307、308 会使 `ctx.fetch` 和 `axonhub.fetch` 以 `INVALID_STATE` 拒绝 Promise。
 
-`configSchema.type` 为 `object`。每个属性的类型是 `string`、`integer`、`number` 或 `boolean`，可以带 `enum`、`minimum`、`maximum`、`default`、`title`、`description` 和 `format: "secret"`。`configSchema.required` 列出插件必需的属性名。新安装的插件默认停用；停用时可以只保存部分配置，但启用、保存已启用插件的配置、升级已启用插件时，每个必填字段都要有值或默认值（空字符串视为缺失），否则失败。未声明的字段会被拒绝。`ctx.config` 是已保存的配置，包含 secret 原文。Owner 还没保存的字段不会出现，脚本里要自己使用 schema 的默认值。设置表单会显示这些默认值。GraphQL 和页面拿到已保存 secret 时是 `******`；把这个掩码原样提交回去，已保存的值保持不变。
+`configSchema.type` 为 `object`。每个属性的类型是 `string`、`integer`、`number`、`boolean` 或 `array`，可以带 `enum`、`minimum`、`maximum`、`default`、`title`、`description` 和 `format: "secret"`。`array` 必须写 `"items": {"type": "string"}`，表示字符串列表（例如 `{"type": "array", "items": {"type": "string"}, "default": ["gpt-4o"]}`），不支持 `enum` 和 `format`；设置表单会显示为可增删的列表。`configSchema.required` 列出插件必需的属性名。新安装的插件默认停用；停用时可以只保存部分配置，但启用、保存已启用插件的配置、升级已启用插件时，每个必填字段都要有值或默认值（空字符串和空数组视为缺失），否则失败。未声明的字段会被拒绝。`ctx.config` 是已保存的配置，包含 secret 原文。Owner 还没保存的字段不会出现，脚本里要自己使用 schema 的默认值。设置表单会显示这些默认值。GraphQL 和页面拿到已保存 secret 时是 `******`；把这个掩码原样提交回去，已保存的值保持不变。
 
 `ui.pages[]` 必须有 `key`、`entry` 和 `title`。`key` 匹配 `^[a-z0-9][a-z0-9-]{0,31}$`，并且在该插件内唯一。`entry` 是 `ui/` 下已经存在的 `.html`。`title` 可以是字符串，也可以是至少包含非空 `en` 的语言映射。侧栏按当前语言、`en`、`key` 的顺序取值。
 
@@ -318,6 +319,28 @@ export function onEvent(ctx, event) {
 
 页面通过 `axonhub.graphql` 调用 `pluginKVList(namespace, prefix, first, after)`，返回字段也是 `entries` 和 `nextCursor`，但需要在 GraphQL selection 中显式选择。GraphQL 的 `after` 可以传 `null` 表示第一页。`pluginKV` 返回完整条目或 `null`，`setPluginKV` 返回条目，`deletePluginKV` 返回 boolean；与返回字符串的 `ctx.kv.get` 区分。
 
+## 全局工具栏操作
+
+`ui.actions` 将操作注册到公共布局右上角。宿主渲染按钮，点击后才加载插件 iframe；桌面最多直接展示两个按钮，其余进入更多菜单，移动端统一使用菜单。示例：
+
+```json
+"ui": {
+  "actions": [{
+    "key": "notes",
+    "slot": "app.header.actions",
+    "title": { "en": "Quick notes", "zh-CN": "随手记" },
+    "icon": "puzzle",
+    "effect": { "type": "dialog", "entry": "ui/notes.html" }
+  }]
+}
+```
+
+首版 `slot` 只接受 `app.header.actions`，`effect.type` 只接受 `dialog`。key、title 和 entry 遵循页面规则，action key 在 actions 内唯一。icon 可省略（默认 puzzle），支持 puzzle/search/activity/settings。未知字段、插槽或 effect 会被拒绝；不支持 panels 和渠道操作菜单。
+
+弹窗使用同一份 Bridge、资源规则和权限机制，只有 actions、没有 pages 的插件也可调用 GraphQL、KV 和已授权的 fetch。初始化包含 `action` key、`slot`、`context: {}`、`page: null`、`panel: null`。全局操作的 `projectId` 固定为 null，调用不携带当前项目头；普通页面继续使用原有项目上下文。关闭弹窗取消在途请求，重新打开使用独立会话。navigate 会关闭弹窗。
+
+新增 action 会进入升级预览。可打包示例见 [toolbar-notes](../../../plugins/examples/toolbar-notes/README.md)。
+
 ## 页面
 
 每个页面是认证布局主区域里的 iframe。侧栏入口在「插件」分组。路由是 `/plugins/<插件 id>/pages/<key>`。iframe 读不到宿主的 cookie 和 `localStorage`。
@@ -341,9 +364,11 @@ type ThemeSnapshot = {
 type InitSnapshot = ThemeSnapshot & {
   locale: string;
   projectId: number | null;
-  page: string;
+  page: string | null;
   panel: null;
-  slot: null;
+  action: string | null;
+  slot: "app.header.actions" | null;
+  context: Record<string, unknown>;
   config: Record<string, unknown>;
   canWriteKV: boolean;
 };
@@ -507,7 +532,7 @@ Owner 启用插件时，授予的是 `permissions` 的子集和 `network` 的子
 
 ## 发布
 
-索引地址是 [https://raw.githubusercontent.com/looplj/axonhub/unstable/plugins/registry.json](https://raw.githubusercontent.com/looplj/axonhub/unstable/plugins/registry.json)。AxonHub 每次按这个 URL 拉取，所以改索引不用发新版本。现在 `plugins` 是空数组，示例插件不在市场里。
+索引地址是 [https://raw.githubusercontent.com/looplj/axonhub/unstable/plugins/registry.json](https://raw.githubusercontent.com/looplj/axonhub/unstable/plugins/registry.json)。AxonHub 每次按这个 URL 拉取，所以改索引不用发新版本。示例插件不在市场里。
 
 把 zip 发布到你自己的 HTTPS 地址，例如 GitHub Release。sha256 是 zip 原始字节的 64 位小写十六进制：
 

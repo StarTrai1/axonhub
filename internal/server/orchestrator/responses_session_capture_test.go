@@ -45,12 +45,12 @@ func TestResponsesSessionPublishesNativeHistoryBeforePassThroughTerminal(t *test
 				source = testHTTPStream(events)
 			}
 			defer source.Close()
-			pipelineStream, err := captureRawProviderStreamWithTerminalGrace(outbound, nil, 5*time.Millisecond).
+			pipelineStream, err := captureRawProviderStreamWithTerminalGrace(outbound, 5*time.Millisecond).
 				OnOutboundRawStream(ctx, source)
 			require.NoError(t, err)
 			defer pipelineStream.Close()
 
-			rawStream, err := applyPassThroughStream(outbound, nil).OnInboundRawStream(ctx, pipelineStream)
+			rawStream, err := applyPassThroughStream(outbound).OnInboundRawStream(ctx, pipelineStream)
 			require.NoError(t, err)
 			defer rawStream.Close()
 			terminal := false

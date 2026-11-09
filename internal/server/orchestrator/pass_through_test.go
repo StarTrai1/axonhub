@@ -49,8 +49,8 @@ func TestResponsePassThroughCanBeDisabledWithoutDisablingRequestPassThrough(t *t
 		DisableResponsePassThrough: true,
 	}}
 
-	require.True(t, outbound.isPassThroughEnabled(context.Background(), nil))
-	require.False(t, outbound.isResponsePassThroughEnabled(context.Background(), nil))
+	require.True(t, outbound.isPassThroughEnabled())
+	require.False(t, outbound.isResponsePassThroughEnabled())
 }
 
 // === captureRawProviderResponse tests ===
@@ -82,7 +82,7 @@ func TestCaptureRawProviderResponse_StoresResponse(t *testing.T) {
 	}
 	outbound := &PersistentOutboundTransformer{state: state}
 
-	mw := captureRawProviderResponse(outbound, nil)
+	mw := captureRawProviderResponse(outbound)
 	resp := &httpclient.Response{StatusCode: 200, Body: []byte("ok")}
 
 	result, err := mw.OnOutboundRawResponse(ctx, resp)
@@ -106,7 +106,7 @@ func TestApplyPassThroughResponse_Disabled(t *testing.T) {
 	}
 	outbound := &PersistentOutboundTransformer{state: state}
 
-	mw := applyPassThroughResponse(outbound, nil)
+	mw := applyPassThroughResponse(outbound)
 	transformed := &httpclient.Response{StatusCode: 200, Body: []byte("transformed")}
 	state.RawProviderResponse = &httpclient.Response{StatusCode: 200, Body: []byte("raw")}
 
@@ -145,7 +145,7 @@ func TestApplyPassThroughResponse_Enabled_ReturnsRaw(t *testing.T) {
 		state:   state,
 	}
 
-	mw := applyPassThroughResponse(outbound, nil)
+	mw := applyPassThroughResponse(outbound)
 	transformed := &httpclient.Response{StatusCode: 200, Body: []byte("transformed")}
 	rawResp := &httpclient.Response{
 		StatusCode: 200,
@@ -209,7 +209,7 @@ func TestApplyPassThroughResponse_ResponsePolicy(t *testing.T) {
 			}
 
 			transformed := &httpclient.Response{StatusCode: http.StatusOK, Body: []byte("transformed")}
-			result, err := applyPassThroughResponse(outbound, nil).OnInboundRawResponse(ctx, transformed)
+			result, err := applyPassThroughResponse(outbound).OnInboundRawResponse(ctx, transformed)
 			require.NoError(t, err)
 			assert.Equal(t, tt.expectBody, string(result.Body))
 			assert.Same(t, llmReq, policy.gotLlmReq)
@@ -241,7 +241,7 @@ func TestApplyPassThroughResponse_MismatchedAPIFormat(t *testing.T) {
 		state:   state,
 	}
 
-	mw := applyPassThroughResponse(outbound, nil)
+	mw := applyPassThroughResponse(outbound)
 	transformed := &httpclient.Response{StatusCode: 200, Body: []byte("transformed")}
 	rawResp := &httpclient.Response{
 		StatusCode: 200,
@@ -270,7 +270,7 @@ func TestApplyPassThroughResponse_NilLlmRequest(t *testing.T) {
 	}
 	outbound := &PersistentOutboundTransformer{state: state}
 
-	mw := applyPassThroughResponse(outbound, nil)
+	mw := applyPassThroughResponse(outbound)
 	transformed := &httpclient.Response{StatusCode: 200, Body: []byte("transformed")}
 	state.RawProviderResponse = &httpclient.Response{
 		StatusCode: 200,
@@ -312,7 +312,7 @@ func TestApplyPassThroughResponse_UsesRawProviderRequestAPIFormat(t *testing.T) 
 		state:   state,
 	}
 
-	mw := applyPassThroughResponse(outbound, nil)
+	mw := applyPassThroughResponse(outbound)
 	transformed := &httpclient.Response{StatusCode: 200, Body: []byte("transformed")}
 	rawResp := &httpclient.Response{
 		StatusCode: 200,
@@ -357,9 +357,9 @@ func TestResponsesCrossTransportBodyPreservation(t *testing.T) {
 			outbound := &PersistentOutboundTransformer{state: state}
 			request := &httpclient.Request{APIFormat: tt.target.String()}
 
-			body, err := applyPassThroughRequestBody(outbound, nil, nil).OnOutboundRawRequest(context.Background(), request)
+			body, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(context.Background(), request)
 			require.NoError(t, err)
-			adapted, err := applyResponsesTransportRequestBody(outbound, nil).OnOutboundRawRequest(context.Background(), body)
+			adapted, err := applyResponsesTransportRequestBody(outbound).OnOutboundRawRequest(context.Background(), body)
 			require.NoError(t, err)
 			expectedBody := `{"model":"mapped-model","input":[{"type":"function_call_output","call_id":"call_provider","output":"tool-value","item_id":"item_provider"}],"provider_canary":"keep"}`
 			if tt.source != tt.target && tt.target == llm.APIFormatOpenAIResponseWebSocket {
@@ -369,9 +369,9 @@ func TestResponsesCrossTransportBodyPreservation(t *testing.T) {
 				string(adapted.Body))
 
 			providerResponse := &httpclient.Response{Body: []byte(`{"id":"resp_provider","status":"completed","output":[{"id":"item_provider","type":"message","provider_canary":"keep"}]}`)}
-			_, err = captureRawProviderResponse(outbound, nil).OnOutboundRawResponse(context.Background(), providerResponse)
+			_, err = captureRawProviderResponse(outbound).OnOutboundRawResponse(context.Background(), providerResponse)
 			require.NoError(t, err)
-			clientResponse, err := applyPassThroughResponse(outbound, nil).OnInboundRawResponse(context.Background(), &httpclient.Response{Body: []byte(`{"id":"converted"}`)})
+			clientResponse, err := applyPassThroughResponse(outbound).OnInboundRawResponse(context.Background(), &httpclient.Response{Body: []byte(`{"id":"converted"}`)})
 			require.NoError(t, err)
 			require.JSONEq(t, string(providerResponse.Body), string(clientResponse.Body))
 		})
@@ -398,7 +398,7 @@ func TestResponsesCrossTransportBodySkipsCodexBlockedPassThroughFields(t *testin
 	outbound := &PersistentOutboundTransformer{state: state, wrapped: codexOutbound}
 	request := &httpclient.Request{APIFormat: llm.APIFormatOpenAIResponse.String(), Body: []byte(`{"model":"mapped-model","input":"hello"}`)}
 
-	result, err := applyResponsesTransportRequestBody(outbound, nil).OnOutboundRawRequest(context.Background(), request)
+	result, err := applyResponsesTransportRequestBody(outbound).OnOutboundRawRequest(context.Background(), request)
 	require.NoError(t, err)
 	require.Same(t, request, result)
 	require.JSONEq(t, `{"model":"mapped-model","input":"hello"}`, string(result.Body))
@@ -440,7 +440,7 @@ func TestApplyPassThroughResponse_PreservesIdentityAndBackMapsModel(t *testing.T
 	providerResponse := &httpclient.Response{Body: []byte(`{"id":"provider-response","model":"mapped-model","status":"completed","vendor_unknown":{"keep":true}}`)}
 	state.RawProviderResponse = providerResponse
 
-	result, err := applyPassThroughResponse(outbound, nil).OnInboundRawResponse(
+	result, err := applyPassThroughResponse(outbound).OnInboundRawResponse(
 		context.Background(),
 		&httpclient.Response{Body: []byte(`{"id":"converted"}`)},
 	)
@@ -470,7 +470,7 @@ func TestApplyPassThroughResponse_CrossFormatBackMapsModel(t *testing.T) {
 	outbound := &PersistentOutboundTransformer{state: state}
 	state.RawProviderResponse = &httpclient.Response{Body: []byte(`{"id":"provider-response","model":"mapped-model","status":"completed","vendor_unknown":{"keep":true}}`)}
 
-	result, err := applyPassThroughResponse(outbound, nil).OnInboundRawResponse(
+	result, err := applyPassThroughResponse(outbound).OnInboundRawResponse(
 		context.Background(),
 		&httpclient.Response{Body: []byte(`{"id":"converted"}`)},
 	)
@@ -500,7 +500,7 @@ func TestApplyPassThroughResponse_RestoresModelFromJSONBody(t *testing.T) {
 	outbound := &PersistentOutboundTransformer{state: state}
 	state.RawProviderResponse = &httpclient.Response{Body: []byte(`{"id":"provider-response","model":"mapped-model","status":"completed"}`)}
 
-	result, err := applyPassThroughResponse(outbound, nil).OnInboundRawResponse(
+	result, err := applyPassThroughResponse(outbound).OnInboundRawResponse(
 		context.Background(),
 		&httpclient.Response{Body: []byte(`{"id":"converted"}`)},
 	)
@@ -535,7 +535,7 @@ func TestApplyPassThroughStream_PreservesIdentityAndBackMapsModel(t *testing.T) 
 	}
 	outbound := &PersistentOutboundTransformer{state: state}
 
-	result, err := applyPassThroughStream(outbound, nil).OnInboundRawStream(context.Background(), testHTTPStream(nil))
+	result, err := applyPassThroughStream(outbound).OnInboundRawStream(context.Background(), testHTTPStream(nil))
 	require.NoError(t, err)
 	require.True(t, result.Next())
 	require.JSONEq(t, `{"type":"response.completed","response":{"id":"provider-response","model":"client-model","vendor_unknown":{"keep":true}}}`, string(result.Current().Data))
@@ -625,7 +625,7 @@ func TestApplyPassThroughStream_QueueTransformsHeldAndAttachedEvents(t *testing.
 			}
 			ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
 			defer cancel()
-			captured, err := captureRawProviderStream(outbound, nil).OnOutboundRawStream(
+			captured, err := captureRawProviderStream(outbound).OnOutboundRawStream(
 				ctx,
 				&gatedStream{events: events, gateAt: 1, release: release},
 			)
@@ -641,7 +641,7 @@ func TestApplyPassThroughStream_QueueTransformsHeldAndAttachedEvents(t *testing.
 			require.Equal(t, 1, heldCount)
 			require.Equal(t, rawStreamEventSize(events[0]), heldBytes)
 
-			result, err := applyPassThroughStream(outbound, nil).OnInboundRawStream(ctx, captured)
+			result, err := applyPassThroughStream(outbound).OnInboundRawStream(ctx, captured)
 			require.NoError(t, err)
 			unblock()
 			defer result.Close()
@@ -673,7 +673,6 @@ func TestApplyPassThroughStream_QueueTransformsHeldAndAttachedEvents(t *testing.
 }
 
 func TestIsPassThroughEnabled_DisablesWhenSupportedStreamParameterChanges(t *testing.T) {
-	ctx := context.Background()
 	channel := &biz.Channel{
 		Channel: &ent.Channel{
 			ID:   1,
@@ -699,11 +698,10 @@ func TestIsPassThroughEnabled_DisablesWhenSupportedStreamParameterChanges(t *tes
 	}
 	outbound := &PersistentOutboundTransformer{state: state}
 
-	assert.False(t, outbound.isPassThroughEnabled(ctx, nil))
+	assert.False(t, outbound.isPassThroughEnabled())
 }
 
 func TestIsPassThroughEnabled_DisablesWhenSupportedStreamParameterMissingButStreamingRequested(t *testing.T) {
-	ctx := context.Background()
 	channel := &biz.Channel{
 		Channel: &ent.Channel{
 			ID:   1,
@@ -729,11 +727,10 @@ func TestIsPassThroughEnabled_DisablesWhenSupportedStreamParameterMissingButStre
 	}
 	outbound := &PersistentOutboundTransformer{state: state}
 
-	assert.False(t, outbound.isPassThroughEnabled(ctx, nil))
+	assert.False(t, outbound.isPassThroughEnabled())
 }
 
 func TestIsPassThroughEnabled_AllowsNilAndFalseStreamToAlign(t *testing.T) {
-	ctx := context.Background()
 	channel := &biz.Channel{
 		Channel: &ent.Channel{
 			ID:   1,
@@ -760,11 +757,10 @@ func TestIsPassThroughEnabled_AllowsNilAndFalseStreamToAlign(t *testing.T) {
 	}
 	outbound := &PersistentOutboundTransformer{state: state}
 
-	assert.True(t, outbound.isPassThroughEnabled(ctx, nil))
+	assert.True(t, outbound.isPassThroughEnabled())
 }
 
 func TestIsPassThroughEnabled_DisablesWhenRequestStreamSemanticsDoNotMatchCurrentRequirement(t *testing.T) {
-	ctx := context.Background()
 	channel := &biz.Channel{
 		Channel: &ent.Channel{
 			ID:   1,
@@ -790,11 +786,10 @@ func TestIsPassThroughEnabled_DisablesWhenRequestStreamSemanticsDoNotMatchCurren
 	}
 	outbound := &PersistentOutboundTransformer{state: state}
 
-	assert.False(t, outbound.isPassThroughEnabled(ctx, nil))
+	assert.False(t, outbound.isPassThroughEnabled())
 }
 
 func TestIsPassThroughEnabled_DisablesWhenOriginalRequestWasNonStreamingButExecutionIsForcedStreaming(t *testing.T) {
-	ctx := context.Background()
 	channel := &biz.Channel{
 		Channel: &ent.Channel{
 			ID:   1,
@@ -821,7 +816,7 @@ func TestIsPassThroughEnabled_DisablesWhenOriginalRequestWasNonStreamingButExecu
 	}
 	outbound := &PersistentOutboundTransformer{state: state}
 
-	assert.False(t, outbound.isPassThroughEnabled(ctx, nil))
+	assert.False(t, outbound.isPassThroughEnabled())
 }
 
 func TestApplyPassThroughResponse_NilSettings(t *testing.T) {
@@ -838,7 +833,7 @@ func TestApplyPassThroughResponse_NilSettings(t *testing.T) {
 	}
 	outbound := &PersistentOutboundTransformer{state: state}
 
-	mw := applyPassThroughResponse(outbound, nil)
+	mw := applyPassThroughResponse(outbound)
 	transformed := &httpclient.Response{StatusCode: 200, Body: []byte("transformed")}
 
 	result, err := mw.OnInboundRawResponse(ctx, transformed)
@@ -858,7 +853,7 @@ func TestCaptureRawProviderStream_Disabled(t *testing.T) {
 	}
 	outbound := &PersistentOutboundTransformer{state: state}
 
-	mw := captureRawProviderStream(outbound, nil)
+	mw := captureRawProviderStream(outbound)
 	original := testHTTPStream(nil)
 
 	result, err := mw.OnOutboundRawStream(ctx, original)
@@ -885,7 +880,7 @@ func TestCaptureRawProviderStream_NilLlmRequest(t *testing.T) {
 		state:   state,
 	}
 
-	mw := captureRawProviderStream(outbound, nil)
+	mw := captureRawProviderStream(outbound)
 	original := testHTTPStream(nil)
 
 	result, err := mw.OnOutboundRawStream(ctx, original)
@@ -939,7 +934,7 @@ func TestCaptureRawProviderStream_FansOut(t *testing.T) {
 	release := make(chan struct{})
 	src := &gatedStream{events: events, gateAt: preReadCount, release: release}
 
-	mw := captureRawProviderStream(outbound, nil)
+	mw := captureRawProviderStream(outbound)
 	result, err := mw.OnOutboundRawStream(ctx, src)
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -951,7 +946,7 @@ func TestCaptureRawProviderStream_FansOut(t *testing.T) {
 		pipelineEvents = append(pipelineEvents, result.Current())
 	}
 
-	passThrough, err := applyPassThroughStream(outbound, nil).OnInboundRawStream(ctx, testHTTPStream(nil))
+	passThrough, err := applyPassThroughStream(outbound).OnInboundRawStream(ctx, testHTTPStream(nil))
 	require.NoError(t, err)
 
 	close(release)
@@ -1004,7 +999,7 @@ func TestCaptureRawProviderStream_StopsAtTerminalEvent(t *testing.T) {
 	}
 	src := &terminalGuardProviderStream{event: terminal}
 
-	result, err := captureRawProviderStream(outbound, nil).OnOutboundRawStream(ctx, src)
+	result, err := captureRawProviderStream(outbound).OnOutboundRawStream(ctx, src)
 	require.NoError(t, err)
 	require.True(t, result.Next())
 	require.Equal(t, terminal, result.Current())
@@ -1033,7 +1028,7 @@ func TestCaptureRawProviderStreamPreservesSteeringContinuation(t *testing.T) {
 				{Data: []byte(`{"type":"response.output_text.delta","delta":"STEERING_OK"}`)},
 				{Data: []byte(`{"type":"response.completed","response":{"id":"resp_successor","status":"completed"}}`)},
 			}
-			result, err := captureRawProviderStream(outbound, nil).OnOutboundRawStream(t.Context(), testHTTPStream(events))
+			result, err := captureRawProviderStream(outbound).OnOutboundRawStream(t.Context(), testHTTPStream(events))
 			require.NoError(t, err)
 			pipelineEvents, err := streams.All(result)
 			require.NoError(t, err)
@@ -1085,7 +1080,7 @@ func TestCaptureRawProviderStream_RepairsDelayedCodexResponsesTerminal(t *testin
 	}
 	src := newEventsThenBlockingStream(events)
 
-	result, err := captureRawProviderStreamWithTerminalGrace(outbound, nil, 20*time.Millisecond).
+	result, err := captureRawProviderStreamWithTerminalGrace(outbound, 20*time.Millisecond).
 		OnOutboundRawStream(ctx, src)
 	require.NoError(t, err)
 
@@ -1131,7 +1126,7 @@ func TestCaptureRawProviderStream_RepairsDelayedCodexResponsesTerminalWithoutPas
 	}
 	src := newEventsThenBlockingStream(events)
 
-	result, err := captureRawProviderStreamWithTerminalGrace(outbound, nil, 20*time.Millisecond).
+	result, err := captureRawProviderStreamWithTerminalGrace(outbound, 20*time.Millisecond).
 		OnOutboundRawStream(ctx, src)
 	require.NoError(t, err)
 
@@ -1212,7 +1207,7 @@ func TestApplyPassThroughRequestBody_DetachesCodexResponsesRepairWithoutPassThro
 	outbound.state.LlmRequest.APIFormat = llm.APIFormatOpenAIChatCompletion
 	request := outbound.state.RawProviderRequest
 
-	processed, err := applyPassThroughRequestBody(outbound, nil, nil).
+	processed, err := applyPassThroughRequestBody(outbound, nil).
 		OnOutboundRawRequest(context.Background(), request)
 
 	require.NoError(t, err)
@@ -1243,7 +1238,7 @@ func TestCaptureRawProviderStream_PrefersRealCodexResponsesTerminal(t *testing.T
 	}
 	src := newEventsThenBlockingStream(events)
 
-	result, err := captureRawProviderStreamWithTerminalGrace(outbound, nil, time.Second).
+	result, err := captureRawProviderStreamWithTerminalGrace(outbound, time.Second).
 		OnOutboundRawStream(ctx, src)
 	require.NoError(t, err)
 
@@ -1399,7 +1394,7 @@ func TestCaptureRawProviderStream_PropagatesError(t *testing.T) {
 	errTest := errors.New("stream error")
 	src := &errorStream{err: errTest}
 
-	mw := captureRawProviderStream(outbound, nil)
+	mw := captureRawProviderStream(outbound)
 	result, err := mw.OnOutboundRawStream(ctx, src)
 	require.NoError(t, err)
 
@@ -1437,7 +1432,7 @@ func TestCaptureRawProviderStream_CloseStopsBlockedUpstream(t *testing.T) {
 	}
 
 	src := newBlockingStream()
-	mw := captureRawProviderStream(outbound, nil)
+	mw := captureRawProviderStream(outbound)
 	result, err := mw.OnOutboundRawStream(ctx, src)
 	require.NoError(t, err)
 
@@ -1494,7 +1489,7 @@ func TestCaptureRawProviderStream_UsesRawProviderRequestAPIFormat(t *testing.T) 
 		state:   state,
 	}
 
-	mw := captureRawProviderStream(outbound, nil)
+	mw := captureRawProviderStream(outbound)
 	original := testHTTPStream(nil)
 
 	result, err := mw.OnOutboundRawStream(ctx, original)
@@ -1710,7 +1705,7 @@ func TestApplyPassThroughStream_Disabled(t *testing.T) {
 	}
 	outbound := &PersistentOutboundTransformer{state: state}
 
-	mw := applyPassThroughStream(outbound, nil)
+	mw := applyPassThroughStream(outbound)
 	transformed := testHTTPStream(nil)
 
 	result, err := mw.OnInboundRawStream(ctx, transformed)
@@ -1734,7 +1729,7 @@ func TestApplyPassThroughStream_NoRawChannel(t *testing.T) {
 	}
 	outbound := &PersistentOutboundTransformer{state: state}
 
-	mw := applyPassThroughStream(outbound, nil)
+	mw := applyPassThroughStream(outbound)
 	transformed := testHTTPStream(nil)
 
 	result, err := mw.OnInboundRawStream(ctx, transformed)
@@ -1790,7 +1785,7 @@ func TestApplyPassThroughStream_ReturnsRawEvents(t *testing.T) {
 		close(rawCh)
 	}()
 
-	mw := applyPassThroughStream(outbound, nil)
+	mw := applyPassThroughStream(outbound)
 	result, err := mw.OnInboundRawStream(ctx, transformed)
 	require.NoError(t, err)
 
@@ -1846,7 +1841,7 @@ func TestApplyPassThroughStream_DrainsInner(t *testing.T) {
 		close(rawCh)
 	}()
 
-	mw := applyPassThroughStream(outbound, nil)
+	mw := applyPassThroughStream(outbound)
 	result, err := mw.OnInboundRawStream(ctx, transformed)
 	require.NoError(t, err)
 
@@ -2176,7 +2171,7 @@ func TestPassThroughStream_LLMMiddlewareRuns(t *testing.T) {
 	}
 	srcStream := testHTTPStream(rawEvents)
 
-	capMw := captureRawProviderStream(outbound, nil)
+	capMw := captureRawProviderStream(outbound)
 	pipelineStream, err := capMw.OnOutboundRawStream(ctx, srcStream)
 	require.NoError(t, err)
 	require.NotNil(t, state.RawStreamCh)
@@ -2192,7 +2187,7 @@ func TestPassThroughStream_LLMMiddlewareRuns(t *testing.T) {
 	inboundStream, err := inbound.TransformStream(ctx, trackedLLM)
 	require.NoError(t, err)
 
-	applyMw := applyPassThroughStream(outbound, nil)
+	applyMw := applyPassThroughStream(outbound)
 	result, err := applyMw.OnInboundRawStream(ctx, inboundStream)
 	require.NoError(t, err)
 
@@ -2251,9 +2246,9 @@ func TestPassThroughResponsesStream_DeepSeekReasoningDoesNotDeadlock(t *testing.
 		outbound,
 		pipeline.WithEmptyResponseDetection(),
 		pipeline.WithMiddlewares(
-			applyPassThroughStream(outbound, nil),
-			applyPassThroughRequestBody(outbound, nil, nil),
-			captureRawProviderStream(outbound, nil),
+			applyPassThroughStream(outbound),
+			applyPassThroughRequestBody(outbound, nil),
+			captureRawProviderStream(outbound),
 		),
 	)
 
@@ -2396,9 +2391,9 @@ func TestPassThroughAnthropicStream_RetryPreReadDoesNotDeadlock(t *testing.T) {
 		outbound,
 		pipeline.WithRetry(0, 1, 0),
 		pipeline.WithMiddlewares(
-			applyPassThroughStream(outbound, nil),
-			applyPassThroughRequestBody(outbound, nil, nil),
-			captureRawProviderStream(outbound, nil),
+			applyPassThroughStream(outbound),
+			applyPassThroughRequestBody(outbound, nil),
+			captureRawProviderStream(outbound),
 		),
 	)
 
@@ -2527,7 +2522,7 @@ func TestPassThroughStream_ErrorPropagates(t *testing.T) {
 	errTest := errors.New("stream error")
 	src := &errorStream{err: errTest}
 
-	capMw := captureRawProviderStream(outbound, nil)
+	capMw := captureRawProviderStream(outbound)
 	result, err := capMw.OnOutboundRawStream(ctx, src)
 	require.NoError(t, err)
 
@@ -2573,7 +2568,7 @@ func TestApplyPassThroughBodyPreservesMappedModel(t *testing.T) {
 		Body:      []byte(`{"model":"gpt-4o","messages":[{"role":"user","content":"hi"}]}`),
 	}
 
-	processed, err := applyPassThroughRequestBody(outbound, nil, nil).OnOutboundRawRequest(ctx, request)
+	processed, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(ctx, request)
 	require.NoError(t, err)
 	require.True(t, outbound.state.PassThroughApplied)
 	require.Equal(t, "gpt-4o", gjson.GetBytes(processed.Body, "model").String())
@@ -2623,7 +2618,7 @@ func TestOpenAIJSONRequestBodyRoutingContracts(t *testing.T) {
 				Body:      []byte(`{"model":"provider-model","converted_only":true}`),
 			}
 
-			processed, err := applyPassThroughRequestBody(outbound, nil, nil).OnOutboundRawRequest(t.Context(), transformed)
+			processed, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(t.Context(), transformed)
 			require.NoError(t, err)
 			require.True(t, outbound.state.PassThroughApplied)
 			require.Equal(t, "provider-model", gjson.GetBytes(processed.Body, "model").String())
@@ -2655,7 +2650,7 @@ func TestOpenAIJSONRequestBodyRoutingContracts(t *testing.T) {
 				Body:      []byte(`{"model":"provider-model","converted_only":true}`),
 			}
 
-			processed, err := applyPassThroughRequestBody(outbound, nil, nil).OnOutboundRawRequest(t.Context(), transformed)
+			processed, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(t.Context(), transformed)
 			require.NoError(t, err)
 			require.False(t, outbound.state.PassThroughApplied)
 			require.Equal(t, transformed, processed)
@@ -2700,7 +2695,7 @@ func TestOpenAIResponseBodyRoutingContracts(t *testing.T) {
 			}}
 			transformed := &httpclient.Response{StatusCode: http.StatusOK, Body: []byte(`{"transformed":true}`)}
 
-			processed, err := applyPassThroughResponse(outbound, nil).OnInboundRawResponse(t.Context(), transformed)
+			processed, err := applyPassThroughResponse(outbound).OnInboundRawResponse(t.Context(), transformed)
 			require.NoError(t, err)
 			require.Equal(t, raw, processed)
 		})
@@ -2724,7 +2719,7 @@ func TestOpenAIResponseBodyRoutingContracts(t *testing.T) {
 			}}
 			transformed := &httpclient.Response{StatusCode: http.StatusOK, Body: []byte(`{"transformed":true}`)}
 
-			processed, err := applyPassThroughResponse(outbound, nil).OnInboundRawResponse(t.Context(), transformed)
+			processed, err := applyPassThroughResponse(outbound).OnInboundRawResponse(t.Context(), transformed)
 			require.NoError(t, err)
 			require.Equal(t, transformed, processed)
 		})
@@ -2769,7 +2764,7 @@ func TestApplyPassThroughBodySkipsWhenOutboundPolicyRejects(t *testing.T) {
 		Body:      []byte(`{"model":"gpt-5.4-mini","input":[{"role":"user","content":"hi"}],"stream":true}`),
 	}
 
-	processed, err := applyPassThroughRequestBody(outbound, nil, nil).OnOutboundRawRequest(ctx, request)
+	processed, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(ctx, request)
 	require.NoError(t, err)
 	require.False(t, outbound.state.PassThroughApplied)
 	require.Equal(t, request, processed)
@@ -2898,7 +2893,7 @@ func TestApplyPassThroughBodyMasksPromptProtectedOpenAIContent(t *testing.T) {
 		Body:      []byte(`{"model":"gpt-4o","messages":[]}`),
 	}
 
-	processed, err := applyPassThroughRequestBody(outbound, nil, nil).OnOutboundRawRequest(ctx, request)
+	processed, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(ctx, request)
 	require.NoError(t, err)
 	assert.Equal(t, "gpt-4o", gjson.GetBytes(processed.Body, "model").String())
 	assert.Equal(t, "secret-001", gjson.GetBytes(processed.Body, "messages.0.content").String())
@@ -2949,7 +2944,7 @@ func TestApplyPassThroughBodyKeepsProtectedBodyForUnsupportedPromptLayout(t *tes
 		Body:      []byte(`{"messages":[{"role":"user","content":"[MASKED]"}]}`),
 	}
 
-	processed, err := applyPassThroughRequestBody(outbound, nil, nil).OnOutboundRawRequest(ctx, request)
+	processed, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(ctx, request)
 	require.NoError(t, err)
 	assert.Equal(t, string(request.Body), string(processed.Body))
 	assert.NotContains(t, string(processed.Body), `"content":"secret"`)
@@ -2987,7 +2982,7 @@ func TestApplyPassThroughBodyPreservesMappedModelForJinaRerank(t *testing.T) {
 		Body:      []byte(`{"model":"Qwen/Qwen3-Reranker-8B","query":"what is ai","documents":["a","b"]}`),
 	}
 
-	processed, err := applyPassThroughRequestBody(outbound, nil, nil).OnOutboundRawRequest(ctx, request)
+	processed, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(ctx, request)
 	require.NoError(t, err)
 	require.Equal(t, "Qwen/Qwen3-Reranker-8B", gjson.GetBytes(processed.Body, "model").String())
 	require.Equal(t, float64(2), gjson.GetBytes(processed.Body, "top_n").Float())
@@ -3026,7 +3021,7 @@ func TestApplyPassThroughBodyPreservesMappedModelForJinaEmbedding(t *testing.T) 
 		Body:      []byte(`{"model":"jina-embeddings-v3","input":"hello"}`),
 	}
 
-	processed, err := applyPassThroughRequestBody(outbound, nil, nil).OnOutboundRawRequest(ctx, request)
+	processed, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(ctx, request)
 	require.NoError(t, err)
 	require.Equal(t, "jina-embeddings-v3", gjson.GetBytes(processed.Body, "model").String())
 	require.Equal(t, "retrieval.query", gjson.GetBytes(processed.Body, "task").String())
@@ -3066,7 +3061,7 @@ func TestApplyPassThroughBodySkipsPassThroughWhenSupportedStreamParameterChanges
 		},
 	}
 
-	processed, err := applyPassThroughRequestBody(outbound, nil, nil).OnOutboundRawRequest(ctx, request)
+	processed, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(ctx, request)
 	require.NoError(t, err)
 	require.Equal(t, string(request.Body), string(processed.Body))
 	require.Equal(t, "gpt-4o", gjson.GetBytes(processed.Body, "model").String())
@@ -3108,7 +3103,7 @@ func TestApplyPassThroughBodyPreservesAlignedStreamWithoutPatchingIt(t *testing.
 		Body:      []byte(`{"model":"gpt-4o","stream":true,"messages":[{"role":"user","content":"hi"}]}`),
 	}
 
-	processed, err := applyPassThroughRequestBody(outbound, nil, nil).OnOutboundRawRequest(ctx, request)
+	processed, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(ctx, request)
 	require.NoError(t, err)
 	require.Equal(t, "gpt-4o", gjson.GetBytes(processed.Body, "model").String())
 	require.True(t, gjson.GetBytes(processed.Body, "stream").Bool())
@@ -3244,14 +3239,7 @@ func TestApplyUserAgentPassThrough(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx, client := setupTest(t)
-
-			// Create real system service with test database
-			systemService := newTestSystemService(client)
-
-			// Set global User-Agent pass-through setting
-			err := systemService.SetUserAgentPassThrough(ctx, tt.globalUAEnabled)
-			require.NoError(t, err)
+			ctx := context.Background()
 
 			// Create mock channel with optional pass-through setting
 			channelSettings := &objects.ChannelSettings{}
@@ -3293,11 +3281,12 @@ func TestApplyUserAgentPassThrough(t *testing.T) {
 				state: &PersistenceState{
 					CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
 					LlmRequest:       llmRequest,
+					Settings:         &RequestSettings{UserAgentPassThrough: tt.globalUAEnabled},
 				},
 			}
 
 			// Create middleware
-			middleware := applyUserAgentPassThrough(outbound, systemService)
+			middleware := applyUserAgentPassThrough(outbound)
 
 			// Execute middleware
 			rawRequest := &httpclient.Request{
@@ -3324,19 +3313,16 @@ func TestApplyUserAgentPassThrough(t *testing.T) {
 
 // TestApplyUserAgentPassThrough_NoChannel tests the middleware when no channel is selected.
 func TestApplyUserAgentPassThrough_NoChannel(t *testing.T) {
-	ctx, client := setupTest(t)
+	ctx := context.Background()
 
-	// Create real system service with test database
-	systemService := newTestSystemService(client)
-
-	// Create outbound without a channel
+	// Create outbound without a channel or settings snapshot
 	outbound := &PersistentOutboundTransformer{
 		wrapped: &mockTransformer{},
 		state:   &PersistenceState{},
 	}
 
 	// Create middleware
-	middleware := applyUserAgentPassThrough(outbound, systemService)
+	middleware := applyUserAgentPassThrough(outbound)
 
 	// Execute middleware
 	rawRequest := &httpclient.Request{
@@ -3373,7 +3359,7 @@ func TestApplyUserAgentPassThrough_PreservesCanonicalCodexIdentity(t *testing.T)
 		"Version":    []string{"0.147.0"},
 	}}
 
-	processed, err := applyUserAgentPassThrough(outbound, systemService).OnOutboundRawRequest(ctx, request)
+	processed, err := applyUserAgentPassThrough(outbound).OnOutboundRawRequest(ctx, request)
 	require.NoError(t, err)
 	require.Equal(t, "codex_cli_rs/0.147.0", processed.Headers.Get("User-Agent"))
 }
@@ -3535,7 +3521,7 @@ func TestApplyPassThroughBodySkipsMultipartFormats(t *testing.T) {
 				Body:      outboundBody,
 			}
 
-			processed, err := applyPassThroughRequestBody(outbound, nil, nil).OnOutboundRawRequest(ctx, request)
+			processed, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(ctx, request)
 			require.NoError(t, err)
 			require.Equal(t, outboundBody, processed.Body)
 			require.False(t, outbound.state.PassThroughApplied)
@@ -3571,7 +3557,7 @@ func TestApplyPassThroughBodySkipsMultipartVideo(t *testing.T) {
 		Body:      outboundBody,
 	}
 
-	processed, err := applyPassThroughRequestBody(outbound, nil, nil).OnOutboundRawRequest(t.Context(), request)
+	processed, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(t.Context(), request)
 	require.NoError(t, err)
 	require.False(t, outbound.state.PassThroughApplied)
 	require.Equal(t, outboundBody, processed.Body)
@@ -3615,7 +3601,7 @@ func TestApplyPassThroughBodyAppliesJSONImageEdit(t *testing.T) {
 		Body:        outboundBody,
 	}
 
-	processed, err := applyPassThroughRequestBody(outbound, nil, nil).OnOutboundRawRequest(ctx, request)
+	processed, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(ctx, request)
 	require.NoError(t, err)
 	require.True(t, outbound.state.PassThroughApplied)
 
@@ -3685,7 +3671,7 @@ func TestApplyPassThroughBodyAppliesSpeechModelPatch(t *testing.T) {
 		Body:      []byte(`{"model":"tts-1-hd","input":"hello","voice":"alloy"}`),
 	}
 
-	processed, err := applyPassThroughRequestBody(outbound, nil, nil).OnOutboundRawRequest(ctx, request)
+	processed, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(ctx, request)
 	require.NoError(t, err)
 	require.Equal(t, "tts-1-hd", gjson.GetBytes(processed.Body, "model").String())
 	require.Equal(t, "alloy", gjson.GetBytes(processed.Body, "voice").String())

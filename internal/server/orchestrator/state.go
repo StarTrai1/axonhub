@@ -30,10 +30,11 @@ type PersistenceState struct {
 	ChannelService      *biz.ChannelService
 	PromptProvider      PromptProvider
 	PromptProtecter     PromptProtecter
-	RetryPolicyProvider RetryPolicyProvider
 	CandidateSelector   CandidateSelector
 	LoadBalancers       map[string]*LoadBalancer
 	RoutingPolicy       EffectiveRoutingPolicy
+	// Settings is the system settings snapshot taken when the request started.
+	Settings *RequestSettings
 
 	// Request state
 	// RequestStartedAt includes routing, checkpoint preparation, and all retries.

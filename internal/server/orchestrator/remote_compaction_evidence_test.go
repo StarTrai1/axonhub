@@ -54,7 +54,7 @@ func TestNativeCompactionMigrationReusesAncestorEvidence(t *testing.T) {
 					// a known context contract; normal models now use unified recovery.
 					state.ChannelModelsCandidates[0].ContextTokens = 0
 					state.ChannelModelsCandidates[0].Models[0].ActualModel = "legacy-context-unknown"
-					state.RetryPolicyProvider = &mockRetryPolicyProvider{policy: &biz.RetryPolicy{Enabled: true, MaxSingleChannelRetries: 2}}
+					state.Settings = &RequestSettings{RetryPolicy: biz.RetryPolicy{Enabled: true, MaxSingleChannelRetries: 2}}
 					return recoverRejectedRemoteCompaction(outbound, adapter, executor)
 				}
 				_, result, err := runRejectedReasoningPipeline(t, ctx, req, executor, "ancestor-evidence-key", true, 2, configure)
