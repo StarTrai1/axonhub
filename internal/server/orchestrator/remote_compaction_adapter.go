@@ -1206,7 +1206,7 @@ func (a *remoteCompactionAdapter) generateCompaction(
 		}
 		failure := responses.NewInboundTransformer().TransformError(ctx, err)
 		if updateErr := a.requestService.UpdateRequestStatusExternalIDAndResponseBody(
-			context.WithoutCancel(ctx), bridgeRecord.ID, status, "", objects.JSONRawMessage(failure.Body), nil,
+			context.WithoutCancel(ctx), bridgeRecord, status, "", objects.JSONRawMessage(failure.Body), nil,
 		); updateErr != nil {
 			log.Warn(ctx, "failed to persist local compaction bridge request error", log.Cause(updateErr))
 		}
@@ -1349,7 +1349,7 @@ func (a *remoteCompactionAdapter) generateCompactionWithCandidate(
 			}
 			persistCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 			defer cancel()
-			if persistErr := a.requestService.UpdateRequestExecutionFinalized(persistCtx, executionRecord.ID, status, ExtractErrorMessage(err), "", failure.Body, nil, ""); persistErr != nil {
+			if persistErr := a.requestService.UpdateRequestExecutionFinalized(persistCtx, executionRecord, status, ExtractErrorMessage(err), "", failure.Body, nil, "", failure.Headers); persistErr != nil {
 				log.Warn(persistCtx, "failed to persist local compaction stream failure", log.Cause(persistErr))
 			}
 		}
@@ -1385,7 +1385,7 @@ func (a *remoteCompactionAdapter) generateCompactionWithCandidate(
 		// Keep the provider's final response for diagnosis. Without it a tool-only
 		// answer, refusal and empty completion all look like the same local error.
 		if executionRecord != nil && a.requestService != nil {
-			if persistErr := a.requestService.UpdateRequestExecutionFinalized(context.WithoutCancel(ctx), executionRecord.ID, requestexecution.StatusFailed, err.Error(), meta.ID, responseBody, nil, ""); persistErr != nil {
+			if persistErr := a.requestService.UpdateRequestExecutionFinalized(context.WithoutCancel(ctx), executionRecord, requestexecution.StatusFailed, err.Error(), meta.ID, responseBody, nil, "", nil); persistErr != nil {
 				log.Warn(ctx, "failed to persist empty local compaction response", log.Cause(persistErr))
 			}
 		}
@@ -1425,7 +1425,7 @@ func (a *remoteCompactionAdapter) finalizeCompactionGeneration(
 	if bridgeRecord != nil && a.requestService != nil {
 		persistCtx := context.WithoutCancel(ctx)
 		if executionRecord != nil {
-			if persistErr := a.requestService.UpdateRequestExecutionFinalized(persistCtx, executionRecord.ID, requestexecution.StatusCompleted, "", meta.ID, responseBody, metrics, modelname.FromResponse(&httpclient.Response{Body: responseBody}, llm.APIFormat(providerRequest.APIFormat))); persistErr != nil {
+			if persistErr := a.requestService.UpdateRequestExecutionFinalized(persistCtx, executionRecord, requestexecution.StatusCompleted, "", meta.ID, responseBody, metrics, modelname.FromResponse(&httpclient.Response{Body: responseBody}, llm.APIFormat(providerRequest.APIFormat)), nil); persistErr != nil {
 				log.Warn(persistCtx, "failed to persist local compaction bridge execution", log.Cause(persistErr))
 			}
 			if meta.Usage != nil && a.usageLogService != nil {
@@ -1437,7 +1437,7 @@ func (a *remoteCompactionAdapter) finalizeCompactionGeneration(
 		if persistErr := a.requestService.UpdateRequestChannelID(persistCtx, bridgeRecord.ID, perf.ChannelID); persistErr != nil {
 			log.Warn(persistCtx, "failed to persist local compaction bridge channel", log.Cause(persistErr))
 		}
-		if persistErr := a.requestService.UpdateRequestFinalized(persistCtx, bridgeRecord.ID, request.StatusCompleted, meta.ID, responseBody, metrics); persistErr != nil {
+		if persistErr := a.requestService.UpdateRequestFinalized(persistCtx, bridgeRecord, request.StatusCompleted, meta.ID, responseBody, metrics); persistErr != nil {
 			log.Warn(persistCtx, "failed to persist local compaction bridge response", log.Cause(persistErr))
 		}
 	}

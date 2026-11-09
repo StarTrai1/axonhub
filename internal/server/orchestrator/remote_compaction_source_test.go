@@ -156,7 +156,7 @@ func TestResponsesRejectedNativeSourceBeforePassThrough(t *testing.T) {
 	require.NoError(t, err)
 	fanned, err := captureRawProviderStream(outbound).OnOutboundRawStream(ctx, archived)
 	require.NoError(t, err)
-	require.NotNil(t, state.RawStreamCh)
+	require.NotNil(t, state.PassThroughRecorder)
 	t.Cleanup(func() { _ = fanned.Close() })
 	rawStream, err := applyPassThroughStream(outbound).OnInboundRawStream(ctx, fanned)
 	require.NoError(t, err)

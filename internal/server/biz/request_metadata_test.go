@@ -83,12 +83,11 @@ func TestRequestService_MetadataUpdatesDoNotReadPayloads(t *testing.T) {
 	require.NoError(t, svc.UpdateRequestChannelID(ctx, req.ID, channel.ID))
 	headers := http.Header{"X-Request-Id": {"upstream-id"}}
 	require.NoError(t, svc.UpdateRequestResponseHeaders(ctx, req.ID, headers))
-	require.NoError(t, svc.UpdateRequestExecutionResponseHeaders(ctx, execution.ID, headers))
 	require.NoError(t, svc.UpdateRequestStatus(ctx, req.ID, request.StatusFailed))
 	require.NoError(t, svc.UpdateRequestExecutionStatus(ctx, execution.ID, requestexecution.StatusFailed, "temporary failure", nil))
 	response := map[string]string{"id": "response-completed"}
-	require.NoError(t, svc.UpdateRequestFinalized(ctx, req.ID, request.StatusCompleted, "response-completed", response, nil))
-	require.NoError(t, svc.UpdateRequestExecutionFinalized(ctx, execution.ID, requestexecution.StatusCompleted, "", "response-completed", response, nil, "gpt-6-astra"))
+	require.NoError(t, svc.UpdateRequestFinalized(ctx, req, request.StatusCompleted, "response-completed", response, nil))
+	require.NoError(t, svc.UpdateRequestExecutionFinalized(ctx, execution, requestexecution.StatusCompleted, "", "response-completed", response, nil, "gpt-6-astra", headers))
 
 	checking = false
 	stored, err := client.Request.Get(ctx, req.ID)

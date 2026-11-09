@@ -39,7 +39,7 @@ func TestStreamDeliveryCapturedTerminalSurvivesCanceledDrain(t *testing.T) {
 			outbound, err := responses.NewOutboundTransformer("https://example.test", "synthetic-key")
 			require.NoError(t, err)
 			captured := &passThroughStreamError{}
-			state := &PersistenceState{RawStreamErrRef: captured}
+			state := &PersistenceState{PassThroughRecorder: &rawEventRecorder{outcome: captured}}
 			streamCtx, cancel := context.WithCancel(ctx)
 			defer cancel()
 			stream := NewOutboundPersistentStream(streamCtx, streams.SliceStream([]*httpclient.StreamEvent{}), req, execution, requestService, usageService, outbound, nil, state)
@@ -51,7 +51,7 @@ func TestStreamDeliveryCapturedTerminalSurvivesCanceledDrain(t *testing.T) {
 			// transformed consumer from reaching Next/Current for that event.
 			captured.recordTerminal(event)
 			cancel()
-			state.RawStreamErrRef = &passThroughStreamError{}
+			state.PassThroughRecorder = &rawEventRecorder{outcome: &passThroughStreamError{}}
 			require.NoError(t, stream.Close(), "finalization uses its own attempt's evidence")
 			saved, err := client.RequestExecution.Get(ctx, execution.ID)
 			require.NoError(t, err)
