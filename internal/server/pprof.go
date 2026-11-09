@@ -99,16 +99,18 @@ func (p *pprofServer) start(ctx context.Context, cfg Pprof) error {
 		Handler:           newPprofHandler(),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
-	log.Info(context.Background(), "pprof server listening", log.String("addr", p.addr))
+	log.Info(ctx, "pprof server listening", log.String("addr", p.addr))
 
+	// Serving outlives startup; lifecycle shutdown owns the listener.
+	serverCtx := context.WithoutCancel(ctx)
 	go func() {
 		defer func() {
 			if recovered := recover(); recovered != nil {
-				log.Error(context.Background(), "pprof server panicked", log.Any("panic", recovered))
+				log.Error(serverCtx, "pprof server panicked", log.Any("panic", recovered))
 			}
 		}()
 		if err := p.server.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Error(context.Background(), "pprof server stopped", log.Cause(err))
+			log.Error(serverCtx, "pprof server stopped", log.Cause(err))
 		}
 	}()
 
