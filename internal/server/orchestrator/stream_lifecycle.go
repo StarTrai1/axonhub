@@ -3,10 +3,12 @@ package orchestrator
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"sync"
 	"time"
 
+	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server/lifecycle"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -32,8 +34,7 @@ func streamLifecycleFromContext(ctx context.Context) *streamLifecycle {
 
 // streamLifecycle separates downstream cancellation from the execution
 // context. Before acknowledgement, downstream cancellation aborts execution;
-// after acknowledgement it only starts the bounded tail budget, so trailing
-// usage can still be collected.
+// after acknowledgement it only opens the bounded collection window.
 //
 //nolint:containedctx // The lifecycle owns the request and execution contexts.
 type streamLifecycle struct {
@@ -44,29 +45,112 @@ type streamLifecycle struct {
 	execution      context.Context
 	cancel         context.CancelCauseFunc
 	deadlineCancel context.CancelFunc
-	stopDownstream func() bool
-	stopShutdown   func() bool
 
 	acknowledged bool
 	canceled     bool
-	ended        bool
 	closed       bool
+	done         chan struct{}
 	finalized    chan struct{}
+	stopWatch    chan struct{}
+	stopOnce     sync.Once
+	tail         *streamTailOwner
+}
 
-	// attempt is the outbound stream of the current upstream attempt. Its Close
-	// collects the tail and finalizes accounting.
-	attempt *OutboundPersistentStream
-
-	// tail bounds post-acknowledgement collection. When it expires it aborts
-	// the attempt's source, releasing a consumer blocked on a silent upstream.
-	tail          context.Context
-	tailCancel    context.CancelFunc
-	stopTailAbort func() bool
+type streamTailOwner struct {
+	source         streams.Stream[*httpclient.StreamEvent]
+	readerDone     <-chan struct{}
+	readerDoneFunc func() <-chan struct{}
+	abort          func()
+	onEvent        func(*httpclient.StreamEvent) error
+	sourceEnd      func() llm.SourceEndReason
+	finalize       func(llm.SourceEndReason) error
+	done           chan struct{}
+	accountingDone chan struct{}
+	startOnce      sync.Once
 }
 
 type streamTailResult struct {
 	end llm.SourceEndReason
 	err error
+}
+
+// awaitTailBarrier waits for one quiescence barrier, aborting the source if the
+// tail budget expires first so a blocked reader cannot stall finalization.
+func awaitTailBarrier(ctx context.Context, abort func(), barrier <-chan struct{}) {
+	if barrier == nil {
+		return
+	}
+	select {
+	case <-barrier:
+	case <-ctx.Done():
+		if abort != nil {
+			abort()
+		}
+		<-barrier
+	}
+}
+
+func (o *streamTailOwner) run(ctx context.Context, cause error) {
+	defer close(o.done)
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			log.Warn(ctx, "stream tail owner panicked", log.Any("panic", recovered))
+		}
+	}()
+	if cause != nil {
+		if o.abort != nil {
+			o.abort()
+		}
+	}
+	// The tail must not touch the raw source until the consumer has both
+	// finished its in-flight read and stopped iterating. Awaiting only one of
+	// the two barriers lets the tail call Next on the raw source while the
+	// consumer is between Next and Current, which can skip or duplicate the
+	// final usage event.
+	awaitTailBarrier(ctx, o.abort, o.readerDone)
+	if o.readerDoneFunc != nil {
+		awaitTailBarrier(ctx, o.abort, o.readerDoneFunc())
+	}
+	result := streamTailResult{end: llm.SourceEndCanceled, err: ctx.Err()}
+	if ctx.Err() == nil {
+		resultCh := make(chan streamTailResult, 1)
+		go func() {
+			result := streamTailResult{end: llm.SourceEndError}
+			defer func() {
+				if recovered := recover(); recovered != nil {
+					log.Warn(ctx, "stream tail collection panicked", log.Any("panic", recovered))
+					result.err = fmt.Errorf("stream tail collection panic: %v", recovered)
+				}
+				resultCh <- result
+			}()
+			result = collectStreamTail(ctx, o.source, o.onEvent)
+		}()
+		select {
+		case result = <-resultCh:
+		case <-ctx.Done():
+			if o.abort != nil {
+				o.abort()
+			}
+			result = <-resultCh
+			result.end = llm.SourceEndCanceled
+			result.err = ctx.Err()
+		}
+	}
+	if o.finalize != nil {
+		end := result.end
+		if result.err != nil && !errors.Is(result.err, io.EOF) {
+			end = llm.SourceEndError
+			if errors.Is(result.err, context.Canceled) || errors.Is(result.err, context.DeadlineExceeded) {
+				end = llm.SourceEndCanceled
+			}
+		}
+		if result.err == nil && end == llm.SourceEndCleanEOF && o.sourceEnd != nil {
+			if sourceEnd := o.sourceEnd(); sourceEnd == llm.SourceEndSemantic {
+				end = sourceEnd
+			}
+		}
+		_ = o.finalize(end)
+	}
 }
 
 func newStreamLifecycle(ctx context.Context) (*streamLifecycle, context.Context) {
@@ -88,78 +172,99 @@ func newStreamLifecycle(ctx context.Context) (*streamLifecycle, context.Context)
 		execution:      execution,
 		cancel:         cancel,
 		deadlineCancel: deadlineCancel,
+		done:           make(chan struct{}),
 		finalized:      make(chan struct{}),
+		stopWatch:      make(chan struct{}),
 	}
-	owner.stopDownstream = context.AfterFunc(ctx, func() { owner.downstreamEnded(ctx.Err()) })
-	if shutdown != nil {
-		owner.stopShutdown = context.AfterFunc(shutdown, func() { owner.downstreamEnded(context.Cause(shutdown)) })
-	}
+	go owner.watch()
 
 	return owner, withStreamLifecycle(execution, owner)
 }
 
+func (s *streamLifecycle) watch() {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			log.Warn(s.execution, "stream lifecycle watcher panicked", log.Any("panic", recovered))
+		}
+	}()
+	select {
+	case <-s.downstream.Done():
+		s.downstreamEnded(s.downstream.Err())
+	case <-s.shutdownDone():
+		s.downstreamEnded(context.Cause(s.shutdown))
+	case <-s.stopWatch:
+	}
+	close(s.done)
+}
+
+func (s *streamLifecycle) shutdownDone() <-chan struct{} {
+	if s.shutdown == nil {
+		return nil
+	}
+	return s.shutdown.Done()
+}
+
 func (s *streamLifecycle) downstreamEnded(cause error) {
 	s.mu.Lock()
-	if s.closed || s.canceled || s.ended {
+	if s.closed || s.canceled {
 		s.mu.Unlock()
 		return
 	}
-	// Only the first of downstream end and shutdown decides the outcome.
-	s.ended = true
 	shutdown := s.shutdown != nil && context.Cause(s.shutdown) != nil && errors.Is(cause, context.Cause(s.shutdown))
 	if s.acknowledged && cause != nil && !shutdown && !errors.Is(cause, context.DeadlineExceeded) {
-		s.tailContextLocked()
+		tail := s.tail
 		s.mu.Unlock()
+		if tail != nil {
+			s.startTail(tail, nil)
+		}
 		return
 	}
 	s.canceled = true
 	s.cancel(normalizeCancelCause(cause))
-	attempt := s.attempt
+	tail := s.tail
 	s.mu.Unlock()
-	if attempt != nil {
-		attempt.abortSource()
+	if tail != nil {
+		s.startTail(tail, cause)
 	}
 }
 
-// tailContextLocked starts the shared tail budget on first use.
-func (s *streamLifecycle) tailContextLocked() context.Context {
-	if s.tail == nil {
-		s.tail, s.tailCancel = context.WithTimeout(s.execution, streamTailTimeout)
-		if attempt := s.attempt; attempt != nil {
-			s.stopTailAbort = context.AfterFunc(s.tail, attempt.abortSource)
+func (s *streamLifecycle) registerTailOwner(owner *streamTailOwner) {
+	if owner == nil {
+		return
+	}
+	s.mu.Lock()
+	s.tail = owner
+	acknowledged := s.acknowledged
+	s.mu.Unlock()
+	if acknowledged {
+		s.startTail(owner, nil)
+	}
+}
+
+func (s *streamLifecycle) startTail(owner *streamTailOwner, cause error) {
+	owner.startOnce.Do(func() {
+		if owner.accountingDone == nil {
+			owner.accountingDone = make(chan struct{})
 		}
-	}
-	return s.tail
+		tailCtx, cancel := context.WithTimeout(s.execution, streamTailTimeout)
+		go func() {
+			defer cancel()
+			defer close(owner.accountingDone)
+			owner.run(tailCtx, cause)
+		}()
+	})
 }
 
-// tailContext returns the budget for collecting an attempt's remaining source
-// after its consumer stopped reading, and whether delivery was acknowledged.
-func (s *streamLifecycle) tailContext() (context.Context, bool, context.CancelFunc) {
+func (s *streamLifecycle) waitForAccounting() {
 	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.acknowledged {
-		return s.tailContextLocked(), true, func() {}
-	}
-	ctx, cancel := context.WithTimeout(s.execution, streamTailTimeout)
-	return ctx, false, cancel
-}
-
-func (s *streamLifecycle) trackAttempt(attempt *OutboundPersistentStream) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.attempt = attempt
-}
-
-// closeAttempt finalizes the current attempt before a retry resets the shared
-// persistence state. Not every failure path closes the attempt's stream.
-func (s *streamLifecycle) closeAttempt() {
-	s.mu.Lock()
-	attempt := s.attempt
-	s.attempt = nil
+	tail := s.tail
 	s.mu.Unlock()
-	if attempt != nil {
-		_ = attempt.Close()
+	if tail == nil {
+		return
 	}
+
+	s.startTail(tail, context.Canceled)
+	<-tail.accountingDone
 }
 
 func normalizeCancelCause(cause error) error {
@@ -210,8 +315,6 @@ func (s *streamLifecycle) DeliveryAcknowledged() bool {
 	return s.acknowledged
 }
 
-// Close must be called by the consumer after it stopped reading: it finalizes
-// the current attempt on the calling goroutine.
 func (s *streamLifecycle) Close() {
 	s.mu.Lock()
 	if s.closed {
@@ -219,29 +322,29 @@ func (s *streamLifecycle) Close() {
 		return
 	}
 	s.closed = true
-	attempt := s.attempt
-	if !s.canceled && (!s.acknowledged || attempt == nil) {
+	acknowledged := s.acknowledged
+	tail := s.tail
+	if !s.canceled && (!acknowledged || tail == nil) {
 		s.canceled = true
 		s.cancel(context.Canceled)
 	}
 	s.mu.Unlock()
-
-	if attempt != nil {
-		_ = attempt.Close()
+	if tail != nil && acknowledged {
+		s.startTail(tail, nil)
+		<-tail.done
+	} else if tail != nil {
+		if tail.abort != nil {
+			tail.abort()
+		}
+		awaitTailBarrier(context.Background(), nil, tail.readerDone)
+		if tail.readerDoneFunc != nil {
+			awaitTailBarrier(context.Background(), nil, tail.readerDoneFunc())
+		}
+		s.startTail(tail, context.Canceled)
+		<-tail.done
 	}
-
-	s.stopDownstream()
-	if s.stopShutdown != nil {
-		s.stopShutdown()
-	}
-	s.mu.Lock()
-	if s.stopTailAbort != nil {
-		s.stopTailAbort()
-	}
-	if s.tailCancel != nil {
-		s.tailCancel()
-	}
-	s.mu.Unlock()
+	s.stopOnce.Do(func() { close(s.stopWatch) })
+	<-s.done
 	if s.deadlineCancel != nil {
 		s.deadlineCancel()
 	}
@@ -252,20 +355,21 @@ func (s *streamLifecycle) WaitForFinalization() {
 	<-s.finalized
 }
 
-// collectStreamTail drains one retained source. It is intentionally
-// synchronous: callers invoke it only after the source reader has stopped.
-// The caller owns the deadline and must close the source to unblock Next.
+// collectTail drains one retained source. It is intentionally synchronous:
+// callers invoke it only after the source reader has acknowledged ownership.
 func collectStreamTail(ctx context.Context, source streams.Stream[*httpclient.StreamEvent], onEvent func(*httpclient.StreamEvent) error) streamTailResult {
 	if source == nil {
 		return streamTailResult{end: llm.SourceEndCleanEOF}
 	}
+	tailCtx, cancel := context.WithTimeout(ctx, streamTailTimeout)
+	defer cancel()
 
 	events := 0
 	bytes := 0
 	for events < streamTailEventLimit && bytes < streamTailPayloadLimit {
 		select {
-		case <-ctx.Done():
-			return streamTailResult{end: llm.SourceEndCanceled, err: ctx.Err()}
+		case <-tailCtx.Done():
+			return streamTailResult{end: llm.SourceEndCanceled, err: tailCtx.Err()}
 		default:
 		}
 		if !source.Next() {
@@ -296,22 +400,6 @@ func collectStreamTail(ctx context.Context, source streams.Stream[*httpclient.St
 		}
 	}
 	return streamTailResult{end: llm.SourceEndBudget}
-}
-
-// tailSourceEnd classifies how the source ended once its tail was collected.
-// A clean EOF after a semantic terminal keeps the semantic end.
-func tailSourceEnd(result streamTailResult, observed llm.SourceEndReason) llm.SourceEndReason {
-	end := result.end
-	if result.err != nil && !errors.Is(result.err, io.EOF) {
-		end = llm.SourceEndError
-		if errors.Is(result.err, context.Canceled) || errors.Is(result.err, context.DeadlineExceeded) {
-			end = llm.SourceEndCanceled
-		}
-	}
-	if result.err == nil && end == llm.SourceEndCleanEOF && observed == llm.SourceEndSemantic {
-		return observed
-	}
-	return end
 }
 
 var (

@@ -1,6 +1,7 @@
 package orchestrator
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -8,19 +9,36 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
-func TestRawRecorderReleasesConsumedEvents(t *testing.T) {
-	expected := []*httpclient.StreamEvent{{Type: "first", Data: make([]byte, 1<<20)}, {Type: "second", Data: make([]byte, 1<<20)}}
-	recorder := &rawEventRecorder{source: testHTTPStream(expected)}
-	require.True(t, recorder.Next())
-	require.True(t, recorder.Next())
-	backing := recorder.take()
-	require.Zero(t, recorder.bytes)
-	require.Nil(t, recorder.pending)
-	stream := &passThroughStream{recorder: recorder, pending: backing, done: true}
-	for i, want := range expected {
-		require.True(t, stream.Next())
-		require.Same(t, want, stream.Current())
-		require.Nil(t, backing[i], "consumed slots must not pin large events")
+func TestRawStreamQueueReleasesConsumedHeldEvents(t *testing.T) {
+	for _, buffered := range []bool{false, true} {
+		t.Run(map[bool]string{false: "live", true: "buffered"}[buffered], func(t *testing.T) {
+			backlog := &rawStreamBacklog{}
+			expected := []*httpclient.StreamEvent{
+				{Type: "first", Data: make([]byte, 1024*1024)},
+				{Type: "second", Data: make([]byte, 1024*1024)},
+			}
+			for _, event := range expected {
+				_, err := backlog.hold(event)
+				require.NoError(t, err)
+			}
+			queue := newRawStreamQueue(backlog)
+			backing := queue.attach()
+			for i, want := range expected {
+				var got *httpclient.StreamEvent
+				var ok bool
+				if buffered {
+					got, ok = queue.nextBuffered()
+				} else {
+					got, ok = queue.next(context.Background())
+				}
+				require.True(t, ok)
+				require.Same(t, want, got)
+				// A consumed slot must not pin its large data through the backing
+				// array while the rest of a long-lived stream is still running.
+				require.Nil(t, backing[i])
+			}
+			require.Zero(t, backlog.bytes)
+			require.Zero(t, backlog.count)
+		})
 	}
-	require.False(t, stream.Next())
 }

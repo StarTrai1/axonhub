@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"mime"
 	"net/http"
@@ -779,25 +780,164 @@ func applyPassThroughResponse(outbound *PersistentOutboundTransformer) pipeline.
 	})
 }
 
-// captureRawProviderStream records raw events while the transform chain reads.
+// captureRawProviderStream fans out raw provider stream events to both the pipeline
+// (for transforms and LLM middlewares like connection tracking, performance recording)
+// and the pass-through consumer. The pipeline receives events via pipelineCh. Raw events
+// are held on state.RawStreamBacklog until applyPassThroughStream attaches the consumer,
+// and are delivered via state.RawStreamCh afterwards.
 func captureRawProviderStream(outbound *PersistentOutboundTransformer) pipeline.Middleware {
 	return captureRawProviderStreamWithTerminalGrace(outbound, delayedCodexResponsesTerminalGracePeriod)
 }
 
-func captureRawProviderStreamWithTerminalGrace(outbound *PersistentOutboundTransformer, terminalGracePeriod time.Duration) pipeline.Middleware {
+func captureRawProviderStreamWithTerminalGrace(
+	outbound *PersistentOutboundTransformer,
+	terminalGracePeriod time.Duration,
+) pipeline.Middleware {
 	return pipeline.OnRawStream("capture-raw-provider-stream", func(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*httpclient.StreamEvent], error) {
-		if shouldRepairDelayedCodexResponsesTerminal(outbound) {
-			channel := outbound.GetCurrentChannel()
-			stream = maybeRepairDelayedCodexResponsesTerminal(ctx, outbound, stream, terminalGracePeriod,
-				newDelayedCodexResponsesUsageRecorder(ctx, outbound.state, channel.Name))
+		adaptResponses := responsesResponseTransportAdaptationEnabled(outbound)
+		preserveResponses := responsesIdentityPreservationEnabled(outbound)
+		if !outbound.isResponsePassThroughEnabled() && !adaptResponses && !preserveResponses {
+			if shouldRepairDelayedCodexResponsesTerminal(outbound) {
+				channel := outbound.GetCurrentChannel()
+				stream = maybeRepairDelayedCodexResponsesTerminal(
+					ctx,
+					outbound,
+					stream,
+					terminalGracePeriod,
+					newDelayedCodexResponsesUsageRecorder(ctx, outbound.state, channel.Name),
+				)
+			}
+
+			return cacheNativeResponsesSessionStream(ctx, outbound.state, stream), nil
 		}
-		stream = cacheNativeResponsesSessionStream(ctx, outbound.state, stream)
-		if !outbound.isResponsePassThroughEnabled() && !responsesResponseTransportAdaptationEnabled(outbound) && !responsesIdentityPreservationEnabled(outbound) {
-			return stream, nil
+
+		channel := outbound.GetCurrentChannel()
+
+		backlog := &rawStreamBacklog{}
+		rawQueue := newRawStreamQueue(backlog)
+		pipelineCh := make(chan *httpclient.StreamEvent, 64)
+		rawStreamCh := rawQueue.ch
+		outbound.state.RawStreamCh = rawStreamCh
+		outbound.state.RawStreamQueue = rawQueue
+		outbound.state.RawStreamBacklog = backlog
+
+		// Per-attempt local error storage: each attempt writes to its own variable so
+		// concurrent defers from an abandoned goroutine and the new attempt's goroutine
+		// never touch the same memory location, eliminating the data race on retries.
+		rawStreamErr := new(passThroughStreamError)
+
+		outbound.state.RawStreamErrRef = rawStreamErr
+
+		// Per-attempt cancelable context: PrepareForRetry / NextChannel call this cancel
+		// to unblock the goroutine's channel sends and release the upstream HTTP connection
+		// before the next attempt starts, preventing goroutine leaks.
+		attemptCtx, cancel := context.WithCancel(ctx)
+		stream = maybeRepairDelayedCodexResponsesTerminal(
+			attemptCtx,
+			outbound,
+			stream,
+			terminalGracePeriod,
+			newDelayedCodexResponsesUsageRecorder(ctx, outbound.state, channel.Name),
+		)
+		stream = cacheNativeResponsesSessionStream(attemptCtx, outbound.state, stream)
+
+		var closeStreamOnce sync.Once
+		closeStream := func() {
+			closeStreamOnce.Do(func() {
+				cancel()
+				_ = stream.Close()
+			})
 		}
-		recorder := &rawEventRecorder{source: stream, outcome: new(passThroughStreamError), steering: newResponsesSteeringState()}
-		outbound.state.PassThroughRecorder = recorder
-		return recorder, nil
+		outbound.state.RawStreamCancel = closeStream
+
+		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					log.Warn(ctx, "captureRawProviderStream goroutine panicked, recovering",
+						log.Any("panic", r),
+						log.String("channel", channel.Name),
+					)
+					rawStreamErr.store(fmt.Errorf("passthrough stream panic: %v", r))
+				} else if rawStreamErr.load() == nil {
+					err := stream.Err()
+					if err == nil {
+						err = ctx.Err()
+					}
+					rawStreamErr.store(err)
+				}
+
+				close(pipelineCh)
+				close(rawStreamCh)
+			}()
+			// Ensure the context is cleaned up when the goroutine exits, regardless of
+			// whether it finished naturally or was canceled by a retry.
+			defer closeStream()
+
+			steering := newResponsesSteeringState()
+			for {
+				select {
+				case <-attemptCtx.Done():
+					log.Debug(ctx, "context canceled before reading pass-through stream",
+						log.String("channel", channel.Name))
+
+					return
+				default:
+				}
+
+				if !stream.Next() {
+					return
+				}
+
+				event := stream.Current()
+				if event == nil {
+					continue
+				}
+				// Record terminal evidence before either consumer can receive it.
+				// A downstream disconnect may stop the transformed drain before it
+				// observes the same event, but cannot undo the provider's outcome.
+				eventType := gjson.GetBytes(event.Data, "type").String()
+				if eventType == "" {
+					eventType = event.Type
+				}
+				terminal := (strings.HasPrefix(eventType, "response.") || eventType == "error") && steering.isFinalTerminal(event)
+				if terminal {
+					rawStreamErr.recordTerminal(event)
+				}
+				held, err := backlog.hold(event)
+				if err != nil {
+					rawStreamErr.store(err)
+
+					return
+				}
+				// Use blocking sends so events are not silently dropped when a
+				// consumer is slower than the upstream provider. Bail out on
+				// attempt cancellation (retry) or request cancellation to avoid
+				// blocking forever.
+				select {
+				case pipelineCh <- event:
+				case <-attemptCtx.Done():
+					log.Debug(ctx, "context canceled while sending pipeline event",
+						log.String("channel", channel.Name))
+
+					return
+				}
+
+				if !held {
+					if err := rawQueue.enqueue(attemptCtx, event); err != nil {
+						rawStreamErr.store(err)
+						return
+					}
+				}
+
+				// Chat finish_reason can precede a separate usage frame and [DONE].
+				// Only Responses controls can end a persistent native turn here.
+				if terminal {
+					return
+				}
+			}
+		}()
+
+		return &passThroughChannelStream{ctx: ctx, ch: pipelineCh, errRef: rawStreamErr, cancel: closeStream, owner: true, detach: outbound.state.RawStreamDetach}, nil
 	})
 }
 
@@ -1271,6 +1411,92 @@ func stringPtr(value string) *string {
 	return &value
 }
 
+// applyPassThroughStream returns a stream of raw provider events when PassThroughBody is enabled.
+// A goroutine drains the transformed pipeline stream so that LLM middlewares (connection tracking,
+// performance recording, rate limit tracking) still process events.
+func applyPassThroughStream(outbound *PersistentOutboundTransformer) pipeline.Middleware {
+	return pipeline.OnInboundRawStream("pass-through-response-stream", func(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*httpclient.StreamEvent], error) {
+		adaptResponses := responsesResponseTransportAdaptationEnabled(outbound)
+		preserveResponses := responsesIdentityPreservationEnabled(outbound)
+		if !outbound.isResponsePassThroughEnabled() && !adaptResponses && !preserveResponses {
+			return stream, nil
+		}
+
+		rawCh := outbound.state.RawStreamCh
+		if rawCh == nil {
+			return stream, nil
+		}
+
+		// Snapshot the current attempt's error reference. If a future retry replaces
+		// state.RawStreamErrRef, this stream still reads from the correct variable.
+		errRef := outbound.state.RawStreamErrRef
+		detach := outbound.state.RawStreamDetach
+
+		// Events captured while the pipeline pre-read the attempt precede the channel.
+		var held []*httpclient.StreamEvent
+		queue := outbound.state.RawStreamQueue
+		if queue != nil {
+			held = queue.attach()
+		} else if backlog := outbound.state.RawStreamBacklog; backlog != nil {
+			held = backlog.attach()
+		}
+
+		channel := outbound.GetCurrentChannel()
+
+		log.Debug(ctx, "applying pass-through stream",
+			log.String("channel", channel.Name),
+			log.Int("held_events", len(held)),
+		)
+
+		observer := streamLifecycleFromContext(ctx)
+		drainDone := make(chan struct{})
+		go func() {
+			defer close(drainDone)
+			if observer == nil {
+				defer stream.Close()
+			}
+			defer func() {
+				if r := recover(); r != nil {
+					log.Warn(ctx, "pass-through pipeline drain goroutine panicked, recovering",
+						log.Any("panic", r),
+						log.String("channel", channel.Name),
+					)
+				}
+			}()
+			for stream.Next() {
+				_ = stream.Current()
+			}
+		}()
+
+		rawStream := streams.Stream[*httpclient.StreamEvent](&passThroughChannelStream{ctx: ctx, ch: rawCh, queue: queue, errRef: errRef, detach: detach})
+		if queue == nil {
+			rawStream = streams.PrependStream(rawStream, held...)
+		}
+
+		if adaptResponses {
+			rawStream = &responsesTransportStream{
+				stream: rawStream,
+				source: llm.APIFormat(outbound.state.RawProviderRequest.APIFormat),
+				target: outbound.state.LlmRequest.APIFormat,
+			}
+		}
+		if adaptResponses || preserveResponses {
+			rawStream = &responsesIdentityStream{
+				stream:      rawStream,
+				clientModel: responsesClientModel(outbound),
+			}
+		}
+
+		if observer != nil {
+			return withPassThroughDeliveryGateAndDrain(rawStream, observer, outbound.state.RawStreamCancel, stream.Close, drainDone), nil
+		}
+
+		return rawStream, nil
+	})
+}
+
+// passThroughStreamError keeps the final error scoped to one attempt. Terminal
+// handling may read it before the capture goroutine has closed its channels.
 type passThroughStreamError struct {
 	mu       sync.RWMutex
 	err      error
@@ -1294,117 +1520,96 @@ func (e *passThroughStreamError) loadTerminal() *httpclient.StreamEvent {
 	return e.terminal
 }
 
-// applyPassThroughStream returns the recorded raw provider events instead of the
-// re-encoded inbound events. The transformed stream is still consumed event by event,
-// so LLM middlewares and persistence observe the attempt as they do without pass-through.
-func applyPassThroughStream(outbound *PersistentOutboundTransformer) pipeline.Middleware {
-	return pipeline.OnInboundRawStream("pass-through-response-stream", func(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*httpclient.StreamEvent], error) {
-		adaptResponses := responsesResponseTransportAdaptationEnabled(outbound)
-		preserveResponses := responsesIdentityPreservationEnabled(outbound)
-		if !outbound.isResponsePassThroughEnabled() && !adaptResponses && !preserveResponses {
-			return stream, nil
-		}
-
-		recorder := outbound.state.PassThroughRecorder
-		if recorder == nil {
-			return stream, nil
-		}
-
-		log.Debug(ctx, "applying pass-through stream",
-			log.String("channel", outbound.GetCurrentChannel().Name),
-		)
-
-		rawStream := streams.Stream[*httpclient.StreamEvent](&passThroughStream{transformed: stream, recorder: recorder})
-		if adaptResponses {
-			rawStream = &responsesTransportStream{
-				stream: rawStream,
-				source: llm.APIFormat(outbound.state.RawProviderRequest.APIFormat),
-				target: outbound.state.LlmRequest.APIFormat,
-			}
-		}
-		if adaptResponses || preserveResponses {
-			rawStream = &responsesIdentityStream{
-				stream:      rawStream,
-				clientModel: responsesClientModel(outbound),
-			}
-		}
-
-		return withPassThroughDelivery(ctx, stream, rawStream), nil
-	})
+func (e *passThroughStreamError) store(err error) {
+	e.mu.Lock()
+	e.err = err
+	e.mu.Unlock()
 }
 
-// passThroughStream pulls the transformed stream and emits the raw events recorded
-// while producing each transformed event. Raw events the transformer drops (for
-// example Anthropic ping) are emitted together with the next transformed event.
-type passThroughStream struct {
-	transformed streams.Stream[*httpclient.StreamEvent]
-	recorder    *rawEventRecorder
-	pending     []*httpclient.StreamEvent
-	current     *httpclient.StreamEvent
-	done        bool
-}
-
-func (s *passThroughStream) Next() bool {
-	for len(s.pending) == 0 {
-		if s.done {
-			return false
-		}
-
-		if s.transformed.Next() {
-			// Current drives persistence and terminal tracking of the transformed event.
-			_ = s.transformed.Current()
-		} else {
-			s.done = true
-		}
-
-		s.pending = s.recorder.take()
+func (e *passThroughStreamError) load() error {
+	if e == nil {
+		return nil
 	}
-
-	s.current = s.pending[0]
-	s.pending[0] = nil
-	s.pending = s.pending[1:]
-
-	return true
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return e.err
 }
 
-func (s *passThroughStream) Current() *httpclient.StreamEvent { return s.current }
-
-func (s *passThroughStream) Err() error {
-	if err := s.recorder.Err(); err != nil {
-		return err
-	}
-
-	return s.transformed.Err()
-}
-
-// Close closes only the transformed chain: the outbound persistent stream releases the
-// raw source after collecting its tail.
-func (s *passThroughStream) Close() error { return s.transformed.Close() }
-
-// passThroughDeliveryStream keeps delivery acknowledgement and finalization connected
-// to the transformed stream, which owns persistence of the attempt.
 type passThroughDeliveryStream struct {
 	streams.Stream[*httpclient.StreamEvent]
 
 	observer streams.DeliveryAcknowledger
+	boundary streams.DeliveryBoundary
+	abort    func()
+	close    func() error
+	done     <-chan struct{}
 }
 
-func withPassThroughDelivery(
-	ctx context.Context,
-	transformed streams.Stream[*httpclient.StreamEvent],
-	raw streams.Stream[*httpclient.StreamEvent],
+func withPassThroughDeliveryGate(
+	stream streams.Stream[*httpclient.StreamEvent],
+	observer streams.DeliveryAcknowledger,
+	closeFns ...func() error,
 ) streams.Stream[*httpclient.StreamEvent] {
-	observer, ok := transformed.(streams.DeliveryAcknowledger)
-	if !ok {
-		if lifecycleOwner := streamLifecycleFromContext(ctx); lifecycleOwner != nil {
-			observer = lifecycleOwner
-		}
-	}
 	if observer == nil {
-		return raw
+		return stream
 	}
 
-	return &passThroughDeliveryStream{Stream: raw, observer: observer}
+	boundary, _ := observer.(streams.DeliveryBoundary)
+	var close func() error
+	if len(closeFns) > 0 {
+		close = closeFns[0]
+	}
+	return &passThroughDeliveryStream{Stream: stream, observer: observer, boundary: boundary, close: close}
+}
+
+func withPassThroughDeliveryGateAndDrain(
+	stream streams.Stream[*httpclient.StreamEvent],
+	observer streams.DeliveryAcknowledger,
+	abort func(),
+	close func() error,
+	done <-chan struct{},
+) streams.Stream[*httpclient.StreamEvent] {
+	if observer == nil {
+		return stream
+	}
+
+	boundary, _ := observer.(streams.DeliveryBoundary)
+	return &passThroughDeliveryStream{Stream: stream, observer: observer, boundary: boundary, abort: abort, close: close, done: done}
+}
+
+func (s *passThroughDeliveryStream) Close() error {
+	// Cancel only the raw producer before waiting on the drain. Closing the
+	// transformed pipeline here would publish its performance record while the
+	// drain is still updating terminal status and usage. Cancellation also frees
+	// a producer blocked on the raw queue after a downstream write failure.
+	delivered := s.DeliveryAcknowledged()
+	if !delivered && s.abort != nil {
+		s.abort()
+	}
+	if s.done != nil {
+		if delivered {
+			timer := time.NewTimer(streamTailTimeout)
+			select {
+			case <-s.done:
+			case <-timer.C:
+				if s.abort != nil {
+					s.abort()
+				}
+			}
+			if !timer.Stop() {
+				select {
+				case <-timer.C:
+				default:
+				}
+			}
+		}
+		<-s.done
+	}
+	var closeErr error
+	if s.close != nil {
+		closeErr = s.close()
+	}
+	return errors.Join(closeErr, s.Stream.Close())
 }
 
 func (s *passThroughDeliveryStream) AcknowledgeDelivery() {
@@ -1416,8 +1621,8 @@ func (s *passThroughDeliveryStream) DeliveryAcknowledged() bool {
 }
 
 func (s *passThroughDeliveryStream) Deliver(ctx context.Context, write func() (bool, error)) error {
-	if boundary, ok := s.observer.(streams.DeliveryBoundary); ok {
-		return boundary.Deliver(ctx, write)
+	if s.boundary != nil {
+		return s.boundary.Deliver(ctx, write)
 	}
 	terminal, err := write()
 	if err == nil && terminal {
@@ -1495,28 +1700,19 @@ func (s *responsesTransportStream) Err() error {
 
 func (s *responsesTransportStream) Close() error { return s.stream.Close() }
 
-// rawEventRecorder wraps the raw provider stream of one attempt and retains every
-// event read by the outbound transformer until passThroughStream takes it.
-//
-// Before the first take, the pipeline may still be pre-reading the attempt
-// (first-event timeout, empty-response detection, retry before the first content
-// event), so the retained count and bytes are bounded and exceeding them fails the
-// attempt with a retryable pre-commit error. Afterwards only bytes are bounded:
-// events stay retained only while the inbound transformer holds back its output.
-type rawEventRecorder struct {
-	source   streams.Stream[*httpclient.StreamEvent]
-	outcome  *passThroughStreamError
-	steering *responsesSteeringState
-	terminal bool
-	current  *httpclient.StreamEvent
-
-	mu        sync.Mutex
-	pending   []*httpclient.StreamEvent
-	bytes     int
-	attached  bool
-	err       error
-	closeOnce sync.Once
-	closeErr  error
+// rawStreamBacklog holds the raw provider events of one attempt until the pass-through
+// consumer attaches. Before that point the pipeline may still be pre-reading the attempt
+// (first-event timeout, empty-response detection, retry before the first content event)
+// and nothing drains RawStreamCh, so blocking on it would stall the pre-read as soon as
+// the channel buffer fills. Raw count and bytes are bounded before pipeline delivery,
+// including events filtered by the transformer and retained by persistence.
+type rawStreamBacklog struct {
+	mu       sync.Mutex
+	attached bool
+	events   []*httpclient.StreamEvent
+	bytes    int
+	count    int
+	waitCh   chan struct{}
 }
 
 const (
@@ -1528,100 +1724,226 @@ const (
 
 var errRawPreAttachBudgetExceeded = fmt.Errorf("pass-through pre-attachment raw event budget exceeded: %w", pipeline.ErrPreCommitBufferExceeded)
 
-func (r *rawEventRecorder) Next() bool {
-	r.mu.Lock()
-	failed := r.err != nil
-	r.mu.Unlock()
-	if failed || r.terminal || !r.source.Next() {
-		return false
+// hold keeps event for a consumer that has not attached yet. It reports false once the
+// consumer is attached, in which case the caller delivers the event via RawStreamCh.
+func (b *rawStreamBacklog) hold(event *httpclient.StreamEvent) (bool, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	if b.attached {
+		return false, nil
 	}
 
-	event := r.source.Current()
-	if event != nil {
-		eventType := gjson.GetBytes(event.Data, "type").String()
-		if eventType == "" {
-			eventType = event.Type
-		}
-		// Steering acknowledgements can defer the final terminal to a later turn.
-		if r.steering == nil {
-			r.steering = newResponsesSteeringState()
-		}
-		final := r.steering.isFinalTerminal(event)
-		r.terminal = (strings.HasPrefix(eventType, "response.") || eventType == "error") && final
-		if r.terminal && r.outcome != nil {
-			r.outcome.recordTerminal(event)
-		}
-	}
-
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	if err := r.retain(event); err != nil {
-		r.err = err
-		return false
-	}
-	r.current = event
-
-	return true
-}
-
-func (r *rawEventRecorder) retain(event *httpclient.StreamEvent) error {
 	size := rawStreamEventSize(event)
-	if size > maxRawEventBytes {
-		return errRawPreAttachBudgetExceeded
+	if size > maxRawEventBytes || b.count >= maxRawPreAttachEvents || size > maxRawPreAttachBytes-b.bytes {
+		return false, errRawPreAttachBudgetExceeded
 	}
-	if r.attached {
-		if size > maxRawEventBytes || size > maxRawQueueBytes-r.bytes {
-			return errRawPreAttachBudgetExceeded
-		}
-	} else if len(r.pending) >= maxRawPreAttachEvents || size > maxRawPreAttachBytes-r.bytes {
-		return errRawPreAttachBudgetExceeded
-	}
+	b.bytes += size
+	b.count++
+	b.events = append(b.events, event)
 
-	r.bytes += size
-	r.pending = append(r.pending, event)
-
-	return nil
+	return true, nil
 }
 
-// take hands every retained event over to the pass-through consumer in read order.
-func (r *rawEventRecorder) take() []*httpclient.StreamEvent {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+// attach hands the held events over to the consumer; every later event is delivered
+// via RawStreamCh, so the consumer reads the held events first to preserve order.
+func (b *rawStreamBacklog) attach() []*httpclient.StreamEvent {
+	b.mu.Lock()
+	defer b.mu.Unlock()
 
-	r.attached = true
-	events := r.pending
-	r.pending = nil
-	r.bytes = 0
+	b.attached = true
+	events := b.events
+	b.events = nil
 
 	return events
 }
 
-func (r *rawEventRecorder) Current() *httpclient.StreamEvent { return r.current }
+func (b *rawStreamBacklog) reserve(ctx context.Context, size int) error {
+	if size > maxRawEventBytes {
+		return errRawPreAttachBudgetExceeded
+	}
 
-func (r *rawEventRecorder) Err() error {
-	r.mu.Lock()
-	err := r.err
-	r.mu.Unlock()
-	if err != nil {
+	for {
+		b.mu.Lock()
+		maxBytes := maxRawPreAttachBytes
+		if b.attached {
+			maxBytes = maxRawQueueBytes
+		}
+		if b.count < maxRawPreAttachEvents && size <= maxBytes-b.bytes {
+			b.bytes += size
+			b.count++
+			b.mu.Unlock()
+			return nil
+		}
+		if !b.attached {
+			b.mu.Unlock()
+			return errRawPreAttachBudgetExceeded
+		}
+		if b.waitCh == nil {
+			b.waitCh = make(chan struct{})
+		}
+		waitCh := b.waitCh
+		b.mu.Unlock()
+
+		select {
+		case <-waitCh:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+}
+
+func (b *rawStreamBacklog) release(size int) {
+	b.mu.Lock()
+	b.bytes -= size
+	b.count--
+	if b.waitCh != nil {
+		close(b.waitCh)
+		b.waitCh = nil
+	}
+	b.mu.Unlock()
+}
+
+// passThroughChannelStream wraps a channel as a Stream.
+//
+//nolint:containedctx // Required so Next() can observe request cancellation.
+type passThroughChannelStream struct {
+	ctx       context.Context
+	ch        <-chan *httpclient.StreamEvent
+	queue     *rawStreamQueue
+	current   *httpclient.StreamEvent
+	errRef    *passThroughStreamError
+	cancel    context.CancelFunc
+	owner     bool
+	detach    context.CancelFunc
+	once      sync.Once
+	currentMu sync.RWMutex
+	ctxDone   bool
+}
+
+func (s *passThroughChannelStream) Next() bool {
+	if s.queue != nil {
+		if s.ctxDone || (s.ctx != nil && s.ctx.Err() != nil) {
+			s.ctxDone = true
+			return s.nextQueuedBuffered()
+		}
+
+		event, ok := s.queue.next(s.ctx)
+		if !ok {
+			_ = s.Close()
+			return false
+		}
+		s.currentMu.Lock()
+		s.current = event
+		s.currentMu.Unlock()
+		return true
+	}
+
+	if s.ctx == nil {
+		ev, ok := <-s.ch
+		if !ok {
+			return false
+		}
+
+		s.currentMu.Lock()
+		s.current = ev
+		s.currentMu.Unlock()
+
+		return true
+	}
+
+	if s.ctxDone || s.ctx.Err() != nil {
+		s.ctxDone = true
+
+		return s.nextBuffered()
+	}
+
+	select {
+	case ev, ok := <-s.ch:
+		if !ok {
+			return false
+		}
+
+		s.currentMu.Lock()
+		s.current = ev
+		s.currentMu.Unlock()
+
+		return true
+	case <-s.ctx.Done():
+		// Client disconnect often races with the terminal event still sitting in
+		// the channel (especially the pipeline drain path under pass-through).
+		// Prefer draining already-buffered events over aborting, matching the
+		// inbound/outbound Close() rule: cancel after a complete stream is still
+		// completed.
+		s.ctxDone = true
+
+		return s.nextBuffered()
+	}
+}
+
+func (s *passThroughChannelStream) nextQueuedBuffered() bool {
+	event, ok := s.queue.nextBuffered()
+	if !ok {
+		_ = s.Close()
+		return false
+	}
+	s.currentMu.Lock()
+	s.current = event
+	s.currentMu.Unlock()
+	return true
+}
+
+// nextBuffered consumes buffered events after cancellation has been observed.
+// It never blocks on the producer: the stream ends (and cancels upstream via
+// Close) at the first moment the buffer is empty or the channel is closed.
+func (s *passThroughChannelStream) nextBuffered() bool {
+	select {
+	case ev, ok := <-s.ch:
+		if !ok {
+			_ = s.Close()
+
+			return false
+		}
+
+		s.currentMu.Lock()
+		s.current = ev
+		s.currentMu.Unlock()
+
+		return true
+	default:
+		_ = s.Close()
+
+		return false
+	}
+}
+
+func (s *passThroughChannelStream) Current() *httpclient.StreamEvent {
+	s.currentMu.RLock()
+	defer s.currentMu.RUnlock()
+
+	return s.current
+}
+
+func (s *passThroughChannelStream) Err() error {
+	if err := s.errRef.load(); err != nil {
 		return err
 	}
-
-	return r.source.Err()
-}
-
-func (r *rawEventRecorder) Close() error {
-	r.closeOnce.Do(func() {
-		r.closeErr = r.source.Close()
-	})
-
-	return r.closeErr
-}
-
-func rawStreamEventSize(event *httpclient.StreamEvent) int {
-	if event == nil {
-		return 0
+	if s.ctx != nil {
+		return s.ctx.Err()
 	}
 
-	return len(event.Data) + len(event.Type) + len(event.LastEventID)
+	return nil
+}
+
+func (s *passThroughChannelStream) Close() error {
+	s.once.Do(func() {
+		if s.owner && s.cancel != nil {
+			s.cancel()
+		}
+		if s.detach != nil {
+			s.detach()
+		}
+	})
+
+	return nil
 }
