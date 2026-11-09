@@ -27,6 +27,7 @@ func convertToAnthropicRequestWithConfig(chatReq *llm.Request, config *Config) *
 	req.ToolChoice = convertToolChoiceToAnthropic(chatReq.ToolChoice)
 	req.ToolChoice = applyParallelToolCalls(req.ToolChoice, chatReq.ParallelToolCalls, len(req.Tools) > 0)
 	req.Messages = convertMessages(chatReq, config)
+	dropUnsignedTranslatedClaudeThinking(chatReq, req, config)
 	mapResponsesToolNames(chatReq, req)
 	req.Messages = dropUnsupportedFableAssistantPrefill(chatReq.Model, req.Messages)
 	req.StopSequences = convertStopSequences(chatReq.Stop)
@@ -38,6 +39,46 @@ func convertToAnthropicRequestWithConfig(chatReq *llm.Request, config *Config) *
 	}
 
 	return req
+}
+
+// Other protocols can carry reasoning text without a replayable Claude
+// signature. Do not turn that text into unsigned Claude thinking on a model
+// switch. Native Messages and providers such as DeepSeek keep their contract.
+func dropUnsignedTranslatedClaudeThinking(src *llm.Request, dst *MessageRequest, config *Config) {
+	switch src.APIFormat {
+	case llm.APIFormatOpenAIChatCompletion, llm.APIFormatOpenAIResponse, llm.APIFormatOpenAIResponseWebSocket:
+	default:
+		return
+	}
+	model := strings.ToLower(dst.Model)
+	if !shouldDecodeAnthropicSignature(config) ||
+		(!strings.HasPrefix(model, "claude-") && !strings.Contains(model, ".claude-")) {
+		return
+	}
+	messages := make([]MessageParam, 0, len(dst.Messages))
+	for _, message := range dst.Messages {
+		if message.Role != "assistant" || len(message.Content.MultipleContent) == 0 {
+			messages = append(messages, message)
+			continue
+		}
+		blocks := make([]MessageContentBlock, 0, len(message.Content.MultipleContent))
+		removed := false
+		for _, block := range message.Content.MultipleContent {
+			if block.Type == "thinking" && strings.TrimSpace(lo.FromPtr(block.Signature)) == "" {
+				removed = true
+				continue
+			}
+			blocks = append(blocks, block)
+		}
+		if removed {
+			if len(blocks) == 0 && message.Content.Content == nil {
+				continue
+			}
+			message.Content.MultipleContent = blocks
+		}
+		messages = append(messages, message)
+	}
+	dst.Messages = messages
 }
 
 // Reuse the immutable inbound alias map so declarations, replay and responses
