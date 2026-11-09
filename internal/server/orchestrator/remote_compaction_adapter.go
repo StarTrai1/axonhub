@@ -1434,9 +1434,7 @@ func (a *remoteCompactionAdapter) finalizeCompactionGeneration(
 				}
 			}
 		}
-		if persistErr := a.requestService.UpdateRequestChannelID(persistCtx, bridgeRecord.ID, perf.ChannelID); persistErr != nil {
-			log.Warn(persistCtx, "failed to persist local compaction bridge channel", log.Cause(persistErr))
-		}
+		a.requestService.AssignRequestChannel(persistCtx, bridgeRecord, perf.ChannelID)
 		if persistErr := a.requestService.UpdateRequestFinalized(persistCtx, bridgeRecord, request.StatusCompleted, meta.ID, responseBody, metrics); persistErr != nil {
 			log.Warn(persistCtx, "failed to persist local compaction bridge response", log.Cause(persistErr))
 		}
@@ -1500,7 +1498,7 @@ func (a *remoteCompactionAdapter) markBridgeExecutionFailed(ctx context.Context,
 	if execution == nil || a.requestService == nil || err == nil {
 		return
 	}
-	if updateErr := persistRequestExecutionFailure(context.WithoutCancel(ctx), a.requestService, execution.ID, err, nil, ""); updateErr != nil {
+	if updateErr := persistRequestExecutionFailure(context.WithoutCancel(ctx), a.requestService, execution, err, nil, "", nil); updateErr != nil {
 		log.Warn(ctx, "failed to persist local compaction bridge error", log.Cause(updateErr))
 	}
 }

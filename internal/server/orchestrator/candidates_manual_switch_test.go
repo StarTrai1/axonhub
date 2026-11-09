@@ -19,11 +19,11 @@ func TestLoadBalancedSelector_ManualSwitchRetainsDistinctChannel(t *testing.T) {
 		{Channel: firstChannel, Priority: 1, Models: []biz.ChannelModelEntry{{ActualModel: "model-b"}}},
 		{Channel: secondChannel, Priority: 2, Models: []biz.ChannelModelEntry{{ActualModel: "model-c"}}},
 	}
-	policy := &mockRetryPolicyProvider{policy: &biz.RetryPolicy{Enabled: false}}
+	policy := &biz.RetryPolicy{Enabled: false}
 	selector := WithLoadBalancedSelector(
 		&staticChannelSelector{candidates: candidates},
 		&LoadBalancer{},
-		policy.policy,
+		policy,
 	).WithManualSwitchCandidate()
 
 	result, err := selector.Select(context.Background(), &llm.Request{Model: "model"})

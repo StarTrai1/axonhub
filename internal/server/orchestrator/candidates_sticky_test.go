@@ -248,15 +248,15 @@ func TestLoadBalancedSelector_TraceStickySelection(t *testing.T) {
 			stickyTestCandidateWithTier(2, 0, objects.RoutingTierStandard),
 			stickyTestCandidateWithTier(3, 0, objects.RoutingTierFallback),
 		}
-		policy := &mockRetryPolicyProvider{policy: &biz.RetryPolicy{
+		policy := &biz.RetryPolicy{
 			Enabled:           true,
 			MaxChannelRetries: 2,
 			TraceStickyMode:   biz.TraceStickyPreferPreviousChannel,
-		}}
+		}
 		selector := WithTraceStickyLoadBalancedSelector(
 			&staticChannelSelector{candidates: candidates},
-			NewLoadBalancer(policy, nil),
-			policy.policy,
+			NewLoadBalancer(nil, nil),
+			policy,
 			&fakePreviousChannelProvider{traceChannelIDs: map[int]int{trace.ID: 2}},
 		)
 
@@ -272,15 +272,15 @@ func TestLoadBalancedSelector_TraceStickySelection(t *testing.T) {
 			stickyTestCandidateWithTier(2, 1, objects.RoutingTierPreferred),
 			stickyTestCandidateWithTier(3, 0, objects.RoutingTierStandard),
 		}
-		policy := &mockRetryPolicyProvider{policy: &biz.RetryPolicy{
+		policy := &biz.RetryPolicy{
 			Enabled:           true,
 			MaxChannelRetries: 2,
 			TraceStickyMode:   biz.TraceStickyPreferPreviousChannel,
-		}}
+		}
 		selector := WithTraceStickyLoadBalancedSelector(
 			&staticChannelSelector{candidates: candidates},
-			NewLoadBalancer(policy, nil),
-			policy.policy,
+			NewLoadBalancer(nil, nil),
+			policy,
 			&fakePreviousChannelProvider{traceChannelIDs: map[int]int{trace.ID: 2}},
 		)
 
@@ -300,16 +300,16 @@ func TestLoadBalancedSelector_RoutingTiers(t *testing.T) {
 	standard := stickyTestCandidateWithTier(3, 0, objects.RoutingTierStandard)
 	fallback := stickyTestCandidateWithTier(4, -10, objects.RoutingTierFallback)
 
-	policy := &mockRetryPolicyProvider{policy: &biz.RetryPolicy{
+	policy := &biz.RetryPolicy{
 		Enabled:           true,
 		MaxChannelRetries: 3,
 		TraceStickyMode:   biz.TraceStickyDisabled,
-	}}
+	}
 	tracker := &mockSelectionTracker{}
 	selector := WithLoadBalancedSelector(
 		&staticChannelSelector{candidates: []*ChannelModelsCandidate{fallback, standard, preferredLowWeight, preferredHighWeight}},
-		NewLoadBalancer(policy, tracker),
-		policy.policy,
+		NewLoadBalancer(nil, tracker),
+		policy,
 	)
 
 	result, err := selector.Select(context.Background(), &llm.Request{Model: "gpt-4"})

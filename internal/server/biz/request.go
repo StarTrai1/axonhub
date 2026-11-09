@@ -1411,8 +1411,12 @@ func (s *RequestService) UpdateRequestFailureWithMetrics(ctx context.Context, re
 	upd := setRequestChannel(s.entFromContext(ctx).Request.Update(), req).
 		SetStatus(status)
 	if metrics != nil {
-		if metrics.LatencyMs != nil { upd.SetMetricsLatencyMs(*metrics.LatencyMs) }
-		if metrics.FirstTokenLatencyMs != nil { upd.SetMetricsFirstTokenLatencyMs(*metrics.FirstTokenLatencyMs) }
+		if metrics.LatencyMs != nil {
+			upd.SetMetricsLatencyMs(*metrics.LatencyMs)
+		}
+		if metrics.FirstTokenLatencyMs != nil {
+			upd.SetMetricsFirstTokenLatencyMs(*metrics.FirstTokenLatencyMs)
+		}
 	}
 	var dataStorage *ent.DataStorage
 	if len(chunks) > 0 {

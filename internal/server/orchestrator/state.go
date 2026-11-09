@@ -77,7 +77,7 @@ type PersistenceState struct {
 	Request             *ent.Request
 	RequestExec         *ent.RequestExecution
 	ManualSwitchControl *pipeline.ManualSwitchControl
-	ExecutionHeaders *executionHeaderObserver
+	ExecutionHeaders    *executionHeaderObserver
 
 	// ChannelModelsCandidates is the primary state for channel selection
 	ChannelModelsCandidates []*ChannelModelsCandidate

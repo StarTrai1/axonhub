@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"mime"
 	"net/http"
@@ -1475,7 +1474,7 @@ func (s *responsesTransportStream) Next() bool {
 		return false
 	}
 
-	event, err := responsestransformer.AdaptStreamEvent(s.stream.Current(), s.source, s.target)
+	event, err := responses.AdaptStreamEvent(s.stream.Current(), s.source, s.target)
 	if err != nil {
 		s.err = err
 		return false
@@ -1505,11 +1504,11 @@ func (s *responsesTransportStream) Close() error { return s.stream.Close() }
 // attempt with a retryable pre-commit error. Afterwards only bytes are bounded:
 // events stay retained only while the inbound transformer holds back its output.
 type rawEventRecorder struct {
-	source  streams.Stream[*httpclient.StreamEvent]
-	outcome *passThroughStreamError
+	source   streams.Stream[*httpclient.StreamEvent]
+	outcome  *passThroughStreamError
 	steering *responsesSteeringState
 	terminal bool
-	current *httpclient.StreamEvent
+	current  *httpclient.StreamEvent
 
 	mu        sync.Mutex
 	pending   []*httpclient.StreamEvent
@@ -1540,12 +1539,18 @@ func (r *rawEventRecorder) Next() bool {
 	event := r.source.Current()
 	if event != nil {
 		eventType := gjson.GetBytes(event.Data, "type").String()
-		if eventType == "" { eventType = event.Type }
+		if eventType == "" {
+			eventType = event.Type
+		}
 		// Steering acknowledgements can defer the final terminal to a later turn.
-		if r.steering == nil { r.steering = newResponsesSteeringState() }
+		if r.steering == nil {
+			r.steering = newResponsesSteeringState()
+		}
 		final := r.steering.isFinalTerminal(event)
 		r.terminal = (strings.HasPrefix(eventType, "response.") || eventType == "error") && final
-		if r.terminal && r.outcome != nil { r.outcome.recordTerminal(event) }
+		if r.terminal && r.outcome != nil {
+			r.outcome.recordTerminal(event)
+		}
 	}
 
 	r.mu.Lock()
@@ -1562,7 +1567,9 @@ func (r *rawEventRecorder) Next() bool {
 
 func (r *rawEventRecorder) retain(event *httpclient.StreamEvent) error {
 	size := rawStreamEventSize(event)
-	if size > maxRawEventBytes { return errRawPreAttachBudgetExceeded }
+	if size > maxRawEventBytes {
+		return errRawPreAttachBudgetExceeded
+	}
 	if r.attached {
 		if size > maxRawEventBytes || size > maxRawQueueBytes-r.bytes {
 			return errRawPreAttachBudgetExceeded

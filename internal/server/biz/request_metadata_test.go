@@ -80,7 +80,7 @@ func TestRequestService_MetadataUpdatesDoNotReadPayloads(t *testing.T) {
 		})
 	}))
 
-	require.NoError(t, svc.UpdateRequestChannelID(ctx, req.ID, channel.ID))
+	svc.AssignRequestChannel(ctx, req, channel.ID)
 	headers := http.Header{"X-Request-Id": {"upstream-id"}}
 	require.NoError(t, svc.UpdateRequestResponseHeaders(ctx, req.ID, headers))
 	require.NoError(t, svc.UpdateRequestStatus(ctx, req.ID, request.StatusFailed))
@@ -120,8 +120,6 @@ func BenchmarkRequestChannelSelectionMetadata(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for b.Loop() {
-		if err := svc.UpdateRequestChannelID(ctx, req.ID, 0); err != nil {
-			b.Fatal(err)
-		}
+		svc.AssignRequestChannel(ctx, req, 0)
 	}
 }
