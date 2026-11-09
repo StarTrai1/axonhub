@@ -58,7 +58,7 @@ func TestTranslatedThinkingPreservesSignaturesAndOtherProviders(t *testing.T) {
 			src := &llm.Request{APIFormat: tc.format, Model: tc.model, Messages: []llm.Message{{
 				Role: "assistant", ReasoningContent: lo.ToPtr("plan"), ReasoningSignature: lo.EmptyableToPtr(tc.signature),
 				RedactedReasoningContent: lo.ToPtr("opaque-redacted-reasoning"),
-				Content: llm.MessageContent{Content: lo.ToPtr("answer")},
+				Content:                  llm.MessageContent{Content: lo.ToPtr("answer")},
 			}}}
 			body, err := json.Marshal(convertToAnthropicRequestWithConfig(src, &Config{Type: tc.platform}))
 			require.NoError(t, err)
