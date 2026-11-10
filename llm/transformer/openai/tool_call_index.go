@@ -18,6 +18,9 @@ type toolCallIndexer struct {
 	last map[int]int
 	// ids holds the ID of each tool call seen so far.
 	ids map[toolCallKey]string
+	// upstream maps each explicitly supplied index to its current output index.
+	upstream map[toolCallKey]int
+	used     map[toolCallKey]bool
 }
 
 type toolCallKey struct {
@@ -26,14 +29,32 @@ type toolCallKey struct {
 }
 
 func newToolCallIndexer() *toolCallIndexer {
-	return &toolCallIndexer{next: make(map[int]int), last: make(map[int]int), ids: make(map[toolCallKey]string)}
+	return &toolCallIndexer{
+		next: make(map[int]int), last: make(map[int]int), ids: make(map[toolCallKey]string),
+		upstream: make(map[toolCallKey]int), used: make(map[toolCallKey]bool),
+	}
 }
 
 // index returns the index of the tool call at choices[choicePos].delta.tool_calls[pos] of the raw chunk.
 // A call without an index starts a new call when it has a new ID or a name, and otherwise continues the last call.
 func (x *toolCallIndexer) index(data []byte, choicePos, choiceIndex, pos, index int, id, name string) int {
-	if gjson.GetBytes(data, fmt.Sprintf("choices.%d.delta.tool_calls.%d.index", choicePos, pos)).Exists() {
-		x.next[choiceIndex] = max(x.next[choiceIndex], index+1)
+	rawIndex := gjson.GetBytes(data, fmt.Sprintf("choices.%d.delta.tool_calls.%d.index", choicePos, pos))
+	if rawIndex.Type == gjson.Number {
+		key := toolCallKey{choiceIndex, index}
+		output, known := x.upstream[key]
+		previousID := x.ids[toolCallKey{choiceIndex, output}]
+		// Some relays reuse an index for a different parallel call. Only a
+		// named call with a distinct ID starts a replacement; argument-only
+		// fragments continue the current call even if their ID changes.
+		if !known || name != "" && id != "" && previousID != "" && id != previousID {
+			output = index
+			if known || x.used[key] {
+				output = x.next[choiceIndex]
+			}
+			x.upstream[key] = output
+		}
+		x.next[choiceIndex] = max(x.next[choiceIndex], index+1, output+1)
+		index = output
 	} else {
 		continues := x.next[choiceIndex] > 0 &&
 			(id == "" && name == "" || id != "" && id == x.ids[toolCallKey{choiceIndex, x.last[choiceIndex]}])
@@ -46,6 +67,7 @@ func (x *toolCallIndexer) index(data []byte, choicePos, choiceIndex, pos, index 
 	}
 
 	x.last[choiceIndex] = index
+	x.used[toolCallKey{choiceIndex, index}] = true
 	if id != "" {
 		x.ids[toolCallKey{choiceIndex, index}] = id
 	}

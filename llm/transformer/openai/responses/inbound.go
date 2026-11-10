@@ -10,6 +10,7 @@ import (
 	"maps"
 	"net/http"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/samber/lo"
 	"github.com/tidwall/gjson"
@@ -54,6 +55,9 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *http
 
 	if len(httpReq.Body) == 0 {
 		return nil, fmt.Errorf("%w: request body is empty", transformer.ErrInvalidRequest)
+	}
+	if !utf8.Valid(httpReq.Body) {
+		return nil, fmt.Errorf("%w: request body must be valid UTF-8", transformer.ErrInvalidRequest)
 	}
 	if t.webSocket {
 		body, err := AdaptRequestBody(httpReq.Body, t.APIFormat(), llm.APIFormatOpenAIResponse)

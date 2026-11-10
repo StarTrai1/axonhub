@@ -120,7 +120,7 @@ type QuotaData struct {
 	NextResetAt         *time.Time         `json:"next_reset_at"` // Next quota reset timestamp
 	Ready               bool               `json:"ready"`         // True if status is available or warning
 	Limits              []QuotaLimitStatus `json:"limits"`
-	Balances []QuotaBalance `json:"balances,omitempty"`
+	Balances            []QuotaBalance     `json:"balances,omitempty"`
 	Resets              *ResetList         `json:"resets,omitempty"`
 }
 

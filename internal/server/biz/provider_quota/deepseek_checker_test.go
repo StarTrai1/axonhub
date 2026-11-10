@@ -207,12 +207,56 @@ func TestBuildDeepSeekBalanceURL(t *testing.T) {
 		{"http relay anthropic", "http://relay:8080/deepseek/anthropic", "http://relay:8080/deepseek/user/balance"},
 		{"http relay prefix", "http://relay:8080/deepseek", "http://relay:8080/deepseek/user/balance"},
 		{"drops query", "http://relay:8080/deepseek/?token=x", "http://relay:8080/deepseek/user/balance"},
+		{"invalid relay", "://relay", ""},
+		{"missing scheme", "relay.example/v1", ""},
+		{"unsupported scheme", "ftp://relay.example/v1", ""},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			require.Equal(t, tt.want, buildDeepSeekBalanceURL(tt.baseURL))
 		})
+	}
+}
+
+func TestDeepSeekInvalidRelayNeverSendsCredentials(t *testing.T) {
+	client := httpclient.NewHttpClientWithClient(&http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			t.Fatal("invalid relay URL must not fall back to the official endpoint")
+			return nil, nil
+		}),
+	})
+	_, err := NewDeepSeekQuotaChecker(client).CheckQuota(t.Context(), &ent.Channel{
+		Type: channel.TypeDeepseek, BaseURL: "relay.example/v1",
+		Credentials: objects.ChannelCredentials{APIKey: "relay-only-key"},
+	})
+	require.ErrorContains(t, err, "invalid DeepSeek channel base URL")
+}
+
+func TestDeepSeekUnknownAccountCannotProveChannelExhaustion(t *testing.T) {
+	for _, available := range []bool{false, true} {
+		client := httpclient.NewHttpClientWithClient(&http.Client{
+			Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+				status, body := http.StatusServiceUnavailable, `{"error":"temporary failure"}`
+				if req.Header.Get("Authorization") == "Bearer known-account" {
+					status, body = http.StatusOK, `{"is_available":false}`
+					if available {
+						body = `{"is_available":true}`
+					}
+				}
+				return &http.Response{StatusCode: status, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body))}, nil
+			}),
+		})
+		quota, err := NewDeepSeekQuotaChecker(client).CheckQuota(t.Context(), &ent.Channel{
+			Type: channel.TypeDeepseek,
+			Credentials: objects.ChannelCredentials{APIKeys: []string{"known-account", "unknown-account"}},
+		})
+		require.NoError(t, err)
+		if available {
+			require.Equal(t, "available", quota.Status)
+		} else {
+			require.Equal(t, "unknown", quota.Status)
+		}
 	}
 }
 

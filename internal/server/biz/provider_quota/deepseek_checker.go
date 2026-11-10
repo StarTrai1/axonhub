@@ -71,6 +71,9 @@ func (c *DeepSeekQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) 
 	}
 
 	balanceURL := buildDeepSeekBalanceURL(ch.BaseURL)
+	if balanceURL == "" {
+		return QuotaData{}, fmt.Errorf("invalid DeepSeek channel base URL")
+	}
 	includeAccount := len(enabledKeys) > 1
 
 	accounts := make([]map[string]any, 0, len(enabledKeys))
@@ -84,6 +87,7 @@ func (c *DeepSeekQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) 
 
 		response, err := fetchDeepSeekBalance(ctx, hc, balanceURL, key)
 		if err != nil {
+			status = betterDeepSeekStatus(status, "unknown")
 			accounts = append(accounts, map[string]any{
 				"account": accountLabel,
 				"error":   err.Error(),
@@ -215,7 +219,9 @@ func determineDeepSeekStatus(isAvailable *bool, balances []QuotaBalance) string 
 // betterDeepSeekStatus folds per-account states so a single funded account
 // keeps the channel routable even when another account is empty.
 func betterDeepSeekStatus(current string, candidate string) string {
-	rank := map[string]int{"available": 2, "exhausted": 1, "unknown": 0}
+	// Exhaustion requires evidence for every serving key. An unknown account
+	// may still be funded; a failed check must not turn it into an empty one.
+	rank := map[string]int{"available": 2, "unknown": 1, "exhausted": 0}
 	if current == "" || rank[candidate] > rank[current] {
 		return candidate
 	}
@@ -245,17 +251,13 @@ func buildDeepSeekBalanceURL(baseURL string) string {
 	}
 
 	parsed, err := url.Parse(baseURL)
-	if err != nil || parsed.Host == "" {
-		return deepseekDefaultBaseURL + "/user/balance"
+	if err != nil || parsed.Host == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+		return ""
 	}
 
 	// DeepSeek inference accepts both http and https relays, and the balance
 	// endpoint lives beside the configured API prefix. Keep the relay's scheme
 	// and prefix, stripping only the known API suffix.
-	if parsed.Scheme == "" {
-		parsed.Scheme = "https"
-	}
-
 	path := strings.TrimRight(parsed.Path, "/")
 	for _, suffix := range []string{"/v1", "/anthropic"} {
 		if before, found := strings.CutSuffix(path, suffix); found {
@@ -264,6 +266,7 @@ func buildDeepSeekBalanceURL(baseURL string) string {
 		}
 	}
 	parsed.Path = strings.TrimRight(path, "/") + "/user/balance"
+	parsed.RawPath = ""
 	parsed.RawQuery = ""
 	parsed.Fragment = ""
 	parsed.User = nil

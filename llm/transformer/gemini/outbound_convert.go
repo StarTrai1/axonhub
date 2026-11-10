@@ -502,9 +502,6 @@ func convertLLMMessageToGeminiContent(msg *llm.Message) *Content {
 	return content
 }
 
-// geminiFunctionResponseContainsRef reports whether a function response payload
-// has a "$ref" key at any depth. Gemini treats that key as a multimodal part
-// pointer and rejects the request when no matching part exists.
 func convertLLMToolResultToGeminiContent(msg *llm.Message, contents []*Content) *Content {
 	content := &Content{
 		Role: "user", // Function responses come from user role in Gemini
