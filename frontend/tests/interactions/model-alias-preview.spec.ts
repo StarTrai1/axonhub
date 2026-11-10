@@ -32,5 +32,21 @@ for (const width of [1280, 768, 390]) {
     await expect(aliases).toContainText('原始名称未对外暴露');
     await page.getByTestId('dark-theme').evaluate((element) => (element as HTMLButtonElement).click());
     await page.screenshot({ animations: 'disabled', path: testInfo.outputPath('codex-aliases-zh-dark.png') });
+
+    await page.goto('/tests/interactions/codex-channel.html?mapping=1');
+    const preview = page.getByTestId('model-alias-preview-scroll');
+    await expect(preview).toContainText(longAlias);
+    await expect(page.getByTestId('model-alias-settings-scroll')).toBeVisible();
+    await page.getByTestId('model-preview-tip').hover();
+    await expect(page.getByRole('tooltip')).toBeVisible();
+    await page.mouse.move(0, 0);
+    for (const panel of [preview, page.getByTestId('model-alias-settings-scroll')]) {
+      expect(await panel.evaluate((element) => element.scrollWidth <= element.clientWidth + 1 && element.clientHeight > 120)).toBe(true);
+    }
+    await page.getByTestId('zh-locale').evaluate((element) => (element as HTMLButtonElement).click());
+    await page.getByTestId('light-theme').evaluate((element) => (element as HTMLButtonElement).click());
+    await page.screenshot({ animations: 'disabled', path: testInfo.outputPath('codex-alias-settings-zh-light.png') });
+    await page.getByTestId('dark-theme').evaluate((element) => (element as HTMLButtonElement).click());
+    await page.screenshot({ animations: 'disabled', path: testInfo.outputPath('codex-alias-settings-zh-dark.png') });
   });
 }

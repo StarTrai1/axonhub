@@ -7,6 +7,7 @@ import i18n from '@/lib/i18n';
 import { ThemeProvider, useTheme } from '@/context/theme-context';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { ChannelsActionDialog } from '@/features/channels/components/channels-action-dialog';
+import { ChannelsModelMappingDialog } from '@/features/channels/components/channels-model-mapping-dialog';
 import { channelSchema, type Channel } from '@/features/channels/data/schema';
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity, retry: false } } });
@@ -37,7 +38,9 @@ function Fixture() {
       setCurrentRow(channelSchema.parse(await response.json()));
       setOpen(true);
     }}>Reopen saved channel</button>
-    {open && <ChannelsActionDialog currentRow={currentRow} open={open} onOpenChange={setOpen} showModelsPanel={new URLSearchParams(window.location.search).has('models')} />}
+    {open && (new URLSearchParams(window.location.search).has('mapping')
+      ? <ChannelsModelMappingDialog currentRow={currentRow} open={open} onOpenChange={setOpen} />
+      : <ChannelsActionDialog currentRow={currentRow} open={open} onOpenChange={setOpen} showModelsPanel={new URLSearchParams(window.location.search).has('models')} />)}
   </>;
 }
 const router = createRouter({ routeTree: createRootRoute({ component: Fixture }), history: createMemoryHistory({ initialEntries: ['/'] }) });

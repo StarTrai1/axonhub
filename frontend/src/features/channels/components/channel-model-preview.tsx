@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Info } from 'lucide-react';
 import { useDebounce } from '@/hooks/use-debounce';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { filterChannelModelGroups, groupChannelModelEntries, type ChannelModelGroup } from '../data/channel-model-aliases';
 import type { ChannelModelEntry } from '../data/schema';
 
@@ -45,8 +47,19 @@ export function ChannelModelPreview({ models, entries, isUpdating, isError }: Pr
   return (
     <div className='flex min-h-0 flex-1 flex-col' aria-busy={isUpdating}>
       <div className='shrink-0 space-y-2 pb-3'>
-        <h3 className='text-sm font-semibold'>{t('channels.modelPreview.title')}</h3>
-        <p className='text-muted-foreground text-xs'>{t('channels.modelPreview.description')}</p>
+        <div className='flex items-center gap-1.5'>
+          <h3 className='text-sm font-semibold'>{t('channels.modelPreview.title')}</h3>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button type='button' className='text-muted-foreground hover:text-foreground inline-flex items-center' aria-label={t('channels.modelPreview.description')} data-testid='model-preview-tip'>
+                <Info className='h-3.5 w-3.5' />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent className='max-w-72 leading-relaxed text-wrap'>
+              <p>{t('channels.modelPreview.description')}</p>
+            </TooltipContent>
+          </Tooltip>
+        </div>
         <Input
           value={search}
           onChange={(event) => setSearch(event.target.value)}
