@@ -42,8 +42,10 @@ func TestRemoteCompactionInspectionAcceptsResponsesStringInput(t *testing.T) {
 func TestBuildLocalCompactionRequest(t *testing.T) {
 	body := []byte(`{
 		"model":"gpt-5.6-sol",
+		"text":{"format":{"type":"json_object"}},
 		"input":[
 			{"type":"message","role":"user","content":[{"type":"input_text","text":"before"}]},
+			{"type":"configuration_update","tool_choice":"auto"},
 			{"type":"compaction_trigger"},
 			{"type":"message","role":"user","content":[{"type":"input_text","text":"must be removed"}]}
 		],
@@ -62,6 +64,8 @@ func TestBuildLocalCompactionRequest(t *testing.T) {
 	require.Len(t, input, 2)
 	require.Equal(t, "message", rawInputItemType(input[1]))
 	require.NotContains(t, string(got), remoteCompactionTriggerType)
+	require.NotContains(t, string(got), "configuration_update")
+	require.NotContains(t, envelope, "text")
 	require.Contains(t, string(input[1]), "CONTEXT CHECKPOINT COMPACTION")
 	require.JSONEq(t, "true", string(envelope["stream"]))
 	require.JSONEq(t, `"none"`, string(envelope["tool_choice"]))
@@ -76,7 +80,9 @@ func TestBuildLocalCompactionRequest(t *testing.T) {
 func TestBuildStandaloneLocalCompactionGenerationRequest(t *testing.T) {
 	body := []byte(`{
 		"model":"gpt-5.6-sol",
+		"text":{"format":{"type":"json_object"}},
 		"input":[
+			{"type":"configuration_update","tool_choice":"auto"},
 			{"type":"message","role":"user","content":[{"type":"input_text","text":"before"}]}
 		],
 		"instructions":"keep this instruction"
@@ -94,6 +100,8 @@ func TestBuildStandaloneLocalCompactionGenerationRequest(t *testing.T) {
 	require.JSONEq(t, "false", string(envelope["store"]))
 	require.JSONEq(t, `"none"`, string(envelope["tool_choice"]))
 	require.JSONEq(t, `"keep this instruction"`, string(envelope["instructions"]))
+	require.NotContains(t, string(got), "configuration_update")
+	require.NotContains(t, envelope, "text")
 }
 
 func TestUseResponsesEndpointForLocalCompaction(t *testing.T) {

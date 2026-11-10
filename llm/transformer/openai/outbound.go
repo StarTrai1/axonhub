@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/spf13/cast"
@@ -203,6 +204,11 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	reasoningField := t.config.ReasoningField
 	if reasoningField == "" {
 		reasoningField = ReasoningFieldContent
+		// Mistral rejects reasoning_content even for hosted DeepSeek models.
+		// Match the serving host, not the model name or a relay URL substring.
+		if endpoint, err := url.Parse(t.config.BaseURL); err == nil && strings.EqualFold(endpoint.Hostname(), "api.mistral.ai") {
+			reasoningField = ReasoningFieldNone
+		}
 	}
 
 	llmReq = shared.WithResponsesEffortForConversion(llmReq)

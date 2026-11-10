@@ -31,8 +31,8 @@ func normalizeConvertedClaudeThinking(src *llm.Request, dst *MessageRequest, con
 	}
 
 	is := func(name string) bool { return claudeModelMatches(src.Model, name) }
-	alwaysThinking := is("claude-opus-5-5") || is("claude-fable-5") || is("claude-fable-5-1") ||
-		is("claude-mythos-5") || is("claude-mythos-5-1") || is("claude-mythos-preview")
+	alwaysThinking := is("claude-opus-5-5") || is("claude-fable-5") || is("claude-fable-5-1") || is("claude-fable-5-2") ||
+		is("claude-mythos-5") || is("claude-mythos-5-1") || is("claude-mythos-5-2") || is("claude-mythos-preview")
 	extendedOnly := is("claude-opus-4-5") || is("claude-sonnet-4-5") || is("claude-haiku-4-5")
 	adaptiveOnly := (alwaysThinking && !is("claude-mythos-preview")) || is("claude-opus-5") || is("claude-opus-4-8") ||
 		is("claude-opus-4-7") || is("claude-sonnet-5") || is("claude-sonnet-5-5") || is("claude-haiku-5-5")

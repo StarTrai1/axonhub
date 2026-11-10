@@ -37,7 +37,7 @@ function Fixture() {
       setCurrentRow(channelSchema.parse(await response.json()));
       setOpen(true);
     }}>Reopen saved channel</button>
-    {open && <ChannelsActionDialog currentRow={currentRow} open={open} onOpenChange={setOpen} />}
+    {open && <ChannelsActionDialog currentRow={currentRow} open={open} onOpenChange={setOpen} showModelsPanel={new URLSearchParams(window.location.search).has('models')} />}
   </>;
 }
 const router = createRouter({ routeTree: createRootRoute({ component: Fixture }), history: createMemoryHistory({ initialEntries: ['/'] }) });

@@ -248,7 +248,7 @@ func TestDeepSeekUnknownAccountCannotProveChannelExhaustion(t *testing.T) {
 			}),
 		})
 		quota, err := NewDeepSeekQuotaChecker(client).CheckQuota(t.Context(), &ent.Channel{
-			Type: channel.TypeDeepseek,
+			Type:        channel.TypeDeepseek,
 			Credentials: objects.ChannelCredentials{APIKeys: []string{"known-account", "unknown-account"}},
 		})
 		require.NoError(t, err)

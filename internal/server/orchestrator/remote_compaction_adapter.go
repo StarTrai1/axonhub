@@ -1541,6 +1541,7 @@ func buildLocalCompactionGenerationRequest(body []byte, requestType llm.RequestT
 	if err != nil {
 		return nil, err
 	}
+	input = prepareCompactionSummaryInput(envelope, input)
 	input = append(input, localCompactionMessage(localCompactionPrompt))
 	if err := setResponseEnvelopeInput(envelope, input); err != nil {
 		return nil, err
@@ -1573,6 +1574,7 @@ func buildLocalCompactionRequest(body []byte) ([]byte, error) {
 
 	input[triggerIndex] = localCompactionMessage(localCompactionPrompt)
 	input = input[:triggerIndex+1]
+	input = prepareCompactionSummaryInput(envelope, input)
 	if err := setResponseEnvelopeInput(envelope, input); err != nil {
 		return nil, err
 	}
@@ -1581,6 +1583,20 @@ func buildLocalCompactionRequest(body []byte) ([]byte, error) {
 	updateCompactionImplementationMetadata(envelope)
 
 	return json.Marshal(envelope)
+}
+
+// A generated handoff has its own text contract. Prior output schemas and
+// configuration updates must not constrain the summary or re-enable tools.
+// Preserve the conversation and provider-owned state for native replay.
+func prepareCompactionSummaryInput(envelope map[string]json.RawMessage, input []json.RawMessage) []json.RawMessage {
+	delete(envelope, "text")
+	kept := make([]json.RawMessage, 0, len(input))
+	for _, item := range input {
+		if rawInputItemType(item) != "configuration_update" {
+			kept = append(kept, item)
+		}
+	}
+	return kept
 }
 
 func replaceRemoteCompactionWithLocalSummary(body []byte, summary string) ([]byte, error) {
