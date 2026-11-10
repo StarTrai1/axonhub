@@ -35,7 +35,7 @@ const { pageInfoSchema } = await import(
 );
 globalThis.__importStubs = { z, pageInfoSchema };
 
-const { parseQuotaLimits } = await loadModule('features/system/data/quotas.ts', (s) =>
+const { parseQuotaBalances, parseQuotaLimits } = await loadModule('features/system/data/quotas.ts', (s) =>
   s.replace(/export function useProviderQuotaStatuses[\s\S]*$/m, '')
 );
 
@@ -320,4 +320,28 @@ test('supported models cell bounds badge container width to prevent horizontal s
     /max-w-(?:72|80|xs|sm)[^']*flex-wrap/,
     'supported models badge container must have a max-width wrapper so badges wrap instead of stretching the table'
   );
+});
+
+test('normalized balances: parser returns every _balances entry without fabrication', () => {
+  const balances = parseQuotaBalances({
+    _balances: [
+      { currency: 'CNY', total: 110, granted: 10, topped_up: 100 },
+      { currency: 'USD', total: 5 },
+    ],
+  });
+
+  assert.equal(balances.length, 2);
+  assert.deepEqual(balances[0], { account: undefined, currency: 'CNY', total: 110, granted: 10, topped_up: 100 });
+  assert.deepEqual(balances[1], { account: undefined, currency: 'USD', total: 5, granted: undefined, topped_up: undefined });
+});
+
+test('normalized balances: malformed entries fail closed', () => {
+  for (const rawBalances of [null, {}, 'broken', 42]) {
+    assert.deepEqual(parseQuotaBalances({ _balances: rawBalances }), [], `malformed _balances value ${String(rawBalances)} must be unavailable`);
+  }
+
+  const balances = parseQuotaBalances({
+    _balances: [null, 42, { currency: 'CNY' }, { total: '110' }, { total: 10, granted: 'x', topped_up: 5 }],
+  });
+  assert.deepEqual(balances, [{ account: undefined, currency: undefined, total: 10, granted: undefined, topped_up: 5 }]);
 });

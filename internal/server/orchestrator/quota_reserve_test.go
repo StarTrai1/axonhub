@@ -1,6 +1,7 @@
 package orchestrator
 
 import (
+	"context"
 	"math"
 	"testing"
 	"time"
@@ -84,38 +85,42 @@ func TestQuotaReserveToolsDoNotGrantCapabilitiesOrBypassHardQuota(t *testing.T) 
 	status := quotaStickyOnlyStatus()
 	provider := &mockQuotaStatusProvider{statuses: map[int]*biz.QuotaChannelStatus{1: status}}
 	gate := NewQuotaRoutingGate(provider, biz.QuotaRoutingSettings{DefaultMode: objects.QuotaRoutingModeRemoveOnExhausted})
+	filter := func(ctx context.Context, candidates []*ChannelModelsCandidate, req *llm.Request, stickyID int) []*ChannelModelsCandidate {
+		preferred, fallback := gate.Filter(ctx, candidates, req, stickyID)
+		return append(preferred, fallback...)
+	}
 	chat := &llm.Request{RequestType: llm.RequestTypeChat}
 	search := &llm.Request{RequestType: llm.RequestTypeSearch, APIFormat: llm.APIFormatOpenAISearch}
 	image := &llm.Request{RequestType: llm.RequestTypeImage, APIFormat: llm.APIFormatOpenAIImageGeneration, Image: &llm.ImageRequest{}}
 	for _, mode := range []objects.QuotaRoutingMode{objects.QuotaRoutingModeRemoveOnExhausted, objects.QuotaRoutingModeBackpressure, objects.QuotaRoutingModeIgnoreQuota} {
 		candidate.Channel.Settings.QuotaRoutingMode = mode
 		// Explicit limits also apply to pinned/phase-two and ignore-quota candidates.
-		require.Empty(t, gate.Filter(t.Context(), []*ChannelModelsCandidate{candidate}, chat, 1))
+		require.Empty(t, filter(t.Context(), []*ChannelModelsCandidate{candidate}, chat, 1))
 	}
 	candidate.Channel.Settings.QuotaRoutingMode = objects.QuotaRoutingModeRemoveOnExhausted
 	for _, req := range []*llm.Request{search, image} {
-		require.Len(t, gate.Filter(t.Context(), []*ChannelModelsCandidate{candidate}, req, 0), 1)
+		require.Len(t, filter(t.Context(), []*ChannelModelsCandidate{candidate}, req, 0), 1)
 	}
 	memoryCtx := shared.WithCodexMemoryTask(t.Context(), shared.CodexMemoryExtract)
-	require.Len(t, gate.Filter(memoryCtx, []*ChannelModelsCandidate{candidate}, chat, 0), 1)
+	require.Len(t, filter(memoryCtx, []*ChannelModelsCandidate{candidate}, chat, 0), 1)
 	candidate.Channel.Policies.CodexMemory = objects.CodexMemoryExclude
 	require.False(t, candidate.Channel.AllowsWorkload(chat, true), "quota exception never grants excluded memory")
 	candidate.Channel.Policies.ImageGeneration = objects.ImageGenerationOtherChannels
 	require.False(t, candidate.Channel.AllowsWorkload(image, false), "quota exception never grants excluded images")
 	reserve.AllowSearch, reserve.AllowImage, reserve.AllowMemory = false, false, false
 	for _, req := range []*llm.Request{chat, search, image} {
-		require.Empty(t, gate.Filter(t.Context(), []*ChannelModelsCandidate{candidate}, req, 0))
+		require.Empty(t, filter(t.Context(), []*ChannelModelsCandidate{candidate}, req, 0))
 	}
 	reserve.AllowMemory = true
 	status.Status = providerquotastatus.StatusExhausted
 	status.Limits[0].Status, status.Limits[0].UsageRatio = "exhausted", 1
-	require.Empty(t, gate.Filter(memoryCtx, []*ChannelModelsCandidate{candidate}, chat, 0))
+	require.Empty(t, filter(memoryCtx, []*ChannelModelsCandidate{candidate}, chat, 0))
 	status.Limits[0].NextResetAt = lo.ToPtr(time.Now().Add(-time.Second))
 	status.Status = providerquotastatus.StatusAvailable
 	// A reserve's reset must not override an independently exhausted quota.
-	require.Empty(t, gate.Filter(t.Context(), []*ChannelModelsCandidate{candidate}, chat, 0))
+	require.Empty(t, filter(t.Context(), []*ChannelModelsCandidate{candidate}, chat, 0))
 	status.Limits[0].Status, status.Limits[0].UsageRatio = "warning", .9
-	require.Len(t, gate.Filter(t.Context(), []*ChannelModelsCandidate{candidate}, chat, 0), 1, "reset automatically reopens ordinary routing")
+	require.Len(t, filter(t.Context(), []*ChannelModelsCandidate{candidate}, chat, 0), 1, "reset automatically reopens ordinary routing")
 }
 
 func TestQuotaReserveFinalDispatchAndRetryRefresh(t *testing.T) {

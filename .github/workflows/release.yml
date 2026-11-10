@@ -35,6 +35,9 @@ jobs:
         run: pnpm install --frozen-lockfile
         working-directory: frontend
 
+      - name: Build frontend
+        run: make build-frontend
+
       - name: Set up Go
         uses: actions/setup-go@v7
         with:
@@ -52,5 +55,6 @@ jobs:
           version: '~> v2'
           args: release --clean --skip=validate
         env:
+          SKIP_FRONTEND_BUILD: "1"
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
