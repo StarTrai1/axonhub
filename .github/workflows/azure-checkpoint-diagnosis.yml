@@ -1,0 +1,19 @@
+name: Azure checkpoint diagnosis
+on:
+  push:
+    branches: [fix/20261111-history-memory]
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: .go-version
+      - name: Verify recorded checkpoint regression
+        run: go test ./internal/server/orchestrator -run '^TestAzureCheckpoint' -count=1
