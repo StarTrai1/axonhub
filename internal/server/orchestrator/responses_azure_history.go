@@ -63,6 +63,15 @@ func requestAzureHistoryRecovery(ctx context.Context, outbound *PersistentOutbou
 			return false
 		}
 	}
+	// A checkpoint is not yet readable history. Let the staged resource path
+	// detach optional IDs while preserving native ciphertext, then let rejected
+	// compaction recovery restore its authenticated source if needed. Taking
+	// the plaintext shortcut here prevents those earlier stages from running.
+	for _, item := range gjson.GetBytes(state.RawProviderRequest.Body, "input").Array() {
+		if item.Get("type").String() == remoteCompactionItemType || item.Get("type").String() == legacyRemoteCompactionSummaryType {
+			return false
+		}
+	}
 	scope := responsesMetadataKey(channel.ID, state.RawProviderRequest)
 	if rememberResponsesRejectedStatusRule(state, channel.ID, responsesRejectedStatusRule{
 		index: -1, field: azureHistoryReplayField, resourceScope: &scope,

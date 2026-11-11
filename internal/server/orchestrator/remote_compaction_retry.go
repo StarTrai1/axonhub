@@ -70,6 +70,12 @@ func (a *remoteCompactionAdapter) startLocalCompactionStream(
 		}
 		err = normalizeLocalCompactionError(ctx, outbound, err)
 		a.markBridgeExecutionFailed(ctx, execution, err)
+		if rejected, ok := errors.AsType[*compactionSourceRejectedError](rejectedCompactionSourceError(providerRequest, err)); ok {
+			// The source itself may contain a native ancestor. Hand its explicit
+			// opening rejection back to the bounded source-restoration loop before
+			// a generic compatibility retry masks it with a local history error.
+			return nil, execution, rejected
+		}
 		for _, middleware := range compatibility {
 			middleware.OnOutboundRawError(ctx, err)
 		}
