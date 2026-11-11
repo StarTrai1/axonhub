@@ -112,15 +112,18 @@ func TestResponsesProtocolCompactionRelayContinuation(t *testing.T) {
 					mu.Lock()
 					defer mu.Unlock()
 					require.Equal(t, 1, summaryCalls, "one migration summary is reused by delta continuation")
-					require.Len(t, bodies, 5, "initial rejection, one summary, one repair, then a fresh delta")
-					require.Contains(t, string(bodies[2]), "full-source-canary", "the summary receives the complete retained source")
-					require.Equal(t, 2, continuationCalls, "portable retry and next turn each execute once")
+					require.Len(t, bodies, 7, "source, initial rejection, ID-only retry, one summary, rejected suffix, portable retry and fresh delta")
+					require.Contains(t, string(bodies[3]), "full-source-canary", "the summary receives the complete retained source")
+					require.Equal(t, 3, continuationCalls, "the suffix is preserved until its own explicit rejection, then one repair and next turn")
 					require.Equal(t, "native-source-ciphertext", gjson.GetBytes(bodies[1], `input.#(type=="compaction").encrypted_content`).String())
 					require.Equal(t, "rs_old", gjson.GetBytes(bodies[1], `input.#(type=="reasoning").id`).String(), "first attempt retains native state")
+					require.Equal(t, "native-source-ciphertext", gjson.GetBytes(bodies[2], `input.#(type=="compaction").encrypted_content`).String())
+					require.False(t, gjson.GetBytes(bodies[2], `input.#(type=="reasoning").id`).Exists())
+					require.Equal(t, gjson.GetBytes(bodies[1], `input.#(type=="reasoning").encrypted_content`).String(), gjson.GetBytes(bodies[2], `input.#(type=="reasoning").encrypted_content`).String())
 					for _, method := range methods {
 						require.Equal(t, http.MethodPost, method, "an HTTP relay must not receive a WS handshake")
 					}
-					for _, body := range bodies[3:] {
+					for _, body := range bodies[4:] {
 						require.Contains(t, string(body), "verified-summary-canary")
 						require.NotContains(t, string(body), "full-source-canary")
 						require.Contains(t, string(body), "retained-user-canary")
@@ -130,9 +133,10 @@ func TestResponsesProtocolCompactionRelayContinuation(t *testing.T) {
 						require.NotContains(t, string(body), "native-source-ciphertext")
 						require.False(t, gjson.GetBytes(body, "previous_response_id").Exists())
 					}
-					require.NotContains(t, string(bodies[3]), "gAAAAABsynthetic_old_reasoning_ciphertext_0123456789abcdef0123456789abcdef")
-					require.Contains(t, string(bodies[3]), "visible-reasoning-canary")
-					require.Contains(t, string(bodies[4]), "next-turn-canary")
+					require.Contains(t, string(bodies[4]), "gAAAAABsynthetic_old_reasoning_ciphertext_0123456789abcdef0123456789abcdef", "checkpoint rejection does not reject the suffix reasoning")
+					require.NotContains(t, string(bodies[5]), "gAAAAABsynthetic_old_reasoning_ciphertext_0123456789abcdef0123456789abcdef")
+					require.Contains(t, string(bodies[5]), "visible-reasoning-canary")
+					require.Contains(t, string(bodies[6]), "next-turn-canary")
 				})
 			}
 		}

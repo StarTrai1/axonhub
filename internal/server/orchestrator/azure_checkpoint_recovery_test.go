@@ -96,6 +96,7 @@ func TestAzureCheckpointSummaryRestoresOnlyRejectedAncestor(t *testing.T) {
 
 type azureCheckpointSummaryExecutor struct {
 	rejectedCompactionBridgeExecutor
+
 	bodies         [][]byte
 	rejectAncestor bool
 }

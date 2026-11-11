@@ -113,10 +113,16 @@ func TestResponsesProtocolCompactionRelayDeltaKeepsNativeCachePrefix(t *testing.
 				}
 				mu.Lock()
 				defer mu.Unlock()
-				require.Equal(t, 1, summaryCalls, "one resource repair replaces the rejected checkpoint")
-				require.Contains(t, string(summaryBodies[0]), "source-archive-canary")
+				if rejectCheckpoint {
+					require.Equal(t, 1, summaryCalls, "only an explicitly rejected checkpoint needs a summary")
+					require.Contains(t, string(summaryBodies[0]), "source-archive-canary")
+					require.Len(t, deltaBodies, 4)
+				} else {
+					require.Zero(t, summaryCalls, "an accepted checkpoint must keep its native cache prefix")
+					require.Empty(t, summaryBodies)
+					require.Len(t, deltaBodies, 3)
+				}
 				require.Equal(t, 1, nextCalls)
-				require.Len(t, deltaBodies, 3)
 				require.Contains(t, string(deltaBodies[0]), "native_reasoning_ciphertext", "initial native history is unchanged")
 				require.Contains(t, string(deltaBodies[0]), "native-checkpoint-ciphertext")
 				for _, body := range deltaBodies {
@@ -125,15 +131,23 @@ func TestResponsesProtocolCompactionRelayDeltaKeepsNativeCachePrefix(t *testing.
 					require.Equal(t, "stable-cache", gjson.GetBytes(body, "prompt_cache_key").String())
 					require.False(t, gjson.GetBytes(body, "previous_response_id").Exists())
 				}
-				for _, body := range deltaBodies[1:] {
-					require.False(t, gjson.GetBytes(body, `input.#(type=="compaction")`).Exists())
-					require.Contains(t, string(body), "verified-source-summary")
+				require.False(t, gjson.GetBytes(deltaBodies[1], `input.#(type=="reasoning").id`).Exists())
+				require.Contains(t, string(deltaBodies[1]), "native-checkpoint-ciphertext")
+				require.Contains(t, string(deltaBodies[1]), "native_reasoning_ciphertext")
+				for _, body := range deltaBodies[2:] {
+					if rejectCheckpoint {
+						require.False(t, gjson.GetBytes(body, `input.#(type=="compaction")`).Exists())
+						require.Contains(t, string(body), "verified-source-summary")
+					} else {
+						require.Contains(t, string(body), "native-checkpoint-ciphertext")
+						require.NotContains(t, string(body), "verified-source-summary")
+					}
 					require.NotContains(t, string(body), "source-archive-canary")
-					require.NotContains(t, string(body), "native_reasoning_ciphertext")
+					require.Contains(t, string(body), "native_reasoning_ciphertext", "accepted suffix reasoning is retained")
 				}
-				last := deltaBodies[2]
-				require.Equal(t, "rs_fresh", gjson.GetBytes(last, `input.#(type=="reasoning").id`).String(), "the next request keeps newly accepted reasoning")
-				require.Equal(t, "fresh-native-ciphertext", gjson.GetBytes(last, `input.#(type=="reasoning").encrypted_content`).String())
+				last := deltaBodies[len(deltaBodies)-1]
+				require.Equal(t, "rs_fresh", gjson.GetBytes(last, `input.#(id=="rs_fresh").id`).String(), "the next request keeps newly accepted reasoning")
+				require.Equal(t, "fresh-native-ciphertext", gjson.GetBytes(last, `input.#(id=="rs_fresh").encrypted_content`).String())
 				require.Equal(t, "ct_next", gjson.GetBytes(last, `input.#(call_id=="call_next").id`).String())
 			})
 		}
