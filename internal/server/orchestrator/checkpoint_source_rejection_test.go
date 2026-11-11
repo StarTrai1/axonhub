@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -10,13 +11,14 @@ import (
 
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/system"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 func TestCheckpointSourceRejectionIsolationAndExpiry(t *testing.T) {
-	ctx, _, state, adapter := unifiedHistoryFixture(t)
+	ctx, client, state, adapter := unifiedHistoryFixture(t)
 	state.RawProviderRequest = rejectedCompactionPipelineRequest(t, llm.APIFormatOpenAIResponse)
 	state.RawProviderRequest.URL = "https://relay.example/v1/responses"
 	state.RawProviderRequest.Headers.Set("Authorization", "Bearer synthetic-credential")
@@ -87,7 +89,10 @@ func TestCheckpointSourceRejectionIsolationAndExpiry(t *testing.T) {
 		})
 	}
 	expired := time.Now().Add(-time.Second)
-	require.NoError(t, adapter.systemService.SaveResponsesCompactionRejection(ctx, checkpointSourceRejectionDigest(key), expired))
+	// Seed an aged persisted record: the public writer correctly refuses to
+	// create an already-expired entry or shorten an existing expiry.
+	value := fmt.Sprintf(`{"version":1,"rejections":{"%x":%q}}`, checkpointSourceRejectionDigest(key), expired.Format(time.RFC3339Nano))
+	require.NoError(t, client.System.Update().Where(system.KeyEQ("responses_compaction_rejections_v1")).SetValue(value).Exec(ctx))
 	adapter = newRemoteCompactionAdapter(nil, nil, adapter.systemService)
 	require.False(t, adapter.checkpointSourceWasRejected(ctx, state, ref), "expiry restores the normal native attempt")
 }

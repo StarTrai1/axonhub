@@ -16,7 +16,7 @@ RUN pnpm build && node scripts/pack-frontend.mjs /build/dist /build/embedded-dis
 FROM alpine AS frontend-dist
 COPY --from=frontend-builder /build/embedded-dist /dist
 
-FROM golang:1.27.3-alpine3.24 AS backend-builder
+FROM golang:1.27.4-alpine3.24 AS backend-builder
 
 WORKDIR /build
 
