@@ -7,6 +7,7 @@ import (
 type compactionSourceRejectedError struct {
 	cause    error
 	cacheKey string
+	provider responsesMetadataCapabilityKey
 }
 
 func (e *compactionSourceRejectedError) Error() string { return e.cause.Error() }

@@ -897,11 +897,21 @@ func (a *remoteCompactionAdapter) summaryForCompactionChain(
 				seen[key] = true
 			}
 		}
+		if previous != nil && a.checkpointSourceWasRejected(ctx, state, previous) {
+			log.Info(ctx, "restoring previously rejected checkpoint source",
+				log.String("compaction_id", previous.ID))
+			source, err = a.expandRejectedCheckpointWindow(ctx, source, previous, state)
+			if err != nil {
+				return "", err
+			}
+			continue
+		}
 		value, err = waitForCompactionFlight(ctx, &a.summaryGenerator, ownerKey, generate)
 		rejected, ok := errors.AsType[*compactionSourceRejectedError](err)
 		if !ok || source == nil || previous == nil || ctx.Err() != nil || remoteCompactionCacheKey(previous) != rejected.cacheKey {
 			break
 		}
+		a.rememberCheckpointSourceRejection(ctx, state, previous, rejected)
 		// No intermediate summary, and no recursive expansion of an ancestor the
 		// provider has not rejected. Leave the parent's flight before restoration.
 		source, err = a.expandRejectedCheckpointWindow(ctx, source, previous, state)
@@ -1321,7 +1331,9 @@ func (a *remoteCompactionAdapter) generateCompactionWithCandidate(
 	if err != nil {
 		err = rejectedCompactionSourceError(attemptState.RawProviderRequest, err)
 		if rejected, ok := errors.AsType[*compactionSourceRejectedError](err); ok && ctx.Err() == nil {
-			parentState.compactionRecovery.rejectSource(responsesMetadataKey(candidate.Channel.ID, attemptState.RawProviderRequest), rejected.cacheKey)
+			provider := responsesMetadataKey(candidate.Channel.ID, attemptState.RawProviderRequest)
+			parentState.compactionRecovery.rejectSource(provider, rejected.cacheKey)
+			return "", &compactionSourceRejectedError{cause: rejected.cause, cacheKey: rejected.cacheKey, provider: provider}
 		}
 		return "", err
 	}
