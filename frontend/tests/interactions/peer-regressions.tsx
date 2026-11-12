@@ -155,6 +155,7 @@ function QuotaResetFixture() {
   </main>;
 }
 if (fixtureCase === 'quota-reset') {
+  document.documentElement.classList.add('claude');
   void i18n.changeLanguage(new URLSearchParams(window.location.search).get('lang') || 'en');
   document.documentElement.classList.toggle('dark', new URLSearchParams(window.location.search).get('theme') === 'dark');
 }

@@ -538,7 +538,7 @@
   "system.quota.routing.modes.BACKPRESSURE": "基于用量和时长限流",
   "system.quota.routing.modes.BACKPRESSURE.description": "额度消耗快于时间流逝的渠道仅继续服务存量粘性会话，新会话将切换到其他可用渠道。",
   "quota.label.payg_fallback": "PAYG 按量付费",
-  "quota.label.token_usage": "词元用量",
+  "quota.label.token_usage": "令牌用量",
   "quota.label.account_balance": "账户余额",
   "quota.label.monthly_limit": "月度限额",
   "quota.label.cline_balance": "Cline credits 余额",

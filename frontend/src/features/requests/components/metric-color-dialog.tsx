@@ -264,7 +264,7 @@ export function MetricColorDialog({ open, onOpenChange }: MetricColorDialogProps
                           inputMode='decimal'
                           className='h-full w-full bg-transparent text-right font-mono text-sm leading-none outline-none disabled:cursor-not-allowed'
                         />
-                        <span className='text-muted-foreground shrink-0 text-[10px]'>{meta.unit}</span>
+                        <span className='text-muted-foreground shrink-0 text-xs'>{meta.unit}</span>
                       </div>
                     );
                   })}
@@ -356,7 +356,7 @@ export function MetricColorDialog({ open, onOpenChange }: MetricColorDialogProps
                   })}
                   {dragging?.key === key && (
                     <div
-                      className='bg-foreground text-background pointer-events-none absolute -top-6 -translate-x-1/2 rounded-full px-2 py-0.5 font-mono text-[11px]'
+                      className='bg-foreground text-background pointer-events-none absolute -top-6 -translate-x-1/2 rounded-full px-2 py-0.5 font-mono text-xs'
                       style={{ left: `${metricColorPercent(key, rule, rule.cuts[dragging.index])}%` }}
                     >
                       {rule.cuts[dragging.index]} {meta.unit}

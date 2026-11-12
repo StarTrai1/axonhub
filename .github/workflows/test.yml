@@ -232,7 +232,7 @@ jobs:
         env:
           CHECK_DEPENDENCIES: ${{ needs.changes.outputs.dependencies }}
           CHECK_GENERATION: ${{ needs.changes.outputs.generation }}
-          FORMAT_BASE: ${{ inputs.format_base || 'HEAD^' }}
+          FORMAT_BASE: ${{ inputs.format_base || github.event.pull_request.base.sha || github.event.before || 'HEAD^' }}
         run: |
           if [ "$CHECK_DEPENDENCIES" = true ]; then
             go mod tidy

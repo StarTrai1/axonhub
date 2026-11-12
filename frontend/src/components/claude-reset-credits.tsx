@@ -136,27 +136,27 @@ export function ClaudeResetCredits({ channelID, resets }: { channelID: string; r
             return (
               <div key={grant.id} className='border-border/60 bg-muted/20 space-y-2 rounded-lg border p-3'>
                 <div className='flex items-center justify-between gap-2'>
-                  <span className='min-w-0 truncate font-medium' title={grant.title || name}>
+                  <span className='min-w-0 truncate text-sm font-medium' title={grant.title || name}>
                     {name}
                     {(grant.remaining ?? 0) > 1 && (
                       <span className='text-muted-foreground ml-1 tabular-nums'>{t('quota.claude.grantCount', { count: grant.remaining })}</span>
                     )}
                   </span>
                   {grant.recommended && (
-                    <Badge variant='secondary' className='px-1.5 py-0 text-[10px]'>
+                    <Badge variant='secondary' className='px-1.5 py-0 text-xs'>
                       {t('quota.claude.recommended')}
                     </Badge>
                   )}
                 </div>
                 <div className='flex flex-wrap gap-1'>
                   {(grant.clears ?? []).map((window) => (
-                    <Badge key={window} variant='outline' className='text-muted-foreground rounded-md px-1.5 py-0 text-[10px]'>
+                    <Badge key={window} variant='outline' className='text-muted-foreground rounded-md px-1.5 py-0 text-xs'>
                       {windowLabel(window)}
                     </Badge>
                   ))}
                 </div>
                 <div className='flex items-center justify-between gap-3'>
-                  <span className='text-muted-foreground min-w-0 text-[11px] tabular-nums'>
+                  <span className='text-muted-foreground min-w-0 text-xs tabular-nums'>
                     {grant.expiresAt ? t('quota.claude.expiresAt', { time: formatTime(grant.expiresAt) }) : t('quota.claude.noExpiry')}
                   </span>
                   <Button
@@ -171,7 +171,7 @@ export function ClaudeResetCredits({ channelID, resets }: { channelID: string; r
                     {pendingID === grant.id ? t('quota.claude.resetting') : t('quota.claude.useReset')}
                   </Button>
                 </div>
-                {eligible && !sharedReason && reason && <p className='text-muted-foreground text-[11px]'>{reasonText(reason)}</p>}
+                {eligible && !sharedReason && reason && <p className='text-muted-foreground text-xs'>{reasonText(reason)}</p>}
               </div>
             );
           })}
