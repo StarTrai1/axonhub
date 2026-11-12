@@ -575,10 +575,10 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 			})
 		}
 
-		return responses.NewSearchOutboundTransformerWithConfig(&responses.SearchConfig{
-			BaseURL:        baseURL,
-			APIKeyProvider: apiKeyProvider(),
-			EndpointPath:   ep.Path,
+		return withAPIKey(func(provider auth.APIKeyProvider) (transformer.Outbound, error) {
+			return responses.NewSearchOutboundTransformerWithConfig(&responses.SearchConfig{
+				BaseURL: baseURL, APIKeyProvider: provider, EndpointPath: ep.Path,
+			})
 		})
 	case llm.APIFormatOpenAIAlphaSearch.String():
 		if c.Type == channel.TypeCodex {
