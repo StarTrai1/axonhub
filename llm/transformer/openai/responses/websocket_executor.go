@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
@@ -160,10 +161,11 @@ func (e *WebSocketExecutor) Do(ctx context.Context, request *httpclient.Request)
 	}, nil
 }
 
-// TopLevelWebSocketError returns an error when collected WebSocket stream events contain a top-level protocol error.
+// TopLevelWebSocketError recognizes collected Responses protocol errors. SSE
+// relays can omit the event line and carry the event type only in JSON.
 func TopLevelWebSocketError(chunks []*httpclient.StreamEvent) error {
 	for _, chunk := range chunks {
-		if chunk == nil || chunk.Type != string(StreamEventTypeError) {
+		if chunk == nil || (chunk.Type != string(StreamEventTypeError) && gjson.GetBytes(chunk.Data, "type").String() != string(StreamEventTypeError)) {
 			continue
 		}
 

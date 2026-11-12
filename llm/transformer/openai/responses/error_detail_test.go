@@ -85,3 +85,19 @@ func TestResponsesWebSocketErrorPreservesRetryHeadersAndStatusAlias(t *testing.T
 	require.Equal(t, 503, raw.StatusCode)
 	require.Equal(t, "12", raw.Headers.Get("Retry-After"))
 }
+
+func TestTopLevelWebSocketErrorReadsJSONEventType(t *testing.T) {
+	for _, eventName := range []string{"", "message", "error"} {
+		t.Run("SSE event="+eventName, func(t *testing.T) {
+			chunks := []*httpclient.StreamEvent{
+				{Data: []byte(`{"type":"response.created","response":{"id":"resp_rejected","status":"in_progress","output":[]}}`)},
+				{Type: eventName, Data: []byte(`{"type":"error","error":{"type":"error","code":"unsupported_encrypted_compaction","param":"input[2].encrypted_content","message":"checkpoint rejected"}}`)},
+			}
+			var failure *llm.ResponseError
+			require.ErrorAs(t, TopLevelWebSocketError(chunks), &failure)
+			require.Equal(t, 400, failure.StatusCode)
+			require.Equal(t, "unsupported_encrypted_compaction", failure.Detail.Code)
+			require.Equal(t, "input[2].encrypted_content", failure.Detail.Param)
+		})
+	}
+}
