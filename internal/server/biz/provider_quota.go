@@ -913,7 +913,9 @@ func (svc *ProviderQuotaService) checkChannelQuota(ctx context.Context, group qu
 	quotaData = provider_quota.NormalizeQuotaData(quotaData)
 
 	resetList := provider_quota.ResetList{Supported: false}
-	if resetter, ok := checker.(provider_quota.Resetter); ok {
+	if quotaData.Resets != nil {
+		resetList = *quotaData.Resets
+	} else if resetter, ok := checker.(provider_quota.Resetter); ok {
 		resetList.Supported = true
 		resetList, err = resetter.ListResets(ctx, ch)
 		resetList.Supported = true

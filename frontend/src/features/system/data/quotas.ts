@@ -51,6 +51,12 @@ export async function resetChannelQuotaNow(channelID: string, creditID: string) 
 }
 
 export type ProviderQuotaReset = {
+  clears?: string[];
+  recommended?: boolean;
+  remaining?: number;
+  redeemable?: boolean;
+  unavailableReason?: string;
+  upstreamReason?: string;
   id: string;
   status: string;
   type?: string;
@@ -61,6 +67,10 @@ export type ProviderQuotaReset = {
 };
 
 export type ProviderQuotaResetList = {
+  ineligibleReason?: string;
+  eligible?: boolean;
+  cooldownUntil?: string;
+  windowModels?: Record<string, string>;
   supported: boolean;
   availableCount: number;
   resets: ProviderQuotaReset[];
@@ -96,6 +106,7 @@ type ProviderClaudeQuotaData = ProviderQuotaDataCommon & {
     '7d'?: ProviderClaudeQuotaWindow;
     overage?: ProviderClaudeQuotaWindow;
   };
+  model_windows?: (ProviderClaudeQuotaWindow & { model: string })[];
   representative_claim?: string;
 };
 
