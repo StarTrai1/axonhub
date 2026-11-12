@@ -9,6 +9,8 @@ import (
 // report failures inside an otherwise successful streaming response.
 func InferResponseErrorStatusCode(code, errorType, message string) int {
 	switch strings.ToLower(code) {
+	case "unsupported_encrypted_compaction":
+		return http.StatusBadRequest
 	case "misalignment_policy_violation", "cyber_policy", "bio_policy":
 		return http.StatusForbidden
 	}

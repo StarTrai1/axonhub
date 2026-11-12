@@ -419,7 +419,7 @@ func TestProviderQuotaService_ResetChannelQuotaNow_CollectionDisabledForCodex(t 
 	defer client.Close()
 
 	codexChecker := &countingQuotaResetter{
-		countingQuotaChecker: countingQuotaChecker{providerType: "codex"},
+		countingQuotaChecker: {providerType: "codex"},
 	}
 	service.checkers["codex"] = codexChecker
 	channelEntity := createProviderQuotaCollectionChannel(t, ctx, client, "Codex", channel.TypeCodex)
@@ -469,7 +469,7 @@ func TestProviderQuotaService_ListResets_UsesOptionalResetter(t *testing.T) {
 	defer client.Close()
 
 	resetter := &countingQuotaResetter{
-		countingQuotaChecker: countingQuotaChecker{providerType: "minimax"},
+		countingQuotaChecker: {providerType: "minimax"},
 		resets: provider_quota.ResetList{
 			Resets: []provider_quota.Reset{
 				{ID: "reset-1", Status: "available"},
@@ -516,8 +516,8 @@ func TestProviderQuotaService_ResetChannelQuotaNow_SucceedsWhenReloadFails(t *te
 	ctx := authz.WithTestBypass(ent.NewContext(t.Context(), client))
 	svc, notifications, _ := newTestQuotaWebhookHarness(t, client)
 	svc.checkers["codex"] = &resettingQuotaResetter{
-		countingQuotaResetter: countingQuotaResetter{
-			countingQuotaChecker: countingQuotaChecker{providerType: "codex"},
+		countingQuotaResetter: {
+			countingQuotaChecker: {providerType: "codex"},
 			resets:               provider_quota.ResetList{Supported: true},
 		},
 		client: client,
@@ -962,7 +962,7 @@ func TestProviderQuotaService_ResetChannelQuotaNow_EmitsRecoveryWhenReloadSuccee
 	ctx := authz.WithTestBypass(ent.NewContext(t.Context(), client))
 	svc, notifications, _ := newTestQuotaWebhookHarness(t, client)
 	svc.checkers["codex"] = &countingQuotaResetter{
-		countingQuotaChecker: countingQuotaChecker{providerType: "codex"},
+		countingQuotaChecker: {providerType: "codex"},
 		resets:               provider_quota.ResetList{Supported: true},
 	}
 
@@ -1006,8 +1006,8 @@ func TestProviderQuotaService_CheckQuotaKeepsCombinedResetSnapshot(t *testing.T)
 	service, _, ctx, client := setupProviderQuotaCollectionService(t)
 	defer client.Close()
 	checker := &combinedQuotaResetter{
-		countingQuotaResetter: countingQuotaResetter{
-			countingQuotaChecker: countingQuotaChecker{providerType: "minimax"},
+		countingQuotaResetter: {
+			countingQuotaChecker: {providerType: "minimax"},
 			resets: provider_quota.ResetList{Supported: true, Resets: []provider_quota.Reset{{ID: "credit", Status: "held"}}},
 		},
 	}
@@ -1040,7 +1040,7 @@ func TestProviderQuotaService_ResetChannelQuotaNow_Selection(t *testing.T) {
 	service, _, ctx, client := setupProviderQuotaCollectionService(t)
 	defer client.Close()
 	ch := createProviderQuotaCollectionChannel(t, ctx, client, "Selectable resets", channel.TypeMinimax)
-	checker := &selectingQuotaResetter{countingQuotaResetter: countingQuotaResetter{countingQuotaChecker: countingQuotaChecker{providerType: "minimax"}}}
+	checker := &selectingQuotaResetter{countingQuotaResetter: {countingQuotaChecker: {providerType: "minimax"}}}
 	service.checkers["minimax"] = checker
 	require.NoError(t, service.ResetChannelQuotaNow(ctx, ch.ID, "full"))
 	require.Equal(t, "full", checker.selectedID)

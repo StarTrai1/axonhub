@@ -2,19 +2,29 @@ package gemini
 
 import (
 	"encoding/json"
+	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/looplj/axonhub/llm/internal/pkg/xjson"
 )
 
+// Accept quoted counters from compatible ProtoJSON endpoints without changing
+// numeric output, cumulative stream snapshots, or optional cost parsing.
 func (u *UsageMetadata) UnmarshalJSON(data []byte) error {
+	normalized, err := normalizeGeminiTokenCounts(data,
+		"promptTokenCount", "toolUsePromptTokenCount", "candidatesTokenCount",
+		"totalTokenCount", "cachedContentTokenCount", "thoughtsTokenCount")
+	if err != nil {
+		return err
+	}
 	type alias UsageMetadata
 	aux := struct {
 		*alias
 
 		Cost json.RawMessage `json:"cost"`
 	}{alias: (*alias)(u)}
-	if err := json.Unmarshal(data, &aux); err != nil {
+	if err := json.Unmarshal(normalized, &aux); err != nil {
 		return err
 	}
 
@@ -83,4 +93,46 @@ func mergeModalitySnapshots(previous, incoming []*ModalityTokenCount) []*Modalit
 		}
 	}
 	return merged
+}
+
+func (m *ModalityTokenCount) UnmarshalJSON(data []byte) error {
+	normalized, err := normalizeGeminiTokenCounts(data, "tokenCount")
+	if err != nil {
+		return err
+	}
+	type wire ModalityTokenCount
+	var value wire
+	if err := json.Unmarshal(normalized, &value); err != nil {
+		return err
+	}
+	*m = ModalityTokenCount(value)
+	return nil
+}
+
+func normalizeGeminiTokenCounts(data []byte, fields ...string) ([]byte, error) {
+	var object map[string]json.RawMessage
+	if err := json.Unmarshal(data, &object); err != nil {
+		return nil, err
+	}
+	changed := false
+	for _, field := range fields {
+		raw := object[field]
+		if len(raw) == 0 || raw[0] != '"' {
+			continue
+		}
+		var text string
+		if err := json.Unmarshal(raw, &text); err != nil {
+			return nil, fmt.Errorf("invalid Gemini %s", field)
+		}
+		count, err := strconv.ParseInt(strings.TrimSpace(text), 10, 64)
+		if err != nil || count < 0 {
+			return nil, fmt.Errorf("invalid Gemini %s", field)
+		}
+		object[field] = json.RawMessage(strconv.FormatInt(count, 10))
+		changed = true
+	}
+	if !changed {
+		return data, nil
+	}
+	return json.Marshal(object)
 }

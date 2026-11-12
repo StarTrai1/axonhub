@@ -3,7 +3,9 @@ import { createRoot } from 'react-dom/client';
 import { useForm, type Control } from 'react-hook-form';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import '@/index.css';
-import '@/lib/i18n';
+import i18n from '@/lib/i18n';
+import { ClaudeResetCredits } from '@/components/claude-reset-credits';
+import { MetricColorDialog } from '@/features/requests/components/metric-color-dialog';
 import { Form } from '@/components/ui/form';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { AutoComplete } from '@/components/auto-complete';
@@ -137,8 +139,27 @@ if (fixtureCase === 'playground') {
   });
   useProjectStore.getState().setSelectedProjectId('first-project');
 }
+function QuotaResetFixture() {
+  const [colors, setColors] = useState(false);
+  return <main className='bg-background text-foreground min-h-screen p-4'>
+    <section data-testid='claude-quota-card' className='bg-card w-full max-w-[480px] space-y-4 rounded-xl border p-5'>
+      <h1 className='font-medium'>Claude Code</h1>
+      <ClaudeResetCredits channelID='offline-channel' resets={{ supported: true, eligible: true, availableCount: 2,
+        windowModels: { seven_day_overage_included: 'Fable' }, resets: [
+          { id: 'full', status: 'held', remaining: 1, redeemable: true, recommended: true, clears: ['five_hour', 'seven_day'], expiresAt: '2099-11-19T09:00:00Z' },
+          { id: 'model-week', status: 'held', remaining: 1, redeemable: false, unavailableReason: 'requires_limit', clears: ['seven_day_overage_included'] },
+        ] }} />
+    </section>
+    <button className='mt-4' data-testid='open-metric-colors' onClick={() => setColors(true)}>Metric colours</button>
+    <MetricColorDialog open={colors} onOpenChange={setColors} />
+  </main>;
+}
+if (fixtureCase === 'quota-reset') {
+  void i18n.changeLanguage(new URLSearchParams(window.location.search).get('lang') || 'en');
+  document.documentElement.classList.toggle('dark', new URLSearchParams(window.location.search).get('theme') === 'dark');
+}
 const gifResponse = { output_format: 'gif', data: [{ b64_json: 'R0lGODlhAQABAIAAAAAAAP///yH5BAAKAAAALAAAAAABAAEAAAIBRAAh+QQACgAAACwAAAAAAQABAAACAkwAOw==', mime_type: 'image/png' }] };
-const fixture = fixtureCase === 'gif' ? <section data-testid='gif-response'><JsonViewer data={gifResponse} expandDepth='all' /></section> : fixtureCase === 'server-select' ? <ServerSelectFixture /> : fixtureCase === 'rendering' ? <RenderingFixture /> : fixtureCase === 'composition' ? <CompositionFixture /> : fixtureCase === 'uploads' ? <UploadFixture /> : fixtureCase === 'playground' ? <PlaygroundFixture /> : <PriceFixture />;
+const fixture = fixtureCase === 'quota-reset' ? <QuotaResetFixture /> : fixtureCase === 'gif' ? <section data-testid='gif-response'><JsonViewer data={gifResponse} expandDepth='all' /></section> : fixtureCase === 'server-select' ? <ServerSelectFixture /> : fixtureCase === 'rendering' ? <RenderingFixture /> : fixtureCase === 'composition' ? <CompositionFixture /> : fixtureCase === 'uploads' ? <UploadFixture /> : fixtureCase === 'playground' ? <PlaygroundFixture /> : <PriceFixture />;
 createRoot(document.getElementById('root')!).render(
   <StrictMode><QueryClientProvider client={queryClient}>{fixture}</QueryClientProvider></StrictMode>
 );

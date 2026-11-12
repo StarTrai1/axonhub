@@ -26,7 +26,7 @@ var ErrResetUnsupported = errors.New("provider quota reset is not supported")
 
 // Reset is a provider-agnostic quota reset that can be consumed.
 type Reset struct {
-	Description string `json:"description,omitempty"`
+	Description string   `json:"description,omitempty"`
 	Clears      []string `json:"clears,omitempty"`
 	Recommended bool     `json:"recommended,omitempty"`
 	Remaining   *int     `json:"remaining,omitempty"`
@@ -45,7 +45,7 @@ type Reset struct {
 
 // ResetList describes a provider's optional reset capability and current resets.
 type ResetList struct {
-	AvailableCount int `json:"availableCount"`
+	AvailableCount   int        `json:"availableCount"`
 	IneligibleReason string     `json:"ineligibleReason,omitempty"`
 	Eligible         *bool      `json:"eligible,omitempty"`
 	CooldownUntil    *time.Time `json:"cooldownUntil,omitempty"`

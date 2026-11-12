@@ -31,6 +31,7 @@ func TestInferResponseErrorStatusCode(t *testing.T) {
 		{name: "cyber block", code: "cyber_policy", want: http.StatusForbidden},
 		{name: "bio block", code: "bio_policy", want: http.StatusForbidden},
 		{name: "invalid request", errorType: "invalid_request_error", want: http.StatusBadRequest},
+		{name: "unsupported compaction", code: "unsupported_encrypted_compaction", errorType: "error", want: http.StatusBadRequest},
 		{name: "encrypted input", code: "invalid_encrypted_content", errorType: "error", want: http.StatusBadRequest},
 		{name: "unknown parameter", code: "unknown_parameter", errorType: "error", want: http.StatusBadRequest},
 		{name: "unsupported parameter", code: "unsupported_parameter", errorType: "error", want: http.StatusBadRequest},

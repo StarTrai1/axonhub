@@ -59,6 +59,7 @@ func TestResponsesRelayCompactionRecovery(t *testing.T) {
 
 type relayCompactionExecutor struct {
 	responsesReasoningPipelineExecutor
+
 	opening, clientIndex bool
 }
 
@@ -79,4 +80,30 @@ func (e *relayCompactionExecutor) DoStream(_ context.Context, req *httpclient.Re
 		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_failed","object":"response","status":"in_progress","output":[]}}`)},
 		{Type: "error", Data: []byte(`{"type":"error","error":` + gjson.GetBytes(body, "error").Raw + `}`)},
 	}), nil
+}
+
+func TestResponsesRelayCompactionRequiresExactEvidence(t *testing.T) {
+	original := []byte(responsesCompactionHistoryFixture)
+	ref, _, _, err := parseRemoteCompactionRequest(original)
+	require.NoError(t, err)
+	provider, err := sjson.DeleteBytes(original, "input.0")
+	require.NoError(t, err)
+	for _, param := range []string{"", "input", "input[1].encrypted_content", "input[2].id", "input[99].encrypted_content"} {
+		require.False(t, responsesRelayCompactionClientIndex(original, provider, ref, relayCompactionMessage, param), param)
+	}
+	for _, change := range []struct{ path, value string }{
+		{"input.0.content.0.text", "different prefix"},
+		{"input.1.id", "cmp_other"},
+		{"input.1.encrypted_content", "different ciphertext"},
+	} {
+		changed, err := sjson.SetBytes(provider, change.path, change.value)
+		require.NoError(t, err)
+		require.False(t, responsesRelayCompactionClientIndex(original, changed, ref, relayCompactionMessage, "input[2].encrypted_content"))
+	}
+	for _, param := range []string{"", "input", "input[0].encrypted_content", "input[1].id", "input[2].encrypted_content"} {
+		require.False(t, responsesRejectedCompactionMessage(provider, ref, "unsupported_encrypted_compaction", relayCompactionMessage, param), param)
+	}
+	duplicate, err := sjson.SetRawBytes(original, "input.-1", []byte(gjson.GetBytes(original, "input.2").Raw))
+	require.NoError(t, err)
+	require.False(t, responsesRejectedCompactionMessage(duplicate, ref, "unsupported_encrypted_compaction", relayCompactionMessage, "input[2].encrypted_content"))
 }

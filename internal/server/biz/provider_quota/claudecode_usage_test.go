@@ -212,7 +212,7 @@ func TestClaudeResetSelectedGrant(t *testing.T) {
 				}
 			})
 			err := c.ResetSelected(context.Background(), claudeTestChannel(), selected)
-			if selected == "missing" || selected == "blocked" {
+			if selected == "" || selected == "missing" || selected == "blocked" {
 				require.Error(t, err)
 				require.Zero(t, posts)
 			} else {

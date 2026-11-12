@@ -36,14 +36,15 @@ var responsesRejectedCompactionMessagePattern = regexp.MustCompile(
 // provider. Match the exact checkpoint, never an unrelated encrypted item.
 func responsesRejectedCompactionMessage(body []byte, ref *remoteCompactionReference, code, message, param string) bool {
 	if ref == nil || isLocalCompactionReference(ref) ||
-		!responsesEncryptedContentRejectionCode(code) {
+		(!responsesEncryptedContentRejectionCode(code) && code != "unsupported_encrypted_compaction") {
 		return false
 	}
-	if isResponsesUnidentifiedEncryptionRejection(message) {
+	indexedRelay := code == "unsupported_encrypted_compaction"
+	if !indexedRelay && isResponsesUnidentifiedEncryptionRejection(message) {
 		return responsesRejectedCiphertextCompaction(body, ref, code, message, param)
 	}
 	match := responsesRejectedCompactionMessagePattern.FindStringSubmatch(message)
-	if len(match) != 2 || match[1] != ref.ID {
+	if !indexedRelay && (len(match) != 2 || match[1] != ref.ID) {
 		return false
 	}
 	index := -1
@@ -56,6 +57,9 @@ func responsesRejectedCompactionMessage(body []byte, ref *remoteCompactionRefere
 			return false
 		}
 		index = i
+	}
+	if indexedRelay {
+		return index >= 0 && param == fmt.Sprintf("input[%d].encrypted_content", index)
 	}
 	return index >= 0 && (param == "" || param == "input" || param == fmt.Sprintf("input[%d].encrypted_content", index))
 }
@@ -101,6 +105,9 @@ func (m *responsesCompactionRecoveryMiddleware) OnOutboundRawError(ctx context.C
 		return
 	}
 	exactCheckpoint := responsesRejectedCompactionMessage(request.Body, ref, code, message, param)
+	if !exactCheckpoint && code == "unsupported_encrypted_compaction" {
+		exactCheckpoint = responsesRelayCompactionClientIndex(checkpointRecoverySourceBody(m.outbound.state), request.Body, ref, message, param)
+	}
 	_, safe := responsesResourceHistorySupportsRecoveryWithAgents(request.Body, exactCheckpoint)
 	if !safe {
 		return
