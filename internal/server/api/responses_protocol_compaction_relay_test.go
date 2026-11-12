@@ -144,3 +144,73 @@ func TestResponsesProtocolCompactionRelayContinuation(t *testing.T) {
 }
 
 const relayResourceMismatchFixture = `{"error":{"type":"invalid_request_error","message":"The requested item was created under a different Azure OpenAI resource. Use the same resource that created the item to access it."}}`
+
+func TestResponsesProtocolCompactionRelayIndexedRejection(t *testing.T) {
+	for _, downstream := range []string{"http", "ws"} {
+		t.Run(downstream, func(t *testing.T) {
+			var mu sync.Mutex
+			var bodies [][]byte
+			var summaries, rejected int
+			upstream := responsesIntegrationServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				body, err := readRequestBody(r)
+				if err != nil {
+					t.Error(err)
+					return
+				}
+				mu.Lock()
+				defer mu.Unlock()
+				bodies = append(bodies, body)
+				w.Header().Set("Content-Type", "text/event-stream")
+				if gjson.GetBytes(body, `input.#(type=="compaction")`).Exists() {
+					rejected++
+					// The relay echoes the client index, before tool promotion.
+					_, _ = io.WriteString(w, "data: {\"type\":\"response.created\",\"response\":{\"id\":\"resp_rejected\",\"object\":\"response\",\"status\":\"in_progress\",\"output\":[]}}\n\n")
+					_, _ = io.WriteString(w, "data: {\"type\":\"error\",\"error\":{\"type\":\"error\",\"code\":\"unsupported_encrypted_compaction\",\"param\":\"input[2].encrypted_content\",\"message\":\"上游无法验证该压缩摘要；未删除历史。请从原接入恢复，或重发完整会话历史\"}}\n\n")
+					return
+				}
+				id, output := "resp_restored", `[{"type":"message","role":"assistant","content":[{"type":"output_text","text":"continuation-complete"}]}]`
+				switch {
+				case bytes.Contains(body, []byte("You are performing a CONTEXT CHECKPOINT COMPACTION.")):
+					summaries++
+					require.Contains(t, string(body), "original-history-canary")
+					id, output = "resp_summary", `[{"type":"message","role":"assistant","content":[{"type":"output_text","text":"restored-history-canary"}]}]`
+				case gjson.GetBytes(body, `input.#(type=="compaction_trigger")`).Exists():
+					id, output = "resp_source", `[{"type":"compaction","id":"cmp_indexed","encrypted_content":"opaque-indexed-checkpoint"}]`
+				default:
+					require.Contains(t, string(body), "restored-history-canary")
+					require.Contains(t, string(body), "retained-suffix-canary")
+					require.Equal(t, "cache-canary", gjson.GetBytes(body, "prompt_cache_key").String())
+				}
+				_, _ = fmt.Fprintf(w, "data: {\"type\":\"response.completed\",\"response\":{\"id\":%q,\"object\":\"response\",\"model\":\"gpt-6-astra\",\"status\":\"completed\",\"output\":%s}}\n\n", id, output)
+			}))
+			client, handlers, project := newResponsesIntegrationFixture(t, upstream.URL, func(create *ent.ChannelCreate) {
+				create.SetType(channel.TypeCodex).SetSupportedModels([]string{"gpt-6-astra"}).
+					SetSettings(&objects.ChannelSettings{PassThroughBody: lo.ToPtr(true)}).
+					SetPolicies(objects.ChannelPolicies{RemoteCompaction: objects.RemoteCompactionPolicyAuto})
+			})
+			ctx := authz.WithTestBypass(ent.NewContext(t.Context(), client))
+			require.NoError(t, handlers.SystemService.SetSecretKey(ctx, "synthetic-indexed-recovery-secret"))
+			policy := handlers.SystemService.RetryPolicyOrDefault(ctx)
+			policy.Enabled, policy.MaxChannelRetries, policy.MaxSingleChannelRetries, policy.RetryDelayMs = true, 0, 1, 0
+			require.NoError(t, handlers.SystemService.SetRetryPolicy(ctx, policy))
+			gateway := responsesIntegrationGateway(t, client, handlers, project, 10*time.Second)
+			status, source := responsesIntegrationPost(t, gateway, "/v1/responses", `{"model":"gpt-6-astra","client_metadata":{"thread_id":"indexed-thread"},"input":[{"role":"user","content":"original-history-canary"},{"type":"compaction_trigger"}]}`)
+			require.Equal(t, http.StatusOK, status, string(source))
+			continuation := `{"model":"gpt-6-astra","prompt_cache_key":"cache-canary","client_metadata":{"thread_id":"indexed-thread"},"input":[{"type":"additional_tools","tools":[]},{"type":"message","id":"msg_prefix","role":"user","content":"retained-prefix-canary"},{"type":"compaction","id":"cmp_indexed","encrypted_content":"opaque-indexed-checkpoint"},{"role":"user","content":"retained-suffix-canary"}]}`
+			if downstream == "http" {
+				status, response := responsesIntegrationPost(t, gateway, "/v1/responses", continuation)
+				require.Equal(t, http.StatusOK, status, string(response))
+				require.Equal(t, "resp_restored", gjson.GetBytes(response, "id").String())
+			} else {
+				conn := responsesIntegrationDial(t, gateway)
+				response := responsesIntegrationTurn(t, conn, `{"type":"response.create",`+continuation[1:])
+				require.Equal(t, "resp_restored", gjson.GetBytes(response, "response.id").String(), string(response))
+			}
+			mu.Lock()
+			defer mu.Unlock()
+			require.Equal(t, 1, rejected)
+			require.Equal(t, 1, summaries)
+			require.Len(t, bodies, 4, "source, rejected continuation, authenticated summary, recovered continuation")
+		})
+	}
+}
