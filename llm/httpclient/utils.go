@@ -283,19 +283,19 @@ func isBlockedHeader(key string) bool {
 }
 
 var sensitiveHeaders = map[string]bool{
-	"Authorization":       true,
-	"Api-Key":             true,
-	"X-Api-Key":           true,
-	"X-Api-Secret":        true,
-	"X-Api-Token":         true,
-	"X-Goog-Api-Key":      true,
-	"X-Google-Api-Key":    true,
-	"X-Auth-Key":          true,
+	"Authorization":           true,
+	"Api-Key":                 true,
+	"X-Api-Key":               true,
+	"X-Api-Secret":            true,
+	"X-Api-Token":             true,
+	"X-Goog-Api-Key":          true,
+	"X-Google-Api-Key":        true,
+	"X-Auth-Key":              true,
 	"X-Auth-User-Service-Key": true,
-	"Cookie":              true,
-	"Set-Cookie":          true,
-	"Proxy-Authorization": true,
-	"Www-Authenticate":    true,
+	"Cookie":                  true,
+	"Set-Cookie":              true,
+	"Proxy-Authorization":     true,
+	"Www-Authenticate":        true,
 }
 
 func IsSensitiveHeader(key string) bool {

@@ -66,7 +66,9 @@ func TestAggregateStreamChunksNonZeroToolCallIndex(t *testing.T) {
 	require.NoError(t, json.Unmarshal(gotBytes, &got))
 	require.Len(t, got.Choices, 1)
 	require.Len(t, got.Choices[0].Message.ToolCalls, 1)
-	require.Equal(t, 1, got.Choices[0].Message.ToolCalls[0].Index)
+	// Upstream tool indexes may come from Responses output positions; Chat
+	// output is normalized independently of the (unchanged) choice index.
+	require.Equal(t, 0, got.Choices[0].Message.ToolCalls[0].Index)
 	require.Equal(t, "call_1", got.Choices[0].Message.ToolCalls[0].ID)
 	require.Equal(t, "search", got.Choices[0].Message.ToolCalls[0].Function.Name)
 	require.Equal(t, `{"q":"axonhub"}`, got.Choices[0].Message.ToolCalls[0].Function.Arguments)

@@ -63,6 +63,41 @@ func TestGeminiSplitAnthropicResultsKeepOneResponseTurn(t *testing.T) {
 	require.Equal(t, before.Contents, after.Contents[:len(before.Contents)])
 }
 
+func TestGeminiInstructionsBetweenParallelResultsKeepCallAdjacency(t *testing.T) {
+	for _, platform := range []string{"", gemini.PlatformVertex} {
+		t.Run(platform, func(t *testing.T) {
+			req := &llm.Request{Model: "gemini-3-pro-preview", Messages: []llm.Message{
+				{Role: "system", Content: llm.MessageContent{Content: lo.ToPtr("stable rules")}},
+				{Role: "assistant", ToolCalls: []llm.ToolCall{
+					{ID: "a", Type: "function", Function: llm.FunctionCall{Name: "first", Arguments: `{}`}},
+					{ID: "b", Type: "function", Function: llm.FunctionCall{Name: "second", Arguments: `{}`}},
+				}},
+				{Role: "system", Content: llm.MessageContent{Content: lo.ToPtr("reminder a")}},
+				{Role: "tool", ToolCallID: lo.ToPtr("a"), Content: llm.MessageContent{Content: lo.ToPtr("result a")}},
+				{Role: "developer", Content: llm.MessageContent{Content: lo.ToPtr("reminder b")}},
+				{Role: "tool", ToolCallID: lo.ToPtr("b"), Content: llm.MessageContent{Content: lo.ToPtr("result b")}},
+			}}
+			adapter, err := gemini.NewOutboundTransformerWithConfig(gemini.Config{PlatformType: platform})
+			require.NoError(t, err)
+			wire, err := adapter.TransformRequest(t.Context(), req)
+			require.NoError(t, err)
+			var result gemini.GenerateContentRequest
+			require.NoError(t, json.Unmarshal(wire.Body, &result))
+			require.Len(t, result.SystemInstruction.Parts, 1)
+			require.Len(t, result.Contents, 4)
+			require.Len(t, result.Contents[1].Parts, 2)
+			for i, name := range []string{"first", "second"} {
+				require.Equal(t, name, result.Contents[1].Parts[i].FunctionResponse.Name)
+				if platform == gemini.PlatformVertex {
+					require.Empty(t, result.Contents[1].Parts[i].FunctionResponse.ID)
+				}
+			}
+			require.Equal(t, "reminder a", result.Contents[2].Parts[0].Text)
+			require.Equal(t, "reminder b", result.Contents[3].Parts[0].Text)
+		})
+	}
+}
+
 func peerGeminiRequest(t *testing.T, req *llm.Request) *gemini.GenerateContentRequest {
 	t.Helper()
 	adapter, err := gemini.NewOutboundTransformer("", "fixture")
