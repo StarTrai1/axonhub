@@ -200,14 +200,22 @@ func convertLLMToGeminiRequestWithConfig(chatReq *llm.Request, config *Config) *
 	var systemInstruction *Content
 
 	contents := make([]*Content, 0)
+	leadingInstructions := true
 
 	for _, msg := range chatReq.Messages {
+		instruction := msg.Role == "system" || msg.Role == "developer"
+		if !instruction {
+			leadingInstructions = false
+		}
 		switch msg.Role {
 		case "system", "developer":
-			// Collect system and developer messages into system instruction
+			// Only the initial instructions belong in the cached prefix. Later
+			// reminders stay in the conversation at the conversion boundary.
 			parts := extractPartsFromLLMMessage(&msg)
 			if len(parts) > 0 {
-				if systemInstruction == nil {
+				if !leadingInstructions {
+					contents = append(contents, &Content{Role: "user", Parts: parts})
+				} else if systemInstruction == nil {
 					systemInstruction = &Content{
 						Parts: parts,
 					}
@@ -237,7 +245,7 @@ func convertLLMToGeminiRequestWithConfig(chatReq *llm.Request, config *Config) *
 	}
 
 	req.SystemInstruction = systemInstruction
-	req.Contents = splitGeminiToolResponseMedia(contents)
+	req.Contents = splitGeminiToolResponseMedia(adjacentGeminiToolResponses(contents))
 
 	// Convert tools
 	if len(chatReq.Tools) > 0 {

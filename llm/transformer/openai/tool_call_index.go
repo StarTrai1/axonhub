@@ -20,7 +20,6 @@ type toolCallIndexer struct {
 	ids map[toolCallKey]string
 	// upstream maps each explicitly supplied index to its current output index.
 	upstream map[toolCallKey]int
-	used     map[toolCallKey]bool
 }
 
 type toolCallKey struct {
@@ -31,7 +30,7 @@ type toolCallKey struct {
 func newToolCallIndexer() *toolCallIndexer {
 	return &toolCallIndexer{
 		next: make(map[int]int), last: make(map[int]int), ids: make(map[toolCallKey]string),
-		upstream: make(map[toolCallKey]int), used: make(map[toolCallKey]bool),
+		upstream: make(map[toolCallKey]int),
 	}
 }
 
@@ -47,13 +46,12 @@ func (x *toolCallIndexer) index(data []byte, choicePos, choiceIndex, pos, index 
 		// named call with a distinct ID starts a replacement; argument-only
 		// fragments continue the current call even if their ID changes.
 		if !known || name != "" && id != "" && previousID != "" && id != previousID {
-			output = index
-			if known || x.used[key] {
-				output = x.next[choiceIndex]
-			}
+			// Responses relays can pass their output_index through as a Chat
+			// tool index. Allocate a dense sequence per choice, starting at zero.
+			output = x.next[choiceIndex]
+			x.next[choiceIndex]++
 			x.upstream[key] = output
 		}
-		x.next[choiceIndex] = max(x.next[choiceIndex], index+1, output+1)
 		index = output
 	} else {
 		continues := x.next[choiceIndex] > 0 &&
@@ -67,7 +65,6 @@ func (x *toolCallIndexer) index(data []byte, choicePos, choiceIndex, pos, index 
 	}
 
 	x.last[choiceIndex] = index
-	x.used[toolCallKey{choiceIndex, index}] = true
 	if id != "" {
 		x.ids[toolCallKey{choiceIndex, index}] = id
 	}

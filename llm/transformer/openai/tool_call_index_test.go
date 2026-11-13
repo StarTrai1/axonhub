@@ -38,6 +38,7 @@ func TestToolCallIndexesKeepReusedUpstreamIndexesSeparate(t *testing.T) {
 			require.Len(t, calls, 3)
 			for i, id := range []string{"call_a", "call_b", "call_c"} {
 				require.Equal(t, id, calls[i].ID)
+				require.Equal(t, i, calls[i].Index)
 				require.JSONEq(t, `{"q":"`+id+`"}`, calls[i].Function.Arguments)
 			}
 

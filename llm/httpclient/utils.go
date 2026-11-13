@@ -290,6 +290,8 @@ var sensitiveHeaders = map[string]bool{
 	"X-Api-Token":         true,
 	"X-Goog-Api-Key":      true,
 	"X-Google-Api-Key":    true,
+	"X-Auth-Key":          true,
+	"X-Auth-User-Service-Key": true,
 	"Cookie":              true,
 	"Set-Cookie":          true,
 	"Proxy-Authorization": true,
