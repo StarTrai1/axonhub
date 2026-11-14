@@ -29,7 +29,7 @@ type responsesCompactionRecoveryKey struct {
 }
 
 var responsesRejectedCompactionMessagePattern = regexp.MustCompile(
-	`^(?:OpenAI Responses bad request: )?The encrypted content for item (cmp_[A-Za-z0-9_-]+) could not be verified\. Reason: Encrypted content could not be decrypted or parsed\.(?: \[trace_id=[A-Za-z0-9_-]+\])?$`,
+	`^(?:OpenAI Responses bad request: )?The encrypted content for item (cmp_[A-Za-z0-9_-]+) could not be verified\. Reason: Encrypted content could not be decrypted or parsed\.(?: \[hub-\])?(?: \[trace_id=[A-Za-z0-9_-]+\])?$`,
 )
 
 // A native checkpoint can be valid at its source and rejected by another

@@ -16,7 +16,7 @@ var responsesRejectedReasoningParamPattern = regexp.MustCompile(`^input\[(\d+)\]
 // Require the complete rejection and an exact item in this request, rather than
 // treating arbitrary mentions of encryption as permission to rebuild history.
 var responsesRejectedReasoningMessagePattern = regexp.MustCompile(
-	`^(?:OpenAI Responses bad request: )?The encrypted content for item (rs_[A-Za-z0-9_-]+) could not be verified\. Reason: (?:reasoning hydration failed: )?Encrypted content could not be decrypted or parsed\.(?: \[trace_id=[A-Za-z0-9_-]+\])?$`,
+	`^(?:OpenAI Responses bad request: )?The encrypted content for item (rs_[A-Za-z0-9_-]+) could not be verified\. Reason: (?:reasoning hydration failed: )?Encrypted content could not be decrypted or parsed\.(?: \[hub-\])?(?: \[trace_id=[A-Za-z0-9_-]+\])?$`,
 )
 
 // Relays may rename the code for both reasoning and compaction rejections.
