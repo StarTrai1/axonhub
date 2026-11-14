@@ -22,6 +22,14 @@ import (
 )
 
 func TestRemoteCompactionLazyAncestorRecovery(t *testing.T) {
+	testRemoteCompactionLazyAncestorRecovery(t, false)
+}
+
+func TestCheckpointHubAncestorRecovery(t *testing.T) {
+	testRemoteCompactionLazyAncestorRecovery(t, true)
+}
+
+func testRemoteCompactionLazyAncestorRecovery(t *testing.T, hub bool) {
 	for _, reject := range []bool{false, true} {
 		t.Run(fmt.Sprintf("reject-ancestor=%t", reject), func(t *testing.T) {
 			ctx, _, owner, adapter := rejectedCompactionStorage(t)
@@ -41,7 +49,7 @@ func TestRemoteCompactionLazyAncestorRecovery(t *testing.T) {
 			second := []byte(`{"model":"gpt-6-astra","client_metadata":{"thread_id":"lazy-thread"},"input":[{"role":"user","content":"retained detail"},{"type":"compaction","id":"cmp_ancestor","encrypted_content":"native-ancestor"},{"role":"user","content":"new source detail"},{"type":"compaction_trigger"}]}`)
 			require.NoError(t, seedLegacyNativeCompactionSource(ctx, adapter, ancestor, state, &remoteCompactionSource{body: first}))
 			require.NoError(t, seedLegacyNativeCompactionSource(ctx, adapter, latest, state, &remoteCompactionSource{body: second}))
-			executor := &lazyCompactionExecutor{reject: reject}
+			executor := &lazyCompactionExecutor{reject: reject, hub: hub}
 			for range 2 {
 				summary, err := adapter.summaryForCompaction(ctx, remoteCompactionCacheKey(latest), latest, "lazy-thread", "gpt-6-astra", state, executor)
 				require.NoError(t, err)
@@ -75,12 +83,16 @@ type lazyCompactionExecutor struct {
 	rejectedCompactionBridgeExecutor
 
 	reject bool
+	hub    bool
 	bodies [][]byte
 }
 
 func (e *lazyCompactionExecutor) DoStream(ctx context.Context, req *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
 	e.bodies = append(e.bodies, append([]byte(nil), req.Body...))
 	if e.reject && gjson.GetBytes(req.Body, `input.#(id=="cmp_ancestor")`).Exists() {
+		if e.hub {
+			return nil, hubEncryptedItemError("cmp_ancestor")
+		}
 		return nil, &httpclient.Error{StatusCode: http.StatusBadRequest, Body: []byte(`{"error":{"type":"invalid_request_error","message":"The encrypted content for item cmp_ancestor could not be verified. Reason: Encrypted content could not be decrypted or parsed."}}`)}
 	}
 	return e.rejectedCompactionBridgeExecutor.DoStream(ctx, req)

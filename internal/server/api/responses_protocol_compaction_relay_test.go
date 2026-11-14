@@ -146,6 +146,14 @@ func TestResponsesProtocolCompactionRelayContinuation(t *testing.T) {
 const relayResourceMismatchFixture = `{"error":{"type":"invalid_request_error","message":"The requested item was created under a different Azure OpenAI resource. Use the same resource that created the item to access it."}}`
 
 func TestResponsesProtocolCompactionRelayIndexedRejection(t *testing.T) {
+	testResponsesProtocolCompactionRelayRejection(t, `{"type":"error","error":{"type":"error","code":"unsupported_encrypted_compaction","param":"input[2].encrypted_content","message":"上游无法验证该压缩摘要；未删除历史。请从原接入恢复，或重发完整会话历史"}}`)
+}
+
+func TestResponsesProtocolCompactionRelayHubRejection(t *testing.T) {
+	testResponsesProtocolCompactionRelayRejection(t, `{"type":"error","error":{"type":"invalid_request_error","message":"OpenAI Responses bad request: The encrypted content for item cmp_indexed could not be verified. Reason: Encrypted content could not be decrypted or parsed. [hub-] [trace_id=synthetic-trace]"}}`)
+}
+
+func testResponsesProtocolCompactionRelayRejection(t *testing.T, failure string) {
 	for _, downstream := range []string{"http", "ws"} {
 		t.Run(downstream, func(t *testing.T) {
 			var mu sync.Mutex
@@ -163,9 +171,10 @@ func TestResponsesProtocolCompactionRelayIndexedRejection(t *testing.T) {
 				w.Header().Set("Content-Type", "text/event-stream")
 				if gjson.GetBytes(body, `input.#(type=="compaction")`).Exists() {
 					rejected++
-					// The relay echoes the client index, before tool promotion.
+					// Relays can echo the client index or a named checkpoint with
+					// a hub trailer and no machine-readable error code.
 					_, _ = io.WriteString(w, "data: {\"type\":\"response.created\",\"response\":{\"id\":\"resp_rejected\",\"object\":\"response\",\"status\":\"in_progress\",\"output\":[]}}\n\n")
-					_, _ = io.WriteString(w, "data: {\"type\":\"error\",\"error\":{\"type\":\"error\",\"code\":\"unsupported_encrypted_compaction\",\"param\":\"input[2].encrypted_content\",\"message\":\"上游无法验证该压缩摘要；未删除历史。请从原接入恢复，或重发完整会话历史\"}}\n\n")
+					_, _ = fmt.Fprintf(w, "data: %s\n\n", failure)
 					return
 				}
 				id, output := "resp_restored", `[{"type":"message","role":"assistant","content":[{"type":"output_text","text":"continuation-complete"}]}]`
