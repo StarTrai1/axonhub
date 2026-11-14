@@ -32,7 +32,9 @@ func TestResponsesHubEncryptedHistoryRecovery(t *testing.T) {
 				for _, first := range []string{"cmp_native", "rs_visible"} {
 					t.Run(fmt.Sprintf("%s/raw=%t/in-band=%t/first=%s", format, raw, inBand, first), func(t *testing.T) {
 						ctx := shared.WithSessionScope(t.Context(), t.Name())
-						req := agentRecoveryRequest(t, format)
+						// The WebSocket handler also sets stream=true before orchestration.
+						req := agentRecoveryRequest(t, llm.APIFormatOpenAIResponse)
+						req.APIFormat = string(format)
 						original := append([]byte(nil), req.Body...)
 						owner := &ent.APIKey{ID: 951, ProjectID: 952}
 						adapter := newRemoteCompactionAdapter(nil, nil, nil)
