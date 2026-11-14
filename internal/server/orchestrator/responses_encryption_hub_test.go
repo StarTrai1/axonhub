@@ -43,9 +43,9 @@ func TestResponsesHubEncryptedHistoryRecovery(t *testing.T) {
 						if first == "rs_visible" {
 							failures[0], failures[1] = failures[1], failures[0]
 						}
-						executor := &agentRecoveryStreamExecutor{responsesReasoningPipelineExecutor: {
-							failures: failures, events: rejectedReasoningCompactionEvents(),
-						}, inBand: inBand}
+						executor := &agentRecoveryStreamExecutor{inBand: inBand}
+						executor.failures = failures
+						executor.events = rejectedReasoningCompactionEvents()
 						state, result, err := runRejectedReasoningPipeline(t, ctx, req, executor, t.Name(), raw, 2,
 							func(state *PersistenceState, outbound *PersistentOutboundTransformer) pipeline.Middleware {
 								state.APIKey = owner
