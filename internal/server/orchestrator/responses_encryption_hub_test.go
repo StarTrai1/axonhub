@@ -43,7 +43,7 @@ func TestResponsesHubEncryptedHistoryRecovery(t *testing.T) {
 						if first == "rs_visible" {
 							failures[0], failures[1] = failures[1], failures[0]
 						}
-						executor := &agentRecoveryStreamExecutor{responsesReasoningPipelineExecutor: responsesReasoningPipelineExecutor{
+						executor := &agentRecoveryStreamExecutor{responsesReasoningPipelineExecutor: {
 							failures: failures, events: rejectedReasoningCompactionEvents(),
 						}, inBand: inBand}
 						state, result, err := runRejectedReasoningPipeline(t, ctx, req, executor, t.Name(), raw, 2,
