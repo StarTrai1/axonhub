@@ -70,10 +70,10 @@ func TestChunkedRequestBodyMySQLConcurrentSnapshot(t *testing.T) {
 	// Exercise the legacy full-width index upgrade and an interrupted migration
 	// with the index missing. DDL is confined to this disposable database.
 	const indexName = "requests_by_external_id_api_key_id_status_created_at"
-	_, err = db.ExecContext(ctx, "ALTER TABLE requests DROP INDEX " + indexName + ", MODIFY external_id varchar(512) NULL, ADD INDEX " + indexName + " (external_id, api_key_id, status, created_at)")
+	_, err = db.ExecContext(ctx, "ALTER TABLE requests DROP INDEX "+indexName+", MODIFY external_id varchar(512) NULL, ADD INDEX "+indexName+" (external_id, api_key_id, status, created_at)")
 	require.NoError(t, err)
 	require.NoError(t, client.Schema.Create(ctx, migrate.WithForeignKeys(false), migrate.WithDropIndex(true)))
-	_, err = db.ExecContext(ctx, "ALTER TABLE requests DROP INDEX " + indexName)
+	_, err = db.ExecContext(ctx, "ALTER TABLE requests DROP INDEX "+indexName)
 	require.NoError(t, err)
 	require.NoError(t, client.Schema.Create(ctx, migrate.WithForeignKeys(false), migrate.WithDropIndex(true)))
 	var prefix int

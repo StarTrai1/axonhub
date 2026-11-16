@@ -3,6 +3,7 @@
 package migrate
 
 import (
+	"entgo.io/ent/dialect/entsql"
 	"entgo.io/ent/dialect/sql/schema"
 	"entgo.io/ent/schema/field"
 )
@@ -691,6 +692,11 @@ var (
 				Name:    "requests_by_external_id_api_key_id_status_created_at",
 				Unique:  false,
 				Columns: []*schema.Column{RequestsColumns[14], RequestsColumns[26], RequestsColumns[15], RequestsColumns[1]},
+				Annotation: &entsql.IndexAnnotation{
+					PrefixColumns: map[string]uint{
+						RequestsColumns[14].Name: 512,
+					},
+				},
 			},
 			{
 				Name:    "requests_by_created_at",
