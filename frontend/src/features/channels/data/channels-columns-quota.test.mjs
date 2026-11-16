@@ -35,8 +35,9 @@ const { pageInfoSchema } = await import(
 );
 globalThis.__importStubs = { z, pageInfoSchema };
 
-const { parseQuotaBalances, parseQuotaLimits } = await loadModule('features/system/data/quotas.ts', (s) =>
-  s.replace(/export function useProviderQuotaStatuses[\s\S]*$/m, '')
+const { parseAPIKeyQuotas, parseQuotaBalances, parseQuotaLimits, applyDisabledKeyOwnershipSync } = await loadModule(
+  'features/system/data/quotas.ts',
+  (s) => s.replace(/export function useProviderQuotaStatuses[\s\S]*$/m, '')
 );
 
 const { channelSchema } = await loadModule('features/channels/data/schema.ts', (s) => s.replace(/z\.url\(/g, 'z.string().url('));

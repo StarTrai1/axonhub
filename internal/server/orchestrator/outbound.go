@@ -96,7 +96,7 @@ func NewOutboundPersistentStream(
 		perf:            perf,
 		responseChunks:  make([]*httpclient.StreamEvent, 0),
 		state:           state,
-		terminalTracker: NewStreamTerminalTrackerForRequest(request),
+		terminalTracker: NewStreamTerminalTrackerForRequest(request, state),
 		consumerDone:    make(chan struct{}),
 	}
 	if state != nil {

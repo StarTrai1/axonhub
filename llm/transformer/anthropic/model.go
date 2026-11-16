@@ -236,7 +236,7 @@ type Tool struct {
 	DeferLoading   *bool             `json:"defer_loading,omitempty"`
 	InputExamples  []json.RawMessage `json:"input_examples,omitempty"`
 
-	// Params for web_search_20250305 tool.
+	// Params for native web_search tools (web_search_20250305 and later).
 
 	// MaxUses Maximum number of times the tool can be used in the API request.
 	MaxUses *int64 `json:"max_uses,omitempty"`

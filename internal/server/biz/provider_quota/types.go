@@ -80,6 +80,12 @@ const (
 	// normalization.go keeps it out of the channel status and channel reset:
 	// it is listed for the operator, never enforced.
 	QuotaLimitTypeSearch QuotaLimitType = "search"
+	// QuotaLimitTypeFreeEnergy marks provider promo allowances (NeuralWatt's
+	// daily free energy). Like QuotaLimitTypeSearch, no request modality maps
+	// to it: it is listed for the operator, never enforced — routing/
+	// EffectiveStatus skip it and normalization.go keeps it out of the
+	// channel status and the overall NextResetAt via displayOnlyLimitTypes.
+	QuotaLimitTypeFreeEnergy QuotaLimitType = "free_energy"
 )
 
 // ApertisDefaultBaseURL is the default base URL for the Apertis API.
@@ -129,17 +135,41 @@ type QuotaLimitStatus struct {
 
 // QuotaData is the unified quota data structure.
 type QuotaData struct {
-	// Preserve the checker's scoped status when partial window data cannot
-	// establish overall availability. This is internal and never serialized.
+	// Preserve authoritative provider status across partial window data.
 	statusAuthoritative bool
-	Status              string             `json:"status"` // available, warning, exhausted, unknown
-	ProviderType        string             `json:"provider_type"`
-	RawData             map[string]any     `json:"raw_data"`
-	NextResetAt         *time.Time         `json:"next_reset_at"` // Next quota reset timestamp
-	Ready               bool               `json:"ready"`         // True if status is available or warning
-	Limits              []QuotaLimitStatus `json:"limits"`
-	Balances            []QuotaBalance     `json:"balances,omitempty"`
-	Resets              *ResetList         `json:"resets,omitempty"`
+	Status       string             `json:"status"` // available, warning, exhausted, unknown
+	ProviderType string             `json:"provider_type"`
+	RawData      map[string]any     `json:"raw_data"`
+	NextResetAt  *time.Time         `json:"next_reset_at"` // Next quota reset timestamp
+	Ready        bool               `json:"ready"`         // True if status is available or warning
+	Limits       []QuotaLimitStatus `json:"limits"`
+	Balances     []QuotaBalance     `json:"balances,omitempty"`
+	Resets       *ResetList         `json:"resets,omitempty"`
+
+	// APIKeyQuotas is the per-credential view of a channel that draws from
+	// several independent quota accounts (one API key per account). It is an
+	// in-process result serialized explicitly by the quota service under
+	// provider-agnostic keys; JSON marshaling never emits it directly, so a
+	// checker payload cannot leak a credential.
+	APIKeyQuotas []APIKeyQuota `json:"-"`
+}
+
+// APIKeyQuota is one provider-reported quota result for a single configured
+// API key of a channel.
+//
+// It exists because a channel may carry several keys that belong to different
+// quota accounts: the channel status has to OR them for routing, and each
+// individual disable has to be attributable to the provider observation that
+// produced it.
+type APIKeyQuota struct {
+	Key           string    `json:"-"` // exact configured key; never persisted/exported
+	Ref           string    `json:"-"` // full SHA-256 hex digest of Key
+	Index         int       `json:"-"` // one-based position in GetAllAPIKeys()
+	Suffix        string    `json:"-"` // last four runes only if length > 4
+	Disabled      bool      `json:"-"`
+	QuotaDisabled bool      `json:"-"`
+	ErrorCode     string    `json:"-"` // "check_failed" when fetch fails; empty otherwise
+	Data          QuotaData `json:"-"` // one key's normalized result; no nested APIKeyQuotas
 }
 
 // QuotaBalance is a provider-reported account amount that is not a usage

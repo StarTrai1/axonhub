@@ -214,6 +214,9 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		return s.transformStreamEvent(event, singleEvent)
 	}
 
+	if errorEvent := newErrorEventResponseError(event.Data, event.Type); errorEvent != nil {
+		return errorEvent
+	}
 	decoder := json.NewDecoder(bytes.NewReader(event.Data))
 	type decodedEvent struct {
 		data   json.RawMessage
@@ -968,7 +971,7 @@ func (s *responsesOutboundStream) transformStreamEvent(event *httpclient.StreamE
 		}
 
 	case StreamEventTypeError:
-		return responseErrorFromStreamEvent(&streamEvent)
+		return newErrorEventResponseError(event.Data, event.Type)
 
 	case StreamEventTypeImageGenerationPartialImage,
 		StreamEventTypeImageGenerationGenerating,

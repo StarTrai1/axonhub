@@ -422,7 +422,7 @@ func convertToolsAnthropic(tools []llm.Tool, config *Config) []Tool {
 			}
 
 			anthropicTool := Tool{
-				Type:           ToolTypeWebSearch20250305,
+				Type:           nativeWebSearchToolType(tool.WebSearch),
 				Name:           WebSearchFunctionName,
 				AllowedCallers: append([]string(nil), tool.AllowedCallers...),
 				DeferLoading:   tool.DeferLoading,
@@ -430,7 +430,7 @@ func convertToolsAnthropic(tools []llm.Tool, config *Config) []Tool {
 			}
 			// Copy web search parameters if available
 			if tool.WebSearch != nil {
-				if tool.WebSearch.AnthropicType == "web_search_20260209" {
+				if tool.WebSearch.Version == "" && tool.WebSearch.AnthropicType == "web_search_20260209" {
 					anthropicTool.Type = tool.WebSearch.AnthropicType
 				}
 				anthropicTool.MaxUses = tool.WebSearch.MaxUses
@@ -443,6 +443,9 @@ func convertToolsAnthropic(tools []llm.Tool, config *Config) []Tool {
 					Region:   tool.WebSearch.UserLocation.Region,
 					Timezone: tool.WebSearch.UserLocation.Timezone,
 					Type:     tool.WebSearch.UserLocation.Type,
+				}
+				if tool.WebSearch.AllowedCallers != nil {
+					anthropicTool.AllowedCallers = append([]string(nil), tool.WebSearch.AllowedCallers...)
 				}
 			}
 

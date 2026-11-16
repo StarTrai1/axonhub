@@ -15,7 +15,12 @@ func normalizeQuotaDataAt(data QuotaData, now time.Time) QuotaData {
 	data.Limits = normalizeQuotaLimits(data.Limits, now)
 
 	status := normalizeOverallQuotaStatus(data.Status, data.Limits)
-	if data.statusAuthoritative {
+	// A per-key pool knows which of its accounts can still serve; deriving the
+	// status from them keeps an exhausted-plus-unknown pool unknown instead of
+	// folding it into exhausted by the routable limits alone.
+	if len(data.APIKeyQuotas) > 0 {
+		status = aggregateAPIKeyQuotaStatus(data.APIKeyQuotas)
+	} else if data.statusAuthoritative {
 		status = normalizeQuotaStatus(data.Status)
 	}
 
@@ -48,6 +53,14 @@ func normalizeQuotaDataAt(data QuotaData, now time.Time) QuotaData {
 // group guard below.
 var displayOnlyLimitTypes = map[QuotaLimitType]struct{}{
 	QuotaLimitTypeSearch: {},
+	QuotaLimitTypeFreeEnergy: {},
+}
+
+// IsDisplayOnlyLimit reports whether a limit is display-only: listed for the
+// operator but excluded from the channel status, the overall reset, and the
+// webhook usage-ratio max.
+func IsDisplayOnlyLimit(limit QuotaLimitStatus) bool {
+	return isDisplayOnlyLimit(limit)
 }
 
 func isDisplayOnlyLimit(limit QuotaLimitStatus) bool {

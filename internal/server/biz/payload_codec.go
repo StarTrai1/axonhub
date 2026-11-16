@@ -52,7 +52,7 @@ var (
 
 // CompressStoredPayload losslessly encodes large or JSON-NUL-containing payloads for database persistence.
 func CompressStoredPayload(raw []byte) (objects.JSONRawMessage, error) {
-	needsEnvelope := hasJSONNulEscape(raw)
+	needsEnvelope := hasJSONNulEscape(raw) || containsJSONSurrogateEscape(raw)
 	if (len(raw) < databasePayloadCompressionThreshold && !needsEnvelope) || isCompressedStoredPayload(raw) {
 		return objects.JSONRawMessage(raw), nil
 	}
