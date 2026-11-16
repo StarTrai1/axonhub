@@ -31,7 +31,7 @@ const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: In
 queryClient.setQueryData(['brandSettings'], { brandName: 'Fixture', title: 'Offline', brandLogo: '' });
 queryClient.setQueryData(['me', ''], {
   id: 'fixture-user', email: 'my@example.com', firstName: 'Offline', lastName: 'User',
-  isOwner: false, preferLanguage: 'en', avatar: '', scopes: [], roles: [], projects: [],
+  isOwner: false, preferLanguage: new URLSearchParams(window.location.search).get('lang') || 'en', avatar: '', scopes: [], roles: [], projects: [],
 });
 
 function PriceFixture() {

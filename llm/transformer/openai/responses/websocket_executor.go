@@ -215,14 +215,15 @@ func newErrorEventResponseError(raw []byte, eventType string) *llm.ResponseError
 	// Keep typed quota/reset advice and known protocol classifications. The
 	// lenient fallback below is for frames the typed decoder cannot represent.
 	var event StreamEvent
-	if json.Unmarshal(raw, &event) == nil &&
+	decoded := json.Unmarshal(raw, &event) == nil
+	if decoded &&
 		(event.Code != "" || event.Error != nil && (event.Error.Code != "" || event.Error.Message != "")) {
 		return responseErrorFromStreamEvent(&event)
 	}
 
 	status, detail := webSocketErrorEventDetail(raw)
 
-	return &llm.ResponseError{
+	result := &llm.ResponseError{
 		StatusCode: status,
 		Detail: llm.ErrorDetail{
 			Message: detail["message"],
@@ -231,6 +232,15 @@ func newErrorEventResponseError(raw []byte, eventType string) *llm.ResponseError
 			Param:   detail["param"],
 		},
 	}
+	if decoded {
+		if event.Status == 0 && event.StatusCode >= 400 && event.StatusCode <= 599 {
+			result.StatusCode = event.StatusCode
+		}
+		result.StatusCode = responseErrorStatusCode(event.Error, result.StatusCode)
+		result.Detail.RequestID = event.RequestID
+		result.Cause = responseErrorCause(result, event.Error, responseErrorHeaders(event.Headers))
+	}
+	return result
 }
 
 // isErrorFrameCandidate reports whether raw can be classified as a top-level

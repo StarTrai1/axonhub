@@ -101,3 +101,19 @@ func TestTopLevelWebSocketErrorReadsJSONEventType(t *testing.T) {
 		})
 	}
 }
+
+func TestWebSocketStatusWithoutCodePreservesRetryAdvice(t *testing.T) {
+	data := []byte(`{"type":"error","status_code":429,"message":"please wait","headers":{"retry-after":"7"}}`)
+	for _, failure := range []error{
+		TopLevelWebSocketError([]*httpclient.StreamEvent{{Data: data}}),
+		newErrorEventResponseError(data, "error"),
+	} {
+		var protocol *llm.ResponseError
+		require.ErrorAs(t, failure, &protocol)
+		require.Equal(t, 429, protocol.StatusCode)
+		require.Equal(t, "please wait", protocol.Detail.Message)
+		var transport *httpclient.Error
+		require.ErrorAs(t, failure, &transport)
+		require.Equal(t, "7", transport.Headers.Get("Retry-After"))
+	}
+}

@@ -35,7 +35,11 @@ func (Request) Indexes() []ent.Index {
 			StorageKey("requests_by_channel_id_created_at"),
 		index.Fields("trace_id", "created_at").
 			StorageKey("requests_by_trace_id_created_at"),
+		// MySQL utf8mb4: 512 characters consume at most 2048 bytes, leaving
+		// room for the other columns under InnoDB's 3072-byte key limit.
+		// This is a non-unique lookup prefix; queries still compare the full ID.
 		index.Fields("external_id", "api_key_id", "status", "created_at").
+			Annotations(entsql.PrefixColumn("external_id", 512)).
 			StorageKey("requests_by_external_id_api_key_id_status_created_at"),
 		// Performance indexes for dashboard queries
 		index.Fields("created_at").

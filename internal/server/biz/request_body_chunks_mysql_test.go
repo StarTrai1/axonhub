@@ -67,7 +67,27 @@ func TestChunkedRequestBodyMySQLConcurrentSnapshot(t *testing.T) {
 	ctx, cancel := context.WithTimeout(authz.WithTestBypass(t.Context()), 30*time.Second)
 	defer cancel()
 	require.NoError(t, client.Schema.Create(ctx, migrate.WithForeignKeys(false)))
+	// Exercise the legacy full-width index upgrade and an interrupted migration
+	// with the index missing. DDL is confined to this disposable database.
+	const indexName = "requests_by_external_id_api_key_id_status_created_at"
+	_, err = db.ExecContext(ctx, "ALTER TABLE requests DROP INDEX " + indexName + ", MODIFY external_id varchar(512) NULL, ADD INDEX " + indexName + " (external_id, api_key_id, status, created_at)")
+	require.NoError(t, err)
+	require.NoError(t, client.Schema.Create(ctx, migrate.WithForeignKeys(false), migrate.WithDropIndex(true)))
+	_, err = db.ExecContext(ctx, "ALTER TABLE requests DROP INDEX " + indexName)
+	require.NoError(t, err)
+	require.NoError(t, client.Schema.Create(ctx, migrate.WithForeignKeys(false), migrate.WithDropIndex(true)))
+	var prefix int
+	require.NoError(t, db.QueryRowContext(ctx, "SELECT SUB_PART FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'requests' AND INDEX_NAME = ? AND COLUMN_NAME = 'external_id'", indexName).Scan(&prefix))
+	require.Equal(t, 512, prefix)
 	project := client.Project.Create().SetName("mysql-chunks").SaveX(ctx)
+	for _, suffix := range []string{"one", "two"} {
+		externalID := strings.Repeat("same-prefix-", 80) + suffix
+		row := client.Request.Create().SetProjectID(project.ID).SetModelID("model").SetExternalID(externalID).
+			SetRequestBody([]byte(`{}`)).SetStatus(request.StatusCompleted).SaveX(ctx)
+		found := client.Request.Query().Where(request.ProjectIDEQ(project.ID), request.ExternalIDEQ(externalID)).OnlyX(ctx)
+		require.Equal(t, row.ID, found.ID, "prefix collisions must still compare the complete response ID")
+	}
+
 	body := chunkTestBody()
 	plan := PrepareChunkedRequestBody(body)
 	writer, err := client.Tx(ctx)

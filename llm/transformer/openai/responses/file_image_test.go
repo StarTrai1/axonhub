@@ -56,3 +56,13 @@ func TestAudioReferencesHaveDistinctConversationAnchors(t *testing.T) {
 	require.NotEqual(t, anchor(llm.InputAudio{FileID: "file_one"}), anchor(llm.InputAudio{FileID: "file_two"}))
 	require.NotEqual(t, anchor(llm.InputAudio{URL: "data:audio/wav;base64,QQ=="}), anchor(llm.InputAudio{URL: "data:audio/wav;base64,Qg=="}))
 }
+
+func TestCodex169InlineAudioIsNotSilentlyDroppedByChat(t *testing.T) {
+	body := []byte(`{"model":"gpt-6.1-sol","input":[{"role":"user","content":[{"type":"input_audio","audio_url":"data:audio/wav;base64,QQ=="}]}]}`)
+	request, err := NewInboundTransformer().TransformRequest(t.Context(), &httpclient.Request{Body: body})
+	require.NoError(t, err)
+	chat, err := openai.NewOutboundTransformer("https://example.test/v1", "fake")
+	require.NoError(t, err)
+	_, err = chat.TransformRequest(t.Context(), request)
+	require.ErrorContains(t, err, "audio URL")
+}

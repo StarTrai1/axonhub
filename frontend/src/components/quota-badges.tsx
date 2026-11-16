@@ -1480,7 +1480,7 @@ function QuotaRow({
         </div>
       )}
 
-      {channel.type === 'codex' && (
+      {channel.type === 'codex' && quota.apiKeyQuotas.length < 2 && (
         <div className='mt-3 space-y-3'>
           {(() => {
             const qd = channel.quotaStatus.quotaData;
