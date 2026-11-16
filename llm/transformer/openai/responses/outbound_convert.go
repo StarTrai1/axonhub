@@ -1156,7 +1156,9 @@ func responsesAudioItem(part llm.MessageContentPart) Item {
 	url := audio.URL
 	if url == "" && audio.Data != "" {
 		mime := audio.MIMEType
-		if mime == "" { mime = "audio/" + audio.Format }
+		if mime == "" {
+			mime = "audio/" + audio.Format
+		}
 		url = "data:" + mime + ";base64," + audio.Data
 	}
 	return Item{Type: "input_audio", AudioURL: lo.EmptyableToPtr(url), FileID: lo.EmptyableToPtr(audio.FileID), PromptCacheBreakpoint: part.PromptCacheBreakpoint}

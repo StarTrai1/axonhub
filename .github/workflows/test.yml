@@ -171,6 +171,15 @@ jobs:
           go test ./internal/server/gql/qb -run '^TestThroughputQueryDistinctOnParity_Postgres$' -count=1 -v
           go test ./internal/server/biz -run '^TestStoredPayloadNul_Postgres$' -count=1 -v
 
+      - name: Verify chunk storage and concurrent cleanup on PostgreSQL and MySQL
+        env:
+          AXONHUB_TEST_PAYLOAD_PG_DSN: postgres://axonhub_test:axonhub_test@127.0.0.1:5432/axonhub_payload_test?sslmode=disable
+          AXONHUB_TEST_PAYLOAD_MYSQL_DSN: root:axonhub_test@tcp(127.0.0.1:3306)/axonhub_payload_test?parseTime=true
+        run: |
+          docker exec ${{ job.services.postgres.id }} psql -U axonhub_test -d axonhub_test -c 'CREATE DATABASE axonhub_payload_test'
+          docker exec ${{ job.services.mysql.id }} mysql -uroot -paxonhub_test -e 'CREATE DATABASE axonhub_payload_test'
+          go test ./internal/server/biz -run '^TestChunkedRequestBody(PostgresConcurrentGC|MySQLConcurrentSnapshot)$' -count=1 -v
+
       - name: Verify PostgreSQL quota routing migration
         env:
           AXONHUB_TEST_PG_DSN: postgres://axonhub_test:axonhub_test@127.0.0.1:5432/axonhub_test?sslmode=disable

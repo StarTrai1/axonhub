@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
 
+	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer/openai"
 )
@@ -46,4 +47,12 @@ func TestCodex169FileAudioSurvivesResponsesConversion(t *testing.T) {
 		_, err = chat.TransformRequest(t.Context(), request)
 		require.ErrorContains(t, err, "audio file_id")
 	}
+}
+
+func TestAudioReferencesHaveDistinctConversationAnchors(t *testing.T) {
+	anchor := func(audio llm.InputAudio) string {
+		return conversationAnchor([]llm.Message{{Role: "user", Content: llm.MessageContent{MultipleContent: []llm.MessageContentPart{{Type: "input_audio", InputAudio: &audio}}}}})
+	}
+	require.NotEqual(t, anchor(llm.InputAudio{FileID: "file_one"}), anchor(llm.InputAudio{FileID: "file_two"}))
+	require.NotEqual(t, anchor(llm.InputAudio{URL: "data:audio/wav;base64,QQ=="}), anchor(llm.InputAudio{URL: "data:audio/wav;base64,Qg=="}))
 }

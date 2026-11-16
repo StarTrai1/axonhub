@@ -58,9 +58,12 @@ func TestTokenProvider_RefreshRejection(t *testing.T) {
 					require.Contains(t, string(httpErr.Body), "sign in again")
 				}
 			}
-			failed, running := p.runAutoRefreshOnce(context.Background(), time.Minute)
-			require.True(t, failed)
-			require.True(t, running)
+			outcome := p.runAutoRefreshOnce(context.Background(), time.Minute)
+			if tt.permanent {
+				require.Equal(t, autoRefreshPermanentFailure, outcome)
+			} else {
+				require.Equal(t, autoRefreshTransientFailure, outcome)
+			}
 			want := int32(3)
 			if tt.permanent {
 				want = 1

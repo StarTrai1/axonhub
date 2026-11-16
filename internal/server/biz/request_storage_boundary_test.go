@@ -11,7 +11,7 @@
 // 注意事项:
 //
 //	CDC 分块归档必须与热会话字节一致，surrogate 不能因 jsonb 修复被改写。
-//	外置 chunks 保持 marshal 原始字节；只有 DB 的 jsonb 列需要净化。
+//	外置 chunks 保持 marshal 原始字节；DB 的 jsonb 列使用可逆封装。
 //	只使用 SQLite 与内存 fs，不连接外部服务。
 
 package biz
@@ -76,9 +76,8 @@ func TestExternalResponseChunksPreservePayload(t *testing.T) {
 	}
 }
 
-// TestChunkedRequestKeepsSurrogateInlineReplaces 验证 CDC 分块路径保留
-// surrogate（只去 NUL），内联 jsonb 路径才替换为 U+FFFD。
-func TestChunkedRequestKeepsSurrogateInlineReplaces(t *testing.T) {
+// TestChunkedRequestAndInlinePreserveEscapes verifies lossless history on both storage paths.
+func TestChunkedRequestAndInlinePreserveEscapes(t *testing.T) {
 	svc, client, ctx := setupTestRequestService(t)
 	defer client.Close()
 
@@ -105,7 +104,7 @@ func TestChunkedRequestKeepsSurrogateInlineReplaces(t *testing.T) {
 	large := []byte(`{"model":"test","input":[{"role":"user","content":"` +
 		strings.Repeat("x", 40000) + `\ud800\u0000\ud83d\ude00"}]}`)
 	largeOriginal := bytes.Clone(large)
-	wantChunked := strings.ReplaceAll(string(large), `\u0000`, "")
+	wantChunked := string(large)
 
 	req, err := svc.CreateRequest(ctx, &llm.Request{Model: "test"}, &httpclient.Request{JSONBody: large}, llm.APIFormatOpenAIResponse)
 	require.NoError(t, err)
@@ -114,7 +113,7 @@ func TestChunkedRequestKeepsSurrogateInlineReplaces(t *testing.T) {
 
 	stored, err := svc.LoadRequestBody(ctx, req)
 	require.NoError(t, err)
-	require.Equal(t, wantChunked, string(stored), "CDC archive keeps the surrogate and strips NUL")
+	require.Equal(t, wantChunked, string(stored), "CDC archive preserves all original escapes")
 	require.Contains(t, string(stored), `\ud800`)
 	require.NotContains(t, string(stored), `\ufffd`)
 
@@ -133,11 +132,17 @@ func TestChunkedRequestKeepsSurrogateInlineReplaces(t *testing.T) {
 	inline, err := svc.CreateRequest(ctx, &llm.Request{Model: "test"}, &httpclient.Request{JSONBody: small}, llm.APIFormatOpenAIResponse)
 	require.NoError(t, err)
 	require.False(t, inline.RequestBodyChunked)
-	require.Equal(t, `{"model":"test","input":"\ufffd"}`, string(inline.RequestBody))
+	inlineBody, err := svc.LoadRequestBody(ctx, inline)
+	require.NoError(t, err)
+	require.Equal(t, small, []byte(inlineBody))
+	requireJSONBStorable(t, inline.RequestBody)
 
 	inlineExec, err := svc.CreateRequestExecution(ctx, &Channel{Channel: row}, "test", inline,
 		httpclient.Request{JSONBody: small}, llm.APIFormatOpenAIResponse, false)
 	require.NoError(t, err)
 	require.False(t, inlineExec.RequestBodyChunked)
-	require.Equal(t, `{"model":"test","input":"\ufffd"}`, string(inlineExec.RequestBody))
+	inlineExecBody, err := svc.LoadRequestExecutionRequestBody(ctx, inlineExec)
+	require.NoError(t, err)
+	require.Equal(t, small, []byte(inlineExecBody))
+	requireJSONBStorable(t, inlineExec.RequestBody)
 }

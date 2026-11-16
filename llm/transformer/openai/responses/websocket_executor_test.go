@@ -338,7 +338,7 @@ func TestWebSocketExecutorDoReturnsErrorForTopLevelErrorEvent(t *testing.T) {
 
 	var httpErr *httpclient.Error
 	require.ErrorAs(t, err, &httpErr)
-	require.Equal(t, http.StatusBadGateway, httpErr.StatusCode)
+	require.Equal(t, http.StatusBadRequest, httpErr.StatusCode)
 	require.True(t, httpclient.IsHTTPStatusCodeRetryable(httpErr.StatusCode))
 	require.JSONEq(t, `{
 		"error":{
@@ -478,7 +478,7 @@ func TestTopLevelWebSocketErrorReportsProviderFailure(t *testing.T) {
 		{
 			name:       "nested-only frame keeps nested detail",
 			data:       `{"type":"error","error":{"type":"server_error","code":"overloaded","message":"try later"}}`,
-			wantStatus: http.StatusBadGateway,
+			wantStatus: http.StatusServiceUnavailable,
 			wantBody: `{
 				"error":{
 					"type":"server_error",

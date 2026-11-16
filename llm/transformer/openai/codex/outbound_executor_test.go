@@ -746,7 +746,7 @@ func TestCodexOutbound_DoReturnsWebSocketErrorEvents(t *testing.T) {
 
 	var httpErr *httpclient.Error
 	require.ErrorAs(t, err, &httpErr)
-	require.Equal(t, http.StatusBadGateway, httpErr.StatusCode)
+	require.Equal(t, http.StatusBadRequest, httpErr.StatusCode)
 	require.True(t, httpclient.IsHTTPStatusCodeRetryable(httpErr.StatusCode))
 	require.JSONEq(t, `{
 		"error":{

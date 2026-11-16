@@ -103,8 +103,7 @@ func (s *PayloadCompressionService) compressRequests(ctx context.Context) error 
 			SetUpdatedAt(row.UpdatedAt)
 		if requestChanged {
 			update.Modify(func(builder *entsql.UpdateBuilder) {
-				builder.Set(request.FieldRequestBodyChunked,
-			request.FieldRequestBody, string(requestBody))
+				builder.Set(request.FieldRequestBody, string(requestBody))
 			})
 		}
 		if responseChanged {
@@ -163,8 +162,7 @@ func (s *PayloadCompressionService) compressRequestExecutions(ctx context.Contex
 			SetUpdatedAt(row.UpdatedAt)
 		if requestChanged {
 			update.Modify(func(builder *entsql.UpdateBuilder) {
-				builder.Set(requestexecution.FieldRequestBodyChunked,
-			requestexecution.FieldRequestBody, string(requestBody))
+				builder.Set(requestexecution.FieldRequestBody, string(requestBody))
 			})
 		}
 		if responseChanged {

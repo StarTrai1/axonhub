@@ -41,7 +41,7 @@ func isRelayResponsesTimeout(detail llm.ErrorDetail) bool {
 	if detail.Code != "" && detail.Code != "bad_request" && detail.Code != "invalid_request_error" {
 		return false
 	}
-	return (detail.Type == "" || detail.Type == "error" || detail.Type == "invalid_request_error") &&
+	return (detail.Type == "" || detail.Type == "error" || detail.Type == "bad_request" || detail.Type == "invalid_request_error") &&
 		relayResponsesTimeoutMessage.MatchString(detail.Message)
 }
 
@@ -112,6 +112,9 @@ func responseErrorFromStreamEvent(event *StreamEvent) *llm.ResponseError {
 		if event.Error.RequestID != "" {
 			detail.RequestID = event.Error.RequestID
 		}
+	}
+	if detail.Type == "" || detail.Type == string(StreamEventTypeError) {
+		detail.Type = webSocketErrorTypeFromCode(detail.Code)
 	}
 	if detail.Message == "" {
 		detail.Message = "stream error"

@@ -2,6 +2,8 @@
 
 [English](../../en/development/request-body-replay.md)
 
+本分支在分块和内联两条路径上均保留 NUL 与 surrogate 转义：分块保留原始字节，内联 JSONB 使用可逆封装。下文数据为上游历史测量，不代表本分支重新执行的性能测试。
+
 ## 测量方法
 
 `TestRequestBodyPayloadReplayFile` 将按顺序记录的 request/execution JSON 对送入 `CreateRequest` 和 `CreateRequestExecution`，报告逐轮字节复用率、新增唯一块正文、清单、引用、input 消息变化和持久化耗时。计时包含两次提交及分块、哈希工作，不包含初始化、读取输入文件、指标计算和往返校验；不会调用上游 API。

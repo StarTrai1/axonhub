@@ -450,6 +450,9 @@ func validateChatDocumentParts(messages []llm.Message) error {
 			if part.InputAudio != nil && part.InputAudio.FileID != "" {
 				return fmt.Errorf("%w: Chat Completions cannot represent an audio file_id; use Responses", transformer.ErrInvalidRequest)
 			}
+			if part.InputAudio != nil && part.InputAudio.URL != "" {
+				return fmt.Errorf("%w: Chat Completions cannot represent an audio URL; use Responses", transformer.ErrInvalidRequest)
+			}
 			if part.ImageURL != nil && part.ImageURL.FileID != "" {
 				return fmt.Errorf("%w: Chat Completions cannot represent an image file_id; use Responses", transformer.ErrInvalidRequest)
 			}

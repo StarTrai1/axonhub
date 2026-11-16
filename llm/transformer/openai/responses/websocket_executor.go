@@ -183,36 +183,20 @@ func TopLevelWebSocketError(chunks []*httpclient.StreamEvent) error {
 // a pathological provider must not inflate every retry response.
 const webSocketErrorFrameMaxBytes = 4 << 10
 
-// newWebSocketErrorEvent converts a top-level error frame into an upstream
-// error. A frame without a usable 4xx/5xx status becomes 502: the orchestrator
-// treats 502 as retryable, so one broken connection cannot fail every request
-// for the whole window.
-func newWebSocketErrorEvent(raw []byte) *httpclient.Error {
-	var event StreamEvent
-	if json.Unmarshal(raw, &event) == nil &&
-		(event.Code != "" || event.Error != nil || event.Status >= 400 || event.StatusCode >= 400) {
-		result := responseErrorFromStreamEvent(&event)
-		if cause, ok := result.Cause.(*httpclient.Error); ok {
-			return cause
-		}
-		return &httpclient.Error{
+// newWebSocketErrorEvent preserves both the protocol error and the HTTP error
+// cause used by retry and continuation recovery. Unknown errors fall back to
+// 502; known client errors retain their non-retryable classification.
+func newWebSocketErrorEvent(raw []byte) error {
+	result := newErrorEventResponseError(raw, string(StreamEventTypeError))
+	if result.Cause == nil {
+		result.Cause = &httpclient.Error{
 			StatusCode: result.StatusCode, Status: http.StatusText(result.StatusCode),
 			Body: xjson.MustMarshal(struct {
 				Error llm.ErrorDetail `json:"error"`
 			}{Error: result.Detail}),
-			Headers: responseErrorHeaders(event.Headers),
 		}
 	}
-
-	status, detail := webSocketErrorEventDetail(raw)
-
-	return &httpclient.Error{
-		StatusCode: status,
-		Status:     http.StatusText(status),
-		Body: xjson.MustMarshal(struct {
-			Error map[string]string `json:"error"`
-		}{Error: detail}),
-	}
+	return result
 }
 
 // newErrorEventResponseError converts a top-level Responses error frame into
@@ -232,7 +216,7 @@ func newErrorEventResponseError(raw []byte, eventType string) *llm.ResponseError
 	// lenient fallback below is for frames the typed decoder cannot represent.
 	var event StreamEvent
 	if json.Unmarshal(raw, &event) == nil &&
-		(event.Code != "" || event.Error != nil || event.Status >= 400 || event.StatusCode >= 400) {
+		(event.Code != "" || event.Error != nil && (event.Error.Code != "" || event.Error.Message != "")) {
 		return responseErrorFromStreamEvent(&event)
 	}
 

@@ -42,7 +42,7 @@ func TestRequestServiceChunkedBodies(t *testing.T) {
 		SetSupportedModels([]string{"test"}).SetDefaultTestModel("test").Save(ctx)
 	require.NoError(t, err)
 
-	body := []byte(`{ "model": "test", "input": [{"type":"function_call_output","namespace":"agent","call_id":"","output":"` + strings.Repeat("long shared history ", 7000) + `"}], "big":9007199254740993 }`)
+	body := []byte(`{ "model": "test", "input": [{"type":"function_call_output","namespace":"agent","call_id":"","output":"` + strings.Repeat(`long shared history \u0000 \ud800 `, 7000) + `"}], "big":9007199254740993 }`)
 	req, err := svc.CreateRequest(ctx, &llm.Request{Model: "test"}, &httpclient.Request{JSONBody: body}, llm.APIFormatOpenAIResponse)
 	require.NoError(t, err)
 	require.True(t, req.RequestBodyChunked)

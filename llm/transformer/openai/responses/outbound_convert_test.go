@@ -181,7 +181,7 @@ func TestConvertToolMessage(t *testing.T) {
 			},
 		},
 		{
-			name: "tool message with image and unsupported parts keeps the image",
+			name: "tool message with image and audio preserves both",
 			msg: llm.Message{
 				Role:       "tool",
 				ToolCallID: lo.ToPtr("call_no_text"),
@@ -213,6 +213,7 @@ func TestConvertToolMessage(t *testing.T) {
 							ImageURL: lo.ToPtr("https://example.com/image.jpg"),
 							Detail:   lo.ToPtr("auto"),
 						},
+						{Type: "input_audio", AudioURL: lo.ToPtr("data:audio/wav;base64,audio-data")},
 					},
 				},
 			},
@@ -322,13 +323,7 @@ func TestConvertToolMessage(t *testing.T) {
 			},
 		},
 		{
-			// Known gap, unchanged by this fix: part kinds the current AxonHub
-			// Responses Item model cannot express in a tool result are still dropped
-			// silently, and an all-dropped result is still indistinguishable from a
-			// genuinely empty one. Surfacing that needs structured logging (no logger
-			// reaches this pure converter), so it is left for a separate change rather
-			// than papered over with synthetic output text.
-			name: "tool message with only unsupported parts still degrades to empty string",
+			name: "audio-only tool result is preserved as input_audio",
 			msg: llm.Message{
 				Role:       "tool",
 				ToolCallID: lo.ToPtr("call_audio_only"),
@@ -348,7 +343,7 @@ func TestConvertToolMessage(t *testing.T) {
 				Type:   "function_call_output",
 				CallID: "call_audio_only",
 				Output: &Input{
-					Text: lo.ToPtr(""),
+					Items: []Item{{Type: "input_audio", AudioURL: lo.ToPtr("data:audio/wav;base64,audio-data")}},
 				},
 			},
 		},

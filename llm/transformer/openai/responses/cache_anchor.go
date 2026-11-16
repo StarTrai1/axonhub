@@ -75,6 +75,8 @@ func conversationAnchor(messages []llm.Message) string {
 			case part.InputAudio != nil:
 				writeUnit(part.InputAudio.Format)
 				writeUnit(part.InputAudio.Data)
+				if part.InputAudio.URL != "" { writeUnit(part.InputAudio.URL) }
+				if part.InputAudio.FileID != "" { writeUnit(part.InputAudio.FileID) }
 			case part.Compact != nil:
 				writeUnit(part.Compact.ID)
 				writeUnit(part.Compact.EncryptedContent)

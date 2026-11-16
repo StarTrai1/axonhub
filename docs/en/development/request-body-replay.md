@@ -2,6 +2,8 @@
 
 [中文](../../zh/development/request-body-replay.md)
 
+This fork preserves NUL and surrogate escapes on both storage paths: chunked bodies retain their bytes; inline JSONB uses a reversible envelope. Measurements below are upstream historical results, not fresh benchmarks of this fork.
+
 ## Method
 
 `TestRequestBodyPayloadReplayFile` replays ordered request/execution JSON pairs through `CreateRequest` and `CreateRequestExecution`. It reports per-turn byte reuse, new unique chunk payload, manifests, references, changed input items, and committed pair latency. Setup, reading the fixture, metric calculations, and roundtrip verification are outside the timer. Both commits and all chunking/hashing work are inside it. No upstream API is called.

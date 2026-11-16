@@ -886,7 +886,7 @@ func convertContentItemToPart(item *Item) (*llm.MessageContentPart, error) {
 		}
 		return &llm.MessageContentPart{
 			ID: item.ID, Type: "input_audio",
-			InputAudio: &llm.InputAudio{URL: lo.FromPtr(item.AudioURL), FileID: lo.FromPtr(item.FileID)},
+			InputAudio:            &llm.InputAudio{URL: lo.FromPtr(item.AudioURL), FileID: lo.FromPtr(item.FileID)},
 			PromptCacheBreakpoint: item.PromptCacheBreakpoint,
 		}, nil
 

@@ -545,7 +545,10 @@ func TestUsage_RoundTrip(t *testing.T) {
 }
 
 func TestMistralCachedTokensCompatibility(t *testing.T) {
-	for _, tc := range []struct { body string; cached int64 }{
+	for _, tc := range []struct {
+		body   string
+		cached int64
+	}{
 		{`{"num_cached_tokens":17}`, 17},
 		{`{"num_cached_tokens":17,"prompt_tokens_details":{"cached_tokens":9,"audio_tokens":2}}`, 9},
 		{`{"num_cached_tokens":17,"cached_tokens":8}`, 8},
@@ -558,7 +561,9 @@ func TestMistralCachedTokensCompatibility(t *testing.T) {
 		if tc.cached > 0 {
 			require.NotNil(t, usage.PromptTokensDetails)
 			require.Equal(t, tc.cached, usage.PromptTokensDetails.CachedTokens)
-		} else { require.Nil(t, usage.PromptTokensDetails) }
+		} else {
+			require.Nil(t, usage.PromptTokensDetails)
+		}
 		require.Equal(t, int64(40), usage.PromptTokens)
 		require.Equal(t, int64(42), usage.TotalTokens)
 		normalized, err := json.Marshal(UsageFromLLM(usage))
