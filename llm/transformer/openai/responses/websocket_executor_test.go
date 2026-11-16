@@ -339,7 +339,7 @@ func TestWebSocketExecutorDoReturnsErrorForTopLevelErrorEvent(t *testing.T) {
 	var httpErr *httpclient.Error
 	require.ErrorAs(t, err, &httpErr)
 	require.Equal(t, http.StatusBadRequest, httpErr.StatusCode)
-	require.True(t, httpclient.IsHTTPStatusCodeRetryable(httpErr.StatusCode))
+	require.False(t, httpclient.IsHTTPStatusCodeRetryable(httpErr.StatusCode))
 	require.JSONEq(t, `{
 		"error":{
 			"type":"bad_request",

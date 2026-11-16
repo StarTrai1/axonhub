@@ -1569,7 +1569,7 @@ func (s *RequestService) prepareResponseChunks(ctx context.Context, dataStorage 
 	}
 	if s.shouldUseExternalStorage(ctx, dataStorage) {
 		// External storage keeps the exact marshaled bytes; only the jsonb column
-		// needs the escape repair below.
+		// needs the reversible envelope prepared above.
 		payload, err := json.Marshal(chunkBytes)
 		if err != nil {
 			return nil, "", fmt.Errorf("failed to marshal all chunks: %w", err)
@@ -1578,9 +1578,6 @@ func (s *RequestService) prepareResponseChunks(ctx context.Context, dataStorage 
 			return nil, "", fmt.Errorf("failed to save chunks to external storage: %w", err)
 		}
 		return ExternalResponseChunksMarker, key, nil
-	}
-	for i, b := range chunkBytes {
-		chunkBytes[i] = b
 	}
 	return chunkBytes, "", nil
 }

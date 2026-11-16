@@ -4,6 +4,7 @@ import { useForm, type Control } from 'react-hook-form';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import '@/index.css';
 import i18n from '@/lib/i18n';
+import { QuotaBadges } from '@/components/quota-badges';
 import { ClaudeResetCredits } from '@/components/claude-reset-credits';
 import { MetricColorDialog } from '@/features/requests/components/metric-color-dialog';
 import { Form } from '@/components/ui/form';
@@ -154,13 +155,27 @@ function QuotaResetFixture() {
     <MetricColorDialog open={colors} onOpenChange={setColors} />
   </main>;
 }
-if (fixtureCase === 'quota-reset') {
+if (fixtureCase === 'quota-keys') {
+  queryClient.setQueryData(['provider-quotas'], { queryChannels: { edges: [{ node: {
+    id: 'offline-keys', name: '多密钥渠道', type: 'codex', orderingWeight: 0, disabledAPIKeys: null,
+    providerQuotaStatus: { status: 'available', ready: true, providerType: 'codex', quotaData: {
+      _api_key_quotas: [1, 2].map((index) => ({
+        ref: `fixture-${index}`, index, suffix: `000${index}`, disabled: false, quotaDisabled: false,
+        status: 'available', ready: true, quotaData: { _limits: ['5h', '7d'].map((window) => ({
+          type: 'token', window, status: 'available', ready: true, usageRatio: index === 1 ? 0.92 : 0.25,
+          nextResetAt: '2099-11-19T09:00:00Z',
+        })) },
+      })),
+    } },
+  } }] } });
+}
+if (fixtureCase === 'quota-reset' || fixtureCase === 'quota-keys') {
   document.documentElement.classList.add('claude');
   void i18n.changeLanguage(new URLSearchParams(window.location.search).get('lang') || 'en');
   document.documentElement.classList.toggle('dark', new URLSearchParams(window.location.search).get('theme') === 'dark');
 }
 const gifResponse = { output_format: 'gif', data: [{ b64_json: 'R0lGODlhAQABAIAAAAAAAP///yH5BAAKAAAALAAAAAABAAEAAAIBRAAh+QQACgAAACwAAAAAAQABAAACAkwAOw==', mime_type: 'image/png' }] };
-const fixture = fixtureCase === 'quota-reset' ? <QuotaResetFixture /> : fixtureCase === 'gif' ? <section data-testid='gif-response'><JsonViewer data={gifResponse} expandDepth='all' /></section> : fixtureCase === 'server-select' ? <ServerSelectFixture /> : fixtureCase === 'rendering' ? <RenderingFixture /> : fixtureCase === 'composition' ? <CompositionFixture /> : fixtureCase === 'uploads' ? <UploadFixture /> : fixtureCase === 'playground' ? <PlaygroundFixture /> : <PriceFixture />;
+const fixture = fixtureCase === 'quota-keys' ? <main className='bg-background text-foreground min-h-screen p-4'><section data-testid='quota-keys'><QuotaBadges isRefreshing={false} onRefresh={() => {}} /></section></main> : fixtureCase === 'quota-reset' ? <QuotaResetFixture /> : fixtureCase === 'gif' ? <section data-testid='gif-response'><JsonViewer data={gifResponse} expandDepth='all' /></section> : fixtureCase === 'server-select' ? <ServerSelectFixture /> : fixtureCase === 'rendering' ? <RenderingFixture /> : fixtureCase === 'composition' ? <CompositionFixture /> : fixtureCase === 'uploads' ? <UploadFixture /> : fixtureCase === 'playground' ? <PlaygroundFixture /> : <PriceFixture />;
 createRoot(document.getElementById('root')!).render(
   <StrictMode><QueryClientProvider client={queryClient}>{fixture}</QueryClientProvider></StrictMode>
 );

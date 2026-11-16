@@ -59,7 +59,9 @@ func TestTokenProvider_RefreshRejection(t *testing.T) {
 				}
 			}
 			outcome := p.runAutoRefreshOnce(context.Background(), time.Minute)
-			if tt.permanent {
+			// Automatic refresh also stops for a provider-declared invalid grant
+			// on 403; the stricter foreground fingerprint rule stays unchanged.
+			if tt.permanent || tt.status == http.StatusForbidden {
 				require.Equal(t, autoRefreshPermanentFailure, outcome)
 			} else {
 				require.Equal(t, autoRefreshTransientFailure, outcome)

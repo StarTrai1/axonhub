@@ -26,3 +26,18 @@ for (const theme of ['light', 'dark']) {
     await page.screenshot({ animations: 'disabled', path: testInfo.outputPath(`codex-metric-colors-zh-${theme}.png`) });
   });
 }
+
+for (const theme of ['light', 'dark']) {
+  for (const width of [390, 1280]) {
+    test(`Per-key quota remains readable at ${width}px in ${theme}`, async ({ page }, testInfo) => {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto(`/tests/interactions/peer-regressions.html?case=quota-keys&lang=zh-CN&theme=${theme}`);
+      await page.getByTestId('quota-keys').getByRole('button').click();
+      await page.getByRole('button', { name: '显示各密钥额度 (2)' }).click();
+      await expect(page.getByText('密钥 #1 · ****0001', { exact: true })).toBeVisible();
+      await expect(page.getByText('密钥 #2 · ****0002', { exact: true })).toBeVisible();
+      await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+      await page.screenshot({ animations: 'disabled', path: testInfo.outputPath(`codex-key-quotas-${width}-${theme}.png`) });
+    });
+  }
+}

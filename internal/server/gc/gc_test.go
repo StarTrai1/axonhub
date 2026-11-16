@@ -133,7 +133,7 @@ func TestWorker_cleanupPayloadsKeepsMetricsAndClearsBodies(t *testing.T) {
 		Save(ctx)
 	require.NoError(t, err)
 
-	worker := &Worker{Ent: client}
+	worker := &Worker{Ent: client, SystemService: biz.NewSystemService(biz.SystemServiceParams{Ent: client})}
 	require.NoError(t, worker.cleanupRequestPayloads(ctx, 1))
 
 	record, err = client.Request.Get(ctx, record.ID)
