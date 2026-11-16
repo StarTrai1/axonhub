@@ -274,6 +274,10 @@ func convertUserMessage(msg llm.Message) Item {
 						PromptCacheBreakpoint: p.PromptCacheBreakpoint,
 					})
 				}
+			case "input_audio":
+				if p.InputAudio != nil {
+					contentItems = append(contentItems, responsesAudioItem(p))
+				}
 			case "image_url":
 				if p.ImageURL != nil {
 					contentItems = append(contentItems, Item{
@@ -521,6 +525,10 @@ func convertToolMessageWithType(msg llm.Message, itemType string) Item {
 						Type: "input_text",
 						Text: p.Text,
 					})
+				}
+			case "input_audio":
+				if p.InputAudio != nil {
+					output.Items = append(output.Items, responsesAudioItem(p))
 				}
 			case "image_url":
 				// Tool results can carry images (Codex's view_image, MCP screenshot
@@ -1141,4 +1149,15 @@ func convertOutputToMessage(output []Item, transformerMetadata map[string]any) l
 	}
 
 	return msg
+}
+
+func responsesAudioItem(part llm.MessageContentPart) Item {
+	audio := part.InputAudio
+	url := audio.URL
+	if url == "" && audio.Data != "" {
+		mime := audio.MIMEType
+		if mime == "" { mime = "audio/" + audio.Format }
+		url = "data:" + mime + ";base64," + audio.Data
+	}
+	return Item{Type: "input_audio", AudioURL: lo.EmptyableToPtr(url), FileID: lo.EmptyableToPtr(audio.FileID), PromptCacheBreakpoint: part.PromptCacheBreakpoint}
 }

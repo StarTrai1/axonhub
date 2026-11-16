@@ -77,3 +77,14 @@ func TestStoredPayloadNul_Postgres(t *testing.T) {
 	require.Equal(t, 17, parsed.RequestID)
 	require.NoError(t, validateStoredRequestBodyReference(parsed, raw))
 }
+
+func TestStoredPayloadPreservesSurrogateEscapes(t *testing.T) {
+	for _, raw := range []string{`{"text":"\ud800"}`, `{"text":"\uDC00"}`, `{"text":"\ud83d\ude00"}`, `{"\ud800":"key"}`} {
+		stored, err := CompressStoredPayload([]byte(raw))
+		require.NoError(t, err)
+		require.NoError(t, jsonbStorable(stored))
+		restored, err := DecodeStoredPayload(stored)
+		require.NoError(t, err)
+		require.Equal(t, raw, string(restored))
+	}
+}

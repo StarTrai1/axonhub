@@ -443,7 +443,7 @@ func (s *TraceService) GetRootSegment(ctx context.Context, traceID int) (*Segmen
 		Where(request.TraceIDEQ(traceID), request.StatusEQ(request.StatusCompleted)).
 		Select(request.FieldID, request.FieldProjectID, request.FieldDataStorageID, request.FieldStatus,
 			request.FieldModelID, request.FieldFormat, request.FieldCreatedAt, request.FieldUpdatedAt,
-			request.FieldRequestBody, request.FieldResponseBody).
+			request.FieldRequestBodyChunked, request.FieldRequestBody, request.FieldResponseBody).
 		Order(ent.Asc(request.FieldCreatedAt)).
 		All(ctx)
 	if err != nil {
@@ -575,7 +575,7 @@ func (s *TraceService) getPreviousTraceSpans(ctx context.Context, client *ent.Cl
 		).
 		Select(request.FieldID, request.FieldProjectID, request.FieldDataStorageID, request.FieldStatus,
 			request.FieldModelID, request.FieldFormat, request.FieldCreatedAt, request.FieldUpdatedAt,
-			request.FieldRequestBody, request.FieldResponseBody).
+			request.FieldRequestBodyChunked, request.FieldRequestBody, request.FieldResponseBody).
 		Order(ent.Desc(request.FieldCreatedAt)).
 		First(ctx)
 	if err != nil {

@@ -651,6 +651,9 @@ type FileContent struct {
 }
 
 type InputAudio struct {
+	// FileID is a provider-owned Responses audio reference, not portable audio bytes.
+	FileID string `json:"file_id,omitempty"`
+
 	// The format of the encoded audio data. Currently supports "wav" and "mp3".
 	//
 	// Any of "wav", "mp3".

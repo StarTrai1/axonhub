@@ -137,14 +137,14 @@ type QuotaLimitStatus struct {
 type QuotaData struct {
 	// Preserve authoritative provider status across partial window data.
 	statusAuthoritative bool
-	Status       string             `json:"status"` // available, warning, exhausted, unknown
-	ProviderType string             `json:"provider_type"`
-	RawData      map[string]any     `json:"raw_data"`
-	NextResetAt  *time.Time         `json:"next_reset_at"` // Next quota reset timestamp
-	Ready        bool               `json:"ready"`         // True if status is available or warning
-	Limits       []QuotaLimitStatus `json:"limits"`
-	Balances     []QuotaBalance     `json:"balances,omitempty"`
-	Resets       *ResetList         `json:"resets,omitempty"`
+	Status              string             `json:"status"` // available, warning, exhausted, unknown
+	ProviderType        string             `json:"provider_type"`
+	RawData             map[string]any     `json:"raw_data"`
+	NextResetAt         *time.Time         `json:"next_reset_at"` // Next quota reset timestamp
+	Ready               bool               `json:"ready"`         // True if status is available or warning
+	Limits              []QuotaLimitStatus `json:"limits"`
+	Balances            []QuotaBalance     `json:"balances,omitempty"`
+	Resets              *ResetList         `json:"resets,omitempty"`
 
 	// APIKeyQuotas is the per-credential view of a channel that draws from
 	// several independent quota accounts (one API key per account). It is an

@@ -188,7 +188,7 @@ test('NeuralWatt kWh bar shares the elapsed-window marker and label', () => {
 });
 
 test('channels table translates the daily free energy window', () => {
-  assert.match(read('features/channels/components/channels-columns.tsx'), /daily_free_energy:\s*'quota\.label\.daily_free_energy'/);
+  assert.match(read('components/quota-badges.tsx'), /daily_free_energy:\s*'quota\.label\.daily_free_energy'/);
 });
 
 // --- Mode-aware quota badges (quota routing) ---

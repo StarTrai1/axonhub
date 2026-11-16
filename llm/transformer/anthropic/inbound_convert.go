@@ -785,9 +785,6 @@ func convertToAnthropicResponse(chatResp *llm.Response) *Message {
 			case "tool_calls":
 				stopReason := "tool_use"
 				resp.StopReason = &stopReason
-			case "content_filter":
-				stopReason := "refusal"
-				resp.StopReason = &stopReason
 			case "stop_sequence", "pause_turn", "refusal":
 				// Already a valid Anthropic stop reason; pass through.
 				resp.StopReason = choice.FinishReason
@@ -876,10 +873,10 @@ func convertToolToLLM(tool Tool) (llm.Tool, bool) {
 func convertNativeWebSearchToolToLLM(tool Tool, version string) llm.Tool {
 	return llm.Tool{
 		AllowedCallers: append([]string(nil), tool.AllowedCallers...),
-		DeferLoading: tool.DeferLoading,
-		InputExamples: append([]json.RawMessage(nil), tool.InputExamples...),
-		Type:         llm.ToolTypeWebSearch,
-		CacheControl: convertToLLMCacheControl(tool.CacheControl),
+		DeferLoading:   tool.DeferLoading,
+		InputExamples:  append([]json.RawMessage(nil), tool.InputExamples...),
+		Type:           llm.ToolTypeWebSearch,
+		CacheControl:   convertToLLMCacheControl(tool.CacheControl),
 		WebSearch: &llm.WebSearch{
 			Version:        version,
 			MaxUses:        tool.MaxUses,

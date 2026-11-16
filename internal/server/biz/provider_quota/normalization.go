@@ -52,7 +52,7 @@ func normalizeQuotaDataAt(data QuotaData, now time.Time) QuotaData {
 // unless they share an AvailabilityGroup with a routable limit — hence the
 // group guard below.
 var displayOnlyLimitTypes = map[QuotaLimitType]struct{}{
-	QuotaLimitTypeSearch: {},
+	QuotaLimitTypeSearch:     {},
 	QuotaLimitTypeFreeEnergy: {},
 }
 

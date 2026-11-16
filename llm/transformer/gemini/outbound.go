@@ -115,6 +115,9 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 
 	for _, message := range llmReq.Messages {
 		for _, part := range message.Content.MultipleContent {
+			if part.InputAudio != nil && part.InputAudio.FileID != "" {
+				return nil, fmt.Errorf("%w: Gemini cannot represent a Responses audio file_id", transformer.ErrInvalidRequest)
+			}
 			if message.Role == "tool" && part.Type != "text" && geminiToolMediaPart(part) == nil {
 				return nil, fmt.Errorf("%w: Gemini cannot represent tool result content of type %q without a portable payload", transformer.ErrInvalidRequest, part.Type)
 			}

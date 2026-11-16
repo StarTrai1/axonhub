@@ -98,17 +98,11 @@ func (w *Worker) clearRequestRecordPayloads(ctx context.Context, cutoff time.Tim
 		}
 		lastID = ids[len(ids)-1]
 
-		updated, err := w.Ent.Request.Update().
-			Where(request.IDIn(ids...)).
-			ClearRequestHeaders().
-			Modify(func(builder *entsql.UpdateBuilder) {
-				builder.Set(request.FieldRequestBody, "{}")
-			}).
-			Save(ctx)
+		err = w.clearRequestPayloadColumns(ctx, bodyPayloadRequest, ids)
 		if err != nil {
 			return totalUpdated, fmt.Errorf("failed to clear request payload batch: %w", err)
 		}
-		totalUpdated += updated
+		totalUpdated += len(ids)
 	}
 
 	return totalUpdated, nil
@@ -166,17 +160,11 @@ func (w *Worker) clearExecutionRequestPayloads(ctx context.Context, cutoff time.
 		}
 		lastID = ids[len(ids)-1]
 
-		updated, err := w.Ent.RequestExecution.Update().
-			Where(requestexecution.IDIn(ids...)).
-			ClearRequestHeaders().
-			Modify(func(builder *entsql.UpdateBuilder) {
-				builder.Set(requestexecution.FieldRequestBody, "{}")
-			}).
-			Save(ctx)
+		err = w.clearExecutionPayloadColumns(ctx, bodyPayloadRequest, ids)
 		if err != nil {
 			return totalUpdated, fmt.Errorf("failed to clear execution request payload batch: %w", err)
 		}
-		totalUpdated += updated
+		totalUpdated += len(ids)
 	}
 
 	return totalUpdated, nil

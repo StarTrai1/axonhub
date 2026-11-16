@@ -291,7 +291,7 @@ func FilterGoogleNativeTools(tools []Tool) []Tool {
 
 type WebSearch struct {
 	// AnthropicType preserves the native search version on Messages round trips.
-	AnthropicType  string                    `json:"anthropic_type,omitempty"`
+	AnthropicType string `json:"anthropic_type,omitempty"`
 	// Version is the provider-native web search tool version, for example
 	// Anthropic's "web_search_20260209". Transformers that understand the
 	// version preserve it; other providers must drop it instead of forwarding.

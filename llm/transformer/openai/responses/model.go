@@ -567,6 +567,7 @@ type Item struct {
 	Status *string `json:"status,omitempty"`
 
 	// The URL of the image url or base64 encoded image, for input_image type.
+	AudioURL   *string `json:"audio_url,omitempty"`
 	ImageURL   *string `json:"image_url,omitempty"`
 	VideoURL   *string `json:"video_url,omitempty"`
 	Processing string  `json:"processing,omitempty"`

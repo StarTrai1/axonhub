@@ -543,3 +543,28 @@ func TestUsage_RoundTrip(t *testing.T) {
 		})
 	}
 }
+
+func TestMistralCachedTokensCompatibility(t *testing.T) {
+	for _, tc := range []struct { body string; cached int64 }{
+		{`{"num_cached_tokens":17}`, 17},
+		{`{"num_cached_tokens":17,"prompt_tokens_details":{"cached_tokens":9,"audio_tokens":2}}`, 9},
+		{`{"num_cached_tokens":17,"cached_tokens":8}`, 8},
+		{`{"num_cached_tokens":-1}`, 0},
+	} {
+		var wire Usage
+		require.NoError(t, json.Unmarshal([]byte(tc.body), &wire))
+		wire.PromptTokens, wire.CompletionTokens, wire.TotalTokens = 40, 2, 42
+		usage := wire.ToLLMUsage()
+		if tc.cached > 0 {
+			require.NotNil(t, usage.PromptTokensDetails)
+			require.Equal(t, tc.cached, usage.PromptTokensDetails.CachedTokens)
+		} else { require.Nil(t, usage.PromptTokensDetails) }
+		require.Equal(t, int64(40), usage.PromptTokens)
+		require.Equal(t, int64(42), usage.TotalTokens)
+		normalized, err := json.Marshal(UsageFromLLM(usage))
+		require.NoError(t, err)
+		var fields map[string]json.RawMessage
+		require.NoError(t, json.Unmarshal(normalized, &fields))
+		require.NotContains(t, fields, "num_cached_tokens")
+	}
+}

@@ -26,9 +26,9 @@ func (s *RequestService) FindUnifiedViewCandidates(ctx context.Context, channelI
 		requestexecution.HasRequestWith(request.APIKeyIDEQ(owner.ID), request.ProjectIDEQ(project), request.StatusEQ(request.StatusCompleted),
 			request.FormatIn(llm.APIFormatOpenAIResponse.String(), llm.APIFormatOpenAIResponseWebSocket.String())),
 	).Select(requestexecution.FieldID, requestexecution.FieldProjectID, requestexecution.FieldRequestID,
-		requestexecution.FieldDataStorageID, requestexecution.FieldRequestBody, requestexecution.FieldRequestHeaders,
+		requestexecution.FieldDataStorageID, requestexecution.FieldRequestBodyChunked, requestexecution.FieldRequestBody, requestexecution.FieldRequestHeaders,
 		requestexecution.FieldRequestURL, requestexecution.FieldChannelAPIKeySuffix).
 		WithRequest(func(q *ent.RequestQuery) {
-			q.Select(request.FieldID, request.FieldProjectID, request.FieldDataStorageID, request.FieldRequestBody, request.FieldRequestHeaders)
+			q.Select(request.FieldID, request.FieldProjectID, request.FieldDataStorageID, request.FieldRequestBodyChunked, request.FieldRequestBody, request.FieldRequestHeaders)
 		}).Order(ent.Desc(requestexecution.FieldID)).Limit(128).All(ctx)
 }

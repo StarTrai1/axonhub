@@ -15,9 +15,9 @@ import (
 	"sync"
 	"time"
 
+	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqljson"
-	"entgo.io/ent/dialect"
 	"github.com/eko/gocache/lib/v4/store"
 	"github.com/samber/lo"
 	"github.com/tidwall/gjson"
@@ -1870,7 +1870,7 @@ func (s *RequestService) loadCompletedResponsesSession(
 	query = query.Where(request.ProjectIDEQ(projectID))
 
 	req, err := query.Select(request.FieldID, request.FieldProjectID, request.FieldDataStorageID,
-		request.FieldStatus, request.FieldRequestBody, request.FieldResponseBody, request.FieldRequestHeaders).
+		request.FieldStatus, request.FieldRequestBodyChunked, request.FieldRequestBody, request.FieldResponseBody, request.FieldRequestHeaders).
 		Order(ent.Desc(request.FieldCreatedAt)).First(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
@@ -1897,7 +1897,7 @@ func (s *RequestService) loadCompletedResponsesSession(
 		requestexecution.FormatIn(executionFormats...),
 	).Select(requestexecution.FieldID, requestexecution.FieldRequestID, requestexecution.FieldProjectID,
 		requestexecution.FieldDataStorageID, requestexecution.FieldStatus,
-		requestexecution.FieldRequestBody, requestexecution.FieldResponseBody).
+		requestexecution.FieldRequestBodyChunked, requestexecution.FieldRequestBody, requestexecution.FieldResponseBody).
 		Order(ent.Desc(requestexecution.FieldID)).First(ctx)
 	if executionErr != nil && !ent.IsNotFound(executionErr) {
 		return nil, nil, false, fmt.Errorf("failed to find Responses execution snapshot: %w", executionErr)
@@ -2048,7 +2048,7 @@ func (s *RequestService) LoadRequestExecutionRequestBody(ctx context.Context, ex
 			// Referenced bodies do not need the parent's response or stream chunks,
 			// which can be much larger than the request itself.
 			parent, err := s.entFromContext(ctx).Request.Query().Where(request.IDEQ(exec.RequestID)).
-				Select(request.FieldID, request.FieldProjectID, request.FieldDataStorageID, request.FieldRequestBody).Only(ctx)
+				Select(request.FieldID, request.FieldProjectID, request.FieldDataStorageID, request.FieldRequestBodyChunked, request.FieldRequestBody).Only(ctx)
 			if err != nil {
 				return nil, fmt.Errorf("load referenced request %d: %w", exec.RequestID, err)
 			}

@@ -159,7 +159,7 @@ func responsesHistorySupportsRecoveryWithAgents(body []byte, preserveCompaction,
 				switch part.Get("type").String() {
 				case "encrypted_content", "item_reference":
 					return false, false
-				case "input_file":
+				case "input_file", "input_image", "input_audio":
 					if part.Get("file_id").String() != "" {
 						return false, false
 					}

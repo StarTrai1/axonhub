@@ -197,7 +197,9 @@ func newWebSocketErrorEvent(raw []byte) *httpclient.Error {
 		}
 		return &httpclient.Error{
 			StatusCode: result.StatusCode, Status: http.StatusText(result.StatusCode),
-			Body: xjson.MustMarshal(struct { Error llm.ErrorDetail `json:"error"` }{Error: result.Detail}),
+			Body: xjson.MustMarshal(struct {
+				Error llm.ErrorDetail `json:"error"`
+			}{Error: result.Detail}),
 			Headers: responseErrorHeaders(event.Headers),
 		}
 	}

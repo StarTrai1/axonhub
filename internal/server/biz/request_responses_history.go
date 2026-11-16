@@ -74,7 +74,7 @@ func (s *RequestService) FindResponsesHistoryEvidence(ctx context.Context, scope
 func (s *RequestService) LoadResponsesHistoryEvidenceBody(ctx context.Context, execution *ent.RequestExecution) (objects.JSONRawMessage, error) {
 	stored, err := s.entFromContext(ctx).RequestExecution.Query().
 		Where(requestexecution.IDEQ(execution.ID), requestexecution.RequestIDEQ(execution.RequestID), requestexecution.ProjectIDEQ(execution.ProjectID)).
-		Select(requestexecution.FieldID, requestexecution.FieldRequestID, requestexecution.FieldProjectID, requestexecution.FieldDataStorageID, requestexecution.FieldRequestBody).
+		Select(requestexecution.FieldID, requestexecution.FieldRequestID, requestexecution.FieldProjectID, requestexecution.FieldDataStorageID, requestexecution.FieldRequestBodyChunked, requestexecution.FieldRequestBody).
 		Only(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("load Responses history evidence: %w", err)

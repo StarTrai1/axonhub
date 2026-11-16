@@ -880,6 +880,16 @@ func convertContentItemToPart(item *Item) (*llm.MessageContentPart, error) {
 
 		return nil, nil
 
+	case "input_audio":
+		if item.AudioURL == nil && item.FileID == nil {
+			return nil, nil
+		}
+		return &llm.MessageContentPart{
+			ID: item.ID, Type: "input_audio",
+			InputAudio: &llm.InputAudio{URL: lo.FromPtr(item.AudioURL), FileID: lo.FromPtr(item.FileID)},
+			PromptCacheBreakpoint: item.PromptCacheBreakpoint,
+		}, nil
+
 	case "input_image":
 		if item.ImageURL != nil || item.FileID != nil {
 			return &llm.MessageContentPart{

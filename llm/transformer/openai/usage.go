@@ -91,6 +91,8 @@ type Usage struct {
 
 	// CachedTokens is the number of tokens that were cached for Moonshot.
 	CachedTokens int64 `json:"cached_tokens,omitempty"`
+	// Mistral legacy cache-read count; already included in prompt_tokens.
+	NumCachedTokens int64 `json:"num_cached_tokens,omitempty"`
 
 	// Cost is the request cost calculated by AxonHub from channel model prices.
 	// Omitted when no matching price is configured.
@@ -166,6 +168,13 @@ func (u *Usage) ToLLMUsage() *llm.Usage {
 		}
 
 		usage.PromptTokensDetails.CachedTokens = u.CachedTokens
+	}
+
+	if (usage.PromptTokensDetails == nil || usage.PromptTokensDetails.CachedTokens == 0) && u.NumCachedTokens > 0 {
+		if usage.PromptTokensDetails == nil {
+			usage.PromptTokensDetails = &llm.PromptTokensDetails{}
+		}
+		usage.PromptTokensDetails.CachedTokens = u.NumCachedTokens
 	}
 
 	return usage
