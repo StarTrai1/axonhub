@@ -1,460 +1,221 @@
+// 职责: 验证请求正文共享块的清理、保留保护和事务边界。
+// 关联文件:
+//
+//	internal/server/gc/gc.go
+//	internal/server/gc/gc_bodies.go
+//	internal/server/biz/request_body_chunks.go
+//
+// 注意事项: 与生产一样不创建外键，回收不能依赖数据库级联删除。
 package gc
 
 import (
 	"context"
-	"io/fs"
-	"os"
-	"path/filepath"
+	"errors"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/zhenzou/executors"
 
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
-	"github.com/looplj/axonhub/internal/ent/channelprobe"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/enttest"
+	"github.com/looplj/axonhub/internal/ent/migrate"
 	"github.com/looplj/axonhub/internal/ent/request"
+	"github.com/looplj/axonhub/internal/ent/requestbodychunkref"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
+	"github.com/looplj/axonhub/internal/ent/schema/schematype"
+	"github.com/looplj/axonhub/internal/ent/trace"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
-func TestWorker_getBatchSize(t *testing.T) {
-	worker := &Worker{
-		Ent:    nil,
-		Config: Config{CRON: "0 0 * * *"},
-	}
+func TestCleanupRequestBodies_ChunkReferencesAreIndependent(t *testing.T) {
+	worker, ctx, client, proj := setupChunkBodyCleanupWorker(t)
+	body := chunkGCBody("shared-history")
+	oldAt := time.Now().AddDate(0, 0, -10)
+	oldReq := createChunkGCRequest(t, worker, ctx, proj.ID, 0, oldAt, body)
+	oldExec := createChunkGCExecution(t, worker, ctx, oldReq, oldAt, body)
+	recentReq := createChunkGCRequest(t, worker, ctx, proj.ID, 0, time.Now(), body)
+	before := client.RequestBodyChunk.Query().CountX(ctx)
+	require.Positive(t, before)
 
-	// Test default batch size
-	batchSize := worker.getBatchSize()
-	if batchSize != defaultBatchSize {
-		t.Errorf("Expected batch size %d, got %d", defaultBatchSize, batchSize)
-	}
+	require.NoError(t, worker.cleanupRequestBodies(ctx, 7))
+	require.NoError(t, worker.cleanupRequestBodyChunks(ctx))
+	oldReq = client.Request.GetX(ctx, oldReq.ID)
+	oldExec = client.RequestExecution.GetX(ctx, oldExec.ID)
+	require.False(t, oldReq.RequestBodyChunked)
+	require.False(t, oldExec.RequestBodyChunked)
+	require.JSONEq(t, `{}`, string(oldReq.RequestBody))
+	require.JSONEq(t, `{}`, string(oldExec.RequestBody))
+	require.Equal(t, before, client.RequestBodyChunk.Query().CountX(ctx))
+	loaded, err := newBodyTestRequestService(worker).LoadRequestBody(ctx, client.Request.GetX(ctx, recentReq.ID))
+	require.NoError(t, err)
+	require.Equal(t, []byte(body), []byte(loaded))
 
-	// Test with overridden batch size
-	originalBatchSize := defaultBatchSize
-	defaultBatchSize = 20
+	require.NoError(t, worker.clearRequestPayloadColumns(ctx, bodyPayloadRequest, []int{recentReq.ID}))
+	require.NoError(t, worker.cleanupRequestBodyChunks(ctx))
+	require.Zero(t, client.RequestBodyChunkRef.Query().CountX(ctx))
+	require.Zero(t, client.RequestBodyChunk.Query().CountX(ctx))
+}
 
-	defer func() { defaultBatchSize = originalBatchSize }()
+func TestCleanupRequests_CollectsOrphanChunkRefsWithoutForeignKeys(t *testing.T) {
+	worker, ctx, client, proj := setupChunkBodyCleanupWorker(t)
+	oldAt := time.Now().AddDate(0, 0, -10)
+	oldBody := chunkGCBody("shared-history")
+	oldReq := createChunkGCRequest(t, worker, ctx, proj.ID, 0, oldAt, oldBody)
+	oldExec := createChunkGCExecution(t, worker, ctx, oldReq, oldAt, oldBody)
+	recentBody := oldBody
+	recentReq := createChunkGCRequest(t, worker, ctx, proj.ID, 0, time.Now(), recentBody)
+	before := client.RequestBodyChunk.Query().CountX(ctx)
 
-	batchSize = worker.getBatchSize()
-	if batchSize != 20 {
-		t.Errorf("Expected batch size 20, got %d", batchSize)
+	require.NoError(t, worker.cleanupRequests(ctx, 7, false))
+	_, err := client.Request.Get(ctx, oldReq.ID)
+	require.True(t, ent.IsNotFound(err))
+	_, err = client.RequestExecution.Get(ctx, oldExec.ID)
+	require.True(t, ent.IsNotFound(err))
+	orphans := requestbodychunkref.Or(requestbodychunkref.RequestIDEQ(oldReq.ID), requestbodychunkref.ExecutionIDEQ(oldExec.ID))
+	require.Positive(t, client.RequestBodyChunkRef.Query().Where(orphans).CountX(ctx), "owner deletion has no FK cascade")
+	require.NoError(t, worker.cleanupRequestBodyChunks(ctx))
+	require.Zero(t, client.RequestBodyChunkRef.Query().Where(orphans).CountX(ctx))
+	require.Equal(t, before, client.RequestBodyChunk.Query().CountX(ctx), "the remaining request still references every block")
+	loaded, err := newBodyTestRequestService(worker).LoadRequestBody(ctx, client.Request.GetX(ctx, recentReq.ID))
+	require.NoError(t, err)
+	require.Equal(t, []byte(recentBody), []byte(loaded))
+
+	require.NoError(t, client.Request.DeleteOneID(recentReq.ID).Exec(ctx))
+	require.Positive(t, client.RequestBodyChunkRef.Query().CountX(ctx))
+	require.NoError(t, worker.cleanupRequestBodyChunks(ctx))
+	require.Zero(t, client.RequestBodyChunkRef.Query().CountX(ctx))
+	require.Zero(t, client.RequestBodyChunk.Query().CountX(ctx))
+}
+
+func TestCleanupBodyChunks_RetainedTraceProtectsReferences(t *testing.T) {
+	worker, ctx, client, proj := setupChunkBodyCleanupWorker(t)
+	tr := client.Trace.Create().SetProjectID(proj.ID).SetTraceID("chunk-retention").SetStatus(trace.StatusRetained).SaveX(ctx)
+	body := chunkGCBody("retained")
+	oldAt := time.Now().AddDate(0, 0, -10)
+	req := createChunkGCRequest(t, worker, ctx, proj.ID, tr.ID, oldAt, body)
+	exec := createChunkGCExecution(t, worker, ctx, req, oldAt, body)
+	refs := client.RequestBodyChunkRef.Query().CountX(ctx)
+
+	require.NoError(t, worker.cleanupRequestBodies(ctx, 7))
+	require.NoError(t, worker.cleanupRequests(ctx, 7, false))
+	// The final clear operation must also honor current retention.
+	require.NoError(t, worker.clearRequestPayloadColumns(ctx, bodyPayloadRequest, []int{req.ID}))
+	require.NoError(t, worker.clearExecutionPayloadColumns(ctx, bodyPayloadRequest, []int{exec.ID}))
+	require.NoError(t, worker.cleanupRequestBodyChunks(ctx))
+	require.Equal(t, refs, client.RequestBodyChunkRef.Query().CountX(ctx))
+	require.True(t, client.Request.GetX(ctx, req.ID).RequestBodyChunked)
+	require.True(t, client.RequestExecution.GetX(ctx, exec.ID).RequestBodyChunked)
+	loaded, err := newBodyTestRequestService(worker).LoadRequestBody(ctx, client.Request.GetX(ctx, req.ID))
+	require.NoError(t, err)
+	require.Equal(t, []byte(body), []byte(loaded))
+}
+
+func TestCleanupRequestBodies_ReferenceFailureRollsBackClear(t *testing.T) {
+	for _, owner := range []string{"request", "execution"} {
+		t.Run(owner, func(t *testing.T) {
+			worker, ctx, client, proj := setupChunkBodyCleanupWorker(t)
+			body := chunkGCBody("atomic-clear")
+			req := createChunkGCRequest(t, worker, ctx, proj.ID, 0, time.Now().AddDate(0, 0, -10), body)
+			exec := createChunkGCExecution(t, worker, ctx, req, req.CreatedAt, body)
+			refs := client.RequestBodyChunkRef.Query().CountX(ctx)
+			client.RequestBodyChunkRef.Use(func(next ent.Mutator) ent.Mutator {
+				return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+					if m.Op().Is(ent.OpDelete | ent.OpDeleteOne) {
+						return nil, errors.New("reference delete failed")
+					}
+					return next.Mutate(ctx, m)
+				})
+			})
+
+			var err error
+			if owner == "request" {
+				err = worker.clearRequestPayloadColumns(ctx, bodyPayloadRequest, []int{req.ID})
+			} else {
+				err = worker.clearExecutionPayloadColumns(ctx, bodyPayloadRequest, []int{exec.ID})
+			}
+			require.ErrorContains(t, err, "reference delete failed")
+			req = client.Request.GetX(ctx, req.ID)
+			exec = client.RequestExecution.GetX(ctx, exec.ID)
+			require.True(t, req.RequestBodyChunked)
+			require.True(t, exec.RequestBodyChunked)
+			require.Equal(t, refs, client.RequestBodyChunkRef.Query().CountX(ctx))
+			loaded, err := newBodyTestRequestService(worker).LoadRequestBody(ctx, req)
+			require.NoError(t, err)
+			require.Equal(t, []byte(body), []byte(loaded))
+			loaded, err = newBodyTestRequestService(worker).LoadRequestExecutionRequestBody(ctx, exec)
+			require.NoError(t, err)
+			require.Equal(t, []byte(body), []byte(loaded))
+		})
 	}
 }
 
-func TestValidateManualCleanupInputRequiresSensitiveConfirmation(t *testing.T) {
-	input := ManualCleanupInput{
-		Resources: []CleanupSelection{{
-			ResourceType:  ResourceRequestPayloads,
-			RetentionDays: 0,
-		}},
-	}
-
-	_, sensitive, err := validateManualCleanupInput(input, true)
-	require.Error(t, err)
-	require.True(t, sensitive)
-
-	input.Confirmation = CleanupConfirmation
-	days, sensitive, err := validateManualCleanupInput(input, true)
-	require.NoError(t, err)
-	require.True(t, sensitive)
-	require.Equal(t, 0, days[ResourceRequestPayloads])
+func chunkGCBody(text string) objects.JSONRawMessage {
+	return objects.JSONRawMessage(`{"input":[{"type":"function_call_output","call_id":"call-1","output":"` + strings.Repeat(text, 6000) + `"}]}`)
 }
 
-func TestValidateManualCleanupInputAllowsProbeCleanupWithoutTypedConfirmation(t *testing.T) {
-	input := ManualCleanupInput{
-		Resources: []CleanupSelection{{
-			ResourceType:  ResourceChannelProbes,
-			RetentionDays: 3,
-		}},
-	}
-
-	days, sensitive, err := validateManualCleanupInput(input, true)
-	require.NoError(t, err)
-	require.False(t, sensitive)
-	require.Equal(t, 3, days[ResourceChannelProbes])
-}
-
-func TestValidateManualCleanupInputRejectsInvalidSelection(t *testing.T) {
-	_, _, err := validateManualCleanupInput(ManualCleanupInput{}, false)
-	require.Error(t, err)
-
-	_, _, err = validateManualCleanupInput(ManualCleanupInput{
-		Resources: []CleanupSelection{{ResourceType: "unknown", RetentionDays: 1}},
-	}, false)
-	require.Error(t, err)
-
-	_, _, err = validateManualCleanupInput(ManualCleanupInput{
-		Resources: []CleanupSelection{
-			{ResourceType: ResourceUsageLogs, RetentionDays: 1},
-			{ResourceType: ResourceUsageLogs, RetentionDays: 2},
-		},
-	}, false)
-	require.Error(t, err)
-}
-
-func TestWorker_cleanupPayloadsKeepsMetricsAndClearsBodies(t *testing.T) {
-	client := enttest.NewEntClient(t, "sqlite3", "file:payload-cleanup?mode=memory&_fk=1")
-	t.Cleanup(func() { client.Close() })
-
-	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
-	project, err := client.Project.Create().SetName("payload-cleanup").Save(ctx)
-	require.NoError(t, err)
-
-	createdAt := time.Now().Add(-48 * time.Hour)
-	record, err := client.Request.Create().
-		SetCreatedAt(createdAt).
-		SetProjectID(project.ID).
-		SetModelID("test-model").
-		SetStatus(request.StatusCompleted).
-		SetRequestHeaders(objects.JSONRawMessage(`{"authorization":"secret"}`)).
-		SetRequestBody(objects.JSONRawMessage(`{"input":"secret"}`)).
-		SetResponseBody(objects.JSONRawMessage(`{"output":"kept-until-response-cleanup"}`)).
-		SetMetricsLatencyMs(123).
-		Save(ctx)
-	require.NoError(t, err)
-
-	execution, err := client.RequestExecution.Create().
-		SetCreatedAt(createdAt).
-		SetProjectID(project.ID).
-		SetRequestID(record.ID).
-		SetModelID("test-model").
-		SetStatus(requestexecution.StatusCompleted).
-		SetRequestHeaders(objects.JSONRawMessage(`{"authorization":"upstream-secret"}`)).
-		SetRequestBody(objects.JSONRawMessage(`{"input":"upstream-secret"}`)).
-		SetResponseBody(objects.JSONRawMessage(`{"output":"upstream-response"}`)).
-		SetMetricsLatencyMs(100).
-		Save(ctx)
-	require.NoError(t, err)
-
-	worker := &Worker{Ent: client, SystemService: biz.NewSystemService(biz.SystemServiceParams{Ent: client})}
-	require.NoError(t, worker.cleanupRequestPayloads(ctx, 1))
-
-	record, err = client.Request.Get(ctx, record.ID)
-	require.NoError(t, err)
-	require.JSONEq(t, `{}`, string(record.RequestBody))
-	require.Empty(t, record.RequestHeaders)
-	require.JSONEq(t, `{"output":"kept-until-response-cleanup"}`, string(record.ResponseBody))
-	require.Equal(t, int64(123), *record.MetricsLatencyMs)
-
-	execution, err = client.RequestExecution.Get(ctx, execution.ID)
-	require.NoError(t, err)
-	require.JSONEq(t, `{}`, string(execution.RequestBody))
-	require.Empty(t, execution.RequestHeaders)
-	require.JSONEq(t, `{"output":"upstream-response"}`, string(execution.ResponseBody))
-	require.Equal(t, int64(100), *execution.MetricsLatencyMs)
-
-	require.NoError(t, worker.cleanupResponsePayloads(ctx, 1))
-	record, err = client.Request.Get(ctx, record.ID)
-	require.NoError(t, err)
-	require.Empty(t, record.ResponseBody)
-	execution, err = client.RequestExecution.Get(ctx, execution.ID)
-	require.NoError(t, err)
-	require.Empty(t, execution.ResponseBody)
-}
-
-func TestWorker_cleanupRequestExternalStorageDeletesFsArtifacts(t *testing.T) {
-	worker, ctx, dataStorage, baseDir := setupWorkerWithFSStorage(t)
-
-	req := &ent.Request{
-		ID:            101,
-		ProjectID:     202,
-		DataStorageID: dataStorage.ID,
-	}
-
-	fileKeys := []string{
-		biz.GenerateRequestBodyKey(req.ProjectID, req.ID),
-		biz.GenerateResponseBodyKey(req.ProjectID, req.ID),
-		biz.GenerateResponseChunksKey(req.ProjectID, req.ID),
-	}
-
-	dirKeys := []string{
-		biz.GenerateRequestExecutionsDirKey(req.ProjectID, req.ID),
-		biz.GenerateRequestDirKey(req.ProjectID, req.ID),
-	}
-
-	for _, key := range fileKeys {
-		createFileForKey(t, baseDir, key)
-	}
-
-	for _, key := range dirKeys {
-		createDirForKey(t, baseDir, key)
-	}
-
-	worker.cleanupRequestExternalStorage(ctx, req, make(map[int]*ent.DataStorage))
-
-	for _, key := range append(fileKeys, dirKeys...) {
-		assertRemoved(t, baseDir, key)
-	}
-}
-
-func TestWorker_cleanupExecutionExternalStorageDeletesFsArtifacts(t *testing.T) {
-	worker, ctx, dataStorage, baseDir := setupWorkerWithFSStorage(t)
-
-	req := &ent.Request{
-		ID:            303,
-		ProjectID:     404,
-		DataStorageID: dataStorage.ID,
-	}
-
-	exec := &ent.RequestExecution{
-		ID:            505,
-		RequestID:     req.ID,
-		ProjectID:     req.ProjectID,
-		DataStorageID: dataStorage.ID,
-	}
-
-	fileKeys := []string{
-		biz.GenerateExecutionRequestBodyKey(exec.ProjectID, exec.RequestID, exec.ID),
-		biz.GenerateExecutionResponseBodyKey(exec.ProjectID, exec.RequestID, exec.ID),
-		biz.GenerateExecutionResponseChunksKey(exec.ProjectID, exec.RequestID, exec.ID),
-	}
-
-	dirKeys := []string{
-		biz.GenerateExecutionRequestDirKey(exec.ProjectID, exec.RequestID, exec.ID),
-	}
-
-	for _, key := range fileKeys {
-		createFileForKey(t, baseDir, key)
-	}
-
-	for _, key := range dirKeys {
-		createDirForKey(t, baseDir, key)
-	}
-
-	worker.cleanupExecutionExternalStorage(ctx, exec, make(map[int]*ent.DataStorage))
-
-	for _, key := range append(fileKeys, dirKeys...) {
-		assertRemoved(t, baseDir, key)
-	}
-}
-
-func TestHasRealDirectories(t *testing.T) {
-	cases := []struct {
-		typ  datastorage.Type
-		want bool
-	}{
-		{datastorage.TypeFs, true},
-		{datastorage.TypeWebdav, true},
-		{datastorage.TypeS3, false},
-		{datastorage.TypeGcs, false},
-		{datastorage.TypeDatabase, false},
-	}
-
-	for _, c := range cases {
-		if got := hasRealDirectories(c.typ); got != c.want {
-			t.Errorf("hasRealDirectories(%s) = %v, want %v", c.typ, got, c.want)
-		}
-	}
-}
-
-func setupWorkerWithFSStorage(t *testing.T) (*Worker, context.Context, *ent.DataStorage, string) {
+func setupChunkBodyCleanupWorker(t *testing.T) (*Worker, context.Context, *ent.Client, *ent.Project) {
 	t.Helper()
-
-	cacheConfig := xcache.Config{
-		Mode: xcache.ModeMemory,
-		Memory: xcache.MemoryConfig{
-			Expiration:      5 * time.Minute,
-			CleanupInterval: 10 * time.Minute,
-		},
-	}
-
-	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
-
-	executor := executors.NewPoolScheduleExecutor(executors.WithMaxConcurrent(1))
-
-	t.Cleanup(func() {
-		_ = executor.Shutdown(context.Background())
-
-		client.Close()
-	})
-
-	systemService := biz.NewSystemService(biz.SystemServiceParams{CacheConfig: cacheConfig})
+	client := enttest.Open(t, "sqlite3", "file:"+strings.ReplaceAll(t.Name(), "/", "-")+"?mode=memory&cache=shared&_fk=0",
+		enttest.WithMigrateOptions(migrate.WithGlobalUniqueID(false), migrate.WithForeignKeys(false)))
+	t.Cleanup(func() { _ = client.Close() })
+	ctx := schematype.SkipSoftDelete(authz.WithTestBypass(ent.NewContext(context.Background(), client)))
+	cache := xcache.Config{Mode: xcache.ModeMemory}
+	systemService := biz.NewSystemService(biz.SystemServiceParams{CacheConfig: cache})
 	dataStorageService := biz.NewDataStorageService(biz.DataStorageServiceParams{
-		SystemService: systemService,
-		CacheConfig:   cacheConfig,
-		Client:        client,
+		SystemService: systemService, CacheConfig: cache, Client: client,
 	})
-
-	ctx := context.Background()
-	ctx = ent.NewContext(ctx, client)
-	ctx = authz.WithTestBypass(ctx)
-
-	dir := t.TempDir()
-	dirCopy := dir
-	settings := &objects.DataStorageSettings{Directory: &dirCopy}
-
-	_, err := client.DataStorage.Create().
-		SetName("primary").
-		SetDescription("primary database").
-		SetPrimary(true).
-		SetType(datastorage.TypeDatabase).
-		SetSettings(&objects.DataStorageSettings{}).
-		SetStatus(datastorage.StatusActive).
-		Save(ctx)
-	require.NoError(t, err)
-
-	dataStorage, err := client.DataStorage.Create().
-		SetName("fs-storage").
-		SetDescription("test fs storage").
-		SetPrimary(false).
-		SetType(datastorage.TypeFs).
-		SetSettings(settings).
-		SetStatus(datastorage.StatusActive).
-		Save(ctx)
-	require.NoError(t, err)
-
-	worker := &Worker{
-		SystemService:      systemService,
-		DataStorageService: dataStorageService,
-		Ent:                client,
-	}
-
-	return worker, ctx, dataStorage, dir
+	proj := client.Project.Create().SetName("chunk-body-cleanup").SaveX(ctx)
+	client.DataStorage.Create().SetName("primary").SetDescription("primary database").
+		SetPrimary(true).SetType(datastorage.TypeDatabase).SetSettings(&objects.DataStorageSettings{}).SaveX(ctx)
+	worker := &Worker{SystemService: systemService, DataStorageService: dataStorageService, Ent: client}
+	return worker, ctx, client, proj
 }
 
-func createFileForKey(t *testing.T, baseDir, key string) {
+func createChunkGCRequest(t *testing.T, worker *Worker, ctx context.Context, projectID, traceID int, createdAt time.Time, body objects.JSONRawMessage) *ent.Request {
 	t.Helper()
-
-	path := pathForKey(baseDir, key)
-	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
-	require.NoError(t, os.WriteFile(path, []byte("test"), 0o644))
-}
-
-func createDirForKey(t *testing.T, baseDir, key string) {
-	t.Helper()
-
-	path := pathForKey(baseDir, key)
-	require.NoError(t, os.MkdirAll(path, 0o755))
-}
-
-func assertRemoved(t *testing.T, baseDir, key string) {
-	t.Helper()
-
-	path := pathForKey(baseDir, key)
-	_, err := os.Stat(path)
-	require.ErrorIs(t, err, fs.ErrNotExist, "expected %s to be removed", key)
-}
-
-func pathForKey(baseDir, key string) string {
-	rel := strings.TrimPrefix(key, "/")
-	return filepath.Join(baseDir, filepath.FromSlash(rel))
-}
-
-func TestWorker_deleteInBatches(t *testing.T) {
-	// Test that the deleteInBatches method works correctly
-	// This test verifies the loop logic without needing a real database
-	worker := &Worker{
-		Ent:    nil,
-		Config: Config{CRON: "0 0 * * *"},
-	}
-
-	// Simulate batch deletion - delete 3 times, with decreasing counts
-	callCount := 0
-	deleteFunc := func() (int, error) {
-		callCount++
-		if callCount == 1 {
-			return 30, nil
-		} else if callCount == 2 {
-			return 15, nil
-		} else {
-			return 0, nil
+	plan := biz.PrepareChunkedRequestBody(body)
+	require.NotNil(t, plan)
+	var req *ent.Request
+	require.NoError(t, worker.SystemService.RunInTransaction(ctx, func(txCtx context.Context) error {
+		client := ent.FromContext(txCtx)
+		builder := client.Request.Create().SetProjectID(projectID).SetCreatedAt(createdAt).
+			SetModelID("model").SetStatus(request.StatusCompleted).
+			SetRequestBody(plan.Manifest).SetRequestBodyChunked(true)
+		if traceID != 0 {
+			builder.SetTraceID(traceID)
 		}
-	}
-
-	deleted, err := worker.deleteInBatches(context.Background(), deleteFunc)
-	if err != nil {
-		t.Fatalf("deleteInBatches failed: %v", err)
-	}
-
-	// Verify total deleted
-	if deleted != 45 {
-		t.Errorf("Expected to delete 45 records total, got %d", deleted)
-	}
-
-	// Verify it stopped after third call (when 0 was returned)
-	if callCount != 3 {
-		t.Errorf("Expected 3 delete calls, got %d", callCount)
-	}
+		var err error
+		req, err = builder.Save(txCtx)
+		if err != nil {
+			return err
+		}
+		return plan.Save(txCtx, client, projectID, req.ID, 0)
+	}))
+	return worker.Ent.Request.GetX(ctx, req.ID)
 }
 
-func TestWorker_cleanupWithZeroDays(t *testing.T) {
-	worker := &Worker{
-		Ent:    nil,
-		Config: Config{CRON: "0 0 * * *"},
-	}
-
-	ctx := context.Background()
-
-	// Test with 0 days - should not error
-	err := worker.cleanupRequests(ctx, 0, false)
-	if err != nil {
-		t.Fatalf("cleanupRequests with 0 days failed: %v", err)
-	}
-
-	// Test with negative days - should not error
-	err = worker.cleanupUsageLogs(ctx, -1, false)
-	if err != nil {
-		t.Fatalf("cleanupUsageLogs with negative days failed: %v", err)
-	}
-}
-
-func TestWorker_cleanupChannelProbesDeletesInBatches(t *testing.T) {
-	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
-	t.Cleanup(func() {
-		client.Close()
-	})
-
-	ctx := authz.WithTestBypass(context.Background())
-	ctx = ent.NewContext(ctx, client)
-
-	originalBatchSize := defaultBatchSize
-	defaultBatchSize = 2
-	t.Cleanup(func() {
-		defaultBatchSize = originalBatchSize
-	})
-
-	worker := &Worker{Ent: client, Config: Config{CRON: "0 0 * * *"}}
-	oldTimestamp := time.Now().AddDate(0, 0, -5).Unix()
-	recentTimestamp := time.Now().Unix()
-
-	for range 5 {
-		_, err := client.ChannelProbe.Create().
-			SetChannelID(1).
-			SetTotalRequestCount(1).
-			SetSuccessRequestCount(1).
-			SetTimestamp(oldTimestamp).
-			Save(ctx)
-		require.NoError(t, err)
-	}
-
-	for range 2 {
-		_, err := client.ChannelProbe.Create().
-			SetChannelID(1).
-			SetTotalRequestCount(1).
-			SetSuccessRequestCount(1).
-			SetTimestamp(recentTimestamp).
-			Save(ctx)
-		require.NoError(t, err)
-	}
-
-	require.NoError(t, worker.cleanupChannelProbes(ctx, 3, false))
-
-	oldCount, err := client.ChannelProbe.Query().
-		Where(channelprobe.TimestampLT(time.Now().AddDate(0, 0, -3).Unix())).
-		Count(ctx)
-	require.NoError(t, err)
-	require.Zero(t, oldCount)
-
-	totalCount, err := client.ChannelProbe.Query().Count(ctx)
-	require.NoError(t, err)
-	require.Equal(t, 2, totalCount)
+func createChunkGCExecution(t *testing.T, worker *Worker, ctx context.Context, req *ent.Request, createdAt time.Time, body objects.JSONRawMessage) *ent.RequestExecution {
+	t.Helper()
+	plan := biz.PrepareChunkedRequestBody(body)
+	require.NotNil(t, plan)
+	var execution *ent.RequestExecution
+	require.NoError(t, worker.SystemService.RunInTransaction(ctx, func(txCtx context.Context) error {
+		client := ent.FromContext(txCtx)
+		var err error
+		execution, err = client.RequestExecution.Create().SetProjectID(req.ProjectID).SetRequestID(req.ID).
+			SetCreatedAt(createdAt).SetModelID("model").SetStatus(requestexecution.StatusCompleted).
+			SetRequestBody(plan.Manifest).SetRequestBodyChunked(true).Save(txCtx)
+		if err != nil {
+			return err
+		}
+		return plan.Save(txCtx, client, req.ProjectID, 0, execution.ID)
+	}))
+	return worker.Ent.RequestExecution.GetX(ctx, execution.ID)
 }
 
 func TestLegacyPayloadCleanupClearsChunkReferences(t *testing.T) {
