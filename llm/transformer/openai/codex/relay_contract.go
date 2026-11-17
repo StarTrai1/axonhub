@@ -1,6 +1,7 @@
 package codex
 
 import (
+	"bytes"
 	"encoding/json"
 	"strings"
 
@@ -25,21 +26,12 @@ func (t *OutboundTransformer) normalizeResponsesContract(request *httpclient.Req
 	}
 	body := request.Body
 	if t.isOfficialCodex() {
-		model := gjson.GetBytes(body, "model").String()
-		if base, ok := fastModelBase(model); ok {
-			model = base
-		}
-		if shared.IsGPT62Model(model) {
-			body, _ = sjson.DeleteBytes(body, "prompt_cache_options")
-			body, _ = sjson.DeleteBytes(body, "prompt_cache_retention")
-		}
+		body = stripOfficialGPT62CacheOptions(body)
 		if strings.EqualFold(request.Headers.Get(responses.ResponsesLiteHeader), "true") {
-			clone := *request
-			clone.Body = body
-			if len(request.JSONBody) > 0 {
-				clone.JSONBody = body
+			if bytes.Equal(body, request.Body) {
+				return request
 			}
-			return &clone
+			return withResponsesContractBody(request, body)
 		}
 	} else {
 		body = liftRelayToolDeclarations(body)
@@ -55,6 +47,23 @@ func (t *OutboundTransformer) normalizeResponsesContract(request *httpclient.Req
 	if !gjson.GetBytes(body, "parallel_tool_calls").Exists() {
 		body, _ = sjson.SetBytes(body, "parallel_tool_calls", true)
 	}
+	return withResponsesContractBody(request, body)
+}
+
+func stripOfficialGPT62CacheOptions(body []byte) []byte {
+	model := gjson.GetBytes(body, "model").String()
+	if base, ok := fastModelBase(model); ok {
+		model = base
+	}
+	if !shared.IsGPT62Model(model) {
+		return body
+	}
+	body, _ = sjson.DeleteBytes(body, "prompt_cache_options")
+	body, _ = sjson.DeleteBytes(body, "prompt_cache_retention")
+	return body
+}
+
+func withResponsesContractBody(request *httpclient.Request, body []byte) *httpclient.Request {
 	clone := *request
 	clone.Body = body
 	if len(request.JSONBody) > 0 {

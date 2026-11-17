@@ -54,3 +54,12 @@ func TestResponsesWebSocketAmbiguousInterruptDoesNotReachUpstream(t *testing.T) 
 	require.Nil(t, d.routeInterrupt(valid))
 	require.JSONEq(t, string(valid), string(<-control.Events()))
 }
+
+func TestResponsesWebSocketLaneRecognizesGPT62SpeedAliases(t *testing.T) {
+	for _, model := range []string{"gpt-6.2-astra-fast", "gpt-6.2-astra-ultrafast", "gpt-6.2-sol-fast", "gpt-6.2-sol-ultrafast"} {
+		lane := &responsesWebSocketLane{}
+		lane.begin(model)
+		require.True(t, lane.gpt6, model)
+		lane.end()
+	}
+}

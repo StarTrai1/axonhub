@@ -92,7 +92,7 @@ func TestGPT62ChatMigratesLegacyCacheRetention(t *testing.T) {
 	require.NoError(t, err)
 	for _, model := range []string{"gpt-6.2-astra", "gpt-6.2-sol"} {
 		body := []byte(fmt.Sprintf(`{"model":%q,"prompt_cache_retention":"24h","prompt_cache_options":{"mode":"implicit"},"messages":[{"role":"user","content":"hello"}]}`, model))
-		request, err := NewInboundTransformer().TransformRequest(t.Context(), &httpclient.Request{Body: body})
+		request, err := NewInboundTransformer().TransformRequest(t.Context(), &httpclient.Request{Body: body, Headers: http.Header{"Content-Type": {"application/json"}}})
 		require.NoError(t, err)
 		wire, err := outbound.TransformRequest(t.Context(), request)
 		require.NoError(t, err)

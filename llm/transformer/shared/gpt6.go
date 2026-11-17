@@ -37,7 +37,8 @@ func NormalizeGPT6Effort(model, effort string) string {
 }
 
 func GPT6ToolsRequireResponses(model string, request *llm.Request) bool {
-	if request == nil || (!IsGPT62Model(model) && model != "gpt-6.1-sol" && model != "gpt-6.1-terra") {
+	gpt62 := IsGPT62Model(model)
+	if request == nil || (!gpt62 && model != "gpt-6.1-sol" && model != "gpt-6.1-terra") {
 		return false
 	}
 	if len(request.Tools) > 0 {
@@ -48,7 +49,7 @@ func GPT6ToolsRequireResponses(model string, request *llm.Request) bool {
 			return true
 		}
 	}
-	if request.ProviderExtensions == nil || request.ProviderExtensions.OpenAIResponses == nil {
+	if !gpt62 || request.ProviderExtensions == nil || request.ProviderExtensions.OpenAIResponses == nil {
 		return false
 	}
 	return responsesExtensionsHaveTools(request.ProviderExtensions.OpenAIResponses.Request)
@@ -62,11 +63,20 @@ func responsesExtensionsHaveTools(extensions *llm.OpenAIResponsesRequestExtensio
 		return true
 	}
 	for _, item := range extensions.RawInputItems {
-		if item.Type == "additional_tools" {
+		if isResponsesToolInput(item.Type) {
 			return true
 		}
 	}
 	return false
+}
+
+func isResponsesToolInput(itemType string) bool {
+	switch itemType {
+	case "additional_tools", "tool_search_output", "mcp_list_tools", "mcp_approval_request", "mcp_approval_response":
+		return true
+	default:
+		return strings.HasSuffix(itemType, "_call") || strings.HasSuffix(itemType, "_call_output")
+	}
 }
 
 // GPT6EffectiveEffort follows ordered configuration updates without changing the

@@ -69,6 +69,12 @@ func TestSelectEndpointAPIFormat_GPT62RoutesToolsToResponses(t *testing.T) {
 			require.Equal(t, chat.APIFormat, selectEndpointAPIFormat(endpoints[:1], request, true, model))
 		}
 		require.Equal(t, chat.APIFormat, selectEndpointAPIFormat(endpoints, request, false, "gpt-6-sol"))
+		request.Messages = nil
+		extensions := llm.EnsureOpenAIResponsesProviderExtensions(request)
+		extensions.Request = &llm.OpenAIResponsesRequestExtensions{
+			RawInputItems: []llm.OpenAIResponsesRawFragment{{Type: "file_search_call"}},
+		}
+		require.Equal(t, responses.String(), selectEndpointAPIFormat(endpoints, request, false, "gpt-6.2-astra"))
 	}
 }
 

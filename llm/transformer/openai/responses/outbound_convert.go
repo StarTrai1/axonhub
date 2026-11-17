@@ -92,6 +92,19 @@ func convertInstructionsFromMessages(msgs []llm.Message) string {
 // Assistant messages become items with type "message" and content array containing output_text items.
 // Tool calls become function_call items, tool results become function_call_output items.
 func convertInputFromMessages(msgs []llm.Message, transformOptions llm.TransformOptions) Input {
+	return convertInputWithAssistant(msgs, transformOptions, convertAssistantMessage)
+}
+
+func convertInputForRequest(request *llm.Request) Input {
+	if !shared.IsGPT62Model(request.Model) || !IsResponsesFormat(request.APIFormat) {
+		return convertInputFromMessages(request.Messages, request.TransformOptions)
+	}
+	return convertInputWithAssistant(request.Messages, request.TransformOptions, func(message llm.Message) []Item {
+		return convertAssistantMessageWithReasoning(message, true)
+	})
+}
+
+func convertInputWithAssistant(msgs []llm.Message, transformOptions llm.TransformOptions, convertAssistant func(llm.Message) []Item) Input {
 	if len(msgs) == 0 {
 		return Input{}
 	}
@@ -117,7 +130,7 @@ func convertInputFromMessages(msgs []llm.Message, transformOptions llm.Transform
 		case "user", "developer", "system":
 			items = append(items, convertUserMessage(msg))
 		case "assistant":
-			assistantItems := convertAssistantMessage(msg)
+			assistantItems := convertAssistant(msg)
 			items = append(items, assistantItems...)
 
 			// Record tool call types for later tool result encoding.
@@ -357,6 +370,10 @@ func responseInputFile(document *llm.DocumentURL) Item {
 // convertAssistantMessage converts an assistant message to Responses API Item(s) format.
 // Returns multiple items if the message contains tool calls.
 func convertAssistantMessage(msg llm.Message) []Item {
+	return convertAssistantMessageWithReasoning(msg, false)
+}
+
+func convertAssistantMessageWithReasoning(msg llm.Message, nativeReasoning bool) []Item {
 	var (
 		items         []Item
 		toolCallItems []Item
@@ -374,7 +391,7 @@ func convertAssistantMessage(msg llm.Message) []Item {
 	}
 
 	for _, reasoningItem := range reasoningItems {
-		encryptedContent := shared.DecodeOpenAIEncryptedContent(&reasoningItem.Signature)
+		encryptedContent := responsesInputSignature(reasoningItem.Signature, nativeReasoning && len(msg.ReasoningItems) > 0)
 		if encryptedContent == nil {
 			continue
 		}
@@ -508,6 +525,13 @@ func convertAssistantMessage(msg llm.Message) []Item {
 	items = append(items, toolCallItems...)
 
 	return items
+}
+
+func responsesInputSignature(signature string, nativeReasoning bool) *string {
+	if nativeReasoning && signature != "" {
+		return &signature
+	}
+	return shared.DecodeOpenAIEncryptedContent(&signature)
 }
 
 func convertToolMessageWithType(msg llm.Message, itemType string) Item {

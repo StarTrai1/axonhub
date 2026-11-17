@@ -283,7 +283,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		}
 	}
 
-	input := convertInputFromMessages(llmReq.Messages, llmReq.TransformOptions)
+	input := convertInputForRequest(llmReq)
 	input = ensureJSONObjectKeyword(input, llmReq.ResponseFormat)
 
 	payload := Request{

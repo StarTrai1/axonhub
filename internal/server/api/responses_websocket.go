@@ -23,6 +23,7 @@ import (
 	"github.com/looplj/axonhub/internal/server/middleware"
 	"github.com/looplj/axonhub/internal/server/orchestrator"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/transformer/openai/codex"
 	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
@@ -357,7 +358,11 @@ func (l *responsesWebSocketLane) begin(model string) *shared.ResponsesWebSocketS
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.active = true
-	l.gpt6 = shared.IsGPT6Model(strings.TrimSuffix(strings.ToLower(strings.TrimSpace(model)), "-fast"))
+	model = strings.ToLower(strings.TrimSpace(model))
+	if base, _, ok := codex.SpeedModel(model); ok {
+		model = base
+	}
+	l.gpt6 = shared.IsGPT6Model(model)
 	l.steer = shared.NewResponsesWebSocketSteering(16)
 	return l.steer
 }

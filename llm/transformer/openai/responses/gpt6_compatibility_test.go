@@ -80,6 +80,22 @@ func TestGPT62ResponsesCacheMigrationFromChat(t *testing.T) {
 	require.Equal(t, "30m", gjson.GetBytes(wire.Body, "prompt_cache_options.ttl").String())
 }
 
+func TestGPT62ResponsesDoesNotReplayForeignOpaqueReasoning(t *testing.T) {
+	outbound, err := NewOutboundTransformer("https://example.test/v1", "fake-key")
+	require.NoError(t, err)
+	request := &llm.Request{
+		Model:     "gpt-6.2-sol",
+		APIFormat: llm.APIFormatAnthropicMessage,
+		Messages: []llm.Message{
+			{Role: "assistant", ReasoningItems: []llm.ReasoningItem{{ID: "foreign", Signature: "opaque"}}},
+			{Role: "user"},
+		},
+	}
+	wire, err := outbound.TransformRequest(t.Context(), request)
+	require.NoError(t, err)
+	require.False(t, gjson.GetBytes(wire.Body, `input.#(type=="reasoning")`).Exists())
+}
+
 func TestGPT62ResponsesCacheMigrationAndHistory(t *testing.T) {
 	outbound, err := NewOutboundTransformer("https://example.test/v1", "fake-key")
 	require.NoError(t, err)
