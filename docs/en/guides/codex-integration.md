@@ -255,6 +255,18 @@ DevDay's Agents API browser sessions use a separate `/v1/agents/sessions` lifecy
 
 Mid-turn `response.steer` is accepted for the GPT-6 family, including Sol 6.1 and local Fast aliases, while its upstream WebSocket is active. It remains bound to the registered response on the same connection and the existing bounded control queue. GPT-5.6 and older models remain unsupported. See [mid-turn steering](https://developers.openai.com/api/docs/guides/steering).
 
+## GPT-6.2 Astra and Sol
+
+Add `gpt-6.2-astra` or `gpt-6.2-sol` to a Responses or Codex channel that exposes the model. Chat Completions can still serve requests without tools. For tool requests, AxonHub prefers a configured Responses HTTP or WebSocket endpoint for the resolved model; a Chat-only endpoint rejects tool requests locally. Existing model mappings, API keys, account entitlements, and channel scopes are unchanged. The `-fast` and `-ultrafast` names are gateway aliases for Codex speed selection, not API model IDs; an explicit tier still takes precedence.
+
+For both 6.2 models, AxonHub maps `none` and `minimal` to `low`, removes unsupported sampling and logprob options, and migrates a supplied `prompt_cache_retention` to `prompt_cache_options.ttl: "30m"` on public OpenAI endpoints unless an explicit TTL is set. Use `"12h"` only on public Responses. These public cache fields are not sent to the private Codex endpoint. See the [OpenAI migration guide](https://developers.openai.com/api/docs/guides/latest-model#migration-quickstart).
+
+To preserve reasoning, append `configuration_update`, `additional_tools`, and new messages instead of editing the history prefix; replay opaque encrypted reasoning with its original items and order. The gateway does not restore reasoning invalidated upstream by a model, user, organization, or prefix change. On compatible native channels, enable body pass-through to avoid unnecessary re-encoding of valid requests. See [Keep the prefix unchanged](https://developers.openai.com/api/docs/guides/keep-prefix-unchanged).
+
+The model catalog records Standard and Fast prices, including the rate change above 272,000 input tokens and 30-minute cache writes. Existing billing settings are not rewritten. The [official price table](https://developers.openai.com/api/docs/pricing) lists 12-hour cache writes and time-limited Ultrafast rates separately. Background completion-window discounts are not part of this gateway update.
+
+Hosted tests use Codex 0.169.0 with both IDs and a loopback provider. This verifies client transport, not model availability for any production account.
+
 ## Search-only channels
 
 Enable **Search only** in a Codex channel's edit dialog to reserve it for `openai/search` (`/v1/alpha/search`). The channel is excluded from Responses HTTP, Responses WebSocket, Chat Completions, compaction, and other generation routes. Turning the setting off restores normal routing.

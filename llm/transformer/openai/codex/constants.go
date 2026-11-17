@@ -9,6 +9,8 @@ var fastModelPairs = []fastModelPair{
 	{model: "gpt-5.6-sol", alias: "gpt-5.6-sol-fast"},
 	{model: "gpt-5.6-terra", alias: "gpt-5.6-terra-fast"},
 	{model: "gpt-5.6-luna", alias: "gpt-5.6-luna-fast"},
+	{model: "gpt-6.2-astra", alias: "gpt-6.2-astra-fast"},
+	{model: "gpt-6.2-sol", alias: "gpt-6.2-sol-fast"},
 	{model: "gpt-6-astra", alias: "gpt-6-astra-fast"},
 	{model: "gpt-6.1-sol", alias: "gpt-6.1-sol-fast"},
 	{model: "gpt-6.1-terra", alias: "gpt-6.1-terra-fast"},
@@ -36,6 +38,8 @@ func DefaultModels() []string {
 		"gpt-5.6-sol",
 		"gpt-5.6-terra",
 		"gpt-5.6-luna",
+		"gpt-6.2-astra",
+		"gpt-6.2-sol",
 		"gpt-6-astra",
 		"gpt-6.1-sol",
 		"gpt-6.1-terra",
@@ -69,6 +73,10 @@ func SpeedModel(model string) (base, tier string, ok bool) {
 		}
 	}
 	switch model {
+	case "gpt-6.2-astra-ultrafast":
+		return "gpt-6.2-astra", "ultrafast", true
+	case "gpt-6.2-sol-ultrafast":
+		return "gpt-6.2-sol", "ultrafast", true
 	case "gpt-6-astra-ultrafast":
 		return "gpt-6-astra", "ultrafast", true
 	case "gpt-6.1-sol-ultrafast":

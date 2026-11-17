@@ -12,7 +12,7 @@ import (
 // Old conversations can contain effort updates that their new model no longer
 // accepts. Keep item order and unknown fields while applying the same effort
 // migration as the request-level setting after raw control items are merged.
-func normalizeGPT6ConfigurationUpdates(model string, body []byte) ([]byte, error) {
+func normalizeGPT6ResponsesBody(model string, body, sourceBody []byte) ([]byte, error) {
 	if !shared.IsGPT6Model(model) {
 		return body, nil
 	}
@@ -33,6 +33,28 @@ func normalizeGPT6ConfigurationUpdates(model string, body []byte) ([]byte, error
 			return nil, err
 		}
 		body = updated
+	}
+	if shared.IsGPT62Model(model) {
+		return migrateGPT62CacheRetention(body, sourceBody)
+	}
+	return body, nil
+}
+
+func migrateGPT62CacheRetention(body, sourceBody []byte) ([]byte, error) {
+	const field = "prompt_cache_retention"
+
+	retention := gjson.GetBytes(body, field)
+	if retention.Exists() {
+		updated, err := sjson.DeleteBytes(body, field)
+		if err != nil {
+			return nil, err
+		}
+		body = updated
+	} else {
+		retention = gjson.GetBytes(sourceBody, field)
+	}
+	if retention.String() != "" && gjson.GetBytes(body, "prompt_cache_options.ttl").String() == "" {
+		return sjson.SetBytes(body, "prompt_cache_options.ttl", "30m")
 	}
 	return body, nil
 }

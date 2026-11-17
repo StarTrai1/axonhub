@@ -82,7 +82,7 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
   openai: {
     channelType: 'openai',
     baseURL: 'https://api.openai.com/v1',
-    defaultModels: ['gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna'],
+    defaultModels: ['gpt-6.2-sol', 'gpt-6.2-astra', 'gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna'],
     apiFormat: OPENAI_CHAT_COMPLETIONS,
     color: 'bg-white-100 text-white-800 border-white-200',
     icon: OpenAI,
@@ -122,7 +122,7 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
   openai_responses: {
     channelType: 'openai_responses',
     baseURL: 'https://api.openai.com/v1',
-    defaultModels: ['gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna'],
+    defaultModels: ['gpt-6.2-sol', 'gpt-6.2-astra', 'gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna'],
     apiFormat: OPENAI_RESPONSES,
     color: 'bg-green-100 text-green-800 border-green-200',
     icon: OpenAI,
@@ -131,6 +131,10 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     channelType: 'codex',
     baseURL: 'https://chatgpt.com/backend-api/codex#',
     defaultModels: [
+      'gpt-6.2-sol',
+      'gpt-6.2-sol-fast',
+      'gpt-6.2-astra',
+      'gpt-6.2-astra-fast',
       'gpt-6.1-sol',
       'gpt-6.1-sol-fast',
       'gpt-6.1-terra',

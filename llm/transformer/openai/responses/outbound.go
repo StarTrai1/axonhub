@@ -354,9 +354,13 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal responses api request: %w", err)
 	}
-	body, err = normalizeGPT6ConfigurationUpdates(payload.Model, body)
+	var sourceBody []byte
+	if llmReq.RawRequest != nil {
+		sourceBody = llmReq.RawRequest.Body
+	}
+	body, err = normalizeGPT6ResponsesBody(payload.Model, body, sourceBody)
 	if err != nil {
-		return nil, fmt.Errorf("failed to normalize reasoning configuration updates: %w", err)
+		return nil, fmt.Errorf("failed to normalize GPT-6 Responses request: %w", err)
 	}
 
 	headers := make(http.Header)

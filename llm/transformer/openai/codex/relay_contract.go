@@ -10,6 +10,7 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // Normalize the wire dialect once at the transport boundary. Archives and the
@@ -22,12 +23,25 @@ func (t *OutboundTransformer) normalizeResponsesContract(request *httpclient.Req
 	if request.RequestType == string(llm.RequestTypeAlphaSearch) || request.RequestType == string(llm.RequestTypeCompact) || request.APIFormat == string(llm.APIFormatOpenAIResponseCompact) {
 		return request
 	}
-	lite := t.isOfficialCodex() && strings.EqualFold(request.Headers.Get(responses.ResponsesLiteHeader), "true")
-	if lite {
-		return request
-	}
 	body := request.Body
-	if !t.isOfficialCodex() {
+	if t.isOfficialCodex() {
+		model := gjson.GetBytes(body, "model").String()
+		if base, ok := fastModelBase(model); ok {
+			model = base
+		}
+		if shared.IsGPT62Model(model) {
+			body, _ = sjson.DeleteBytes(body, "prompt_cache_options")
+			body, _ = sjson.DeleteBytes(body, "prompt_cache_retention")
+		}
+		if strings.EqualFold(request.Headers.Get(responses.ResponsesLiteHeader), "true") {
+			clone := *request
+			clone.Body = body
+			if len(request.JSONBody) > 0 {
+				clone.JSONBody = body
+			}
+			return &clone
+		}
+	} else {
 		body = liftRelayToolDeclarations(body)
 	}
 	// The Codex backend requires an instructions string even for a user-only

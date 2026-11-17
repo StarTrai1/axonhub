@@ -701,7 +701,7 @@ func (p *PersistentOutboundTransformer) refreshCandidateAPIFormat(
 
 	entry := candidate.Models[modelIndex]
 	endpoints, forced := applyForcedAPIFormats(ctx, candidate.Channel, []biz.ChannelModelEntry{entry}, requestModel, candidate.Channel.ResolveEndpoints())
-	candidate.APIFormat = selectEndpointAPIFormat(endpoints, req, forced)
+	candidate.APIFormat = selectEndpointAPIFormat(endpoints, req, forced, entry.ActualModel)
 }
 
 // APIFormat returns the API format of the transformer.
@@ -781,6 +781,9 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 	outboundFormat := p.wrapped.APIFormat()
 	if candidate.APIFormat != "" {
 		outboundFormat = llm.APIFormat(candidate.APIFormat)
+	}
+	if outboundFormat == llm.APIFormatOpenAIChatCompletion && shared.IsGPT62Model(entry.ActualModel) && shared.GPT6ToolsRequireResponses(entry.ActualModel, llmRequest) {
+		return nil, fmt.Errorf("%w: %s tool calls require a Responses endpoint", transformer.ErrInvalidRequest, entry.ActualModel)
 	}
 
 	if candidate.Channel != nil {

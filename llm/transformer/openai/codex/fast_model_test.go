@@ -16,7 +16,7 @@ import (
 
 func TestCodexFastAliasKeepsGPT6PassThroughConstraints(t *testing.T) {
 	outbound := &OutboundTransformer{}
-	for _, model := range []string{"gpt-6-sol-fast", "gpt-6-luna-fast", "gpt-6.1-sol-fast"} {
+	for _, model := range []string{"gpt-6-sol-fast", "gpt-6-luna-fast", "gpt-6.1-sol-fast", "gpt-6.2-sol-fast", "gpt-6.2-astra-fast"} {
 		for _, effort := range []string{"none", "high", "minimal"} {
 			request := &llm.Request{
 				Model:     model,
@@ -25,7 +25,7 @@ func TestCodexFastAliasKeepsGPT6PassThroughConstraints(t *testing.T) {
 					Body: []byte(fmt.Sprintf(`{"model":%q,"reasoning":{"effort":%q},"temperature":0.5}`, model, effort)),
 				},
 			}
-			wantPassThrough := effort == "none" && model != "gpt-6.1-sol-fast"
+			wantPassThrough := effort == "none" && (model == "gpt-6-sol-fast" || model == "gpt-6-luna-fast")
 			require.Equal(t, wantPassThrough, outbound.AllowPassThroughBody(t.Context(), request, nil), model+"/"+effort)
 		}
 	}
@@ -76,8 +76,23 @@ func TestCodexFastAliasPreservesRelayHeadersAndUnknownModels(t *testing.T) {
 	}
 }
 
+func TestCodexGPT62KeepsPrivateCacheContract(t *testing.T) {
+	for _, model := range []string{"gpt-6.2-astra-fast", "gpt-6.2-sol-ultrafast"} {
+		for _, official := range []bool{true, false} {
+			outbound := &OutboundTransformer{official: official, transport: responses.TransportWebSocket}
+			body := []byte(fmt.Sprintf(`{"model":%q,"prompt_cache_retention":"24h","prompt_cache_options":{"ttl":"12h"},"input":[{"type":"reasoning","id":"rs_native","encrypted_content":"opaque"}]}`, model))
+			request := &httpclient.Request{Body: body, Headers: http.Header{responses.ResponsesLiteHeader: {"true"}}}
+			wire := outbound.FinalizeTransportRequest(request)
+			require.Equal(t, !official, gjson.GetBytes(wire.Body, "prompt_cache_options").Exists())
+			require.Equal(t, !official, gjson.GetBytes(wire.Body, "prompt_cache_retention").Exists())
+			require.Equal(t, "opaque", gjson.GetBytes(wire.Body, "input.0.encrypted_content").String())
+			require.Equal(t, body, request.Body)
+		}
+	}
+}
+
 func TestCodexUltrafastAndRelayModelNames(t *testing.T) {
-	for _, model := range []string{"gpt-6-astra", "gpt-6.1-sol"} {
+	for _, model := range []string{"gpt-6-astra", "gpt-6.1-sol", "gpt-6.2-sol", "gpt-6.2-astra"} {
 		for _, speed := range []string{"fast", "ultrafast"} {
 			alias := model + "-" + speed
 			for _, preserve := range []bool{false, true} {

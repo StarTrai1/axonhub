@@ -57,6 +57,21 @@ func TestSelectAPIFormat_PrefersMatchingFormat(t *testing.T) {
 	}))
 }
 
+func TestSelectEndpointAPIFormat_GPT62RoutesToolsToResponses(t *testing.T) {
+	chat := objects.ChannelEndpoint{APIFormat: llm.APIFormatOpenAIChatCompletion.String()}
+	for _, responses := range []llm.APIFormat{llm.APIFormatOpenAIResponse, llm.APIFormatOpenAIResponseWebSocket} {
+		endpoints := []objects.ChannelEndpoint{chat, {APIFormat: responses.String()}}
+		request := &llm.Request{Model: "mapped", RequestType: llm.RequestTypeChat, APIFormat: llm.APIFormatOpenAIChatCompletion}
+		require.Equal(t, chat.APIFormat, selectEndpointAPIFormat(endpoints, request, false, "gpt-6.2-sol"))
+		request.Messages = []llm.Message{{Role: "tool"}}
+		for _, model := range []string{"gpt-6.2-astra", "gpt-6.2-sol"} {
+			require.Equal(t, responses.String(), selectEndpointAPIFormat(endpoints, request, false, model))
+			require.Equal(t, chat.APIFormat, selectEndpointAPIFormat(endpoints[:1], request, true, model))
+		}
+		require.Equal(t, chat.APIFormat, selectEndpointAPIFormat(endpoints, request, false, "gpt-6-sol"))
+	}
+}
+
 func TestSelectAPIFormat_PrefersResponsesProtocolMatchingInboundTransport(t *testing.T) {
 	// Given both Responses endpoint protocols on one channel and a WS request
 	endpoints := []objects.ChannelEndpoint{

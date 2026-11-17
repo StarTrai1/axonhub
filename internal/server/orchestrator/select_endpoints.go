@@ -7,6 +7,7 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // SelectAPIFormat selects the most appropriate APIFormat from a channel's resolved endpoints
@@ -32,12 +33,24 @@ func selectEndpointAPIFormat(
 	endpoints []objects.ChannelEndpoint,
 	req *llm.Request,
 	forced bool,
+	actualModel string,
 ) string {
+	var selected string
 	if forced {
-		return selectForcedAPIFormat(endpoints, req)
+		selected = selectForcedAPIFormat(endpoints, req)
+	} else {
+		selected = SelectAPIFormat(endpoints, req)
 	}
-
-	return SelectAPIFormat(endpoints, req)
+	if selected != llm.APIFormatOpenAIChatCompletion.String() || !shared.IsGPT62Model(actualModel) ||
+		!shared.GPT6ToolsRequireResponses(actualModel, req) {
+		return selected
+	}
+	for _, endpoint := range endpoints {
+		if endpoint.APIFormat == llm.APIFormatOpenAIResponse.String() || endpoint.APIFormat == llm.APIFormatOpenAIResponseWebSocket.String() {
+			return endpoint.APIFormat
+		}
+	}
+	return selected
 }
 
 func selectAPIFormat(

@@ -198,6 +198,18 @@ DevDay 的 Agents API 浏览器会话使用独立 `/v1/agents/sessions` 生命�
 
 在上游 WebSocket 活跃期间，GPT-6 系列（包括 Sol 6.1 和本地 Fast 别名）可发送 `response.steer`。控制帧仍绑定同连接已注册的响应，并使用既有有界队列；GPT-5.6 及更早模型不开放该功能。参见[中途调整指令](https://developers.openai.com/api/docs/guides/steering)。
 
+## GPT-6.2 Astra 与 Sol
+
+将 `gpt-6.2-astra` 或 `gpt-6.2-sol` 添加到上游确实提供该模型的 Responses 或 Codex 渠道。Chat Completions 仍可处理无工具请求；有工具时，AxonHub 优先选择实际模型已配置的 Responses HTTP 或 WebSocket 出口，只配置 Chat 的出口会在本地拒绝工具请求。既有模型映射、API Key、账号授权和渠道范围不变。`-fast` 和 `-ultrafast` 是 Codex 档位的网关别名，不是公开 API 模型 ID；显式指定的档位优先。
+
+两款模型的 `none` / `minimal` 均迁移为 `low`，并移除不支持的采样及 logprob 参数。公开 OpenAI 出口将旧 `prompt_cache_retention` 迁移为 `prompt_cache_options.ttl: "30m"`，已有显式 TTL 时不覆盖。`"12h"` 只用于公开 Responses。这些公开缓存字段不会发给 Codex 私有出口。参见 [OpenAI 迁移指南](https://developers.openai.com/api/docs/guides/latest-model#migration-quickstart)。
+
+为保留推理，追加 `configuration_update`、`additional_tools` 和新消息，不重写历史前缀；续传时按原顺序携带原始条目及加密推理。网关不会恢复上游因前缀、模型、终端用户或组织变化而丢弃的推理。兼容的原生渠道可启用请求体透传，减少对有效请求的重新编码。参见[保持前缀不变](https://developers.openai.com/api/docs/guides/keep-prefix-unchanged)。
+
+目录记录 Standard 和 Fast 价格，包括超过 272,000 输入 token 的档位和 30 分钟缓存写入价。不修改现有计费配置；12 小时写入价和限时 Ultrafast 价格见[官方价表](https://developers.openai.com/api/docs/pricing)。本次不新增后台完成窗口折扣的处理。
+
+云端使用官方 Codex 0.169.0、两个模型 ID 和回环模拟提供方验证客户端传输，不代表生产账号已开通。
+
 ## 搜索专用渠道
 
 在 Codex 渠道的编辑窗口开启 **仅搜索** 后，该渠道只接收 `openai/search`（`/v1/alpha/search`）请求，不再参与 Responses HTTP、Responses WebSocket、Chat Completions、压缩或其他生成路由。关闭后恢复原有路由方式。

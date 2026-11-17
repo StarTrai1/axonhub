@@ -114,6 +114,50 @@ func TestCatalogFallbackJSONParses(t *testing.T) {
 	require.NotEmpty(t, data.Providers)
 }
 
+func TestGPT62CatalogModelsAndStandardPricing(t *testing.T) {
+	t.Parallel()
+
+	upstreamWithoutGPT62 := []byte(`{"providers":{"openai":{"id":"openai","models":[{"id":"gpt-6.1-sol"}]}}}`)
+	filteredJSON, err := buildFilteredCatalog(upstreamWithoutGPT62)
+	require.NoError(t, err)
+
+	for _, snapshot := range [][]byte{catalogFallbackJSON, filteredJSON} {
+		var data catalogFile
+		require.NoError(t, json.Unmarshal(snapshot, &data))
+		models := data.Providers["openai"].Models
+		for _, expected := range []struct {
+			id        string
+			input     float64
+			output    float64
+			cacheRead float64
+		}{
+			{id: "gpt-6.2-astra", input: 8, output: 40, cacheRead: 0.4},
+			{id: "gpt-6.2-sol", input: 2, output: 10, cacheRead: 0.1},
+		} {
+			count := 0
+			for _, model := range models {
+				if model["id"] != expected.id {
+					continue
+				}
+				count++
+				require.Equal(t, map[string]any{"context": float64(1050000), "input": float64(922000), "output": float64(128000)}, model["limit"])
+				cost, ok := model["cost"].(map[string]any)
+				require.True(t, ok)
+				require.Equal(t, expected.input, cost["input"])
+				require.Equal(t, expected.output, cost["output"])
+				require.Equal(t, expected.cacheRead, cost["cache_read"])
+				require.Equal(t, expected.input*1.25, cost["cache_write"])
+				require.Equal(t, []any{map[string]any{
+					"input": expected.input * 2, "output": expected.output * 1.5,
+					"cache_read": expected.cacheRead * 2, "cache_write": expected.input * 2.5,
+					"tier": map[string]any{"size": float64(272000), "type": "context"},
+				}}, cost["tiers"])
+			}
+			require.Equal(t, 1, count, expected.id)
+		}
+	}
+}
+
 func TestFilterCatalogProviders_DeterministicOrder(t *testing.T) {
 	t.Parallel()
 

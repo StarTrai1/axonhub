@@ -14,6 +14,15 @@ func IsGPT6Model(model string) bool {
 	case "gpt-6-astra", "gpt-6.1-sol", "gpt-6.1-terra", "gpt-6-sol", "gpt-6-luna":
 		return true
 	default:
+		return IsGPT62Model(model)
+	}
+}
+
+func IsGPT62Model(model string) bool {
+	switch strings.ToLower(strings.TrimSpace(model)) {
+	case "gpt-6.2-astra", "gpt-6.2-sol":
+		return true
+	default:
 		return false
 	}
 }
@@ -21,10 +30,43 @@ func IsGPT6Model(model string) bool {
 func NormalizeGPT6Effort(model, effort string) string {
 	model = strings.ToLower(strings.TrimSpace(model))
 	if effort == llm.ReasoningEffortMinimal ||
-		(effort == llm.ReasoningEffortNone && (model == "gpt-6-astra" || model == "gpt-6.1-sol")) {
+		(effort == llm.ReasoningEffortNone && (model == "gpt-6-astra" || model == "gpt-6.1-sol" || IsGPT62Model(model))) {
 		return llm.ReasoningEffortLow
 	}
 	return effort
+}
+
+func GPT6ToolsRequireResponses(model string, request *llm.Request) bool {
+	if request == nil || (!IsGPT62Model(model) && model != "gpt-6.1-sol" && model != "gpt-6.1-terra") {
+		return false
+	}
+	if len(request.Tools) > 0 {
+		return true
+	}
+	for _, message := range request.Messages {
+		if len(message.ToolCalls) > 0 || message.Role == "tool" {
+			return true
+		}
+	}
+	if request.ProviderExtensions == nil || request.ProviderExtensions.OpenAIResponses == nil {
+		return false
+	}
+	return responsesExtensionsHaveTools(request.ProviderExtensions.OpenAIResponses.Request)
+}
+
+func responsesExtensionsHaveTools(extensions *llm.OpenAIResponsesRequestExtensions) bool {
+	if extensions == nil {
+		return false
+	}
+	if len(extensions.RawTools) > 0 {
+		return true
+	}
+	for _, item := range extensions.RawInputItems {
+		if item.Type == "additional_tools" {
+			return true
+		}
+	}
+	return false
 }
 
 // GPT6EffectiveEffort follows ordered configuration updates without changing the
@@ -43,6 +85,9 @@ func GPT6EffectiveEffort(model, effort string, body []byte) string {
 func GPT6ResponsesNeedsNormalization(model string, body []byte) bool {
 	if !IsGPT6Model(model) {
 		return false
+	}
+	if IsGPT62Model(model) && gjson.GetBytes(body, "prompt_cache_retention").Exists() {
+		return true
 	}
 	effort := gjson.GetBytes(body, "reasoning.effort").String()
 	if NormalizeGPT6Effort(model, effort) != effort {

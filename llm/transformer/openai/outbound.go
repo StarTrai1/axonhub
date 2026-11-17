@@ -183,15 +183,8 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		return nil, err
 	}
 
-	// These models require Responses for tools, including replayed calls.
-	if llmReq.Model == "gpt-6.1-sol" || llmReq.Model == "gpt-6.1-terra" {
-		hasTools := len(llmReq.Tools) > 0
-		for _, message := range llmReq.Messages {
-			hasTools = hasTools || len(message.ToolCalls) > 0 || message.Role == "tool"
-		}
-		if hasTools {
-			return nil, fmt.Errorf("%w: %s tool calls require a Responses endpoint", transformer.ErrInvalidRequest, llmReq.Model)
-		}
+	if shared.GPT6ToolsRequireResponses(llmReq.Model, llmReq) {
+		return nil, fmt.Errorf("%w: %s tool calls require a Responses endpoint", transformer.ErrInvalidRequest, llmReq.Model)
 	}
 
 	// Determine which reasoning field to use, default to ReasoningFieldContent.
@@ -221,6 +214,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		stripUnsupportedToolCallExtraContent(oaiReq)
 	}
 	applyGPT6Compatibility(oaiReq)
+	migrateGPT62CacheRetention(oaiReq, llmReq.RawRequest)
 
 	body, err := json.Marshal(oaiReq)
 	if err != nil {
@@ -275,9 +269,27 @@ func applyGPT6Compatibility(request *Request) {
 	request.Logprobs = nil
 }
 
+func migrateGPT62CacheRetention(request *Request, rawRequest *httpclient.Request) {
+	if !shared.IsGPT62Model(request.Model) || rawRequest == nil ||
+		gjson.GetBytes(rawRequest.Body, "prompt_cache_retention").String() == "" {
+		return
+	}
+	options := llm.PromptCacheOptions{}
+	if request.PromptCacheOptions != nil {
+		options = *request.PromptCacheOptions
+	}
+	if options.TTL == "" {
+		options.TTL = "30m"
+	}
+	request.PromptCacheOptions = &options
+}
+
 func (t *OutboundTransformer) AllowPassThroughBody(_ context.Context, request *llm.Request, _ *httpclient.Request) bool {
 	if request == nil || request.RawRequest == nil || !shared.IsGPT6Model(request.Model) {
 		return true
+	}
+	if shared.IsGPT62Model(request.Model) && gjson.GetBytes(request.RawRequest.Body, "prompt_cache_retention").Exists() {
+		return false
 	}
 	var payload Request
 	if json.Unmarshal(request.RawRequest.Body, &payload) != nil {
