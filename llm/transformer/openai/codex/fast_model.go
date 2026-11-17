@@ -1,13 +1,16 @@
 package codex
 
 import (
+	"context"
 	"strings"
 
 	"github.com/samber/lo"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 
+	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // Explicit request tiers and model aliases take precedence over the channel's
@@ -66,6 +69,30 @@ func relaySpeedModel(model string) (base, tier string, ok bool) {
 		return base, "priority", true
 	}
 	return "", "", false
+}
+
+func responsesCompatibilityModel(model string) string {
+	if base, ok := fastModelBase(model); ok && shared.IsGPT62Model(base) {
+		return base
+	}
+	return model
+}
+
+func (t *OutboundTransformer) transformResponsesRequest(ctx context.Context, request *llm.Request, compatibilityModel string) (*httpclient.Request, error) {
+	if compatibilityModel == request.Model {
+		return t.responsesOutbound.TransformRequest(ctx, request)
+	}
+	normalized := *request
+	normalized.Model = compatibilityModel
+	wire, err := t.responsesOutbound.TransformRequest(ctx, &normalized)
+	if err != nil {
+		return nil, err
+	}
+	wire.Body, err = sjson.SetBytes(wire.Body, "model", request.Model)
+	if err != nil {
+		return nil, err
+	}
+	return wire, nil
 }
 
 // normalizeFastModelRequest runs after body pass-through and overrides. These

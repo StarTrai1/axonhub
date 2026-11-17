@@ -294,9 +294,6 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	// Clone request so we do not mutate upstream pipeline state.
 	reqCopy := *llmReq
 	reqCopy.ProviderExtensions = llm.CloneProviderExtensions(llmReq.ProviderExtensions)
-	// ChatGPT's private Codex endpoint rejects the public GPT-5.6
-	// prompt_cache_options request field. Standard Responses channels retain it.
-	reqCopy.PromptCacheOptions = nil
 
 	// Codex expects Responses API payload with some strict rules.
 	// Always enable stream except for compact requests and disable store.
@@ -342,6 +339,10 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	}
 
 	reqCopy.Model, reqCopy.ServiceTier = t.resolveSpeed(reqCopy.Model, reqCopy.ServiceTier)
+	compatibilityModel := responsesCompatibilityModel(reqCopy.Model)
+	if t.isOfficialCodex() || !shared.IsGPT62Model(compatibilityModel) {
+		reqCopy.PromptCacheOptions = nil
+	}
 
 	// Ask for encrypted reasoning content so downstream can surface reasoning blocks.
 	if _, ok := reqCopy.TransformerMetadata["include"]; !ok {
@@ -371,7 +372,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 
 	reqCopy.TransformOptions.ArrayInputs = lo.ToPtr(true)
 
-	hreq, err := t.responsesOutbound.TransformRequest(ctx, &reqCopy)
+	hreq, err := t.transformResponsesRequest(ctx, &reqCopy, compatibilityModel)
 	if err != nil {
 		return nil, err
 	}

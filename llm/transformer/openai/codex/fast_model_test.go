@@ -91,6 +91,31 @@ func TestCodexGPT62KeepsPrivateCacheContract(t *testing.T) {
 	}
 }
 
+func TestCodexGPT62RetainedSpeedAliasStillUsesBaseContract(t *testing.T) {
+	for _, alias := range []string{"gpt-6.2-astra-fast", "gpt-6.2-sol-ultrafast"} {
+		outbound := newTestCodexOutbound(t)
+		outbound.official = false
+		outbound.preserveSpeedModel = true
+		request := &llm.Request{
+			Model:              alias,
+			Messages:           []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hello")}}},
+			ReasoningEffort:    llm.ReasoningEffortMinimal,
+			Temperature:        lo.ToPtr(0.5),
+			PromptCacheOptions: &llm.PromptCacheOptions{Mode: "implicit"},
+			RawRequest:         &httpclient.Request{Body: []byte(`{"prompt_cache_retention":"24h"}`)},
+		}
+		wire, err := outbound.TransformRequest(t.Context(), request)
+		require.NoError(t, err)
+		result := gjson.ParseBytes(outbound.FinalizeTransportRequest(wire).Body)
+		require.Equal(t, alias, result.Get("model").String())
+		require.Equal(t, "low", result.Get("reasoning.effort").String())
+		require.False(t, result.Get("temperature").Exists())
+		require.Equal(t, "30m", result.Get("prompt_cache_options.ttl").String())
+		require.Equal(t, "implicit", result.Get("prompt_cache_options.mode").String())
+		require.Empty(t, request.PromptCacheOptions.TTL)
+	}
+}
+
 func TestCodexUltrafastAndRelayModelNames(t *testing.T) {
 	for _, model := range []string{"gpt-6-astra", "gpt-6.1-sol", "gpt-6.2-sol", "gpt-6.2-astra"} {
 		for _, speed := range []string{"fast", "ultrafast"} {
