@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
@@ -13,6 +14,7 @@ import (
 
 type whitespaceRelayExecutor struct {
 	responsesReasoningPipelineExecutor
+
 	alwaysBlank bool
 }
 

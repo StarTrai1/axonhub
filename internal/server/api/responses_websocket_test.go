@@ -824,5 +824,5 @@ func TestResponsesWebSocketAdvertisesCodex170MessageLimit(t *testing.T) {
 	conn, response, err := websocket.DefaultDialer.Dial("ws"+strings.TrimPrefix(server.URL, "http")+"/v1/responses", nil)
 	require.NoError(t, err)
 	defer conn.Close()
-	require.Equal(t, "134217728", response.Header.Get("X-Codex-WebSocket-Max-Message-Bytes"))
+	require.Equal(t, "134217728", response.Header.Get("X-Codex-Websocket-Max-Message-Bytes"))
 }

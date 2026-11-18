@@ -284,12 +284,28 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	}
 
 	input := convertInputForRequest(llmReq)
+	instructions := convertInstructionsFromMessages(llmReq.Messages)
+	if shared.IsGPT62Model(llmReq.Model) && !IsResponsesFormat(llmReq.APIFormat) {
+		// GPT-6.2 evaluates top-level instructions after input, outside its cache
+		// prefix. Keep translated leading system guidance in the input prefix.
+		// Native Responses callers own the placement of per-request instructions.
+		var prefix []Item
+		for _, message := range llmReq.Messages {
+			if message.Role != "system" {
+				break
+			}
+			message.Role = "developer"
+			prefix = append(prefix, convertUserMessage(message))
+		}
+		input.Items = append(prefix, input.Items...)
+		instructions = ""
+	}
 	input = ensureJSONObjectKeyword(input, llmReq.ResponseFormat)
 
 	payload := Request{
 		Model:                llmReq.Model,
 		Input:                input,
-		Instructions:         convertInstructionsFromMessages(llmReq.Messages),
+		Instructions:         instructions,
 		Tools:                tools,
 		ParallelToolCalls:    llmReq.ParallelToolCalls,
 		Stream:               llmReq.Stream,
