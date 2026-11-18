@@ -19,6 +19,7 @@ import (
 	entprivacy "github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/internal/server/middleware"
 	"github.com/looplj/axonhub/internal/server/orchestrator"
 	"github.com/looplj/axonhub/internal/server/plugin"
 	"github.com/looplj/axonhub/llm"
@@ -404,12 +405,12 @@ func (handlers *OpenAIHandlers) Search(c *gin.Context) {
 	handlers.SearchHandlers.ChatCompletion(c)
 }
 
-func (handlers *OpenAIHandlers) CreateResponseWebSocket(requestTimeout time.Duration) gin.HandlerFunc {
+func (handlers *OpenAIHandlers) CreateResponseWebSocket(streamTimeout time.Duration) gin.HandlerFunc {
 	orch := handlers.ResponseCompletionHandlers.ChatCompletionOrchestrator
 	return func(c *gin.Context) {
 		serveResponsesWebSocket(
 			c,
-			requestTimeout,
+			streamTimeout,
 			orch.Process,
 			func(ctx context.Context, err error) *httpclient.Error {
 				return transformOrchestratorError(ctx, err, orch)
@@ -514,6 +515,8 @@ func (handlers *OpenAIHandlers) CreateImageVariation(c *gin.Context) {
 }
 
 func (handlers *OpenAIHandlers) CreateVideo(c *gin.Context) {
+	cancel := middleware.SelectLLMTimeout(c, false)
+	defer cancel()
 	ctx := c.Request.Context()
 
 	genericReq, err := readClientRequest(c.Request)

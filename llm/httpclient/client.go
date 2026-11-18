@@ -603,16 +603,33 @@ func (hc *HttpClient) DoStream(ctx context.Context, request *Request) (streams.S
 	rawReq.Header.Set("Cache-Control", "no-cache")
 	rawReq.Header.Set("Connection", "keep-alive")
 
-	// Execute request
+	// Start at upstream request initiation, before waiting for headers.
+	streamCtx, activity, stop := NewStreamIdleContext(streamCtx)
+	rawReq = rawReq.WithContext(streamCtx)
+	streamOwned := false
+	defer func() {
+		if !streamOwned {
+			streamCancel()
+			stop()
+		}
+	}()
+
 	rawResp, err := hc.client.Do(rawReq)
 	if rawResp != nil {
+		// Stop counting upstream wait as soon as response headers arrive.
+		activity()
+		SetStreamIdleWaiting(streamCtx, false)
 		request.ObserveResponseHeaders(ctx, rawResp.Header)
 	}
 	if err != nil {
+		if cause := StreamContextError(streamCtx); cause != nil {
+			err = cause
+		}
 		streamCancel()
-
 		return nil, fmt.Errorf("HTTP stream request failed: %w", err)
 	}
+
+	rawResp.Body = &streamActivityReader{ReadCloser: rawResp.Body, ctx: streamCtx, activity: activity}
 
 	// Check for HTTP errors before creating stream
 	if rawResp.StatusCode >= 400 {
@@ -649,33 +666,29 @@ func (hc *HttpClient) DoStream(ctx context.Context, request *Request) (streams.S
 		}
 	}
 
-	// Determine content type and select appropriate decoder
-	contentType := rawResp.Header.Get("Content-Type")
-	if contentType == "" {
-		contentType = "text/event-stream" // Default to SSE
-	}
-
-	// Try to get a registered decoder for the content type
-	decoderFactory, exists := GetDecoder(contentType)
-	if !exists {
-		if mediaType, _, err := mime.ParseMediaType(contentType); err == nil {
-			decoderFactory, exists = GetDecoder(mediaType)
+	decoderFactory := request.StreamDecoder
+	if decoderFactory == nil {
+		contentType := rawResp.Header.Get("Content-Type")
+		var exists bool
+		if contentType == "" {
+			contentType = "text/event-stream" // Default to SSE
 		}
-	}
-	if !exists {
-		// Fallback to default SSE decoder
-		slog.DebugContext(ctx, "no decoder found for content type, using default SSE", slog.String("content_type", contentType))
 
-		decoderFactory = NewDefaultSSEDecoder
+		// Try to get a registered decoder for the content type
+		decoderFactory, exists = GetDecoder(contentType)
+		if !exists {
+			if mediaType, _, err := mime.ParseMediaType(contentType); err == nil {
+				decoderFactory, exists = GetDecoder(mediaType)
+			}
+		}
+		if !exists {
+			slog.DebugContext(ctx, "no decoder found for content type, using default SSE", slog.String("content_type", contentType))
+			decoderFactory = NewDefaultSSEDecoder
+		}
 	}
 
 	RecordResponseHeaders(streamCtx, rawResp.Header)
-
 	stream := decoderFactory(streamCtx, rawResp.Body)
-	stream = &requestContextStream{
-		Stream: stream,
-		cancel: streamCancel,
-	}
 	responseHeaders := make(http.Header)
 	if value := rawResp.Header.Get("X-Codex-Turn-State"); value != "" {
 		responseHeaders.Set("X-Codex-Turn-State", value)
@@ -689,7 +702,9 @@ func (hc *HttpClient) DoStream(ctx context.Context, request *Request) (streams.S
 		return event
 	})
 
-	return WithResponseHeaders(stream, rawResp.Header), nil
+	stream = &idleTimeoutStream{Stream: stream, ctx: streamCtx, stop: func() { stop(); streamCancel() }}
+	streamOwned = true
+	return WithResponseHeaders(stream, MergeForwardResponseHeaders(nil, rawResp.Header)), nil
 }
 
 type requestContextStream struct {

@@ -33,6 +33,8 @@ import (
 //
 //nolint:containedctx // Checked.
 type OutboundPersistentStream struct {
+	current *httpclient.StreamEvent
+
 	ctx context.Context
 
 	RequestService  *biz.RequestService
@@ -156,7 +158,9 @@ func (ts *OutboundPersistentStream) Next() bool {
 		}
 		ts.readerMu.Unlock()
 	}()
+	ts.current = nil
 	if ts.stream.Next() {
+		ts.recordCurrent()
 		return true
 	}
 	ts.stateMu.Lock()
@@ -184,8 +188,14 @@ func (ts *OutboundPersistentStream) readerDone() <-chan struct{} {
 	return done
 }
 
+// Current is a cached read; repeated reads must not duplicate persisted chunks.
 func (ts *OutboundPersistentStream) Current() *httpclient.StreamEvent {
+	return ts.current
+}
+
+func (ts *OutboundPersistentStream) recordCurrent() {
 	event := ts.stream.Current()
+	ts.current = event
 	if event != nil {
 		ts.stateMu.Lock()
 		defer ts.stateMu.Unlock()
@@ -213,8 +223,6 @@ func (ts *OutboundPersistentStream) Current() *httpclient.StreamEvent {
 			}
 		}
 	}
-
-	return event
 }
 
 func (ts *OutboundPersistentStream) Err() error {
