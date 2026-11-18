@@ -815,3 +815,14 @@ func dialResponsesWebSocket(t *testing.T, serverURL string, headers http.Header)
 
 	return conn
 }
+
+func TestResponsesWebSocketAdvertisesCodex170MessageLimit(t *testing.T) {
+	server := newResponsesWebSocketTestServer(t, func(context.Context, *httpclient.Request) (orchestrator.ChatCompletionResult, error) {
+		t.Error("the handshake must not dispatch a model request")
+		return orchestrator.ChatCompletionResult{}, nil
+	}, nil, time.Second)
+	conn, response, err := websocket.DefaultDialer.Dial("ws"+strings.TrimPrefix(server.URL, "http")+"/v1/responses", nil)
+	require.NoError(t, err)
+	defer conn.Close()
+	require.Equal(t, "134217728", response.Header.Get("X-Codex-WebSocket-Max-Message-Bytes"))
+}

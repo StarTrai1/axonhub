@@ -41,6 +41,7 @@ func (s *responsesOutboundStream) textDelta(event StreamEvent, text string) *llm
 	part := s.textPart(event)
 	part.content.WriteString(text)
 	s.state.textDelivered = s.state.textDelivered || text != ""
+	s.state.textMeaningful = s.state.textMeaningful || strings.TrimSpace(text) != ""
 	return &llm.Message{
 		Phase:   part.phase,
 		Content: llm.MessageContent{Content: lo.ToPtr(text)},
@@ -89,6 +90,7 @@ func (s *responsesOutboundStream) recoverTerminalText(base *llm.Response, respon
 				Content: llm.MessageContent{Content: content.Text},
 			}}}
 			s.state.textDelivered = true
+			s.state.textMeaningful = s.state.textMeaningful || strings.TrimSpace(*content.Text) != ""
 			s.enqueue(&recovered)
 		}
 	}

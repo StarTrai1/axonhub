@@ -9,6 +9,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -65,7 +66,9 @@ func serveResponsesWebSocket(
 	}
 	c.Request = c.Request.WithContext(ctx)
 
+	// Codex 0.170 reads this before sending large frames and falls back to HTTP.
 	responseHeaders := c.Writer.Header().Clone()
+	responseHeaders.Set("X-Codex-WebSocket-Max-Message-Bytes", strconv.Itoa(responsesWebSocketMaxMessageSize))
 	upgrader := new(websocket.Upgrader)
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, responseHeaders)
 	if err != nil {

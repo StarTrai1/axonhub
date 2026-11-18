@@ -2,6 +2,7 @@ package pipeline
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/looplj/axonhub/llm"
 )
@@ -33,12 +34,21 @@ func hasMessageContent(msg *llm.Message) bool {
 		return false
 	}
 
-	if msg.Content.Content != nil && *msg.Content.Content != "" {
+	if msg.Content.Content != nil && strings.TrimSpace(*msg.Content.Content) != "" {
 		return true
 	}
 
-	if len(msg.Content.MultipleContent) > 0 {
-		return true
+	for _, part := range msg.Content.MultipleContent {
+		// Whitespace text is still buffered and delivered if real content follows.
+		// Media and unfamiliar part types remain conservative commit boundaries.
+		switch part.Type {
+		case "text", "output_text", "input_text":
+			if part.Text != nil && strings.TrimSpace(*part.Text) != "" {
+				return true
+			}
+		default:
+			return true
+		}
 	}
 
 	if len(msg.ToolCalls) > 0 {

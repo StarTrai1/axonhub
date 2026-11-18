@@ -21,13 +21,17 @@ import (
 func TestResponsesWhitespaceCompletionRetriesBeforeDelivery(t *testing.T) {
 	for _, streaming := range []bool{false, true} {
 		for _, detectEmpty := range []bool{false, true} {
-			if !streaming && !detectEmpty { continue }
+			if !streaming && !detectEmpty {
+				continue
+			}
 			t.Run(fmt.Sprintf("stream=%v/detection=%v", streaming, detectEmpty), func(t *testing.T) {
 				calls := 0
 				payload := func() []byte {
 					calls++
 					text := " "
-					if calls > 1 { text = "continued" }
+					if calls > 1 {
+						text = "continued"
+					}
 					return fmt.Appendf(nil, `{"id":"resp_%d","object":"response","model":"gpt-6-astra","status":"completed","output":[{"id":"msg_%d","type":"message","role":"assistant","status":"completed","content":[{"type":"output_text","text":%q}]}]}`, calls, calls, text)
 				}
 				executor := &mockExecutor{
@@ -42,14 +46,18 @@ func TestResponsesWhitespaceCompletionRetriesBeforeDelivery(t *testing.T) {
 				outbound, err := responses.NewOutboundTransformer("https://example.invalid", "synthetic-key")
 				require.NoError(t, err)
 				options := []pipeline.Option{pipeline.WithRetry(0, 1, 0)}
-				if detectEmpty { options = append(options, pipeline.WithEmptyResponseDetection()) }
+				if detectEmpty {
+					options = append(options, pipeline.WithEmptyResponseDetection())
+				}
 				p := pipeline.NewFactory(executor).Pipeline(responses.NewInboundTransformer(), &retryEmptyResponsesOutbound{Outbound: outbound}, options...)
 				result, err := p.Process(t.Context(), &httpclient.Request{Method: http.MethodPost, Headers: http.Header{"Content-Type": {"application/json"}}, Body: fmt.Appendf(nil, `{"model":"gpt-6-astra","input":"continue","stream":%v}`, streaming)})
 				require.NoError(t, err)
 				if streaming {
 					defer result.EventStream.Close()
 					var frames []byte
-					for result.EventStream.Next() { frames = append(frames, result.EventStream.Current().Data...) }
+					for result.EventStream.Next() {
+						frames = append(frames, result.EventStream.Current().Data...)
+					}
 					require.NoError(t, result.EventStream.Err())
 					require.NotContains(t, string(frames), "resp_1")
 					require.Contains(t, string(frames), "continued")

@@ -72,6 +72,7 @@ type outboundStreamState struct {
 	// Content accumulation
 	textParts           map[outboundTextPart]*outboundTextState
 	textDelivered       bool
+	textMeaningful      bool
 	refusalParts        map[outboundTextPart]*outboundTextState
 	refusalDelivered    bool
 	reasoningContent    strings.Builder
@@ -127,7 +128,7 @@ func responseHasMeaningfulContent(resp *llm.Response) bool {
 		}
 
 		message := choice.Delta
-		if message.Content.Content != nil && *message.Content.Content != "" {
+		if message.Content.Content != nil && strings.TrimSpace(*message.Content.Content) != "" {
 			return true
 		}
 		if len(message.Content.MultipleContent) > 0 || len(message.ToolCalls) > 0 || message.Refusal != "" {
@@ -855,7 +856,7 @@ func (s *responsesOutboundStream) transformStreamEvent(event *httpclient.StreamE
 			s.state.previousResponseID = streamEvent.Response.PreviousResponseID
 			resp.PreviousResponseID = s.state.previousResponseID
 			emptyCompletion = emptyCompletion &&
-				len(streamEvent.Response.Output) == 0 &&
+				responseOutputOnlyBlankText(streamEvent.Response.Output) &&
 				streamEvent.Response.Error == nil &&
 				(streamEvent.Response.Status == nil || *streamEvent.Response.Status == "completed")
 		}
@@ -1108,7 +1109,7 @@ func (s *responsesOutboundStream) steeringEventEndsTurn(event StreamEvent) bool 
 
 func (s *responsesOutboundStream) hasGeneratedOutput() bool {
 	return llm.HasTerminalHostedSearch(s.state.transformerMetadata) || s.state.reasoningOutputEmitted || len(s.state.toolCalls) > 0 ||
-		s.state.textDelivered || s.state.refusalDelivered ||
+		s.state.textMeaningful || s.state.refusalDelivered ||
 		s.state.reasoningContent.Len() > 0 ||
 		len(s.state.pendingReasoningEncryptedContent) > 0
 }
@@ -1255,4 +1256,24 @@ func (t *OutboundTransformer) AggregateStreamChunks(
 	chunks []*httpclient.StreamEvent,
 ) ([]byte, llm.ResponseMeta, error) {
 	return AggregateStreamChunks(ctx, chunks)
+}
+
+// A completed relay answer containing only spaces is as empty as no output.
+// Refusals, reasoning, tool results and unknown native items are never guessed
+// to be empty, because retrying those can repeat already-visible work.
+func responseOutputOnlyBlankText(items []Item) bool {
+	for _, item := range items {
+		if item.Type != "message" || item.Refusal != nil || item.Content == nil {
+			return false
+		}
+		if item.Content.Text != nil && strings.TrimSpace(*item.Content.Text) != "" {
+			return false
+		}
+		for _, part := range item.Content.Items {
+			if part.Type != "output_text" || part.Refusal != nil || part.Text != nil && strings.TrimSpace(*part.Text) != "" {
+				return false
+			}
+		}
+	}
+	return true
 }

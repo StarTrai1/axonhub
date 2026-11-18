@@ -1515,8 +1515,8 @@ type webSocketStream struct {
 	interruptPending    map[string]struct{}
 	bufferedTerminal    []byte
 	retireAfterTerminal bool
-	parentCtx context.Context
-	stopIdle func()
+	parentCtx           context.Context
+	stopIdle            func()
 }
 
 // Next times upstream reads while yielding terminal response events before
