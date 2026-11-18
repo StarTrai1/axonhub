@@ -50,5 +50,9 @@ func TestGPT62NativeInstructionsStayPerRequest(t *testing.T) {
 	wire, err := outbound.TransformRequest(t.Context(), request)
 	require.NoError(t, err)
 	require.Equal(t, "only this turn", gjson.GetBytes(wire.Body, "instructions").String())
-	require.JSONEq(t, gjson.GetBytes(body, "input").Raw, gjson.GetBytes(wire.Body, "input").Raw)
+	require.Equal(t, int64(2), gjson.GetBytes(wire.Body, "input.#").Int())
+	require.Equal(t, "developer", gjson.GetBytes(wire.Body, "input.0.role").String())
+	require.Equal(t, "stable prefix", gjson.GetBytes(wire.Body, "input.0.content.0.text").String())
+	require.Equal(t, "user", gjson.GetBytes(wire.Body, "input.1.role").String())
+	require.Equal(t, "continue", gjson.GetBytes(wire.Body, "input.1.content.0.text").String())
 }
