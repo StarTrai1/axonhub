@@ -10,6 +10,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/tidwall/gjson"
+
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/oauth"
 )
@@ -84,20 +86,22 @@ func ParseThirdPartyModelCatalog(body []byte) ([]string, error) {
 		}
 		return models, nil
 	}
-	return parseModelCatalog(body, false, false)
+	return parseModelCatalog(body, false)
 }
 
 // ParseModelCatalog returns only picker-visible models in upstream priority order.
 func ParseModelCatalog(body []byte) ([]string, error) {
-	return parseModelCatalog(body, true, true)
+	return parseModelCatalog(body, true)
 }
 
-func parseModelCatalog(body []byte, supplementImageModel, requireListVisibility bool) ([]string, error) {
+func parseModelCatalog(body []byte, official bool) ([]string, error) {
 	var response struct {
 		Models []struct {
-			Slug       string `json:"slug"`
-			Visibility string `json:"visibility"`
-			Priority   int    `json:"priority"`
+			Slug                 string          `json:"slug"`
+			Visibility           string          `json:"visibility"`
+			Priority             int             `json:"priority"`
+			ServiceTiers         json.RawMessage `json:"service_tiers"`
+			AdditionalSpeedTiers json.RawMessage `json:"additional_speed_tiers"`
 		} `json:"models"`
 	}
 	if err := json.Unmarshal(body, &response); err != nil {
@@ -109,7 +113,7 @@ func parseModelCatalog(body []byte, supplementImageModel, requireListVisibility 
 	models := make([]string, 0, len(response.Models))
 	imageModelsIncluded := make(map[string]bool, len(ImageModels()))
 	for _, model := range response.Models {
-		if (!requireListVisibility || model.Visibility == "list") && strings.TrimSpace(model.Slug) != "" {
+		if (!official || model.Visibility == "list") && strings.TrimSpace(model.Slug) != "" {
 			if isCodexImageModel(model.Slug) {
 				if imageModelsIncluded[model.Slug] {
 					continue
@@ -133,7 +137,21 @@ func parseModelCatalog(body []byte, supplementImageModel, requireListVisibility 
 			models = append(models, pair.alias)
 		}
 	}
-	if supplementImageModel {
+	if official {
+		for _, model := range response.Models {
+			alias := model.Slug + "-ultrafast"
+			if model.Visibility != "list" || visible[alias] {
+				continue
+			}
+			if _, _, ok := SpeedModel(alias); !ok {
+				continue
+			}
+			if gjson.GetBytes(model.ServiceTiers, `#(id=="ultrafast")`).Exists() ||
+				gjson.GetBytes(model.AdditionalSpeedTiers, `#(=="ultrafast")`).Exists() {
+				models = append(models, alias)
+				visible[alias] = true
+			}
+		}
 		for _, model := range ImageModels() {
 			if !visible[model] {
 				models = append(models, model)

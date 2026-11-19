@@ -11,6 +11,7 @@ import (
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xregexp"
+	"github.com/looplj/axonhub/internal/pkg/xtime"
 )
 
 // syncChannelModels syncs supported models for all channels with auto_sync_supported_models enabled.
@@ -200,6 +201,13 @@ func (svc *ChannelService) syncChannelModelsForChannel(ctx context.Context, ch *
 		}
 
 		changed = modelsChanged || modelProtocolsChanged || pricesChanged
+		if pricesChanged && !modelsChanged {
+			// The serving cache reuses a channel until its own UpdatedAt changes.
+			updatedCh, err = db.Channel.UpdateOneID(ch.ID).SetUpdatedAt(xtime.UTCNow()).Save(ctx)
+			if err != nil {
+				return fmt.Errorf("failed to invalidate synced channel prices: %w", err)
+			}
+		}
 
 		return nil
 	})

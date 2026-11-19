@@ -34,6 +34,31 @@ func TestModelsRequestUsesCurrentClientIdentity(t *testing.T) {
 	require.Equal(t, "codex_cli_rs/"+version, request.Headers.Get("User-Agent"))
 }
 
+func TestOfficialCatalogAddsAdvertisedUltrafastAliases(t *testing.T) {
+	body := []byte(`{"models":[
+		{"slug":"gpt-6.2-sol","visibility":"list","service_tiers":[{"id":"ultrafast"}]},
+		{"slug":"gpt-6.2-astra","visibility":"list","additional_speed_tiers":["ultrafast"]},
+		{"slug":"gpt-6.2-astra-ultrafast","visibility":"list"},
+		{"slug":"gpt-6-astra","visibility":"hide","additional_speed_tiers":["ultrafast"]},
+		{"slug":"gpt-6.1-sol","visibility":"list","service_tiers":[{"id":"priority"}]}
+	]}`)
+	official, err := ParseModelCatalog(body)
+	require.NoError(t, err)
+	require.Contains(t, official, "gpt-6.2-sol-ultrafast")
+	require.NotContains(t, official, "gpt-6-astra-ultrafast")
+	require.NotContains(t, official, "gpt-6.1-sol-ultrafast")
+	count := 0
+	for _, id := range official {
+		if id == "gpt-6.2-astra-ultrafast" {
+			count++
+		}
+	}
+	require.Equal(t, 1, count)
+	relay, err := ParseThirdPartyModelCatalog(body)
+	require.NoError(t, err)
+	require.NotContains(t, relay, "gpt-6.2-sol-ultrafast")
+}
+
 func TestCodexModelsIncludeImageModel(t *testing.T) {
 	for _, tt := range []struct {
 		name string
