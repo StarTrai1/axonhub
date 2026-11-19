@@ -4,6 +4,7 @@ import { type ComponentProps, useCallback, useEffect, useMemo, useRef, useState,
 import { z } from 'zod';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { RESPONSE_TIMEOUT_MAX_SECONDS } from '@/config/retry-policy';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import {
   X,
@@ -28,9 +29,9 @@ import {
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { RESPONSE_TIMEOUT_MAX_SECONDS } from '@/config/retry-policy';
 import { copyTextToClipboard } from '@/lib/clipboard';
 import { useHorizontalScroll } from '@/hooks/use-horizontal-scroll';
+import { usePermissions } from '@/hooks/usePermissions';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -55,7 +56,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { AutoComplete } from '@/components/auto-complete';
 import { ConfirmDialog } from '@/components/confirm-dialog';
-import { ApiKeyStrategyFields, type APIKeyStrategyValue } from './channel-api-key-strategy';
 import { SelectDropdown } from '@/components/select-dropdown';
 import {
   usePassThroughSettings,
@@ -65,8 +65,9 @@ import {
   useSaveProxyPreset,
   useUserAgentPassThroughSettings,
 } from '@/features/system/data/system';
-import { usePermissions } from '@/hooks/usePermissions';
-import { ANTIGRAVITY_BASE_URL_DAILY, ANTIGRAVITY_BASE_URLS, antigravityOAuthExchange, antigravityOAuthStart } from '../data/antigravity';
+import { isSuggestedModel } from '../../models/data/model-suggestions';
+import { ANTIGRAVITY_BASE_URLS, antigravityOAuthExchange, antigravityOAuthStart } from '../data/antigravity';
+import { filterChannelModelGroups, groupChannelModelEntries } from '../data/channel-model-aliases';
 import {
   useCreateChannel,
   useDuplicateChannel,
@@ -79,7 +80,6 @@ import {
   useEnableChannelAPIKey,
   useSyncChannelModels,
 } from '../data/channels';
-import { isSuggestedModel } from '../../models/data/model-suggestions';
 import { claudecodeOAuthExchange, claudecodeOAuthStart } from '../data/claudecode';
 import { codexDecodeAuthJSON, codexOAuthExchange, codexOAuthStart } from '../data/codex';
 import {
@@ -111,6 +111,7 @@ import {
   Channel,
   ChannelSettings,
   ChannelQuotaRoutingMode,
+  ModelPrice,
   ChannelType,
   ApiFormat,
   RetryableErrorPattern,
@@ -121,17 +122,17 @@ import {
   createChannelInputSchema,
   updateChannelInputSchema,
 } from '../data/schema';
+import { useChannelModelPreview } from '../data/use-channel-model-preview';
 import { xaiDecodeSSO, xaiOAuthExchange, xaiOAuthStart } from '../data/xai';
 import { ProxyConfig, useOAuthFlow } from '../hooks/use-oauth-flow';
 import { CodexToolSettings } from './codex-tool-settings';
 import { mergeChannelSettingsForUpdate } from '../utils/merge';
 import { isValidModelPattern, matchesModelPattern } from '../utils/pattern';
+import { ApiKeyStrategyFields, type APIKeyStrategyValue } from './channel-api-key-strategy';
+import { ChannelModelAliases } from './channel-model-preview';
 import { ProxyType } from './channels-proxy-dialog';
 import { CopilotDeviceFlow } from './copilot-device-flow';
 import { ManualModelBadge } from './manual-model-badge';
-import { ChannelModelAliases } from './channel-model-preview';
-import { filterChannelModelGroups, groupChannelModelEntries } from '../data/channel-model-aliases';
-import { useChannelModelPreview } from '../data/use-channel-model-preview';
 
 interface Props {
   currentRow?: Channel;
@@ -445,6 +446,8 @@ const FetchedModelItem = memo(
     onToggle,
     addedLabel,
     willRemoveLabel,
+    pricingSummary,
+    noPricingLabel,
   }: {
     model: string;
     isAdded: boolean;
@@ -452,6 +455,8 @@ const FetchedModelItem = memo(
     onToggle: () => void;
     addedLabel: string;
     willRemoveLabel: string;
+    pricingSummary: string | null;
+    noPricingLabel: string;
   }) => (
     <div
       className={`flex items-center gap-2 rounded-md p-2 text-sm transition-colors ${
@@ -465,12 +470,14 @@ const FetchedModelItem = memo(
       <Checkbox checked={isSelected} onCheckedChange={onToggle} />
       <Tooltip>
         <TooltipTrigger asChild>
-          <span className='flex-1 cursor-pointer truncate' onClick={onToggle}>
-            {model}
+          <span className='flex min-w-0 flex-1 cursor-pointer flex-col' onClick={onToggle}>
+            <span className='truncate'>{model}</span>
+            <span className='text-muted-foreground block truncate text-xs'>{pricingSummary ?? noPricingLabel}</span>
           </span>
         </TooltipTrigger>
         <TooltipContent>
           <p className='max-w-xs break-all'>{model}</p>
+          <p className='max-w-xl text-xs break-words'>{pricingSummary ?? noPricingLabel}</p>
         </TooltipContent>
       </Tooltip>
       {isAdded && !isSelected && (
@@ -686,6 +693,7 @@ export function ChannelsActionDialog({
   const [newModel, setNewModel] = useState('');
   const [selectedDefaultModels, setSelectedDefaultModels] = useState<string[]>([]);
   const [fetchedModels, setFetchedModels] = useState<string[]>([]);
+  const [fetchedModelPrices, setFetchedModelPrices] = useState<Record<string, ModelPrice>>({});
   const [useFetchedModels, setUseFetchedModels] = useState(false);
   const [dialogContent, setDialogContent] = useState<HTMLDivElement | null>(null);
   const providerRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -789,9 +797,7 @@ export function ChannelsActionDialog({
         value: t(passThroughSettings.enabled ? 'channels.dialogs.bodyPassThrough.enabled' : 'channels.dialogs.bodyPassThrough.disabled'),
       })
     : t('channels.dialogs.bodyPassThrough.inherit');
-  const [apiKeyStrategy, setApiKeyStrategy] = useState<APIKeyStrategyValue>(
-    () => initialRow?.settings?.apiKeyStrategy ?? 'sticky'
-  );
+  const [apiKeyStrategy, setApiKeyStrategy] = useState<APIKeyStrategyValue>(() => initialRow?.settings?.apiKeyStrategy ?? 'sticky');
   const [apiKeyRoundRobinSwitchAfter, setApiKeyRoundRobinSwitchAfter] = useState<number>(
     () => initialRow?.settings?.apiKeyRoundRobinSwitchAfter ?? 1
   );
@@ -1210,13 +1216,33 @@ export function ChannelsActionDialog({
   // These controls live outside react-hook-form, but navigating away must still
   // warn before discarding their edits.
   const localSettingsSnapshot = JSON.stringify({
-    supportedModels, manualModels, proxyType, proxyUrl, proxyUsername, proxyPassword,
-    passThroughUserAgent, passThroughBody, quotaRoutingMode, retryableStatusCodesText,
-    retryableErrorPatternsText, maxSingleChannelRetriesText, responseTimeoutMode,
-    streamFirstEventTimeoutText, nonStreamResponseTimeoutText, apiKeyStrategy,
-    apiKeyRoundRobinSwitchAfter, authMode, codexAuthJSONText, xaiSSOToken,
-    selectedProvider, selectedApiFormat, responsesTransport, codexResponsesWebSocket,
-    useGeminiVertex, useAnthropicAws, useKimiCoding,
+    supportedModels,
+    manualModels,
+    proxyType,
+    proxyUrl,
+    proxyUsername,
+    proxyPassword,
+    passThroughUserAgent,
+    passThroughBody,
+    quotaRoutingMode,
+    retryableStatusCodesText,
+    retryableErrorPatternsText,
+    maxSingleChannelRetriesText,
+    responseTimeoutMode,
+    streamFirstEventTimeoutText,
+    nonStreamResponseTimeoutText,
+    apiKeyStrategy,
+    apiKeyRoundRobinSwitchAfter,
+    authMode,
+    codexAuthJSONText,
+    xaiSSOToken,
+    selectedProvider,
+    selectedApiFormat,
+    responsesTransport,
+    codexResponsesWebSocket,
+    useGeminiVertex,
+    useAnthropicAws,
+    useKimiCoding,
   });
   const initialLocalSettings = useRef(localSettingsSnapshot);
   useEffect(() => {
@@ -1896,9 +1922,7 @@ export function ChannelsActionDialog({
           maxSingleChannelRetries,
           apiKeyStrategy,
           apiKeyRoundRobinSwitchAfter:
-            apiKeyStrategy === 'round_robin' || apiKeyStrategy === 'round_robin_success'
-              ? apiKeyRoundRobinSwitchAfter
-              : null,
+            apiKeyStrategy === 'round_robin' || apiKeyStrategy === 'round_robin_success' ? apiKeyRoundRobinSwitchAfter : null,
 
           responseTimeout,
           // Cookie edits (including clearing the saved cookie) travel through
@@ -1987,9 +2011,7 @@ export function ChannelsActionDialog({
           codexSearchModel: isCodexType ? codexSearchModel : '',
           apiKeyStrategy,
           apiKeyRoundRobinSwitchAfter:
-            apiKeyStrategy === 'round_robin' || apiKeyStrategy === 'round_robin_success'
-              ? apiKeyRoundRobinSwitchAfter
-              : null,
+            apiKeyStrategy === 'round_robin' || apiKeyStrategy === 'round_robin_success' ? apiKeyRoundRobinSwitchAfter : null,
           ...(selectedApiFormat === 'zenmux/video' ||
           settingsForSubmit?.modelProtocols?.some((protocol) => protocol.apiFormats.includes('zenmux/video'))
             ? {
@@ -2148,17 +2170,24 @@ export function ChannelsActionDialog({
       }
 
       const models = result.models.map((m) => m.id);
-      if (models?.length) {
-        setFetchedModels(models);
-        setUseFetchedModels(true);
-        setShowFetchedModelsPanel(true);
-        setShowSupportedModelsPanel(false);
-        setShowApiKeysPanel(false);
-        setSelectedFetchedModels([]);
-        setFetchedModelsSearch('');
-        setShowNotAddedModelsOnly(false);
-        setApplyPatternFilter(false);
+      const nextFetchedModelPrices: Record<string, ModelPrice> = {};
+      for (const model of result.models) {
+        if (model.pricing) {
+          nextFetchedModelPrices[model.id] = model.pricing;
+        }
       }
+      // Reflect the fetch result even when empty: a successful empty response must clear
+      // the previous fetch's models/prices instead of leaving stale data in the open panel.
+      setFetchedModels(models);
+      setFetchedModelPrices(nextFetchedModelPrices);
+      setUseFetchedModels(true);
+      setShowFetchedModelsPanel(true);
+      setShowSupportedModelsPanel(false);
+      setShowApiKeysPanel(false);
+      setSelectedFetchedModels([]);
+      setFetchedModelsSearch('');
+      setShowNotAddedModelsOnly(false);
+      setApplyPatternFilter(false);
     } catch (_error) {
       // Error is already handled by the mutation
     }
@@ -2351,7 +2380,10 @@ export function ChannelsActionDialog({
     return supportedModels.slice(0, MAX_MODELS_DISPLAY);
   }, [supportedModels]);
 
-  const modelGroups = useMemo(() => groupChannelModelEntries(supportedModels, modelPreview.data ?? []), [supportedModels, modelPreview.data]);
+  const modelGroups = useMemo(
+    () => groupChannelModelEntries(supportedModels, modelPreview.data ?? []),
+    [supportedModels, modelPreview.data]
+  );
 
   // Searching an alias retains its upstream model and all sibling aliases.
   const filteredSupportedModels = useMemo(() => {
@@ -2362,7 +2394,7 @@ export function ChannelsActionDialog({
   const fetchedModelsVirtualizer = useVirtualizer({
     count: filteredFetchedModels.length,
     getScrollElement: () => fetchedModelsParentRef.current,
-    estimateSize: () => 40,
+    estimateSize: () => 56,
     overscan: 5,
   });
 
@@ -2429,12 +2461,8 @@ export function ChannelsActionDialog({
     setApiKeyRoundRobinSwitchAfter(initialRow?.settings?.apiKeyRoundRobinSwitchAfter ?? 1);
 
     setResponseTimeoutMode(initialRow?.settings?.responseTimeout?.mode === 'CUSTOM' ? 'CUSTOM' : 'INHERIT');
-    setStreamFirstEventTimeoutText(
-      formatResponseTimeoutSeconds(initialRow?.settings?.responseTimeout?.streamFirstEventTimeoutSeconds)
-    );
-    setNonStreamResponseTimeoutText(
-      formatResponseTimeoutSeconds(initialRow?.settings?.responseTimeout?.nonStreamResponseTimeoutSeconds)
-    );
+    setStreamFirstEventTimeoutText(formatResponseTimeoutSeconds(initialRow?.settings?.responseTimeout?.streamFirstEventTimeoutSeconds));
+    setNonStreamResponseTimeoutText(formatResponseTimeoutSeconds(initialRow?.settings?.responseTimeout?.nonStreamResponseTimeoutSeconds));
     // Reset provider and API format state
     if (initialRow) {
       setSelectedProvider(getProviderFromChannelType(initialRow.type) || 'openai');
@@ -3264,7 +3292,7 @@ export function ChannelsActionDialog({
                           />
                         )}
 
-<ApiKeyStrategyFields
+                      <ApiKeyStrategyFields
                         value={apiKeyStrategy}
                         switchAfter={apiKeyRoundRobinSwitchAfter}
                         onChange={(value) => setApiKeyStrategy(value)}
@@ -4246,6 +4274,9 @@ export function ChannelsActionDialog({
 
                 {/* Model List */}
                 <div ref={fetchedModelsParentRef} className='min-h-0 flex-1 overflow-auto pr-3'>
+                  {fetchedModels.length === 0 && (
+                    <p className='text-muted-foreground py-6 text-center text-xs'>{t('channels.dialogs.fetchModels.noModels')}</p>
+                  )}
                   <div
                     style={{
                       height: `${fetchedModelsVirtualizer.getTotalSize()}px`,
@@ -4257,6 +4288,40 @@ export function ChannelsActionDialog({
                       const model = filteredFetchedModels[virtualItem.index];
                       const isAdded = supportedModels.includes(model);
                       const isSelected = selectedFetchedModels.includes(model);
+                      const pricing = fetchedModelPrices[model];
+                      const perMillionLabel = t('channels.dialogs.fetchModels.perMillion');
+                      const summaryParts: string[] = [];
+                      const addPrice = (itemCode: string, label: string) => {
+                        const value = pricing?.items.find((item) => item.itemCode === itemCode)?.pricing.usagePerUnit;
+                        if (value !== null && value !== undefined) {
+                          summaryParts.push(`${label}: $${value}${perMillionLabel}`);
+                        }
+                      };
+                      addPrice('prompt_tokens', t('channels.dialogs.fetchModels.input'));
+                      addPrice('completion_tokens', t('channels.dialogs.fetchModels.output'));
+                      addPrice('prompt_cached_tokens', t('channels.dialogs.fetchModels.cacheRead'));
+                      const writeItem = pricing?.items.find((item) => item.itemCode === 'prompt_write_cached_tokens');
+                      const writeValue = writeItem?.pricing.usagePerUnit;
+                      const writeVariants = (writeItem?.promptWriteCacheVariants ?? [])
+                        .map((variant) => {
+                          const value = variant.pricing.usagePerUnit;
+                          if (value === null || value === undefined) return null;
+                          const label =
+                            variant.variantCode === 'five_min'
+                              ? t('channels.dialogs.fetchModels.fiveMin')
+                              : t('channels.dialogs.fetchModels.oneHour');
+                          return `${label}: $${value}${perMillionLabel}`;
+                        })
+                        .filter((variant): variant is string => variant !== null);
+                      if (writeValue !== null && writeValue !== undefined) {
+                        const variantsLabel = writeVariants.length > 0 ? ` (${writeVariants.join(', ')})` : '';
+                        summaryParts.push(
+                          `${t('channels.dialogs.fetchModels.cacheWrite')}: $${writeValue}${perMillionLabel}${variantsLabel}`
+                        );
+                      } else if (writeVariants.length > 0) {
+                        summaryParts.push(`${t('channels.dialogs.fetchModels.cacheWrite')}: ${writeVariants.join(', ')}`);
+                      }
+                      const pricingSummary = summaryParts.length > 0 ? summaryParts.join(' · ') : null;
                       return (
                         <div
                           key={virtualItem.key}
@@ -4276,6 +4341,8 @@ export function ChannelsActionDialog({
                             onToggle={() => toggleFetchedModelSelection(model)}
                             addedLabel={t('channels.dialogs.fields.supportedModels.added')}
                             willRemoveLabel={t('channels.dialogs.fields.supportedModels.willRemove')}
+                            pricingSummary={pricingSummary}
+                            noPricingLabel={t('channels.dialogs.fetchModels.noPricing')}
                           />
                         </div>
                       );
@@ -4651,10 +4718,7 @@ export function ChannelsActionDialog({
                     size='sm'
                     className='mb-3 shrink-0'
                     onClick={() => {
-                      if (
-                        hasFormChanges ||
-                        localSettingsSnapshot !== initialLocalSettings.current
-                      ) {
+                      if (hasFormChanges || localSettingsSnapshot !== initialLocalSettings.current) {
                         setConfirmOpenModelMapping(true);
                       } else {
                         openModelMapping();
@@ -4664,8 +4728,16 @@ export function ChannelsActionDialog({
                     {t('channels.modelPreview.openSettings')}
                   </Button>
                 )}
-                {modelPreview.isUpdating && <p role='status' className='text-muted-foreground mb-2 text-xs'>{t('channels.modelPreview.loading')}</p>}
-                {modelPreview.isError && <p role='alert' className='text-destructive mb-2 text-xs'>{t('common.errors.loadFailed')}</p>}
+                {modelPreview.isUpdating && (
+                  <p role='status' className='text-muted-foreground mb-2 text-xs'>
+                    {t('channels.modelPreview.loading')}
+                  </p>
+                )}
+                {modelPreview.isError && (
+                  <p role='alert' className='text-destructive mb-2 text-xs'>
+                    {t('common.errors.loadFailed')}
+                  </p>
+                )}
 
                 {/* Model List */}
                 <div ref={supportedModelsParentRef} className='min-h-0 flex-1 overflow-auto pr-3'>

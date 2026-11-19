@@ -34,6 +34,7 @@ import {
   ProxyConfig,
   ChannelPolicies,
   ChannelModelPrice,
+  ModelPrice,
   SaveChannelModelPriceInput,
   channelModelPriceSchema,
   TestChannelAPIKeysPayload,
@@ -131,6 +132,7 @@ const CREATE_CHANNEL_MUTATION = `
         codexImageModel
         codexPreserveSpeedModel
         codexSearchModel
+        syncModelPrices
         quotaRoutingMode
         quotaReserve { fiveHourPercent sevenDayPercent allowSearch allowImage allowMemory }
         proxy {
@@ -249,6 +251,7 @@ const DUPLICATE_CHANNEL_MUTATION = `
         codexImageModel
         codexPreserveSpeedModel
         codexSearchModel
+        syncModelPrices
         quotaRoutingMode
         quotaReserve { fiveHourPercent sevenDayPercent allowSearch allowImage allowMemory }
         proxy {
@@ -367,6 +370,7 @@ const BULK_CREATE_CHANNELS_MUTATION = `
         codexImageModel
         codexPreserveSpeedModel
         codexSearchModel
+        syncModelPrices
         quotaRoutingMode
         quotaReserve { fiveHourPercent sevenDayPercent allowSearch allowImage allowMemory }
         proxy {
@@ -484,6 +488,7 @@ const CHANNEL_FIELDS_FRAGMENT = `
         codexImageModel
         codexPreserveSpeedModel
         codexSearchModel
+        syncModelPrices
         quotaRoutingMode
         quotaReserve { fiveHourPercent sevenDayPercent allowSearch allowImage allowMemory }
         proxy {
@@ -766,6 +771,7 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
           codexImageModel
           codexPreserveSpeedModel
         codexSearchModel
+          syncModelPrices
           quotaRoutingMode
           quotaReserve { fiveHourPercent sevenDayPercent allowSearch allowImage allowMemory }
           transformOptions {
@@ -1023,6 +1029,7 @@ const BULK_UPDATE_CHANNEL_ORDERING_MUTATION = `
           codexImageModel
           codexPreserveSpeedModel
         codexSearchModel
+          syncModelPrices
           quotaRoutingMode
           quotaReserve { fiveHourPercent sevenDayPercent allowSearch allowImage allowMemory }
           transformOptions {
@@ -1144,6 +1151,22 @@ const FETCH_MODELS_QUERY = `
     fetchModels(input: $input) {
       models {
         id
+        pricing {
+          items {
+            itemCode
+            pricing {
+              mode
+              usagePerUnit
+            }
+            promptWriteCacheVariants {
+              variantCode
+              pricing {
+                mode
+                usagePerUnit
+              }
+            }
+          }
+        }
       }
       error
     }
@@ -1284,6 +1307,7 @@ const CHANNEL_QUERY_FULL_NODE_SELECTION = `
             codexImageModel
             codexPreserveSpeedModel
         codexSearchModel
+            syncModelPrices
             quotaRoutingMode
             quotaReserve { fiveHourPercent sevenDayPercent allowSearch allowImage allowMemory }
             bodyOverrideOperations {
@@ -1427,6 +1451,7 @@ const CHANNEL_QUERY_ROUTING_STATUS_SELECTION = `
         codexSearchModel
              quotaRoutingMode
              quotaReserve { fiveHourPercent sevenDayPercent allowSearch allowImage allowMemory }
+             syncModelPrices
            }
            providerQuotaStatus {
              status
@@ -1453,6 +1478,7 @@ const CHANNEL_QUERY_PROXY_SELECTION = `
         codexSearchModel
             quotaRoutingMode
             quotaReserve { fiveHourPercent sevenDayPercent allowSearch allowImage allowMemory }
+            syncModelPrices
             proxy {
               type
               url
@@ -2507,7 +2533,7 @@ export function useFetchModels() {
       try {
         const data = await graphqlRequest<{
           fetchModels: {
-            models: Array<{ id: string }>;
+            models: Array<{ id: string; pricing?: ModelPrice | null }>;
             error?: string | null;
           };
         }>(FETCH_MODELS_QUERY, { input });
