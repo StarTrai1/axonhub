@@ -28,9 +28,12 @@ func SupportsModelCatalog(baseURL string) bool {
 
 // ModelsRequest uses the same OAuth provider and client version as inference.
 func ModelsRequest(ctx context.Context, tokens oauth.TokenGetter, baseURL string, clientVersions ...string) (*httpclient.Request, error) {
-	clientVersion := currentCodexVersion()
-	if len(clientVersions) > 0 && clientVersions[0] != "" {
+	clientVersion := ""
+	if len(clientVersions) > 0 {
 		clientVersion = clientVersions[0]
+	}
+	if clientVersion == "" {
+		clientVersion = currentCodexVersion()
 	}
 	creds, err := tokens.Get(ctx)
 	if err != nil {

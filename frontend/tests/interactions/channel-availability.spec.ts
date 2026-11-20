@@ -7,7 +7,11 @@ for (const width of [390, 1280]) {
       const request = route.request().postDataJSON();
       if (request.variables?.input?.policies) {
         policies = request.variables.input.policies;
-        await route.fulfill({ json: { data: { updateChannel: null } } });
+        await route.fulfill({ json: { data: { updateChannel: {
+          id: 'channel-preview', createdAt: '2026-10-17T00:00:00Z', updatedAt: '2026-11-20T00:00:00Z',
+          name: 'Codex fixture', type: 'codex', status: 'enabled', baseURL: 'https://example.test',
+          defaultTestModel: 'gpt-6.2-sol', policies,
+        } } } });
       } else await route.fulfill({ json: { data: {} } });
     });
     await page.setViewportSize({ width, height: 1000 });
@@ -28,5 +32,6 @@ for (const width of [390, 1280]) {
       webSearch: 'native', imageGeneration: 'other_channels', codexMemory: 'only', codexSpeed: 'fast',
       scheduledDisable: { disableCron: '0 23 * * *', reenableCron: '0 6 * * *', disableTimezone: 'Asia/Shanghai' },
     });
+    await expect(dialog).not.toBeVisible();
   });
 }
