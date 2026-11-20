@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"maps"
 	"net/http"
-	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -129,7 +128,10 @@ func (svc *ChannelService) FetchCodexCatalogForOriginator(ctx context.Context, c
 	if originator == "" {
 		originator = codex.AxonHubOriginator
 	}
-	result := svc.codexCatalogSF.DoChan(fmt.Sprintf("%d:%q:%q", channelID, version, originator), func() (any, error) {
+	version = normalizeCodexClientVersion(version)
+	flightVersion := version
+	if flightVersion == "" { flightVersion = "default:"+svc.resolveCodexClientVersion(nil).Version }
+	result := svc.codexCatalogSF.DoChan(fmt.Sprintf("%d:%q:%q", channelID, flightVersion, originator), func() (any, error) {
 		fetchCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
 		defer cancel()
 		fetchCtx = ent.NewContext(fetchCtx, svc.db)
@@ -178,21 +180,24 @@ func (svc *ChannelService) fetchCodexCatalog(ctx context.Context, channelID int,
 	case strings.HasPrefix(baseURL, "ws://"):
 		baseURL = "http://" + strings.TrimPrefix(baseURL, "ws://")
 	}
-	req, err := codex.ModelsRequest(ctx, outbound.TokenProvider(), baseURL)
+	ops := channelHeaderOverrideOperations(entity)
+	if version == "" {
+		version = svc.resolveCodexClientVersion(ops).Version
+	}
+	req, err := codex.ModelsRequest(ctx, outbound.TokenProvider(), baseURL, version)
 	if err != nil {
 		return nil, &CodexCatalogError{Status: 502, Message: "Codex catalog authentication failed"}
 	}
 	req.Headers.Set("Originator", originator)
-	parsed, err := url.Parse(req.URL)
-	if err != nil {
-		return nil, &CodexCatalogError{Status: 502, Message: "invalid Codex catalog URL"}
+	// Restrict compatibility overrides to client identity headers.
+	identityHeaders := http.Header{"Version": {version}}
+	ApplyModelFetchHeaderOverrides(identityHeaders, ops)
+	if _, ok := identityHeaders["Version"]; !ok {
+		req.Headers.Del("Version")
 	}
-	query := parsed.Query()
-	if version != "" {
-		query.Set("client_version", version)
+	if userAgent := identityHeaders.Values("User-Agent"); len(userAgent) > 0 {
+		req.Headers["User-Agent"] = userAgent
 	}
-	parsed.RawQuery = query.Encode()
-	req.URL = parsed.String()
 	native := *httpClient.GetNativeClient()
 	previous := native.CheckRedirect
 	native.CheckRedirect = func(next *http.Request, via []*http.Request) error {

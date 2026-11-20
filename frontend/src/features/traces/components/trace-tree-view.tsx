@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronRight, ChevronDown, Workflow, ChevronsDownUp, ExternalLink, Filter } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
+import { appPath } from '@/lib/app-path';
 import { buildGUID, cn } from '@/lib/utils';
 import { formatNumber } from '@/utils/format-number';
 import { Badge } from '@/components/ui/badge';
@@ -170,7 +171,7 @@ function SegmentRow({ node, totalDuration, timeRange, selectedSpanId, onSelectSp
   const handleViewRequest = (e: React.MouseEvent) => {
     e.stopPropagation();
     const url = `/project/requests/${encodeURIComponent(buildGUID('Request', String(segment.id)))}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
+    window.open(appPath(url), '_blank', 'noopener,noreferrer');
   };
 
   // Calculate timeline bar position

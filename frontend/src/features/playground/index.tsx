@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/stores/authStore';
 import { useSelectedProjectId } from '@/stores/projectStore';
+import { appPath } from '@/lib/app-path';
 import { ensureFreshAccessToken } from '@/lib/auth-session';
 import { copyTextToClipboard } from '@/lib/clipboard';
 import { cn } from '@/lib/utils';
@@ -173,7 +174,7 @@ function PlaygroundSession({ selectedProjectId, userId }: { selectedProjectId: s
 
   const { messages, sendMessage, status, setMessages, regenerate, stop } = useChat({
     transport: new DefaultChatTransport({
-      api: '/admin/playground/chat',
+      api: appPath('/admin/playground/chat'),
       credentials: 'include',
       headers: () => {
         const headers: Record<string, string> = {
@@ -432,7 +433,7 @@ function PlaygroundSession({ selectedProjectId, userId }: { selectedProjectId: s
             theme: 'dark',
             streamCapture: {
               enabled: true,
-              endpoint: '/admin/playground/chat',
+              endpoint: appPath('/admin/playground/chat'),
               autoConnect: true,
             },
           }}

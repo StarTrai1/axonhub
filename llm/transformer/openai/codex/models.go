@@ -27,7 +27,11 @@ func SupportsModelCatalog(baseURL string) bool {
 }
 
 // ModelsRequest uses the same OAuth provider and client version as inference.
-func ModelsRequest(ctx context.Context, tokens oauth.TokenGetter, baseURL string) (*httpclient.Request, error) {
+func ModelsRequest(ctx context.Context, tokens oauth.TokenGetter, baseURL string, clientVersions ...string) (*httpclient.Request, error) {
+	clientVersion := currentCodexVersion()
+	if len(clientVersions) > 0 && clientVersions[0] != "" {
+		clientVersion = clientVersions[0]
+	}
 	creds, err := tokens.Get(ctx)
 	if err != nil {
 		return nil, err
@@ -35,12 +39,19 @@ func ModelsRequest(ctx context.Context, tokens oauth.TokenGetter, baseURL string
 	if baseURL == "" || baseURL == "https://api.openai.com/v1" {
 		baseURL = codexBaseURL
 	}
-	version := currentCodexVersion()
+	endpoint, err := url.Parse(strings.TrimRight(baseURL, "#"))
+	if err != nil {
+		return nil, fmt.Errorf("parse Codex model catalog URL: %w", err)
+	}
+	endpoint = endpoint.JoinPath("models")
+	query := endpoint.Query()
+	query.Set("client_version", clientVersion)
+	endpoint.RawQuery = query.Encode()
 	headers := make(http.Header)
 	headers.Set("Authorization", "Bearer "+creds.AccessToken)
 	headers.Set("Accept", "application/json")
-	headers.Set("Version", version)
-	headers.Set("User-Agent", codexUserAgent(version))
+	headers.Set("Version", clientVersion)
+	headers.Set("User-Agent", codexUserAgent(clientVersion))
 	headers.Set("Originator", AxonHubOriginator)
 	headers.Set(BetaFeaturesHeader, fabricatedBetaFeatures)
 	if accountID := ExtractChatGPTAccountIDFromJWT(creds.AccessToken); accountID != "" {
@@ -48,7 +59,7 @@ func ModelsRequest(ctx context.Context, tokens oauth.TokenGetter, baseURL string
 	}
 	return &httpclient.Request{
 		Method:  http.MethodGet,
-		URL:     strings.TrimRight(baseURL, "/#") + "/models?client_version=" + version,
+		URL:     endpoint.String(),
 		Headers: headers,
 	}, nil
 }

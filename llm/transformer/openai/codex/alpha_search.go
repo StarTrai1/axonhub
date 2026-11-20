@@ -74,7 +74,7 @@ func (t *OutboundTransformer) transformAlphaSearchRequest(ctx context.Context, l
 		identityVersion, _ = codexVersionFromUserAgent(rawHeaders.Get("User-Agent"))
 	}
 	if identityVersion == "" {
-		identityVersion = currentCodexVersion()
+		identityVersion = t.defaultClientVersion()
 	}
 	headers.Set("User-Agent", codexUserAgent(identityVersion))
 	if headers.Get(SessionHeaderHyphen) == "" {

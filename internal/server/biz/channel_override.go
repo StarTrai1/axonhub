@@ -10,6 +10,7 @@ import (
 
 	"github.com/samber/lo"
 
+	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 )
@@ -52,19 +53,19 @@ func (c *Channel) GetBodyOverrideOperations() []objects.OverrideOperation {
 // Modifications will not persist and may cause data inconsistency.
 func (c *Channel) GetHeaderOverrideOperations() []objects.OverrideOperation {
 	c.overrideHeadersOnce.Do(func() {
-		if c.cachedOverrideHeaders != nil {
-			return
-		}
-		if c.Settings != nil && c.Settings.HeaderOverrideOperations != nil {
-			c.cachedOverrideHeaders = c.Settings.HeaderOverrideOperations
-			return
-		}
-		c.cachedOverrideHeaders = make([]objects.OverrideOperation, 0)
-		if c.Settings != nil && len(c.Settings.OverrideHeaders) > 0 {
-			c.cachedOverrideHeaders = objects.HeaderEntriesToOverrideOperations(c.Settings.OverrideHeaders)
-		}
+		c.cachedOverrideHeaders = channelHeaderOverrideOperations(c.Channel)
 	})
 	return c.cachedOverrideHeaders
+}
+
+func channelHeaderOverrideOperations(ch *ent.Channel) []objects.OverrideOperation {
+	if ch.Settings == nil || (ch.Settings.HeaderOverrideOperations == nil && len(ch.Settings.OverrideHeaders) == 0) {
+		return []objects.OverrideOperation{}
+	}
+	if ch.Settings.HeaderOverrideOperations != nil {
+		return ch.Settings.HeaderOverrideOperations
+	}
+	return objects.HeaderEntriesToOverrideOperations(ch.Settings.OverrideHeaders)
 }
 
 const ClearHeaderDirective = "__AXONHUB_CLEAR__"

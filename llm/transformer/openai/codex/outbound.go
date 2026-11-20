@@ -47,6 +47,7 @@ type OutboundTransformer struct {
 	transport       string
 	baseURL         string
 	alphaSearchPath string
+	clientVersion   func() string
 
 	// official reports whether the configured upstream is the official Codex
 	// backend (chatgpt.com). Official endpoints always stream SSE, so they keep
@@ -85,6 +86,7 @@ type Params struct {
 	Transport          string
 	AlphaSearchPath    string
 	EndpointPath       string
+	ClientVersion func() string
 }
 
 // isOfficialCodexBaseURL reports whether baseURL points at the official Codex
@@ -150,6 +152,7 @@ func NewOutboundTransformer(params Params) (*OutboundTransformer, error) {
 	}
 
 	return &OutboundTransformer{
+		clientVersion: params.ClientVersion,
 		tokens:             params.TokenProvider,
 		transport:          params.Transport,
 		baseURL:            strings.TrimSuffix(baseURL, "##"),
@@ -165,6 +168,14 @@ func NewOutboundTransformer(params Params) (*OutboundTransformer, error) {
 // SupportsCodexResponseHeaders reports the server-owned Codex header contract.
 func (t *OutboundTransformer) SupportsCodexResponseHeaders() bool {
 	return true
+
+}
+
+func (t *OutboundTransformer) defaultClientVersion() string {
+	if t.clientVersion != nil {
+		return t.clientVersion()
+	}
+	return currentCodexVersion()
 }
 
 func (t *OutboundTransformer) APIFormat() llm.APIFormat {
@@ -411,7 +422,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		identityVersion, _ = codexVersionFromUserAgent(rawUserAgent)
 	}
 	if identityVersion == "" {
-		identityVersion = currentCodexVersion()
+		identityVersion = t.defaultClientVersion()
 	}
 
 	if rawOriginator != "" {

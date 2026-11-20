@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { getTokenFromStorage } from '@/stores/authStore';
 import { ensureFreshAccessToken } from '@/lib/auth-session';
+import { appPath } from '@/lib/app-path';
 import { copyTextToClipboard } from '@/lib/clipboard';
 import { extractNumberID } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -172,7 +173,7 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
       return null;
     }
 
-    const url = `/admin/requests/${encodeURIComponent(requestIdNumber)}/content`;
+    const url = appPath(`/admin/requests/${encodeURIComponent(requestIdNumber)}/content`);
     const resp = await fetch(url, {
       headers: {
         Authorization: `Bearer ${token}`,

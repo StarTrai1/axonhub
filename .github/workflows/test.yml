@@ -78,8 +78,8 @@ jobs:
       matrix:
         include:
           # Keep only the current stable CLI; replace this version on upgrades.
-          - {codex: '0.170.0', model: gpt-6.2-sol}
-          - {codex: '0.170.0', model: gpt-6.2-astra}
+          - {codex: '0.171.0', model: gpt-6.2-sol}
+          - {codex: '0.171.0', model: gpt-6.2-astra}
     env:
       PROBE_TEST_MODEL: ${{ matrix.model }}
       PROBE_TEST_CODEX_VERSION: ${{ matrix.codex }}
