@@ -67,12 +67,12 @@ function CronPicker({
 
   return (
     <div className='space-y-2'>
-      <div className='flex gap-2'>
+      <div className='flex flex-col gap-2 sm:flex-row'>
         {/* The dropdown stays visible in custom mode (pinned to the custom
             item) so a preset, "none" or "opposite" can be picked without
             clearing the custom cron first. */}
         <Select value={isCustom ? 'custom' : selection} onValueChange={(value) => onSelectionChange(value as CronPickerValue)}>
-          <SelectTrigger className={cn('shrink-0', isCustom && 'w-28')}>
+          <SelectTrigger className={cn('w-full shrink-0', isCustom && 'sm:w-52')}>
             <SelectValue placeholder={placeholder} />
           </SelectTrigger>
           <SelectContent>
@@ -198,7 +198,7 @@ export function ChannelsAvailabilityDialog({ open, onOpenChange, currentRow }: P
           {(['inherit', 'custom', 'off'] as const).map((value) => (
             <div key={value} className='flex items-start gap-2 rounded-md border p-3'>
               <RadioGroupItem value={value} id={`auto-disable-mode-${value}`} className='mt-1' />
-              <Label htmlFor={`auto-disable-mode-${value}`} className='flex flex-1 cursor-pointer flex-col gap-0.5 font-normal'>
+              <Label htmlFor={`auto-disable-mode-${value}`} className='flex flex-1 cursor-pointer flex-col items-start gap-1 text-left font-normal'>
                 <span className='font-medium'>{t(`channels.dialogs.availability.modes.${value}`)}</span>
                 <span className='text-muted-foreground text-sm'>{t(`channels.dialogs.availability.modes.${value}Description`)}</span>
               </Label>

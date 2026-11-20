@@ -24,6 +24,9 @@ for (const width of [390, 1280]) {
     await expect(disable).toHaveValue('0 22 * * *');
     await expect(reenable).toHaveValue('0 6 * * *');
     await disable.fill('0 23 * * *');
+    for (const value of await dialog.locator('[data-slot=select-value]').all()) {
+      await expect.poll(() => value.evaluate((node) => node.scrollWidth <= node.clientWidth + 1)).toBe(true);
+    }
     await expect.poll(() => dialog.evaluate((node) => node.scrollWidth <= node.clientWidth + 1)).toBe(true);
     await reenable.scrollIntoViewIfNeeded();
     await page.screenshot({ animations: 'disabled', path: testInfo.outputPath(`codex-availability-${width}-dark.png`) });
