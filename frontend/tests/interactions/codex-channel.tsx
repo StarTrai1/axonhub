@@ -6,6 +6,7 @@ import '@/index.css';
 import i18n from '@/lib/i18n';
 import { ThemeProvider, useTheme } from '@/context/theme-context';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { ChannelsAvailabilityDialog } from '@/features/channels/components/channels-availability-dialog';
 import { ChannelsActionDialog } from '@/features/channels/components/channels-action-dialog';
 import { ChannelsModelMappingDialog } from '@/features/channels/components/channels-model-mapping-dialog';
 import { channelSchema, type Channel } from '@/features/channels/data/schema';
@@ -25,6 +26,10 @@ if (new URLSearchParams(window.location.search).get('auth') === 'third-party') {
   row.baseURL = 'https://relay.example/v1';
   row.credentials = { apiKeys: ['synthetic-relay-key'] };
 }
+if (new URLSearchParams(window.location.search).has('availability')) {
+  row.policies = { ...row.policies, webSearch: 'native', imageGeneration: 'other_channels', codexMemory: 'only', codexSpeed: 'fast',
+    apiKeyAutoDisableMode: 'off', scheduledDisable: { disableCron: '0 22 * * *', disableTimezone: 'Asia/Shanghai', reenableMode: 'cron', reenableCron: '0 6 * * *', reenableTimezone: 'Asia/Shanghai' } };
+}
 function Fixture() {
   const {setTheme} = useTheme();
   const [open, setOpen] = useState(true);
@@ -38,7 +43,9 @@ function Fixture() {
       setCurrentRow(channelSchema.parse(await response.json()));
       setOpen(true);
     }}>Reopen saved channel</button>
-    {open && (new URLSearchParams(window.location.search).has('mapping')
+    {open && (new URLSearchParams(window.location.search).has('availability')
+      ? <ChannelsAvailabilityDialog currentRow={currentRow} open={open} onOpenChange={setOpen} />
+      : new URLSearchParams(window.location.search).has('mapping')
       ? <ChannelsModelMappingDialog currentRow={currentRow} open={open} onOpenChange={setOpen} />
       : <ChannelsActionDialog currentRow={currentRow} open={open} onOpenChange={setOpen} showModelsPanel={new URLSearchParams(window.location.search).has('models')} />)}
   </>;

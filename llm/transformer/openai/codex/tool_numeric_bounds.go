@@ -11,9 +11,10 @@ import (
 )
 
 // Based on CLIProxyAPI 57d005fe: Codex rejects integer numeric bounds outside int64.
+// Also strip unsupported uniqueItems (CLIProxyAPI 6faa8d20).
 // Only schema keywords are changed; examples, defaults, enum values and tool inputs remain opaque.
 func normalizeNumericToolBounds(request *httpclient.Request) *httpclient.Request {
-	if request == nil || (!bytes.Contains(request.Body, []byte("inimum")) && !bytes.Contains(request.Body, []byte("aximum"))) {
+	if request == nil || (!bytes.Contains(request.Body, []byte("inimum")) && !bytes.Contains(request.Body, []byte("aximum")) && !bytes.Contains(request.Body, []byte(`"uniqueItems"`))) {
 		return request
 	}
 	var payload map[string]any
@@ -78,7 +79,8 @@ func normalizeToolBoundList(value any) bool {
 }
 
 func normalizeSchemaBounds(schema map[string]any) bool {
-	changed := false
+	_, changed := schema["uniqueItems"]
+	delete(schema, "uniqueItems")
 	for _, keyword := range []string{"minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum"} {
 		if number, ok := schema[keyword].(json.Number); ok && isNumericBoundOutOfInt64(number) {
 			delete(schema, keyword)

@@ -19,6 +19,7 @@ func encryptedFunctionArgsMetadata(item *Item) map[string]any {
 }
 
 var rawCreateRequestFields = []string{
+	"request_country",
 	"access_programs",
 	"client_metadata",
 	"context_management",

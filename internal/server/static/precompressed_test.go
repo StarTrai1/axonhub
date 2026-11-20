@@ -138,3 +138,39 @@ func TestPackedEmbeddedAssetsMatchViteOutput(t *testing.T) {
 	require.Contains(t, result.Header().Get("Content-Type"), "text/html")
 	require.Equal(t, "no-cache, no-store, must-revalidate", result.Header().Get("Cache-Control"))
 }
+
+func TestPackedIndexRewritesPrefixBeforeCompression(t *testing.T) {
+ gin.SetMode(gin.TestMode)
+ root := t.TempDir()
+ var packed bytes.Buffer
+ writer := gzip.NewWriter(&packed)
+ _, err := writer.Write([]byte(`<html><head><script src="./assets/app-Ab12cd_9.js"></script></head></html>`))
+ require.NoError(t, err)
+ require.NoError(t, writer.Close())
+ require.NoError(t, os.WriteFile(root+"/index.html.gz", packed.Bytes(), 0o644))
+ original := staticFS
+ staticFS = ginstatic.LocalFile(root, false)
+ t.Cleanup(func() { staticFS = original })
+ for _, prefix := range []string{"", "/hub"} {
+  for _, encoding := range []string{"", "gzip"} {
+   router := gin.New()
+   router.NoRoute(Handler(prefix))
+   request := httptest.NewRequest(http.MethodGet, "/channels", nil)
+   request.Header.Set("Accept-Encoding", encoding)
+   result := httptest.NewRecorder()
+   router.ServeHTTP(result, request)
+   require.Equal(t, http.StatusOK, result.Code)
+   body := result.Body.Bytes()
+   if encoding == "gzip" {
+    require.Equal(t, "gzip", result.Header().Get("Content-Encoding"))
+    reader, err := gzip.NewReader(bytes.NewReader(body))
+    require.NoError(t, err)
+    body, err = io.ReadAll(reader)
+    require.NoError(t, err)
+    require.NoError(t, reader.Close())
+   }
+   require.Contains(t, string(body), `src="`+prefix+`/assets/app-Ab12cd_9.js"`)
+   if prefix != "" { require.Contains(t, string(body), `name="axonhub-base-path" content="/hub"`) }
+  }
+ }
+}

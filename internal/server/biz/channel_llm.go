@@ -391,7 +391,7 @@ func (svc *ChannelService) buildCodexOutboundWithRefresh(
 						Transport:          transport,
 						AlphaSearchPath:    alphaSearchPath,
 						EndpointPath:       path,
-						ClientVersion:   clientVersion,
+						ClientVersion:      clientVersion,
 					})
 				}
 			}
@@ -440,7 +440,7 @@ func (svc *ChannelService) buildCodexOutboundWithRefresh(
 			Transport:          transport,
 			AlphaSearchPath:    alphaSearchPath,
 			EndpointPath:       path,
-			ClientVersion:   clientVersion,
+			ClientVersion:      clientVersion,
 		})
 	}
 
@@ -459,7 +459,7 @@ func (svc *ChannelService) buildCodexOutboundWithRefresh(
 		Transport:          transport,
 		AlphaSearchPath:    alphaSearchPath,
 		EndpointPath:       path,
-		ClientVersion:   clientVersion,
+		ClientVersion:      clientVersion,
 	})
 }
 

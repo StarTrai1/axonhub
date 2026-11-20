@@ -94,12 +94,21 @@ func serveAPINotFound(c *gin.Context, path string) {
 
 func loadSPAIndex(basePath string) []byte {
 	file, err := staticFS.Open("/index.html")
+	packed := false
 	if err != nil {
-		return nil
+		file, err = staticFS.Open("/index.html.gz")
+		packed = true
 	}
+	if err != nil { return nil }
 	defer file.Close()
-
-	index, err := io.ReadAll(file)
+	var source io.Reader = file
+	if packed {
+		reader, err := gzip.NewReader(file)
+		if err != nil { return nil }
+		defer reader.Close()
+		source = reader
+	}
+	index, err := io.ReadAll(source)
 	if err != nil {
 		return nil
 	}

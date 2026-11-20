@@ -400,7 +400,7 @@ test('availabilityPoliciesPayload drops blank scheduled disables and trims the r
 
 test('channelPoliciesSchema exposes scheduledDisable and every channel query selects it', () => {
   const schemaSource = read('features/channels/data/schema.ts');
-  const policiesBlock = schemaSource.match(/channelPoliciesSchema = z\.object\(\{[\s\S]*?\}\);/)?.[0] ?? '';
+  const policiesBlock = schemaSource.match(/channelPoliciesSchema = z\s*\.object\(\{[\s\S]*?\}\)/)?.[0] ?? '';
   assert.match(policiesBlock, /scheduledDisable:/);
 
   const channelsSource = read('features/channels/data/channels.ts');

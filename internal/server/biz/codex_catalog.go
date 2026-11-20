@@ -130,7 +130,9 @@ func (svc *ChannelService) FetchCodexCatalogForOriginator(ctx context.Context, c
 	}
 	version = normalizeCodexClientVersion(version)
 	flightVersion := version
-	if flightVersion == "" { flightVersion = "default:"+svc.resolveCodexClientVersion(nil).Version }
+	if flightVersion == "" {
+		flightVersion = "default:" + svc.resolveCodexClientVersion(nil).Version
+	}
 	result := svc.codexCatalogSF.DoChan(fmt.Sprintf("%d:%q:%q", channelID, flightVersion, originator), func() (any, error) {
 		fetchCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
 		defer cancel()

@@ -836,8 +836,8 @@ type ChannelPolicies struct {
 
 	// ScheduledHealthChecks is retained only to round-trip legacy policy JSON.
 	// The retired health scheduler never reads or executes these values.
-	ScheduledHealthChecks []string `json:"scheduledHealthChecks,omitempty"`
-	ScheduledDisable *ChannelScheduledDisable `json:"scheduledDisable,omitempty"`
+	ScheduledHealthChecks []string                 `json:"scheduledHealthChecks,omitempty"`
+	ScheduledDisable      *ChannelScheduledDisable `json:"scheduledDisable,omitempty"`
 }
 
 func (p ChannelPolicies) EffectiveCodexIdentityPolicy() CodexIdentityPolicy {

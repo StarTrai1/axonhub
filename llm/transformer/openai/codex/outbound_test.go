@@ -53,15 +53,19 @@ func TestCodexOutbound_DefaultUserAgentHidesInboundClientUA(t *testing.T) {
 	assert.NotEqual(t, clientUA, merged.Headers.Get("User-Agent"))
 
 	// An already constructed transformer picks up a new default. The real
-	// client's Version still wins during the merge, independently of its UA.
+	// client's Version wins before and after header merging.
 	outbound.clientVersion = func() string { return "0.200.0" }
-	inboundRequest.Headers.Set("Version", "0.160.0")
 	req, err = outbound.TransformRequest(ctx, llmReq)
 	require.NoError(t, err)
 	require.Equal(t, "0.200.0", req.Headers.Get("Version"))
+	require.Equal(t, "codex_cli_rs/0.200.0", req.Headers.Get("User-Agent"))
+	inboundRequest.Headers.Set("Version", "0.160.0")
+	req, err = outbound.TransformRequest(ctx, llmReq)
+	require.NoError(t, err)
+	require.Equal(t, "0.160.0", req.Headers.Get("Version"))
 	merged = httpclient.MergeInboundRequest(req, inboundRequest)
 	require.Equal(t, "0.160.0", merged.Headers.Get("Version"))
-	require.Equal(t, "codex_cli_rs/0.200.0", merged.Headers.Get("User-Agent"))
+	require.Equal(t, "codex_cli_rs/0.160.0", merged.Headers.Get("User-Agent"))
 }
 
 // TestCodexOutbound_DefaultUserAgentIsCodexLike keeps the fake identity
