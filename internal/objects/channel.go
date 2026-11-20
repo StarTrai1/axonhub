@@ -885,7 +885,6 @@ func (p ChannelPolicies) UsesLocalRemoteCompactionBridge() bool {
 
 func (p ChannelPolicies) UsesMCPOnlyWebSearch() bool {
 	return p.EffectiveWebSearchPolicy() == WebSearchPolicyMCPOnly
-
 }
 
 // ChannelScheduledDisable configures a wall-clock schedule that disables the

@@ -53,22 +53,22 @@ func TestCodexNumericToolBounds(t *testing.T) {
 }
 
 func TestCodexUnsupportedUniqueItemsPreservesUserData(t *testing.T) {
- schema := `{"type":"object","properties":{"uniqueItems":{"type":"array","uniqueItems":true,"items":{"type":"string"}},"nested":{"anyOf":[{"type":"array","uniqueItems":false}]}},"examples":[{"uniqueItems":true}],"default":{"uniqueItems":false}}`
- for _, envelope := range []string{
-  `{"tools":[{"type":"function","name":"f","parameters":%s}]}`,
-  `{"tools":[{"type":"namespace","name":"n","tools":[{"type":"function","name":"f","parameters":%s}]}]}`,
-  `{"input":[{"type":"additional_tools","tools":[{"type":"function","name":"f","parameters":%s}]}]}`,
-  `{"input":[{"type":"tool_search_output","tools":[{"type":"function","name":"f","parameters":%s}]}]}`,
- } {
-  body := fmt.Sprintf(envelope, schema)
-  request := &httpclient.Request{Body: []byte(body)}
-  result := (&OutboundTransformer{}).FinalizeTransportRequest(request)
-  require.Equal(t, body, string(request.Body))
-  require.Contains(t, string(result.Body), `"uniqueItems":{"items":{"type":"string"},"type":"array"}`)
-  require.Contains(t, string(result.Body), `"anyOf":[{"type":"array"}]`)
-  require.Contains(t, string(result.Body), `"examples":[{"uniqueItems":true}]`)
-  require.Contains(t, string(result.Body), `"default":{"uniqueItems":false}`)
- }
- request := &httpclient.Request{Body: []byte(`{"input":[{"type":"function_call","arguments":"{\"uniqueItems\":true}"}],"metadata":{"uniqueItems":true}}`)}
- require.Same(t, request, normalizeNumericToolBounds(request))
+	schema := `{"type":"object","properties":{"uniqueItems":{"type":"array","uniqueItems":true,"items":{"type":"string"}},"nested":{"anyOf":[{"type":"array","uniqueItems":false}]}},"examples":[{"uniqueItems":true}],"default":{"uniqueItems":false}}`
+	for _, envelope := range []string{
+		`{"tools":[{"type":"function","name":"f","parameters":%s}]}`,
+		`{"tools":[{"type":"namespace","name":"n","tools":[{"type":"function","name":"f","parameters":%s}]}]}`,
+		`{"input":[{"type":"additional_tools","tools":[{"type":"function","name":"f","parameters":%s}]}]}`,
+		`{"input":[{"type":"tool_search_output","tools":[{"type":"function","name":"f","parameters":%s}]}]}`,
+	} {
+		body := fmt.Sprintf(envelope, schema)
+		request := &httpclient.Request{Body: []byte(body)}
+		result := (&OutboundTransformer{}).FinalizeTransportRequest(request)
+		require.Equal(t, body, string(request.Body))
+		require.Contains(t, string(result.Body), `"uniqueItems":{"items":{"type":"string"},"type":"array"}`)
+		require.Contains(t, string(result.Body), `"anyOf":[{"type":"array"}]`)
+		require.Contains(t, string(result.Body), `"examples":[{"uniqueItems":true}]`)
+		require.Contains(t, string(result.Body), `"default":{"uniqueItems":false}`)
+	}
+	request := &httpclient.Request{Body: []byte(`{"input":[{"type":"function_call","arguments":"{\"uniqueItems\":true}"}],"metadata":{"uniqueItems":true}}`)}
+	require.Same(t, request, normalizeNumericToolBounds(request))
 }

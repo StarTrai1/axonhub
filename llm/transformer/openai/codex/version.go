@@ -91,8 +91,15 @@ func codexVersionFromUserAgent(userAgent string) (string, bool) {
 	if len(product) == 0 {
 		return "", false
 	}
-	_, version, found := strings.Cut(product[0], "/")
+	name, version, found := strings.Cut(product[0], "/")
 	if !found {
+		return "", false
+	}
+	switch strings.ToLower(name) {
+	case "codex", "codex_cli_rs", "codex-tui", "codex_tui", "codex_exec", "codex_vscode",
+		"codex_desktop", "codex_atlas", "codex_chatgpt_desktop", "codex_sdk_ts",
+		"codex_mcp_server", "codex-app-server":
+	default:
 		return "", false
 	}
 	if _, ok := parseStableCodexVersion(version); !ok {

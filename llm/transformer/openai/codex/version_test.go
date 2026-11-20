@@ -45,8 +45,10 @@ func TestCodexVersionFromUserAgent(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, "0.146.0", version)
 
-	_, ok = codexVersionFromUserAgent("axonhub/1.0")
-	require.False(t, ok)
+	for _, ua := range []string{"axonhub/1.0", "curl/8.11.1", "ZCode/3.14.4 (darwin arm64)"} {
+		_, ok = codexVersionFromUserAgent(ua)
+		require.False(t, ok)
+	}
 }
 
 func TestCodexVersionFromDesktopUserAgent(t *testing.T) {

@@ -49,7 +49,9 @@ func init() {
 
 func Handler(basePaths ...string) gin.HandlerFunc {
 	basePath := ""
-	if len(basePaths) > 0 { basePath = basePaths[0] }
+	if len(basePaths) > 0 {
+		basePath = basePaths[0]
+	}
 	serveAsset := static.Serve("/", staticFS)
 	index := loadSPAIndex(basePath)
 	var compressed bytes.Buffer
@@ -99,12 +101,16 @@ func loadSPAIndex(basePath string) []byte {
 		file, err = staticFS.Open("/index.html.gz")
 		packed = true
 	}
-	if err != nil { return nil }
+	if err != nil {
+		return nil
+	}
 	defer file.Close()
 	var source io.Reader = file
 	if packed {
 		reader, err := gzip.NewReader(file)
-		if err != nil { return nil }
+		if err != nil {
+			return nil
+		}
 		defer reader.Close()
 		source = reader
 	}
@@ -137,7 +143,9 @@ func serveSPAIndex(c *gin.Context, index, compressed []byte, basePath string) {
 	c.Header("Pragma", "no-cache")
 	c.Header("Expires", "0")
 	if index == nil {
-		if basePath == "" && servePrecompressed(c, "/index.html", false) { return }
+		if basePath == "" && servePrecompressed(c, "/index.html", false) {
+			return
+		}
 		c.FileFromFS("/", staticFS)
 		return
 	}
