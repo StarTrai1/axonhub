@@ -753,13 +753,6 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
         codexMemory
           supportsWebSearch
           codexIdentity
-          scheduledDisable {
-            disableCron
-            disableTimezone
-            reenableMode
-            reenableCron
-            reenableTimezone
-          }
           apiKeyAutoDisableMode
           apiKeyAutoDisableRules {
             statusCodes
@@ -769,6 +762,13 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
             disableDurationMinutes
             disableUntilCron
             disableUntilTimezone
+          }
+          scheduledDisable {
+            disableCron
+            disableTimezone
+            reenableMode
+            reenableCron
+            reenableTimezone
           }
         }
         supportedModels
