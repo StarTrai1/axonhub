@@ -1,5 +1,8 @@
 package codex
 
+// AutoReviewModel is the Codex subscription approval reviewer.
+const AutoReviewModel = "codex-auto-review"
+
 type fastModelPair struct {
 	model string
 	alias string
@@ -50,7 +53,7 @@ func DefaultModels() []string {
 	for _, pair := range fastModelPairs {
 		models = append(models, pair.alias)
 	}
-	return append(append(models, "codex-auto-review"), ImageModels()...)
+	return append(append(models, AutoReviewModel), ImageModels()...)
 }
 
 // ImageModels supplements the official conversation catalog, which does not

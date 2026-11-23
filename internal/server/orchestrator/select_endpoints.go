@@ -30,11 +30,23 @@ func selectForcedAPIFormat(endpoints []objects.ChannelEndpoint, req *llm.Request
 }
 
 func selectEndpointAPIFormat(
+	ctx context.Context,
 	endpoints []objects.ChannelEndpoint,
 	req *llm.Request,
 	forced bool,
 	actualModel string,
 ) string {
+	// Match the actual parent protocol only among the reviewer model's
+	// eligible endpoints. Otherwise use the ordinary endpoint selection.
+	if parentFormat := guardianReviewParentAPIFormat(ctx); parentFormat != "" {
+		if _, capable := llm.CapableAPIFormats(req.RequestType)[parentFormat]; capable {
+			for _, endpoint := range endpoints {
+				if endpoint.APIFormat == parentFormat {
+					return parentFormat
+				}
+			}
+		}
+	}
 	var selected string
 	if forced {
 		selected = selectForcedAPIFormat(endpoints, req)

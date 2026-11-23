@@ -153,7 +153,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Go
-        uses: actions/setup-go@v7
+        uses: actions/setup-go@v7.1.0
         with:
           # Share the verified toolchain with Build, Lint and Release.
           go-version-file: .go-version
