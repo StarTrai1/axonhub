@@ -291,6 +291,9 @@ func convertToLLMRequest(req *Request, rawBody ...[]byte) (*llm.Request, error) 
 
 	// Convert stream options
 	if req.StreamOptions != nil {
+		if req.StreamOptions.ReasoningSummaryDelivery != nil {
+			chatReq.TransformerMetadata["reasoning_summary_delivery"] = req.StreamOptions.ReasoningSummaryDelivery
+		}
 		chatReq.StreamOptions = &llm.StreamOptions{}
 		if req.StreamOptions.IncludeObfuscation != nil {
 			chatReq.TransformerMetadata["include_obfuscation"] = req.StreamOptions.IncludeObfuscation

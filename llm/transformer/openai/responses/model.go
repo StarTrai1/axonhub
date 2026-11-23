@@ -195,6 +195,8 @@ type Reasoning struct {
 
 // StreamOptions represents options for streaming responses.
 type StreamOptions struct {
+	// Controls delivery of reasoning summaries, as requested by native Codex clients.
+	ReasoningSummaryDelivery *string `json:"reasoning_summary_delivery,omitempty"`
 	// When true, stream obfuscation will be enabled.
 	IncludeObfuscation *bool `json:"include_obfuscation,omitempty"`
 }

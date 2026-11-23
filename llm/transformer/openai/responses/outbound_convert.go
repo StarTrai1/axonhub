@@ -806,12 +806,14 @@ func convertStreamOptions(src *llm.StreamOptions, metadata map[string]any) *Stre
 	}
 
 	includeObfuscation := xmap.GetBoolPtr(metadata, "include_obfuscation")
-	if includeObfuscation == nil {
+	summaryDelivery := xmap.GetStringPtr(metadata, "reasoning_summary_delivery")
+	if includeObfuscation == nil && summaryDelivery == nil {
 		return nil
 	}
 
 	return &StreamOptions{
 		IncludeObfuscation: includeObfuscation,
+		ReasoningSummaryDelivery: summaryDelivery,
 	}
 }
 
