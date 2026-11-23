@@ -812,7 +812,7 @@ func convertStreamOptions(src *llm.StreamOptions, metadata map[string]any) *Stre
 	}
 
 	return &StreamOptions{
-		IncludeObfuscation: includeObfuscation,
+		IncludeObfuscation:       includeObfuscation,
 		ReasoningSummaryDelivery: summaryDelivery,
 	}
 }

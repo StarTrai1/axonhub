@@ -35,7 +35,7 @@ for (const width of [390, 1280]) {
       const body = route.request().postDataJSON();
       if (body.query.includes('mutation')) updates.push(body.variables);
       await route.fulfill({ json: { data: { pluginTasks: [{ key: 'daily-cleanup', cron: '0 6 * * *', timezone: 'Asia/Shanghai', paused: false, overridden: false,
-        nextRunAt: '2026-11-24T22:00:00Z', runs: [{ id: 'run-1', startedAt: '2026-11-23T22:00:00Z', status: 'success', scheduledAt: '2026-11-23T22:00:00Z' }] }], updatePluginTask: {} } } });
+        nextRunAt: '2026-11-24T22:00:00Z', runs: [{ id: 'run-1', startedAt: '2026-11-23T22:00:00Z', status: 'succeeded', scheduledAt: '2026-11-23T22:00:00Z' }] }], updatePluginTask: {} } } });
     });
     await page.setViewportSize({ width, height: 1000 });
     await page.goto('/tests/interactions/peer-regressions.html?case=plugin-tasks&lang=zh-CN&theme=dark');

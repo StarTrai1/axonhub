@@ -491,17 +491,17 @@ export function ModelsTable({
                                             <div className='space-y-3'>
                                               <h4 className='text-sm font-semibold'>{t('models.modelCard.cost')} ($/M)</h4>
                                               <div className='space-y-2 text-sm'>
-                                          {referencePriceFields.map((field) => {
-                                            const value = model.missingReferencePrices?.includes(field) ? undefined : modelCard?.cost?.[field];
-                                            if (value == null && (field === 'cacheRead' || field === 'cacheWrite')) return null;
-                                            return (
-                                              <div className='flex justify-between' key={field}>
-                                                <span className='text-muted-foreground'>{t('models.modelCard.' + field)}:</span>
-                                                <span className='font-mono text-xs'>{value == null ? '—' : formatPrice(value)}</span>
+                                                {referencePriceFields.map((field) => {
+                                                  const value = model.missingReferencePrices?.includes(field) ? undefined : modelCard?.cost?.[field];
+                                                  if (value == null && (field === 'cacheRead' || field === 'cacheWrite')) return null;
+                                                  return (
+                                                    <div className='flex justify-between' key={field}>
+                                                      <span className='text-muted-foreground'>{t('models.modelCard.' + field)}:</span>
+                                                      <span className='font-mono text-xs'>{value == null ? '—' : formatPrice(value)}</span>
+                                                    </div>
+                                                  );
+                                                })}
                                               </div>
-                                            );
-                                          })}
-                                                </div>
                                             </div>
                                           </div>
 
