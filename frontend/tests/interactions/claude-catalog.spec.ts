@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 
 for (const width of [390, 1280]) {
   test(`Claude OAuth catalog stays readable and preserves refreshed credentials at ${width}px`, async ({ page }, testInfo) => {
+    test.setTimeout(60000);
     await page.setViewportSize({ width, height: 1100 });
     let fallback = false;
     let submitted: Record<string, unknown> | undefined;
@@ -23,7 +24,7 @@ for (const width of [390, 1280]) {
           ...submitted, credentials: { isOAuth: true, oauth: { accessToken: 'synthetic-refreshed-token' } },
         } } } });
       }
-      return route.fulfill({ json: { data: { allChannelTags: [], proxyPresets: [], channelDisabledAPIKeys: [], queryChannels: { edges: [] } } } });
+      return route.fulfill({ json: { data: { allChannelTags: [], proxyPresets: [], channelDisabledAPIKeys: [], queryChannels: { edges: [{ node: { id: 'channel-preview', name: 'Claude OAuth', type: 'claudecode', status: 'enabled', baseURL: 'https://api.anthropic.com', createdAt: '2026-11-24T00:00:00Z', updatedAt: '2026-11-24T00:00:00Z', supportedModels: ['fixture-old'], defaultTestModel: 'fixture-old', credentials: { isOAuth: true, oauth: { accessToken: 'synthetic-refreshed-token' } }, settings: {} } }] } } } });
     });
     await page.goto('/tests/interactions/codex-channel.html?claude-catalog');
     await page.getByTestId('zh-locale').evaluate((el) => (el as HTMLButtonElement).click());

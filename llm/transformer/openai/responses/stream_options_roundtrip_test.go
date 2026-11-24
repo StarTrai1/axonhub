@@ -38,21 +38,3 @@ func TestReasoningSummaryDeliveryRoundTrip(t *testing.T) {
 		require.Error(t, err)
 	}
 }
-
-func TestCodex172ToolMetadataRoundTrip(t *testing.T) {
-	const metadata = `{"executed_tool_calls":[{"name":"lookup","arguments":{"q":"fixture"},"tool_result":{"content":[{"type":"text","text":"synthetic result"}]},"tool_result_call_id":"nested_fixture"}]}`
-	body := `{"model":"gpt-6.2-sol","input":[{"type":"message","role":"user","content":[{"type":"input_text","text":"continue"}],"internal_chat_message_metadata_passthrough":`+metadata+`}]}`
-	request, err := NewInboundTransformer().TransformRequest(t.Context(), &httpclient.Request{Body: []byte(body)})
-	require.NoError(t, err)
-	saved, err := json.Marshal(request)
-	require.NoError(t, err)
-	require.NoError(t, json.Unmarshal(saved, request))
-	outbound, err := NewOutboundTransformer("https://example.test/v1", "synthetic-key")
-	require.NoError(t, err)
-	result, err := outbound.TransformRequest(t.Context(), request)
-	require.NoError(t, err)
-	var payload struct { Input []map[string]json.RawMessage `json:"input"` }
-	require.NoError(t, json.Unmarshal(result.Body, &payload))
-	require.Len(t, payload.Input, 1)
-	require.JSONEq(t, metadata, string(payload.Input[0]["internal_chat_message_metadata_passthrough"]))
-}

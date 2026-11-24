@@ -107,3 +107,18 @@ func TestImagesDoNotUseResponsesBridge(t *testing.T) {
 		}
 	}
 }
+
+// Codex 0.172 attaches optional private connector results only on its official
+// ChatGPT route. Verify the native wire path, without widening client eligibility
+// or adding those provider-private fields to cross-protocol conversions.
+func TestCodex172NativeToolResultMetadata(t *testing.T) {
+	const metadata = `{"executed_tool_calls":[{"name":"lookup","arguments":{"q":"fixture"},"tool_result":{"content":[{"type":"text","text":"synthetic result"}]},"tool_result_call_id":"nested_fixture"}]}`
+	body := []byte(`{"model":"gpt-6.2-sol","stream":true,"input":[{"type":"message","role":"user","content":[{"type":"input_text","text":"continue"}],"internal_chat_message_metadata_passthrough":`+metadata+`}]}`)
+	outbound := newCodexResponsesPassThroughOutbound()
+	outbound.state.LlmRequest.RawRequest.Body = body
+	outbound.state.LlmRequest.Model = "gpt-6.2-sol"
+	request := &httpclient.Request{APIFormat: string(llm.APIFormatOpenAIResponse), Headers: make(http.Header), Body: []byte(`{"model":"gpt-6.2-sol"}`)}
+	result, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(t.Context(), request)
+	require.NoError(t, err)
+	require.JSONEq(t, metadata, gjson.GetBytes(result.Body, "input.0.internal_chat_message_metadata_passthrough").Raw)
+}
