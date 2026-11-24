@@ -30,24 +30,21 @@ AxonHub 可以作为 OpenAI 接口的直接替代方案，使 Codex 能够通过
 AxonHub 启动时会访问 `registry.npmjs.org`，查询 `@openai/codex` 的 `latest` 元数据，即使尚未配置 Codex 渠道也是如此。对可以查询目录的渠道，点击**获取模型**或手动发起模型同步时会再次检查。npm 请求仅读取包元数据，不携带渠道凭据。npm 不可用时，AxonHub 仍可用缓存中的稳定版本或内置版本查询上游账号目录。
 
 ### 配置 Codex 认证与路由
-1. 编辑 `${HOME}/.codex/auth.json`，在两个支持的字段中都填入 AxonHub API Key。保留双字段可以兼容不同 Codex 客户端版本，避免认证字段变化导致不可预期的问题：
+1. 使用 Codex 0.172.0 时，在 `${HOME}/.codex/auth.json` 中按下例填写 AxonHub API Key。迁移时删除原有的 `auth_mode` 字段，否则显式的 `apikey` 模式会优先于 PAT 字段。
    ```json
    {
-     "personal_access_token": "ah-***",
-     "OPENAI_API_KEY": "ah-***"
+     "personal_access_token": "ah-***"
    }
    ```
 2. 编辑 `${HOME}/.codex/config.toml`，让 provider 和认证 API 都指向同一个 `/codex` 兼容入口：
    ```toml
-   model = "gpt-6.1-sol"
    model_provider = "openai"
    openai_base_url = "https://your-axonhub-host/codex"
    chatgpt_base_url = "https://your-axonhub-host/codex"
    web_search = "live"
 
    [features]
-   fast_mode = true
-   context_management = true
+   standalone_web_search = true
    ```
 3. 在 macOS/Linux 启动 Codex 的同一个 shell 中设置必需的认证 API 地址：
    ```bash
@@ -56,6 +53,8 @@ AxonHub 启动时会访问 `registry.npmjs.org`，查询 `@openai/codex` 的 `la
    Windows 用户请在**系统环境变量**中添加 `CODEX_AUTHAPI_BASE_URL=https://your-axonhub-host/codex`。不要设置独立的目录 URL；whoami、models 和 Responses 请求都使用 `/codex` 入口。
 4. 重启 Codex 以加载配置。
 
+试迁移时可使用独立的 `CODEX_HOME`，在 CLI 或编辑器读取凭据之前，先给它的启动进程设置 `CODEX_AUTHAPI_BASE_URL`。0.172.0 会把传给 `login --with-access-token` 的 `ah-` 密钥识别为 Agent Identity JWT，此网关应使用上面的 PAT 文件配置。本机回环支持 HTTP，远程访问请使用 HTTPS，并在反向代理中允许 WebSocket 升级和 SSE 实时传输。
+
 本指南使用的兼容入口如下：
 
 - `GET /codex/v1/user-auth-credential/whoami`：本地 API Key 身份信息。
@@ -63,7 +62,9 @@ AxonHub 启动时会访问 `registry.npmjs.org`，查询 `@openai/codex` 的 `la
 - `GET /codex/models`：选定渠道的原生目录与调用者可见模型 ID 的交集。
 - `POST /codex/images/generations`：通过普通模型/渠道路由调用原生图片生成接口。
 - `POST /codex/images/edits`：通过普通模型/渠道路由调用原生图片编辑接口。
+- `POST /codex/alpha/search`：通过选定的搜索渠道执行独立联网搜索。
 - `POST /codex/responses`：Responses HTTP/SSE 推理。
+- `POST /codex/responses/compact`：供需要独立压缩请求的客户端使用。
 - `GET /codex/responses`：Responses WebSocket 推理。
 
 #### 按对话聚合 Trace（重要）
@@ -93,7 +94,7 @@ server:
 - 图片生成和编辑分别使用 `/codex/images/generations` 与 `/codex/images/edits`；实际路由到的推理渠道不一定是目录渠道，但必须提供对应的原生图片端点和模型。
 - 启用 AxonHub 的追踪功能可查看提示词、回复及延迟信息。
 
-当前版本的远程 compaction-v2 复用普通 Responses 路径：向 `/codex/responses` 发送 `compaction_trigger`，再把返回的压缩项用于后续 Responses 请求。不实现 history/notes API，也不新增独立的 `/codex/responses/compact` 路由；这些未支持路径返回 JSON 404。`context_management` 会启用 Codex 的 Responses 压缩流程，history notes 仍属于后续兼容工作范围。`fast_mode` 会让客户端请求 Responses 的 `service_tier`；该等级是否可用由上游模型目录和响应决定。当前没有独立的 `ultrafast` 接口或本地能力探测。既有 `/v1` 路由保持不变。
+Codex 0.172.0 的原生 V2 压缩通过 `/codex/responses` 发送 `compaction_trigger`，需要独立压缩的客户端可使用 `/codex/responses/compact`。历史笔记需要单独的服务。Fast 和 Ultrafast 的显示取决于模型目录，实际执行取决于可用推理渠道。使用 GIF 生图时可启用 `features.image_generation_animation`，并选择支持所需输出的渠道。
 
 ### 使用模型配置文件
 AxonHub 的模型配置文件支持将请求模型映射到具体提供商模型：

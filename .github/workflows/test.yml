@@ -115,6 +115,8 @@ jobs:
         run: go test ./internal/server/api -run '^TestCodex(162Retry|172SpendLimit)Fixture$' -count=1
       - name: Verify real CLI concurrency against a local mock
         run: python -m unittest discover -s scripts/codex-probes -p 'test_cli_integration.py' -v
+      - name: Verify PAT login, standalone search and resume through AxonHub
+        run: go test ./internal/server -run '^TestCodexCLICompatibility$' -count=1 -v
 
   test:
     needs: changes

@@ -13,7 +13,6 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/orchestrator"
 	"github.com/looplj/axonhub/llm/httpclient"
-	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
 
 func setupCodexResponseHandlers(t *testing.T, h *codexRouteHarness, models *biz.ModelService) (*api.OpenAIHandlers, *biz.RequestService) {
@@ -30,13 +29,13 @@ func setupCodexResponseHandlers(t *testing.T, h *codexRouteHarness, models *biz.
 	h.prompts = prompts
 	h.protect = protection
 	h.requests = requests
-	selector := orchestrator.NewDefaultSelector(h.channels, models, h.system)
-	orch := orchestrator.NewChatCompletionOrchestrator(h.channels, selector, requests, httpclient.NewHttpClient(), responses.NewInboundTransformer(), h.system, usage, prompts, nil, protection, biz.NewLiveStreamRegistry(), orchestrator.NewChannelLimiterManager(), nil, orchestrator.PluginIntegration{})
 	require.NoError(t, h.system.SetModelSettings(h.ctx, biz.SystemModelSettings{QueryAllChannelModels: true, FallbackToChannelsOnModelNotFound: true}))
-	return &api.OpenAIHandlers{
-		ResponseCompletionHandlers: api.NewChatCompletionHandlers(orch),
-		ModelService:               models,
-		SystemService:              h.system,
-		EntClient:                  h.db,
-	}, requests
+	handlers := api.NewOpenAIHandlers(api.OpenAIHandlersParams{
+		ChannelService: h.channels, ModelService: models, SystemService: h.system, Client: h.db,
+		DefaultSelector: orchestrator.NewDefaultSelector(h.channels, models, h.system),
+		RequestService: requests, UsageLogService: usage, PromptService: prompts, PromptProtectionRuleService: protection,
+		HttpClient: httpclient.NewHttpClient(), LiveStreamRegistry: biz.NewLiveStreamRegistry(),
+		ChannelLimiterManager: orchestrator.NewChannelLimiterManager(),
+	})
+	return handlers, requests
 }

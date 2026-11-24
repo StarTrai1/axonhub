@@ -103,7 +103,11 @@ func (h *codexRouteHarness) request(method, path, key string) *httptest.Response
 
 func TestCodexRoutes_Disabled(t *testing.T) {
 	h := newCodexRouteHarness(t)
-	for _, route := range []struct{ method, path string }{{"GET", "/codex/models"}, {"GET", "/codex/v1/user-auth-credential/whoami"}, {"POST", "/codex/responses"}, {"GET", "/codex/responses"}} {
+	for _, route := range []struct{ method, path string }{
+		{"GET", "/codex/models"}, {"GET", "/codex/v1/user-auth-credential/whoami"},
+		{"POST", "/codex/responses"}, {"GET", "/codex/responses"},
+		{"POST", "/codex/alpha/search"}, {"POST", "/codex/responses/compact"},
+	} {
 		for _, key := range []string{"", "bad", h.key.Key} {
 			result := h.request(route.method, route.path, key)
 			require.Equal(t, 404, result.Code)
@@ -118,6 +122,8 @@ func TestCodexRoutes_StrictAuthentication(t *testing.T) {
 	require.NoError(t, h.system.SetCodexCompatibilitySettings(h.ctx, biz.CodexCompatibilitySettings{Enabled: true, ChannelID: &h.source.ID}))
 	for _, key := range []string{"", "bad", biz.NoAuthAPIKeyValue} {
 		require.Equal(t, 401, h.request("GET", "/codex/models", key).Code)
+		require.Equal(t, 401, h.request("POST", "/codex/alpha/search", key).Code)
+		require.Equal(t, 401, h.request("POST", "/codex/responses/compact", key).Code)
 	}
 }
 
@@ -179,7 +185,8 @@ func TestCodexRoutes_AccountsCheckUsesWhoamiIdentity(t *testing.T) {
 
 func TestCodexRoutes_UnknownPaths404(t *testing.T) {
 	h := newCodexRouteHarness(t)
-	for _, path := range []string{"/codex/alpha/history/v2/test", "/codex/responses/compact", "/codex/missing"} {
+	require.NoError(t, h.system.SetCodexCompatibilitySettings(h.ctx, biz.CodexCompatibilitySettings{Enabled: true, ChannelID: &h.source.ID}))
+	for _, path := range []string{"/codex/alpha/history/v2/test", "/codex/missing"} {
 		result := h.request("POST", path, h.key.Key)
 		require.Equal(t, 404, result.Code)
 		require.Contains(t, result.Header().Get("Content-Type"), "application/json")

@@ -30,24 +30,21 @@ In the Codex channel's request header overrides, add an unconditional `set` for 
 AxonHub checks the `latest` metadata for `@openai/codex` at `registry.npmjs.org` on startup, even before any Codex channel exists. It checks again when you click **Fetch Models** for a channel that can query its catalog, or manually request a model sync for such a channel. The npm request only reads package metadata and carries no channel credentials. If npm is unreachable, AxonHub uses the last known stable version or the built-in version and can still query the upstream account catalog.
 
 ### Configure Codex authentication and routes
-1. Create `${HOME}/.codex/auth.json` with the AxonHub API key in both supported fields. Keeping both fields provides an API-key fallback across Codex client versions:
+1. For Codex 0.172.0, set the AxonHub key in `${HOME}/.codex/auth.json` as shown below. An existing `"auth_mode": "apikey"` in that JSON file takes precedence over the PAT field. Remove the explicit mode when migrating.
    ```json
    {
-     "personal_access_token": "ah-***",
-     "OPENAI_API_KEY": "ah-***"
+     "personal_access_token": "ah-***"
    }
    ```
 2. Edit `${HOME}/.codex/config.toml` and point the provider and auth API at the same `/codex` compatibility surface:
    ```toml
-   model = "gpt-6.1-sol"
    model_provider = "openai"
    openai_base_url = "https://your-axonhub-host/codex"
    chatgpt_base_url = "https://your-axonhub-host/codex"
    web_search = "live"
 
    [features]
-   fast_mode = true
-   context_management = true
+   standalone_web_search = true
    ```
 3. Set the required auth API base in the same shell that starts Codex on macOS/Linux:
    ```bash
@@ -56,6 +53,8 @@ AxonHub checks the `latest` metadata for `@openai/codex` at `registry.npmjs.org`
    On Windows, add `CODEX_AUTHAPI_BASE_URL=https://your-axonhub-host/codex` in **System Environment Variables**. Do not set a separate catalog URL; the `/codex` base is used for whoami, models, and Responses requests.
 4. Restart Codex to apply the configuration.
 
+For a migration trial, use a separate `CODEX_HOME` and set `CODEX_AUTHAPI_BASE_URL` in the environment of the CLI or editor before it loads the credential. Codex 0.172.0 interprets an `ah-` key passed to `login --with-access-token` as an Agent Identity JWT. Use the PAT file above for this gateway. Loopback HTTP supports local development. Use HTTPS with WebSocket upgrades and unbuffered SSE for remote access.
+
 The compatibility surface used by this guide is:
 
 - `GET /codex/v1/user-auth-credential/whoami` — local API-key identity.
@@ -63,7 +62,9 @@ The compatibility surface used by this guide is:
 - `GET /codex/models` — selected-channel native catalog, intersected with caller-visible model IDs.
 - `POST /codex/images/generations` — native image generation through ordinary model/channel routing.
 - `POST /codex/images/edits` — native image editing through ordinary model/channel routing.
+- `POST /codex/alpha/search` — standalone web search through the selected search channel.
 - `POST /codex/responses` — Responses HTTP/SSE inference.
+- `POST /codex/responses/compact` — standalone Responses compaction for clients that request it.
 - `GET /codex/responses` — Responses WebSocket inference.
 
 #### Trace aggregation by conversation (important)
@@ -93,7 +94,7 @@ server:
 - Image generation and editing use `/codex/images/generations` and `/codex/images/edits`; the routed inference channel—not necessarily the catalog channel—must expose the corresponding native image endpoint and model.
 - Enable tracing in AxonHub to inspect prompts, responses, and latency.
 
-The current version uses the ordinary Responses path for remote compaction-v2: a `compaction_trigger` is sent to `/codex/responses`, and the returned compaction item can be used in a later Responses request. It does not implement the history/notes APIs or a standalone `/codex/responses/compact` route; those unsupported paths return JSON 404. `context_management` enables Codex's Responses compaction flow, while history notes remain part of future compatibility work. `fast_mode` selects the Responses `service_tier` requested by the client; the upstream model catalog and response determine whether that tier is available. There is no separate `ultrafast` endpoint or local capability probe. Existing `/v1` routes are unchanged.
+Codex 0.172.0 uses `compaction_trigger` on `/codex/responses` for native V2 compaction. Clients that request a standalone compaction can use `/codex/responses/compact`. History notes require a separate service. Fast and Ultrafast controls follow the model catalog and the eligible inference channels. For GIF generation, enable `features.image_generation_animation` and select a channel that supports the requested output.
 
 ### Working with Model Profiles
 AxonHub model profiles remap incoming model names to provider-specific equivalents:

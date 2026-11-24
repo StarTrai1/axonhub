@@ -15,6 +15,25 @@ import { useApiKeysContext } from '../context/apikeys-context';
 import { useApiKey } from '../data/apikeys';
 import { buildPiModelsConfig, serializePiModelsConfig } from '../data/pi-models-config';
 
+function codexCompatibilityExample(serverURL: string, key: string) {
+  const baseUrl = `${serverURL}/codex`;
+  return `# In the environment that launches Codex
+export CODEX_AUTHAPI_BASE_URL="${baseUrl}"
+# Windows: set CODEX_AUTHAPI_BASE_URL to ${baseUrl} in Environment Variables
+
+# \${HOME}/.codex/config.toml
+model_provider = "openai"
+openai_base_url = "${baseUrl}"
+chatgpt_base_url = "${baseUrl}"
+web_search = "live"
+
+[features]
+standalone_web_search = true
+
+# \${HOME}/.codex/auth.json (remove the previous auth_mode field)
+${JSON.stringify({ personal_access_token: key }, null, 2)}`;
+}
+
 function CopyBaseUrlButton({ baseUrl }: { baseUrl: string }) {
   const { t } = useTranslation();
   const { isCopied, handleCopy } = useCopyToClipboard({
@@ -143,46 +162,8 @@ query_params = {}
         ? {
             codexCompatibility: {
               baseUrl: `${serverURL}/codex`,
-              display: `# \${HOME}/.codex/config.toml
-model = "gpt-6.1-sol"
-model_provider = "openai"
-openai_base_url = "${serverURL}/codex"
-chatgpt_base_url = "${serverURL}/codex"
-web_search = "live"
-
-[features]
-fast_mode = true
-context_management = true
-
-# \${HOME}/.codex/auth.json
-{
-  "personal_access_token": "${maskedApiKey}",
-  "OPENAI_API_KEY": "${maskedApiKey}"
-}
-
-# In the same shell that starts Codex (macOS/Linux)
-export CODEX_AUTHAPI_BASE_URL="${serverURL}/codex"
-# Windows: add CODEX_AUTHAPI_BASE_URL=${serverURL}/codex in System Environment Variables`,
-              real: `# \${HOME}/.codex/config.toml
-model = "gpt-6.1-sol"
-model_provider = "openai"
-openai_base_url = "${serverURL}/codex"
-chatgpt_base_url = "${serverURL}/codex"
-web_search = "live"
-
-[features]
-fast_mode = true
-context_management = true
-
-# \${HOME}/.codex/auth.json
-{
-  "personal_access_token": "${apiKey}",
-  "OPENAI_API_KEY": "${apiKey}"
-}
-
-# In the same shell that starts Codex (macOS/Linux)
-export CODEX_AUTHAPI_BASE_URL="${serverURL}/codex"
-# Windows: add CODEX_AUTHAPI_BASE_URL=${serverURL}/codex in System Environment Variables`,
+              display: codexCompatibilityExample(serverURL, maskedApiKey),
+              real: codexCompatibilityExample(serverURL, apiKey),
             },
           }
         : {}),
