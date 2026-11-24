@@ -63,6 +63,14 @@ AxonHub checks the `latest` metadata for `@openai/codex` at `registry.npmjs.org`
    On Windows, add `CODEX_AUTHAPI_BASE_URL=https://your-axonhub-host/codex` in **System Environment Variables**. Do not set a separate catalog URL; the `/codex` base is used for whoami, models, and Responses requests.
 4. Restart Codex to apply the configuration.
 
+To resume a migrated thread, select its saved provider ID for that launch. For a thread created under `OpenAI`, replace `THREAD_ID` with the original thread ID:
+
+```bash
+codex resume -c 'model_provider="OpenAI"' THREAD_ID
+```
+
+Starting a new thread with `codex` uses the top-level `openai` default. Both providers now point to the same `/codex` URL.
+
 For a migration trial, use a separate `CODEX_HOME` and set `CODEX_AUTHAPI_BASE_URL` in the environment of the CLI or editor before it loads the credential. Codex 0.172.0 interprets an `ah-` key passed to `login --with-access-token` as an Agent Identity JWT. Use the PAT file above for this gateway. Loopback HTTP supports local development. Use HTTPS with WebSocket upgrades and unbuffered SSE for remote access.
 
 The compatibility surface used by this guide is:

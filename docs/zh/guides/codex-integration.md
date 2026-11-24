@@ -63,6 +63,14 @@ AxonHub 启动时会访问 `registry.npmjs.org`，查询 `@openai/codex` 的 `la
    Windows 用户请在**系统环境变量**中添加 `CODEX_AUTHAPI_BASE_URL=https://your-axonhub-host/codex`。不要设置独立的目录 URL；whoami、models 和 Responses 请求都使用 `/codex` 入口。
 4. 重启 Codex 以加载配置。
 
+恢复旧线程时，为这次启动指定它保存的提供商 ID。假设原 ID 是 `OpenAI`，把下例的 `THREAD_ID` 换成原线程 ID：
+
+```bash
+codex resume -c 'model_provider="OpenAI"' THREAD_ID
+```
+
+直接运行 `codex` 创建的新线程会使用顶层默认值 `openai`。两个提供商都通过同一个 `/codex` 地址访问网关。
+
 试迁移时可使用独立的 `CODEX_HOME`，在 CLI 或编辑器读取凭据之前，先给它的启动进程设置 `CODEX_AUTHAPI_BASE_URL`。0.172.0 会把传给 `login --with-access-token` 的 `ah-` 密钥识别为 Agent Identity JWT，此网关应使用上面的 PAT 文件配置。本机回环支持 HTTP，远程访问请使用 HTTPS，并在反向代理中允许 WebSocket 升级和 SSE 实时传输。
 
 本指南使用的兼容入口如下：

@@ -169,7 +169,7 @@ func TestCodexCLICompatibility(t *testing.T) {
 	migrated := config + fmt.Sprintf("[model_providers.OpenAI]\nname=\"OpenAI\"\nbase_url=%q\nwire_api=\"responses\"\nrequires_openai_auth=true\nsupports_websockets=true\nsupports_standalone_web_search=true\n", base)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(migrated), 0o600))
 	require.NoError(t, os.WriteFile(filepath.Join(home, "auth.json"), auth, 0o600))
-	require.Contains(t, run("exec", "resume", "--skip-git-repo-check", "--json", threadID(seed), "resume-after-migration"), "gateway-answer-5")
+	require.Contains(t, run("exec", "resume", "-c", `model_provider="OpenAI"`, "--skip-git-repo-check", "--json", threadID(seed), "resume-after-migration"), "gateway-answer-5")
 	require.Positive(t, resumedRequests.Load())
 	require.EqualValues(t, 5, turns.Load())
 }

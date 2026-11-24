@@ -33,6 +33,7 @@ standalone_web_search = true
 
 # Existing threads: match the previous provider ID exactly (example: OpenAI).
 # Update the existing table when it is already present.
+# Resume with: codex resume -c 'model_provider="OpenAI"' THREAD_ID
 [model_providers.OpenAI]
 name = "OpenAI"
 base_url = "${baseUrl}"
