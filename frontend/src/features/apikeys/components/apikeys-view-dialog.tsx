@@ -31,6 +31,16 @@ web_search = "live"
 [features]
 standalone_web_search = true
 
+# Existing threads: match the previous provider ID exactly (example: OpenAI).
+# Update the existing table when it is already present.
+[model_providers.OpenAI]
+name = "OpenAI"
+base_url = "${baseUrl}"
+wire_api = "responses"
+requires_openai_auth = true
+supports_websockets = true
+supports_standalone_web_search = true
+
 # \${HOME}/.codex/auth.json (remove the previous auth_mode field)
 ${JSON.stringify({ personal_access_token: key }, null, 2)}`;
 }

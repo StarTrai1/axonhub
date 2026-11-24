@@ -45,7 +45,17 @@ AxonHub checks the `latest` metadata for `@openai/codex` at `registry.npmjs.org`
 
    [features]
    standalone_web_search = true
+
+   # Include this table when migrating threads previously saved under "OpenAI".
+   [model_providers.OpenAI]
+   name = "OpenAI"
+   base_url = "https://your-axonhub-host/codex"
+   wire_api = "responses"
+   requires_openai_auth = true
+   supports_websockets = true
+   supports_standalone_web_search = true
    ```
+   Codex resumes using the provider ID stored in the thread. Match its spelling and case (for example, `OpenAI` or `axonhub-responses`), and update that existing provider table in place. Remove provider-specific API-key or command authentication fields when migrating it to PAT. The lowercase built-in `openai` setting above selects the default for new threads.
 3. Set the required auth API base in the same shell that starts Codex on macOS/Linux:
    ```bash
    export CODEX_AUTHAPI_BASE_URL=https://your-axonhub-host/codex

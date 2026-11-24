@@ -45,7 +45,17 @@ AxonHub 启动时会访问 `registry.npmjs.org`，查询 `@openai/codex` 的 `la
 
    [features]
    standalone_web_search = true
+
+   # 迁移原先以 OpenAI 为提供商的旧线程时使用。
+   [model_providers.OpenAI]
+   name = "OpenAI"
+   base_url = "https://your-axonhub-host/codex"
+   wire_api = "responses"
+   requires_openai_auth = true
+   supports_websockets = true
+   supports_standalone_web_search = true
    ```
+   Codex 续写时会按线程里保存的提供商 ID 查配置。保留原来的拼写和大小写，例如 `OpenAI` 或 `axonhub-responses`，在原表内修改地址与认证方式。切换该表到 PAT 时移除其单独指定的 API Key 或命令认证项。顶层的小写 `openai` 是新线程的默认提供商。
 3. 在 macOS/Linux 启动 Codex 的同一个 shell 中设置必需的认证 API 地址：
    ```bash
    export CODEX_AUTHAPI_BASE_URL=https://your-axonhub-host/codex

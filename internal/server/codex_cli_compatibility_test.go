@@ -165,7 +165,9 @@ func TestCodexCLICompatibility(t *testing.T) {
 	seed := run("exec", "--skip-git-repo-check", "--json", "legacy-seed")
 	require.Contains(t, seed, "gateway-answer-4")
 	require.Positive(t, legacyRequests.Load())
-	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(config), 0o600))
+	// Resume resolves the provider ID stored in the thread before it contacts the gateway.
+	migrated := config + fmt.Sprintf("[model_providers.OpenAI]\nname=\"OpenAI\"\nbase_url=%q\nwire_api=\"responses\"\nrequires_openai_auth=true\nsupports_websockets=true\nsupports_standalone_web_search=true\n", base)
+	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(migrated), 0o600))
 	require.NoError(t, os.WriteFile(filepath.Join(home, "auth.json"), auth, 0o600))
 	require.Contains(t, run("exec", "resume", "--skip-git-repo-check", "--json", threadID(seed), "resume-after-migration"), "gateway-answer-5")
 	require.Positive(t, resumedRequests.Load())
