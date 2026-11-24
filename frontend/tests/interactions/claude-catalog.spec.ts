@@ -24,7 +24,7 @@ for (const width of [390, 1280]) {
           ...submitted, credentials: { isOAuth: true, oauth: { accessToken: 'synthetic-refreshed-token' } },
         } } } });
       }
-      return route.fulfill({ json: { data: { allChannelTags: [], proxyPresets: [], channelDisabledAPIKeys: [], queryChannels: { edges: [{ node: { id: 'channel-preview', name: 'Claude OAuth', type: 'claudecode', status: 'enabled', baseURL: 'https://api.anthropic.com', createdAt: '2026-11-24T00:00:00Z', updatedAt: '2026-11-24T00:00:00Z', supportedModels: ['fixture-old'], defaultTestModel: 'fixture-old', credentials: { isOAuth: true, oauth: { accessToken: 'synthetic-refreshed-token' } }, settings: {} } }] } } } });
+      return route.fulfill({ json: { data: { allChannelTags: [], proxyPresets: [], channelDisabledAPIKeys: [], queryChannels: { edges: [{ node: { id: 'channel-preview', name: 'Claude OAuth', type: 'claudecode', status: 'enabled', baseURL: 'https://api.anthropic.com', createdAt: '2026-11-24T00:00:00Z', updatedAt: '2026-11-24T00:00:00Z', supportedModels: ['fixture-old'], defaultTestModel: 'fixture-old', credentials: { isOAuth: true, oauth: { accessToken: 'synthetic-refreshed-token' } }, settings: {} }, cursor: 'fixture' }], totalCount: 1, pageInfo: { hasNextPage: false, hasPreviousPage: false, startCursor: 'fixture', endCursor: 'fixture' } } } } });
     });
     await page.goto('/tests/interactions/codex-channel.html?claude-catalog');
     await page.getByTestId('zh-locale').evaluate((el) => (el as HTMLButtonElement).click());
