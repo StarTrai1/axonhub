@@ -102,9 +102,9 @@ func TestCodexCLICompatibility(t *testing.T) {
 	home, cwd := t.TempDir(), t.TempDir()
 	auth, err := json.Marshal(map[string]string{"personal_access_token": h.key.Key})
 	require.NoError(t, err)
-	require.NoError(t, os.WriteFile(filepath.Join(home, "auth.json"), auth, 0600))
+	require.NoError(t, os.WriteFile(filepath.Join(home, "auth.json"), auth, 0o600))
 	config := fmt.Sprintf("model_provider=\"openai\"\nmodel=%q\nopenai_base_url=%q\nchatgpt_base_url=%q\nweb_search=\"live\"\ncli_auth_credentials_store=\"file\"\n[analytics]\nenabled=false\n[features]\nstandalone_web_search=true\nplugins=false\napps=false\n", model, base, base)
-	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(config), 0600))
+	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(config), 0o600))
 	run := func(args ...string) string {
 		ctx, cancel := context.WithTimeout(t.Context(), 90*time.Second)
 		defer cancel()
