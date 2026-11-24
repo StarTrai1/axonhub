@@ -2,10 +2,17 @@ package server
 
 import (
 	"context"
+	"crypto/ed25519"
+	"crypto/rand"
+	"crypto/tls"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"io"
+	"math/big"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -96,7 +103,7 @@ func TestCodexCLICompatibility(t *testing.T) {
 	require.NoError(t, err)
 	h.channels.SetEnabledChannelsForTest([]*biz.Channel{ch})
 	require.NoError(t, h.system.SetCodexCompatibilitySettings(h.ctx, biz.CodexCompatibilitySettings{Enabled: true, ChannelID: &h.source.ID}))
-	gateway := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	gateway := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/codex/v1/user-auth-credential/whoami":
 			whoami.Add(1)
@@ -109,11 +116,14 @@ func TestCodexCLICompatibility(t *testing.T) {
 		}
 		h.router.ServeHTTP(w, r)
 	}))
+	cert, rootPEM := codexLoopbackCertificate(t)
+	gateway.TLS = &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS12}
+	gateway.StartTLS()
 	t.Cleanup(gateway.Close)
 	base := gateway.URL + "/codex"
 	home, cwd := t.TempDir(), t.TempDir()
 	certFile := filepath.Join(home, "gateway.pem")
-	require.NoError(t, os.WriteFile(certFile, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: gateway.Certificate().Raw}), 0o600))
+	require.NoError(t, os.WriteFile(certFile, rootPEM, 0o600))
 	auth, err := json.Marshal(map[string]string{"personal_access_token": h.key.Key})
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "auth.json"), auth, 0o600))
@@ -160,4 +170,30 @@ func TestCodexCLICompatibility(t *testing.T) {
 	require.Contains(t, run("exec", "resume", "--skip-git-repo-check", "--json", threadID(seed), "resume-after-migration"), "gateway-answer-5")
 	require.Positive(t, resumedRequests.Load())
 	require.EqualValues(t, 5, turns.Load())
+}
+
+// The CLI verifies server and CA roles separately. httptest's bundled certificate has CA:TRUE.
+func codexLoopbackCertificate(t *testing.T) (tls.Certificate, []byte) {
+	t.Helper()
+	now := time.Now()
+	root := &x509.Certificate{
+		SerialNumber: big.NewInt(1), Subject: pkix.Name{CommonName: "test root"},
+		NotBefore: now.Add(-time.Hour), NotAfter: now.Add(time.Hour),
+		IsCA: true, BasicConstraintsValid: true, KeyUsage: x509.KeyUsageCertSign,
+	}
+	rootPub, rootKey, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+	rootDER, err := x509.CreateCertificate(rand.Reader, root, root, rootPub, rootKey)
+	require.NoError(t, err)
+	leaf := &x509.Certificate{
+		SerialNumber: big.NewInt(2), Subject: pkix.Name{CommonName: "localhost"},
+		NotBefore: root.NotBefore, NotAfter: root.NotAfter, BasicConstraintsValid: true,
+		KeyUsage: x509.KeyUsageDigitalSignature, ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		IPAddresses: []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback}, DNSNames: []string{"localhost"},
+	}
+	leafPub, leafKey, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+	leafDER, err := x509.CreateCertificate(rand.Reader, leaf, root, leafPub, rootKey)
+	require.NoError(t, err)
+	return tls.Certificate{Certificate: [][]byte{leafDER}, PrivateKey: leafKey}, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: rootDER})
 }

@@ -90,6 +90,8 @@ server:
 #### 验证
 - 启动 Codex 并发送测试 Prompt，AxonHub 日志中应出现 `/codex/responses`。
 - 确认模型列表从 `/codex/models` 加载，且选定渠道仍可用于推理。
+- 在「API 密钥 → 查看 → Codex（原生兼容）」中点击「验证模型访问」，可以查看该密钥实际可选的模型和目录声明的加速档位。系统设置中的目录测试显示上游返回的模型数。
+- 使用私有 CA 时，给启动进程设置 `CODEX_CA_CERTIFICATE`，指向 CA 的 PEM 文件。HTTPS 服务端需要提供由该 CA 签发的站点证书。`CaUsedAsEndEntity` 表示服务端误将 CA 证书当作站点证书。
 - 如果 Codex 客户端使用账户发现功能，请确认使用同一 API Key 可以访问 `/codex/api/codex/accounts/check`。
 - 图片生成和编辑分别使用 `/codex/images/generations` 与 `/codex/images/edits`；实际路由到的推理渠道不一定是目录渠道，但必须提供对应的原生图片端点和模型。
 - 启用 AxonHub 的追踪功能可查看提示词、回复及延迟信息。

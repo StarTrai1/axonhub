@@ -90,6 +90,8 @@ server:
 #### Testing
 - Start Codex and send a sample prompt; AxonHub's request logs should show `/codex/responses`.
 - Confirm that the model list loads from `/codex/models` and that the selected channel remains available for inference.
+- Under **API Keys → View → Codex (native)**, use **Check model access** to see which models this key can select and their advertised speed tiers. The catalog test in system settings reports the upstream catalog before caller filtering.
+- For a private CA, set `CODEX_CA_CERTIFICATE` to its PEM bundle in the launching environment. The HTTPS server presents a server certificate signed by that CA. A `CaUsedAsEndEntity` error indicates that the server presented a CA certificate as its leaf.
 - If your Codex client uses account discovery, confirm `/codex/api/codex/accounts/check` is reachable with the same API key.
 - Image generation and editing use `/codex/images/generations` and `/codex/images/edits`; the routed inference channel—not necessarily the catalog channel—must expose the corresponding native image endpoint and model.
 - Enable tracing in AxonHub to inspect prompts, responses, and latency.
