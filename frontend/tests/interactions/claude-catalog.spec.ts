@@ -33,7 +33,7 @@ for (const width of [390, 1280]) {
     await expect(page.getByTestId('claude-catalog-source')).toHaveText('上游模型（1）');
     await page.getByTestId('catalog-model-row').getByRole('checkbox').click();
     await page.getByRole('button', { name: /确定选中.*1/ }).click();
-    await page.getByTestId('channel-fetch-models').click();
+    await page.getByTestId('claude-catalog-source').scrollIntoViewIfNeeded();
     await page.screenshot({ animations: 'disabled', path: testInfo.outputPath(`codex-claude-catalog-${width}-dark.png`) });
     const panel = page.getByTestId('channel-side-panel');
     expect(await panel.evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);

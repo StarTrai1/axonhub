@@ -113,7 +113,7 @@ func TestImagesDoNotUseResponsesBridge(t *testing.T) {
 // or adding those provider-private fields to cross-protocol conversions.
 func TestCodex172NativeToolResultMetadata(t *testing.T) {
 	const metadata = `{"executed_tool_calls":[{"name":"lookup","arguments":{"q":"fixture"},"tool_result":{"content":[{"type":"text","text":"synthetic result"}]},"tool_result_call_id":"nested_fixture"}]}`
-	body := []byte(`{"model":"gpt-6.2-sol","stream":true,"input":[{"type":"message","role":"user","content":[{"type":"input_text","text":"continue"}],"internal_chat_message_metadata_passthrough":`+metadata+`}]}`)
+	body := []byte(`{"model":"gpt-6.2-sol","stream":true,"input":[{"type":"message","role":"user","content":[{"type":"input_text","text":"continue"}],"internal_chat_message_metadata_passthrough":` + metadata + `}]}`)
 	outbound := newCodexResponsesPassThroughOutbound()
 	outbound.state.LlmRequest.RawRequest.Body = body
 	outbound.state.LlmRequest.Model = "gpt-6.2-sol"
