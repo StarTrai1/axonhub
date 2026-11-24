@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"io"
 	"net/http"
@@ -32,7 +33,7 @@ func TestCodexCLICompatibility(t *testing.T) {
 	model := os.Getenv("PROBE_TEST_MODEL")
 	require.NotEmpty(t, model)
 	h := newCodexRouteHarness(t)
-	var turns, searches, whoami, catalogs atomic.Int32
+	var turns, searches, whoami, catalogs, legacyRequests, resumedRequests atomic.Int32
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "Bearer upstream", r.Header.Get("Authorization"))
 		w.Header().Set("Content-Type", "application/json")
@@ -55,12 +56,16 @@ func TestCodexCLICompatibility(t *testing.T) {
 			switch n {
 			case 1:
 				item = map[string]any{"id": "fc_gateway", "type": "function_call", "status": "completed", "call_id": "call_gateway", "namespace": "web", "name": "run", "arguments": `{"search_query":[{"q":"gateway-fixture"}]}`}
-			case 2, 3:
+			case 2, 3, 4, 5:
 				if n == 2 {
 					assert.Contains(t, string(body), "gateway-search-receipt")
-				} else {
+				} else if n == 3 {
 					assert.Contains(t, string(body), "continue-gateway-fixture")
 					assert.Contains(t, string(body), "gateway-answer-2")
+				} else if n == 5 {
+					assert.Contains(t, string(body), "legacy-seed")
+					assert.Contains(t, string(body), "gateway-answer-4")
+					assert.Contains(t, string(body), "resume-after-migration")
 				}
 				item = map[string]any{"id": fmt.Sprintf("msg_gateway_%d", n), "type": "message", "role": "assistant", "status": "completed", "phase": "final_answer", "content": []any{map[string]any{"type": "output_text", "text": fmt.Sprintf("gateway-answer-%d", n), "annotations": []any{}}}}
 			default:
@@ -91,15 +96,24 @@ func TestCodexCLICompatibility(t *testing.T) {
 	require.NoError(t, err)
 	h.channels.SetEnabledChannelsForTest([]*biz.Channel{ch})
 	require.NoError(t, h.system.SetCodexCompatibilitySettings(h.ctx, biz.CodexCompatibilitySettings{Enabled: true, ChannelID: &h.source.ID}))
-	gateway := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/codex/v1/user-auth-credential/whoami" {
+	gateway := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/codex/v1/user-auth-credential/whoami":
 			whoami.Add(1)
+		case "/v1/responses":
+			legacyRequests.Add(1)
+		case "/codex/responses":
+			if legacyRequests.Load() > 0 {
+				resumedRequests.Add(1)
+			}
 		}
 		h.router.ServeHTTP(w, r)
 	}))
 	t.Cleanup(gateway.Close)
 	base := gateway.URL + "/codex"
 	home, cwd := t.TempDir(), t.TempDir()
+	certFile := filepath.Join(home, "gateway.pem")
+	require.NoError(t, os.WriteFile(certFile, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: gateway.Certificate().Raw}), 0o600))
 	auth, err := json.Marshal(map[string]string{"personal_access_token": h.key.Key})
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(filepath.Join(home, "auth.json"), auth, 0o600))
@@ -111,23 +125,39 @@ func TestCodexCLICompatibility(t *testing.T) {
 		cmd := exec.CommandContext(ctx, binary, args...)
 		cmd.Dir = cwd
 		cmd.Env = []string{"PATH=" + os.Getenv("PATH"), "HOME=" + home, "CODEX_HOME=" + home, "CODEX_AUTHAPI_BASE_URL=" + base, "NO_PROXY=127.0.0.1,localhost", "HTTPS_PROXY=http://127.0.0.1:1", "HTTP_PROXY=http://127.0.0.1:1"}
+		cmd.Env = append(cmd.Env, "CODEX_CA_CERTIFICATE="+certFile)
 		out, err := cmd.CombinedOutput()
 		require.NoError(t, err, string(out))
 		return string(out)
 	}
 	first := run("exec", "--skip-git-repo-check", "--json", "search-gateway-fixture")
 	require.Contains(t, first, "gateway-answer-2")
-	var thread string
-	for line := range strings.SplitSeq(first, "\n") {
-		if gjson.Get(line, "type").String() == "thread.started" {
-			thread = gjson.Get(line, "thread_id").String()
-			break
+	threadID := func(output string) string {
+		for line := range strings.SplitSeq(output, "\n") {
+			if gjson.Get(line, "type").String() == "thread.started" {
+				return gjson.Get(line, "thread_id").String()
+			}
 		}
+		t.Fatal("Codex did not report a thread ID")
+		return ""
 	}
-	require.NotEmpty(t, thread)
-	require.Contains(t, run("exec", "resume", "--skip-git-repo-check", "--json", thread, "continue-gateway-fixture"), "gateway-answer-3")
+	require.Contains(t, run("exec", "resume", "--skip-git-repo-check", "--json", threadID(first), "continue-gateway-fixture"), "gateway-answer-3")
 	require.Positive(t, whoami.Load())
 	require.Positive(t, catalogs.Load())
 	require.EqualValues(t, 1, searches.Load())
 	require.EqualValues(t, 3, turns.Load())
+
+	legacyConfig := fmt.Sprintf("model=%q\nmodel_provider=\"OpenAI\"\n[model_providers.OpenAI]\nname=\"OpenAI\"\nbase_url=%q\nwire_api=\"responses\"\nrequires_openai_auth=true\n", model, gateway.URL+"/v1")
+	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(legacyConfig), 0o600))
+	legacyAuth, err := json.Marshal(map[string]string{"auth_mode": "apikey", "OPENAI_API_KEY": h.key.Key})
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(filepath.Join(home, "auth.json"), legacyAuth, 0o600))
+	seed := run("exec", "--skip-git-repo-check", "--json", "legacy-seed")
+	require.Contains(t, seed, "gateway-answer-4")
+	require.Positive(t, legacyRequests.Load())
+	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(config), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(home, "auth.json"), auth, 0o600))
+	require.Contains(t, run("exec", "resume", "--skip-git-repo-check", "--json", threadID(seed), "resume-after-migration"), "gateway-answer-5")
+	require.Positive(t, resumedRequests.Load())
+	require.EqualValues(t, 5, turns.Load())
 }

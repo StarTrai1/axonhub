@@ -68,11 +68,12 @@ func TestCodexRoutes_HTTPParity(t *testing.T) {
 func TestCodexRoutes_WebSocketParity(t *testing.T) {
 	h := newCodexRouteHarness(t)
 	calls := setupCodexResponsesUpstream(t, h)
-	surface := httptest.NewServer(h.router)
+	surface := httptest.NewTLSServer(h.router)
 	defer surface.Close()
+	dialer := websocket.Dialer{TLSClientConfig: surface.Client().Transport.(*http.Transport).TLSClientConfig}
 	var terminals []string
 	for _, path := range []string{"/v1/responses", "/codex/responses"} {
-		conn, resp, err := websocket.DefaultDialer.Dial("ws"+strings.TrimPrefix(surface.URL, "http")+path, http.Header{"Authorization": []string{"Bearer " + h.key.Key}})
+		conn, resp, err := dialer.Dial("wss"+strings.TrimPrefix(surface.URL, "https")+path, http.Header{"Authorization": []string{"Bearer " + h.key.Key}})
 		if err != nil {
 			status := "no HTTP response"
 			body := ""
