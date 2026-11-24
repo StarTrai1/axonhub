@@ -21,6 +21,7 @@ import SystemProvider from '@/features/system/context/system-context';
 import ProfileForm from '@/features/settings/profile/profile-form';
 import Playground from '@/features/playground';
 import { ModelsCatalogImport } from '@/features/models/components/models-catalog-import';
+import { CodexKeyCatalog } from '@/features/apikeys/components/codex-key-catalog';
 import { ModelsProvider } from '@/features/models/context/models-context';
 import { PluginTasks } from '@/features/plugins/components/plugin-tasks';
 import type { Plugin } from '@/features/plugins/data/plugins';
@@ -173,7 +174,7 @@ if (fixtureCase === 'quota-keys') {
     } },
   } }] } });
 }
-if (['quota-reset', 'quota-keys', 'catalog-import', 'plugin-tasks'].includes(fixtureCase || '')) {
+if (['quota-reset', 'quota-keys', 'catalog-import', 'plugin-tasks', 'codex-key-catalog'].includes(fixtureCase || '')) {
   document.documentElement.classList.add('claude');
   void i18n.changeLanguage(new URLSearchParams(window.location.search).get('lang') || 'en');
   document.documentElement.classList.toggle('dark', new URLSearchParams(window.location.search).get('theme') === 'dark');
@@ -181,5 +182,7 @@ if (['quota-reset', 'quota-keys', 'catalog-import', 'plugin-tasks'].includes(fix
 const gifResponse = { output_format: 'gif', data: [{ b64_json: 'R0lGODlhAQABAIAAAAAAAP///yH5BAAKAAAALAAAAAABAAEAAAIBRAAh+QQACgAAACwAAAAAAQABAAACAkwAOw==', mime_type: 'image/png' }] };
 const fixture = fixtureCase === 'catalog-import' ? <ModelsProvider><ModelsCatalogImport /></ModelsProvider> : fixtureCase === 'plugin-tasks' ? <main data-testid='plugin-task-preview' className='bg-background text-foreground min-h-screen p-4'><PluginTasks plugin={{ id: 'offline-plugin', enabled: true } as Plugin} canManage /></main> : fixtureCase === 'quota-keys' ? <main className='bg-background text-foreground min-h-screen p-4'><section data-testid='quota-keys'><QuotaBadges isRefreshing={false} onRefresh={() => {}} /></section></main> : fixtureCase === 'quota-reset' ? <QuotaResetFixture /> : fixtureCase === 'gif' ? <section data-testid='gif-response'><JsonViewer data={gifResponse} expandDepth='all' /></section> : fixtureCase === 'server-select' ? <ServerSelectFixture /> : fixtureCase === 'rendering' ? <RenderingFixture /> : fixtureCase === 'composition' ? <CompositionFixture /> : fixtureCase === 'uploads' ? <UploadFixture /> : fixtureCase === 'playground' ? <PlaygroundFixture /> : <PriceFixture />;
 createRoot(document.getElementById('root')!).render(
-  <StrictMode><QueryClientProvider client={queryClient}>{fixture}</QueryClientProvider></StrictMode>
+  <StrictMode><QueryClientProvider client={queryClient}>{fixtureCase === 'codex-key-catalog'
+    ? <main className='bg-background text-foreground mx-auto max-w-lg p-4'><CodexKeyCatalog keyId='fixture' apiKey='synthetic-key' /></main>
+    : fixture}</QueryClientProvider></StrictMode>
 );

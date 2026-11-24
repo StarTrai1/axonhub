@@ -22,6 +22,11 @@ class SelectionTests(unittest.TestCase):
         self.assertTrue(select(["internal/ent/schema/channel.go"])["generation"])
         self.assertTrue(select(["go.mod"])["generation"])
 
+    def test_codex_entrypoints_and_cli_fixtures_run_real_clients(self):
+        for path in ("internal/server/codex_cli_compatibility_test.go", "internal/server/codex_routes.go", "internal/server/routes.go"):
+            with self.subTest(path=path):
+                self.assertTrue(select([path])["protocol"])
+
     def test_workflow_unknown_and_full_ranges_do_not_skip(self):
         for paths, full in (([".github/workflows/test.yml"], False), (["Makefile"], False), (["new-owner/config.yaml"], False), ([], True)):
             self.assertTrue(all(select(paths, full).values()))

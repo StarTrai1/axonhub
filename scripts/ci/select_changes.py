@@ -21,7 +21,10 @@ def select(paths, full=False):
         dependency = path in ("go.mod", "go.sum", "llm/go.mod", "llm/go.sum", "cmd/schema/go.mod", "cmd/schema/go.sum", ".go-version")
         backend = dependency or path.endswith(".go") or path.startswith(("conf/", "deploy/", "scripts/verify-go-"))
         frontend = path.startswith(("frontend/", "scripts/pack-frontend", "internal/server/static/"))
-        protocol = dependency or path.startswith(("llm/", "internal/server/orchestrator/", "internal/server/api/", "internal/contexts/", "scripts/codex-probes/"))
+        protocol = dependency or path == "internal/server/routes.go" or path.startswith((
+            "llm/", "internal/server/codex_", "internal/server/orchestrator/", "internal/server/api/",
+            "internal/contexts/", "scripts/codex-probes/",
+        ))
         generation = dependency or path.startswith(("internal/ent/", "internal/server/gql/", "internal/objects/", "cmd/schema/")) or path == "gqlgen.yml"
         if not (backend or frontend or protocol or generation):
             # A new owning directory must not silently bypass validation.

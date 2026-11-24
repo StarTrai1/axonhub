@@ -14,6 +14,7 @@ import { useCodexCompatibilityEnabled } from '@/features/system/data/codex-compa
 import { useApiKeysContext } from '../context/apikeys-context';
 import { useApiKey } from '../data/apikeys';
 import { buildPiModelsConfig, serializePiModelsConfig } from '../data/pi-models-config';
+import { CodexKeyCatalog } from './codex-key-catalog';
 
 function codexCompatibilityExample(serverURL: string, key: string) {
   const baseUrl = `${serverURL}/codex`;
@@ -455,6 +456,7 @@ print(response.text)`,
               </TabsContent>
               {showCodexCompatibility && (
                 <TabsContent value='codexCompatibility' className='mt-3 min-h-0 flex-1 overflow-y-auto'>
+                  <CodexKeyCatalog key={selectedApiKey.id} keyId={selectedApiKey.id} apiKey={apiKey} />
                   <MaskedCodeBlock
                     displayCode={codeExamples?.codexCompatibility?.display || ''}
                     realCode={codeExamples?.codexCompatibility?.real || ''}
