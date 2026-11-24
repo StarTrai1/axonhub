@@ -19,7 +19,7 @@ import (
 func TestCodexRoutes_StandaloneRequests(t *testing.T) {
 	for _, tc := range []struct {
 		path, request, response, resultPath, expected string
-		format llm.APIFormat
+		format                                        llm.APIFormat
 	}{
 		{"/alpha/search", `{"model":"gpt-6-sol","commands":{"search_query":[{"q":"fixture"}]}}`, `{"encrypted_output":"opaque","output":"fixture result","results":[]}`, "output", "fixture result", llm.APIFormatOpenAISearch},
 		{"/responses/compact", `{"model":"gpt-6-sol","input":"fixture"}`, `{"id":"cmp_fixture","object":"response.compaction","model":"gpt-6-sol","output":[{"type":"compaction","id":"cmp_item","encrypted_content":"fixture-checkpoint"}]}`, "output.0.type", "compaction", llm.APIFormatOpenAIResponseCompact},

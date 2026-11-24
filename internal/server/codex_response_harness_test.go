@@ -33,7 +33,7 @@ func setupCodexResponseHandlers(t *testing.T, h *codexRouteHarness, models *biz.
 	handlers := api.NewOpenAIHandlers(api.OpenAIHandlersParams{
 		ChannelService: h.channels, ModelService: models, SystemService: h.system, Client: h.db,
 		DefaultSelector: orchestrator.NewDefaultSelector(h.channels, models, h.system),
-		RequestService: requests, UsageLogService: usage, PromptService: prompts, PromptProtectionRuleService: protection,
+		RequestService:  requests, UsageLogService: usage, PromptService: prompts, PromptProtectionRuleService: protection,
 		HttpClient: httpclient.NewHttpClient(), LiveStreamRegistry: biz.NewLiveStreamRegistry(),
 		ChannelLimiterManager: orchestrator.NewChannelLimiterManager(),
 	})

@@ -53,6 +53,7 @@ func newCodexRouteHarness(t *testing.T) *codexRouteHarness {
 	db := enttest.NewEntClient(t, "sqlite3", dsn)
 	t.Cleanup(func() { require.NoError(t, db.Close()) })
 	ctx := authz.WithTestBypass(ent.NewContext(t.Context(), db))
+	db.System.Create().SetKey(biz.SystemKeySecretKey).SetValue("synthetic-compaction-key").SaveX(ctx)
 	owner := db.User.Create().SetEmail("codex@example.invalid").SetPassword("test").SetIsOwner(true).SaveX(ctx)
 	project := db.Project.Create().SetName("test").SaveX(ctx)
 	key := db.APIKey.Create().SetName("display name").SetKey("ah-codex-test").SetUserID(owner.ID).SetProjectID(project.ID).SetType(apikey.TypeUser).SaveX(ctx)
@@ -104,9 +105,12 @@ func (h *codexRouteHarness) request(method, path, key string) *httptest.Response
 func TestCodexRoutes_Disabled(t *testing.T) {
 	h := newCodexRouteHarness(t)
 	for _, route := range []struct{ method, path string }{
-		{"GET", "/codex/models"}, {"GET", "/codex/v1/user-auth-credential/whoami"},
-		{"POST", "/codex/responses"}, {"GET", "/codex/responses"},
-		{"POST", "/codex/alpha/search"}, {"POST", "/codex/responses/compact"},
+		{"GET", "/codex/models"},
+		{"GET", "/codex/v1/user-auth-credential/whoami"},
+		{"POST", "/codex/responses"},
+		{"GET", "/codex/responses"},
+		{"POST", "/codex/alpha/search"},
+		{"POST", "/codex/responses/compact"},
 	} {
 		for _, key := range []string{"", "bad", h.key.Key} {
 			result := h.request(route.method, route.path, key)

@@ -54,75 +54,80 @@ func TestCodexCLICompatibility(t *testing.T) {
 			var item map[string]any
 			switch n {
 			case 1:
-				item = map[string]any{"id":"fc_gateway","type":"function_call","status":"completed","call_id":"call_gateway","namespace":"web","name":"run","arguments":`{"search_query":[{"q":"gateway-fixture"}]}`}
-			case 2,3:
+				item = map[string]any{"id": "fc_gateway", "type": "function_call", "status": "completed", "call_id": "call_gateway", "namespace": "web", "name": "run", "arguments": `{"search_query":[{"q":"gateway-fixture"}]}`}
+			case 2, 3:
 				if n == 2 {
 					assert.Contains(t, string(body), "gateway-search-receipt")
 				} else {
 					assert.Contains(t, string(body), "continue-gateway-fixture")
 					assert.Contains(t, string(body), "gateway-answer-2")
 				}
-				item = map[string]any{"id":fmt.Sprintf("msg_gateway_%d",n),"type":"message","role":"assistant","status":"completed","phase":"final_answer","content":[]any{map[string]any{"type":"output_text","text":fmt.Sprintf("gateway-answer-%d",n),"annotations":[]any{}}}}
+				item = map[string]any{"id": fmt.Sprintf("msg_gateway_%d", n), "type": "message", "role": "assistant", "status": "completed", "phase": "final_answer", "content": []any{map[string]any{"type": "output_text", "text": fmt.Sprintf("gateway-answer-%d", n), "annotations": []any{}}}}
 			default:
-				http.Error(w,"unexpected inference",http.StatusBadRequest)
+				http.Error(w, "unexpected inference", http.StatusBadRequest)
 				return
 			}
-			id := fmt.Sprintf("resp_gateway_%d",n)
-			w.Header().Set("Content-Type","text/event-stream")
+			id := fmt.Sprintf("resp_gateway_%d", n)
+			w.Header().Set("Content-Type", "text/event-stream")
 			events := []map[string]any{
-				{"type":"response.created","response":map[string]any{"id":id,"object":"response","model":model,"status":"in_progress","output":[]any{}}},
-				{"type":"response.output_item.done","output_index":0,"item":item},
-				{"type":"response.completed","response":map[string]any{"id":id,"object":"response","model":model,"status":"completed","output":[]any{item},"usage":map[string]int{"input_tokens":10,"output_tokens":3,"total_tokens":13}}},
+				{"type": "response.created", "response": map[string]any{"id": id, "object": "response", "model": model, "status": "in_progress", "output": []any{}}},
+				{"type": "response.output_item.done", "output_index": 0, "item": item},
+				{"type": "response.completed", "response": map[string]any{"id": id, "object": "response", "model": model, "status": "completed", "output": []any{item}, "usage": map[string]int{"input_tokens": 10, "output_tokens": 3, "total_tokens": 13}}},
 			}
-			for i,e := range events {
-				e["sequence_number"]=i
-				data,err:=json.Marshal(e)
-				assert.NoError(t,err)
-				_,_=fmt.Fprintf(w,"event: %s\ndata: %s\n\n",e["type"],data)
+			for i, e := range events {
+				e["sequence_number"] = i
+				data, err := json.Marshal(e)
+				assert.NoError(t, err)
+				_, _ = fmt.Fprintf(w, "event: %s\ndata: %s\n\n", e["type"], data)
 			}
 		default:
-			http.NotFound(w,r)
+			http.NotFound(w, r)
 		}
 	}))
 	t.Cleanup(upstream.Close)
 	h.source.Update().SetBaseURL(upstream.URL).SetSupportedModels([]string{model}).SetDefaultTestModel(model).
-		SetEndpoints([]objects.ChannelEndpoint{{APIFormat:llm.APIFormatOpenAIResponse.String(),Transport:objects.ChannelEndpointTransportHTTP},{APIFormat:llm.APIFormatOpenAISearch.String()}}).SaveX(h.ctx)
-	ch,err:=h.channels.GetChannel(h.ctx,h.source.ID)
-	require.NoError(t,err)
+		SetEndpoints([]objects.ChannelEndpoint{{APIFormat: llm.APIFormatOpenAIResponse.String(), Transport: objects.ChannelEndpointTransportHTTP}, {APIFormat: llm.APIFormatOpenAISearch.String()}}).SaveX(h.ctx)
+	ch, err := h.channels.GetChannel(h.ctx, h.source.ID)
+	require.NoError(t, err)
 	h.channels.SetEnabledChannelsForTest([]*biz.Channel{ch})
-	require.NoError(t,h.system.SetCodexCompatibilitySettings(h.ctx,biz.CodexCompatibilitySettings{Enabled:true,ChannelID:&h.source.ID}))
-	gateway:=httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){
-		if r.URL.Path=="/codex/v1/user-auth-credential/whoami" {whoami.Add(1)}
-		h.router.ServeHTTP(w,r)
+	require.NoError(t, h.system.SetCodexCompatibilitySettings(h.ctx, biz.CodexCompatibilitySettings{Enabled: true, ChannelID: &h.source.ID}))
+	gateway := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/codex/v1/user-auth-credential/whoami" {
+			whoami.Add(1)
+		}
+		h.router.ServeHTTP(w, r)
 	}))
 	t.Cleanup(gateway.Close)
-	base:=gateway.URL+"/codex"
-	home, cwd:=t.TempDir(),t.TempDir()
-	auth,err:=json.Marshal(map[string]string{"personal_access_token":h.key.Key})
-	require.NoError(t,err)
-	require.NoError(t,os.WriteFile(filepath.Join(home,"auth.json"),auth,0600))
-	config:=fmt.Sprintf("model_provider=\"openai\"\nmodel=%q\nopenai_base_url=%q\nchatgpt_base_url=%q\nweb_search=\"live\"\ncli_auth_credentials_store=\"file\"\n[analytics]\nenabled=false\n[features]\nstandalone_web_search=true\nplugins=false\napps=false\n",model,base,base)
-	require.NoError(t,os.WriteFile(filepath.Join(home,"config.toml"),[]byte(config),0600))
-	run:=func(args ...string) string {
-		ctx,cancel:=context.WithTimeout(t.Context(),90*time.Second)
+	base := gateway.URL + "/codex"
+	home, cwd := t.TempDir(), t.TempDir()
+	auth, err := json.Marshal(map[string]string{"personal_access_token": h.key.Key})
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(filepath.Join(home, "auth.json"), auth, 0600))
+	config := fmt.Sprintf("model_provider=\"openai\"\nmodel=%q\nopenai_base_url=%q\nchatgpt_base_url=%q\nweb_search=\"live\"\ncli_auth_credentials_store=\"file\"\n[analytics]\nenabled=false\n[features]\nstandalone_web_search=true\nplugins=false\napps=false\n", model, base, base)
+	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(config), 0600))
+	run := func(args ...string) string {
+		ctx, cancel := context.WithTimeout(t.Context(), 90*time.Second)
 		defer cancel()
-		cmd:=exec.CommandContext(ctx,binary,args...)
-		cmd.Dir=cwd
-		cmd.Env=[]string{"PATH="+os.Getenv("PATH"),"HOME="+home,"CODEX_HOME="+home,"CODEX_AUTHAPI_BASE_URL="+base,"NO_PROXY=127.0.0.1,localhost","HTTPS_PROXY=http://127.0.0.1:1","HTTP_PROXY=http://127.0.0.1:1"}
-		out,err:=cmd.CombinedOutput()
-		require.NoError(t,err,string(out))
+		cmd := exec.CommandContext(ctx, binary, args...)
+		cmd.Dir = cwd
+		cmd.Env = []string{"PATH=" + os.Getenv("PATH"), "HOME=" + home, "CODEX_HOME=" + home, "CODEX_AUTHAPI_BASE_URL=" + base, "NO_PROXY=127.0.0.1,localhost", "HTTPS_PROXY=http://127.0.0.1:1", "HTTP_PROXY=http://127.0.0.1:1"}
+		out, err := cmd.CombinedOutput()
+		require.NoError(t, err, string(out))
 		return string(out)
 	}
-	first:=run("exec","--skip-git-repo-check","--json","search-gateway-fixture")
-	require.Contains(t,first,"gateway-answer-2")
+	first := run("exec", "--skip-git-repo-check", "--json", "search-gateway-fixture")
+	require.Contains(t, first, "gateway-answer-2")
 	var thread string
-	for line:=range strings.SplitSeq(first,"\n"){
-		if gjson.Get(line,"type").String()=="thread.started" {thread=gjson.Get(line,"thread_id").String();break}
+	for line := range strings.SplitSeq(first, "\n") {
+		if gjson.Get(line, "type").String() == "thread.started" {
+			thread = gjson.Get(line, "thread_id").String()
+			break
+		}
 	}
-	require.NotEmpty(t,thread)
-	require.Contains(t,run("exec","resume","--skip-git-repo-check","--json",thread,"continue-gateway-fixture"),"gateway-answer-3")
-	require.Positive(t,whoami.Load())
-	require.Positive(t,catalogs.Load())
-	require.EqualValues(t,1,searches.Load())
-	require.EqualValues(t,3,turns.Load())
+	require.NotEmpty(t, thread)
+	require.Contains(t, run("exec", "resume", "--skip-git-repo-check", "--json", thread, "continue-gateway-fixture"), "gateway-answer-3")
+	require.Positive(t, whoami.Load())
+	require.Positive(t, catalogs.Load())
+	require.EqualValues(t, 1, searches.Load())
+	require.EqualValues(t, 3, turns.Load())
 }
