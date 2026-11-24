@@ -826,7 +826,11 @@ func convertGeminiCandidateToLLMChoiceWithState(candidate *Candidate, isStream b
 				})
 
 			case part.FunctionCall != nil:
-				argsJSON, _ := json.Marshal(part.FunctionCall.Args)
+				args := part.FunctionCall.Args
+				if args == nil {
+					args = map[string]any{}
+				}
+				argsJSON, _ := json.Marshal(args)
 				tc := llm.ToolCall{
 					Index: nextToolCallIndex,
 					ID:    part.FunctionCall.ID,

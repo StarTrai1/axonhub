@@ -31,3 +31,18 @@ func TestCodex162RetryFixture(t *testing.T) {
 		require.NoError(t, os.WriteFile(path, []byte(fmt.Sprintf("event: %s\ndata: %s\n\n", event.Type, event.Data)), 0o600))
 	}
 }
+
+func TestCodex172SpendLimitFixture(t *testing.T) {
+	_, encode := newResponsesStreamAdapter(context.Background(), &errorAfterStream{}, nil)
+	event, err := encode(t.Context(), &llm.ResponseError{
+		StatusCode: http.StatusTooManyRequests,
+		Detail: llm.ErrorDetail{Code: "api_key_spend_limit_exceeded", Type: "insufficient_quota", Message: "synthetic API key spend limit"},
+		Cause: &httpclient.Error{StatusCode: http.StatusTooManyRequests, Headers: http.Header{"Retry-After": {"3"}}},
+	})
+	require.NoError(t, err)
+	require.Equal(t, "api_key_spend_limit_exceeded", gjson.GetBytes(event.Data, "response.error.code").String())
+	require.False(t, gjson.GetBytes(event.Data, "response.error.headers.retry-after").Exists())
+	if path := os.Getenv("AXONHUB_CODEX_SPEND_FIXTURE"); path != "" {
+		require.NoError(t, os.WriteFile(path, []byte(fmt.Sprintf("event: %s\ndata: %s\n\n", event.Type, event.Data)), 0o600))
+	}
+}

@@ -22,6 +22,14 @@ const row = channelSchema.parse({
   policies: { webSearch: 'auto' },
   supportedModels: ['gpt-6-sol', 'gpt-5.5'], defaultTestModel: 'gpt-6-sol', settings: { codexSearchOnly: false },
 });
+if (new URLSearchParams(window.location.search).has('claude-catalog')) {
+  row.type = 'claudecode';
+  row.name = 'Claude OAuth';
+  row.baseURL = 'https://api.anthropic.com';
+  row.credentials = { isOAuth: true, oauth: { accessToken: 'synthetic-old-token' } };
+  row.supportedModels = ['fixture-old'];
+  row.defaultTestModel = 'fixture-old';
+}
 if (new URLSearchParams(window.location.search).get('auth') === 'third-party') {
   row.baseURL = 'https://relay.example/v1';
   row.credentials = { apiKeys: ['synthetic-relay-key'] };

@@ -72,6 +72,7 @@ func TestTransientRateLimitWaitHonorsProviderAndRejectsLongQuotaWindows(t *testi
 		{name: "quota", body: `{"error":{"type":"usage_limit_reached"}}`},
 		{name: "credit balance", body: `{"error":{"code":"credit_balance_exhausted"}}`},
 		{name: "organization spend", body: `{"error":{"code":"organization_spend_limit_exceeded"}}`},
+		{name: "API key spend", body: `{"error":{"code":"api_key_spend_limit_exceeded"}}`},
 		{name: "project spend", body: `{"error":{"code":"project_spend_limit_exceeded"}}`},
 		{name: "organization usage", body: `{"error":{"code":"organization_usage_limit_exceeded"}}`},
 	} {

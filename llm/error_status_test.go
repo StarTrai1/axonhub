@@ -23,6 +23,7 @@ func TestInferResponseErrorStatusCode(t *testing.T) {
 		{name: "flow slow down", code: "slow_down", want: http.StatusTooManyRequests},
 		{name: "credit balance exhausted", code: "credit_balance_exhausted", want: http.StatusTooManyRequests},
 		{name: "organization spend limit", code: "organization_spend_limit_exceeded", want: http.StatusTooManyRequests},
+		{name: "API key spend limit", code: "api_key_spend_limit_exceeded", want: http.StatusTooManyRequests},
 		{name: "project spend limit", code: "project_spend_limit_exceeded", want: http.StatusTooManyRequests},
 		{name: "organization usage limit", code: "organization_usage_limit_exceeded", want: http.StatusTooManyRequests},
 		{name: "anthropic overload", errorType: "overloaded_error", want: http.StatusServiceUnavailable},

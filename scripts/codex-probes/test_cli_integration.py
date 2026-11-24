@@ -36,7 +36,10 @@ class CLIIntegrationTest(unittest.IsolatedAsyncioTestCase):
     async def test_model_not_found_preserves_message_without_retry(self):
         await self.completed_turn(model_missing=True)
 
-    async def completed_turn(self, *, retry=False, partial=False, model_missing=False):
+    async def test_api_key_spend_limit_terminates_before_stream_closes(self):
+        await self.completed_turn(spend_limit=True)
+
+    async def completed_turn(self, *, retry=False, partial=False, model_missing=False, spend_limit=False):
         requests = []
         arrivals = []
         errors = []
@@ -61,8 +64,11 @@ class CLIIntegrationTest(unittest.IsolatedAsyncioTestCase):
         ]
         payload = "".join(f"event: {event['type']}\ndata: {json.dumps({**event, 'sequence_number': index})}\n\n"
                           for index, event in enumerate(events)).encode()
+        release_stream = asyncio.Event()
         first_payload = payload
-        if model_missing:
+        if spend_limit:
+            first_payload = Path(os.environ["AXONHUB_CODEX_SPEND_FIXTURE"]).read_bytes()
+        elif model_missing:
             error_event = {"type": "response.failed", "response": {"id": "resp_missing", "status": "failed", "error": {"code": "model_not_found", "message": "The selected fixture model is unavailable."}}}
             first_payload = f"event: response.failed\ndata: {json.dumps(error_event)}\n\n".encode()
         elif retry:
@@ -88,8 +94,15 @@ class CLIIntegrationTest(unittest.IsolatedAsyncioTestCase):
                     requests.append((parsed, json.loads(body)))
                     arrivals.append(asyncio.get_running_loop().time())
                     current_payload = first_payload if len(requests) == 1 else payload
-                    writer.write(b"HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nConnection: close\r\nContent-Length: "
-                                 + str(len(current_payload)).encode() + b"\r\n\r\n" + current_payload)
+                    if spend_limit:
+                        # No length, EOF or chunk terminator: the CLI must act on
+                        # the gateway's terminal event while the stream is open.
+                        writer.write(b"HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nConnection: close\r\n\r\n" + current_payload)
+                        await writer.drain()
+                        await release_stream.wait()
+                    else:
+                        writer.write(b"HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nConnection: close\r\nContent-Length: "
+                                     + str(len(current_payload)).encode() + b"\r\n\r\n" + current_payload)
                 else:
                     writer.write(b"HTTP/1.1 404 Not Found\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}")
                 await writer.drain()
@@ -114,8 +127,20 @@ class CLIIntegrationTest(unittest.IsolatedAsyncioTestCase):
                     from probe_common import config_text
                     def retry_config(*values):
                         return config_text(*values).replace("stream_max_retries = 0", "stream_max_retries = 1")
-                    with mock.patch("probe_common.config_text", side_effect=retry_config if retry or model_missing else config_text):
-                        outcome = await runner.run({"id": "completed", "prompt": "Reply OK."}, "low")
+                    with mock.patch("probe_common.config_text", side_effect=retry_config if retry or model_missing or spend_limit else config_text):
+                        try:
+                            outcome = await asyncio.wait_for(runner.run({"id": "completed", "prompt": "Reply OK."}, "low"), 30 if spend_limit else 100)
+                        finally:
+                            release_stream.set()
+                    if spend_limit:
+                        self.assertNotEqual(outcome.status, "success")
+                        self.assertNotEqual(outcome.returncode, 0)
+                        self.assertIn("spend limit", outcome.error.lower())
+                        self.assertIn("api key", outcome.error.lower())
+                        self.assertEqual(len(requests), 1, "a spend limit must not trigger transient retries")
+                        self.assertEqual(errors, [])
+                        self.assertEqual(runner.active_attempts, 0)
+                        return
                     if model_missing:
                         self.assertNotEqual(outcome.status, "success")
                         self.assertNotEqual(outcome.returncode, 0)

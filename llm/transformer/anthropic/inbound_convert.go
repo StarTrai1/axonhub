@@ -234,7 +234,7 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 						Type: "function",
 						Function: llm.FunctionCall{
 							Name:      lo.FromPtr(block.Name),
-							Arguments: string(block.Input),
+							Arguments: anthropicToolArguments(block.Input),
 						},
 						CacheControl: convertToLLMCacheControl(block.CacheControl),
 					}
@@ -249,7 +249,7 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 							Type: "function",
 							Function: llm.FunctionCall{
 								Name:      lo.FromPtr(block.Name),
-								Arguments: string(block.Input),
+								Arguments: anthropicToolArguments(block.Input),
 							},
 							CacheControl: convertToLLMCacheControl(block.CacheControl),
 						}
@@ -893,4 +893,12 @@ func convertNativeWebSearchToolToLLM(tool Tool, version string) llm.Tool {
 			AllowedCallers: tool.AllowedCallers,
 		},
 	}
+}
+
+// An omitted input denotes a parameterless call; explicit values remain intact.
+func anthropicToolArguments(input json.RawMessage) string {
+	if len(bytes.TrimSpace(input)) == 0 {
+		return "{}"
+	}
+	return string(input)
 }

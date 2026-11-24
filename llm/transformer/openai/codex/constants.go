@@ -100,7 +100,7 @@ const (
 	Scopes      = "openid profile email offline_access"
 
 	// DefaultClientVersion is the built-in version for requests without a resolved version.
-	DefaultClientVersion = "0.171.0"
+	DefaultClientVersion = "0.172.0"
 
 	codexDefaultVersion  = DefaultClientVersion
 	codexUserAgentPrefix = "codex_cli_rs/"

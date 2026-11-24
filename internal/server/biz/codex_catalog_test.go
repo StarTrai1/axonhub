@@ -129,3 +129,12 @@ func TestCodexCatalog_RedirectCredentials(t *testing.T) {
 	require.Error(t, err)
 	require.False(t, leaked)
 }
+
+func TestCodex172CatalogRetainsDaybreakAvailability(t *testing.T) {
+	const raw = `{"models":[{"slug":"gpt-6.2-sol","available_access_programs":{"cyber":["standard"],"daybreak_availability":"enrollment_required"}}]}`
+	catalog, err := ParseCodexCatalog([]byte(raw))
+	require.NoError(t, err)
+	filtered, err := catalog.Intersect([]string{"gpt-6.2-sol"})
+	require.NoError(t, err)
+	require.JSONEq(t, raw, string(filtered))
+}

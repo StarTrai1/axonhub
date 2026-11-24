@@ -36,7 +36,7 @@ func upstreamRetryAdvice(err error, status int) http.Header {
 	for _, value := range []string{code, typeName} {
 		switch strings.ToLower(value) {
 		case errCodeQuotaExhausted, "insufficient_quota", "usage_limit_reached", "billing_hard_limit_reached",
-			"billing_hard_limit", "credit_balance_exhausted", "organization_spend_limit_exceeded",
+			"billing_hard_limit", "credit_balance_exhausted", "organization_spend_limit_exceeded", "api_key_spend_limit_exceeded",
 			"project_spend_limit_exceeded", "organization_usage_limit_exceeded", "policy_violation",
 			"content_policy_violation", "access_program_not_enabled", "misalignment_policy_violation", "cyber_policy", "bio_policy", "flex_unavailable":
 			return nil

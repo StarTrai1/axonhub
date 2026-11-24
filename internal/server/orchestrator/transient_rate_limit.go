@@ -23,7 +23,7 @@ func canRetryTransientRateLimit(err error) bool {
 	if errors.As(err, &raw) {
 		message += " " + strings.ToLower(string(raw.Body))
 	}
-	for _, marker := range []string{"insufficient_quota", "usage_limit_reached", "billing_hard_limit", "quota exhausted", "insufficient quota", "credit_balance_exhausted", "organization_spend_limit_exceeded", "project_spend_limit_exceeded", "organization_usage_limit_exceeded"} {
+	for _, marker := range []string{"insufficient_quota", "usage_limit_reached", "billing_hard_limit", "quota exhausted", "insufficient quota", "credit_balance_exhausted", "organization_spend_limit_exceeded", "api_key_spend_limit_exceeded", "project_spend_limit_exceeded", "organization_usage_limit_exceeded"} {
 		if strings.Contains(message, marker) {
 			return false
 		}

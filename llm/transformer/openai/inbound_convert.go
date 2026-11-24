@@ -153,6 +153,7 @@ func (t *ToolChoice) ToLLMToolChoice() *llm.ToolChoice {
 
 // ToLLMMessage converts OpenAI Message to unified llm.Message.
 func (m Message) ToLLMMessage() llm.Message {
+	m = normalizeChatThinkingParts(m)
 	msg := llm.Message{
 		Role:               m.Role,
 		Name:               m.Name,

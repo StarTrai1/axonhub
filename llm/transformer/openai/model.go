@@ -277,6 +277,7 @@ func (c *MessageContent) UnmarshalJSON(data []byte) error {
 
 // MessageContentPart represents different types of content (text, image, video, etc.)
 type MessageContentPart struct {
+	Thinking json.RawMessage `json:"thinking,omitempty"`
 	Type                  string                     `json:"type"`
 	Text                  *string                    `json:"text,omitempty"`
 	ImageURL              *ImageURL                  `json:"image_url,omitempty"`
