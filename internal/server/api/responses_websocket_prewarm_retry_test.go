@@ -20,7 +20,7 @@ import (
 func TestResponsesWebSocketWarmupRetainsInputAfterFailedContinuation(t *testing.T) {
 	t.Parallel()
 
-	for _, failure := range []string{"preflight", "response.failed", "response.canceled"} {
+	for _, failure := range []string{"preflight", "response.failed", "response.cancelled"} {
 		t.Run(failure, func(t *testing.T) {
 			t.Parallel()
 
@@ -32,7 +32,11 @@ func TestResponsesWebSocketWarmupRetainsInputAfterFailedContinuation(t *testing.
 					if failure == "preflight" {
 						return orchestrator.ChatCompletionResult{}, &httpclient.Error{StatusCode: http.StatusBadGateway}
 					}
-					event := fmt.Sprintf(`{"type":%q,"response":{"id":"resp_failed","status":%q}}`, failure, strings.TrimPrefix(failure, "response."))
+					status := strings.TrimPrefix(failure, "response.")
+					if status == "cancelled" {
+						status = "canceled"
+					}
+					event := fmt.Sprintf(`{"type":%q,"response":{"id":"resp_failed","status":%q}}`, failure, status)
 					return orchestrator.ChatCompletionResult{
 						ChatCompletionStream: streams.SliceStream([]*httpclient.StreamEvent{{Type: failure, Data: []byte(event)}}),
 					}, nil

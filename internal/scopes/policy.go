@@ -10,7 +10,7 @@ import (
 )
 
 // SystemJWTSecretKey identifies the system setting reserved for JWT signing.
-const SystemJWTSecretKey = "system_jwt_secret_key"
+const SystemJWTSecretKey = "system_jwt_secret_key" //nolint:gosec // Database setting name, not a credential value.
 
 type (
 	// QueryPolicy will deny if the query rule returns nil or privacy.Skip.
