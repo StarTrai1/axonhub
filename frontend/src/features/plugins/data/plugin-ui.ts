@@ -89,7 +89,7 @@ export function usePluginUIEntries() {
     queryFn: () => graphqlRequest<PluginUIEntriesResult>(PLUGIN_UI_ENTRIES_QUERY),
     refetchInterval: (query) => {
       const entries = query.state.data?.pluginUIEntries;
-      return entries && (entries.pages.length > 0 || entries.actions.length > 0) ? 30_000 : false;
+      return (entries?.pages?.length ?? 0) > 0 || (entries?.actions?.length ?? 0) > 0 ? 30_000 : false;
     },
     // The command menu mounts this outside the authenticated layout. Without
     // a session the admin API returns 401 and the client would leave the page.
