@@ -1594,28 +1594,30 @@ func TestWebSocketExecutorReconnectsIndependentFullInput(t *testing.T) {
 				require.NoError(t, err)
 				defer conn.CloseNow()
 
-				for _, input := range []string{[]string{firstInput, tc.input}[upgrade-1]} {
-					var payload struct {
-						Input              json.RawMessage `json:"input"`
-						PreviousResponseID json.RawMessage `json:"previous_response_id"`
-					}
-					if !assert.NoError(t, wsjson.Read(r.Context(), conn, &payload)) {
-						return
-					}
-					assert.JSONEq(t, input, string(payload.Input))
-					assert.Empty(t, payload.PreviousResponseID)
-					require.NoError(t, wsjson.Write(r.Context(), conn, map[string]any{
-						"type": "response.completed",
-						"response": map[string]any{
-							"id":         "resp_test",
-							"object":     "response",
-							"created_at": 1700000000,
-							"model":      "gpt-5",
-							"status":     "completed",
-							"output":     []any{},
-						},
-					}))
+				input := firstInput
+				if upgrade == 2 {
+					input = tc.input
 				}
+				var payload struct {
+					Input              json.RawMessage `json:"input"`
+					PreviousResponseID json.RawMessage `json:"previous_response_id"`
+				}
+				if !assert.NoError(t, wsjson.Read(r.Context(), conn, &payload)) {
+					return
+				}
+				assert.JSONEq(t, input, string(payload.Input))
+				assert.Empty(t, payload.PreviousResponseID)
+				require.NoError(t, wsjson.Write(r.Context(), conn, map[string]any{
+					"type": "response.completed",
+					"response": map[string]any{
+						"id":         "resp_test",
+						"object":     "response",
+						"created_at": 1700000000,
+						"model":      "gpt-5",
+						"status":     "completed",
+						"output":     []any{},
+					},
+				}))
 				_, _, _ = conn.Read(r.Context())
 			}))
 			defer server.Close()

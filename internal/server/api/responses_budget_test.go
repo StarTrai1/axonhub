@@ -26,6 +26,22 @@ func TestResponsesAdapterBudgetsQueue128MiB(t *testing.T) {
 	require.Equal(t, 128<<20, responsesWebSocketMaxMessageSize)
 }
 
+func TestRejectedWebSocketQueueDoesNotConsumeStreamID(t *testing.T) {
+	d := newResponsesWebSocketDispatcher(t.Context(), func() {}, nil, nil, nil, 0, nil, nil)
+	require.True(t, d.reserve(128 << 20))
+	lane, err := d.admit("rejected", 1)
+	require.NotNil(t, err)
+	require.Nil(t, lane)
+	require.Empty(t, d.lanes)
+	require.Zero(t, d.namedStreams)
+	d.queueBudget.Replace(128<<20, 0)
+	<-d.pending
+	lane, err = d.admit("rejected", 1)
+	require.Nil(t, err)
+	require.NotNil(t, lane)
+	require.Equal(t, 1, d.namedStreams)
+}
+
 func TestResponsesAdapterBudgetsWarmupSharesConnection64MiB(t *testing.T) {
 	// Given
 	budget := shared.NewResponsesBudget(64 << 20)

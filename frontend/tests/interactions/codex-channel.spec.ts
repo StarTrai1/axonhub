@@ -110,6 +110,13 @@ for (const width of [1280, 768, 390]) {
     await expect(input).toBeVisible();
     expect(await section.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
     await section.getByRole('tab').first().click();
+    const transport = page.getByTestId('codex-responses-websocket-checkbox');
+    await transport.scrollIntoViewIfNeeded();
+    await transport.check();
+    const preference = page.getByTestId('codex-prefer-responses-websocket');
+    await preference.click();
+    await expect(preference).toHaveAttribute('aria-checked', 'true');
+    await page.screenshot({ animations: 'disabled', path: testInfo.outputPath('codex-websocket-preference.png') });
     const toggle = page.getByTestId('codex-search-only-toggle');
     await expect(toggle).toHaveAttribute('aria-checked', 'false');
     await toggle.click();
