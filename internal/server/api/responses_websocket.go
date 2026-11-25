@@ -463,9 +463,6 @@ func (d *responsesWebSocketDispatcher) processMessage(lane *responsesWebSocketLa
 	}
 	request, warmup, requestErr := lane.session.prepareRequest(d.rawRequest.WithContext(requestCtx), message)
 	defer lane.session.releaseConsumedWarmup()
-	if lane.session.mergedWarmupBytes > 0 {
-		requestCtx = orchestrator.WithResponsesWarmupAccepted(requestCtx, lane.session.releaseWarmup)
-	}
 	if requestErr != nil {
 		return writeResponsesWebSocketError(d.writer, requestErr, streamID)
 	}

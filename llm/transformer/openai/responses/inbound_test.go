@@ -1881,7 +1881,7 @@ func TestConvertInputToMessages_PreservesCustomAndEmptyFunctionArguments(t *test
 	require.Len(t, messages, 1)
 	require.Len(t, messages[0].ToolCalls, 2)
 	require.Equal(t, "call_empty", messages[0].ToolCalls[0].ID)
-	require.Equal(t, "", messages[0].ToolCalls[0].Function.Arguments)
+	require.Equal(t, "{}", messages[0].ToolCalls[0].Function.Arguments)
 	require.Equal(t, llm.ToolTypeResponsesCustomTool, messages[0].ToolCalls[1].Type)
 }
 

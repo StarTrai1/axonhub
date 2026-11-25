@@ -502,6 +502,29 @@ func TestTransformRequestWithExtraBody(t *testing.T) {
 	}
 }
 
+func TestGeminiXhighRequest(t *testing.T) {
+	transformer, err := NewOutboundTransformer("https://generativelanguage.googleapis.com", "synthetic-key")
+	require.NoError(t, err)
+	for _, tc := range []struct{ model, want string }{
+		{"gemini-4-neon", "xhigh"},
+		{"gemini-4-neon-for-cyber", "xhigh"},
+		{"gemini-4-hydrogen", "xhigh"},
+		{"gemini-4-carbon", "high"},
+		{"gemini-3-pro-preview", "high"},
+	} {
+		t.Run(tc.model, func(t *testing.T) {
+			request, err := transformer.TransformRequest(t.Context(), &llm.Request{
+				Model: tc.model, ReasoningEffort: "xhigh",
+				Messages: []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("fixture")}}},
+			})
+			require.NoError(t, err)
+			var payload GenerateContentRequest
+			require.NoError(t, json.Unmarshal(request.Body, &payload))
+			require.Equal(t, tc.want, payload.GenerationConfig.ThinkingConfig.ThinkingLevel)
+		})
+	}
+}
+
 func TestReasoningEffortFallback(t *testing.T) {
 	// Test that reasoning_effort is used when extra body is not present
 	request := &llm.Request{

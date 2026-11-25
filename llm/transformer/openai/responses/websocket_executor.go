@@ -80,6 +80,10 @@ func NewWebSocketExecutor(inner pipeline.Executor) *WebSocketExecutor {
 	}
 	if hc, ok := inner.(*httpclient.HttpClient); ok {
 		transport.Proxy = normalizeWebSocketProxy(hc.ProxyFunc())
+		transport.TLSClientConfig = hc.TLSConfig()
+		if transport.TLSClientConfig != nil {
+			transport.TLSClientConfig.NextProtos = []string{"http/1.1"}
+		}
 		if native := hc.GetNativeClient(); native != nil {
 			if source, ok := native.Transport.(*http.Transport); ok {
 				transport.ProxyConnectHeader = source.ProxyConnectHeader.Clone()

@@ -160,8 +160,12 @@ func convertLLMToGeminiRequestWithConfig(chatReq *llm.Request, config *Config) *
 				case "none", "low", "medium", "high":
 					thinkingConfig.ThinkingLevel = chatReq.ReasoningEffort
 				case "xhigh", "max":
-					// "xhigh" comes from Anthropic "max"; Gemini's highest level is "high".
 					thinkingConfig.ThinkingLevel = "high"
+					model := geminiModelName(chatReq.Model)
+					if effort == "xhigh" && (model == "gemini-4-neon" || strings.HasPrefix(model, "gemini-4-neon-") ||
+						model == "gemini-4-hydrogen" || strings.HasPrefix(model, "gemini-4-hydrogen-")) {
+						thinkingConfig.ThinkingLevel = "xhigh"
+					}
 				default:
 					// For non-standard effort values, convert to budget
 					thinkingBudget := reasoningEffortToThinkingBudgetWithConfig(chatReq.ReasoningEffort, config)

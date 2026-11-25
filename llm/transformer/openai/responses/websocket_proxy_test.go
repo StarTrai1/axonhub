@@ -153,7 +153,8 @@ func TestWebSocketDialProxyReadActivity(t *testing.T) {
 			}
 			defer proxy.Close()
 			client := httpclient.NewHttpClientWithProxy(&httpclient.ProxyConfig{Type: httpclient.ProxyTypeDisabled})
-			source := client.GetNativeClient().Transport.(*http.Transport)
+			source := &http.Transport{}
+			client.GetNativeClient().Transport = source
 			source.ProxyConnectHeader = http.Header{"X-Tunnel": {"static"}}
 			if test.secureProxy {
 				source.GetProxyConnectHeader = func(context.Context, *url.URL, string) (http.Header, error) {

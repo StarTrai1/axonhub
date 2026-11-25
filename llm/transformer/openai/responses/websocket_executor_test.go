@@ -1570,7 +1570,7 @@ func TestWebSocketExecutorKeepsConnectionWhenInputExceedsRetainedLimit(t *testin
 	require.Equal(t, int32(1), upgrades.Load())
 }
 
-func TestWebSocketExecutorReusesConnectionWithFullInput(t *testing.T) {
+func TestWebSocketExecutorReconnectsIndependentFullInput(t *testing.T) {
 	const firstInput = `[{"id":"first","type":"message","role":"user"}]`
 	for _, tc := range []struct {
 		name  string
@@ -1588,13 +1588,13 @@ func TestWebSocketExecutorReusesConnectionWithFullInput(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			var upgrades atomic.Int32
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				upgrades.Add(1)
+				upgrade := upgrades.Add(1)
 
 				conn, err := websocket.Accept(w, r, nil)
 				require.NoError(t, err)
 				defer conn.CloseNow()
 
-				for _, input := range []string{firstInput, tc.input} {
+				for _, input := range []string{[]string{firstInput, tc.input}[upgrade-1]} {
 					var payload struct {
 						Input              json.RawMessage `json:"input"`
 						PreviousResponseID json.RawMessage `json:"previous_response_id"`
@@ -1616,6 +1616,7 @@ func TestWebSocketExecutorReusesConnectionWithFullInput(t *testing.T) {
 						},
 					}))
 				}
+				_, _, _ = conn.Read(r.Context())
 			}))
 			defer server.Close()
 
@@ -1639,7 +1640,7 @@ func TestWebSocketExecutorReusesConnectionWithFullInput(t *testing.T) {
 				require.NoError(t, stream.Close())
 			}
 
-			require.Equal(t, int32(1), upgrades.Load())
+			require.Equal(t, int32(2), upgrades.Load())
 		})
 	}
 }
@@ -1761,6 +1762,9 @@ func TestWebSocketExecutorAnswersUpstreamPingWhileIdle(t *testing.T) {
 		Body: []byte(`{"model":"gpt-5","input":[{"type":"message","role":"user","content":"hello"}]}`),
 	}
 	for turn := range 2 {
+		if turn == 1 {
+			request.Body = []byte(`{"model":"gpt-5","input":[{"type":"message","role":"user","content":"hello"},{"type":"message","role":"user","content":"next"}]}`)
+		}
 		stream, err := executor.DoStream(ctx, request)
 		require.NoError(t, err)
 		require.True(t, stream.Next())
