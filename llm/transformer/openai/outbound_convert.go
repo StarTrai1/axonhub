@@ -55,7 +55,14 @@ func RequestFromLLM(ctx context.Context, r *llm.Request, reasoningField Reasonin
 
 	// Convert messages
 	req.Messages = lo.Map(r.Messages, func(m llm.Message, _ int) Message {
-		return MessageFromLLMWithConfig(m, reasoningField)
+		message := MessageFromLLMWithConfig(m, reasoningField)
+		for i, call := range m.ToolCalls {
+			_, encrypted := call.TransformerMetadata["openai.responses.encrypted_function_args"]
+			if call.Type == "function" && !encrypted && strings.TrimSpace(call.Function.Arguments) == "" {
+				message.ToolCalls[i].Function.Arguments = "{}"
+			}
+		}
+		return message
 	})
 	if r.APIFormat == llm.APIFormatOpenAIResponse || r.APIFormat == llm.APIFormatOpenAIResponseWebSocket {
 		// Apply Chat's adjacency requirement at this boundary. Reordering the

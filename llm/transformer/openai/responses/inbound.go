@@ -581,7 +581,7 @@ func convertReasoningWithFollowing(items []Item, startIdx int) (*llm.Message, in
 				Function: llm.FunctionCall{
 					Name:      nextItem.Name,
 					Namespace: nextItem.Namespace,
-					Arguments: readableFunctionArguments(nextItem),
+					Arguments: nextItem.Arguments,
 				},
 			})
 			consumed++
@@ -703,7 +703,7 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 					Function: llm.FunctionCall{
 						Name:      item.Name,
 						Namespace: item.Namespace,
-						Arguments: readableFunctionArguments(item),
+						Arguments: item.Arguments,
 					},
 				},
 			},

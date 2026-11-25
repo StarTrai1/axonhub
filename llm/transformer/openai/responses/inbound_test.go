@@ -21,7 +21,7 @@ func TestNewInboundTransformer(t *testing.T) {
 	require.NotNil(t, transformer)
 }
 
-func TestResponsesEmptyFunctionArguments(t *testing.T) {
+func TestResponsesToChatEmptyFunctionArguments(t *testing.T) {
 	for _, reasoning := range []bool{false, true} {
 		for _, tc := range []struct {
 			arguments string
@@ -48,7 +48,9 @@ func TestResponsesEmptyFunctionArguments(t *testing.T) {
 			require.NoError(t, err)
 			require.Len(t, request.Messages, 1)
 			require.Len(t, request.Messages[0].ToolCalls, 1)
-			require.Equal(t, tc.want, request.Messages[0].ToolCalls[0].Function.Arguments)
+			require.Equal(t, tc.arguments, request.Messages[0].ToolCalls[0].Function.Arguments)
+			converted := openai.RequestFromLLM(t.Context(), request, openai.ReasoningFieldAll)
+			require.Equal(t, tc.want, converted.Messages[0].ToolCalls[0].Function.Arguments)
 			if tc.encrypted {
 				require.Equal(t, `"sealed"`, request.Messages[0].ToolCalls[0].TransformerMetadata[responsesEncryptedFunctionArgsMetadataKey])
 			}
@@ -1881,7 +1883,7 @@ func TestConvertInputToMessages_PreservesCustomAndEmptyFunctionArguments(t *test
 	require.Len(t, messages, 1)
 	require.Len(t, messages[0].ToolCalls, 2)
 	require.Equal(t, "call_empty", messages[0].ToolCalls[0].ID)
-	require.Equal(t, "{}", messages[0].ToolCalls[0].Function.Arguments)
+	require.Equal(t, "", messages[0].ToolCalls[0].Function.Arguments)
 	require.Equal(t, llm.ToolTypeResponsesCustomTool, messages[0].ToolCalls[1].Type)
 }
 
