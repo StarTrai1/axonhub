@@ -19,8 +19,8 @@ import (
 	"time"
 
 	"github.com/coder/websocket"
- gorilla "github.com/gorilla/websocket"
 	"github.com/coder/websocket/wsjson"
+	gorilla "github.com/gorilla/websocket"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

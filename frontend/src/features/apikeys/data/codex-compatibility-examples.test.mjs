@@ -38,7 +38,9 @@ test('codexCompatibility separates config.toml, auth.json, and shell env with st
   // 1. config.toml must contain valid TOML assignments only (no JSON object, no shell exports)
   assert.equal(examples.configToml.language, 'toml');
   assert.equal(examples.configToml.real, examples.configToml.display);
-  assert.match(examples.configToml.real, /^model = "gpt-6\.1-sol"/m);
+  assert.match(examples.configToml.real, /^model_provider = "openai"/m);
+  assert.match(examples.configToml.real, /standalone_web_search = true/);
+  assert.match(examples.configToml.real, /\[model_providers.OpenAI\]/);
   assert.match(examples.configToml.real, /^openai_base_url = "http:\/\/localhost:8090\/codex"/m);
   assert.match(examples.configToml.real, /^\[features\]/m);
   assert.doesNotMatch(examples.configToml.real, /personal_access_token|OPENAI_API_KEY|export\s+CODEX_AUTHAPI_BASE_URL|\{|\}/);

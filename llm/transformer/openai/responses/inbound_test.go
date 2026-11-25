@@ -54,6 +54,7 @@ func TestResponsesEmptyFunctionArguments(t *testing.T) {
 			}
 		}
 	}
+}
 
 func TestConvertToResponsesAPIResponse_MapsAnthropicServerWebSearch(t *testing.T) {
 	resultContent := json.RawMessage(`[{"type":"web_search_result","url":"https://example.com","encrypted_content":"ENC"}]`)

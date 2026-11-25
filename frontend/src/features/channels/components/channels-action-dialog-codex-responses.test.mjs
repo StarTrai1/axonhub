@@ -119,7 +119,7 @@ test('localizes the Codex WebSocket checkbox, derived URL and legacy upgrade not
 
 test('Codex exposes the separate default-off WebSocket preference and saves it on create and edit', () => {
   const format = between("{selectedProvider === 'codex' && (", "{selectedProvider === 'claudecode' && (");
-  assert.match(format, /\{codexResponsesWebSocket && \(\s*<label[\s\S]*?data-testid='codex-prefer-responses-websocket'/);
+  assert.match(format, /\{codexResponsesWebSocket && \(\s*<div[\s\S]*?data-testid='codex-prefer-responses-websocket'/);
   assert.match(format, /checked=\{preferResponsesWebSocket \?\? initialRow\?\.settings\?\.preferResponsesWebSocket \?\? false\}/);
   const submit = between('const onSubmit = async', 'const addModel = () =>');
   assert.match(submit, /const webSocketPreferencePatch = isCodexType \? \{ preferResponsesWebSocket \} : \{\}/);
