@@ -3,11 +3,19 @@ package responses
 import (
 	"bytes"
 	"encoding/json"
+	"strings"
 
 	"github.com/looplj/axonhub/llm"
 )
 
 const responsesEncryptedFunctionArgsMetadataKey = "openai.responses.encrypted_function_args"
+
+func readableFunctionArguments(item *Item) string {
+	if len(item.EncryptedFunctionArgs) == 0 && strings.TrimSpace(item.Arguments) == "" {
+		return "{}"
+	}
+	return item.Arguments
+}
 
 func encryptedFunctionArgsMetadata(item *Item) map[string]any {
 	if item == nil || len(item.EncryptedFunctionArgs) == 0 {

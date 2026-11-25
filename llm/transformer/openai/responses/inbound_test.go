@@ -21,6 +21,40 @@ func TestNewInboundTransformer(t *testing.T) {
 	require.NotNil(t, transformer)
 }
 
+func TestResponsesEmptyFunctionArguments(t *testing.T) {
+	for _, reasoning := range []bool{false, true} {
+		for _, tc := range []struct {
+			arguments string
+			encrypted bool
+			want      string
+		}{
+			{"", false, "{}"},
+			{" \n", false, "{}"},
+			{`{"query":"keep"}`, false, `{"query":"keep"}`},
+			{"", true, ""},
+		} {
+			input := []map[string]any{}
+			if reasoning {
+				input = append(input, map[string]any{"type": "reasoning", "id": "rs_fixture", "summary": []any{}})
+			}
+			call := map[string]any{"type": "function_call", "call_id": "call_fixture", "name": "inspect", "arguments": tc.arguments}
+			if tc.encrypted {
+				call["encrypted_function_args"] = "sealed"
+			}
+			input = append(input, call)
+			body, err := json.Marshal(map[string]any{"model": "gpt-6.2-sol", "input": input})
+			require.NoError(t, err)
+			request, err := NewInboundTransformer().TransformRequest(t.Context(), &httpclient.Request{Body: body})
+			require.NoError(t, err)
+			require.Len(t, request.Messages, 1)
+			require.Len(t, request.Messages[0].ToolCalls, 1)
+			require.Equal(t, tc.want, request.Messages[0].ToolCalls[0].Function.Arguments)
+			if tc.encrypted {
+				require.Equal(t, `"sealed"`, request.Messages[0].ToolCalls[0].TransformerMetadata[responsesEncryptedFunctionArgsMetadataKey])
+			}
+		}
+	}
+
 func TestConvertToResponsesAPIResponse_MapsAnthropicServerWebSearch(t *testing.T) {
 	resultContent := json.RawMessage(`[{"type":"web_search_result","url":"https://example.com","encrypted_content":"ENC"}]`)
 	response := convertToResponsesAPIResponse(&llm.Response{
