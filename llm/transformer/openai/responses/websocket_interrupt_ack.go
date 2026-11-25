@@ -2,6 +2,7 @@ package responses
 
 import (
 	"encoding/json"
+	"context"
 	"time"
 )
 
@@ -41,12 +42,9 @@ func (s *webSocketStream) drainTerminalInterrupt(lease *webSocketLease, terminal
 	if end, ok := s.ctx.Deadline(); ok && end.Before(deadline) {
 		deadline = end
 	}
-	if lease.conn.SetReadDeadline(deadline) != nil {
-		s.retireAfterTerminal = true
-		return nil
-	}
-	_, raw, err := lease.conn.ReadMessage()
-	_ = lease.conn.SetReadDeadline(time.Time{})
+	ackCtx, cancel := context.WithDeadline(s.ctx, deadline)
+	defer cancel()
+	raw, err := lease.receiver.next(ackCtx, lease.readTarget)
 	var ack struct {
 		Type       string `json:"type"`
 		ResponseID string `json:"response_id"`

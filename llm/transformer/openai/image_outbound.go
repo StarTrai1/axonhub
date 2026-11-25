@@ -154,6 +154,14 @@ func (t *OutboundTransformer) buildImageGenerateRequest(chatReq *llm.Request, ap
 		reqBody["response_format"] = img.ResponseFormat
 	}
 
+	if img.Watermark != nil {
+		reqBody["watermark"] = *img.Watermark
+	}
+
+	if img.PromptExtend != nil {
+		reqBody["prompt_extend"] = *img.PromptExtend
+	}
+
 	body, err := json.Marshal(reqBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request body: %w", err)
@@ -371,6 +379,22 @@ func (t *OutboundTransformer) buildImageEditRequest(chatReq *llm.Request, apiKey
 			}
 
 			jsonBody["response_format"] = img.ResponseFormat
+		}
+
+		if img.Watermark != nil {
+			if err := writer.WriteField("watermark", fmt.Sprintf("%t", *img.Watermark)); err != nil {
+				return nil, fmt.Errorf("failed to write watermark field: %w", err)
+			}
+
+			jsonBody["watermark"] = *img.Watermark
+		}
+
+		if img.PromptExtend != nil {
+			if err := writer.WriteField("prompt_extend", fmt.Sprintf("%t", *img.PromptExtend)); err != nil {
+				return nil, fmt.Errorf("failed to write prompt_extend field: %w", err)
+			}
+
+			jsonBody["prompt_extend"] = *img.PromptExtend
 		}
 	}
 

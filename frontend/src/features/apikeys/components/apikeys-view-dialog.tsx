@@ -13,38 +13,9 @@ import { useQueryAllModels } from '@/features/models/data/models';
 import { useCodexCompatibilityEnabled } from '@/features/system/data/codex-compatibility-api';
 import { useApiKeysContext } from '../context/apikeys-context';
 import { useApiKey } from '../data/apikeys';
+import { buildCodexCompatibilityExamples } from '../data/codex-compatibility-examples';
 import { buildPiModelsConfig, serializePiModelsConfig } from '../data/pi-models-config';
 import { CodexKeyCatalog } from './codex-key-catalog';
-
-function codexCompatibilityExample(serverURL: string, key: string) {
-  const baseUrl = `${serverURL}/codex`;
-  return `# In the environment that launches Codex
-export CODEX_AUTHAPI_BASE_URL="${baseUrl}"
-# Windows: set CODEX_AUTHAPI_BASE_URL to ${baseUrl} in Environment Variables
-
-# \${HOME}/.codex/config.toml
-model_provider = "openai"
-openai_base_url = "${baseUrl}"
-chatgpt_base_url = "${baseUrl}"
-web_search = "live"
-
-[features]
-standalone_web_search = true
-
-# Existing threads: match the previous provider ID exactly (example: OpenAI).
-# Update the existing table when it is already present.
-# Resume with: codex resume -c 'model_provider="OpenAI"' THREAD_ID
-[model_providers.OpenAI]
-name = "OpenAI"
-base_url = "${baseUrl}"
-wire_api = "responses"
-requires_openai_auth = true
-supports_websockets = true
-supports_standalone_web_search = true
-
-# \${HOME}/.codex/auth.json (remove the previous auth_mode field)
-${JSON.stringify({ personal_access_token: key }, null, 2)}`;
-}
 
 function CopyBaseUrlButton({ baseUrl }: { baseUrl: string }) {
   const { t } = useTranslation();
@@ -170,15 +141,6 @@ query_params = {}
 
 # Restart Codex to apply the configuration`,
       },
-      ...(showCodexCompatibility
-        ? {
-            codexCompatibility: {
-              baseUrl: `${serverURL}/codex`,
-              display: codexCompatibilityExample(serverURL, maskedApiKey),
-              real: codexCompatibilityExample(serverURL, apiKey),
-            },
-          }
-        : {}),
       claudeCode: {
         baseUrl: `${serverURL}/anthropic`,
         display: `# In your terminal, set the API key
@@ -314,7 +276,12 @@ response = client.models.generate_content(
 print(response.text)`,
       },
     };
-  }, [selectedApiKey?.key, apiKey, maskedApiKey, serverURL, showCodexCompatibility]);
+  }, [selectedApiKey?.key, apiKey, maskedApiKey, serverURL]);
+
+  const codexCompatibilityExamples = useMemo(() => {
+    if (!showCodexCompatibility || !selectedApiKey?.key) return undefined;
+    return buildCodexCompatibilityExamples({ serverURL, apiKey, maskedApiKey });
+  }, [showCodexCompatibility, selectedApiKey?.key, serverURL, apiKey, maskedApiKey]);
 
   useEffect(() => {
     if (!showCodexCompatibility && activeExampleTab === 'codexCompatibility') {
@@ -325,9 +292,9 @@ print(response.text)`,
   useEffect(() => {
     if (!selectedApiKey?.key || Object.keys(codeExamples).length === 0) return;
 
+    let cancelled = false;
     const languages: Record<string, 'bash' | 'python'> = {
       codex: 'bash',
-      codexCompatibility: 'bash',
       claudeCode: 'bash',
       anthropicSDK: 'python',
       openAISDK: 'python',
@@ -337,18 +304,35 @@ print(response.text)`,
     const renderAllCodeBlocks = async () => {
       const results: Record<string, { light: string; dark: string }> = {};
 
-      await Promise.all(
-        Object.entries(codeExamples).map(async ([key, example]) => {
-          const [light, dark] = await highlightMaskedCode(example.display, languages[key]);
-          results[key] = { light, dark };
-        })
-      );
+      const tasks: Array<Promise<void>> = Object.entries(codeExamples).map(async ([key, example]) => {
+        const [light, dark] = await highlightMaskedCode(example.display, languages[key]);
+        results[key] = { light, dark };
+      });
 
-      setPreRenderedCode(results);
+      if (codexCompatibilityExamples) {
+        const blocks = [codexCompatibilityExamples.configToml, codexCompatibilityExamples.authJson, codexCompatibilityExamples.shellEnv];
+        for (const block of blocks) {
+          tasks.push(
+            highlightMaskedCode(block.display, block.language).then(([light, dark]) => {
+              results[block.key] = { light, dark };
+            })
+          );
+        }
+      }
+
+      await Promise.all(tasks);
+
+      if (!cancelled) {
+        setPreRenderedCode(results);
+      }
     };
 
     renderAllCodeBlocks();
-  }, [selectedApiKey?.key, codeExamples]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedApiKey?.key, codeExamples, codexCompatibilityExamples]);
 
   const maskedKey = selectedApiKey?.key ? selectedApiKey.key.replace(/./g, '*').slice(0, -4) + selectedApiKey.key.slice(-4) : '';
 
@@ -465,19 +449,40 @@ print(response.text)`,
                   <MaskedCodeBlockCopyButton />
                 </MaskedCodeBlock>
               </TabsContent>
-              {showCodexCompatibility && (
-                <TabsContent value='codexCompatibility' className='mt-3 min-h-0 flex-1 overflow-y-auto'>
+              {showCodexCompatibility && codexCompatibilityExamples && (
+                <TabsContent value='codexCompatibility' className='mt-3 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto'>
                   <CodexKeyCatalog key={selectedApiKey.id} keyId={selectedApiKey.id} apiKey={apiKey} />
-                  <MaskedCodeBlock
-                    displayCode={codeExamples?.codexCompatibility?.display || ''}
-                    realCode={codeExamples?.codexCompatibility?.real || ''}
-                    language='bash'
-                    className='overflow-visible'
-                    preRenderedHtml={preRenderedCode.codexCompatibility}
-                  >
-                    <CopyBaseUrlButton baseUrl={codeExamples?.codexCompatibility?.baseUrl || ''} />
-                    <MaskedCodeBlockCopyButton />
-                  </MaskedCodeBlock>
+                  {[
+                    {
+                      title: t('apikeys.dialogs.view.codexCompatibility.configTomlTitle'),
+                      block: codexCompatibilityExamples.configToml,
+                      includeBaseUrlButton: true,
+                    },
+                    {
+                      title: t('apikeys.dialogs.view.codexCompatibility.authJsonTitle'),
+                      block: codexCompatibilityExamples.authJson,
+                      includeBaseUrlButton: false,
+                    },
+                    {
+                      title: t('apikeys.dialogs.view.codexCompatibility.shellEnvTitle'),
+                      block: codexCompatibilityExamples.shellEnv,
+                      includeBaseUrlButton: true,
+                    },
+                  ].map(({ title, block, includeBaseUrlButton }) => (
+                    <div key={block.key} className='flex flex-col gap-1.5'>
+                      <p className='text-muted-foreground text-xs font-medium'>{title}</p>
+                      <MaskedCodeBlock
+                        displayCode={block.display}
+                        realCode={block.real}
+                        language={block.language}
+                        className='overflow-visible'
+                        preRenderedHtml={preRenderedCode[block.key]}
+                      >
+                        {includeBaseUrlButton && <CopyBaseUrlButton baseUrl={codexCompatibilityExamples.baseUrl} />}
+                        <MaskedCodeBlockCopyButton />
+                      </MaskedCodeBlock>
+                    </div>
+                  ))}
                 </TabsContent>
               )}
               <TabsContent value='claudeCode' className='mt-3 min-h-0 flex-1 overflow-y-auto'>

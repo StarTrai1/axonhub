@@ -32,6 +32,7 @@ func TestUpdateChannelSettingsInput_Apply(t *testing.T) {
 		Proxy:                   &httpclient.ProxyConfig{Type: "http", URL: "http://proxy.example.com:8080"},
 		RateLimit:               &objects.ChannelRateLimit{RPM: lo.ToPtr(int64(60))},
 		RetryableStatusCodes:    []int{429},
+		PreferResponsesWebSocket: true,
 	}
 
 	t.Run("nil patch keeps base", func(t *testing.T) {
@@ -57,6 +58,7 @@ func TestUpdateChannelSettingsInput_Apply(t *testing.T) {
 		require.True(t, merged.HideOriginalModels)
 		require.True(t, merged.LowercaseModelID)
 		require.True(t, merged.SyncModelPrices)
+		require.True(t, merged.PreferResponsesWebSocket)
 		require.Equal(t, []string{"openai"}, merged.AutoTrimedModelPrefixes)
 		require.Equal(t, base.Proxy, merged.Proxy)
 		require.Equal(t, base.RateLimit, merged.RateLimit)
@@ -97,16 +99,18 @@ func TestUpdateChannelSettingsInput_Apply(t *testing.T) {
 
 	t.Run("present fields replace stored values", func(t *testing.T) {
 		patch := &UpdateChannelSettingsInput{
-			ExtraModelPrefix:   lo.ToPtr(""),
-			HideOriginalModels: lo.ToPtr(false),
-			SyncModelPrices:    lo.ToPtr(false),
-			Proxy:              &httpclient.ProxyConfig{Type: "socks5", URL: "socks5://other.example.com:1080"},
-			RateLimit:          &objects.ChannelRateLimit{TPM: lo.ToPtr(int64(1000))},
+			ExtraModelPrefix:         lo.ToPtr(""),
+			HideOriginalModels:       lo.ToPtr(false),
+			SyncModelPrices:          lo.ToPtr(false),
+			PreferResponsesWebSocket: lo.ToPtr(false),
+			Proxy:                    &httpclient.ProxyConfig{Type: "socks5", URL: "socks5://other.example.com:1080"},
+			RateLimit:                &objects.ChannelRateLimit{TPM: lo.ToPtr(int64(1000))},
 		}
 		merged := patch.Apply(base)
 		require.Equal(t, "", merged.ExtraModelPrefix)
 		require.False(t, merged.HideOriginalModels)
 		require.False(t, merged.SyncModelPrices)
+		require.False(t, merged.PreferResponsesWebSocket)
 		require.Equal(t, patch.Proxy, merged.Proxy)
 		require.Equal(t, patch.RateLimit, merged.RateLimit)
 		// Untouched fields survive.

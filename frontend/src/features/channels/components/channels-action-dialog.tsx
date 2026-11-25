@@ -936,6 +936,7 @@ export function ChannelsActionDialog({
   const [responsesTransport, setResponsesTransport] = useState<ResponsesTransport>(() => getResponsesTransportFromChannel(initialRow));
   const initialCodexResponses = useMemo(() => getCodexResponsesWebSocketState(initialRow), [initialRow]);
   const [codexResponsesWebSocket, setCodexResponsesWebSocket] = useState(initialCodexResponses.enabled);
+  const [preferResponsesWebSocket, setPreferResponsesWebSocket] = useState<boolean>();
   const [useGeminiVertex, setUseGeminiVertex] = useState(() => {
     if (initialRow) {
       return initialRow.type === 'gemini_vertex';
@@ -988,6 +989,7 @@ export function ChannelsActionDialog({
       setCodexAuthJSONText('');
       codexThirdPartyBaseURLRef.current = '';
       setCodexResponsesWebSocket(initialCodexResponses.enabled);
+      setPreferResponsesWebSocket(undefined);
       setXaiSSOToken('');
     }
   }, [open, resetCodexOAuth, resetClaudecodeOAuth, resetAntigravityOAuth, resetXaiOAuth, initialCodexResponses.enabled]);
@@ -1288,6 +1290,7 @@ export function ChannelsActionDialog({
     selectedApiFormat,
     responsesTransport,
     codexResponsesWebSocket,
+    preferResponsesWebSocket,
     useGeminiVertex,
     useAnthropicAws,
     useKimiCoding,
@@ -1967,6 +1970,7 @@ export function ChannelsActionDialog({
       if (isCodexType) {
         dataWithModels.endpoints = buildCodexResponsesEndpoints(initialRow?.endpoints, codexResponsesWebSocket);
       }
+      const webSocketPreferencePatch = isCodexType ? { preferResponsesWebSocket } : {};
       const codexModelProtocols =
         isCodexType && initialRow ? translateLegacyCodexModelProtocols(initialRow, initialRow.settings?.modelProtocols) : undefined;
 
@@ -2003,6 +2007,7 @@ export function ChannelsActionDialog({
             ? { modelProtocols: getModelProtocolsForApiFormat(selectedApiFormat, supportedModels, existingModelProtocols) }
             : {}),
           ...(codexModelProtocols ? { modelProtocols: codexModelProtocols } : {}),
+          ...webSocketPreferencePatch,
         };
 
         const updateInput = {
@@ -2083,6 +2088,7 @@ export function ChannelsActionDialog({
               }
             : {}),
           ...(codexModelProtocols ? { modelProtocols: codexModelProtocols } : {}),
+          ...webSocketPreferencePatch,
         });
 
         const createInput = {
@@ -2538,6 +2544,7 @@ export function ChannelsActionDialog({
     setHTTPProtocol(initialRow?.settings?.httpProtocol === 'http1' ? 'http1' : 'auto');
     const initialShards = initialRow?.settings?.http2ConnectionShards ?? 0;
     setHTTP2ConnectionShards(initialShards >= 1 && initialShards <= 8 ? initialShards : 1);
+    setPreferResponsesWebSocket(undefined);
     setQuotaRoutingMode(recallQuotaRoutingMode(initialRow?.settings));
     setQuotaReserve(initialRow?.settings?.quotaReserve ?? null);
     setCodexSearchOnly(initialRow?.settings?.codexSearchOnly ?? false);
@@ -2763,6 +2770,16 @@ export function ChannelsActionDialog({
                               <p className='text-muted-foreground text-xs break-all' data-testid='codex-responses-websocket-url'>
                                 {t('channels.dialogs.fields.apiFormat.codexWebSocket.derivedURL', { url: codexResponsesWebSocketURL })}
                               </p>
+                            )}
+                            {codexResponsesWebSocket && (
+                              <div className='flex items-center justify-between gap-4 py-2'>
+                                <PolicyFieldHeader label={t('channels.endpoints.preferResponsesWebSocket.label')} description={t('channels.endpoints.preferResponsesWebSocket.description')} />
+                                <Switch
+                                  checked={preferResponsesWebSocket ?? initialRow?.settings?.preferResponsesWebSocket ?? false}
+                                  onCheckedChange={setPreferResponsesWebSocket}
+                                  data-testid='codex-prefer-responses-websocket'
+                                />
+                              </div>
                             )}
                             {codexResponsesWebSocket &&
                               (initialCodexResponses.webSocketOnly || hasCodexResponsesWebSocketOverrideReplacement(initialRow)) && (

@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"slices"
 
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
@@ -31,6 +32,7 @@ func selectForcedAPIFormat(endpoints []objects.ChannelEndpoint, req *llm.Request
 
 func selectEndpointAPIFormat(
 	ctx context.Context,
+	ch *biz.Channel,
 	endpoints []objects.ChannelEndpoint,
 	req *llm.Request,
 	forced bool,
@@ -53,14 +55,21 @@ func selectEndpointAPIFormat(
 	} else {
 		selected = SelectAPIFormat(endpoints, req)
 	}
-	if selected != llm.APIFormatOpenAIChatCompletion.String() || !shared.IsGPT62Model(actualModel) ||
-		!shared.GPT6ToolsRequireResponses(actualModel, req) {
-		return selected
-	}
-	for _, endpoint := range endpoints {
-		if endpoint.APIFormat == llm.APIFormatOpenAIResponse.String() || endpoint.APIFormat == llm.APIFormatOpenAIResponseWebSocket.String() {
-			return endpoint.APIFormat
+	if selected == llm.APIFormatOpenAIChatCompletion.String() && shared.IsGPT62Model(actualModel) &&
+		shared.GPT6ToolsRequireResponses(actualModel, req) {
+		for _, endpoint := range endpoints {
+			if endpoint.APIFormat == llm.APIFormatOpenAIResponse.String() || endpoint.APIFormat == llm.APIFormatOpenAIResponseWebSocket.String() {
+				selected = endpoint.APIFormat
+				break
+			}
 		}
+	}
+	if !forced && selected == llm.APIFormatOpenAIResponse.String() && req.RequestType == llm.RequestTypeChat &&
+		ch.Settings != nil && ch.Settings.PreferResponsesWebSocket &&
+		slices.ContainsFunc(endpoints, func(ep objects.ChannelEndpoint) bool {
+			return ep.APIFormat == llm.APIFormatOpenAIResponseWebSocket.String()
+		}) {
+		return llm.APIFormatOpenAIResponseWebSocket.String()
 	}
 	return selected
 }

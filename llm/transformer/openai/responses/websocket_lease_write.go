@@ -3,6 +3,11 @@ package responses
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
+	"slices"
+
+	"github.com/coder/websocket"
 
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer/shared"
@@ -23,16 +28,63 @@ func isWebSocketRecoveryEvent(raw []byte) bool {
 	return json.Unmarshal(raw, &event) == nil && (event.Code == "previous_response_not_found" || event.Error.Code == "previous_response_not_found")
 }
 
+// Match Codex's upload fragments so a pong can be sent between data frames.
+const webSocketRequestFragmentSize = 1 << 20
+
+var errWebSocketClosedBeforeSend = errors.New("websocket closed before sending response.create")
+
 func (l *webSocketLease) write(ctx context.Context, payload map[string]any) error {
 	if l.pooled != nil {
 		l.pooled.mu.Lock()
-		defer l.pooled.mu.Unlock()
+		// inFlight serializes writers for the lifetime of this lease.
 		if l.pooled.closed || l.pooled.generation != l.generation {
-			return shared.ResponsesRecoveryError()
+			l.pooled.mu.Unlock()
+			return errWebSocketClosedBeforeSend
 		}
 		if id := explicitPreviousResponseID(payload); id != "" && id != l.pooled.lastResponseID {
+			l.pooled.mu.Unlock()
 			return shared.ResponsesRecoveryError()
 		}
+		l.pooled.mu.Unlock()
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	var err error
+	l.readTarget, err = l.receiver.attach()
+	if err != nil {
+		return fmt.Errorf("%w: %w", errWebSocketClosedBeforeSend, err)
 	}
 	return l.writeJSONContext(ctx, payload)
+}
+
+// The JSON encoder supplies one serialized response.create to Write.
+type webSocketRequestWriter struct {
+	ctx  context.Context
+	conn *websocket.Conn
+}
+
+func (w webSocketRequestWriter) Write(data []byte) (int, error) {
+	if len(data) <= webSocketRequestFragmentSize {
+		if err := w.conn.Write(w.ctx, websocket.MessageText, data); err != nil {
+			return 0, err
+		}
+		return len(data), nil
+	}
+
+	writer, err := w.conn.Writer(w.ctx, websocket.MessageText)
+	if err != nil {
+		return 0, err
+	}
+	written := 0
+	for fragment := range slices.Chunk(data, webSocketRequestFragmentSize) {
+		n, err := writer.Write(fragment)
+		written += n
+		if err != nil {
+			// The caller retires this socket. Closing the writer would send
+			// the final fragment of a partially written request.
+			return written, err
+		}
+	}
+	return written, writer.Close()
 }

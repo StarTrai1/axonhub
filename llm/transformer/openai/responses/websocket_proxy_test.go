@@ -1,219 +1,236 @@
+// 职责: 验证 HTTP 与 HTTPS 代理隧道中的上游 WebSocket 读取活动。
+// 关联文件:
+//
+//	llm/transformer/openai/responses/websocket_dial.go
+//
+// 注意事项:
+//
+//	代理只接受 CONNECT，用于覆盖迁移前 ws:// 与 wss:// 的隧道行为。
 package responses
 
 import (
-	"bufio"
 	"context"
-	"errors"
+	"encoding/base64"
 	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"sync/atomic"
 	"testing"
 	"time"
 
-	"github.com/gorilla/websocket"
+	"github.com/coder/websocket"
 	"github.com/stretchr/testify/require"
 
-	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
-func TestWebSocketProxyAliasesDialThroughSOCKS(t *testing.T) {
-	for _, scheme := range []string{"socks", "socks5", "socks5h", "SOCKS"} {
-		t.Run(scheme, func(t *testing.T) {
-			listener, err := net.Listen("tcp", "127.0.0.1:0")
-			require.NoError(t, err)
-			defer listener.Close()
-			done := make(chan error, 1)
-			go func() {
-				defer func() {
-					if recovered := recover(); recovered != nil {
-						t.Errorf("SOCKS fixture panic: %v", recovered)
-					}
-				}()
-				conn, acceptErr := listener.Accept()
-				if acceptErr != nil {
-					done <- acceptErr
+func TestWebSocketDialProxyReadActivity(t *testing.T) {
+	const proxyUser, proxyPassword = "proxy-user", "proxy-pass"
+	proxyAuthorization := "Basic " + base64.StdEncoding.EncodeToString([]byte(proxyUser+":"+proxyPassword))
+	for _, test := range []struct {
+		name          string
+		secureProxy   bool
+		securePeer    bool
+		activeConnect bool
+		silentConnect bool
+		framing       string
+	}{
+		{name: "http/ws"},
+		{name: "http/wss", securePeer: true},
+		{name: "https/ws", secureProxy: true},
+		{name: "https/wss", secureProxy: true, securePeer: true},
+		{name: "http/ws-active-connect", activeConnect: true},
+		{name: "https/ws-active-connect", secureProxy: true, activeConnect: true},
+		{name: "http/wss-active-connect", securePeer: true, activeConnect: true},
+		{name: "https/wss-active-connect", secureProxy: true, securePeer: true, activeConnect: true},
+		{name: "http/ws-silent-connect", silentConnect: true},
+		{name: "https/ws-silent-connect", secureProxy: true, silentConnect: true},
+		{name: "http/wss-silent-connect", securePeer: true, silentConnect: true},
+		{name: "https/wss-silent-connect", secureProxy: true, securePeer: true, silentConnect: true},
+		{name: "http/ws-content-length", framing: "Content-Length: 1\r\n"},
+		{name: "https/ws-content-length", secureProxy: true, framing: "Content-Length: 1\r\n"},
+		{name: "http/ws-chunked", framing: "Transfer-Encoding: chunked\r\n"},
+		{name: "https/ws-chunked", secureProxy: true, framing: "Transfer-Encoding: chunked\r\n"},
+		{name: "https/wss-chunked", secureProxy: true, securePeer: true, framing: "Transfer-Encoding: chunked\r\n"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+			defer cancel()
+			wantHeader := "static"
+			if test.secureProxy {
+				wantHeader = "dynamic"
+			}
+			target := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Header.Get("X-Tunnel") != "" || r.Header.Get("Authorization") != "Bearer upstream-token" || r.Header.Get("Proxy-Authorization") != "" {
+					http.Error(w, "unexpected upstream authorization", http.StatusUnauthorized)
 					return
 				}
-				defer conn.Close()
-				_ = conn.SetDeadline(time.Now().Add(5 * time.Second))
-				done <- serveSOCKSWebSocket(conn)
-			}()
-
-			client := httpclient.NewHttpClientWithProxy(&httpclient.ProxyConfig{
-				Type: httpclient.ProxyTypeURL, URL: scheme + "://user:pass@" + listener.Addr().String(),
-			})
-			outbound, err := NewOutboundTransformerWithConfig(&Config{
-				BaseURL: "http://unresolvable.invalid/v1", APIKeyProvider: auth.NewStaticKeyProvider("synthetic-key"), Transport: TransportWebSocket,
-			})
+				conn, err := websocket.Accept(w, r, nil)
+				if !assertCoderPeer(t, err) {
+					return
+				}
+				defer conn.CloseNow()
+				_, payload, err := conn.Read(ctx)
+				if assertCoderPeer(t, err) {
+					assertCoderPeer(t, conn.Write(ctx, websocket.MessageText, payload))
+				}
+			}))
+			if test.securePeer {
+				target.StartTLS()
+			} else {
+				target.Start()
+			}
+			defer target.Close()
+			proxy := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != http.MethodConnect {
+					http.Error(w, "CONNECT required", http.StatusMethodNotAllowed)
+					return
+				}
+				if r.Header.Get("X-Tunnel") != wantHeader || r.Header.Get("Proxy-Authorization") != proxyAuthorization || r.Header.Get("Authorization") != "" {
+					http.Error(w, "unexpected proxy authorization", http.StatusProxyAuthRequired)
+					return
+				}
+				upstream, err := (&net.Dialer{}).DialContext(ctx, "tcp", r.Host)
+				if !assertCoderPeer(t, err) {
+					return
+				}
+				defer upstream.Close()
+				client, _, err := w.(http.Hijacker).Hijack()
+				if !assertCoderPeer(t, err) {
+					return
+				}
+				defer client.Close()
+				if _, err := io.WriteString(client, "HTTP/1.1 200 Connection Established\r\n"+test.framing); !assertCoderPeer(t, err) {
+					return
+				}
+				if test.activeConnect {
+					// The handshake exceeds the idle timeout, but every read arrives before it expires.
+					ticker := time.NewTicker(100 * time.Millisecond)
+					defer ticker.Stop()
+					for range 8 {
+						select {
+						case <-ticker.C:
+						case <-ctx.Done():
+							return
+						}
+						if _, err := io.WriteString(client, "X-Proxy-Progress: active\r\n"); err != nil {
+							return
+						}
+					}
+				}
+				if test.silentConnect {
+					deadline, _ := ctx.Deadline()
+					if !assertCoderPeer(t, client.SetReadDeadline(deadline)) {
+						return
+					}
+					_, _ = io.Copy(io.Discard, client)
+					return
+				}
+				if _, err := io.WriteString(client, "\r\n"); !assertCoderPeer(t, err) {
+					return
+				}
+				copied := make(chan struct{})
+				go func() {
+					defer func() {
+						if r := recover(); r != nil {
+							t.Errorf("proxy relay panic: %v", r)
+						}
+					}()
+					defer close(copied)
+					defer upstream.Close()
+					_, _ = io.Copy(upstream, client)
+				}()
+				_, _ = io.Copy(client, upstream)
+				_ = client.Close()
+				<-copied
+			}))
+			if test.secureProxy {
+				proxy.StartTLS()
+			} else {
+				proxy.Start()
+			}
+			defer proxy.Close()
+			client := httpclient.NewHttpClientWithProxy(&httpclient.ProxyConfig{Type: httpclient.ProxyTypeDisabled})
+			source := client.GetNativeClient().Transport.(*http.Transport)
+			source.ProxyConnectHeader = http.Header{"X-Tunnel": {"static"}}
+			if test.secureProxy {
+				source.GetProxyConnectHeader = func(context.Context, *url.URL, string) (http.Header, error) {
+					return http.Header{"X-Tunnel": {"dynamic"}}, nil
+				}
+			}
+			executor := NewWebSocketExecutor(client)
+			defer executor.Close()
+			switch {
+			case test.securePeer:
+				executor.transport.TLSClientConfig = target.Client().Transport.(*http.Transport).TLSClientConfig.Clone()
+			case test.secureProxy:
+				executor.transport.TLSClientConfig = proxy.Client().Transport.(*http.Transport).TLSClientConfig.Clone()
+			}
+			proxyURL := mustParseURL(t, proxy.URL)
+			proxyURL.User = url.UserPassword(proxyUser, proxyPassword)
+			executor.transport.Proxy = http.ProxyURL(proxyURL)
+			wsURL, err := toWebSocketURL(target.URL)
 			require.NoError(t, err)
-			executor := outbound.CustomizeExecutor(client).(*WebSocketExecutor)
-			ctx, cancel := context.WithTimeout(webSocketTestContext(), 5*time.Second)
-			defer cancel()
-			stream, err := executor.DoStream(ctx, &httpclient.Request{
-				Method: http.MethodPost, URL: "http://unresolvable.invalid/v1/responses",
-				Headers: http.Header{}, Body: []byte(`{"model":"gpt-6.1-sol","input":"hello","stream":true}`),
-			})
+			headers := http.Header{"Authorization": {"Bearer upstream-token"}}
+			dialCtx := ctx
+			if test.activeConnect || test.silentConnect {
+				dialCtx = httpclient.WithStreamIdleTimeout(ctx, 500*time.Millisecond)
+			}
+			conn, observer, err := executor.dial(dialCtx, &httpclient.Request{}, wsURL, headers)
+			if test.silentConnect {
+				require.ErrorIs(t, err, httpclient.ErrStreamIdleTimeout)
+				require.Nil(t, conn)
+				return
+			}
 			require.NoError(t, err)
-			defer stream.Close()
-			require.True(t, stream.Next())
-			require.Equal(t, "response.completed", stream.Current().Type)
-			require.NoError(t, <-done)
+			defer conn.CloseNow()
+			require.NotNil(t, observer, "proxy tunnels must preserve the raw read activity observer")
+			var reads atomic.Int32
+			setWebSocketActivity(observer, func() { reads.Add(1) })
+			require.NoError(t, conn.Write(ctx, websocket.MessageText, []byte("synthetic")))
+			_, payload, err := conn.Read(ctx)
+			require.NoError(t, err)
+			require.Equal(t, "synthetic", string(payload))
+			require.Positive(t, reads.Load())
 		})
 	}
 }
 
-// Accept authenticated SOCKS5, then serve the tunneled WebSocket on the same
-// socket. The invalid destination proves DNS is delegated to the proxy.
-func serveSOCKSWebSocket(conn net.Conn) error {
-	reader := bufio.NewReader(conn)
-	header := make([]byte, 2)
-	if _, err := io.ReadFull(reader, header); err != nil {
-		return err
-	}
-	methods := make([]byte, int(header[1]))
-	if _, err := io.ReadFull(reader, methods); err != nil {
-		return err
-	}
-	if _, err := conn.Write([]byte{5, 2}); err != nil {
-		return err
-	}
-	if _, err := io.ReadFull(reader, header); err != nil {
-		return err
-	}
-	username := make([]byte, int(header[1]))
-	if _, err := io.ReadFull(reader, username); err != nil {
-		return err
-	}
-	length, err := reader.ReadByte()
-	if err != nil {
-		return err
-	}
-	password := make([]byte, int(length))
-	if _, err := io.ReadFull(reader, password); err != nil {
-		return err
-	}
-	if string(username) != "user" || string(password) != "pass" {
-		return errors.New("proxy authentication was not preserved")
-	}
-	if _, err := conn.Write([]byte{1, 0}); err != nil {
-		return err
-	}
-	command := make([]byte, 5)
-	if _, err := io.ReadFull(reader, command); err != nil {
-		return err
-	}
-	if command[0] != 5 || command[1] != 1 || command[3] != 3 {
-		return errors.New("expected SOCKS5 domain CONNECT")
-	}
-	destination := make([]byte, int(command[4])+2)
-	if _, err := io.ReadFull(reader, destination); err != nil {
-		return err
-	}
-	if string(destination[:len(destination)-2]) != "unresolvable.invalid" {
-		return errors.New("destination hostname was not preserved")
-	}
-	if _, err := conn.Write([]byte{5, 0, 0, 1, 127, 0, 0, 1, 0, 80}); err != nil {
-		return err
-	}
-	request, err := http.ReadRequest(reader)
-	if err != nil {
-		return err
-	}
-	writer := &proxyWebSocketWriter{ResponseRecorder: httptest.NewRecorder(), conn: conn, reader: reader}
-	upgrader := websocket.Upgrader{}
-	ws, err := upgrader.Upgrade(writer, request, nil)
-	if err != nil {
-		return err
-	}
-	defer ws.Close()
-	var payload map[string]any
-	if err := ws.ReadJSON(&payload); err != nil {
-		return err
-	}
-	return ws.WriteJSON(map[string]any{"type": "response.completed", "response": map[string]any{"id": "resp_proxy", "status": "completed", "output": []any{}}})
-}
-
-type proxyWebSocketWriter struct {
-	*httptest.ResponseRecorder
-	conn   net.Conn
-	reader *bufio.Reader
-}
-
-func (w *proxyWebSocketWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	return w.conn, bufio.NewReadWriter(w.reader, bufio.NewWriter(w.conn)), nil
-}
-
-func TestNormalizeWebSocketProxyPreservesSourceAndErrors(t *testing.T) {
-	original, err := url.Parse("socks://user:pass@proxy.invalid:1080")
-	require.NoError(t, err)
-	got, err := normalizeWebSocketProxy(http.ProxyURL(original))(&http.Request{})
-	require.NoError(t, err)
-	require.Equal(t, "socks5", got.Scheme)
-	require.Equal(t, "socks", original.Scheme)
-	require.Equal(t, original.User, got.User)
-	failure := errors.New("proxy resolution failed")
-	_, err = normalizeWebSocketProxy(func(*http.Request) (*url.URL, error) { return nil, failure })(&http.Request{})
-	require.ErrorIs(t, err, failure)
-	require.Nil(t, normalizeWebSocketProxy(nil))
-}
-
-func TestWebSocketSOCKSCancellation(t *testing.T) {
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = listener.Close() })
-	ctx, cancel := context.WithCancel(t.Context())
+func TestWebSocketDialPlainProxyCancellationClosesTunnel(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
-	done := make(chan error, 1)
-	go func() {
-		defer close(done)
-		defer cancel()
-		defer func() {
-			if recovered := recover(); recovered != nil {
-				t.Errorf("SOCKS cancellation fixture panic: %v", recovered)
-			}
-		}()
-		conn, err := listener.Accept()
-		if err != nil {
-			done <- err
+	closed := make(chan error, 1)
+	proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodConnect {
+			http.Error(w, "CONNECT required", http.StatusMethodNotAllowed)
+			return
+		}
+		conn, buffered, err := w.(http.Hijacker).Hijack()
+		if !assertCoderPeer(t, err) {
 			return
 		}
 		defer conn.Close()
-		_ = conn.SetDeadline(time.Now().Add(5 * time.Second))
-		header := make([]byte, 2)
-		if _, err := io.ReadFull(conn, header); err != nil {
-			done <- err
+		deadline, _ := ctx.Deadline()
+		if !assertCoderPeer(t, conn.SetReadDeadline(deadline)) {
 			return
 		}
-		if _, err := io.CopyN(io.Discard, conn, int64(header[1])); err != nil {
-			done <- err
-			return
-		}
-		// Cancel while the proxy deliberately withholds its greeting reply.
-		// Cancellation must close the connection without waiting for the full
-		// WebSocket handshake timeout or opening a direct connection.
 		cancel()
-		_, err = conn.Read(header[:1])
-		if err == nil {
-			done <- errors.New("SOCKS connection continued after cancellation")
-			return
-		}
-		if networkErr, ok := err.(net.Error); ok && networkErr.Timeout() {
-			done <- err
-			return
-		}
-		done <- nil
-	}()
-	executor := NewWebSocketExecutor(httpclient.NewHttpClientWithProxy(&httpclient.ProxyConfig{
-		Type: httpclient.ProxyTypeURL, URL: "socks5://" + listener.Addr().String(),
+		_, err = buffered.ReadByte()
+		closed <- err
 	}))
-	t.Cleanup(func() { _ = executor.Close() })
-	_, err = executor.DoStream(ctx, &httpclient.Request{
-		Method: http.MethodPost, URL: "https://unresolvable.invalid/v1/responses",
-		Body: []byte(`{"model":"gpt-6.1-sol","input":"hello","stream":true}`),
-	})
+	defer proxy.Close()
+	executor := NewWebSocketExecutor(nil)
+	defer executor.Close()
+	executor.transport.Proxy = http.ProxyURL(mustParseURL(t, proxy.URL))
+	conn, _, err := executor.dial(ctx, &httpclient.Request{}, "ws://example.test", nil)
+	require.Nil(t, conn)
 	require.ErrorIs(t, err, context.Canceled)
-	require.NoError(t, <-done)
+	select {
+	case err := <-closed:
+		require.ErrorIs(t, err, io.EOF)
+	case <-time.After(5 * time.Second):
+		t.Fatal("proxy connection remained open after cancellation")
+	}
 }

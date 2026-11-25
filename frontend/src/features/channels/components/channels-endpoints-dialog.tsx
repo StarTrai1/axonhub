@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { Google } from '@lobehub/icons';
-import { AlertCircle, Check, ChevronDown, Loader2, Pencil, Plus, Radar, X } from 'lucide-react';
+import { AlertCircle, Check, ChevronDown, Info, Loader2, Pencil, Plus, Radar, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -22,6 +22,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Switch } from '@/components/ui/switch';
 import { AutoCompleteSelect } from '@/components/auto-complete-select';
 import { useDetectChannelEndpoints, useUpdateChannelSettings } from '../data/channels';
@@ -107,6 +108,7 @@ interface Props {
 }
 
 const ALLOWED_API_FORMATS = configurableChannelEndpointApiFormatSchema.options;
+const OPENAI_RESPONSES = 'openai/responses';
 const OPENAI_RESPONSES_WEBSOCKET = 'openai/responses-ws';
 // WebSocket Responses endpoints are valid persisted endpoints, but they are not
 // offered as custom endpoints: Codex manages them with its WebSocket checkbox.
@@ -253,6 +255,7 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
   const [detectionResults, setDetectionResults] = useState<DetectedChannelEndpoint[] | null>(null);
   const initialCodexResponses = useMemo(() => getCodexResponsesWebSocketState(channel), [channel]);
   const [codexResponsesWebSocket, setCodexResponsesWebSocket] = useState(initialCodexResponses.enabled);
+  const [preferResponsesWebSocket, setPreferResponsesWebSocket] = useState<boolean>();
 
   const supportedModelOptions = useMemo(
     () =>
@@ -277,6 +280,7 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
 
     setEndpoints(channel.endpoints ?? []);
     setCodexResponsesWebSocket(initialCodexResponses.enabled);
+    setPreferResponsesWebSocket(undefined);
     setNewApiFormat('');
     setNewPath('');
     setNewBaseURL('');
@@ -401,6 +405,8 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
   const availableProtocolFormats = useMemo(() => {
     return getAvailableProtocolFormats(defaultEndpoints, savedEndpoints);
   }, [defaultEndpoints, savedEndpoints]);
+  const canPreferResponsesWebSocket =
+    availableProtocolFormats.includes(OPENAI_RESPONSES) && availableProtocolFormats.includes(OPENAI_RESPONSES_WEBSOCKET);
 
   const affectedProtocolModels = useMemo(
     () =>
@@ -528,7 +534,7 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
             transport: ep.transport || undefined,
           })),
         },
-        patch: { modelProtocols },
+        patch: { modelProtocols, preferResponsesWebSocket },
       });
 
       toast.success(t('channels.messages.updateSuccess'));
@@ -536,7 +542,17 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
     } catch {
       // error handled by hook
     }
-  }, [channel, defaultEndpoints, isCodexChannel, savedEndpoints, modelProtocols, onOpenChange, updateChannelSettings, t]);
+  }, [
+    channel,
+    defaultEndpoints,
+    isCodexChannel,
+    savedEndpoints,
+    modelProtocols,
+    preferResponsesWebSocket,
+    onOpenChange,
+    updateChannelSettings,
+    t,
+  ]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -592,6 +608,21 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
                       </p>
                     )}
                 </div>
+              </div>
+            )}
+
+            {canPreferResponsesWebSocket && (
+              <div className='flex items-center justify-between gap-4 py-2'>
+                <div className='flex items-center gap-2 text-sm'>
+                  {t('channels.endpoints.preferResponsesWebSocket.label')}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button type='button' className='text-muted-foreground' aria-label={t('channels.endpoints.preferResponsesWebSocket.label')}><Info className='h-3.5 w-3.5' /></button>
+                    </TooltipTrigger>
+                    <TooltipContent className='max-w-72 leading-relaxed text-wrap'>{t('channels.endpoints.preferResponsesWebSocket.description')}</TooltipContent>
+                  </Tooltip>
+                </div>
+                <Switch checked={preferResponsesWebSocket ?? channel.settings?.preferResponsesWebSocket ?? false} onCheckedChange={setPreferResponsesWebSocket} />
               </div>
             )}
 
