@@ -58,23 +58,24 @@ func TestSelectAPIFormat_PrefersMatchingFormat(t *testing.T) {
 }
 
 func TestSelectEndpointAPIFormat_GPT62RoutesToolsToResponses(t *testing.T) {
+	ch := &biz.Channel{Channel: &ent.Channel{}}
 	chat := objects.ChannelEndpoint{APIFormat: llm.APIFormatOpenAIChatCompletion.String()}
 	for _, responses := range []llm.APIFormat{llm.APIFormatOpenAIResponse, llm.APIFormatOpenAIResponseWebSocket} {
 		endpoints := []objects.ChannelEndpoint{chat, {APIFormat: responses.String()}}
 		request := &llm.Request{Model: "mapped", RequestType: llm.RequestTypeChat, APIFormat: llm.APIFormatOpenAIChatCompletion}
-		require.Equal(t, chat.APIFormat, selectEndpointAPIFormat(t.Context(), endpoints, request, false, "gpt-6.2-sol"))
+		require.Equal(t, chat.APIFormat, selectEndpointAPIFormat(t.Context(), ch, endpoints, request, false, "gpt-6.2-sol"))
 		request.Messages = []llm.Message{{Role: "tool"}}
 		for _, model := range []string{"gpt-6.2-astra", "gpt-6.2-sol"} {
-			require.Equal(t, responses.String(), selectEndpointAPIFormat(t.Context(), endpoints, request, false, model))
-			require.Equal(t, chat.APIFormat, selectEndpointAPIFormat(t.Context(), endpoints[:1], request, true, model))
+			require.Equal(t, responses.String(), selectEndpointAPIFormat(t.Context(), ch, endpoints, request, false, model))
+			require.Equal(t, chat.APIFormat, selectEndpointAPIFormat(t.Context(), ch, endpoints[:1], request, true, model))
 		}
-		require.Equal(t, chat.APIFormat, selectEndpointAPIFormat(t.Context(), endpoints, request, false, "gpt-6-sol"))
+		require.Equal(t, chat.APIFormat, selectEndpointAPIFormat(t.Context(), ch, endpoints, request, false, "gpt-6-sol"))
 		request.Messages = nil
 		extensions := llm.EnsureOpenAIResponsesProviderExtensions(request)
 		extensions.Request = &llm.OpenAIResponsesRequestExtensions{
 			RawInputItems: []llm.OpenAIResponsesRawFragment{{Type: "file_search_call"}},
 		}
-		require.Equal(t, responses.String(), selectEndpointAPIFormat(t.Context(), endpoints, request, false, "gpt-6.2-astra"))
+		require.Equal(t, responses.String(), selectEndpointAPIFormat(t.Context(), ch, endpoints, request, false, "gpt-6.2-astra"))
 	}
 }
 

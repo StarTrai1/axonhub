@@ -28,7 +28,7 @@ func TestResponsesAdapterBudgetsQueue128MiB(t *testing.T) {
 
 func TestRejectedWebSocketQueueDoesNotConsumeStreamID(t *testing.T) {
 	d := newResponsesWebSocketDispatcher(t.Context(), func() {}, nil, nil, nil, 0, nil, nil)
-	require.True(t, d.reserve(128 << 20))
+	require.True(t, d.reserve(128<<20))
 	lane, err := d.admit("rejected", 1)
 	require.NotNil(t, err)
 	require.Nil(t, lane)
