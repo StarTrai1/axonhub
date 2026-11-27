@@ -3,15 +3,23 @@ import { test, expect } from '@playwright/test';
 for (const width of [390, 1280]) {
   test(`Realtime settings persist with readable tooltips at ${width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 1100 });
-    let saved: Record<string, unknown> | undefined;
+    let saved: Record<string, unknown> = {
+      id: 'channel-preview', createdAt: '2026-10-17T00:00:00Z', updatedAt: '2026-10-17T00:00:00Z',
+      type: 'openai', name: 'Realtime fixture', status: 'enabled', baseURL: 'https://api.openai.com',
+      credentials: { apiKeys: ['synthetic-realtime-key'] }, supportedModels: ['gpt-realtime-2.1'], defaultTestModel: 'gpt-realtime-2.1',
+      settings: { realtime: { enabled: true, protocol: 'openai/realtime-ws', baseURL: 'wss://api.openai.com', path: '/v1/realtime', handshakeTimeoutMs: 12000, clientEventsPerSecond: 512 } },
+    };
     await page.route('**/fixture/channel', (route) => route.fulfill({ json: saved }));
     await page.route('**/admin/graphql', async (route) => {
       const body = route.request().postDataJSON();
       if (body.operationName === 'UpdateChannel') {
-        saved = { id: 'channel-preview', createdAt: '2026-10-17T00:00:00Z', updatedAt: '2026-10-17T00:00:00Z', status: 'enabled', ...body.variables.input };
+        saved = { ...saved, ...body.variables.input };
         await route.fulfill({ json: { data: { updateChannel: saved } } });
       } else {
-        await route.fulfill({ json: { data: { allChannelTags: [], channelDisabledAPIKeys: [], proxyPresets: [] } } });
+        await route.fulfill({ json: { data: {
+          queryChannels: { edges: [{ node: saved, cursor: 'fixture' }], totalCount: 1, pageInfo: { hasNextPage: false, hasPreviousPage: false, startCursor: 'fixture', endCursor: 'fixture' } },
+          allChannelTags: [], channelDisabledAPIKeys: [], proxyPresets: [],
+        } } });
       }
     });
     await page.goto('/tests/interactions/codex-channel.html?realtime');
