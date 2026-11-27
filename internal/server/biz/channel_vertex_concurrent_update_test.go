@@ -7,14 +7,13 @@
 //
 // 注意事项:
 //
-//	使用共享 Ent 事务隔离 SQLite 写锁差异，通过保存钩子和 synctest 固定并发顺序。
+//	使用共享 Ent 事务隔离 SQLite 写锁差异，通过保存钩子和完成通知固定并发顺序。
 package biz
 
 import (
 	"context"
 	"fmt"
 	"testing"
-	"testing/synctest"
 	"time"
 
 	"github.com/stretchr/testify/require"
@@ -68,7 +67,7 @@ func TestChannelService_UpdateVertexCredentialsPreservesConcurrentDisable(t *tes
 			tx, err := client.Tx(ctx)
 			require.NoError(t, err)
 			txCtx := ent.NewContext(ent.NewTxContext(ctx, tx), tx.Client())
-			synctest.Test(t, func(t *testing.T) {
+			t.Run("interleaved operations", func(t *testing.T) {
 				prepared = make(chan struct{})
 				releaseSave = make(chan struct{})
 				updateDone := make(chan error, 1)
@@ -93,14 +92,17 @@ func TestChannelService_UpdateVertexCredentialsPreservesConcurrentDisable(t *tes
 				go run(func() error {
 					return svc.DisableAPIKey(txCtx, stored.ID, account.CredentialRef(), 401, "concurrent failure")
 				}, disableDone)
-				// Mutex waits are not durable synctest blocking. Drain the disable
-				// only when the paused update does not already own serialization.
+				// Wait for the SQL mutation itself when the update does not own
+				// serialization. Real SQL transactions must not cross a synctest
+				// bubble: database/sql starts its cancellation watcher outside it.
 				if !serialized {
-					synctest.Wait()
+					require.NoError(t, <-disableDone)
 				}
 				close(releaseSave)
 				require.NoError(t, <-updateDone)
-				require.NoError(t, <-disableDone)
+				if serialized {
+					require.NoError(t, <-disableDone)
+				}
 			})
 			require.NoError(t, tx.Commit())
 
