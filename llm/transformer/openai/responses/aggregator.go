@@ -781,10 +781,14 @@ func (a *streamAggregator) buildResponse() *Response {
 						contentItems = append(contentItems, Item{Type: "refusal", Refusal: &text})
 						continue
 					}
+					annotations := append([]Annotation(nil), cp.Annotations...)
+					if cp.Type == "output_text" && annotations == nil {
+						annotations = []Annotation{}
+					}
 					contentItems = append(contentItems, Item{
 						Type:        cp.Type,
 						Text:        &text,
-						Annotations: append([]Annotation(nil), cp.Annotations...),
+						Annotations: annotations,
 						Logprobs:    cloneRaw(cp.Logprobs),
 					})
 				}

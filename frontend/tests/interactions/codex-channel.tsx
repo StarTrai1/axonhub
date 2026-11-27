@@ -43,9 +43,9 @@ if (new URLSearchParams(window.location.search).has('realtime')) {
   row.name = 'Realtime fixture';
   row.baseURL = 'https://api.openai.com';
   row.credentials = { apiKeys: ['synthetic-realtime-key'] };
-  row.supportedModels = ['gpt-realtime-2'];
-  row.defaultTestModel = 'gpt-realtime-2';
-  row.settings = { realtime: { enabled: true, protocol: 'openai/realtime-ws', handshakeTimeoutMs: 12000, clientEventsPerSecond: 512 } };
+  row.supportedModels = ['gpt-realtime-2.1'];
+  row.defaultTestModel = 'gpt-realtime-2.1';
+  row.settings = { realtime: { enabled: true, protocol: 'openai/realtime-ws', baseURL: 'wss://api.openai.com', path: '/v1/realtime', handshakeTimeoutMs: 12000, clientEventsPerSecond: 512 } };
 }
 function Fixture() {
   const {setTheme} = useTheme();

@@ -691,12 +691,6 @@ func (item *Item) UnmarshalJSON(data []byte) error {
 // MarshalJSON omits summary for non-reasoning items and forces an empty array for reasoning items.
 func (item Item) MarshalJSON() ([]byte, error) {
 	type itemAlias Item
-	if item.Type == "output_text" {
-		item.Summary = nil
-		if item.Annotations == nil {
-			item.Annotations = []Annotation{}
-		}
-	}
 
 	if item.Type == "function_call" {
 		type functionCallItem struct {
