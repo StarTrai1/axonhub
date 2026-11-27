@@ -440,6 +440,12 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 			hreq.Headers.Set(header, value)
 		}
 	}
+	// This response-shape preference belongs to the caller's Responses request,
+	// not to internal search/image requests. Preserve repeated field lines too.
+	// The WebSocket executor includes this handshake header in its pool identity.
+	if values := rawHeaders.Values(ExcludeHeader); len(values) > 0 {
+		hreq.Headers.Set(ExcludeHeader, strings.Join(values, ","))
+	}
 
 	if rawSessionID != "" {
 		hreq.Headers.Set(SessionHeaderHyphen, rawSessionID)

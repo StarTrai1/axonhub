@@ -340,7 +340,7 @@ func TestChannelService_RealtimeCredentialSuccessClearsErrorCounts(t *testing.T)
 	require.Len(t, svc.apiKeyErrorCounts[ch.ID], 1)
 	svc.apiKeyErrorCountsLock.Unlock()
 
-	svc.RecordRealtimeCredentialSuccess(ch.ID, "key1")
+	svc.RecordRealtimeCredentialSuccess(ctx, &Channel{Channel: ch}, "key1")
 	svc.apiKeyErrorCountsLock.Lock()
 	require.Empty(t, svc.apiKeyErrorCounts[ch.ID])
 	svc.apiKeyErrorCountsLock.Unlock()

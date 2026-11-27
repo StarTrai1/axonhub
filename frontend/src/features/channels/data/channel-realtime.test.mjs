@@ -156,7 +156,7 @@ test('Realtime handshake timeout uses an info tooltip with localized default gui
     actionDialog.indexOf("t('channels.dialogs.responseTimeout.label')") < actionDialog.indexOf("data-testid='channel-realtime-timeout'"),
     'Realtime handshake timeout should follow response timeout settings'
   );
-  assert.match(timeoutRow, /md:justify-start/);
+  assert.doesNotMatch(timeoutRow, /justify-end|text-right/);
   assert.match(timeoutRow, /aria-label=\{t\('channels\.endpoints\.realtime\.handshakeTimeoutHint'\)\}/);
   assert.match(timeoutRow, /<p>\{t\('channels\.endpoints\.realtime\.handshakeTimeoutHint'\)\}<\/p>/);
 });

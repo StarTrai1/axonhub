@@ -96,14 +96,6 @@ func NewSchema(
 	realtimeConfig ...realtime.Config,
 ) graphql.ExecutableSchema {
 	modelFetcher := biz.NewModelFetcher(httpClient, channelService)
-	testChannelOrchestrator := orchestrator.NewTestChannelOrchestrator(
-		channelService,
-		requestService,
-		systemService,
-		usageLogService,
-		promptProtectionRuleService,
-		httpClient,
-	)
 	if len(realtimeConfig) > 0 {
 		testChannelOrchestrator.WithRealtimeConfig(realtimeConfig[0])
 	}

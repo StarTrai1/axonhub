@@ -25,7 +25,7 @@ func (c *Channel) RealtimeAPIKey(ctx context.Context) (string, error) {
 
 // RecordRealtimeCredentialSuccess advances the existing successful-request rotation cursor.
 // It affects subsequent connections; the current session keeps its original key.
-func (s *ChannelService) RecordRealtimeCredentialSuccess(channelID int, key string) {
-	s.clearAutoDisableCountsOnSuccess(&PerformanceRecord{ChannelID: channelID, APIKey: key})
-	s.onAPIKeySuccess(channelID, key)
+func (s *ChannelService) RecordRealtimeCredentialSuccess(ctx context.Context, ch *Channel, key string) {
+	s.clearAutoDisableCountsOnSuccess(ctx, &PerformanceRecord{ChannelID: ch.ID, APIKey: key, ChannelRevision: ch.UpdatedAt})
+	s.onAPIKeySuccess(ch.ID, key)
 }

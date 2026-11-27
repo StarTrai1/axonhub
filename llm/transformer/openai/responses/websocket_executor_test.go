@@ -2495,10 +2495,16 @@ func TestHeaderPoolIdentityIgnoresPerRequestTraceHeaders(t *testing.T) {
 	reKeyed.Set("X-Custom-Routing", "other")
 	changedThread := base.Clone()
 	changedThread.Set("Thread-Id", "thread-2")
+	excludedFields := base.Clone()
+	excludedFields.Set("X-Codex-Exclude", "tools")
+	moreExcludedFields := excludedFields.Clone()
+	moreExcludedFields.Add("X-Codex-Exclude", "usage.attribution")
 
 	require.Equal(t, headerPoolIdentity(base), headerPoolIdentity(changedTrace))
 	require.NotEqual(t, headerPoolIdentity(base), headerPoolIdentity(reKeyed))
 	require.NotEqual(t, headerPoolIdentity(base), headerPoolIdentity(changedThread))
+	require.NotEqual(t, headerPoolIdentity(base), headerPoolIdentity(excludedFields))
+	require.NotEqual(t, headerPoolIdentity(excludedFields), headerPoolIdentity(moreExcludedFields))
 }
 
 func TestWebSocketExecutorBackgroundCleanupClosesIdleConnections(t *testing.T) {

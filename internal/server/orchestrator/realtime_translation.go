@@ -128,7 +128,7 @@ func (c *RealtimeConversation) closeTranslation(ctx context.Context) {
 		} else if t.closed {
 			status = request.StatusCompleted
 			if c.credential != "" {
-				c.service.Channels.RecordRealtimeCredentialSuccess(c.target.Channel.ID, c.credential)
+				c.service.Channels.RecordRealtimeCredentialSuccess(ctx, c.target.Channel, c.credential)
 			}
 		}
 	}

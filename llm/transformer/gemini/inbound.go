@@ -34,16 +34,17 @@ func extractRequestParams(httpReq *httpclient.Request) (string, bool, error) {
 
 	suffix := urlParts[len(urlParts)-1]
 
-	suffixParts := strings.Split(suffix, ":")
-	if len(suffixParts) < 2 {
+	separator := strings.LastIndexByte(suffix, ':')
+	if separator <= 0 || separator == len(suffix)-1 {
 		return "", false, fmt.Errorf("%w: invalid request path: %s", ErrInvalidRequestURL, httpReq.Path)
 	}
 
-	switch suffixParts[1] {
+	model, action := suffix[:separator], suffix[separator+1:]
+	switch action {
 	case "generateContent":
-		return suffixParts[0], false, nil
+		return model, false, nil
 	case "streamGenerateContent":
-		return suffixParts[0], true, nil
+		return model, true, nil
 	default:
 		return "", false, fmt.Errorf("%w: invalid request path: %s", ErrInvalidRequestURL, httpReq.Path)
 	}

@@ -1076,7 +1076,7 @@ func (c *RealtimeConversation) finishResponse(data []byte, id string) error {
 	metrics.Metrics.RealtimeUsage(billingCtx, usage, response.firstOutput)
 	status := realtimeResponseStatus(data)
 	if status == request.StatusCompleted && c.credential != "" {
-		c.service.Channels.RecordRealtimeCredentialSuccess(c.target.Channel.ID, c.credential)
+		c.service.Channels.RecordRealtimeCredentialSuccess(billingCtx, c.target.Channel, c.credential)
 	}
 	summary := c.withPriceAudit(map[string]any{"response_id": id, "usage": usage, "realtime": true, "usage_confirmed": true, "upstream_model": c.target.Model, "upstream_format": c.target.APIFormat})
 	if status == request.StatusFailed {
