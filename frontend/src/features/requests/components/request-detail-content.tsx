@@ -29,6 +29,7 @@ import { CurlPreviewDialog } from './curl-preview-dialog';
 import { getStatusColor } from './help';
 import { RequestConversationViewer } from './request-conversation-viewer';
 import { ResponseFlow } from './response-flow';
+import { getRealtimeAuditRecordKind } from '../utils/realtime-record';
 
 // The detail page renders whole request and response payloads. Expanding every
 // level eagerly produces hundreds of thousands of characters of DOM for a large
@@ -367,8 +368,38 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
     );
   }
 
+  const realtimeRecordKind = getRealtimeAuditRecordKind(request.format, request.responseBody);
+  const realtimeSession = request.format === 'openai/realtime' ? request.requestBody?.realtime : undefined;
+
   return (
     <div className='space-y-8'>
+      {realtimeSession && typeof realtimeSession === 'object' && (
+        <Card className='border-0 shadow-sm'>
+          <CardHeader className='pb-2'>
+            <CardTitle className='text-base'>
+              {t(realtimeRecordKind === 'response' ? 'requests.detail.realtimeResponseRecord' : 'requests.detail.realtimeSession')}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {request.userAgent && (
+              <p className='text-muted-foreground mb-2 break-all text-xs'>
+                {t('requests.columns.userAgent')} <span className='font-mono'>{request.userAgent}</span>
+              </p>
+            )}
+            <JsonViewer
+              data={{
+                ...realtimeSession,
+                error_code: request.responseBody?.error_code ?? undefined,
+                error: request.responseBody?.error ?? undefined,
+              }}
+              rootName=''
+              defaultExpanded={true}
+              className='text-sm'
+            />
+          </CardContent>
+        </Card>
+      )}
+
       <Card className='border-0 shadow-sm'>
         <CardHeader className='pb-2'>
           <CardTitle className='flex items-center justify-between'>

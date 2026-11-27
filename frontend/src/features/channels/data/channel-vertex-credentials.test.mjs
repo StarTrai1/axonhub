@@ -1,31 +1,8 @@
 import assert from 'node:assert/strict';
-import { readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { pathToFileURL } from 'node:url';
-import { join as joinPath } from 'node:path';
 import test from 'node:test';
-import ts from 'typescript';
+import { loadChannelSchema } from './load-channel-schema.mjs';
 
-const srcRoot = joinPath(import.meta.dirname, '..', '..', '..');
-const schemaSource = readFileSync(joinPath(srcRoot, 'features/channels/data/schema.ts'), 'utf8');
-
-// schema.ts pulls pageInfoSchema from the gql barrel, which drags in GraphQL client
-// modules that cannot be imported in a plain node test. The pagination schema plays no
-// part in channel validation, so inline an equivalent and transpile the rest.
-const stubbed = schemaSource
-  .replace(/^import \{ pageInfoSchema \} from '@\/gql\/pagination';$/m, "import { z as zodForStub } from 'zod';\nconst pageInfoSchema = zodForStub.object({ hasNextPage: zodForStub.boolean(), hasPreviousPage: zodForStub.boolean(), startCursor: zodForStub.string().optional(), endCursor: zodForStub.string().optional() });")
-  .replace(/^import \{ z \} from 'zod';$/m, "import { z } from 'zod';\n");
-
-assert.notEqual(stubbed, schemaSource, 'the pageInfoSchema import stub must apply');
-
-// The transpiled module must stay inside frontend/ so node resolves 'zod' through the
-// package's own node_modules rather than a directory outside it.
-const outFile = joinPath(import.meta.dirname, `.schema-under-test-${process.pid}.mjs`);
-writeFileSync(outFile, ts.transpileModule(stubbed, {
-  compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
-}).outputText);
-
-const { createChannelInputSchema, updateChannelInputSchema } = await import(pathToFileURL(outFile).href);
-test.after(() => rmSync(outFile, { force: true }));
+const { createChannelInputSchema, updateChannelInputSchema, channelRealtimeSchema } = await loadChannelSchema();
 
 function vertexRow(overrides = {}) {
   return { projectID: 'miguo-vertex-prod-1', apiKey: 'AQ.key-1', region: 'global', ...overrides };
@@ -55,6 +32,16 @@ test('a Vertex channel rejects a row with a missing project ID', () => {
     paths.some((entry) => entry.startsWith('credentials.vertexApiKeys.0.projectID::')),
     `expected a projectID error at the row path, got ${JSON.stringify(paths)}`
   );
+});
+
+test('Realtime client event limit accepts only nullable integers from 256 to 4096', () => {
+  const base = { enabled: true, protocol: 'openai/realtime-ws', baseURL: 'wss://api.openai.com', path: '/v1/realtime' };
+  for (const clientEventsPerSecond of [null, 256, 1024, 4096]) {
+    assert.equal(channelRealtimeSchema.safeParse({ ...base, clientEventsPerSecond }).success, true);
+  }
+  for (const clientEventsPerSecond of [100, 255, 4097, 5000, 300.5]) {
+    assert.equal(channelRealtimeSchema.safeParse({ ...base, clientEventsPerSecond }).success, false);
+  }
 });
 
 test('a Vertex channel rejects a row with a missing API key', () => {
@@ -138,7 +125,7 @@ test('an update rejects an emptied Vertex binding list', () => {
 
   const paths = issuePaths(result);
   assert.ok(
-    paths.some((entry) => entry === 'credentials.vertexApiKeys::At least one Vertex API key is required'),
+    paths.some((entry) => entry === 'credentials.vertexApiKeys::At least one Vertex API key or service account JSON is required'),
     `expected the empty-list error, got ${JSON.stringify(paths)}`
   );
 });

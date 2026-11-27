@@ -28,6 +28,15 @@ const priceItemCodes = [
   'prompt_cached_tokens',
   'prompt_write_cached_tokens',
   'decisions_input_tokens',
+  'realtime_input_text_tokens',
+  'realtime_input_audio_tokens',
+  'realtime_output_text_tokens',
+  'realtime_output_audio_tokens',
+  'realtime_input_image_tokens',
+  'realtime_cached_input_text_tokens',
+  'realtime_cached_input_audio_tokens',
+  'realtime_translation_audio_samples',
+  'realtime_cached_input_image_tokens',
 ] as const;
 
 type DateRangeValue = { start: string; end: string };

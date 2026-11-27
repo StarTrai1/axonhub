@@ -15,16 +15,21 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
+	protocol "github.com/looplj/axonhub/llm/realtime"
 	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/openai"
 	"github.com/looplj/axonhub/llm/transformer/openai/codex"
 	"github.com/looplj/axonhub/llm/transformer/openai/decisions"
+	openairt "github.com/looplj/axonhub/llm/transformer/openai/realtime"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 	"github.com/looplj/axonhub/llm/transformer/typesafe"
 )
 
 func channelTestAPIFormat(channel *biz.Channel, model string) llm.APIFormat {
 	if channel != nil {
+		if channel.RealtimeOnly() {
+			return llm.APIFormat(channel.Settings.Realtime.Protocol)
+		}
 		if channel.Type == entchannel.TypeCodex {
 			return llm.APIFormatOpenAIResponse
 		}
@@ -33,10 +38,28 @@ func channelTestAPIFormat(channel *biz.Channel, model string) llm.APIFormat {
 		if !ok {
 			entry = channel.GetDirectModelEntries()[model]
 		}
+		if entry.ActualModel == openairt.TranslationModel && channel.RealtimeEndpoint() != nil && channel.RealtimeEndpoint().APIFormat == llm.APIFormatOpenAIRealtimeWebSocket.String() {
+			return llm.APIFormatOpenAIRealtimeWebSocket
+		}
 		forced := forcedAPIFormatsForCandidate(channel, []biz.ChannelModelEntry{entry}, model)
 		if filtered := FilterEndpointsByAPIFormats(endpoints, forced); len(filtered) > 0 {
 			return llm.APIFormat(filtered[0].APIFormat)
-		} else if channel.Type != entchannel.TypeTypesafe && channel.Type != entchannel.TypeCloudflare {
+		}
+		if _, err := openairt.NewAdapter(entry.ActualModel); err == nil {
+			for _, endpoint := range endpoints {
+				if endpoint.APIFormat == llm.APIFormatOpenAIRealtimeWebSocket.String() {
+					return llm.APIFormatOpenAIRealtimeWebSocket
+				}
+			}
+		}
+		if _, err := protocol.NewAdapter(entry.ActualModel, false); err == nil {
+			for _, endpoint := range endpoints {
+				if endpoint.APIFormat == llm.APIFormatQwenRealtimeWebSocket.String() {
+					return llm.APIFormatQwenRealtimeWebSocket
+				}
+			}
+		}
+		if channel.Type != entchannel.TypeTypesafe && channel.Type != entchannel.TypeCloudflare {
 			// Default OpenAI endpoints also advertise Decisions. A native connectivity
 			// probe requires explicit endpoint/model selection, not mere availability.
 			endpoints = channel.Endpoints

@@ -11,6 +11,7 @@ import (
 	"github.com/looplj/axonhub/internal/server/gc"
 	"github.com/looplj/axonhub/internal/server/orchestrator"
 	"github.com/looplj/axonhub/internal/server/plugin"
+	"github.com/looplj/axonhub/internal/server/realtime"
 	"github.com/looplj/axonhub/internal/server/scheduler"
 	"github.com/looplj/axonhub/internal/server/video_storage"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -92,8 +93,20 @@ func NewSchema(
 	videoWorker *video_storage.Worker,
 	catalogService *biz.CatalogService,
 	pluginManager *plugin.Manager,
+	realtimeConfig ...realtime.Config,
 ) graphql.ExecutableSchema {
 	modelFetcher := biz.NewModelFetcher(httpClient, channelService)
+	testChannelOrchestrator := orchestrator.NewTestChannelOrchestrator(
+		channelService,
+		requestService,
+		systemService,
+		usageLogService,
+		promptProtectionRuleService,
+		httpClient,
+	)
+	if len(realtimeConfig) > 0 {
+		testChannelOrchestrator.WithRealtimeConfig(realtimeConfig[0])
+	}
 
 	return NewExecutableSchema(Config{
 		Resolvers: &Resolver{

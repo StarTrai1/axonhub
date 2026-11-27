@@ -35,6 +35,7 @@ type UpdateChannelSettingsInput struct {
 	HTTPProtocol                *string                               `json:"httpProtocol"`
 	HTTP2ConnectionShards       *int                                  `json:"http2ConnectionShards"`
 	MaxSingleChannelRetries     *int                                  `json:"maxSingleChannelRetries"`
+	Realtime                    *objects.ChannelRealtimeConfig        `json:"realtime"`
 	ExtraModelPrefix            *string                               `json:"extraModelPrefix"`
 	ModelMappings               []objects.ModelMapping                `json:"modelMappings"`
 	AutoTrimedModelPrefixes     []string                              `json:"autoTrimedModelPrefixes"`
@@ -72,6 +73,9 @@ func (i *UpdateChannelSettingsInput) Apply(base *objects.ChannelSettings) object
 
 	if i == nil {
 		return merged
+	}
+	if i.Realtime != nil {
+		merged.Realtime = i.Realtime
 	}
 
 	if i.CodexImageModel != nil {

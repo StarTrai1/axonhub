@@ -95,6 +95,7 @@ function buildRequestsQuery(permissions: { canViewApiKeys: boolean; canViewChann
               edges {
                 node {
                   id
+                  modelID
                   promptTokens
                   completionTokens
                   completionReasoningTokens
@@ -156,6 +157,7 @@ function buildRequestDetailQuery(permissions: { canViewApiKeys: boolean; canView
           modelID
           stream
           clientIP
+          userAgent
           projectID
           dataStorageID
           contentSaved

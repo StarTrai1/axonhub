@@ -37,12 +37,14 @@ import (
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/ent/userproject"
 	"github.com/looplj/axonhub/internal/ent/userrole"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
 	"github.com/looplj/axonhub/internal/server/backup"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/gc"
 	"github.com/looplj/axonhub/internal/server/orchestrator"
 	"github.com/looplj/axonhub/internal/server/plugin"
+	"github.com/looplj/axonhub/internal/server/realtime"
 	"github.com/looplj/axonhub/internal/server/scheduler"
 	"github.com/looplj/axonhub/internal/server/video_storage"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -83,6 +85,7 @@ type Dependencies struct {
 	VideoWorker                    *video_storage.Worker
 	CatalogService                 *biz.CatalogService
 	PluginManager                  *plugin.Manager
+	RealtimeConfig                 realtime.Config `optional:"true"`
 }
 
 type GraphqlHandler struct {
@@ -135,6 +138,7 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 	})
 	gqlSrv.Use(&loggingTracer{})
 	gqlSrv.AroundOperations(apiKeyReadOnly)
+	gqlSrv.AroundResponses(endpointProtocolErrorStatus)
 	gqlSrv.Use(graphqlTransactions(deps.Ent))
 	gqlSrv.SetErrorPresenter(presentGraphqlError)
 
@@ -143,7 +147,7 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 	}
 
 	return &GraphqlHandler{
-		Graphql:       gqlSrv,
+		Graphql:       withEndpointHTTPStatus(gqlSrv),
 		PluginGraphql: newPluginGraphqlHandler(schema, deps.Ent, deps.PluginManager),
 		PluginFetch:   newPluginFetchHandler(deps.PluginManager),
 		executable:    schema,
@@ -184,6 +188,7 @@ func newSchemaFromDeps(deps Dependencies) graphql.ExecutableSchema {
 		deps.VideoWorker,
 		deps.CatalogService,
 		deps.PluginManager,
+		deps.RealtimeConfig,
 	)
 }
 
@@ -255,6 +260,9 @@ func presentGraphqlError(ctx context.Context, err error) *gqlerror.Error {
 			},
 		}
 	}
+	if endpointErr, ok := errors.AsType[*gqlerror.Error](err); ok && endpointErr.Extensions["code"] == objects.ErrCodeEndpointRealtimeNotAllowed {
+		return graphql.DefaultErrorPresenter(ctx, endpointErr)
+	}
 	return graphql.DefaultErrorPresenter(ctx, err)
 }
 
@@ -273,9 +281,10 @@ func newPluginGraphqlHandler(schema graphql.ExecutableSchema, client *ent.Client
 	srv := handler.New(schema)
 	srv.AddTransport(transport.POST{})
 	srv.SetQueryCache(lru.New[*ast.QueryDocument](1024))
+	srv.AroundResponses(endpointProtocolErrorStatus)
 	configurePluginGraphQL(srv, client)
 	return &pluginGraphqlHTTPHandler{
-		handler: srv,
+		handler: withEndpointHTTPStatus(srv),
 		manager: manager,
 	}
 }

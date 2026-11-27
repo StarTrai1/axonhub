@@ -686,7 +686,7 @@ func (s *RequestService) CreateRequestExecution(
 			// reordered or removed, and it cannot tell two keys with the same last-4
 			// characters apart. Single-key and OAuth channels have nothing to
 			// disambiguate, so they stay null.
-			if allKeys := channel.Credentials.GetAllAPIKeys(); len(allKeys) > 1 {
+			if allKeys := channel.Credentials.GetAllCredentialRefs(); len(allKeys) > 1 {
 				if idx := slices.Index(allKeys, apiKey); idx >= 0 {
 					mut = mut.SetChannelAPIKeyIndex(idx + 1)
 				}
@@ -1780,6 +1780,10 @@ func (s *RequestService) LoadResponseBody(ctx context.Context, req *ent.Request)
 		return nil, fmt.Errorf("request is nil")
 	}
 
+	// Realtime persists gateway audit metadata directly, including failed turns.
+	if req.Format == llm.APIFormatOpenAIRealtime.String() {
+		return sanitizeLoadedResponseBody(req.ResponseBody), nil
+	}
 	// Only load response body if request is completed
 	if req.Status != request.StatusCompleted {
 		return xjson.EmptyJSONRawMessage, nil

@@ -663,7 +663,7 @@ func shouldForceStreamingForCandidate(candidate *ChannelModelsCandidate, req *ll
 }
 
 func selectOutboundForCandidate(candidate *ChannelModelsCandidate) transformer.Outbound {
-	if candidate == nil || candidate.Channel == nil {
+	if candidate == nil || candidate.Channel == nil || candidate.Channel.RealtimeOnly() {
 		return nil
 	}
 
@@ -843,8 +843,19 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 		}
 	}
 
+	transformStarted := time.Now()
 	httpRequest, err := p.wrapped.TransformRequest(ctx, llmRequest)
 	if err != nil {
+		if credentialErr, ok := errors.AsType[*biz.VertexCredentialError](err); ok {
+			p.state.Perf = &biz.PerformanceRecord{
+				ChannelID: candidate.Channel.ID,
+				APIKey:    credentialErr.CredentialRef,
+				StartTime: transformStarted,
+				Stream:    llmRequest.Stream != nil && *llmRequest.Stream,
+			}
+			p.state.Perf.MarkFailedWithMessage(ExtractErrorCode(err), extractErrorMessageForMatching(err))
+			p.state.ChannelService.AsyncRecordPerformance(ctx, p.state.Perf)
+		}
 		return nil, err
 	}
 

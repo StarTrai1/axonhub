@@ -3,6 +3,7 @@ package llm
 type RequestType string
 
 const (
+	RequestTypeRealtime   RequestType = "realtime"
 	RequestTypeChat       RequestType = "chat"
 	RequestTypeEmbedding  RequestType = "embedding"
 	RequestTypeRerank     RequestType = "rerank"
@@ -46,6 +47,7 @@ func AllRequestTypes() []RequestType {
 		RequestTypeAlphaSearch,
 		RequestTypeSystemOne,
 		RequestTypeDecisions,
+		RequestTypeRealtime,
 	}
 }
 
@@ -56,9 +58,12 @@ func (r RequestType) String() string {
 type APIFormat string
 
 const (
-	APIFormatOpenAIChatCompletion APIFormat = "openai/chat_completions"
-	APIFormatOpenAICompletion     APIFormat = "openai/completions"
-	APIFormatOpenAIResponse       APIFormat = "openai/responses"
+	APIFormatOpenAIRealtime          APIFormat = "openai/realtime"
+	APIFormatOpenAIRealtimeWebSocket APIFormat = "openai/realtime-ws"
+	APIFormatQwenRealtimeWebSocket   APIFormat = "qwen/realtime-ws"
+	APIFormatOpenAIChatCompletion    APIFormat = "openai/chat_completions"
+	APIFormatOpenAICompletion        APIFormat = "openai/completions"
+	APIFormatOpenAIResponse          APIFormat = "openai/responses"
 	// APIFormatOpenAIResponseWebSocket identifies the Responses WebSocket protocol
 	// for endpoint selection, transformation and persisted request/trace metadata.
 	APIFormatOpenAIResponseWebSocket APIFormat = "openai/responses-ws"
@@ -133,6 +138,9 @@ func AllAPIFormats() []APIFormat {
 		APIFormatSeedanceVideo,
 		APIFormatZenmuxVideo,
 		APIFormatModelScopeImage,
+		APIFormatOpenAIRealtimeWebSocket,
+		APIFormatOpenAIRealtime,
+		APIFormatQwenRealtimeWebSocket,
 	}
 }
 
