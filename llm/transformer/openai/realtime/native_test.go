@@ -5,8 +5,9 @@
 package realtime
 
 import (
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestNativePreservesGAFieldsAndBytes(t *testing.T) {
@@ -26,6 +27,7 @@ func TestNativePreservesGAFieldsAndBytes(t *testing.T) {
 		})
 	}
 }
+
 func TestNativeRejectsSecurityControlFields(t *testing.T) {
 	a, _ := NewAdapter("gpt-realtime-2.1-mini")
 	for _, data := range []string{`{"type":"session.update","session":{"type":"realtime","model":"other"}}`, `{"type":"response.create","response":{"model":"other"}}`, `{"type":"session.update","session":{"type":"transcription"}}`, `{"type":"input_audio_buffer.append","audio":"not!base64"}`, `{"type":"session.update","session":{"type":"realtime","tools":[{"type":"mcp","server_url":"http://127.0.0.1"}]}}`} {
@@ -33,6 +35,7 @@ func TestNativeRejectsSecurityControlFields(t *testing.T) {
 		require.Error(t, err, data)
 	}
 }
+
 func TestNativeUsageModalitiesAndCachedSubsets(t *testing.T) {
 	data := []byte(`{"type":"response.done","response":{"id":"r1","usage":{"input_tokens":100,"output_tokens":30,"total_tokens":130,"input_token_details":{"text_tokens":40,"audio_tokens":50,"image_tokens":10,"cached_tokens":30,"cached_tokens_details":{"text_tokens":10,"audio_tokens":15,"image_tokens":5}},"output_token_details":{"text_tokens":10,"audio_tokens":20}}}}`)
 	id, u, err := ParseUsage(data)
@@ -48,6 +51,7 @@ func TestNativeUsageModalitiesAndCachedSubsets(t *testing.T) {
 		require.Error(t, err)
 	}
 }
+
 func TestNativeEndpointAllowsWebSocketHosts(t *testing.T) {
 	target, err := EndpointURL("wss://api.openai.com", "/v1/realtime", "gpt-realtime-2.1")
 	require.NoError(t, err)

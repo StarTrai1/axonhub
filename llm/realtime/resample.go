@@ -42,6 +42,7 @@ func NewPCM24To16() *PCM24To16 {
 	}
 	return r
 }
+
 func (r *PCM24To16) Append(pcm []byte) ([]byte, error) {
 	if len(pcm)%2 != 0 {
 		return nil, errors.New("PCM16 chunks must contain complete samples")

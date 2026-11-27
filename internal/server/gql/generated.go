@@ -463,12 +463,13 @@ type ComplexityRoot struct {
 	}
 
 	ChannelCredentials struct {
-		APIKey        func(childComplexity int) int
-		APIKeys       func(childComplexity int) int
-		GCP           func(childComplexity int) int
-		IsOAuth       func(childComplexity int) int
-		OAuth         func(childComplexity int) int
-		VertexAPIKeys func(childComplexity int) int
+		APIKey                func(childComplexity int) int
+		APIKeys               func(childComplexity int) int
+		GCP                   func(childComplexity int) int
+		IsOAuth               func(childComplexity int) int
+		OAuth                 func(childComplexity int) int
+		VertexAPIKeys         func(childComplexity int) int
+		VertexServiceAccounts func(childComplexity int) int
 	}
 
 	ChannelEdge struct {
@@ -477,10 +478,11 @@ type ComplexityRoot struct {
 	}
 
 	ChannelEndpoint struct {
-		APIFormat func(childComplexity int) int
-		BaseURL   func(childComplexity int) int
-		Path      func(childComplexity int) int
-		Transport func(childComplexity int) int
+		APIFormat          func(childComplexity int) int
+		BaseURL            func(childComplexity int) int
+		HandshakeTimeoutMs func(childComplexity int) int
+		Path               func(childComplexity int) int
+		Transport          func(childComplexity int) int
 	}
 
 	ChannelLimiterStats struct {
@@ -654,6 +656,15 @@ type ComplexityRoot struct {
 		TPM            func(childComplexity int) int
 	}
 
+	ChannelRealtimeConfig struct {
+		BaseURL               func(childComplexity int) int
+		ClientEventsPerSecond func(childComplexity int) int
+		Enabled               func(childComplexity int) int
+		HandshakeTimeoutMs    func(childComplexity int) int
+		Path                  func(childComplexity int) int
+		Protocol              func(childComplexity int) int
+	}
+
 	ChannelRegexAssociation struct {
 		ChannelID func(childComplexity int) int
 		Pattern   func(childComplexity int) int
@@ -701,6 +712,7 @@ type ComplexityRoot struct {
 		QuotaReserve                func(childComplexity int) int
 		QuotaRoutingMode            func(childComplexity int) int
 		RateLimit                   func(childComplexity int) int
+		Realtime                    func(childComplexity int) int
 		ResponseTimeout             func(childComplexity int) int
 		RetryableErrorPatterns      func(childComplexity int) int
 		RetryableStatusCodes        func(childComplexity int) int
@@ -952,9 +964,10 @@ type ComplexityRoot struct {
 	}
 
 	GCPCredential struct {
-		JSONData  func(childComplexity int) int
-		ProjectID func(childComplexity int) int
-		Region    func(childComplexity int) int
+		CredentialRef func(childComplexity int) int
+		JSONData      func(childComplexity int) int
+		ProjectID     func(childComplexity int) int
+		Region        func(childComplexity int) int
 	}
 
 	GCS struct {
@@ -4454,6 +4467,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelCredentials.VertexAPIKeys(childComplexity), true
+	case "ChannelCredentials.vertexServiceAccounts":
+		if e.complexity.ChannelCredentials.VertexServiceAccounts == nil {
+			break
+		}
+
+		return e.complexity.ChannelCredentials.VertexServiceAccounts(childComplexity), true
 
 	case "ChannelEdge.cursor":
 		if e.complexity.ChannelEdge.Cursor == nil {
@@ -4480,6 +4499,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelEndpoint.BaseURL(childComplexity), true
+	case "ChannelEndpoint.handshakeTimeoutMs":
+		if e.complexity.ChannelEndpoint.HandshakeTimeoutMs == nil {
+			break
+		}
+
+		return e.complexity.ChannelEndpoint.HandshakeTimeoutMs(childComplexity), true
 	case "ChannelEndpoint.path":
 		if e.complexity.ChannelEndpoint.Path == nil {
 			break
@@ -5145,6 +5170,43 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ChannelRateLimit.TPM(childComplexity), true
 
+	case "ChannelRealtimeConfig.baseURL":
+		if e.complexity.ChannelRealtimeConfig.BaseURL == nil {
+			break
+		}
+
+		return e.complexity.ChannelRealtimeConfig.BaseURL(childComplexity), true
+	case "ChannelRealtimeConfig.clientEventsPerSecond":
+		if e.complexity.ChannelRealtimeConfig.ClientEventsPerSecond == nil {
+			break
+		}
+
+		return e.complexity.ChannelRealtimeConfig.ClientEventsPerSecond(childComplexity), true
+	case "ChannelRealtimeConfig.enabled":
+		if e.complexity.ChannelRealtimeConfig.Enabled == nil {
+			break
+		}
+
+		return e.complexity.ChannelRealtimeConfig.Enabled(childComplexity), true
+	case "ChannelRealtimeConfig.handshakeTimeoutMs":
+		if e.complexity.ChannelRealtimeConfig.HandshakeTimeoutMs == nil {
+			break
+		}
+
+		return e.complexity.ChannelRealtimeConfig.HandshakeTimeoutMs(childComplexity), true
+	case "ChannelRealtimeConfig.path":
+		if e.complexity.ChannelRealtimeConfig.Path == nil {
+			break
+		}
+
+		return e.complexity.ChannelRealtimeConfig.Path(childComplexity), true
+	case "ChannelRealtimeConfig.protocol":
+		if e.complexity.ChannelRealtimeConfig.Protocol == nil {
+			break
+		}
+
+		return e.complexity.ChannelRealtimeConfig.Protocol(childComplexity), true
+
 	case "ChannelRegexAssociation.channelId":
 		if e.complexity.ChannelRegexAssociation.ChannelID == nil {
 			break
@@ -5370,6 +5432,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelSettings.RateLimit(childComplexity), true
+	case "ChannelSettings.realtime":
+		if e.complexity.ChannelSettings.Realtime == nil {
+			break
+		}
+
+		return e.complexity.ChannelSettings.Realtime(childComplexity), true
 	case "ChannelSettings.responseTimeout":
 		if e.complexity.ChannelSettings.ResponseTimeout == nil {
 			break
@@ -6257,6 +6325,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.FilterCondition.Value(childComplexity), true
 
+	case "GCPCredential.credentialRef":
+		if e.complexity.GCPCredential.CredentialRef == nil {
+			break
+		}
+
+		return e.complexity.GCPCredential.CredentialRef(childComplexity), true
 	case "GCPCredential.jsonData":
 		if e.complexity.GCPCredential.JSONData == nil {
 			break
@@ -13905,6 +13979,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputChannelProviderQuotaSettingsInput,
 		ec.unmarshalInputChannelQuotaReserveInput,
 		ec.unmarshalInputChannelRateLimitInput,
+		ec.unmarshalInputChannelRealtimeConfigInput,
 		ec.unmarshalInputChannelRegexAssociationInput,
 		ec.unmarshalInputChannelResponseTimeoutInput,
 		ec.unmarshalInputChannelScheduledDisableInput,
@@ -24857,6 +24932,8 @@ func (ec *executionContext) fieldContext_Channel_settings(_ context.Context, fie
 				return ec.fieldContext_ChannelSettings_codexSearchModel(ctx, field)
 			case "codexImageModel":
 				return ec.fieldContext_ChannelSettings_codexImageModel(ctx, field)
+			case "realtime":
+				return ec.fieldContext_ChannelSettings_realtime(ctx, field)
 			case "extraModelPrefix":
 				return ec.fieldContext_ChannelSettings_extraModelPrefix(ctx, field)
 			case "modelMappings":
@@ -25095,6 +25172,8 @@ func (ec *executionContext) fieldContext_Channel_endpoints(_ context.Context, fi
 				return ec.fieldContext_ChannelEndpoint_baseURL(ctx, field)
 			case "transport":
 				return ec.fieldContext_ChannelEndpoint_transport(ctx, field)
+			case "handshakeTimeoutMs":
+				return ec.fieldContext_ChannelEndpoint_handshakeTimeoutMs(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ChannelEndpoint", field.Name)
 		},
@@ -25432,6 +25511,8 @@ func (ec *executionContext) fieldContext_Channel_defaultEndpoints(_ context.Cont
 				return ec.fieldContext_ChannelEndpoint_baseURL(ctx, field)
 			case "transport":
 				return ec.fieldContext_ChannelEndpoint_transport(ctx, field)
+			case "handshakeTimeoutMs":
+				return ec.fieldContext_ChannelEndpoint_handshakeTimeoutMs(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ChannelEndpoint", field.Name)
 		},
@@ -25508,6 +25589,8 @@ func (ec *executionContext) fieldContext_Channel_credentials(_ context.Context, 
 				return ec.fieldContext_ChannelCredentials_apiKeys(ctx, field)
 			case "vertexApiKeys":
 				return ec.fieldContext_ChannelCredentials_vertexApiKeys(ctx, field)
+			case "vertexServiceAccounts":
+				return ec.fieldContext_ChannelCredentials_vertexServiceAccounts(ctx, field)
 			case "gcp":
 				return ec.fieldContext_ChannelCredentials_gcp(ctx, field)
 			case "oauth":
@@ -25828,6 +25911,45 @@ func (ec *executionContext) fieldContext_ChannelCredentials_vertexApiKeys(_ cont
 	return fc, nil
 }
 
+func (ec *executionContext) _ChannelCredentials_vertexServiceAccounts(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelCredentials) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelCredentials_vertexServiceAccounts,
+		func(ctx context.Context) (any, error) {
+			return obj.VertexServiceAccounts, nil
+		},
+		nil,
+		ec.marshalOGCPCredential2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGCPCredentialᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelCredentials_vertexServiceAccounts(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelCredentials",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "credentialRef":
+				return ec.fieldContext_GCPCredential_credentialRef(ctx, field)
+			case "region":
+				return ec.fieldContext_GCPCredential_region(ctx, field)
+			case "projectID":
+				return ec.fieldContext_GCPCredential_projectID(ctx, field)
+			case "jsonData":
+				return ec.fieldContext_GCPCredential_jsonData(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type GCPCredential", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ChannelCredentials_gcp(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelCredentials) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -25852,6 +25974,8 @@ func (ec *executionContext) fieldContext_ChannelCredentials_gcp(_ context.Contex
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "credentialRef":
+				return ec.fieldContext_GCPCredential_credentialRef(ctx, field)
 			case "region":
 				return ec.fieldContext_GCPCredential_region(ctx, field)
 			case "projectID":
@@ -26143,6 +26267,35 @@ func (ec *executionContext) fieldContext_ChannelEndpoint_transport(_ context.Con
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelEndpoint_handshakeTimeoutMs(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelEndpoint) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelEndpoint_handshakeTimeoutMs,
+		func(ctx context.Context) (any, error) {
+			return obj.HandshakeTimeoutMs, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelEndpoint_handshakeTimeoutMs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelEndpoint",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -29633,6 +29786,180 @@ func (ec *executionContext) fieldContext_ChannelRateLimit_queueTimeoutMs(_ conte
 	return fc, nil
 }
 
+func (ec *executionContext) _ChannelRealtimeConfig_enabled(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelRealtimeConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelRealtimeConfig_enabled,
+		func(ctx context.Context) (any, error) {
+			return obj.Enabled, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelRealtimeConfig_enabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelRealtimeConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelRealtimeConfig_protocol(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelRealtimeConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelRealtimeConfig_protocol,
+		func(ctx context.Context) (any, error) {
+			return obj.Protocol, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelRealtimeConfig_protocol(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelRealtimeConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelRealtimeConfig_baseURL(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelRealtimeConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelRealtimeConfig_baseURL,
+		func(ctx context.Context) (any, error) {
+			return obj.BaseURL, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelRealtimeConfig_baseURL(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelRealtimeConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelRealtimeConfig_path(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelRealtimeConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelRealtimeConfig_path,
+		func(ctx context.Context) (any, error) {
+			return obj.Path, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelRealtimeConfig_path(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelRealtimeConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelRealtimeConfig_handshakeTimeoutMs(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelRealtimeConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelRealtimeConfig_handshakeTimeoutMs,
+		func(ctx context.Context) (any, error) {
+			return obj.HandshakeTimeoutMs, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelRealtimeConfig_handshakeTimeoutMs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelRealtimeConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelRealtimeConfig_clientEventsPerSecond(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelRealtimeConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelRealtimeConfig_clientEventsPerSecond,
+		func(ctx context.Context) (any, error) {
+			return obj.ClientEventsPerSecond, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelRealtimeConfig_clientEventsPerSecond(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelRealtimeConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ChannelRegexAssociation_channelId(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelRegexAssociation) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -30063,6 +30390,49 @@ func (ec *executionContext) fieldContext_ChannelSettings_codexImageModel(_ conte
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelSettings_realtime(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelSettings_realtime,
+		func(ctx context.Context) (any, error) {
+			return obj.Realtime, nil
+		},
+		nil,
+		ec.marshalOChannelRealtimeConfig2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelRealtimeConfig,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelSettings_realtime(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "enabled":
+				return ec.fieldContext_ChannelRealtimeConfig_enabled(ctx, field)
+			case "protocol":
+				return ec.fieldContext_ChannelRealtimeConfig_protocol(ctx, field)
+			case "baseURL":
+				return ec.fieldContext_ChannelRealtimeConfig_baseURL(ctx, field)
+			case "path":
+				return ec.fieldContext_ChannelRealtimeConfig_path(ctx, field)
+			case "handshakeTimeoutMs":
+				return ec.fieldContext_ChannelRealtimeConfig_handshakeTimeoutMs(ctx, field)
+			case "clientEventsPerSecond":
+				return ec.fieldContext_ChannelRealtimeConfig_clientEventsPerSecond(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ChannelRealtimeConfig", field.Name)
 		},
 	}
 	return fc, nil
@@ -35161,6 +35531,35 @@ func (ec *executionContext) fieldContext_FilterCondition_value(_ context.Context
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Any does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GCPCredential_credentialRef(ctx context.Context, field graphql.CollectedField, obj *objects.GCPCredential) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_GCPCredential_credentialRef,
+		func(ctx context.Context) (any, error) {
+			return obj.CredentialRef(), nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_GCPCredential_credentialRef(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GCPCredential",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -77883,7 +78282,7 @@ func (ec *executionContext) unmarshalInputChannelCredentialsInput(ctx context.Co
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"apiKey", "apiKeys", "vertexApiKeys", "gcp", "oauth", "managementApiKey"}
+	fieldsInOrder := [...]string{"apiKey", "apiKeys", "vertexApiKeys", "vertexServiceAccounts", "gcp", "oauth", "managementApiKey"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -77911,6 +78310,13 @@ func (ec *executionContext) unmarshalInputChannelCredentialsInput(ctx context.Co
 				return it, err
 			}
 			it.VertexAPIKeys = data
+		case "vertexServiceAccounts":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("vertexServiceAccounts"))
+			data, err := ec.unmarshalOGCPCredentialInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGCPCredentialᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.VertexServiceAccounts = data
 		case "gcp":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("gcp"))
 			data, err := ec.unmarshalOGCPCredentialInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGCPCredential(ctx, v)
@@ -77945,7 +78351,7 @@ func (ec *executionContext) unmarshalInputChannelEndpointInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"apiFormat", "path", "baseURL", "transport"}
+	fieldsInOrder := [...]string{"apiFormat", "path", "baseURL", "transport", "handshakeTimeoutMs"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -77980,6 +78386,13 @@ func (ec *executionContext) unmarshalInputChannelEndpointInput(ctx context.Conte
 				return it, err
 			}
 			it.Transport = data
+		case "handshakeTimeoutMs":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("handshakeTimeoutMs"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HandshakeTimeoutMs = data
 		}
 	}
 
@@ -80780,6 +81193,68 @@ func (ec *executionContext) unmarshalInputChannelRateLimitInput(ctx context.Cont
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputChannelRealtimeConfigInput(ctx context.Context, obj any) (objects.ChannelRealtimeConfig, error) {
+	var it objects.ChannelRealtimeConfig
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"enabled", "protocol", "baseURL", "path", "handshakeTimeoutMs", "clientEventsPerSecond"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "enabled":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("enabled"))
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Enabled = data
+		case "protocol":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("protocol"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Protocol = data
+		case "baseURL":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("baseURL"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BaseURL = data
+		case "path":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("path"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Path = data
+		case "handshakeTimeoutMs":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("handshakeTimeoutMs"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HandshakeTimeoutMs = data
+		case "clientEventsPerSecond":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clientEventsPerSecond"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ClientEventsPerSecond = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputChannelRegexAssociationInput(ctx context.Context, obj any) (objects.ChannelRegexAssociation, error) {
 	var it objects.ChannelRegexAssociation
 	asMap := map[string]any{}
@@ -80917,7 +81392,7 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"codexSearchOnly", "codexImageOnly", "codexPreserveSpeedModel", "codexSearchModel", "codexImageModel", "extraModelPrefix", "modelMappings", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "lowercaseModelId", "proxy", "httpProtocol", "http2ConnectionShards", "transformOptions", "headerOverrideOperations", "bodyOverrideOperations", "passThroughUserAgent", "passThroughBody", "syncModelPrices", "preferResponsesWebSocket", "rateLimit", "retryableStatusCodes", "retryableErrorPatterns", "maxSingleChannelRetries", "responseTimeout", "modelProtocols", "apiKeyStrategy", "apiKeyRoundRobinSwitchAfter", "providerQuota", "quotaRoutingMode", "quotaReserve"}
+	fieldsInOrder := [...]string{"codexSearchOnly", "codexImageOnly", "codexPreserveSpeedModel", "codexSearchModel", "codexImageModel", "realtime", "extraModelPrefix", "modelMappings", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "lowercaseModelId", "proxy", "httpProtocol", "http2ConnectionShards", "transformOptions", "headerOverrideOperations", "bodyOverrideOperations", "passThroughUserAgent", "passThroughBody", "syncModelPrices", "preferResponsesWebSocket", "rateLimit", "retryableStatusCodes", "retryableErrorPatterns", "maxSingleChannelRetries", "responseTimeout", "modelProtocols", "apiKeyStrategy", "apiKeyRoundRobinSwitchAfter", "providerQuota", "quotaRoutingMode", "quotaReserve"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -80959,6 +81434,13 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 				return it, err
 			}
 			it.CodexImageModel = data
+		case "realtime":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("realtime"))
+			data, err := ec.unmarshalOChannelRealtimeConfigInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelRealtimeConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Realtime = data
 		case "extraModelPrefix":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("extraModelPrefix"))
 			data, err := ec.unmarshalOString2string(ctx, v)
@@ -97422,7 +97904,7 @@ func (ec *executionContext) unmarshalInputUpdateChannelSettingsInput(ctx context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"codexSearchOnly", "codexImageOnly", "codexPreserveSpeedModel", "codexSearchModel", "codexImageModel", "httpProtocol", "http2ConnectionShards", "maxSingleChannelRetries", "extraModelPrefix", "modelMappings", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "lowercaseModelId", "proxy", "transformOptions", "headerOverrideOperations", "bodyOverrideOperations", "passThroughUserAgent", "passThroughBody", "syncModelPrices", "preferResponsesWebSocket", "rateLimit", "retryableStatusCodes", "retryableErrorPatterns", "modelProtocols", "apiKeyStrategy", "apiKeyRoundRobinSwitchAfter", "providerQuota", "quotaRoutingMode", "quotaReserve"}
+	fieldsInOrder := [...]string{"codexSearchOnly", "codexImageOnly", "codexPreserveSpeedModel", "codexSearchModel", "codexImageModel", "httpProtocol", "http2ConnectionShards", "maxSingleChannelRetries", "realtime", "extraModelPrefix", "modelMappings", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "lowercaseModelId", "proxy", "transformOptions", "headerOverrideOperations", "bodyOverrideOperations", "passThroughUserAgent", "passThroughBody", "syncModelPrices", "preferResponsesWebSocket", "rateLimit", "retryableStatusCodes", "retryableErrorPatterns", "modelProtocols", "apiKeyStrategy", "apiKeyRoundRobinSwitchAfter", "providerQuota", "quotaRoutingMode", "quotaReserve"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -97485,6 +97967,13 @@ func (ec *executionContext) unmarshalInputUpdateChannelSettingsInput(ctx context
 				return it, err
 			}
 			it.MaxSingleChannelRetries = data
+		case "realtime":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("realtime"))
+			data, err := ec.unmarshalOChannelRealtimeConfigInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelRealtimeConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Realtime = data
 		case "extraModelPrefix":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("extraModelPrefix"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -106518,6 +107007,8 @@ func (ec *executionContext) _ChannelCredentials(ctx context.Context, sel ast.Sel
 			out.Values[i] = ec._ChannelCredentials_apiKeys(ctx, field, obj)
 		case "vertexApiKeys":
 			out.Values[i] = ec._ChannelCredentials_vertexApiKeys(ctx, field, obj)
+		case "vertexServiceAccounts":
+			out.Values[i] = ec._ChannelCredentials_vertexServiceAccounts(ctx, field, obj)
 		case "gcp":
 			out.Values[i] = ec._ChannelCredentials_gcp(ctx, field, obj)
 		case "oauth":
@@ -106608,6 +107099,8 @@ func (ec *executionContext) _ChannelEndpoint(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._ChannelEndpoint_baseURL(ctx, field, obj)
 		case "transport":
 			out.Values[i] = ec._ChannelEndpoint_transport(ctx, field, obj)
+		case "handshakeTimeoutMs":
+			out.Values[i] = ec._ChannelEndpoint_handshakeTimeoutMs(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -108277,6 +108770,64 @@ func (ec *executionContext) _ChannelRateLimit(ctx context.Context, sel ast.Selec
 	return out
 }
 
+var channelRealtimeConfigImplementors = []string{"ChannelRealtimeConfig"}
+
+func (ec *executionContext) _ChannelRealtimeConfig(ctx context.Context, sel ast.SelectionSet, obj *objects.ChannelRealtimeConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, channelRealtimeConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ChannelRealtimeConfig")
+		case "enabled":
+			out.Values[i] = ec._ChannelRealtimeConfig_enabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "protocol":
+			out.Values[i] = ec._ChannelRealtimeConfig_protocol(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "baseURL":
+			out.Values[i] = ec._ChannelRealtimeConfig_baseURL(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "path":
+			out.Values[i] = ec._ChannelRealtimeConfig_path(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "handshakeTimeoutMs":
+			out.Values[i] = ec._ChannelRealtimeConfig_handshakeTimeoutMs(ctx, field, obj)
+		case "clientEventsPerSecond":
+			out.Values[i] = ec._ChannelRealtimeConfig_clientEventsPerSecond(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var channelRegexAssociationImplementors = []string{"ChannelRegexAssociation"}
 
 func (ec *executionContext) _ChannelRegexAssociation(ctx context.Context, sel ast.SelectionSet, obj *objects.ChannelRegexAssociation) graphql.Marshaler {
@@ -108429,6 +108980,8 @@ func (ec *executionContext) _ChannelSettings(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._ChannelSettings_codexSearchModel(ctx, field, obj)
 		case "codexImageModel":
 			out.Values[i] = ec._ChannelSettings_codexImageModel(ctx, field, obj)
+		case "realtime":
+			out.Values[i] = ec._ChannelSettings_realtime(ctx, field, obj)
 		case "extraModelPrefix":
 			out.Values[i] = ec._ChannelSettings_extraModelPrefix(ctx, field, obj)
 		case "modelMappings":
@@ -110521,6 +111074,11 @@ func (ec *executionContext) _GCPCredential(ctx context.Context, sel ast.Selectio
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("GCPCredential")
+		case "credentialRef":
+			out.Values[i] = ec._GCPCredential_credentialRef(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "region":
 			out.Values[i] = ec._GCPCredential_region(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -129871,6 +130429,15 @@ func (ec *executionContext) marshalNFloat2float64(ctx context.Context, sel ast.S
 	return graphql.WrapContextMarshaler(ctx, res)
 }
 
+func (ec *executionContext) marshalNGCPCredential2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGCPCredential(ctx context.Context, sel ast.SelectionSet, v objects.GCPCredential) graphql.Marshaler {
+	return ec._GCPCredential(ctx, sel, &v)
+}
+
+func (ec *executionContext) unmarshalNGCPCredentialInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGCPCredential(ctx context.Context, v any) (objects.GCPCredential, error) {
+	res, err := ec.unmarshalInputGCPCredentialInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNGcCleanupPreviewItem2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgcᚐGcCleanupPreviewItemᚄ(ctx context.Context, sel ast.SelectionSet, v []*gc.GcCleanupPreviewItem) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
@@ -136049,6 +136616,21 @@ func (ec *executionContext) unmarshalOChannelRateLimitInput2ᚖgithubᚗcomᚋlo
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalOChannelRealtimeConfig2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelRealtimeConfig(ctx context.Context, sel ast.SelectionSet, v *objects.ChannelRealtimeConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._ChannelRealtimeConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOChannelRealtimeConfigInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelRealtimeConfig(ctx context.Context, v any) (*objects.ChannelRealtimeConfig, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputChannelRealtimeConfigInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalOChannelRegexAssociation2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelRegexAssociation(ctx context.Context, sel ast.SelectionSet, v *objects.ChannelRegexAssociation) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -137170,11 +137752,76 @@ func (ec *executionContext) marshalOFloat2ᚖfloat64(ctx context.Context, sel as
 	return graphql.WrapContextMarshaler(ctx, res)
 }
 
+func (ec *executionContext) marshalOGCPCredential2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGCPCredentialᚄ(ctx context.Context, sel ast.SelectionSet, v []objects.GCPCredential) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNGCPCredential2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGCPCredential(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
 func (ec *executionContext) marshalOGCPCredential2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGCPCredential(ctx context.Context, sel ast.SelectionSet, v *objects.GCPCredential) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return ec._GCPCredential(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOGCPCredentialInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGCPCredentialᚄ(ctx context.Context, v any) ([]objects.GCPCredential, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]objects.GCPCredential, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNGCPCredentialInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGCPCredential(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
 }
 
 func (ec *executionContext) unmarshalOGCPCredentialInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGCPCredential(ctx context.Context, v any) (*objects.GCPCredential, error) {

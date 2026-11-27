@@ -6,9 +6,10 @@ package realtime
 
 import (
 	"encoding/binary"
-	"github.com/stretchr/testify/require"
 	"math"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func tone(hz float64, n int) []byte {
@@ -18,6 +19,7 @@ func tone(hz float64, n int) []byte {
 	}
 	return b
 }
+
 func rms(b []byte) float64 {
 	sum := 0.0
 	for i := 200; i < len(b)/2; i++ {
@@ -26,6 +28,7 @@ func rms(b []byte) float64 {
 	}
 	return math.Sqrt(sum / float64(len(b)/2-200))
 }
+
 func TestResampleChunkBoundaryAndDuration(t *testing.T) {
 	input := tone(1000, 24000)
 	whole, err := NewPCM24To16().Append(input)
@@ -42,6 +45,7 @@ func TestResampleChunkBoundaryAndDuration(t *testing.T) {
 	require.Len(t, whole, 32000)
 	require.InDelta(t, 12000/math.Sqrt(2), rms(whole), 100)
 }
+
 func TestResampleRejectsAliasingAndBrokenPCM(t *testing.T) {
 	a, err := NewPCM24To16().Append(tone(10000, 24000))
 	require.NoError(t, err)

@@ -49,6 +49,7 @@ func NewAdapter(model string) (*Adapter, error) {
 	}
 	return &Adapter{Capability: c}, nil
 }
+
 func ValidateEndpoint(baseURL, path string) error {
 	if baseURL == "" {
 		baseURL = "wss://api.openai.com"
@@ -62,6 +63,7 @@ func ValidateEndpoint(baseURL, path string) error {
 	}
 	return nil
 }
+
 func EndpointURL(baseURL, path, model string) (string, error) {
 	if err := ValidateEndpoint(baseURL, path); err != nil {
 		return "", err
@@ -74,6 +76,7 @@ func EndpointURL(baseURL, path, model string) (string, error) {
 	}
 	return strings.TrimSuffix(baseURL, "/") + "/v1/realtime?" + url.Values{"model": []string{model}}.Encode(), nil
 }
+
 func (a *Adapter) Client(data []byte) ([]byte, error) {
 	var event map[string]json.RawMessage
 	if len(data) > 256<<10 || json.Unmarshal(data, &event) != nil {
@@ -184,6 +187,7 @@ func (a *Adapter) Client(data []byte) ([]byte, error) {
 	}
 	return data, nil
 }
+
 func (a *Adapter) Server(data []byte) ([]byte, error) {
 	var event struct {
 		Type string `json:"type"`
@@ -209,9 +213,11 @@ func value(v *int64) int64 {
 	}
 	return *v
 }
+
 func (t *tokenDetails) valid() bool {
 	return t != nil && value(t.Text) >= 0 && value(t.Audio) >= 0 && value(t.Image) >= 0 && value(t.Cached) >= 0
 }
+
 func ParseUsage(data []byte) (string, *llm.Usage, error) {
 	var event struct {
 		Type     string `json:"type"`

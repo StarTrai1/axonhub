@@ -38,6 +38,15 @@ if (new URLSearchParams(window.location.search).has('availability')) {
   row.policies = { ...row.policies, webSearch: 'native', imageGeneration: 'other_channels', codexMemory: 'only', codexSpeed: 'fast',
     apiKeyAutoDisableMode: 'off', scheduledDisable: { disableCron: '0 22 * * *', disableTimezone: 'Asia/Shanghai', reenableMode: 'cron', reenableCron: '0 6 * * *', reenableTimezone: 'Asia/Shanghai' } };
 }
+if (new URLSearchParams(window.location.search).has('realtime')) {
+  row.type = 'openai';
+  row.name = 'Realtime fixture';
+  row.baseURL = 'https://api.openai.com';
+  row.credentials = { apiKeys: ['synthetic-realtime-key'] };
+  row.supportedModels = ['gpt-realtime-2'];
+  row.defaultTestModel = 'gpt-realtime-2';
+  row.settings = { realtime: { enabled: true, protocol: 'openai/realtime-ws', handshakeTimeoutMs: 12000, clientEventsPerSecond: 512 } };
+}
 function Fixture() {
   const {setTheme} = useTheme();
   const [open, setOpen] = useState(true);

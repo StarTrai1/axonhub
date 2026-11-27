@@ -12,7 +12,7 @@ import (
 )
 
 func TestOutputTextAlwaysCarriesAnnotations(t *testing.T) {
-	for _, annotations := range [][]Annotation{nil, {}, {{Type: "url_citation", URL: "https://example.com", Title: "source"}}} {
+	for _, annotations := range [][]Annotation{nil, {}, {{Type: "url_citation", URLCitation: &URLCitation{URL: "https://example.com", Title: "source"}}}} {
 		item := Item{Type: "output_text", Text: lo.ToPtr("answer"), Annotations: annotations}
 		body, err := json.Marshal(item)
 		require.NoError(t, err)
@@ -32,6 +32,6 @@ func TestAggregatedOutputTextHasAnnotationsWhenUpstreamOmitsThem(t *testing.T) {
 	}
 	response, _, err := (&InboundTransformer{}).AggregateStreamChunks(t.Context(), events)
 	require.NoError(t, err)
-	require.Equal(t, "answer", gjson.GetBytes(response.Body, "output.0.content.0.text").String())
-	require.Equal(t, "[]", gjson.GetBytes(response.Body, "output.0.content.0.annotations").Raw)
+	require.Equal(t, "answer", gjson.GetBytes(response, "output.0.content.0.text").String())
+	require.Equal(t, "[]", gjson.GetBytes(response, "output.0.content.0.annotations").Raw)
 }

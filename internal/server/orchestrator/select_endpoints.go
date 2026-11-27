@@ -9,8 +9,8 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
-	"github.com/looplj/axonhub/llm/transformer/shared"
 	openairt "github.com/looplj/axonhub/llm/transformer/openai/realtime"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // SelectAPIFormat selects the most appropriate APIFormat from a channel's resolved endpoints

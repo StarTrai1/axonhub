@@ -10,8 +10,8 @@ import (
 
 func TestExtractRequestParamsUsesTerminalAction(t *testing.T) {
 	for _, test := range []struct {
-		path string
-		model string
+		path   string
+		model  string
 		stream bool
 	}{
 		{"/v1beta/models/gemini-4-neon:generateContent", "gemini-4-neon", false},

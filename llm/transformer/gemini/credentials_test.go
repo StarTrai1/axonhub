@@ -11,9 +11,10 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
-	"github.com/stretchr/testify/require"
 )
 
 type credentialTestProvider func(context.Context) string

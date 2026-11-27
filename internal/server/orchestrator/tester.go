@@ -788,7 +788,6 @@ func (processor *TestChannelOrchestrator) testSingleKey(
 		return &TestAPIKeyResult{KeyPrefix: keyPrefix, Success: result.Success, Latency: result.Latency, Error: result.Error}
 	}
 
-
 	chatProcessor := &ChatCompletionOrchestrator{
 		channelSelector: &SpecifiedChannelSelector{
 			ChannelService: processor.channelService,

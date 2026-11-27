@@ -26,6 +26,7 @@ func ValidateEndpoint(baseURL, path string) error {
 	}
 	return nil
 }
+
 func EndpointURL(baseURL, path, model string) (string, error) {
 	if err := ValidateEndpoint(baseURL, path); err != nil {
 		return "", err

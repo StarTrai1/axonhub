@@ -1,9 +1,10 @@
 package orchestrator
 
 import (
+	"go.uber.org/fx"
+
 	"github.com/looplj/axonhub/internal/server/biz"
 	rt "github.com/looplj/axonhub/internal/server/realtime"
-	"go.uber.org/fx"
 )
 
 var Module = fx.Module("orchestrator",
