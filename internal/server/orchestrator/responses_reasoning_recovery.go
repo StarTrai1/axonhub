@@ -22,11 +22,11 @@ var responsesRejectedReasoningMessagePattern = regexp.MustCompile(
 // Relays may rename the code for both reasoning and compaction rejections.
 // Callers must still match the complete message and the exact encrypted item;
 // a generic thinking signature error alone does not authorize history changes.
-// Likewise, validation_error is eligible only with the explicit encrypted
-// rejection checked by the caller, never as a generic validation retry.
+// Likewise, validation_error and invalid_request_unclassified are eligible only
+// with the explicit encrypted rejection checked by the caller, never alone.
 func responsesEncryptedContentRejectionCode(code string) bool {
 	switch code {
-	case "", "bad_request", "validation_error", "invalid_request_error", "invalid_encrypted_content", "invalid_encrypted_summary", "thinking_signature_invalid":
+	case "", "bad_request", "validation_error", "invalid_request_error", "invalid_request_unclassified", "invalid_encrypted_content", "invalid_encrypted_summary", "thinking_signature_invalid":
 		return true
 	default:
 		return false

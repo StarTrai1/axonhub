@@ -11,8 +11,9 @@ import (
 // Some upstreams redact the item identity to gAAA...AA==. This is an explicit
 // decryption rejection, but cannot tell reasoning from a native checkpoint.
 // Keep it distinct from an exact item rejection throughout staged recovery.
+// Accept the observed relay's code=30000 diagnostic only inside its trace trailer.
 var responsesRejectedCiphertextMessagePattern = regexp.MustCompile(
-	`^(?:OpenAI Responses bad request: )?The encrypted content ([A-Za-z0-9_+/=-]+(?:(?:\.{3}|…)[A-Za-z0-9_+/=-]+)?) could not be verified\. Reason: Encrypted content could not be decrypted or parsed\.(?: \[trace_id=[A-Za-z0-9_-]+\])?$`,
+	`^(?:OpenAI Responses bad request: )?The encrypted content ([A-Za-z0-9_+/=-]+(?:(?:\.{3}|…)[A-Za-z0-9_+/=-]+)?) could not be verified\. Reason: Encrypted content could not be decrypted or parsed\.(?: \[trace_id=[A-Za-z0-9_-]+(?: code=30000)?\])?$`,
 )
 
 // Some relays replace the original encrypted-item error with this exact
