@@ -70,7 +70,7 @@ func TestCheckpointProtocolSummaryStreamContinuation(t *testing.T) {
 					require.NoError(t, handlers.SystemService.SetSecretKey(ctx, "synthetic-nested-summary-secret"))
 					policy := handlers.SystemService.RetryPolicyOrDefault(ctx)
 					policy.Enabled, policy.MaxChannelRetries, policy.MaxSingleChannelRetries, policy.RetryDelayMs = true, 0, 4, 0
-						require.NoError(t, handlers.SystemService.SetRetryPolicy(ctx, policy))
+					require.NoError(t, handlers.SystemService.SetRetryPolicy(ctx, policy))
 					gateway := responsesIntegrationGateway(t, client, handlers, project)
 					prefix := fmt.Sprintf(`{"model":%q,"stream":false,"prompt_cache_key":"stable-cache","client_metadata":{"thread_id":"nested-thread","x-codex-window-id":"nested-window"},"input":[`, model)
 					user := `{"type":"message","role":"user","content":"retained-user-canary","internal_chat_message_metadata_passthrough":{"content_token_count":5}}`
