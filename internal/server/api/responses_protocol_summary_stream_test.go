@@ -64,7 +64,7 @@ func TestCheckpointProtocolSummaryStreamContinuation(t *testing.T) {
 						_, _ = fmt.Fprintf(w, "data: {\"type\":\"response.completed\",\"response\":{\"id\":%q,\"object\":\"response\",\"model\":%q,\"status\":\"completed\",\"output\":%s}}\n\n", id, model, output)
 					}))
 					client, handlers, project := newResponsesIntegrationFixture(t, upstream.URL, func(create *ent.ChannelCreate) {
-						create.SetType(channel.TypeCodex).SetSupportedModels([]string{model}).SetSettings(&objects.ChannelSettings{PassThroughBody: lo.ToPtr(raw)}).SetPolicies(objects.ChannelPolicies{RemoteCompaction: objects.RemoteCompactionPolicyNative})
+						create.SetType(channel.TypeCodex).SetSupportedModels([]string{"synthetic-model", model}).SetSettings(&objects.ChannelSettings{PassThroughBody: lo.ToPtr(raw)}).SetPolicies(objects.ChannelPolicies{RemoteCompaction: objects.RemoteCompactionPolicyNative})
 					})
 					ctx := authz.WithTestBypass(ent.NewContext(t.Context(), client))
 					require.NoError(t, handlers.SystemService.SetSecretKey(ctx, "synthetic-nested-summary-secret"))

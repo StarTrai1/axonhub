@@ -238,7 +238,7 @@ func TestCheckpointStreamOpeningFailureBounds(t *testing.T) {
 func TestCheckpointStreamOpeningStillRequiresCompletedSummary(t *testing.T) {
 	for _, events := range [][]*httpclient.StreamEvent{
 		{{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"output":[]}}`)}},
-		{llm.DoneStreamEvent},
+		{&llm.DoneStreamEvent},
 	} {
 		outbound := newCodexResponsesPassThroughOutbound()
 		executor := &localCompactionRetryExecutor{events: events}
