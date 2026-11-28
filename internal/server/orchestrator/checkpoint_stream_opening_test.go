@@ -29,6 +29,7 @@ func checkpointOpeningErrorEvent(kind string) *httpclient.StreamEvent {
 
 type checkpointOpeningExecutor struct {
 	localCompactionRetryExecutor
+
 	kind    string
 	partial bool
 }
@@ -93,6 +94,7 @@ func TestCheckpointStreamOpeningSharesCompatibilityBudget(t *testing.T) {
 
 type checkpointAncestorStreamExecutor struct {
 	rejectedCompactionBridgeExecutor
+
 	bodies         [][]byte
 	kind           string
 	rejectAncestor bool

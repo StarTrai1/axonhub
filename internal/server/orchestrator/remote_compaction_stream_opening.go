@@ -6,6 +6,7 @@ import (
 
 	"github.com/tidwall/gjson"
 
+	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/looplj/axonhub/llm/streams"
@@ -39,6 +40,9 @@ func readLocalCompactionStreamOpening(ctx context.Context, stream streams.Stream
 		}
 		buffered = append(buffered, event)
 		if event != nil {
+			if bytes.Equal(event.Data, llm.DoneStreamEvent.Data) {
+				return streams.PrependStream(stream, buffered...), nil
+			}
 			if localCompactionEventHasOutput(event) {
 				return streams.PrependStream(stream, buffered...), nil
 			}

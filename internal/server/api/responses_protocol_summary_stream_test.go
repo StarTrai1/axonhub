@@ -41,10 +41,10 @@ func TestCheckpointProtocolSummaryStreamContinuation(t *testing.T) {
 						if summary {
 							summaryCalls++
 							if gjson.GetBytes(body, "input.0.internal_chat_message_metadata_passthrough").Exists() {
-								w.WriteHeader(400)
+								w.WriteHeader(http.StatusBadRequest)
 								_, _ = fmt.Fprint(w, `{"error":{"code":"invalid_request_unclassified","message":"Unknown parameter: 'input[0].internal_chat_message_metadata_passthrough.content_token_count'. [trace_id=synthetic code=30000]"}}`)
 								return
-								}
+							}
 						}
 						if !trigger && cipher {
 							w.Header().Set("Content-Type", "text/event-stream")
@@ -100,18 +100,24 @@ func TestCheckpointProtocolSummaryStreamContinuation(t *testing.T) {
 					require.Equal(t, 200, status, string(response))
 					mu.Lock()
 					defer mu.Unlock()
-					require.Equal(t, 4, summaryCalls, "metadata, reasoning, ancestor rejection, then one successful summary")
-					require.Len(t, attempts, 10)
-					for _, value := range []string{"ancestor-detail-canary", "source-reasoning-canary", "source-input-canary", "source-output-canary"} {
-						require.Contains(t, string(attempts[7]), value)
+					wantSummaries := 3
+					if raw {
+						// The transformed request already omits client-only metadata.
+						wantSummaries++
 					}
-					for _, body := range attempts[8:] {
+					require.Equal(t, wantSummaries, summaryCalls, "reasoning and ancestor recovery share one successful summary")
+					require.Len(t, attempts, wantSummaries+6)
+					summaryIndex := len(attempts) - 3
+					for _, value := range []string{"ancestor-detail-canary", "source-reasoning-canary", "source-input-canary", "source-output-canary"} {
+						require.Contains(t, string(attempts[summaryIndex]), value)
+					}
+					for _, body := range attempts[summaryIndex+1:] {
 						require.Contains(t, string(body), "durable-summary-canary")
 						require.Contains(t, string(body), "latest-reasoning-canary")
 						require.Contains(t, string(body), "continue-canary")
 						require.NotContains(t, string(body), "cipher_2")
 					}
-					require.Contains(t, string(attempts[9]), "next-turn-canary")
+					require.Contains(t, string(attempts[len(attempts)-1]), "next-turn-canary")
 				})
 			}
 		}
