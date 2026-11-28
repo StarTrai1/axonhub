@@ -1351,20 +1351,7 @@ func (a *remoteCompactionAdapter) generateCompactionWithCandidate(
 	chunks, err := collectLocalCompactionBridgeStream(stream, perf)
 	if err != nil {
 		err = normalizeLocalCompactionError(ctx, outbound, err)
-		a.markBridgeExecutionFailed(ctx, executionRecord, err)
-		if executionRecord != nil && a.requestService != nil {
-			// Retain a structured diagnostic, not a misleading in-progress response.
-			failure := responses.NewInboundTransformer().TransformError(ctx, err)
-			status := requestexecution.StatusFailed
-			if errors.Is(err, context.Canceled) {
-				status = requestexecution.StatusCanceled
-			}
-			persistCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
-			defer cancel()
-			if persistErr := a.requestService.UpdateRequestExecutionFinalized(persistCtx, executionRecord, status, ExtractErrorMessage(err), "", failure.Body, nil, "", failure.Headers); persistErr != nil {
-				log.Warn(persistCtx, "failed to persist local compaction stream failure", log.Cause(persistErr))
-			}
-		}
+		a.markBridgeStreamFailed(ctx, executionRecord, err)
 		return "", err
 	}
 
@@ -1512,6 +1499,25 @@ func (a *remoteCompactionAdapter) markBridgeExecutionFailed(ctx context.Context,
 	}
 	if updateErr := persistRequestExecutionFailure(context.WithoutCancel(ctx), a.requestService, execution, err, nil, "", nil); updateErr != nil {
 		log.Warn(ctx, "failed to persist local compaction bridge error", log.Cause(updateErr))
+	}
+}
+
+func (a *remoteCompactionAdapter) markBridgeStreamFailed(ctx context.Context, execution *ent.RequestExecution, err error) {
+	a.markBridgeExecutionFailed(ctx, execution, err)
+	if execution == nil || a.requestService == nil {
+		return
+	}
+	// Preserve the same structured diagnostic for opening and partial-stream
+	// failures, including attempts that will be followed by a safe retry.
+	failure := responses.NewInboundTransformer().TransformError(ctx, err)
+	status := requestexecution.StatusFailed
+	if errors.Is(err, context.Canceled) {
+		status = requestexecution.StatusCanceled
+	}
+	persistCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+	defer cancel()
+	if persistErr := a.requestService.UpdateRequestExecutionFinalized(persistCtx, execution, status, ExtractErrorMessage(err), "", failure.Body, nil, "", failure.Headers); persistErr != nil {
+		log.Warn(persistCtx, "failed to persist local compaction stream failure", log.Cause(persistErr))
 	}
 }
 

@@ -56,6 +56,15 @@ func (a *remoteCompactionAdapter) startLocalCompactionStream(
 			state.RequestExec = execution
 		}
 		stream, err := executor.DoStream(ctx, providerRequest)
+		streamFailed := false
+		if err == nil {
+			opened := stream
+			stream, err = readLocalCompactionStreamOpening(ctx, opened)
+			if err != nil {
+				_ = opened.Close()
+				streamFailed = true
+			}
+		}
 		if err == nil {
 			for _, middleware := range compatibility {
 				observed, observeErr := middleware.OnOutboundRawStream(ctx, stream)
@@ -69,7 +78,11 @@ func (a *remoteCompactionAdapter) startLocalCompactionStream(
 			return stream, execution, nil
 		}
 		err = normalizeLocalCompactionError(ctx, outbound, err)
-		a.markBridgeExecutionFailed(ctx, execution, err)
+		if streamFailed {
+			a.markBridgeStreamFailed(ctx, execution, err)
+		} else {
+			a.markBridgeExecutionFailed(ctx, execution, err)
+		}
 		if rejected, ok := errors.AsType[*compactionSourceRejectedError](rejectedCompactionSourceError(providerRequest, err)); ok {
 			// The source itself may contain a native ancestor. Hand its explicit
 			// opening rejection back to the bounded source-restoration loop before
