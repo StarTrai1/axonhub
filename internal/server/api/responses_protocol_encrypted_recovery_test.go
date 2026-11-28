@@ -30,6 +30,10 @@ func TestResponsesProtocolRedactedEncryptionContinuation(t *testing.T) {
 	testResponsesProtocolEncryptionContinuation(t, "The encrypted content gAAA...AA== could not be verified. Reason: Encrypted content could not be decrypted or parsed.", "", "", false)
 }
 
+func TestResponsesProtocolUnclassifiedEncryptionContinuation(t *testing.T) {
+	testResponsesProtocolEncryptionContinuation(t, "The encrypted content gAAA...vlah could not be verified. Reason: Encrypted content could not be decrypted or parsed. [trace_id=synthetic-trace code=30000]", "invalid_request_unclassified", "", false, "gpt-6.2-astra", "gpt-6.2-sol")
+}
+
 func TestResponsesProtocolInvalidEncryptedSummaryContinuation(t *testing.T) {
 	testResponsesProtocolEncryptionContinuation(t, "invalid encrypted summary (request id: synthetic_59958)", "validation_error", "", false)
 }
@@ -60,8 +64,11 @@ func responsesProtocolSealedAgentMessage(t *testing.T, projectID, apiKeyID int) 
 	return "axonhub-agent-v1." + base64.RawURLEncoding.EncodeToString(sealed)
 }
 
-func testResponsesProtocolEncryptionContinuation(t *testing.T, rejectionMessage, rejectionCode, reasoningMessage string, encryptedAgents bool) {
-	for _, model := range []string{"gpt-6-astra", "gpt-6.1-sol"} {
+func testResponsesProtocolEncryptionContinuation(t *testing.T, rejectionMessage, rejectionCode, reasoningMessage string, encryptedAgents bool, models ...string) {
+	if len(models) == 0 {
+		models = []string{"gpt-6-astra", "gpt-6.1-sol"}
+	}
+	for _, model := range models {
 		for _, downstream := range []string{"http", "ws"} {
 			for _, passThrough := range []bool{true, false} {
 				t.Run(fmt.Sprintf("%s/%s/raw=%t", model, downstream, passThrough), func(t *testing.T) {
