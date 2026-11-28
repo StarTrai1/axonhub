@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/samber/lo"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
 )
@@ -64,7 +66,7 @@ func TestCheckpointStreamOpeningSharesCompatibilityBudget(t *testing.T) {
 				req.Body = []byte(responsesRejectedReasoningFixture)
 				original := append([]byte(nil), req.Body...)
 				executor := &checkpointOpeningExecutor{kind: kind, partial: scenario.partial}
-				executor.failure = &httpclient.Error{StatusCode: 400, Body: []byte(`{"error":{"code":"unknown_parameter","param":"input[0].internal_chat_message_metadata_passthrough.content_token_count"}}`)}
+				executor.failure = &httpclient.Error{StatusCode: http.StatusBadRequest, Body: []byte(`{"error":{"code":"unknown_parameter","param":"input[0].internal_chat_message_metadata_passthrough.content_token_count"}}`)}
 				executor.events = []*httpclient.StreamEvent{{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":{"status":"completed","output":[{"type":"message","role":"assistant","content":[{"type":"output_text","text":"completed summary"}]}]}}`)}}
 				adapter := newRemoteCompactionAdapter(nil, nil, nil)
 				stream, _, err := adapter.startLocalCompactionStream(t.Context(), outbound, req, executor, applyResponsesRejectedStatusCompatibility(outbound))
@@ -162,10 +164,89 @@ func TestCheckpointStreamOpeningRestoresNestedSource(t *testing.T) {
 	}
 }
 
-// Keep the synthetic fixture helper available for content-bearing failure guards.
 func checkpointErrorWithOutput(t *testing.T, event *httpclient.StreamEvent) *httpclient.StreamEvent {
 	t.Helper()
 	data, err := sjson.SetRawBytes(event.Data, "response.output", []byte(`[{"type":"message","role":"assistant","content":[{"type":"output_text","text":"partial"}]}]`))
 	require.NoError(t, err)
 	return &httpclient.StreamEvent{Type: event.Type, Data: data}
+}
+
+func TestCheckpointStreamOpeningPreservesCommittedEvents(t *testing.T) {
+	for _, first := range []*httpclient.StreamEvent{
+		{Type: "response.output_text.delta", Data: []byte(`{"type":"response.output_text.delta","delta":"partial summary"}`)},
+		{Type: "response.reasoning_summary_text.delta", Data: []byte(`{"type":"response.reasoning_summary_text.delta","delta":"partial reasoning"}`)},
+		{Type: "response.output_item.added", Data: []byte(`{"type":"response.output_item.added","item":{"type":"function_call","name":"exec","arguments":"{}"}}`)},
+		{Type: "future.event", Data: []byte(`{"type":"future.event","state":"opaque"}`)},
+		checkpointErrorWithOutput(t, checkpointOpeningErrorEvent("response.failed")),
+		{Type: "response.in_progress", Data: []byte(`{"type":"response.in_progress","response":{"usage":{"output_tokens":1}}}`)},
+	} {
+		t.Run(first.Type, func(t *testing.T) {
+			outbound := newCodexResponsesPassThroughOutbound()
+			outbound.state.Settings = &RequestSettings{RetryPolicy: biz.RetryPolicy{Enabled: true, MaxSingleChannelRetries: 3}}
+			outbound.state.RawProviderRequest.Body = []byte(responsesRejectedReasoningFixture)
+			events := []*httpclient.StreamEvent{
+				{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"output":[]}}`)}, first, checkpointOpeningErrorEvent("error"),
+			}
+			executor := &localCompactionRetryExecutor{events: events}
+			stream, _, err := newRemoteCompactionAdapter(nil, nil, nil).startLocalCompactionStream(t.Context(), outbound, outbound.state.RawProviderRequest, executor, applyResponsesRejectedStatusCompatibility(outbound))
+			require.NoError(t, err)
+			var got []*httpclient.StreamEvent
+			for stream.Next() {
+				got = append(got, stream.Current())
+			}
+			require.NoError(t, stream.Close())
+			require.Equal(t, events, got, "pre-reading must preserve event order and payloads")
+			require.Len(t, executor.bodies, 1)
+		})
+	}
+}
+
+func TestCheckpointStreamOpeningFailureBounds(t *testing.T) {
+	for _, scenario := range []string{"ordinary refusal", "repeated encryption", "event limit", "byte limit", "canceled"} {
+		t.Run(scenario, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			outbound := newCodexResponsesPassThroughOutbound()
+			outbound.state.Settings = &RequestSettings{RetryPolicy: biz.RetryPolicy{Enabled: true, MaxSingleChannelRetries: 2}}
+			outbound.state.RawProviderRequest.Body = []byte(responsesRejectedReasoningFixture)
+			executor := &localCompactionRetryExecutor{events: []*httpclient.StreamEvent{checkpointOpeningErrorEvent("error")}}
+			want := 1
+			switch scenario {
+			case "ordinary refusal":
+				executor.events = []*httpclient.StreamEvent{{Type: "error", Data: []byte(`{"type":"error","status":400,"error":{"code":"content_blocked","message":"content-blocked"}}`)}}
+			case "repeated encryption":
+				want = 2
+			case "event limit":
+				executor.events = nil
+				for range 129 {
+					executor.events = append(executor.events, &httpclient.StreamEvent{Type: "response.in_progress", Data: []byte(`{"type":"response.in_progress","response":{"output":[]}}`)})
+				}
+			case "byte limit":
+				executor.events = []*httpclient.StreamEvent{{Type: "response.created", Data: []byte(`{"type":"response.created","padding":"` + strings.Repeat("x", 1<<20) + `"}`)}}
+			case "canceled":
+				want = 0
+				cancel()
+			}
+			stream, _, err := newRemoteCompactionAdapter(nil, nil, nil).startLocalCompactionStream(ctx, outbound, outbound.state.RawProviderRequest, executor, applyResponsesRejectedStatusCompatibility(outbound))
+			require.Error(t, err)
+			require.Nil(t, stream)
+			require.Len(t, executor.bodies, want)
+		})
+	}
+}
+
+func TestCheckpointStreamOpeningStillRequiresCompletedSummary(t *testing.T) {
+	for _, events := range [][]*httpclient.StreamEvent{
+		{{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"output":[]}}`)}},
+		{llm.DoneStreamEvent},
+	} {
+		outbound := newCodexResponsesPassThroughOutbound()
+		executor := &localCompactionRetryExecutor{events: events}
+		stream, _, err := newRemoteCompactionAdapter(nil, nil, nil).startLocalCompactionStream(t.Context(), outbound, outbound.state.RawProviderRequest, executor)
+		require.NoError(t, err)
+		_, err = collectLocalCompactionBridgeStream(stream, nil)
+		require.ErrorIs(t, err, llm.ErrStreamIncomplete)
+		require.NoError(t, stream.Close())
+		require.Len(t, executor.bodies, 1)
+	}
 }
